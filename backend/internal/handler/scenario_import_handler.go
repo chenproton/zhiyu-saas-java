@@ -108,7 +108,7 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 		careerPositionID := h.lookupCareerPosition(ctx, tenantID, positionName)
 		industryIDs := h.lookupIndustries(ctx, tenantID, industryNames)
 		professionIDs := h.lookupProfessions(ctx, tenantID, professionNames)
-		batchID := h.lookupBatch(ctx, tenantID, batchName, "scene_batches")
+		batchID := lookupBatchID(ctx, h.DB, "scene_batches", tenantID, batchName)
 
 		var existingID string
 		err := h.DB.QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
@@ -213,9 +213,9 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 		taskCode := h.generateTaskCode(ctx, tenantID, scenarioID, seenTaskCode)
 		taskID := uuid.NewString()
 
-		knowledgePointIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgePointNames)
+		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgePointNames)
 		abilityPointIDs := h.lookupAbilityPoints(ctx, tenantID, abilityPointNames)
-		resourceIDs := h.findOrCreateResources(ctx, tenantID, resourceNames, userID)
+		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
 
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO scenario_tasks (id, tenant_id, scenario_id, name, code, sort_order,
@@ -329,45 +329,7 @@ func (h *ScenarioImportHandler) lookupProfessions(ctx context.Context, tenantID 
 	return ids
 }
 
-func (h *ScenarioImportHandler) lookupBatch(ctx context.Context, tenantID, name, table string) *string {
-	if name == "" {
-		return nil
-	}
-	var id string
-	err := h.DB.QueryRow(ctx, fmt.Sprintf(`SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1`, table), tenantID, name).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
-}
 
-func (h *ScenarioImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
-	ids := []string{}
-	for _, name := range names {
-		if name == "" {
-			continue
-		}
-		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		h.DB.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
-		var existing string
-		h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
 
 func (h *ScenarioImportHandler) lookupAbilityPoints(ctx context.Context, tenantID string, names []string) []string {
 	if len(names) == 0 {
@@ -388,34 +350,6 @@ func (h *ScenarioImportHandler) lookupAbilityPoints(ctx context.Context, tenantI
 	return ids
 }
 
-func (h *ScenarioImportHandler) findOrCreateResources(ctx context.Context, tenantID string, names []string, userID string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
-	ids := []string{}
-	for _, name := range names {
-		if name == "" {
-			continue
-		}
-		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		h.DB.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document'::resource_type,$4) ON CONFLICT DO NOTHING`,
-			id, tenantID, name, userID)
-		var existing string
-		h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
 
 func mapTaskType(t string) string {
 	t = strings.TrimSpace(t)

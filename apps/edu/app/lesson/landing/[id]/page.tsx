@@ -33,6 +33,7 @@ import type {
 import type { CourseAssessmentsResponse, CourseAssessmentHomework, CourseHomeworkSubmission, NodeHomework, NodeHomeworkSubmission, NodeEvaluationResult, NodeQuiz } from "@zhiyu/api-client"
 import { useAuth } from "@/components/auth-provider"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 const TABS = [
   { value: "nodes", label: "课程目录", icon: ListChecks },
@@ -68,10 +69,6 @@ const resourceTypeLabels: Record<string, string> = {
   software: "软件",
 }
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return "-"
-  return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
-}
 
 function KnowledgeTab({ knowledgeList }: { knowledgeList: KnowledgePoint[] }) {
   if (knowledgeList.length === 0) {

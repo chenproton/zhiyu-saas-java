@@ -39,6 +39,7 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { examUsageApi } from "@/lib/api"
 import type { ExamUsage } from "@/lib/types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage["targetType"]>, string> = {
   class: "班级",
@@ -187,16 +188,6 @@ export default function ExamUsagePage() {
     await loadUsages()
   }
 
-  const formatDate = (iso?: string) => {
-    if (!iso) return "-"
-    return new Intl.DateTimeFormat("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(iso))
-  }
 
   const canStart = (status: ExamUsage["status"]) => status === "draft" || status === "pending"
   const canFinish = (status: ExamUsage["status"]) => status === "in_progress"

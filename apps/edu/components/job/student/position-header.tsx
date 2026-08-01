@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@zhiyu/ui"
 import { positionApi } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 interface PositionHeaderProps {
   position: CareerPosition
@@ -24,10 +25,6 @@ function formatSalary(min?: number | null, max?: number | null) {
   return "面议"
 }
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return "-"
-  return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
-}
 
 export function PositionHeader({ position, industryName, onStartLearning }: PositionHeaderProps) {
   const { user } = useAuth()

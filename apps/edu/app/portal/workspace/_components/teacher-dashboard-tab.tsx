@@ -26,6 +26,7 @@ import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from "@/lib/external-links"
 import type { WorkspaceDashboard, WorkspaceScheduleEvent } from "@/lib/types"
 import type { WorkspaceClassPlan, WorkspaceClassSession } from "@/lib/types"
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 import {
   type TeacherScheduleEvent,
   type PrepAssociationRecord,
@@ -263,9 +264,6 @@ function getWeeksInMonth(year: number, month: number) {
   const startDay = firstDay.getDay() || 7
   const totalDays = lastDay.getDate()
   return Math.ceil((totalDays + startDay - 1) / 7)
-}
-function formatDate(date: Date) {
-  return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
 function getCourseUrls(event: TeacherScheduleEvent) {

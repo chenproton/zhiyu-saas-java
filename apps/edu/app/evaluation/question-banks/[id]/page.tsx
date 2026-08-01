@@ -62,6 +62,7 @@ const TYPE_COLORS: Record<QuestionType, string> = {
   short_answer: "bg-teal-500",
 }
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 export default function QuestionBankDetailPage() {
   const params = useParams()
@@ -347,13 +348,6 @@ export default function QuestionBankDetailPage() {
     })
   }
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(date)
-  }
 
   const getCollaboratorNames = () => (bank.collaboratorNames || bank.collaboratorIds || []).filter(Boolean)
 

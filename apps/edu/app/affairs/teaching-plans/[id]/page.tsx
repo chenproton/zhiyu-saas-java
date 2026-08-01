@@ -29,16 +29,10 @@ import { teachingPlanApi } from "@/lib/api"
 import type { TeachingPlanDetail, TeachingPlanEntry } from "@/lib/types"
 import { EntryTypeBadge } from "./_components/entry-type-badge"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 const VENUE_TYPES = ["教室", "机房", "实训室", "实验室", "校外基地"]
 
-function formatDateTime(iso?: string) {
-  if (!iso) return "-"
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit",
-  }).format(new Date(iso))
-}
 
 interface EditState {
   startWeek: string

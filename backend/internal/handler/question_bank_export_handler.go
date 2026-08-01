@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -27,11 +26,8 @@ func (h *QuestionBankExportHandler) ExportExcel(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	var req struct {
-		IDs []string `json:"ids"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
-		respondError(w, http.StatusBadRequest, "缺少题库ID")
+	ids, ok := decodeIDList(w, r, "缺少题库ID")
+	if !ok {
 		return
 	}
 
@@ -39,7 +35,7 @@ func (h *QuestionBankExportHandler) ExportExcel(w http.ResponseWriter, r *http.R
 	th := &TemplateHandler{DB: h.DB}
 	f := th.generateQuestionBankTemplate(ctx, tenantID)
 
-	if err := h.fillBanksData(ctx, f, tenantID, req.IDs); err != nil {
+	if err := h.fillBanksData(ctx, f, tenantID, ids); err != nil {
 		respondError(w, http.StatusInternalServerError, "填充export data失败")
 		return
 	}

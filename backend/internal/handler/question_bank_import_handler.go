@@ -111,7 +111,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 		description := nullableStr(col(row, 1))
 		batchName := col(row, 2)
 
-		batchID := h.lookupEvaluationBatch(ctx, tenantID, batchName)
+		batchID := lookupBatchID(ctx, h.DB, "evaluation_batches", tenantID, batchName)
 
 		if seen[name] {
 			previewRes.Duplicates++
@@ -191,14 +191,3 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 	return previewRes, execRes
 }
 
-func (h *QuestionBankImportHandler) lookupEvaluationBatch(ctx context.Context, tenantID, name string) *string {
-	if name == "" {
-		return nil
-	}
-	var id string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM evaluation_batches WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
-}

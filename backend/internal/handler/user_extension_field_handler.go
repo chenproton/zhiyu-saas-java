@@ -64,7 +64,7 @@ func (h *UserExtensionFieldHandler) List(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *UserExtensionFieldHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -176,13 +176,6 @@ func (h *UserExtensionFieldHandler) filterTenantRoleCodes(ctx context.Context, t
 	return valid
 }
 
-func (h *UserExtensionFieldHandler) canManageUsers(r *http.Request) bool {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		return false
-	}
-	return canManagePortal(claims)
-}
 
 func (h *UserExtensionFieldHandler) fetchUserExtensionField(ctx context.Context, id string) (domain.UserExtensionField, error) {
 	var field domain.UserExtensionField

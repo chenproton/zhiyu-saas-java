@@ -18,6 +18,7 @@ import { StatusActionBar } from "@/components/shared/status-action-bar"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import type { ContentListItem, ListRenderProps } from "@/components/shared/content-list-page"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 interface EvalListItem extends ContentListItem {
   code: string
@@ -31,13 +32,6 @@ interface EvalListItem extends ContentListItem {
   questions?: any[]
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  })
-}
 
 interface EvaluationListTableProps<T extends ContentListItem = ContentListItem> extends ListRenderProps<T> {
   type: "bank" | "exam"

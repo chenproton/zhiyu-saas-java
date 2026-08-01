@@ -34,6 +34,7 @@ import { TableRowActions } from "@/components/shared/table-row-actions"
 import { jobAbilityResultApi } from "@/lib/api"
 import type { JobAbilityResult, JobAbilitySummaryItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 const PAGE_SIZE = 20
 
@@ -59,18 +60,6 @@ function gradeBadgeClass(grade?: string): string {
   }
 }
 
-function formatDateTime(value?: string | Date): string {
-  if (!value) return "-"
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) return "-"
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date)
-}
 
 function JobAbilityResultsContent() {
   const searchParams = useSearchParams()

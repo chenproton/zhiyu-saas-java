@@ -99,7 +99,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		batchName := col(row, 11)
 
 		industryID := h.lookupIndustry(ctx, tenantID, industryName)
-		batchID := h.lookupBatch(ctx, tenantID, batchName, "batches")
+		batchID := lookupBatchID(ctx, h.DB, "batches", tenantID, batchName)
 		majorIDs := h.lookupMajors(ctx, tenantID, majorNames)
 
 		var existingID string
@@ -331,17 +331,6 @@ func (h *PositionImportHandler) lookupMajors(ctx context.Context, tenantID strin
 	return ids
 }
 
-func (h *PositionImportHandler) lookupBatch(ctx context.Context, tenantID, name, table string) *string {
-	if name == "" {
-		return nil
-	}
-	var id string
-	err := h.DB.QueryRow(ctx, fmt.Sprintf(`SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1`, table), tenantID, name).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
-}
 
 func (h *PositionImportHandler) findOrCreateCert(ctx context.Context, tenantID, name string) string {
 	var id string

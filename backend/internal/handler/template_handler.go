@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -52,6 +53,29 @@ func writeExcel(w http.ResponseWriter, f *excelize.File, filename string) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	if err := f.Write(w); err != nil {
 		respondError(w, http.StatusInternalServerError, "写入文件失败")
+	}
+}
+
+// decodeIDList 解析导出请求体 {ids:[...]}，空/非法时响应 400 并返回 false。
+func decodeIDList(w http.ResponseWriter, r *http.Request, missingMsg string) ([]string, bool) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
+		respondError(w, http.StatusBadRequest, missingMsg)
+		return nil, false
+	}
+	return req.IDs, true
+}
+
+// newSetCell 返回统一应用数据/换行样式的单元格写入闭包。
+func newSetCell(f *excelize.File) func(sheet, cell, val string) {
+	dataStyle := makeDataStyle(f)
+	wrapAlign := makeWrapAlign(f)
+	return func(sheet, cell, val string) {
+		f.SetCellValue(sheet, cell, val)
+		f.SetCellStyle(sheet, cell, cell, dataStyle)
+		f.SetCellStyle(sheet, cell, cell, wrapAlign)
 	}
 }
 

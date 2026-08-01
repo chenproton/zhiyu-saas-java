@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -28,11 +27,8 @@ func (h *CourseExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var req struct {
-		IDs []string `json:"ids"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
-		respondError(w, http.StatusBadRequest, "缺少课程ID")
+	ids, ok := decodeIDList(w, r, "缺少课程ID")
+	if !ok {
 		return
 	}
 
@@ -40,7 +36,7 @@ func (h *CourseExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request
 	th := &TemplateHandler{DB: h.DB}
 	f := th.generateSystemCourseTemplate(ctx, tenantID)
 
-	if err := h.fillCoursesData(ctx, f, tenantID, req.IDs); err != nil {
+	if err := h.fillCoursesData(ctx, f, tenantID, ids); err != nil {
 		respondError(w, http.StatusInternalServerError, "填充export data失败")
 		return
 	}
@@ -49,14 +45,7 @@ func (h *CourseExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request
 }
 
 func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.File, tenantID string, courseIDs []string) error {
-	dataStyle := makeDataStyle(f)
-	wrapAlign := makeWrapAlign(f)
-
-	setCell := func(sheet, cell, val string) {
-		f.SetCellValue(sheet, cell, val)
-		f.SetCellStyle(sheet, cell, cell, dataStyle)
-		f.SetCellStyle(sheet, cell, cell, wrapAlign)
-	}
+	setCell := newSetCell(f)
 
 	type courseRow struct {
 		id, name, major, description, batch string

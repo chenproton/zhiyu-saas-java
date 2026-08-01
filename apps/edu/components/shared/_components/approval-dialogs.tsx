@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 interface ApprovalHistoryItem {
   action?: string
@@ -46,14 +47,6 @@ function formatStepInfo(info?: ApprovalStepInfo): string {
   return `当前审批步骤：${stepLabel}${progress}，通过后将继续流转至下一步审批。`
 }
 
-function formatDateTime(iso?: string): string {
-  if (!iso) return ""
-  try {
-    return new Date(iso).toLocaleString("zh-CN")
-  } catch {
-    return iso
-  }
-}
 
 function ApprovalHistoryWaterfall({ stepInfo, history }: { stepInfo?: ApprovalStepInfo; history?: ApprovalHistoryItem[] }) {
   if (!stepInfo || !history || history.length === 0) return null

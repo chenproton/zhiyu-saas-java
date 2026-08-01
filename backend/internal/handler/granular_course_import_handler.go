@@ -118,8 +118,8 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 		resourceNames := splitTrim(col(row, 6), ",")
 		batchName := col(row, 7)
 
-		majorID := h.lookupMajor(ctx, tenantID, majorName)
-		batchID := h.lookupBatch(ctx, tenantID, batchName, "lesson_batches")
+		majorID := lookupMajorID(ctx, h.DB, tenantID, majorName)
+		batchID := lookupBatchID(ctx, h.DB, "lesson_batches", tenantID, batchName)
 
 		var descPtr *string
 		if learningGoal != "" {
@@ -134,8 +134,8 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			durPtr = &duration
 		}
 
-		knowledgePointIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
-		resourceIDs := h.findOrCreateResources(ctx, tenantID, resourceNames, userID)
+		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
+		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
 
 		var existingID string
 		err := h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID)
@@ -197,86 +197,9 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 	}
 }
 
-func (h *GranularCourseImportHandler) lookupMajor(ctx context.Context, tenantID, name string) *string {
-	if name == "" {
-		return nil
-	}
-	var id string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
-}
 
-func (h *GranularCourseImportHandler) lookupBatch(ctx context.Context, tenantID, name, table string) *string {
-	if name == "" {
-		return nil
-	}
-	var id string
-	err := h.DB.QueryRow(ctx, fmt.Sprintf(`SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1`, table), tenantID, name).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
-}
 
-func (h *GranularCourseImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
-	ids := []string{}
-	for _, name := range names {
-		if name == "" {
-			continue
-		}
-		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		_, _ = h.DB.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
-		var existing string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
 
-func (h *GranularCourseImportHandler) findOrCreateResources(ctx context.Context, tenantID string, names []string, userID string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
-	ids := []string{}
-	for _, name := range names {
-		if name == "" {
-			continue
-		}
-		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		_, _ = h.DB.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document'::resource_type,$4) ON CONFLICT DO NOTHING`,
-			id, tenantID, name, userID)
-		var existing string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
 
 func (h *GranularCourseImportHandler) replaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, knowledgePointIDs, resourceIDs []string) {
 	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id=$1 AND bind_type='course'`, courseID)

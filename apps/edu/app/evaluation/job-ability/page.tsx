@@ -20,6 +20,7 @@ import { TableRowActions } from "@/components/shared/table-row-actions"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { certApi, positionApi } from "@/lib/api"
 import type { CareerPosition, CertificationRule } from "@/lib/types"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 export default function JobAbilityPage() {
   const router = useRouter()
@@ -118,16 +119,6 @@ export default function JobAbilityPage() {
     }
   }, [positions, ruleMap])
 
-  const formatDate = (iso?: string) => {
-    if (!iso) return "-"
-    return new Intl.DateTimeFormat("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(iso))
-  }
 
   return (
     <div className="space-y-6">

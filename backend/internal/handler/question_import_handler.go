@@ -208,7 +208,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 
 		if found {
 			if overwrite {
-				knowledgeIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
+				knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
 				_, err = h.DB.Exec(ctx, `
 					UPDATE questions SET type=$1, options=$2, answer=$3, analysis=$4, score=$5, difficulty=$6, knowledge_point_ids=$7
 					WHERE id=$8
@@ -227,7 +227,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 			continue
 		}
 
-		knowledgeIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
+		knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
 		questionID := uuid.NewString()
 		code := generateEntityCode("TM")
 		_, err = h.DB.Exec(ctx, `
@@ -248,34 +248,6 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 	return previewRes, execRes
 }
 
-func (h *QuestionImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {
-	ids := []string{}
-	for _, name := range names {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		_, err = h.DB.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
-		if err != nil {
-			slog.Info(fmt.Sprintf("[import/questions] create knowledge point %s failed: %v", name, err))
-		}
-		var existing string
-		err = h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else if id != "" {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
 
 func mapQuestionType(t string) string {
 	switch strings.TrimSpace(t) {

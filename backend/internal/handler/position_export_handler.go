@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -28,11 +27,8 @@ func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var req struct {
-		IDs []string `json:"ids"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
-		respondError(w, http.StatusBadRequest, "缺少岗位ID")
+	ids, ok := decodeIDList(w, r, "缺少岗位ID")
+	if !ok {
 		return
 	}
 
@@ -40,7 +36,7 @@ func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	th := &TemplateHandler{DB: h.DB}
 	f := th.generatePositionTemplate(ctx, tenantID)
 
-	if err := h.fillPositionsData(ctx, f, tenantID, req.IDs); err != nil {
+	if err := h.fillPositionsData(ctx, f, tenantID, ids); err != nil {
 		respondError(w, http.StatusInternalServerError, "填充export data失败")
 		return
 	}
@@ -49,12 +45,7 @@ func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *excelize.File, tenantID string, positionIDs []string) error {
-	dataStyle := makeDataStyle(f)
-
-	setCell := func(sheet, cell, val string) {
-		f.SetCellValue(sheet, cell, val)
-		f.SetCellStyle(sheet, cell, cell, dataStyle)
-	}
+	setCell := newSetCell(f)
 
 	type posRow struct {
 		name, shortName, positionType, industry, majors, salaryRange, description, requirements, careerPath, certs, batch string

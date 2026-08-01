@@ -161,10 +161,10 @@ func withTx(ctx context.Context, db *pgxpool.Pool, fn func(tx pgx.Tx) error) err
 // lookupIDByNameTables 是 lookupIDByName 允许查询的表名白名单。
 var lookupIDByNameTables = []string{
 	"ability_points", "ability_domains", "alliance_agreements", "alliance_enterprises",
-	"alliance_experts", "alliance_projects", "career_positions", "certificate_library",
+	"alliance_experts", "alliance_projects", "batches", "career_positions", "certificate_library",
 	"courses", "evaluation_batches", "exams", "industries", "institutions",
-	"knowledge_points", "majors", "organizations", "question_banks", "questions",
-	"resource_library", "roles", "scenarios", "staff_titles", "subscription_packages", "terms", "users",
+	"knowledge_points", "lesson_batches", "majors", "organizations", "question_banks", "questions",
+	"resource_library", "roles", "scene_batches", "scenarios", "staff_titles", "subscription_packages", "terms", "users",
 }
 
 // lookupIDByName 按表名+租户+名称查询记录 ID，不存在时返回空字符串。
@@ -220,6 +220,12 @@ func canManagePortal(claims *middleware.Claims) bool {
 // canManagePlatform returns true for platform-level configuration/operation.
 func canManagePlatform(claims *middleware.Claims) bool {
 	return platformAdminOnly(claims)
+}
+
+// canManageUsers reports whether the caller may manage portal users
+// (staff titles, extension fields, user CRUD).
+func canManageUsers(r *http.Request) bool {
+	return canManagePortal(middleware.CurrentUser(r))
 }
 
 // requireOperator reports whether the request is from a platform operator.

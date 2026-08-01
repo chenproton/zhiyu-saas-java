@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -27,11 +26,8 @@ func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var req struct {
-		IDs []string `json:"ids"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
-		respondError(w, http.StatusBadRequest, "缺少场景方案ID")
+	ids, ok := decodeIDList(w, r, "缺少场景方案ID")
+	if !ok {
 		return
 	}
 
@@ -39,7 +35,7 @@ func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	th := &TemplateHandler{DB: h.DB}
 	f := th.generateScenarioTemplate(ctx, tenantID)
 
-	if err := h.fillScenariosData(ctx, f, tenantID, req.IDs); err != nil {
+	if err := h.fillScenariosData(ctx, f, tenantID, ids); err != nil {
 		respondError(w, http.StatusInternalServerError, "填充export data失败")
 		return
 	}
@@ -48,8 +44,6 @@ func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *excelize.File, tenantID string, scenarioIDs []string) error {
-	dataStyle := makeDataStyle(f)
-	wrapAlign := makeWrapAlign(f)
 
 	// Fill Sheet 1: 场景基本信息
 	type sRow struct {
@@ -88,11 +82,7 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 		})
 	}
 
-	setCell := func(sheet, cell, val string) {
-		f.SetCellValue(sheet, cell, val)
-		f.SetCellStyle(sheet, cell, cell, dataStyle)
-		f.SetCellStyle(sheet, cell, cell, wrapAlign)
-	}
+	setCell := newSetCell(f)
 	for ri, row := range sRows {
 		r := 3 + ri
 		setCell("场景基本信息", fmt.Sprintf("A%d", r), row.name)

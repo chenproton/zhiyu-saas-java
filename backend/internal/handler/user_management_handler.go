@@ -95,13 +95,6 @@ type BindUserRolesRequest struct {
 	RoleIDs []string `json:"roleIds"`
 }
 
-func (h *UserManagementHandler) canManageUsers(r *http.Request) bool {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		return false
-	}
-	return canManagePortal(claims)
-}
 
 func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 	cfg := listQueryConfig[domain.User]{
@@ -159,7 +152,7 @@ func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -202,7 +195,7 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -276,7 +269,7 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -302,7 +295,7 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -339,7 +332,7 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -385,7 +378,7 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 
 func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -449,7 +442,7 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -499,7 +492,7 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 }
 
 func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -554,7 +547,7 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 // BatchUpdateOrgNode 批量更新选中用户的组织节点归属。
 // orgNodeId 为空时，会清空用户的 org_node_id（用于删除节点后解绑）。
 func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -612,7 +605,7 @@ func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *htt
 // BindRoles replaces the user's role bindings with the given set (at least one),
 // all roles must belong to the user's tenant.
 func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

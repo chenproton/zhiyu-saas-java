@@ -148,8 +148,8 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 		courseIntro := col(row, 2)
 		batchName := col(row, 3)
 
-		majorID := h.lookupMajor(ctx, tenantID, majorName)
-		batchID := h.lookupBatch(ctx, tenantID, batchName, "lesson_batches")
+		majorID := lookupMajorID(ctx, h.DB, tenantID, majorName)
+		batchID := lookupBatchID(ctx, h.DB, "lesson_batches", tenantID, batchName)
 
 		var descPtr *string
 		if courseIntro != "" {
@@ -356,7 +356,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 	result.Created++
 
 	// 合并 Excel 中填写的知识点/资源与颗粒课自带的知识点/资源
-	knowledgePointIDs := h.mergeIDs(h.findOrCreateKnowledgePoints(ctx, tenantID, nr.knowledgeNames), baseKnowledgeIDs)
+	knowledgePointIDs := h.mergeIDs(findOrCreateKnowledgePoints(ctx, h.DB, tenantID, nr.knowledgeNames), baseKnowledgeIDs)
 	for _, kpID := range knowledgePointIDs {
 		_, _ = h.DB.Exec(ctx, `
 			INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id, created_at)
@@ -365,7 +365,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 		`, uuid.NewString(), tenantID, nodeID, kpID)
 	}
 
-	resourceIDs := h.mergeIDs(h.findOrCreateResources(ctx, tenantID, nr.resourceNames, userID), baseResourceIDs)
+	resourceIDs := h.mergeIDs(findOrCreateResources(ctx, h.DB, tenantID, nr.resourceNames, userID), baseResourceIDs)
 	for _, resID := range resourceIDs {
 		_, _ = h.DB.Exec(ctx, `
 			INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id, created_at)
@@ -454,29 +454,7 @@ func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, courseID str
 	_, _ = h.DB.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID)
 }
 
-func (h *CourseImportHandler) lookupMajor(ctx context.Context, tenantID, name string) *string {
-	if name == "" {
-		return nil
-	}
-	var id string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
-}
 
-func (h *CourseImportHandler) lookupBatch(ctx context.Context, tenantID, name, table string) *string {
-	if name == "" {
-		return nil
-	}
-	var id string
-	err := h.DB.QueryRow(ctx, fmt.Sprintf(`SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1`, table), tenantID, name).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
-}
 
 func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID, name string) *domain.Course {
 	if name == "" {
@@ -533,62 +511,7 @@ func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Contex
 	return ids
 }
 
-func (h *CourseImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
-	ids := []string{}
-	for _, name := range names {
-		if name == "" {
-			continue
-		}
-		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		_, _ = h.DB.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
-		var existing string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
 
-func (h *CourseImportHandler) findOrCreateResources(ctx context.Context, tenantID string, names []string, userID string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
-	ids := []string{}
-	for _, name := range names {
-		if name == "" {
-			continue
-		}
-		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		_, _ = h.DB.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document'::resource_type,$4) ON CONFLICT DO NOTHING`,
-			id, tenantID, name, userID)
-		var existing string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
 
 func (h *CourseImportHandler) generateSystemCourseCode(ctx context.Context, tenantID string) string {
 	year := time.Now().Format("2006")

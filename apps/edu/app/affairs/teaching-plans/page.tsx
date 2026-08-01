@@ -27,19 +27,10 @@ import { TableRowActions } from "@/components/shared/table-row-actions"
 import { teachingPlanApi } from "@/lib/api"
 import type { TeachingPlan } from "@/lib/types"
 import { GeneratePlanDialog } from "./_components/generate-plan-dialog"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 type FilterStatus = "all" | "draft" | "confirmed"
 
-function formatDateTime(iso?: string) {
-  if (!iso) return "-"
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso))
-}
 
 export default function TeachingPlansPage() {
   const router = useRouter()

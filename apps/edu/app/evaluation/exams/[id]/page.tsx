@@ -36,6 +36,7 @@ const TYPE_COLORS: Record<QuestionType, string> = {
   short_answer: "bg-teal-500",
 }
 import { cn } from "@/lib/utils"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 export default function ExamComposerPage() {
   const params = useParams()
   const router = useRouter()
@@ -258,13 +259,6 @@ export default function ExamComposerPage() {
     return mins > 0 ? `${hours} 小时 ${mins} 分钟` : `${hours} 小时`
   }
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(date)
-  }
 
   const getCollaboratorNames = () => (exam.collaboratorNames || exam.collaboratorIds || []).filter(Boolean)
   const getCollaboratorDeptNames = () => (exam.collaboratorDeptIds || []).filter(Boolean)

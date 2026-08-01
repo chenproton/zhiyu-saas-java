@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { questionBankApi, questionApi, knowledgeApi } from "@/lib/api"
 import type { QuestionBank, Question, KnowledgePoint } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 const coverGradients = [
   "linear-gradient(135deg,#2563eb,#3b82f6)",
@@ -47,11 +48,6 @@ const difficultyMap: Record<string, { color: string; label: string }> = {
   hard: { color: "#ef4444", label: "困难" },
 }
 
-function formatDate(dateStr: string | Date) {
-  if (!dateStr) return "-"
-  const d = typeof dateStr === "string" ? dateStr : dateStr.toISOString?.() || String(dateStr)
-  return d.split("T")[0] || d.split(" ")[0] || d
-}
 
 function AnswerPreview({ question }: { question: Question }) {
   const [show, setShow] = useState(false)

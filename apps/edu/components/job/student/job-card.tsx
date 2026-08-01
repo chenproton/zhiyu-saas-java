@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { MapPin, Flame } from "lucide-react"
 import type { CareerPosition } from "@/lib/types"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 interface JobCardProps {
   position: CareerPosition
@@ -24,14 +25,6 @@ const coverGradients = [
   "linear-gradient(135deg,#0f766e,#14b8a6)",
 ]
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return "2024-01-01"
-  try {
-    return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
-  } catch {
-    return dateStr
-  }
-}
 
 export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCount = 0, industryName }: JobCardProps) {
   const displayTitle = position.shortName || position.name

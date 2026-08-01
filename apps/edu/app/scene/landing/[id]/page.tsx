@@ -29,6 +29,7 @@ import type {
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { SceneKnowledgeGraph } from "@/components/scene/student/knowledge-graph"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 const TABS = [
   { value: "tasks", label: "任务概览", icon: ListChecks },
@@ -86,10 +87,6 @@ const methodColorMap: Record<string, string> = {
   question_bank: "#8b5cf6", outcome: "#10b981", homework: "#f59e0b", quiz: "#06b6d4",
 }
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return "-"
-  return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
-}
 
 interface AbilitiesTabProps {
   tasks: ScenarioTask[]

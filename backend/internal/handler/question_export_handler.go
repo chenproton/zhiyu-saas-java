@@ -43,18 +43,15 @@ func (h *QuestionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var req struct {
-		IDs []string `json:"ids"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
-		respondError(w, http.StatusBadRequest, "缺少题目ID")
+	ids, ok := decodeIDList(w, r, "缺少题目ID")
+	if !ok {
 		return
 	}
 
 	th := &TemplateHandler{DB: h.DB}
 	f := th.generateQuestionTemplate(ctx, tenantID, bankID)
 
-	if err := h.fillQuestionsData(ctx, f, tenantID, bankID, req.IDs); err != nil {
+	if err := h.fillQuestionsData(ctx, f, tenantID, bankID, ids); err != nil {
 		respondError(w, http.StatusInternalServerError, "填充export data失败")
 		return
 	}

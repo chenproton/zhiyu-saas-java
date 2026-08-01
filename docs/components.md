@@ -118,9 +118,11 @@
 
 ## 评测配置组件（课程/任务复用）
 
-> 组件位于 `apps/edu/app/lesson/admin/_components/eval/course-eval-config.tsx`，同时被课程编辑器和任务编辑器使用。架构分两层：
+> 组件位于 `apps/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`）与
+> `apps/edu/app/lesson/admin/_components/assessment/course-evaluation-rules-dialog.tsx`（`CourseEvaluationRulesDialog`），
+> 同时被课程编辑器和任务编辑器使用。架构分两层：
 
-### 第一层：`CourseEvalConfig` — 测评方式选择 + 4 步规则配置
+### 第一层：`EvalMethodConfigModule` — 测评方式选择 + 4 步规则配置
 
 | Props | 说明 |
 |------|------|
@@ -145,7 +147,7 @@
 | `ResourceMaterialConfig` | `resource-material-config.tsx` | 现场评审、成果评价、作业 |
 | `MethodConfigDialog` | `method-config-dialog.tsx` | 所有方式的评价标准配置 |
 
-**新增测评方式只需：** 创建新面板组件 + 在 `CourseEvalConfig` 的 `EVALUATION_METHOD_OPTIONS` 数组中加一行。
+**新增测评方式只需：** 创建新面板组件 + 在 `EvalMethodConfigModule` 的 `EVALUATION_METHOD_OPTIONS` 数组中加一行。
 
 ## 任务步骤卡片（任务编辑器专用）
 
@@ -165,7 +167,6 @@
 | 组件 | 文件 | 用途 |
 |------|------|------|
 | `EvaluationListTable` | `evaluation-list-table.tsx` | 评测列表渲染器 |
-| `EvaluationStatusActions` | `evaluation-status-actions.tsx` | 评测资源状态操作按钮行 |
 | `QuestionFormDialog` | `question-form-dialog.tsx` | 题目创建/编辑表单 |
 | `QuestionPreview` | `question-preview.tsx` | 题目预览 |
 | `BankFormDialog` | `bank-form-dialog.tsx` | 题库创建/编辑表单 |

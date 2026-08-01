@@ -94,7 +94,7 @@ func (h *StaffTitleHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -146,7 +146,7 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -193,7 +193,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -226,7 +226,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request) {
-	if !h.canManageUsers(r) {
+	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -262,13 +262,6 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, title)
 }
 
-func (h *StaffTitleHandler) canManageUsers(r *http.Request) bool {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		return false
-	}
-	return canManagePortal(claims)
-}
 
 func generateCodeFromName(name string) string {
 	var b strings.Builder

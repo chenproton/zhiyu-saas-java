@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from "@/lib/external-links"
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { allPeriods, days, type ScheduleEvent } from "../_data/mock-student-data"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 interface ScheduleGridProps {
   events: ScheduleEvent[]
@@ -78,9 +79,6 @@ function getWeekEnd(weekStart: Date) {
   return end
 }
 
-function formatDate(date: Date) {
-  return `${date.getMonth() + 1}月${date.getDate()}日`
-}
 
 function getWeeksInMonth(year: number, month: number) {
   const firstDay = new Date(year, month - 1, 1)

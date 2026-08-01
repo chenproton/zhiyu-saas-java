@@ -63,12 +63,8 @@ import {
 import type { PositionRecommendation as ApiPositionRecommendation } from '@/lib/types/job'
 import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@zhiyu/ui"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 export default function PostRecommendPage() {
   const { toast } = useToast()

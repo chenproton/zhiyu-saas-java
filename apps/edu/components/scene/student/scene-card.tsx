@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { MapPin } from "lucide-react"
 import type { Scenario } from "@/lib/types"
+import { formatDate, formatDateTime } from "@/lib/format-utils"
 
 interface SceneCardProps {
   scenario: Scenario
@@ -37,14 +38,6 @@ const industryTagMap: Record<string, { bg: string; text: string; border: string 
   default: { bg: "#fff7ed", text: "#c2410c", border: "#ffedd5" },
 }
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return "2024-01-01"
-  try {
-    return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
-  } catch {
-    return dateStr
-  }
-}
 
 export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps) {
   const displayTitle = scenario.name

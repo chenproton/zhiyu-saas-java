@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
@@ -339,4 +342,93 @@ func parseMultiImportRequest(w http.ResponseWriter, r *http.Request, requirePort
 		Overwrite: importOverwriteParam(r),
 		MFU:       mfu,
 	}
+}
+
+// findOrCreateKnowledgePoints 按租户+名称批量查找知识点，不存在则创建，返回命中的 ID 列表。
+// 供课程/场景/颗粒课/题库题面等导入复用。
+func findOrCreateKnowledgePoints(ctx context.Context, db *pgxpool.Pool, tenantID string, names []string) []string {
+	if len(names) == 0 {
+		return []string{}
+	}
+	ids := []string{}
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		var id string
+		err := db.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		if err == nil {
+			ids = append(ids, id)
+			continue
+		}
+		id = uuid.NewString()
+		_, _ = db.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
+		var existing string
+		_ = db.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+		if existing != "" {
+			ids = append(ids, existing)
+		} else {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// findOrCreateResources 按租户+名称批量查找资源库资源，不存在则以 document 类型创建，
+// 返回命中的 ID 列表。供课程/场景/颗粒课导入复用。
+func findOrCreateResources(ctx context.Context, db *pgxpool.Pool, tenantID string, names []string, userID string) []string {
+	if len(names) == 0 {
+		return []string{}
+	}
+	ids := []string{}
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		var id string
+		err := db.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		if err == nil {
+			ids = append(ids, id)
+			continue
+		}
+		id = uuid.NewString()
+		_, _ = db.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document'::resource_type,$4) ON CONFLICT DO NOTHING`,
+			id, tenantID, name, userID)
+		var existing string
+		_ = db.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+		if existing != "" {
+			ids = append(ids, existing)
+		} else {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// lookupBatchID 按租户+名称在批次表中查找记录 ID，找不到返回 nil。
+// 表名经 lookupIDByName 白名单校验。
+func lookupBatchID(ctx context.Context, db *pgxpool.Pool, table, tenantID, name string) *string {
+	if name == "" {
+		return nil
+	}
+	id, err := lookupIDByName(ctx, db, table, tenantID, name)
+	if err != nil || id == "" {
+		return nil
+	}
+	return &id
+}
+
+// lookupMajorID 按租户+名称（NFKC 归一化）查找专业 ID，找不到返回 nil。
+func lookupMajorID(ctx context.Context, db *pgxpool.Pool, tenantID, name string) *string {
+	if name == "" {
+		return nil
+	}
+	var id string
+	err := db.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
+	if err != nil {
+		return nil
+	}
+	return &id
 }
