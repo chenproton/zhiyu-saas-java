@@ -47,6 +47,13 @@
 2. **纯文档修改**（`AGENTS.md`、`docs/` 下的文件）无需走 `deploy.sh`，直接 commit 合并即可
 3. 提交前检查：后端 `go vet ./...` `go test ./...`，前端 `pnpm typecheck` `pnpm lint`，migration 需配对 `.down.sql`
 4. 单次 commit 只含当次变更
+5. **后端分层重构**（详见 `docs/refactor-layering.md`）：
+   - 目标架构：`handler`（HTTP 适配，不拼 SQL）→ `service`（业务编排+事务）→ `store`（唯一 SQL 所在）→ `domain`（模型）
+   - **新增** handler 中出现 `SELECT/INSERT/UPDATE/DELETE` 字符串，或直接调用 `db.Query/QueryRow/Exec` → 禁止合并
+   - 新增 handler 禁止持有 `*pgxpool.Pool` 字段
+   - 豁免冻结区：现有 import/export/template 22 个 handler 文件保持现状、冻结不扩散、不迁移
+   - `common.go` 新增函数必须说明为何不能放入 store 层；`service` 禁止拼接 SQL；`store` 禁止读取 HTTP/Claims
+   - 新接口必须附带 handler/service/store 测试至少一种
 
 ## 三、开发原则
 
