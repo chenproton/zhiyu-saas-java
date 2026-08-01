@@ -225,14 +225,8 @@ func (h *AllianceHandler) DeleteEnterpriseAgreement(w http.ResponseWriter, r *ht
 // ===== 合作项目 =====
 
 func (h *AllianceHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
 	phase := r.URL.Query().Get("phase")
-
-	items, total, err := executeListQuery[domain.AllianceProject](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceProject]{
+	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceProject]{
 		Table:         "alliance_projects",
 		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
@@ -244,117 +238,23 @@ func (h *AllianceHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 			}
 		},
 		ScanRows: h.Store.ScanProjectRows,
-	})
-	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
-		slog.Error("查询项目列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询项目列表失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
+	}, "查询项目列表失败")
 }
 
 func (h *AllianceHandler) GetProject(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	project, err := h.Store.GetProjectByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "项目不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, project)
+	allianceGet(w, r, h.Store.GetProjectByID, "项目不存在")
 }
 
 func (h *AllianceHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	var p domain.AllianceProject
-	if !decodeBody(w, r, &p) {
-		return
-	}
-	p.TenantID = tenantID
-	if p.Name == "" {
-		respondError(w, http.StatusBadRequest, "项目名称不能为空")
-		return
-	}
-
-	p.CreatedBy = &claims.UserID
-	id, err := h.Store.CreateProject(r.Context(), &p)
-	if err != nil {
-		slog.Error("创建项目失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建项目失败")
-		return
-	}
-	project, _ := h.Store.GetProjectByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusCreated, project)
+	allianceCreate(w, r, h.projectCRUD())
 }
 
 func (h *AllianceHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetProjectByID(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "项目不存在")
-		return
-	}
-
-	var p domain.AllianceProject
-	if !decodeBody(w, r, &p) {
-		return
-	}
-	if err := h.Store.UpdateProject(r.Context(), id, &p); err != nil {
-		slog.Error("更新项目失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新项目失败")
-		return
-	}
-	project, _ := h.Store.GetProjectByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusOK, project)
+	allianceUpdate(w, r, h.projectCRUD())
 }
 
 func (h *AllianceHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if err := h.Store.DeleteProject(r.Context(), id, tenantID); err != nil {
-		slog.Error("删除项目失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "删除失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	allianceDelete(w, r, h.projectCRUD())
 }
 
 // ===== 里程碑 =====
@@ -448,15 +348,9 @@ func (h *AllianceHandler) DeleteMilestone(w http.ResponseWriter, r *http.Request
 // ===== 合作成果 =====
 
 func (h *AllianceHandler) ListAchievements(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
 	achieveType := r.URL.Query().Get("type")
 	status := r.URL.Query().Get("status")
-
-	items, total, err := executeListQuery[domain.AllianceAchievement](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceAchievement]{
+	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceAchievement]{
 		Table:         "alliance_achievements",
 		SelectColumns: "id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
@@ -471,116 +365,23 @@ func (h *AllianceHandler) ListAchievements(w http.ResponseWriter, r *http.Reques
 			}
 		},
 		ScanRows: h.Store.ScanAchievementRows,
-	})
-	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
-		slog.Error("查询成果列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询成果列表失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
+	}, "查询成果列表失败")
 }
 
 func (h *AllianceHandler) GetAchievement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	a, err := h.Store.GetAchievementByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "成果不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, a)
+	allianceGet(w, r, h.Store.GetAchievementByID, "成果不存在")
 }
 
 func (h *AllianceHandler) CreateAchievement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	var a domain.AllianceAchievement
-	if !decodeBody(w, r, &a) {
-		return
-	}
-	a.TenantID = tenantID
-	if a.Title == "" {
-		respondError(w, http.StatusBadRequest, "成果标题不能为空")
-		return
-	}
-
-	a.CreatedBy = &claims.UserID
-	id, err := h.Store.CreateAchievement(r.Context(), &a)
-	if err != nil {
-		slog.Error("创建成果失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建成果失败")
-		return
-	}
-	ach, _ := h.Store.GetAchievementByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusCreated, ach)
+	allianceCreate(w, r, h.achievementCRUD())
 }
 
 func (h *AllianceHandler) UpdateAchievement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetAchievementByID(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "成果不存在")
-		return
-	}
-
-	var a domain.AllianceAchievement
-	if !decodeBody(w, r, &a) {
-		return
-	}
-	if err := h.Store.UpdateAchievement(r.Context(), id, &a); err != nil {
-		slog.Error("更新成果失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新失败")
-		return
-	}
-	ach, _ := h.Store.GetAchievementByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusOK, ach)
+	allianceUpdate(w, r, h.achievementCRUD())
 }
 
 func (h *AllianceHandler) DeleteAchievement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if err := h.Store.DeleteAchievement(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	allianceDelete(w, r, h.achievementCRUD())
 }
 
 // ===== 专家 =====
@@ -1241,41 +1042,19 @@ func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Request) {
-	items, err := h.Store.ListPublicProjects(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	alliancePublicList(w, r, h.Store.ListPublicProjects)
 }
 
 func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	p, err := h.Store.GetPublicProjectByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "项目不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, p)
+	alliancePublicGet(w, r, h.Store.GetPublicProjectByID, "项目不存在")
 }
 
 func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.Request) {
-	items, err := h.Store.ListPublicAchievements(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	alliancePublicList(w, r, h.Store.ListPublicAchievements)
 }
 
 func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	a, err := h.Store.GetPublicAchievementByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "成果不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, a)
+	alliancePublicGet(w, r, h.Store.GetPublicAchievementByID, "成果不存在")
 }
 
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {

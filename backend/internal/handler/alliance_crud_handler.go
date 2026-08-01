@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -297,6 +298,70 @@ func (h *AllianceHandler) enterpriseCRUD() allianceCRUDConfig[allianceEnterprise
 		DeleteFn: h.Store.DeleteEnterprise,
 		GetFn: func(ctx context.Context, id, tenantID string) (any, error) {
 			return h.Store.GetEnterpriseByID(ctx, id, tenantID)
+		},
+	}
+}
+
+// ===== 合作项目 =====
+
+func (h *AllianceHandler) projectCRUD() allianceCRUDConfig[domain.AllianceProject] {
+	return allianceCRUDConfig[domain.AllianceProject]{
+		LogName:      "项目",
+		NotFoundMsg:  "项目不存在",
+		CreateErrMsg: "创建项目失败",
+		UpdateErrMsg: "更新项目失败",
+		DeleteErrMsg: "删除失败",
+		ValidateCreate: func(t *domain.AllianceProject) string {
+			if t.Name == "" {
+				return "项目名称不能为空"
+			}
+			return ""
+		},
+		PrepareCreate: func(t *domain.AllianceProject, tenantID, userID string) {
+			t.TenantID = tenantID
+			t.CreatedBy = &userID
+		},
+		CreateFn: func(ctx context.Context, t *domain.AllianceProject, tenantID, userID string) (string, error) {
+			return h.Store.CreateProject(ctx, t)
+		},
+		UpdateFn: func(ctx context.Context, id string, t *domain.AllianceProject) error {
+			return h.Store.UpdateProject(ctx, id, t)
+		},
+		DeleteFn: h.Store.DeleteProject,
+		GetFn: func(ctx context.Context, id, tenantID string) (any, error) {
+			return h.Store.GetProjectByID(ctx, id, tenantID)
+		},
+	}
+}
+
+// ===== 合作成果 =====
+
+func (h *AllianceHandler) achievementCRUD() allianceCRUDConfig[domain.AllianceAchievement] {
+	return allianceCRUDConfig[domain.AllianceAchievement]{
+		LogName:      "成果",
+		NotFoundMsg:  "成果不存在",
+		CreateErrMsg: "创建成果失败",
+		UpdateErrMsg: "更新失败",
+		DeleteErrMsg: "删除失败",
+		ValidateCreate: func(t *domain.AllianceAchievement) string {
+			if t.Title == "" {
+				return "成果标题不能为空"
+			}
+			return ""
+		},
+		PrepareCreate: func(t *domain.AllianceAchievement, tenantID, userID string) {
+			t.TenantID = tenantID
+			t.CreatedBy = &userID
+		},
+		CreateFn: func(ctx context.Context, t *domain.AllianceAchievement, tenantID, userID string) (string, error) {
+			return h.Store.CreateAchievement(ctx, t)
+		},
+		UpdateFn: func(ctx context.Context, id string, t *domain.AllianceAchievement) error {
+			return h.Store.UpdateAchievement(ctx, id, t)
+		},
+		DeleteFn: h.Store.DeleteAchievement,
+		GetFn: func(ctx context.Context, id, tenantID string) (any, error) {
+			return h.Store.GetAchievementByID(ctx, id, tenantID)
 		},
 	}
 }
