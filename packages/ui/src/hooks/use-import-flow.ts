@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import { importExportApi, downloadBlob } from "@zhiyu/api-client"
+import { importExportApi, downloadBlob, type ImportPreviewResult } from "@zhiyu/api-client"
 import { useToast } from "./use-toast"
 
 type ImportEntityType = Parameters<typeof importExportApi.downloadTemplate>[0]
@@ -13,13 +13,13 @@ export interface UseImportFlowOptions {
   onSuccess: () => Promise<void> | void
 }
 
-export function useImportFlow({ importType, entityLabel, templateFileName, onSuccess }: UseImportFlowOptions) {
+export function useImportFlow({ importType, templateFileName, onSuccess }: UseImportFlowOptions) {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importFiles, setImportFiles] = useState<File[]>([])
   const [isImporting, setIsImporting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [importPreview, setImportPreview] = useState<any>(null)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
 
   const handleAddFiles = useCallback((files: FileList | null) => {
     if (files && files.length > 0) {
@@ -55,8 +55,8 @@ export function useImportFlow({ importType, entityLabel, templateFileName, onSuc
       setImportPreview(null)
       await onSuccess()
       return true
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "导入失败", description: err instanceof Error ? err.message : "导入失败" })
       return false
     } finally {
       setIsImporting(false)
@@ -74,8 +74,8 @@ export function useImportFlow({ importType, entityLabel, templateFileName, onSuc
         return
       }
       return await executeImport(false)
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "导入失败", description: err instanceof Error ? err.message : "导入失败" })
       setIsImporting(false)
       return false
     }
@@ -86,8 +86,8 @@ export function useImportFlow({ importType, entityLabel, templateFileName, onSuc
     try {
       const res = await importExportApi.downloadTemplate(importType)
       downloadBlob(await res.blob(), templateFileName)
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "下载模板失败", description: err.message || "下载模板失败" })
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "下载模板失败", description: err instanceof Error ? err.message : "下载模板失败" })
     } finally {
       setIsDownloading(false)
     }
