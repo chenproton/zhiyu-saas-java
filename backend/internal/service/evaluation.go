@@ -294,3 +294,58 @@ func isCorrect(qType string, correct []string, raw interface{}) bool {
 func RoundScore(s float64) float64 {
 	return math.Round(s*10) / 10
 }
+
+// ListExamUsages 查询考试安排列表。
+func (s *EvaluationService) ListExamUsages(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.ExamUsage]) ([]domain.ExamUsage, int, error) {
+	return s.st.ExamUsages().List(ctx, p, cfg)
+}
+
+// GetExamUsage 查询单个考试安排。
+func (s *EvaluationService) GetExamUsage(ctx context.Context, id string) (*domain.ExamUsage, error) {
+	return s.st.ExamUsages().Get(ctx, id)
+}
+
+// CreateExamUsage 创建考试安排。
+func (s *EvaluationService) CreateExamUsage(ctx context.Context, p *store.ExamUsageCreateParams) (*domain.ExamUsage, error) {
+	return s.st.ExamUsages().Create(ctx, p)
+}
+
+// UpdateExamUsage 更新考试安排。
+func (s *EvaluationService) UpdateExamUsage(ctx context.Context, id string, p *store.ExamUsageCreateParams) (*domain.ExamUsage, error) {
+	return s.st.ExamUsages().Update(ctx, id, p)
+}
+
+// DeleteExamUsage 删除考试安排。
+func (s *EvaluationService) DeleteExamUsage(ctx context.Context, id string) error {
+	return s.st.ExamUsages().Delete(ctx, id)
+}
+
+// SetExamUsageStatus 更新考试安排状态。
+func (s *EvaluationService) SetExamUsageStatus(ctx context.Context, id, status string) error {
+	return s.st.ExamUsages().SetStatus(ctx, id, status)
+}
+
+// ListRandomDrawQuestions 查询随机抽题列表。
+func (s *EvaluationService) ListRandomDrawQuestions(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.RandomDrawQuestion]) ([]domain.RandomDrawQuestion, int, error) {
+	return s.st.RandomDrawQuestions().List(ctx, p, cfg)
+}
+
+// GetRandomDrawQuestion 查询单个随机抽题。
+func (s *EvaluationService) GetRandomDrawQuestion(ctx context.Context, id string) (*domain.RandomDrawQuestion, error) {
+	return s.st.RandomDrawQuestions().Get(ctx, id)
+}
+
+// CreateRandomDrawQuestion 创建随机抽题。
+func (s *EvaluationService) CreateRandomDrawQuestion(ctx context.Context, tenantID string, p *store.RandomDrawQuestionParams) (*domain.RandomDrawQuestion, error) {
+	return s.st.RandomDrawQuestions().Create(ctx, tenantID, p)
+}
+
+// UpdateRandomDrawQuestion 更新随机抽题。
+func (s *EvaluationService) UpdateRandomDrawQuestion(ctx context.Context, id string, p *store.RandomDrawQuestionParams) (*domain.RandomDrawQuestion, error) {
+	return s.st.RandomDrawQuestions().Update(ctx, id, p)
+}
+
+// DeleteRandomDrawQuestion 删除随机抽题。
+func (s *EvaluationService) DeleteRandomDrawQuestion(ctx context.Context, id string) error {
+	return s.st.RandomDrawQuestions().Delete(ctx, id)
+}
