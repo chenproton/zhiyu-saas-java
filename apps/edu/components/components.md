@@ -57,6 +57,18 @@ components/
 - `Footer` → `app/portal/page.tsx`
 - `YiKnowAssistant` → `app/portal/layout.tsx`
 
+#### 复用评估补充
+
+- **`ComboboxSelect` 有扩展复用潜力**：代码中还存在 3 处独立的 `Command + Popover` 搜索下拉实现：
+  - `components/job/position-builder/step-ability-modeling.tsx`（岗位过滤，单选）
+  - `app/job/recommend/page.tsx`（岗位选择，单选 + 自定义选项渲染 + disabled）
+  - `app/portal/apps/system/org-user/accounts/page.tsx`（角色绑定，多选）
+  当前 `ComboboxSelect` 只支持简单单选。若后续扩展支持 `disabled`、`renderOption`、`multi` 等能力，可替换上述实现。目前保持简单单选组件不变，遇到新需求时再扩展。
+
+- **`RandomQuestionDialog` / `ManualQuestionDialog`**：属于试卷组卷领域的复杂弹窗，逻辑较重，即使只有 1 处使用也建议保留为独立组件，避免 `app/evaluation/exams/[id]/page.tsx` 过度膨胀。
+
+- **`Footer` / `YiKnowAssistant`**：Portal 域专用组件，虽然仅 1 处使用，但职责清晰，放在 `components/portal/` 下是合理的域内抽象。
+
 ### `shared/` 中复用率高的核心组件
 
 - `ContentListPage` / `PortalCrudPage` / `BatchGroupPage` / `ArchiveListPage` / `ApprovalListPage` / `WorkflowConfigPage` / `EditorShell`：跨 3+ 业务模块复用。
