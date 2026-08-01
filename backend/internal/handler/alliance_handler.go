@@ -5,26 +5,15 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
-func formatNullableDate(t *time.Time) *string {
-	if t == nil {
-		return nil
-	}
-	s := t.Format("2006-01-02")
-	return &s
-}
-
 type AllianceHandler struct {
-	DB    *pgxpool.Pool
 	Store *store.AllianceStore
 }
 
@@ -106,7 +95,7 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 		"intellectual_property_photos, cover_photos, secondary_colleges, rating_record, " +
 		"is_public, created_by, created_at, updated_at"
 
-	items, total, err := executeListQuery[domain.AllianceEnterprise](r.Context(), h.DB, r, listQueryConfig[domain.AllianceEnterprise]{
+	items, total, err := executeListQuery[domain.AllianceEnterprise](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceEnterprise]{
 		Table:         "alliance_enterprises",
 		SelectColumns: selectCols,
 		TenantScoped:  true,
@@ -361,23 +350,9 @@ func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *htt
 	}
 	eid := chi.URLParam(r, "eid")
 
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, tenant_id, enterprise_id, name, type, start_date, end_date,
-			status, content, attachments, created_at, updated_at
-		FROM alliance_enterprise_agreements
-		WHERE enterprise_id = $1
-		ORDER BY created_at DESC
-	`, eid)
+	items, err := h.Store.ListEnterpriseAgreements(r.Context(), eid)
 	if err != nil {
 		slog.Error("查询企业协议列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.Store.ScanEnterpriseAgreementRows(rows)
-	if err != nil {
-		slog.Error("扫描企业协议列表失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
@@ -477,7 +452,7 @@ func (h *AllianceHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	phase := r.URL.Query().Get("phase")
 
-	items, total, err := executeListQuery[domain.AllianceProject](r.Context(), h.DB, r, listQueryConfig[domain.AllianceProject]{
+	items, total, err := executeListQuery[domain.AllianceProject](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceProject]{
 		Table:         "alliance_projects",
 		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
@@ -611,17 +586,11 @@ func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	pid := chi.URLParam(r, "pid")
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, tenant_id, project_id, name, description, due_date, completed_date,
-			is_completed, sort_order, created_at, updated_at
-		FROM alliance_project_milestones WHERE project_id = $1 ORDER BY sort_order ASC
-	`, pid)
+	items, err := h.Store.ListMilestones(r.Context(), pid)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-	items, _ := h.Store.ScanMilestoneRows(rows)
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
 }
 
@@ -707,7 +676,7 @@ func (h *AllianceHandler) ListAchievements(w http.ResponseWriter, r *http.Reques
 	achieveType := r.URL.Query().Get("type")
 	status := r.URL.Query().Get("status")
 
-	items, total, err := executeListQuery[domain.AllianceAchievement](r.Context(), h.DB, r, listQueryConfig[domain.AllianceAchievement]{
+	items, total, err := executeListQuery[domain.AllianceAchievement](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceAchievement]{
 		Table:         "alliance_achievements",
 		SelectColumns: "id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
@@ -844,7 +813,7 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 	}
 	status := r.URL.Query().Get("status")
 
-	items, total, err := executeListQuery[domain.AllianceExpert](r.Context(), h.DB, r, listQueryConfig[domain.AllianceExpert]{
+	items, total, err := executeListQuery[domain.AllianceExpert](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceExpert]{
 		Table:         "alliance_experts",
 		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
@@ -978,7 +947,7 @@ func (h *AllianceHandler) ListAgreements(w http.ResponseWriter, r *http.Request)
 	}
 	status := r.URL.Query().Get("status")
 
-	items, total, err := executeListQuery[domain.AllianceAgreement](r.Context(), h.DB, r, listQueryConfig[domain.AllianceAgreement]{
+	items, total, err := executeListQuery[domain.AllianceAgreement](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceAgreement]{
 		Table:         "alliance_agreements",
 		SelectColumns: "id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at",
 		TenantScoped:  true,
@@ -1111,7 +1080,7 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	items, total, err := executeListQuery[domain.AlliancePermission](r.Context(), h.DB, r, listQueryConfig[domain.AlliancePermission]{
+	items, total, err := executeListQuery[domain.AlliancePermission](r.Context(), h.Store.DB, r, listQueryConfig[domain.AlliancePermission]{
 		Table:         "alliance_permissions",
 		SelectColumns: "id, tenant_id, account_name, account_type, enterprise_id, expert_id, is_enabled, resource_permissions, platform_permissions, created_at, updated_at",
 		TenantScoped:  true,
@@ -1142,22 +1111,12 @@ func (h *AllianceHandler) GetPermission(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	id := chi.URLParam(r, "id")
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, tenant_id, account_name, account_type, enterprise_id, expert_id,
-			is_enabled, resource_permissions, platform_permissions, created_at, updated_at
-		FROM alliance_permissions WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID)
+	p, err := h.Store.GetPermissionByID(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
-		return
-	}
-	defer rows.Close()
-	items, err := h.Store.ScanPermissionRows(rows)
-	if err != nil || len(items) == 0 {
 		respondError(w, http.StatusNotFound, "权限不存在")
 		return
 	}
-	respondJSON(w, http.StatusOK, items[0])
+	respondJSON(w, http.StatusOK, p)
 }
 
 func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Request) {
@@ -1241,17 +1200,11 @@ func (h *AllianceHandler) ListDictionaryItems(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, tenant_id, dict_type, code, name, sort_order, created_at
-		FROM alliance_dictionaries WHERE dict_type = $1 AND tenant_id = $2 ORDER BY sort_order ASC
-	`, dictType, tenantID)
+	items, err := h.Store.ListDictionaries(r.Context(), dictType, tenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-
-	items, _ := h.Store.ScanDictionaryRows(rows)
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
 }
 
@@ -1353,7 +1306,7 @@ func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
 	brandType := r.URL.Query().Get("brandType")
 	status := r.URL.Query().Get("status")
 
-	items, total, err := executeListQuery[domain.AllianceBrand](r.Context(), h.DB, r, listQueryConfig[domain.AllianceBrand]{
+	items, total, err := executeListQuery[domain.AllianceBrand](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceBrand]{
 		Table:         "alliance_brands",
 		SelectColumns: "id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, student_id, enterprise_id, position_id, major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at",
 		TenantScoped:  true,
@@ -1500,309 +1453,108 @@ func (h *AllianceHandler) GetPublicSchoolInfo(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AllianceHandler) ListPublicEnterprises(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, tenant_id, name, enterprise_type, industry, region, description, logo_url,
-			cover_image, status, rating, cooperation_types, contact_person, contact_phone,
-			contact_email, address, unified_social_credit_code, established_year, employee_count,
-			business_license_photos, qualification_photos, intellectual_property_photos,
-			cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at
-		FROM alliance_enterprises WHERE is_public = true AND status = 'active'
-		ORDER BY created_at DESC
-	`)
+	items, err := h.Store.ListPublicEnterprises(r.Context())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-	items, _ := h.Store.ScanEnterpriseRows(rows)
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
 }
 
 func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	var e domain.AllianceEnterprise
-	var industry, region, description, logoURL, coverImage, rating *string
-	var contactPerson, contactPhone, contactEmail, address, creditCode *string
-	var establishedYear, employeeCount *int
-	var coopTypes, bizPhotos, qualPhotos, ipPhotos, coverPhotos, colleges, ratingRecord json.RawMessage
-	var createdBy *string
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT id, tenant_id, name, enterprise_type, industry, region, description,
-			logo_url, cover_image, status, rating, cooperation_types, contact_person,
-			contact_phone, contact_email, address, unified_social_credit_code,
-			established_year, employee_count, business_license_photos, qualification_photos,
-			intellectual_property_photos, cover_photos, secondary_colleges, rating_record,
-			is_public, created_by, created_at, updated_at
-		FROM alliance_enterprises WHERE id = $1 AND is_public = true AND status = 'active'
-	`, id).Scan(&e.ID, &e.TenantID, &e.Name, &e.EnterpriseType, &industry, &region,
-		&description, &logoURL, &coverImage, &e.Status, &rating, &coopTypes,
-		&contactPerson, &contactPhone, &contactEmail, &address, &creditCode,
-		&establishedYear, &employeeCount, &bizPhotos, &qualPhotos, &ipPhotos,
-		&coverPhotos, &colleges, &ratingRecord, &e.IsPublic, &createdBy, &e.CreatedAt, &e.UpdatedAt)
+	e, err := h.Store.GetPublicEnterpriseByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "企业不存在")
 		return
 	}
-	e.Industry = industry
-	e.Region = region
-	e.Description = description
-	e.LogoURL = logoURL
-	e.CoverImage = coverImage
-	e.Rating = rating
-	e.CooperationTypes = coopTypes
-	e.ContactPerson = contactPerson
-	e.ContactPhone = contactPhone
-	e.ContactEmail = contactEmail
-	e.Address = address
-	e.UnifiedSocialCreditCode = creditCode
-	e.EstablishedYear = establishedYear
-	e.EmployeeCount = employeeCount
-	e.BusinessLicensePhotos = bizPhotos
-	e.QualificationPhotos = qualPhotos
-	e.IntellectualPropertyPhotos = ipPhotos
-	e.CoverPhotos = coverPhotos
-	e.SecondaryColleges = colleges
-	e.RatingRecord = ratingRecord
-	e.CreatedBy = createdBy
 	respondJSON(w, http.StatusOK, e)
 }
 
 func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, tenant_id, name, type, description, phase, publish_status,
-			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
-			is_public, created_by, created_at, updated_at
-		FROM alliance_projects WHERE is_public = true AND publish_status = 'published'
-		ORDER BY created_at DESC
-	`)
+	items, err := h.Store.ListPublicProjects(r.Context())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-	items, _ := h.Store.ScanProjectRows(rows)
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
 }
 
 func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	var p domain.AllianceProject
-	var typ, description, budget, coverImage *string
-	var startDate, endDate *time.Time
-	var enterpriseIDs, agreementIDs, colleges json.RawMessage
-	var createdBy *string
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT id, tenant_id, name, type, description, phase, publish_status,
-			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
-			is_public, created_by, created_at, updated_at
-		FROM alliance_projects WHERE id = $1 AND is_public = true AND publish_status = 'published'
-	`, id).Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
-		&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-		&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt)
+	p, err := h.Store.GetPublicProjectByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "项目不存在")
 		return
 	}
-	p.Type = typ
-	p.Description = description
-	p.StartDate = formatNullableDate(startDate)
-	p.EndDate = formatNullableDate(endDate)
-	p.Budget = budget
-	p.CoverImage = coverImage
-	p.EnterpriseIDs = enterpriseIDs
-	p.AgreementIDs = agreementIDs
-	p.SecondaryColleges = colleges
-	p.CreatedBy = createdBy
 	respondJSON(w, http.StatusOK, p)
 }
 
 func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
-			attachments, citation_reason, images, owner_persons, co_builders,
-			enterprise_ids, project_ids, related_positions, related_scenes,
-			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
-		FROM alliance_achievements WHERE is_public = true AND status = 'published'
-		ORDER BY created_at DESC
-	`)
+	items, err := h.Store.ListPublicAchievements(r.Context())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-	items, _ := h.Store.ScanAchievementRows(rows)
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
 }
 
 func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	var a domain.AllianceAchievement
-	var description, coverImage, citationReason *string
-	var achievementDate *time.Time
-	var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
-	var createdBy *string
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
-			attachments, citation_reason, images, owner_persons, co_builders,
-			enterprise_ids, project_ids, related_positions, related_scenes,
-			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
-		FROM alliance_achievements WHERE id = $1 AND is_public = true AND status = 'published'
-	`, id).Scan(&a.ID, &a.TenantID, &a.Title, &a.Type, &description, &achievementDate,
-		&coverImage, &attachments, &citationReason, &images, &ownerPersons, &coBuilders,
-		&enterpriseIDs, &projectIDs, &relatedPositions,
-		&relatedScenes, &relatedCourses, &a.Status, &a.ViewCount, &colleges,
-		&a.IsPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt)
+	a, err := h.Store.GetPublicAchievementByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "成果不存在")
 		return
 	}
-	a.Description = description
-	a.AchievementDate = formatNullableDate(achievementDate)
-	a.CoverImage = coverImage
-	a.Attachments = attachments
-	a.CitationReason = citationReason
-	a.Images = images
-	a.OwnerPersons = ownerPersons
-	a.CoBuilders = coBuilders
-	a.EnterpriseIDs = enterpriseIDs
-	a.ProjectIDs = projectIDs
-	a.RelatedPositions = relatedPositions
-	a.RelatedScenes = relatedScenes
-	a.RelatedCourses = relatedCourses
-	a.SecondaryColleges = colleges
-	a.CreatedBy = createdBy
 	respondJSON(w, http.StatusOK, a)
 }
 
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
-			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
-			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
-		FROM alliance_experts WHERE is_public = true AND status = 'active'
-		ORDER BY created_at DESC
-	`)
+	items, err := h.Store.ListPublicExperts(r.Context())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-	items, _ := h.Store.ScanExpertRows(rows)
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
 }
 
 func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	var e domain.AllianceExpert
-	var gender, ttl, pos, etype, industry, edu, intro, workExp, city, avatar *string
-	var age, expYrs *int
-	var proFields, specs, photos, attachs json.RawMessage
-	var rating, enterpriseID, coverImage, partnerSource, positionDirection, organization *string
-	var colleges json.RawMessage
-	var createdBy *string
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
-			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
-			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
-		FROM alliance_experts WHERE id = $1 AND is_public = true AND status = 'active'
-	`, id).Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
-		&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
-		&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &organization, &rating,
-		&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &createdBy, &e.CreatedAt, &e.UpdatedAt)
+	e, err := h.Store.GetPublicExpertByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "专家不存在")
 		return
 	}
-	e.Gender = gender
-	e.Age = age
-	e.Title = ttl
-	e.Position = pos
-	e.ExpertType = etype
-	e.Industry = industry
-	e.ProfessionalFields = proFields
-	e.Specialties = specs
-	e.ExperienceYears = expYrs
-	e.Education = edu
-	e.Introduction = intro
-	e.WorkExperience = workExp
-	e.City = city
-	e.AvatarURL = avatar
-	e.CoverImage = coverImage
-	e.Photos = photos
-	e.Attachments = attachs
-	e.EnterpriseID = enterpriseID
-	e.Organization = organization
-	e.Rating = rating
-	e.PartnerSource = partnerSource
-	e.PositionDirection = positionDirection
-	e.SecondaryColleges = colleges
-	e.CreatedBy = createdBy
 	respondJSON(w, http.StatusOK, e)
 }
 
 func (h *AllianceHandler) ListPublicBrands(w http.ResponseWriter, r *http.Request) {
 	brandType := r.URL.Query().Get("brandType")
-	query := `SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
-		cover_image, cover_video, description, data,
-		student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
-		sort_order, view_count, created_at, updated_at
-		FROM alliance_brands WHERE is_public = true AND status = 'published'`
-	args := []interface{}{}
-	if brandType != "" {
-		query += " AND brand_type = $1"
-		args = append(args, brandType)
-	}
-	query += " ORDER BY sort_order ASC, created_at DESC"
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, err := h.Store.ListPublicBrands(r.Context(), brandType)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-	items, _ := h.Store.ScanBrandRows(rows)
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
 }
 
 func (h *AllianceHandler) GetPublicBrand(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	var b domain.AllianceBrand
-	var coverImage, coverVideo, description *string
-	var data json.RawMessage
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
-			cover_image, cover_video, description, data,
-			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
-			sort_order, view_count, created_at, updated_at
-		FROM alliance_brands WHERE id = $1 AND is_public = true AND status = 'published'
-	`, id).Scan(&b.ID, &b.TenantID, &b.BrandType, &b.Name, &b.Status,
-		&b.IsPublic, &b.IsFeatured, &coverImage, &coverVideo, &description,
-		&data, &b.StudentID, &b.EnterpriseID, &b.PositionID, &b.MajorID,
-		&b.TeacherID, &b.ExpertID, &b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt)
+	b, err := h.Store.GetPublicBrandByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "品牌不存在")
 		return
 	}
-	b.CoverImage = coverImage
-	b.CoverVideo = coverVideo
-	b.Description = description
-	b.Data = data
 	respondJSON(w, http.StatusOK, b)
 }
 
 func (h *AllianceHandler) GetPublicStats(w http.ResponseWriter, r *http.Request) {
-	var enterpriseCount, projectCount, expertCount, achievementCount, brandCount int
-	h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM alliance_enterprises WHERE is_public = true AND status = 'active'`).Scan(&enterpriseCount)
-	h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM alliance_projects WHERE is_public = true AND publish_status = 'published'`).Scan(&projectCount)
-	h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM alliance_experts WHERE is_public = true AND status = 'active'`).Scan(&expertCount)
-	h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM alliance_achievements WHERE is_public = true AND status = 'published'`).Scan(&achievementCount)
-	h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`).Scan(&brandCount)
+	stats := h.Store.GetPublicStats(r.Context())
 	respondJSON(w, http.StatusOK, map[string]int{
-		"enterpriseCount":  enterpriseCount,
-		"projectCount":     projectCount,
-		"expertCount":      expertCount,
-		"achievementCount": achievementCount,
-		"brandCount":       brandCount,
+		"enterpriseCount":  stats.EnterpriseCount,
+		"projectCount":     stats.ProjectCount,
+		"expertCount":      stats.ExpertCount,
+		"achievementCount": stats.AchievementCount,
+		"brandCount":       stats.BrandCount,
 	})
 }

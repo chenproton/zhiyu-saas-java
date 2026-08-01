@@ -150,7 +150,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		userRelationHandler:           &handler.UserRelationHandler{DB: db},
 		workflowHandler:               &handler.WorkflowHandler{DB: db},
 		approvalHandler:               &handler.ApprovalHandler{DB: db},
-		allianceHandler:               &handler.AllianceHandler{DB: db, Store: store.NewAllianceStore(db)},
+		allianceHandler:               &handler.AllianceHandler{Store: store.NewAllianceStore(db)},
 		positionHandler:               &handler.PositionHandler{DB: db, RedisClient: redisClient},
 		positionCloneHandler:          &handler.PositionCloneHandler{DB: db},
 		abilityHandler:                &handler.AbilityHandler{DB: db},

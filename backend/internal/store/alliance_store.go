@@ -1061,3 +1061,202 @@ func (s *AllianceStore) GetBrandByID(ctx context.Context, id, tenantID string) (
 	b.Data = data
 	return &b, nil
 }
+
+// ===== handler 直写 DB 收编 =====
+
+// queryList 执行查询并用 scan 扫描全部行；扫描错误被忽略（与公开列表原行为一致）。
+func queryList[T any](ctx context.Context, db *pgxpool.Pool, scan func(pgx.Rows) ([]T, error), query string, args ...any) ([]T, error) {
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items, _ := scan(rows)
+	return items, nil
+}
+
+// queryOne 执行查询并返回第一行；无行时返回 pgx.ErrNoRows。
+func queryOne[T any](ctx context.Context, db *pgxpool.Pool, scan func(pgx.Rows) ([]T, error), query string, args ...any) (*T, error) {
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items, err := scan(rows)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, pgx.ErrNoRows
+	}
+	return &items[0], nil
+}
+
+func (s *AllianceStore) ListEnterpriseAgreements(ctx context.Context, enterpriseID string) ([]domain.AllianceEnterpriseAgreement, error) {
+	rows, err := s.DB.Query(ctx, `
+		SELECT id, tenant_id, enterprise_id, name, type, start_date, end_date,
+			status, content, attachments, created_at, updated_at
+		FROM alliance_enterprise_agreements
+		WHERE enterprise_id = $1
+		ORDER BY created_at DESC
+	`, enterpriseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return s.ScanEnterpriseAgreementRows(rows)
+}
+
+func (s *AllianceStore) ListMilestones(ctx context.Context, projectID string) ([]domain.AllianceProjectMilestone, error) {
+	return queryList(ctx, s.DB, s.ScanMilestoneRows, `
+		SELECT id, tenant_id, project_id, name, description, due_date, completed_date,
+			is_completed, sort_order, created_at, updated_at
+		FROM alliance_project_milestones WHERE project_id = $1 ORDER BY sort_order ASC
+	`, projectID)
+}
+
+func (s *AllianceStore) GetPermissionByID(ctx context.Context, id, tenantID string) (*domain.AlliancePermission, error) {
+	return queryOne(ctx, s.DB, s.ScanPermissionRows, `
+		SELECT id, tenant_id, account_name, account_type, enterprise_id, expert_id,
+			is_enabled, resource_permissions, platform_permissions, created_at, updated_at
+		FROM alliance_permissions WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID)
+}
+
+func (s *AllianceStore) ListDictionaries(ctx context.Context, dictType, tenantID string) ([]domain.AllianceDictionary, error) {
+	return queryList(ctx, s.DB, s.ScanDictionaryRows, `
+		SELECT id, tenant_id, dict_type, code, name, sort_order, created_at
+		FROM alliance_dictionaries WHERE dict_type = $1 AND tenant_id = $2 ORDER BY sort_order ASC
+	`, dictType, tenantID)
+}
+
+// ===== 公开查询（门户前台） =====
+
+func (s *AllianceStore) ListPublicEnterprises(ctx context.Context) ([]domain.AllianceEnterprise, error) {
+	return queryList(ctx, s.DB, s.ScanEnterpriseRows, `
+		SELECT id, tenant_id, name, enterprise_type, industry, region, description, logo_url,
+			cover_image, status, rating, cooperation_types, contact_person, contact_phone,
+			contact_email, address, unified_social_credit_code, established_year, employee_count,
+			business_license_photos, qualification_photos, intellectual_property_photos,
+			cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at
+		FROM alliance_enterprises WHERE is_public = true AND status = 'active'
+		ORDER BY created_at DESC
+	`)
+}
+
+func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id string) (*domain.AllianceEnterprise, error) {
+	return queryOne(ctx, s.DB, s.ScanEnterpriseRows, `
+		SELECT id, tenant_id, name, enterprise_type, industry, region, description,
+			logo_url, cover_image, status, rating, cooperation_types, contact_person,
+			contact_phone, contact_email, address, unified_social_credit_code,
+			established_year, employee_count, business_license_photos, qualification_photos,
+			intellectual_property_photos, cover_photos, secondary_colleges, rating_record,
+			is_public, created_by, created_at, updated_at
+		FROM alliance_enterprises WHERE id = $1 AND is_public = true AND status = 'active'
+	`, id)
+}
+
+func (s *AllianceStore) ListPublicProjects(ctx context.Context) ([]domain.AllianceProject, error) {
+	return queryList(ctx, s.DB, s.ScanProjectRows, `
+		SELECT id, tenant_id, name, type, description, phase, publish_status,
+			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
+			is_public, created_by, created_at, updated_at
+		FROM alliance_projects WHERE is_public = true AND publish_status = 'published'
+		ORDER BY created_at DESC
+	`)
+}
+
+func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id string) (*domain.AllianceProject, error) {
+	return queryOne(ctx, s.DB, s.ScanProjectRows, `
+		SELECT id, tenant_id, name, type, description, phase, publish_status,
+			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
+			is_public, created_by, created_at, updated_at
+		FROM alliance_projects WHERE id = $1 AND is_public = true AND publish_status = 'published'
+	`, id)
+}
+
+func (s *AllianceStore) ListPublicAchievements(ctx context.Context) ([]domain.AllianceAchievement, error) {
+	return queryList(ctx, s.DB, s.ScanAchievementRows, `
+		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
+			attachments, citation_reason, images, owner_persons, co_builders,
+			enterprise_ids, project_ids, related_positions, related_scenes,
+			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
+		FROM alliance_achievements WHERE is_public = true AND status = 'published'
+		ORDER BY created_at DESC
+	`)
+}
+
+func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id string) (*domain.AllianceAchievement, error) {
+	return queryOne(ctx, s.DB, s.ScanAchievementRows, `
+		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
+			attachments, citation_reason, images, owner_persons, co_builders,
+			enterprise_ids, project_ids, related_positions, related_scenes,
+			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
+		FROM alliance_achievements WHERE id = $1 AND is_public = true AND status = 'published'
+	`, id)
+}
+
+func (s *AllianceStore) ListPublicExperts(ctx context.Context) ([]domain.AllianceExpert, error) {
+	return queryList(ctx, s.DB, s.ScanExpertRows, `
+		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
+			professional_fields, specialties, experience_years, education, introduction,
+			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
+			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
+		FROM alliance_experts WHERE is_public = true AND status = 'active'
+		ORDER BY created_at DESC
+	`)
+}
+
+func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id string) (*domain.AllianceExpert, error) {
+	return queryOne(ctx, s.DB, s.ScanExpertRows, `
+		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
+			professional_fields, specialties, experience_years, education, introduction,
+			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
+			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
+		FROM alliance_experts WHERE id = $1 AND is_public = true AND status = 'active'
+	`, id)
+}
+
+func (s *AllianceStore) ListPublicBrands(ctx context.Context, brandType string) ([]domain.AllianceBrand, error) {
+	query := `SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
+		cover_image, cover_video, description, data,
+		student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
+		sort_order, view_count, created_at, updated_at
+		FROM alliance_brands WHERE is_public = true AND status = 'published'`
+	args := []interface{}{}
+	if brandType != "" {
+		query += " AND brand_type = $1"
+		args = append(args, brandType)
+	}
+	query += " ORDER BY sort_order ASC, created_at DESC"
+	return queryList(ctx, s.DB, s.ScanBrandRows, query, args...)
+}
+
+func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.AllianceBrand, error) {
+	return queryOne(ctx, s.DB, s.ScanBrandRows, `
+		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
+			cover_image, cover_video, description, data,
+			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
+			sort_order, view_count, created_at, updated_at
+		FROM alliance_brands WHERE id = $1 AND is_public = true AND status = 'published'
+	`, id)
+}
+
+// AlliancePublicStats 门户前台公开统计数据。
+type AlliancePublicStats struct {
+	EnterpriseCount  int
+	ProjectCount     int
+	ExpertCount      int
+	AchievementCount int
+	BrandCount       int
+}
+
+func (s *AllianceStore) GetPublicStats(ctx context.Context) AlliancePublicStats {
+	var st AlliancePublicStats
+	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_enterprises WHERE is_public = true AND status = 'active'`).Scan(&st.EnterpriseCount)
+	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_projects WHERE is_public = true AND publish_status = 'published'`).Scan(&st.ProjectCount)
+	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_experts WHERE is_public = true AND status = 'active'`).Scan(&st.ExpertCount)
+	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_achievements WHERE is_public = true AND status = 'published'`).Scan(&st.AchievementCount)
+	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`).Scan(&st.BrandCount)
+	return st
+}
