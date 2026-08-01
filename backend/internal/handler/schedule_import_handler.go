@@ -435,7 +435,6 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		return result
 	}
 
-	sched := &SchedulingHandler{DB: h.DB}
 	// 记录需要同步为 scheduled 的教学计划条目
 	planEntryIDs := make(map[string]struct{})
 
@@ -571,7 +570,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		req.Periods = periods
 
 		// 冲突校验（教师/班级/场地时间重叠），更新已有记录时排除自身
-		conflicts, err := sched.checkScheduleConflicts(ctx, tenantID, req, existingID)
+		conflicts, err := h.checkScheduleConflicts(ctx, tenantID, req, existingID)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("第%d行冲突校验失败: %v", rowNum, err))
@@ -591,7 +590,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		}
 
 		courseCode := nullableStr(sr.courseCode)
-		courseID := resolveCourseIDByCode(ctx, h.DB, tenantID, courseCode)
+		courseID := h.resolveCourseIDByCode(ctx, tenantID, courseCode)
 
 		if existingID != "" {
 			_, err := h.DB.Exec(ctx, `
@@ -736,4 +735,98 @@ func (h *ScheduleImportHandler) lookupOrgNode(ctx context.Context, tenantID, nam
 		}
 	}
 	return lookupIDByName(ctx, h.DB, "organizations", tenantID, name)
+}
+
+// checkScheduleConflicts 排课冲突校验（冻结区文件本地实现，经 store 查询）。
+func (h *ScheduleImportHandler) checkScheduleConflicts(ctx context.Context, tenantID string, req *ScheduleEntryRequest, excludeID string) ([]domain.ScheduleConflict, error) {
+	query := `
+		SELECT se.id, se.course_name, COALESCE(o.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
+			se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern,
+			se.teacher_id, se.class_node_id, se.venue_id, se.plan_entry_id, se.class_node_ids
+		FROM schedule_entries se
+		LEFT JOIN organizations o ON o.id = se.class_node_id
+		LEFT JOIN users u ON u.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		WHERE se.tenant_id = $1 AND se.term_id = $2 AND se.day_of_week = $3
+			AND NOT (se.end_week < $4 OR se.start_week > $5)
+			AND (se.week_pattern = $6 OR se.week_pattern = 'all' OR $6 = 'all')
+			AND se.periods ?| $7
+			AND ($8 = '' OR se.id::text <> $8)
+	`
+	periods := jsonSliceToStrings(req.Periods)
+	weekPattern := req.WeekPattern
+	if weekPattern == "" {
+		weekPattern = "all"
+	}
+	rows, err := h.DB.Query(ctx, query, tenantID, req.TermID, req.DayOfWeek, req.StartWeek, req.EndWeek, weekPattern, periods, excludeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	reqClasses := req.ClassNodeIDs
+	if len(reqClasses) == 0 && req.ClassNodeID != "" {
+		reqClasses = []string{req.ClassNodeID}
+	}
+	conflicts := make([]domain.ScheduleConflict, 0)
+	for rows.Next() {
+		var c domain.ScheduleConflict
+		var rowTeacherID, rowClassNodeID, rowVenueID, rowPlanEntryID *string
+		var rowClassNodeIDs []string
+		if err := rows.Scan(&c.EntryID, &c.CourseName, &c.ClassName, &c.TeacherName, &c.VenueName,
+			&c.DayOfWeek, &c.Periods, &c.StartWeek, &c.EndWeek, &c.WeekPattern,
+			&rowTeacherID, &rowClassNodeID, &rowVenueID, &rowPlanEntryID, &rowClassNodeIDs); err != nil {
+			return nil, err
+		}
+		if rowPlanEntryID != nil && req.PlanEntryID != nil && *rowPlanEntryID == *req.PlanEntryID {
+			continue
+		}
+		if req.TeacherID != nil && *req.TeacherID != "" && rowTeacherID != nil && *rowTeacherID == *req.TeacherID {
+			dup := c
+			dup.Kind = "teacher"
+			conflicts = append(conflicts, dup)
+		}
+		existingClasses := rowClassNodeIDs
+		if len(existingClasses) == 0 && rowClassNodeID != nil {
+			existingClasses = []string{*rowClassNodeID}
+		}
+		classOverlap := false
+		for _, ec := range existingClasses {
+			for _, rc := range reqClasses {
+				if ec == rc {
+					classOverlap = true
+					break
+				}
+			}
+			if classOverlap {
+				break
+			}
+		}
+		if classOverlap {
+			dup := c
+			dup.Kind = "class"
+			conflicts = append(conflicts, dup)
+		}
+		if req.VenueID != nil && *req.VenueID != "" && rowVenueID != nil && *rowVenueID == *req.VenueID {
+			dup := c
+			dup.Kind = "venue"
+			conflicts = append(conflicts, dup)
+		}
+	}
+	return conflicts, rows.Err()
+}
+
+// resolveCourseIDByCode 根据课程代码查询课程 ID（冻结区文件本地实现）。
+func (h *ScheduleImportHandler) resolveCourseIDByCode(ctx context.Context, tenantID string, courseCode *string) *string {
+	if courseCode == nil || *courseCode == "" {
+		return nil
+	}
+	var id string
+	err := h.DB.QueryRow(ctx, `
+		SELECT id FROM courses WHERE tenant_id = $1 AND code = $2 AND type = 'system' LIMIT 1
+	`, tenantID, *courseCode).Scan(&id)
+	if err != nil {
+		return nil
+	}
+	return &id
 }

@@ -56,6 +56,7 @@ type Store struct {
 	examUsages      *ExamUsageStore
 	randomDrawQ     *RandomDrawQuestionStore
 	certGrades      *CertGradeStore
+	scheduling      *SchedulingStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -97,6 +98,7 @@ func New(db *pgxpool.Pool) *Store {
 		examUsages:      NewExamUsageStore(db),
 		randomDrawQ:     NewRandomDrawQuestionStore(db),
 		certGrades:      NewCertGradeStore(db),
+		scheduling:      NewSchedulingStore(db),
 	}
 }
 
@@ -139,6 +141,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		examUsages:      NewExamUsageStore(tx),
 		randomDrawQ:     NewRandomDrawQuestionStore(tx),
 		certGrades:      NewCertGradeStore(tx),
+		scheduling:      NewSchedulingStore(tx),
 	}
 }
 
@@ -320,6 +323,11 @@ func (s *Store) RandomDrawQuestions() *RandomDrawQuestionStore {
 // CertGrades 返回岗位认证等级 store。
 func (s *Store) CertGrades() *CertGradeStore {
 	return s.certGrades
+}
+
+// Scheduling 返回排课 store。
+func (s *Store) Scheduling() *SchedulingStore {
+	return s.scheduling
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

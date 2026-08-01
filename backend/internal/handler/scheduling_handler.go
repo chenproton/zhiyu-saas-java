@@ -4,23 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type SchedulingHandler struct {
-	DB *pgxpool.Pool
+	Service *service.AffairsService
 }
 
 // ---------- 场地 ----------
@@ -49,25 +47,19 @@ func (h *SchedulingHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "name",
+		ScanRows:      store.ScanVenueRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if venueType := r.URL.Query().Get("type"); venueType != "" {
 				qb.AddCondition("type = " + qb.NextArg(venueType))
 			}
 		},
-		ScanRows: func(rows pgx.Rows) ([]domain.Venue, error) {
-			items := make([]domain.Venue, 0)
-			for rows.Next() {
-				var v domain.Venue
-				if err := rows.Scan(&v.ID, &v.Name, &v.Type, &v.Capacity, &v.CreatedAt); err != nil {
-					return nil, err
-				}
-				items = append(items, v)
-			}
-			return items, nil
-		},
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListVenues(r.Context(), params, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -101,17 +93,17 @@ func (h *SchedulingHandler) CreateVenue(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO venues (id, tenant_id, name, type, capacity) VALUES ($1, $2, $3, $4, $5)
-	`, id, tenantID, req.Name, req.Type, req.Capacity)
+	venue, err := h.Service.CreateVenue(r.Context(), &store.VenueParams{
+		TenantID: tenantID,
+		Name:     req.Name,
+		Type:     req.Type,
+		Capacity: req.Capacity,
+	})
 	if err != nil {
 		slog.Error("创建场地失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "创建场地失败")
 		return
 	}
-
-	venue, _ := h.fetchVenue(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusCreated, venue)
 }
 
@@ -127,7 +119,7 @@ func (h *SchedulingHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	if _, err := h.fetchVenue(r.Context(), id, tenantID); err != nil {
+	if _, err := h.Service.GetVenue(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "场地不存在")
 		return
 	}
@@ -141,15 +133,15 @@ func (h *SchedulingHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE venues SET name = $1, type = $2, capacity = $3 WHERE id = $4 AND tenant_id = $5
-	`, req.Name, req.Type, req.Capacity, id, tenantID)
+	venue, err := h.Service.UpdateVenue(r.Context(), id, tenantID, &store.VenueParams{
+		Name:     req.Name,
+		Type:     req.Type,
+		Capacity: req.Capacity,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新场地失败")
 		return
 	}
-
-	venue, _ := h.fetchVenue(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusOK, venue)
 }
 
@@ -165,25 +157,20 @@ func (h *SchedulingHandler) DeleteVenue(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	if _, err := h.fetchVenue(r.Context(), id, tenantID); err != nil {
+	if _, err := h.Service.GetVenue(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "场地不存在")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM venues WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	if err != nil {
+	if err := h.Service.DeleteVenue(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusBadRequest, "该场地已被排课引用，无法删除")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *SchedulingHandler) fetchVenue(ctx context.Context, id, tenantID string) (domain.Venue, error) {
-	var v domain.Venue
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, type, capacity, created_at FROM venues WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&v.ID, &v.Name, &v.Type, &v.Capacity, &v.CreatedAt)
-	return v, err
+func (h *SchedulingHandler) fetchVenue(ctx context.Context, id, tenantID string) (*domain.Venue, error) {
+	return h.Service.GetVenue(ctx, id, tenantID)
 }
 
 // ---------- 节次 ----------
@@ -212,10 +199,15 @@ func (h *SchedulingHandler) ListPeriodSlots(w http.ResponseWriter, r *http.Reque
 		SelectColumns: "id, name, sort_order, start_time::text, end_time::text",
 		TenantScoped:  true,
 		OrderBy:       "sort_order ASC",
-		ScanRows:      scanPeriodSlotRows,
+		ScanRows:      store.ScanPeriodSlotRows,
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListPeriodSlotsPage(r.Context(), params, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -249,18 +241,18 @@ func (h *SchedulingHandler) CreatePeriodSlot(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO period_slots (id, tenant_id, name, sort_order, start_time, end_time)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, id, tenantID, req.Name, req.SortOrder, emptyStrToNil(req.StartTime), emptyStrToNil(req.EndTime))
+	slot, err := h.Service.CreatePeriodSlot(r.Context(), &store.PeriodSlotParams{
+		TenantID:  tenantID,
+		Name:      req.Name,
+		SortOrder: req.SortOrder,
+		StartTime: emptyStrToNil(req.StartTime),
+		EndTime:   emptyStrToNil(req.EndTime),
+	})
 	if err != nil {
 		slog.Error("创建节次失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "创建节次失败")
 		return
 	}
-
-	slot, _ := h.fetchPeriodSlot(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusCreated, slot)
 }
 
@@ -276,7 +268,7 @@ func (h *SchedulingHandler) UpdatePeriodSlot(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
-	if _, err := h.fetchPeriodSlot(r.Context(), id, tenantID); err != nil {
+	if _, err := h.Service.GetPeriodSlot(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "节次不存在")
 		return
 	}
@@ -290,16 +282,16 @@ func (h *SchedulingHandler) UpdatePeriodSlot(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE period_slots SET name = $1, sort_order = $2, start_time = $3, end_time = $4
-		WHERE id = $5 AND tenant_id = $6
-	`, req.Name, req.SortOrder, emptyStrToNil(req.StartTime), emptyStrToNil(req.EndTime), id, tenantID)
+	slot, err := h.Service.UpdatePeriodSlot(r.Context(), id, tenantID, &store.PeriodSlotParams{
+		Name:      req.Name,
+		SortOrder: req.SortOrder,
+		StartTime: emptyStrToNil(req.StartTime),
+		EndTime:   emptyStrToNil(req.EndTime),
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新节次失败")
 		return
 	}
-
-	slot, _ := h.fetchPeriodSlot(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusOK, slot)
 }
 
@@ -315,25 +307,20 @@ func (h *SchedulingHandler) DeletePeriodSlot(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
-	if _, err := h.fetchPeriodSlot(r.Context(), id, tenantID); err != nil {
+	if _, err := h.Service.GetPeriodSlot(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "节次不存在")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM period_slots WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	if err != nil {
+	if err := h.Service.DeletePeriodSlot(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除节次失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *SchedulingHandler) fetchPeriodSlot(ctx context.Context, id, tenantID string) (domain.PeriodSlot, error) {
-	var s domain.PeriodSlot
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, sort_order, start_time::text, end_time::text FROM period_slots WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&s.ID, &s.Name, &s.SortOrder, &s.StartTime, &s.EndTime)
-	return s, err
+func (h *SchedulingHandler) fetchPeriodSlot(ctx context.Context, id, tenantID string) (*domain.PeriodSlot, error) {
+	return h.Service.GetPeriodSlot(ctx, id, tenantID)
 }
 
 func scanPeriodSlotRows(rows pgx.Rows) ([]domain.PeriodSlot, error) {
@@ -412,7 +399,12 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 		ScanRows:      scanScheduleEntryRow,
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListSchedules(r.Context(), params, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -464,16 +456,7 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 	// 班级兜底：请求未带班级且来源教学计划条目时，优先从 junction table 读取，
 	// 再 fallback 到 class_node_id 字段。
 	if req.ClassNodeID == "" && req.PlanEntryID != nil && *req.PlanEntryID != "" {
-		// 优先查多班级关联表
-		var fallbackClassID *string
-		_ = h.DB.QueryRow(ctx, `
-			SELECT ec.class_node_id FROM teaching_plan_entry_classes ec WHERE ec.entry_id = $1 LIMIT 1
-		`, *req.PlanEntryID).Scan(&fallbackClassID)
-		if fallbackClassID == nil {
-			_ = h.DB.QueryRow(ctx, `
-				SELECT class_node_id FROM teaching_plan_entries WHERE id = $1
-			`, *req.PlanEntryID).Scan(&fallbackClassID)
-		}
+		fallbackClassID := h.Service.FallbackClassID(ctx, *req.PlanEntryID)
 		if fallbackClassID != nil && *fallbackClassID != "" {
 			req.ClassNodeID = *fallbackClassID
 		} else {
@@ -511,49 +494,44 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 		weekPattern = "all"
 	}
 
-	id := uuid.NewString()
-	err = withTx(ctx, h.DB, func(tx pgx.Tx) error {
-		var courseID *string
-		if req.CourseID != nil && *req.CourseID != "" {
-			courseID = req.CourseID
-		} else {
-			courseID = resolveCourseIDByCode(ctx, tx, tenantID, req.CourseCode)
+	courseID := req.CourseID
+	if courseID == nil || *courseID == "" {
+		courseID = h.Service.ResolveCourseIDByCode(ctx, tenantID, req.CourseCode)
+	}
+	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
+		if planCourseID := h.Service.PlanEntryCourseID(ctx, *req.PlanEntryID); planCourseID != nil && *planCourseID != "" {
+			courseID = planCourseID
 		}
-		if req.PlanEntryID != nil && *req.PlanEntryID != "" {
-			var planCourseID *string
-			_ = tx.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, *req.PlanEntryID).Scan(&planCourseID)
-			if planCourseID != nil && *planCourseID != "" {
-				courseID = planCourseID
-			}
-		}
-		// 合并班级：优先 classNodeIds 数组，缺省回退 classNodeId
-		classIDs := req.ClassNodeIDs
-		if len(classIDs) == 0 && req.ClassNodeID != "" {
-			classIDs = []string{req.ClassNodeID}
-		}
-		primaryClass := req.ClassNodeID
-		if primaryClass == "" && len(classIDs) > 0 {
-			primaryClass = classIDs[0]
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
-				class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
-				venue_id, scenario_id, source, status, version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'manual', 'draft', 1)
-		`, id, tenantID, req.TermID, emptyStrToNil(req.PlanEntryID), req.CourseName, emptyStrToNil(req.CourseCode), courseID, entryType,
-			primaryClass, classIDs, emptyStrToNil(req.TeacherID), req.DayOfWeek, req.Periods, req.StartWeek, req.EndWeek, weekPattern,
-			emptyStrToNil(req.VenueID), emptyStrToNil(req.ScenarioID)); err != nil {
-			return err
-		}
-		// 来源教学计划条目标记为已排，待排课程区不再显示
-		if req.PlanEntryID != nil && *req.PlanEntryID != "" {
-			if _, err := tx.Exec(ctx, `
-				UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1
-			`, *req.PlanEntryID); err != nil {
-				return err
-			}
-		}
-		return nil
+	}
+	// 合并班级：优先 classNodeIds 数组，缺省回退 classNodeId
+	classIDs := req.ClassNodeIDs
+	if len(classIDs) == 0 && req.ClassNodeID != "" {
+		classIDs = []string{req.ClassNodeID}
+	}
+	primaryClass := req.ClassNodeID
+	if primaryClass == "" && len(classIDs) > 0 {
+		primaryClass = classIDs[0]
+	}
+
+	id, err := h.Service.CreateSchedule(ctx, &store.ScheduleCreateParams{
+		TenantID:    tenantID,
+		TermID:      req.TermID,
+		PlanEntryID: emptyStrToNil(req.PlanEntryID),
+		CourseName:  req.CourseName,
+		CourseCode:  emptyStrToNil(req.CourseCode),
+		CourseID:    courseID,
+		Type:        entryType,
+		ClassNodeID: primaryClass,
+		ClassNodeIDs: classIDs,
+		TeacherID:   emptyStrToNil(req.TeacherID),
+		DayOfWeek:   req.DayOfWeek,
+		Periods:     req.Periods,
+		StartWeek:   req.StartWeek,
+		EndWeek:     req.EndWeek,
+		WeekPattern: weekPattern,
+		VenueID:     emptyStrToNil(req.VenueID),
+		ScenarioID:  emptyStrToNil(req.ScenarioID),
+		Source:      "manual",
 	})
 	if err != nil {
 		slog.Error("创建排课失败", "error", err)
@@ -611,16 +589,12 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 		weekPattern = "all"
 	}
 
-	var courseID *string
-	if req.CourseID != nil && *req.CourseID != "" {
-		courseID = req.CourseID
-	} else {
-		courseID = resolveCourseIDByCode(ctx, h.DB, tenantID, req.CourseCode)
+	courseID := req.CourseID
+	if courseID == nil || *courseID == "" {
+		courseID = h.Service.ResolveCourseIDByCode(ctx, tenantID, req.CourseCode)
 	}
 	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
-		var planCourseID *string
-		_ = h.DB.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, *req.PlanEntryID).Scan(&planCourseID)
-		if planCourseID != nil && *planCourseID != "" {
+		if planCourseID := h.Service.PlanEntryCourseID(ctx, *req.PlanEntryID); planCourseID != nil && *planCourseID != "" {
 			courseID = planCourseID
 		}
 	}
@@ -632,15 +606,24 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 	if primaryClass == "" && len(classIDs) > 0 {
 		primaryClass = classIDs[0]
 	}
-	_, err = h.DB.Exec(ctx, `
-		UPDATE schedule_entries
-		SET term_id = $1, plan_entry_id = $2, course_name = $3, course_code = $4, course_id = $5, type = $6,
-			class_node_id = $7, class_node_ids = $8, teacher_id = $9, day_of_week = $10, periods = $11,
-			start_week = $12, end_week = $13, week_pattern = $14, venue_id = $15, scenario_id = $16, updated_at = NOW()
-		WHERE id = $17 AND tenant_id = $18
-	`, req.TermID, emptyStrToNil(req.PlanEntryID), req.CourseName, emptyStrToNil(req.CourseCode), courseID, entryType,
-		primaryClass, classIDs, emptyStrToNil(req.TeacherID), req.DayOfWeek, req.Periods,
-		req.StartWeek, req.EndWeek, weekPattern, emptyStrToNil(req.VenueID), emptyStrToNil(req.ScenarioID), id, tenantID)
+	err = h.Service.UpdateSchedule(ctx, id, tenantID, &store.ScheduleCreateParams{
+		TermID:       req.TermID,
+		PlanEntryID:  emptyStrToNil(req.PlanEntryID),
+		CourseName:   req.CourseName,
+		CourseCode:   emptyStrToNil(req.CourseCode),
+		CourseID:     courseID,
+		Type:         entryType,
+		ClassNodeID:  primaryClass,
+		ClassNodeIDs: classIDs,
+		TeacherID:    emptyStrToNil(req.TeacherID),
+		DayOfWeek:    req.DayOfWeek,
+		Periods:      req.Periods,
+		StartWeek:    req.StartWeek,
+		EndWeek:      req.EndWeek,
+		WeekPattern:  weekPattern,
+		VenueID:      emptyStrToNil(req.VenueID),
+		ScenarioID:   emptyStrToNil(req.ScenarioID),
+	})
 	if err != nil {
 		slog.Error("更新排课失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "更新排课失败")
@@ -670,20 +653,8 @@ func (h *SchedulingHandler) DeleteSchedule(w http.ResponseWriter, r *http.Reques
 	}
 
 	ctx := r.Context()
-	err = withTx(ctx, h.DB, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
-			return err
-		}
-		// 该计划条目已无其他排课时恢复为待排
-		if entry.PlanEntryID != nil && *entry.PlanEntryID != "" {
-			if _, err := tx.Exec(ctx, `
-				UPDATE teaching_plan_entries SET status = 'planned'
-				WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM schedule_entries WHERE plan_entry_id = $1)
-			`, *entry.PlanEntryID); err != nil {
-				return err
-			}
-		}
-		return nil
+	err = h.Service.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.Scheduling().DeleteScheduleWithRestore(ctx, txStore.Q(), id, tenantID, entry.PlanEntryID)
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除排课失败")
@@ -720,190 +691,15 @@ func (h *SchedulingHandler) AutoSchedule(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// 加载节次与场地
-	periodRows, err := h.DB.Query(ctx, `
-		SELECT id, name, sort_order FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
-	`, tenantID)
+	success, failed, failures, err := h.Service.AutoSchedule(ctx, tenantID, req.TermID, req.PlanID)
 	if err != nil {
-		slog.Error("自动排课加载节次失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "加载节次失败")
+		if errors.Is(err, service.ErrNoPeriodSlots) || errors.Is(err, service.ErrNoVenues) {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		slog.Error("自动排课失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "自动排课失败")
 		return
-	}
-	defer periodRows.Close()
-	periodNames := make([]string, 0)
-	for periodRows.Next() {
-		var id, name string
-		var sortOrder int
-		if err := periodRows.Scan(&id, &name, &sortOrder); err != nil {
-			continue
-		}
-		periodNames = append(periodNames, name)
-	}
-	if len(periodNames) == 0 {
-		respondError(w, http.StatusBadRequest, "尚未配置节次，无法自动排课")
-		return
-	}
-
-	venueRows, err := h.DB.Query(ctx, `
-		SELECT id, name, type FROM venues WHERE tenant_id = $1 ORDER BY name
-	`, tenantID)
-	if err != nil {
-		slog.Error("自动排课加载场地失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "加载场地失败")
-		return
-	}
-	defer venueRows.Close()
-	type venueInfo struct {
-		id   string
-		name string
-		vtype string
-	}
-	venues := make([]venueInfo, 0)
-	for venueRows.Next() {
-		var v venueInfo
-		if err := venueRows.Scan(&v.id, &v.name, &v.vtype); err != nil {
-			continue
-		}
-		venues = append(venues, v)
-	}
-	if len(venues) == 0 {
-		respondError(w, http.StatusBadRequest, "尚未配置场地，无法自动排课")
-		return
-	}
-
-	// 加载待排教学计划条目
-	var planFilter string
-	args := []interface{}{tenantID, req.TermID}
-	if req.PlanID != "" {
-		planFilter = " AND p.id = $3"
-		args = append(args, req.PlanID)
-	}
-	entryRows, err := h.DB.Query(ctx, `
-		SELECT e.id, e.course_name, e.course_code, e.type, e.start_week, e.end_week, e.week_pattern,
-			COALESCE(e.class_node_id::text, ''), COALESCE(e.teacher_id::text, ''), COALESCE(e.venue_type, ''),
-			COALESCE(e.scenario_id::text, ''), COALESCE(e.course_id::text, '')
-		FROM teaching_plan_entries e
-		JOIN teaching_plans p ON p.id = e.plan_id
-		WHERE p.tenant_id = $1 AND p.term_id = $2 AND p.status = 'confirmed' AND e.status = 'planned'`+planFilter+`
-		ORDER BY e.start_week, e.course_name
-	`, args...)
-	if err != nil {
-		slog.Error("自动排课加载待排条目失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "加载待排条目失败")
-		return
-	}
-	defer entryRows.Close()
-
-	type planEntry struct {
-		id          string
-		courseName  string
-		courseCode  string
-		entryType   string
-		startWeek   int
-		endWeek     int
-		weekPattern string
-		classNodeID string
-		teacherID   string
-		venueType   string
-		scenarioID  string
-		courseID    string
-	}
-	pending := make([]planEntry, 0)
-	for entryRows.Next() {
-		var e planEntry
-		if err := entryRows.Scan(&e.id, &e.courseName, &e.courseCode, &e.entryType, &e.startWeek, &e.endWeek, &e.weekPattern,
-			&e.classNodeID, &e.teacherID, &e.venueType, &e.scenarioID, &e.courseID); err != nil {
-			continue
-		}
-		if e.classNodeID == "" {
-			continue
-		}
-		pending = append(pending, e)
-	}
-
-	success := 0
-	failed := 0
-	failures := make([]string, 0)
-
-	for _, e := range pending {
-		// 优先按 venueType 过滤场地，无匹配则使用全部场地
-		candidateVenues := venues
-		if e.venueType != "" {
-			filtered := make([]venueInfo, 0)
-			for _, v := range venues {
-				if v.vtype == e.venueType {
-					filtered = append(filtered, v)
-				}
-			}
-			if len(filtered) > 0 {
-				candidateVenues = filtered
-			}
-		}
-
-		placed := false
-		entryType := e.entryType
-		if entryType == "theory" || entryType == "practice" {
-			entryType = "traditional"
-		}
-
-	dayLoop:
-		for day := 1; day <= 7; day++ {
-			for _, periodName := range periodNames {
-				for _, venue := range candidateVenues {
-					schedReq := &ScheduleEntryRequest{
-						TermID:      req.TermID,
-						PlanEntryID: &e.id,
-						CourseName:  e.courseName,
-						CourseCode:  strPtrIfNonEmpty(e.courseCode),
-						CourseID:    strPtrIfNonEmpty(e.courseID),
-						Type:        entryType,
-						ClassNodeID: e.classNodeID,
-						TeacherID:   strPtrIfNonEmpty(e.teacherID),
-						DayOfWeek:   day,
-						Periods:     domain.JSONSlice{periodName},
-						StartWeek:   e.startWeek,
-						EndWeek:     e.endWeek,
-						WeekPattern: e.weekPattern,
-						VenueID:     &venue.id,
-						ScenarioID:  strPtrIfNonEmpty(e.scenarioID),
-					}
-					conflicts, err := h.checkScheduleConflicts(ctx, tenantID, schedReq, "")
-					if err != nil {
-						continue
-					}
-					if len(conflicts) > 0 {
-						continue
-					}
-
-					// 创建排课
-					weekPattern := e.weekPattern
-					if weekPattern == "" {
-						weekPattern = "all"
-					}
-					_, err = h.DB.Exec(ctx, `
-						INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
-							class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
-							venue_id, scenario_id, source, status, version)
-						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'auto', 'draft', 1)
-					`, uuid.NewString(), tenantID, req.TermID, e.id, e.courseName, strPtrIfNonEmpty(e.courseCode),
-						strPtrIfNonEmpty(e.courseID), entryType, e.classNodeID, strPtrIfNonEmpty(e.teacherID), day,
-						domain.JSONSlice{periodName}, e.startWeek, e.endWeek, weekPattern, venue.id, strPtrIfNonEmpty(e.scenarioID))
-					if err != nil {
-						continue
-					}
-					// 标记教学计划条目为已排
-					_, _ = h.DB.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, e.id)
-					success++
-					placed = true
-					break dayLoop
-				}
-			}
-		}
-
-		if !placed {
-			failed++
-			failures = append(failures, fmt.Sprintf("%s：未找到可用时段", e.courseName))
-		}
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -938,22 +734,13 @@ func (h *SchedulingHandler) PublishSchedules(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	tag, err := h.DB.Exec(r.Context(), `
-		UPDATE schedule_entries SET status = 'published', version = version + 1, updated_at = NOW()
-		WHERE tenant_id = $1 AND term_id = $2 AND status = 'draft'
-	`, tenantID, req.TermID)
+	published, version, err := h.Service.PublishSchedules(r.Context(), tenantID, req.TermID)
 	if err != nil {
 		slog.Error("发布课表失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "发布课表失败")
 		return
 	}
-
-	var version int
-	_ = h.DB.QueryRow(r.Context(), `
-		SELECT COALESCE(MAX(version), 1) FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2
-	`, tenantID, req.TermID).Scan(&version)
-
-	respondJSON(w, http.StatusOK, map[string]interface{}{"published": tag.RowsAffected(), "version": version})
+	respondJSON(w, http.StatusOK, map[string]interface{}{"published": published, "version": version})
 }
 
 // ExportSchedules GET /affairs/schedules/export?termId= — 导出教学计划课程列表 + 参考表。
@@ -1012,58 +799,31 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 
 	// 已排课映射：plan_entry_id -> (day, periods, teacherName, venueName, classNames)
 	schedMap := map[string]map[string]string{}
-	srows, err := h.DB.Query(r.Context(), `
-		SELECT se.plan_entry_id, se.day_of_week, se.periods,
-			COALESCE(u.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
-			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names
-		FROM schedule_entries se
-		LEFT JOIN users u ON u.id = se.teacher_id
-		LEFT JOIN venues v ON v.id = se.venue_id
-		WHERE se.tenant_id = $1 AND se.term_id = $2
-	`, tenantID, termID)
-	if err == nil {
-		for srows.Next() {
-			var pid *string
-			var day int
-			var periods domain.JSONSlice
-			var tName, vName string
-			var classNames []string
-			if err := srows.Scan(&pid, &day, &periods, &tName, &vName, &classNames); err == nil && pid != nil {
-				schedMap[*pid] = map[string]string{
-					"day": dayMap[day], "periods": strings.Join(jsonSliceToStrings(periods), "，"),
-					"teacher": tName, "venue": vName, "classes": strings.Join(classNames, "，"),
-				}
+	srows, _ := h.Service.ListScheduledExportMap(r.Context(), tenantID, termID)
+	for _, m := range srows {
+		if m.PlanEntryID != nil {
+			schedMap[*m.PlanEntryID] = map[string]string{
+				"day": dayMap[m.Day], "periods": strings.Join(jsonSliceToStrings(m.Periods), "，"),
+				"teacher": m.TeacherName, "venue": m.VenueName, "classes": strings.Join(m.ClassNames, "，"),
 			}
 		}
-		srows.Close()
 	}
 
 	// 教学计划全部条目
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT e.id, e.course_name, e.type, e.start_week, e.end_week, e.week_pattern
-		FROM teaching_plan_entries e
-		JOIN teaching_plans p ON p.id = e.plan_id
-		WHERE p.term_id = $1 AND p.tenant_id = $2
-		ORDER BY e.start_week, e.course_name, e.id
-	`, termID, tenantID)
+	entries, err := h.Service.ListPlanEntryBriefs(r.Context(), tenantID, termID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询教学计划失败")
 		return
 	}
 	rowIdx := 3
-	for rows.Next() {
-		var id, courseName, entryType, weekPattern string
-		var startWeek, endWeek int
-		if err := rows.Scan(&id, &courseName, &entryType, &startWeek, &endWeek, &weekPattern); err != nil {
-			continue
-		}
-		sd := schedMap[id]
+	for _, e := range entries {
+		sd := schedMap[e.ID]
 		typeLabel := "课程"
-		if entryType == "scene" {
+		if e.EntryType == "scene" {
 			typeLabel = "场景"
 		}
 		vals := []interface{}{
-			courseName, typeLabel, startWeek, endWeek, weekPatMap[weekPattern],
+			e.CourseName, typeLabel, e.StartWeek, e.EndWeek, weekPatMap[e.WeekPattern],
 			sd["day"], sd["periods"], sd["teacher"], sd["venue"], sd["classes"],
 		}
 		for ci, v := range vals {
@@ -1072,30 +832,19 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 		}
 		rowIdx++
 	}
-	rows.Close()
 
 	// ===== 参考表：教师名单（全部教师） =====
 	teacherSheet := "【参考】教师名单"
 	f.NewSheet(teacherSheet)
 	f.SetCellValue(teacherSheet, "A1", "教师姓名"); f.SetCellStyle(teacherSheet, "A1", "A1", hdrStyle)
-	tr, _ := h.DB.Query(r.Context(), `
-		SELECT DISTINCT u.name FROM users u
-		JOIN user_roles ur ON ur.user_id = u.id
-		JOIN roles r2 ON r2.id = ur.role_id
-		WHERE u.tenant_id = $1 AND u.name <> '' AND u.status = 'active' AND r2.code = 'teacher'
-		ORDER BY u.name
-	`, tenantID)
+	teacherNames, _ := h.Service.ListTeacherNames(r.Context(), tenantID)
 	ti := 2
-	for tr.Next() {
-		var n string
-		if tr.Scan(&n) == nil && n != "" {
-			if cell, err := excelize.CoordinatesToCellName(1, ti); err == nil {
-				f.SetCellValue(teacherSheet, cell, n)
-			}
-			ti++
+	for _, n := range teacherNames {
+		if cell, err := excelize.CoordinatesToCellName(1, ti); err == nil {
+			f.SetCellValue(teacherSheet, cell, n)
 		}
+		ti++
 	}
-	tr.Close()
 	f.SetColWidth(teacherSheet, "A", "A", 20)
 
 	// ===== 参考表：场地名单（全部场地） =====
@@ -1103,44 +852,31 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	f.NewSheet(venueSheet)
 	f.SetCellValue(venueSheet, "A1", "场地名称"); f.SetCellStyle(venueSheet, "A1", "A1", hdrStyle)
 	f.SetCellValue(venueSheet, "B1", "类型"); f.SetCellStyle(venueSheet, "B1", "B1", hdrStyle)
-	vr, _ := h.DB.Query(r.Context(), `SELECT name, type FROM venues WHERE tenant_id = $1 ORDER BY name`, tenantID)
+	venueBriefs, _ := h.Service.ListVenueBriefs(r.Context(), tenantID)
 	vi := 2
-	for vr.Next() {
-		var n, t string
-		if vr.Scan(&n, &t) == nil {
-			if c1, e1 := excelize.CoordinatesToCellName(1, vi); e1 == nil {
-				f.SetCellValue(venueSheet, c1, n)
-			}
-			if c2, e2 := excelize.CoordinatesToCellName(2, vi); e2 == nil {
-				f.SetCellValue(venueSheet, c2, t)
-			}
-			vi++
+	for _, v := range venueBriefs {
+		if c1, e1 := excelize.CoordinatesToCellName(1, vi); e1 == nil {
+			f.SetCellValue(venueSheet, c1, v.Name)
 		}
+		if c2, e2 := excelize.CoordinatesToCellName(2, vi); e2 == nil {
+			f.SetCellValue(venueSheet, c2, v.Type)
+		}
+		vi++
 	}
-	vr.Close()
 	f.SetColWidth(venueSheet, "A", "A", 20); f.SetColWidth(venueSheet, "B", "B", 16)
 
 	// ===== 参考表：班级名单（全部班级组织节点） =====
 	classSheet := "【参考】班级名单"
 	f.NewSheet(classSheet)
 	f.SetCellValue(classSheet, "A1", "班级名称"); f.SetCellStyle(classSheet, "A1", "A1", hdrStyle)
-	cr, _ := h.DB.Query(r.Context(), `
-		SELECT DISTINCT o.name FROM organizations o
-		JOIN org_types ot ON ot.id = o.type_id
-		WHERE o.tenant_id = $1 AND o.name <> '' AND ot.name = '班级'
-		ORDER BY o.name
-	`, tenantID)
+	classNames, _ := h.Service.ListClassNames(r.Context(), tenantID)
 	ci2 := 2
-	for cr.Next() {
-		var n string
-		if cr.Scan(&n) == nil && n != "" {
-			if cell, err := excelize.CoordinatesToCellName(1, ci2); err == nil {
-				f.SetCellValue(classSheet, cell, n)
-			}
-			ci2++
+	for _, n := range classNames {
+		if cell, err := excelize.CoordinatesToCellName(1, ci2); err == nil {
+			f.SetCellValue(classSheet, cell, n)
 		}
+		ci2++
 	}
-	cr.Close()
 	f.SetColWidth(classSheet, "A", "A", 24)
 
 	// ===== 参考表：节次表 =====
@@ -1149,24 +885,27 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	f.SetCellValue(periodSheet, "A1", "节次名称"); f.SetCellStyle(periodSheet, "A1", "A1", hdrStyle)
 	f.SetCellValue(periodSheet, "B1", "开始时间"); f.SetCellStyle(periodSheet, "B1", "B1", hdrStyle)
 	f.SetCellValue(periodSheet, "C1", "结束时间"); f.SetCellStyle(periodSheet, "C1", "C1", hdrStyle)
-	pr, _ := h.DB.Query(r.Context(), `SELECT name, to_char(start_time,'HH24:MI'), to_char(end_time,'HH24:MI') FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order`, tenantID)
+	periodSlots, _ := h.Service.ListPeriodSlots(r.Context(), tenantID)
 	pi := 2
-	for pr.Next() {
-		var n, s, e string
-		if pr.Scan(&n, &s, &e) == nil {
-			if c1, e1 := excelize.CoordinatesToCellName(1, pi); e1 == nil {
-				f.SetCellValue(periodSheet, c1, n)
-			}
-			if c2, e2 := excelize.CoordinatesToCellName(2, pi); e2 == nil {
-				f.SetCellValue(periodSheet, c2, s)
-			}
-			if c3, e3 := excelize.CoordinatesToCellName(3, pi); e3 == nil {
-				f.SetCellValue(periodSheet, c3, e)
-			}
-			pi++
+	for _, ps := range periodSlots {
+		s, e := "", ""
+		if ps.StartTime != nil {
+			s = *ps.StartTime
 		}
+		if ps.EndTime != nil {
+			e = *ps.EndTime
+		}
+		if c1, e1 := excelize.CoordinatesToCellName(1, pi); e1 == nil {
+			f.SetCellValue(periodSheet, c1, ps.Name)
+		}
+		if c2, e2 := excelize.CoordinatesToCellName(2, pi); e2 == nil {
+			f.SetCellValue(periodSheet, c2, s)
+		}
+		if c3, e3 := excelize.CoordinatesToCellName(3, pi); e3 == nil {
+			f.SetCellValue(periodSheet, c3, e)
+		}
+		pi++
 	}
-	pr.Close()
 
 	f.DeleteSheet("Sheet1")
 	idx, _ := f.GetSheetIndex(mainSheet)
@@ -1212,37 +951,12 @@ func (h *SchedulingHandler) Timetable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var version int
-	_ = h.DB.QueryRow(r.Context(), `
-		SELECT COALESCE(MAX(version), 1) FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2 AND status = 'published'
-	`, tenantID, termID).Scan(&version)
-
+	version := h.Service.TimetableVersion(r.Context(), tenantID, termID, status)
 	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items, "total": len(items), "version": version})
 }
 
 func (h *SchedulingHandler) listTimetableEntries(ctx context.Context, tenantID, termID, classNodeID, teacherID, status string) ([]domain.ScheduleEntry, error) {
-	qb := store.NewListQueryBuilder()
-	qb.AddCondition("se.tenant_id = " + qb.NextArg(tenantID))
-	qb.AddCondition("se.term_id = " + qb.NextArg(termID))
-	qb.AddCondition("se.status = " + qb.NextArg(status))
-	if classNodeID != "" {
-		qb.AddCondition("(se.class_node_id = " + qb.NextArg(classNodeID) + " OR " + qb.NextArg(classNodeID) + " = ANY(se.class_node_ids))")
-	}
-	if teacherID != "" {
-		qb.AddCondition("se.teacher_id = " + qb.NextArg(teacherID))
-	}
-
-	rows, err := h.DB.Query(ctx, `
-		SELECT `+scheduleEntrySelectColumns+`
-		FROM `+scheduleEntryFrom+`
-		WHERE `+qb.WhereClause()+`
-		ORDER BY se.day_of_week ASC, se.start_week ASC
-	`, qb.Args()...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return scanScheduleEntryRow(rows)
+	return h.Service.ListTimetableEntries(ctx, tenantID, termID, classNodeID, teacherID, status)
 }
 
 // MySchedule GET /portal/workspace/my-schedule?termId= — 个人课表。
@@ -1264,10 +978,7 @@ func (h *SchedulingHandler) MySchedule(w http.ResponseWriter, r *http.Request) {
 	viewAs := "teacher"
 	if middleware.HasRole(claims, "student") {
 		viewAs = "student"
-		var nodeID *string
-		if err := h.DB.QueryRow(ctx, `
-			SELECT org_node_id FROM users WHERE id = $1 AND tenant_id = $2
-		`, claims.UserID, tenantID).Scan(&nodeID); err == nil && nodeID != nil {
+		if nodeID := h.Service.UserOrgNodeID(ctx, claims.UserID, tenantID); nodeID != nil {
 			classNodeID = *nodeID
 		}
 	} else {
@@ -1276,28 +987,12 @@ func (h *SchedulingHandler) MySchedule(w http.ResponseWriter, r *http.Request) {
 
 	termID := r.URL.Query().Get("termId")
 	if termID == "" {
-		// 缺省时优先取当前学期；无当前学期时取含本人（教师按 teacher_id、学生按班级）排课的学期，否则取最近一个
-		scopeCond := "se.teacher_id = $2::uuid"
-		scopeArgs := []interface{}{tenantID, claims.UserID}
-		if classNodeID != "" {
-			scopeCond = "(se.class_node_id = $2::uuid OR $2::uuid = ANY(se.class_node_ids))"
-			scopeArgs = []interface{}{tenantID, classNodeID}
-		}
-		err := h.DB.QueryRow(ctx, `
-			SELECT t.id FROM terms t
-			LEFT JOIN LATERAL (
-				SELECT COUNT(*) AS cnt FROM schedule_entries se
-				WHERE se.term_id = t.id AND se.tenant_id = t.tenant_id
-				  AND `+scopeCond+`
-			) s ON true
-			WHERE t.tenant_id = $1
-			ORDER BY t.is_current DESC, COALESCE(s.cnt, 0) DESC, t.start_date DESC
-			LIMIT 1
-		`, scopeArgs...).Scan(&termID)
+		t, err := h.Service.FindTermForSchedule(ctx, tenantID, claims.UserID, classNodeID)
 		if err != nil {
 			respondError(w, http.StatusNotFound, "尚未配置学期")
 			return
 		}
+		termID = t
 	}
 	term, err := h.fetchTermBrief(ctx, termID, tenantID)
 	if err != nil {
@@ -1363,125 +1058,25 @@ func jsonSliceToStrings(s domain.JSONSlice) []string {
 // 周次区间重叠 × day_of_week 相同 × 周次模式相容 × periods(JSONB) 有交集。
 // excludeID 用于更新时排除自身。
 func (h *SchedulingHandler) checkScheduleConflicts(ctx context.Context, tenantID string, req *ScheduleEntryRequest, excludeID string) ([]domain.ScheduleConflict, error) {
-	periods := jsonSliceToStrings(req.Periods)
-	if len(periods) == 0 {
-		return nil, nil
-	}
-	weekPattern := req.WeekPattern
-	if weekPattern == "" {
-		weekPattern = "all"
-	}
-
-	reqClasses := req.ClassNodeIDs
-	if len(reqClasses) == 0 && req.ClassNodeID != "" {
-		reqClasses = []string{req.ClassNodeID}
-	}
-
-	rows, err := h.DB.Query(ctx, `
-		SELECT se.id, se.course_name, COALESCE(o.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
-			se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern,
-			se.teacher_id, se.class_node_id, se.venue_id, se.plan_entry_id, se.class_node_ids
-		FROM schedule_entries se
-		LEFT JOIN organizations o ON o.id = se.class_node_id
-		LEFT JOIN users u ON u.id = se.teacher_id
-		LEFT JOIN venues v ON v.id = se.venue_id
-		WHERE se.tenant_id = $1 AND se.term_id = $2 AND se.day_of_week = $3
-			AND NOT (se.end_week < $4 OR se.start_week > $5)
-			AND (se.week_pattern = $6 OR se.week_pattern = 'all' OR $6 = 'all')
-			AND se.periods ?| $7
-			AND ($8 = '' OR se.id::text <> $8)
-	`, tenantID, req.TermID, req.DayOfWeek, req.StartWeek, req.EndWeek, weekPattern, periods, excludeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	conflicts := make([]domain.ScheduleConflict, 0)
-	for rows.Next() {
-		var c domain.ScheduleConflict
-		var rowTeacherID, rowClassNodeID, rowVenueID, rowPlanEntryID *string
-		var rowClassNodeIDs []string
-		if err := rows.Scan(&c.EntryID, &c.CourseName, &c.ClassName, &c.TeacherName, &c.VenueName,
-			&c.DayOfWeek, &c.Periods, &c.StartWeek, &c.EndWeek, &c.WeekPattern,
-			&rowTeacherID, &rowClassNodeID, &rowVenueID, &rowPlanEntryID, &rowClassNodeIDs); err != nil {
-			return nil, err
-		}
-
-		// 同一门课（同一教学计划条目）多个班级同时上课不判冲突
-		if rowPlanEntryID != nil && req.PlanEntryID != nil && *rowPlanEntryID == *req.PlanEntryID {
-			continue
-		}
-
-		if req.TeacherID != nil && *req.TeacherID != "" && rowTeacherID != nil && *rowTeacherID == *req.TeacherID {
-			dup := c
-			dup.Kind = "teacher"
-			conflicts = append(conflicts, dup)
-		}
-		// 班级冲突：任一班重叠即冲突
-		existingClasses := rowClassNodeIDs
-		if len(existingClasses) == 0 && rowClassNodeID != nil {
-			existingClasses = []string{*rowClassNodeID}
-		}
-		classOverlap := false
-		for _, ec := range existingClasses {
-			for _, rc := range reqClasses {
-				if ec == rc { classOverlap = true; break }
-			}
-			if classOverlap { break }
-		}
-		if classOverlap {
-			dup := c
-			dup.Kind = "class"
-			conflicts = append(conflicts, dup)
-		}
-		if req.VenueID != nil && *req.VenueID != "" && rowVenueID != nil && *rowVenueID == *req.VenueID {
-			dup := c
-			dup.Kind = "venue"
-			conflicts = append(conflicts, dup)
-		}
-	}
-	return conflicts, rows.Err()
+	return h.Service.CheckScheduleConflicts(ctx, tenantID, &store.ScheduleConflictParams{
+		TermID:       req.TermID,
+		PlanEntryID:  req.PlanEntryID,
+		ClassNodeID:  req.ClassNodeID,
+		ClassNodeIDs: req.ClassNodeIDs,
+		TeacherID:    req.TeacherID,
+		DayOfWeek:    req.DayOfWeek,
+		Periods:      req.Periods,
+		StartWeek:    req.StartWeek,
+		EndWeek:      req.EndWeek,
+		WeekPattern:  req.WeekPattern,
+		VenueID:      req.VenueID,
+	}, excludeID)
 }
 
-func (h *SchedulingHandler) fetchScheduleEntry(ctx context.Context, id, tenantID string) (domain.ScheduleEntry, error) {
-	var e domain.ScheduleEntry
-	err := h.DB.QueryRow(ctx, `
-		SELECT `+scheduleEntrySelectColumns+`
-		FROM `+scheduleEntryFrom+`
-		WHERE se.id = $1 AND se.tenant_id = $2
-	`, id, tenantID).Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.CourseID, &e.Type,
-		&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.DayOfWeek, &e.Periods,
-		&e.StartWeek, &e.EndWeek, &e.WeekPattern, &e.VenueID, &e.VenueName,
-		&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt,
-		&e.ClassNodeIDs, &e.ClassNames)
-	return e, err
+func (h *SchedulingHandler) fetchScheduleEntry(ctx context.Context, id, tenantID string) (*domain.ScheduleEntry, error) {
+	return h.Service.GetSchedule(ctx, id, tenantID)
 }
 
-// rowQuerier abstracts pgx.Tx and *pgxpool.Pool for resolveCourseIDByCode.
-type rowQuerier interface {
-	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
-}
-
-// resolveCourseIDByCode 根据课程代码查询课程 ID，用于排课保存时回填 schedule_entries.course_id。
-func resolveCourseIDByCode(ctx context.Context, db rowQuerier, tenantID string, courseCode *string) *string {
-	if courseCode == nil || *courseCode == "" {
-		return nil
-	}
-	var id string
-	err := db.QueryRow(ctx, `
-		SELECT id FROM courses WHERE tenant_id = $1 AND code = $2 AND type = 'system' LIMIT 1
-	`, tenantID, *courseCode).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
-}
-
-func (h *SchedulingHandler) fetchTermBrief(ctx context.Context, id, tenantID string) (domain.Term, error) {
-	var t domain.Term
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, to_char(start_date, 'YYYY-MM-DD'), to_char(end_date, 'YYYY-MM-DD'), weeks_count, is_current, created_at
-		FROM terms WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&t.ID, &t.Name, &t.StartDate, &t.EndDate, &t.WeeksCount, &t.IsCurrent, &t.CreatedAt)
-	return t, err
+func (h *SchedulingHandler) fetchTermBrief(ctx context.Context, id, tenantID string) (*domain.Term, error) {
+	return h.Service.FetchTermBrief(ctx, id, tenantID)
 }

@@ -1,0 +1,884 @@
+package store
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/zhiyu-saas/backend/internal/domain"
+)
+
+// SchedulingStore 排课域持久化（场地/节次/排课/教学计划）。
+type SchedulingStore struct {
+	q Queryer
+}
+
+// NewSchedulingStore 创建排课 store。
+func NewSchedulingStore(q Queryer) *SchedulingStore {
+	return &SchedulingStore{q: q}
+}
+
+// ===== 场地 =====
+
+// ListVenues 查询场地列表。
+func (s *SchedulingStore) ListVenues(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.Venue]) ([]domain.Venue, int, error) {
+	return ExecuteListQuery(ctx, s.q, p, cfg, ScanVenueRows)
+}
+
+// ScanVenueRows 扫描场地行。
+func ScanVenueRows(rows pgx.Rows) ([]domain.Venue, error) {
+	items := make([]domain.Venue, 0)
+	for rows.Next() {
+		var v domain.Venue
+		if err := rows.Scan(&v.ID, &v.Name, &v.Type, &v.Capacity, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, v)
+	}
+	return items, nil
+}
+
+// GetVenue 查询单个场地。
+func (s *SchedulingStore) GetVenue(ctx context.Context, id, tenantID string) (*domain.Venue, error) {
+	var v domain.Venue
+	var capacity *int
+	err := s.q.QueryRow(ctx, `
+		SELECT id, name, type, capacity, created_at
+		FROM venues WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&v.ID, &v.Name, &v.Type, &capacity, &v.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	v.Capacity = capacity
+	return &v, nil
+}
+
+// CreateVenue 创建场地。
+func (s *SchedulingStore) CreateVenue(ctx context.Context, p *VenueParams) (*domain.Venue, error) {
+	var id string
+	err := s.q.QueryRow(ctx, `
+		INSERT INTO venues (id, tenant_id, name, type, capacity, description, status)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'active')
+		RETURNING id
+	`, p.TenantID, p.Name, p.Type, p.Capacity, p.Description).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetVenue(ctx, id, p.TenantID)
+}
+
+// UpdateVenue 更新场地。
+func (s *SchedulingStore) UpdateVenue(ctx context.Context, id, tenantID string, p *VenueParams) (*domain.Venue, error) {
+	if _, err := s.GetVenue(ctx, id, tenantID); err != nil {
+		return nil, err
+	}
+	if _, err := s.q.Exec(ctx, `
+		UPDATE venues SET name = $1, type = $2, capacity = $3, description = $4, updated_at = NOW()
+		WHERE id = $5 AND tenant_id = $6
+	`, p.Name, p.Type, p.Capacity, p.Description, id, tenantID); err != nil {
+		return nil, err
+	}
+	return s.GetVenue(ctx, id, tenantID)
+}
+
+// DeleteVenue 删除场地。
+func (s *SchedulingStore) DeleteVenue(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM venues WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	return err
+}
+
+// VenueParams 场地参数。
+type VenueParams struct {
+	TenantID    string
+	Name        string
+	Type        string
+	Capacity    *int
+	Description *string
+}
+
+// ===== 节次 =====
+
+// ListPeriodSlots 查询节次列表。
+func (s *SchedulingStore) ListPeriodSlots(ctx context.Context, tenantID string) ([]domain.PeriodSlot, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT id, name, sort_order, start_time, end_time
+		FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return ScanPeriodSlotRows(rows)
+}
+
+// CreatePeriodSlot 创建节次。
+func (s *SchedulingStore) CreatePeriodSlot(ctx context.Context, p *PeriodSlotParams) (*domain.PeriodSlot, error) {
+	var id string
+	err := s.q.QueryRow(ctx, `
+		INSERT INTO period_slots (id, tenant_id, name, sort_order, start_time, end_time)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+		RETURNING id
+	`, p.TenantID, p.Name, p.SortOrder, p.StartTime, p.EndTime).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+	return s.fetchPeriodSlot(ctx, id, p.TenantID)
+}
+
+// UpdatePeriodSlot 更新节次。
+func (s *SchedulingStore) UpdatePeriodSlot(ctx context.Context, id, tenantID string, p *PeriodSlotParams) (*domain.PeriodSlot, error) {
+	if _, err := s.fetchPeriodSlot(ctx, id, tenantID); err != nil {
+		return nil, err
+	}
+	if _, err := s.q.Exec(ctx, `
+		UPDATE period_slots SET name = $1, sort_order = $2, start_time = $3, end_time = $4, updated_at = NOW()
+		WHERE id = $5 AND tenant_id = $6
+	`, p.Name, p.SortOrder, p.StartTime, p.EndTime, id, tenantID); err != nil {
+		return nil, err
+	}
+	return s.fetchPeriodSlot(ctx, id, tenantID)
+}
+
+// GetPeriodSlot 查询单个节次。
+func (s *SchedulingStore) GetPeriodSlot(ctx context.Context, id, tenantID string) (*domain.PeriodSlot, error) {
+	return s.fetchPeriodSlot(ctx, id, tenantID)
+}
+
+// DeletePeriodSlot 删除节次。
+func (s *SchedulingStore) DeletePeriodSlot(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM period_slots WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	return err
+}
+
+// PeriodSlotParams 节次参数。
+type PeriodSlotParams struct {
+	TenantID  string
+	Name      string
+	SortOrder int
+	StartTime *string
+	EndTime   *string
+}
+
+func (s *SchedulingStore) fetchPeriodSlot(ctx context.Context, id, tenantID string) (*domain.PeriodSlot, error) {
+	var p domain.PeriodSlot
+	var startTime, endTime *time.Time
+	err := s.q.QueryRow(ctx, `
+		SELECT id, name, sort_order, start_time, end_time
+		FROM period_slots WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&p.ID, &p.Name, &p.SortOrder, &startTime, &endTime)
+	if err != nil {
+		return nil, err
+	}
+	if startTime != nil {
+		str := startTime.Format("15:04")
+		p.StartTime = &str
+	}
+	if endTime != nil {
+		str := endTime.Format("15:04")
+		p.EndTime = &str
+	}
+	return &p, nil
+}
+
+// ScanPeriodSlotRows 扫描节次行。
+func ScanPeriodSlotRows(rows pgx.Rows) ([]domain.PeriodSlot, error) {
+	items := make([]domain.PeriodSlot, 0)
+	for rows.Next() {
+		var p domain.PeriodSlot
+		var startTime, endTime *time.Time
+		if err := rows.Scan(&p.ID, &p.Name, &p.SortOrder, &startTime, &endTime); err != nil {
+			return nil, err
+		}
+		if startTime != nil {
+			str := startTime.Format("15:04")
+			p.StartTime = &str
+		}
+		if endTime != nil {
+			str := endTime.Format("15:04")
+			p.EndTime = &str
+		}
+		items = append(items, p)
+	}
+	return items, nil
+}
+
+// ===== 排课 =====
+
+// ListSchedules 查询排课列表。
+func (s *SchedulingStore) ListSchedules(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.ScheduleEntry]) ([]domain.ScheduleEntry, int, error) {
+	return ExecuteListQuery(ctx, s.q, p, cfg, ScanScheduleEntryRows)
+}
+
+// GetSchedule 查询单个排课。
+func (s *SchedulingStore) GetSchedule(ctx context.Context, id, tenantID string) (*domain.ScheduleEntry, error) {
+	e, err := s.fetchScheduleEntry(ctx, id, tenantID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return e, nil
+}
+
+// CreateSchedule 创建排课（事务：插入排课 + 标记教学计划条目已排）。
+func (s *SchedulingStore) CreateSchedule(ctx context.Context, tx Queryer, p *ScheduleCreateParams) (string, error) {
+	var id string
+	err := tx.QueryRow(ctx, `
+		INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
+			class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
+			venue_id, scenario_id, source, status, version)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'draft', 1)
+		RETURNING id
+	`, p.TenantID, p.TermID, p.PlanEntryID, p.CourseName, p.CourseCode, p.CourseID, p.Type,
+		p.ClassNodeID, p.ClassNodeIDs, p.TeacherID, p.DayOfWeek, p.Periods, p.StartWeek, p.EndWeek, p.WeekPattern,
+		p.VenueID, p.ScenarioID, p.Source).Scan(&id)
+	if err != nil {
+		return "", err
+	}
+	if p.PlanEntryID != nil && *p.PlanEntryID != "" {
+		if _, err := tx.Exec(ctx, `
+			UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1
+		`, *p.PlanEntryID); err != nil {
+			return "", err
+		}
+	}
+	return id, nil
+}
+
+// UpdateSchedule 更新排课。
+func (s *SchedulingStore) UpdateSchedule(ctx context.Context, id, tenantID string, p *ScheduleCreateParams) error {
+	_, err := s.q.Exec(ctx, `
+		UPDATE schedule_entries SET term_id = $1, plan_entry_id = $2, course_name = $3, course_code = $4, course_id = $5, type = $6,
+			class_node_id = $7, class_node_ids = $8, teacher_id = $9, day_of_week = $10, periods = $11,
+			start_week = $12, end_week = $13, week_pattern = $14, venue_id = $15, scenario_id = $16, updated_at = NOW()
+		WHERE id = $17 AND tenant_id = $18
+	`, p.TermID, p.PlanEntryID, p.CourseName, p.CourseCode, p.CourseID, p.Type,
+		p.ClassNodeID, p.ClassNodeIDs, p.TeacherID, p.DayOfWeek, p.Periods, p.StartWeek, p.EndWeek, p.WeekPattern,
+		p.VenueID, p.ScenarioID, id, tenantID)
+	return err
+}
+
+// DeleteSchedule 删除排课。
+func (s *SchedulingStore) DeleteSchedule(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM schedule_entries WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	return err
+}
+
+// DeleteScheduleWithRestore 删除排课并恢复计划条目为待排（事务内）。
+func (s *SchedulingStore) DeleteScheduleWithRestore(ctx context.Context, tx Queryer, id, tenantID string, planEntryID *string) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
+		return err
+	}
+	if planEntryID != nil && *planEntryID != "" {
+		if _, err := tx.Exec(ctx, `
+			UPDATE teaching_plan_entries SET status = 'planned'
+			WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM schedule_entries WHERE plan_entry_id = $1)
+		`, *planEntryID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ScheduleCreateParams 排课参数。
+type ScheduleCreateParams struct {
+	TenantID    string
+	TermID      string
+	PlanEntryID *string
+	CourseName  string
+	CourseCode  *string
+	CourseID    *string
+	Type        string
+	ClassNodeID string
+	ClassNodeIDs []string
+	TeacherID   *string
+	DayOfWeek   int
+	Periods     domain.JSONSlice
+	StartWeek   int
+	EndWeek     int
+	WeekPattern string
+	VenueID     *string
+	ScenarioID  *string
+	Source      string
+}
+
+// ===== 冲突/查询辅助 =====
+
+// CheckScheduleConflicts 查询排课冲突（完整：周重叠+节次重叠+教师/班级/场地）。
+func (s *SchedulingStore) CheckScheduleConflicts(ctx context.Context, tenantID, termID string, p *ScheduleConflictParams, excludeID string) ([]domain.ScheduleConflict, error) {
+	periods := jsonSliceToStrings(p.Periods)
+	if len(periods) == 0 {
+		return nil, nil
+	}
+	weekPattern := p.WeekPattern
+	if weekPattern == "" {
+		weekPattern = "all"
+	}
+	reqClasses := p.ClassNodeIDs
+	if len(reqClasses) == 0 && p.ClassNodeID != "" {
+		reqClasses = []string{p.ClassNodeID}
+	}
+
+	rows, err := s.q.Query(ctx, `
+		SELECT se.id, se.course_name, COALESCE(o.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
+			se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern,
+			se.teacher_id, se.class_node_id, se.venue_id, se.plan_entry_id, se.class_node_ids
+		FROM schedule_entries se
+		LEFT JOIN organizations o ON o.id = se.class_node_id
+		LEFT JOIN users u ON u.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		WHERE se.tenant_id = $1 AND se.term_id = $2 AND se.day_of_week = $3
+			AND NOT (se.end_week < $4 OR se.start_week > $5)
+			AND (se.week_pattern = $6 OR se.week_pattern = 'all' OR $6 = 'all')
+			AND se.periods ?| $7
+			AND ($8 = '' OR se.id::text <> $8)
+	`, tenantID, termID, p.DayOfWeek, p.StartWeek, p.EndWeek, weekPattern, periods, excludeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	conflicts := make([]domain.ScheduleConflict, 0)
+	for rows.Next() {
+		var c domain.ScheduleConflict
+		var rowTeacherID, rowClassNodeID, rowVenueID, rowPlanEntryID *string
+		var rowClassNodeIDs []string
+		if err := rows.Scan(&c.EntryID, &c.CourseName, &c.ClassName, &c.TeacherName, &c.VenueName,
+			&c.DayOfWeek, &c.Periods, &c.StartWeek, &c.EndWeek, &c.WeekPattern,
+			&rowTeacherID, &rowClassNodeID, &rowVenueID, &rowPlanEntryID, &rowClassNodeIDs); err != nil {
+			return nil, err
+		}
+
+		// 同一门课（同一教学计划条目）多个班级同时上课不判冲突
+		if rowPlanEntryID != nil && p.PlanEntryID != nil && *rowPlanEntryID == *p.PlanEntryID {
+			continue
+		}
+
+		if p.TeacherID != nil && *p.TeacherID != "" && rowTeacherID != nil && *rowTeacherID == *p.TeacherID {
+			dup := c
+			dup.Kind = "teacher"
+			conflicts = append(conflicts, dup)
+		}
+		// 班级冲突：任一班重叠即冲突
+		existingClasses := rowClassNodeIDs
+		if len(existingClasses) == 0 && rowClassNodeID != nil {
+			existingClasses = []string{*rowClassNodeID}
+		}
+		classOverlap := false
+		for _, ec := range existingClasses {
+			for _, rc := range reqClasses {
+				if ec == rc {
+					classOverlap = true
+					break
+				}
+			}
+			if classOverlap {
+				break
+			}
+		}
+		if classOverlap {
+			dup := c
+			dup.Kind = "class"
+			conflicts = append(conflicts, dup)
+		}
+		if p.VenueID != nil && *p.VenueID != "" && rowVenueID != nil && *rowVenueID == *p.VenueID {
+			dup := c
+			dup.Kind = "venue"
+			conflicts = append(conflicts, dup)
+		}
+	}
+	return conflicts, rows.Err()
+}
+
+// ScheduleConflictParams 冲突校验参数。
+type ScheduleConflictParams struct {
+	TermID      string
+	PlanEntryID *string
+	ClassNodeID string
+	ClassNodeIDs []string
+	TeacherID   *string
+	DayOfWeek   int
+	Periods     domain.JSONSlice
+	StartWeek   int
+	EndWeek     int
+	WeekPattern string
+	VenueID     *string
+}
+
+// ResolveCourseIDByCode 按课程编码查询课程。
+func (s *SchedulingStore) ResolveCourseIDByCode(ctx context.Context, q Queryer, tenantID string, courseCode *string) *string {
+	if courseCode == nil || *courseCode == "" {
+		return nil
+	}
+	var id string
+	if err := q.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id = $1 AND code = $2`, tenantID, *courseCode).Scan(&id); err != nil {
+		return nil
+	}
+	return &id
+}
+
+// PlanEntryCourseID 查询教学计划条目的课程 ID。
+func (s *SchedulingStore) PlanEntryCourseID(ctx context.Context, q Queryer, entryID string) *string {
+	var courseID *string
+	_ = q.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, entryID).Scan(&courseID)
+	return courseID
+}
+
+// FallbackClassID 查询教学计划条目的班级（多班级优先）。
+func (s *SchedulingStore) FallbackClassID(ctx context.Context, entryID string) *string {
+	var fallbackClassID *string
+	_ = s.q.QueryRow(ctx, `
+		SELECT ec.class_node_id FROM teaching_plan_entry_classes ec WHERE ec.entry_id = $1 LIMIT 1
+	`, entryID).Scan(&fallbackClassID)
+	if fallbackClassID == nil {
+		_ = s.q.QueryRow(ctx, `
+			SELECT class_node_id FROM teaching_plan_entries WHERE id = $1
+		`, entryID).Scan(&fallbackClassID)
+	}
+	return fallbackClassID
+}
+
+// FetchTermBrief 查询学期摘要。
+func (s *SchedulingStore) FetchTermBrief(ctx context.Context, id, tenantID string) (*domain.Term, error) {
+	var t domain.Term
+	err := s.q.QueryRow(ctx, `
+		SELECT id, name, start_date, end_date
+		FROM terms WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&t.ID, &t.Name, &t.StartDate, &t.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// PeriodSlotNames 加载节次名称。
+func (s *SchedulingStore) PeriodSlotNames(ctx context.Context, tenantID string) ([]string, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT name FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	names := make([]string, 0)
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			continue
+		}
+		names = append(names, n)
+	}
+	return names, rows.Err()
+}
+
+// VenueBrief 场地简要。
+type VenueBrief struct {
+	ID   string
+	Name string
+	Type string
+}
+
+// ListVenueBriefs 加载场地简要。
+func (s *SchedulingStore) ListVenueBriefs(ctx context.Context, tenantID string) ([]VenueBrief, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT id, name, type FROM venues WHERE tenant_id = $1 ORDER BY name
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VenueBrief
+	for rows.Next() {
+		var v VenueBrief
+		if err := rows.Scan(&v.ID, &v.Name, &v.Type); err != nil {
+			continue
+		}
+		items = append(items, v)
+	}
+	return items, rows.Err()
+}
+
+// PendingPlanEntry 待排教学计划条目。
+type PendingPlanEntry struct {
+	ID          string
+	CourseName  string
+	CourseCode  string
+	EntryType   string
+	StartWeek   int
+	EndWeek     int
+	WeekPattern string
+	ClassNodeID string
+	TeacherID   string
+	VenueType   string
+	ScenarioID  string
+	CourseID    string
+}
+
+// ListPendingPlanEntries 加载待排教学计划条目。
+func (s *SchedulingStore) ListPendingPlanEntries(ctx context.Context, tenantID, termID, planID string) ([]PendingPlanEntry, error) {
+	var planFilter string
+	args := []any{tenantID, termID}
+	if planID != "" {
+		planFilter = " AND p.id = $3"
+		args = append(args, planID)
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT e.id, e.course_name, e.course_code, e.type, e.start_week, e.end_week, e.week_pattern,
+			COALESCE(e.class_node_id::text, ''), COALESCE(e.teacher_id::text, ''), COALESCE(e.venue_type, ''),
+			COALESCE(e.scenario_id::text, ''), COALESCE(e.course_id::text, '')
+		FROM teaching_plan_entries e
+		JOIN teaching_plans p ON p.id = e.plan_id
+		WHERE p.tenant_id = $1 AND p.term_id = $2 AND p.status = 'confirmed' AND e.status = 'planned'`+planFilter+`
+		ORDER BY e.start_week, e.course_name
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingPlanEntry
+	for rows.Next() {
+		var e PendingPlanEntry
+		if err := rows.Scan(&e.ID, &e.CourseName, &e.CourseCode, &e.EntryType, &e.StartWeek, &e.EndWeek, &e.WeekPattern,
+			&e.ClassNodeID, &e.TeacherID, &e.VenueType, &e.ScenarioID, &e.CourseID); err != nil {
+			continue
+		}
+		if e.ClassNodeID == "" {
+			continue
+		}
+		items = append(items, e)
+	}
+	return items, rows.Err()
+}
+
+// MarkPlanEntryScheduled 标记教学计划条目已排。
+func (s *SchedulingStore) MarkPlanEntryScheduled(ctx context.Context, entryID string) {
+	_, _ = s.q.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, entryID)
+}
+
+// PublishScheduleEntries 批量发布排课，返回发布数与新版本。
+func (s *SchedulingStore) PublishScheduleEntries(ctx context.Context, tenantID, termID string) (int64, int, error) {
+	tag, err := s.q.Exec(ctx, `
+		UPDATE schedule_entries SET status = 'published', version = version + 1, updated_at = NOW()
+		WHERE tenant_id = $1 AND term_id = $2 AND status = 'draft'
+	`, tenantID, termID)
+	if err != nil {
+		return 0, 0, err
+	}
+	var version int
+	_ = s.q.QueryRow(ctx, `
+		SELECT COALESCE(MAX(version), 1) FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2
+	`, tenantID, termID).Scan(&version)
+	return tag.RowsAffected(), version, nil
+}
+
+// ListTimetableEntries 查询课表条目。
+func (s *SchedulingStore) ListTimetableEntries(ctx context.Context, tenantID, termID, classNodeID, teacherID, status string) ([]domain.ScheduleEntry, error) {
+	query := `
+		SELECT se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type,
+			se.class_node_id, se.class_node_ids, se.teacher_id, se.day_of_week, se.periods, se.start_week, se.end_week,
+			se.week_pattern, se.venue_id, se.scenario_id, se.source, se.status, se.version,
+			COALESCE(t.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
+			COALESCE(o.name, '') AS class_name, COALESCE(sce.name, '') AS scenario_name
+		FROM schedule_entries se
+		LEFT JOIN users t ON t.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		LEFT JOIN organizations o ON o.id = se.class_node_id
+		LEFT JOIN scenarios sce ON sce.id = se.scenario_id
+		WHERE se.tenant_id = $1 AND se.term_id = $2`
+	args := []any{tenantID, termID}
+	if classNodeID != "" {
+		query += ` AND ($3 = ANY(se.class_node_ids) OR se.class_node_id = $3)`
+		args = append(args, classNodeID)
+	}
+	if teacherID != "" {
+		query += ` AND se.teacher_id = $4`
+		args = append(args, teacherID)
+	}
+	if status != "" {
+		query += ` AND se.status = $5`
+		args = append(args, status)
+	}
+	query += ` ORDER BY se.day_of_week, se.periods`
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []domain.ScheduleEntry
+	for rows.Next() {
+		var e domain.ScheduleEntry
+		var planEntryID, courseCode, teacherID2, venueID, scenarioID *string
+		var teacherName, venueName, className, scenarioName string
+		if err := rows.Scan(&e.ID, &e.TermID, &planEntryID, &e.CourseName, &courseCode, &e.CourseID, &e.Type,
+			&e.ClassNodeID, &e.ClassNodeIDs, &teacherID2, &e.DayOfWeek, &e.Periods, &e.StartWeek, &e.EndWeek,
+			&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version,
+			&teacherName, &venueName, &className, &scenarioName); err != nil {
+			continue
+		}
+		e.PlanEntryID = planEntryID
+		e.CourseCode = courseCode
+		e.TeacherID = teacherID2
+		e.VenueID = venueID
+		e.ScenarioID = scenarioID
+		e.TeacherName = teacherName
+		e.VenueName = venueName
+		e.ClassName = className
+		e.ScenarioName = scenarioName
+		items = append(items, e)
+	}
+	return items, rows.Err()
+}
+
+func (s *SchedulingStore) fetchScheduleEntry(ctx context.Context, id, tenantID string) (*domain.ScheduleEntry, error) {
+	var e domain.ScheduleEntry
+	var planEntryID, courseCode, teacherID2, venueID, scenarioID *string
+	var teacherName, venueName, className, scenarioName string
+	err := s.q.QueryRow(ctx, `
+		SELECT se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type,
+			se.class_node_id, se.class_node_ids, se.teacher_id, se.day_of_week, se.periods, se.start_week, se.end_week,
+			se.week_pattern, se.venue_id, se.scenario_id, se.source, se.status, se.version,
+			COALESCE(t.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
+			COALESCE(o.name, '') AS class_name, COALESCE(sce.name, '') AS scenario_name
+		FROM schedule_entries se
+		LEFT JOIN users t ON t.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		LEFT JOIN organizations o ON o.id = se.class_node_id
+		LEFT JOIN scenarios sce ON sce.id = se.scenario_id
+		WHERE se.id = $1 AND se.tenant_id = $2
+	`, id, tenantID).Scan(
+		&e.ID, &e.TermID, &planEntryID, &e.CourseName, &courseCode, &e.CourseID, &e.Type,
+		&e.ClassNodeID, &e.ClassNodeIDs, &teacherID2, &e.DayOfWeek, &e.Periods, &e.StartWeek, &e.EndWeek,
+		&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version,
+		&teacherName, &venueName, &className, &scenarioName)
+	if err != nil {
+		return nil, err
+	}
+	e.PlanEntryID = planEntryID
+	e.CourseCode = courseCode
+	e.TeacherID = teacherID2
+	e.VenueID = venueID
+	e.ScenarioID = scenarioID
+	e.TeacherName = teacherName
+	e.VenueName = venueName
+	e.ClassName = className
+	e.ScenarioName = scenarioName
+	return &e, nil
+}
+
+// ScanScheduleEntryRows 扫描排课行。
+func ScanScheduleEntryRows(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
+	items := make([]domain.ScheduleEntry, 0)
+	for rows.Next() {
+		var e domain.ScheduleEntry
+		var planEntryID, courseCode, teacherID2, venueID, scenarioID *string
+		var teacherName, venueName, className, scenarioName string
+		if err := rows.Scan(
+			&e.ID, &e.TermID, &planEntryID, &e.CourseName, &courseCode, &e.CourseID, &e.Type,
+			&e.ClassNodeID, &e.ClassNodeIDs, &teacherID2, &e.DayOfWeek, &e.Periods, &e.StartWeek, &e.EndWeek,
+			&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version,
+			&teacherName, &venueName, &className, &scenarioName); err != nil {
+			return nil, err
+		}
+		e.PlanEntryID = planEntryID
+		e.CourseCode = courseCode
+		e.TeacherID = teacherID2
+		e.VenueID = venueID
+		e.ScenarioID = scenarioID
+		e.TeacherName = teacherName
+		e.VenueName = venueName
+		e.ClassName = className
+		e.ScenarioName = scenarioName
+		items = append(items, e)
+	}
+	return items, nil
+}
+
+// jsonSliceToStrings JSONSlice 转字符串数组。
+func jsonSliceToStrings(s domain.JSONSlice) []string {
+	out := make([]string, 0, len(s))
+	for _, v := range s {
+		if str, ok := v.(string); ok {
+			out = append(out, str)
+		}
+	}
+	return out
+}
+
+// UserOrgNodeID 查询用户组织节点。
+func (s *SchedulingStore) UserOrgNodeID(ctx context.Context, userID, tenantID string) *string {
+	var nodeID *string
+	_ = s.q.QueryRow(ctx, `
+		SELECT org_node_id FROM users WHERE id = $1 AND tenant_id = $2
+	`, userID, tenantID).Scan(&nodeID)
+	return nodeID
+}
+
+// FindTermForSchedule 查询含本人排课的最优学期。
+func (s *SchedulingStore) FindTermForSchedule(ctx context.Context, tenantID, userID, classNodeID string) (string, error) {
+	scopeCond := "se.teacher_id = $2::uuid"
+	scopeArgs := []any{tenantID, userID}
+	if classNodeID != "" {
+		scopeCond = "(se.class_node_id = $2::uuid OR $2::uuid = ANY(se.class_node_ids))"
+		scopeArgs = []any{tenantID, classNodeID}
+	}
+	var termID string
+	err := s.q.QueryRow(ctx, `
+		SELECT t.id FROM terms t
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*) AS cnt FROM schedule_entries se
+			WHERE se.term_id = t.id AND se.tenant_id = t.tenant_id
+			  AND `+scopeCond+`
+		) s ON true
+		WHERE t.tenant_id = $1
+		ORDER BY t.is_current DESC, COALESCE(s.cnt, 0) DESC, t.start_date DESC
+		LIMIT 1
+	`, scopeArgs...).Scan(&termID)
+	return termID, err
+}
+
+// TimetableVersion 查询课表版本号。
+func (s *SchedulingStore) TimetableVersion(ctx context.Context, tenantID, termID, status string) int {
+	var version int
+	_ = s.q.QueryRow(ctx, `
+		SELECT COALESCE(MAX(version), 1) FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2 AND status = $3
+	`, tenantID, termID, status).Scan(&version)
+	return version
+}
+
+// ScheduledExportMap 查询已排课导出映射。
+type ScheduledExportMap struct {
+	PlanEntryID *string
+	Day         int
+	Periods     domain.JSONSlice
+	TeacherName string
+	VenueName   string
+	ClassNames  []string
+}
+
+// ListScheduledExportMap 查询已排课导出映射。
+func (s *SchedulingStore) ListScheduledExportMap(ctx context.Context, tenantID, termID string) ([]ScheduledExportMap, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT se.plan_entry_id, se.day_of_week, se.periods,
+			COALESCE(u.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
+			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names
+		FROM schedule_entries se
+		LEFT JOIN users u ON u.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		WHERE se.tenant_id = $1 AND se.term_id = $2
+	`, tenantID, termID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ScheduledExportMap
+	for rows.Next() {
+		var m ScheduledExportMap
+		if err := rows.Scan(&m.PlanEntryID, &m.Day, &m.Periods, &m.TeacherName, &m.VenueName, &m.ClassNames); err == nil {
+			items = append(items, m)
+		}
+	}
+	return items, rows.Err()
+}
+
+// PlanEntryBrief 教学计划条目简要。
+type PlanEntryBrief struct {
+	ID         string
+	CourseName string
+	EntryType  string
+	StartWeek  int
+	EndWeek    int
+	WeekPattern string
+}
+
+// ListPlanEntryBriefs 查询教学计划全部条目。
+func (s *SchedulingStore) ListPlanEntryBriefs(ctx context.Context, tenantID, termID string) ([]PlanEntryBrief, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT e.id, e.course_name, e.type, e.start_week, e.end_week, e.week_pattern
+		FROM teaching_plan_entries e
+		JOIN teaching_plans p ON p.id = e.plan_id
+		WHERE p.term_id = $1 AND p.tenant_id = $2
+		ORDER BY e.start_week, e.course_name, e.id
+	`, termID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlanEntryBrief
+	for rows.Next() {
+		var e PlanEntryBrief
+		if err := rows.Scan(&e.ID, &e.CourseName, &e.EntryType, &e.StartWeek, &e.EndWeek, &e.WeekPattern); err != nil {
+			continue
+		}
+		items = append(items, e)
+	}
+	return items, rows.Err()
+}
+
+// ListTeacherNames 查询教师名单。
+func (s *SchedulingStore) ListTeacherNames(ctx context.Context, tenantID string) ([]string, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT DISTINCT u.name FROM users u
+		JOIN user_roles ur ON ur.user_id = u.id
+		JOIN roles r2 ON r2.id = ur.role_id
+		WHERE u.tenant_id = $1 AND u.name <> '' AND u.status = 'active' AND r2.code = 'teacher'
+		ORDER BY u.name
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err == nil && n != "" {
+			items = append(items, n)
+		}
+	}
+	return items, rows.Err()
+}
+
+// ListVenueNames 查询场地名单。
+func (s *SchedulingStore) ListVenueNames(ctx context.Context, tenantID string) ([]string, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT name FROM venues WHERE tenant_id = $1 ORDER BY name
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err == nil {
+			items = append(items, n)
+		}
+	}
+	return items, rows.Err()
+}
+
+// ListClassNames 查询班级名单。
+func (s *SchedulingStore) ListClassNames(ctx context.Context, tenantID string) ([]string, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT name FROM organizations WHERE tenant_id = $1 AND type = 'class' AND status = 'active' ORDER BY name
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err == nil {
+			items = append(items, n)
+		}
+	}
+	return items, rows.Err()
+}
+
+// ImportReplaceSchedules 导入时清空学期排课并重建。
+func (s *SchedulingStore) ImportReplaceSchedules(ctx context.Context, tx Queryer, tenantID, termID string) error {
+	_, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2`, tenantID, termID)
+	return err
+}
