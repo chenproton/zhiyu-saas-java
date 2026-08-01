@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Eye, Download, CheckCircle2, Circle } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@zhiyu/ui"
 import type { TaskResource } from "../_types/registrar-adapted"
 
 const resourceTypeLabel: Record<string, string> = {
@@ -43,7 +43,7 @@ export function PreClassTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button variant="outline" onClick={() => toast("备课功能开发中")}>
+        <Button variant="outline" onClick={() => toast({ title: "备课功能开发中" })}>
           前往备课
         </Button>
       </div>

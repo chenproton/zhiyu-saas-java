@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react"
 import { approvalApi, workflowApi } from "@/lib/api"
 import type { ApprovalRecord, Workflow, WorkflowStep } from "@/lib/types/backend"
-import { toast } from "sonner"
+import { toast } from "@zhiyu/ui"
 
 export interface ApprovalStepInfo {
   currentStepIndex: number
@@ -60,7 +60,7 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
         }
       }
     } catch (err: any) {
-      toast.error(err.message || "无法获取审批数据")
+      toast({ title: err.message || "无法获取审批数据", variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -91,13 +91,13 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
     try {
       const result = await approvalApi.review(id, { status: "approved", comment })
       if (result.status === "approved") {
-        toast.success("审批通过")
+        toast({ title: "审批通过" })
       } else {
-        toast.success("审批意见已记录")
+        toast({ title: "审批意见已记录" })
       }
       await refresh()
     } catch (err: any) {
-      toast.error(err.message || "审批失败")
+      toast({ title: err.message || "审批失败", variant: "destructive" })
     }
   }, [refresh])
 
@@ -105,13 +105,13 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
     try {
       const result = await approvalApi.review(id, { status: "rejected", comment })
       if (result.status === "rejected") {
-        toast.success("已驳回")
+        toast({ title: "已驳回" })
       } else {
-        toast.success("驳回意见已记录")
+        toast({ title: "驳回意见已记录" })
       }
       await refresh()
     } catch (err: any) {
-      toast.error(err.message || "驳回失败")
+      toast({ title: err.message || "驳回失败", variant: "destructive" })
     }
   }, [refresh])
 
@@ -125,13 +125,13 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
       const success = results.filter((r) => r.status === "fulfilled").length
       const failed = results.length - success
       if (failed === 0) {
-        toast.success(`批量${label}成功，共 ${success} 条`)
+        toast({ title: `批量${label}成功，共 ${success} 条` })
       } else {
-        toast.warning(`批量${label}完成，成功 ${success} 条，失败 ${failed} 条`)
+        toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
       }
       await refresh()
     } catch (err: any) {
-      toast.error(err.message || `批量${label}失败`)
+      toast({ title: err.message || `批量${label}失败`, variant: "destructive" })
     }
   }, [refresh])
 

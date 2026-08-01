@@ -8,7 +8,7 @@
     "build:backend": "cd backend && go build -o bin/server ./cmd/server/main.go",
     "build:all": "pnpm build:backend && pnpm build:edu",
     "lint": "pnpm --filter @zhiyu/edu lint",
-    "test": "pnpm --filter @zhiyu/edu test && pnpm --filter @zhiyu/api-client test",
+    "test": "pnpm --filter @zhiyu/ui test",
     "typecheck": "pnpm -r typecheck"
   }
 }

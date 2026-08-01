@@ -23,7 +23,7 @@ func PublicPositionsKey() KeyFunc {
 		tenant := tenantFromRequest(r)
 		key := "zhiyu:" + tenant + ":public:positions"
 		v := r.URL.Query()
-		for _, p := range []string{"page", "pageSize", "search", "industryId", "majorId"} {
+		for _, p := range []string{"page", "pageSize", "search", "positionType"} {
 			if val := v.Get(p); val != "" {
 				key += ":" + p + ":" + val
 			}

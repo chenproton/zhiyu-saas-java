@@ -1,34 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import {
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  List,
-  ListOrdered,
-  Quote,
-  Code,
-  Link as LinkIcon,
-  Image,
-  Video,
-  Table,
-  Minus,
-  Palette,
-  Sparkles,
-  Type,
-  Heading1,
-  Heading2,
-  Upload,
-  Trash2,
-  Eye,
-  File,
-  Loader2,
-} from "lucide-react"
+import { Upload, Trash2, Eye, File, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -50,18 +23,6 @@ interface RichTextEditorProps {
   onPdfChange?: (url: string | null) => void
   toast: any
 }
-
-const toolbarItems = [
-  [{ icon: <Heading1 className="h-4 w-4" />, label: "H1" }, { icon: <Heading2 className="h-4 w-4" />, label: "H2" }],
-  [{ icon: <Type className="h-4 w-4" />, label: "正文" }],
-  [{ icon: <b className="text-xs">B</b>, label: "加粗" }, { icon: <i className="text-xs">I</i>, label: "斜体" }, { icon: <u className="text-xs">U</u>, label: "下划线" }, { icon: <Strikethrough className="h-4 w-4" />, label: "删除线" }],
-  [{ icon: <AlignLeft className="h-4 w-4" />, label: "左对齐" }, { icon: <AlignCenter className="h-4 w-4" />, label: "居中" }, { icon: <AlignRight className="h-4 w-4" />, label: "右对齐" }],
-  [{ icon: <List className="h-4 w-4" />, label: "无序列表" }, { icon: <ListOrdered className="h-4 w-4" />, label: "有序列表" }],
-  [{ icon: <Quote className="h-4 w-4" />, label: "引用" }, { icon: <Code className="h-4 w-4" />, label: "代码" }],
-  [{ icon: <LinkIcon className="h-4 w-4" />, label: "链接" }, { icon: <Image className="h-4 w-4" aria-label="图片" />, label: "图片" }, { icon: <Video className="h-4 w-4" />, label: "视频" }],
-  [{ icon: <Table className="h-4 w-4" />, label: "表格" }, { icon: <Minus className="h-4 w-4" />, label: "分割线" }],
-  [{ icon: <Palette className="h-4 w-4" />, label: "字体颜色" }, { icon: <Sparkles className="h-4 w-4" />, label: "背景色" }],
-]
 
 export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, pdfUrl, onPdfChange, toast }: RichTextEditorProps) {
   const [mode, setMode] = useState<"rich_text" | "pdf">("rich_text")
@@ -134,36 +95,18 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
 
       {mode === "rich_text" ? (
         <div className="flex flex-col">
-          <p className="text-xs text-gray-500 mb-2">可编写详细的学习目标，支持图文混排</p>
+          <p className="text-xs text-gray-500 mb-2">可编写详细的学习目标（纯文本）</p>
           <div
             className="border rounded-lg overflow-hidden flex flex-col"
             style={{ minHeight }}
           >
-            <div className="bg-gray-50 border-b px-3 py-2 flex flex-wrap gap-1">
-              {toolbarItems.map((group, gi) => (
-                <div key={gi} className="flex items-center gap-0.5 mr-2">
-                  {group.map((item, ii) => (
-                    <Button
-                      key={ii}
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-gray-600 hover:text-primary hover:bg-primary/5"
-                      title={item.label}
-                      onClick={() => {}}
-                    >
-                      {item.icon}
-                    </Button>
-                  ))}
-                </div>
-              ))}
-            </div>
             <div className="p-4 flex-1 bg-white">
               <Textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder || defaultPlaceholder}
                 className="border-0 min-h-full w-full focus-visible:ring-0 resize-none text-sm leading-relaxed"
-                style={{ minHeight: minHeight - 100 }}
+                style={{ minHeight: minHeight - 40 }}
               />
             </div>
             <div className="bg-gray-50 border-t px-3 py-1.5 flex items-center justify-between text-xs text-gray-400">
@@ -171,12 +114,6 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
               <span>{value.length} 字符</span>
             </div>
           </div>
-          {value.includes("<img") || value.includes("<video") ? (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700 flex items-center gap-2">
-              <Image className="h-4 w-4" aria-label="图片" />
-              检测到已插入多媒体内容
-            </div>
-          ) : null}
         </div>
       ) : (
         <div

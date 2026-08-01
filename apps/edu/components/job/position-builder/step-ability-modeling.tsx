@@ -50,7 +50,7 @@ import {
 import { abilityApi, positionApi } from '@/lib/api'
 import { convertApiAbilityToLocal } from '@/lib/converters/job-converters'
 import type { Position, PositionAbilityBinding, CompetencyLevel, Ability } from '@/lib/types/job-source'
-import { toast } from 'sonner'
+import { toast } from "@zhiyu/ui"
 
 interface StepAbilityModelingProps {
   position: Position
@@ -193,7 +193,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       b => b.responsibilityId === selectedRespId && b.publicAbilityId === ability.id
     )
     if (exists) {
-      toast.error('该能力点已添加到当前职责')
+      toast({ title: '该能力点已添加到当前职责', variant: "destructive" })
       return
     }
 
@@ -225,7 +225,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       b => b.responsibilityId === selectedRespId && b.name.toLowerCase() === trimmed.toLowerCase()
     )
     if (existsInBindings) {
-      toast.error('当前职责已存在同名能力点')
+      toast({ title: '当前职责已存在同名能力点', variant: "destructive" })
       return
     }
 
@@ -348,9 +348,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
         attributes: editAbilityAttributes,
       })
       setAbilities(prev => prev.map(a => a.id === abilityId ? { ...a, name: trimmed, attributes: editAbilityAttributes } : a))
-      toast.success('能力点已更新')
+      toast({ title: '能力点已更新' })
     } catch (err: any) {
-      toast.error(err?.message || '更新失败')
+      toast({ title: err?.message || '更新失败', variant: "destructive" })
     }
     setEditingAbilityId(null)
     setEditAbilityName('')
@@ -361,9 +361,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
     try {
       await abilityApi.delete(abilityId)
       setAbilities(prev => prev.filter(a => a.id !== abilityId))
-      toast.success('能力点已删除')
+      toast({ title: '能力点已删除' })
     } catch (err: any) {
-      toast.error(err?.message || '删除失败')
+      toast({ title: err?.message || '删除失败', variant: "destructive" })
     }
   }
 

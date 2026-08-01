@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { toast } from "sonner"
+import { toast } from "@zhiyu/ui"
 import {
   FileText,
   HelpCircle,
@@ -80,7 +80,7 @@ function RandomQuizPanel({ config, setConfig }: { config: TaskEvaluationConfig; 
       ],
     })
     setNewQuestion({ name: "", description: "", answer: "" })
-    toast.success("题目已添加")
+    toast({ title: "题目已添加" })
   }
 
   const removeQuestion = (id: string) => {
@@ -171,7 +171,7 @@ function PeerReviewPanel({ config, setConfig }: { config: TaskEvaluationConfig; 
       ],
     })
     setNewStep({ label: "", desc: "", subjectType: "student", weight: 20 })
-    toast.success("评价环节已添加")
+    toast({ title: "评价环节已添加" })
   }
 
   const totalWeight = (config.reviewSteps || []).reduce((sum, s) => sum + (s.enabled ? s.weight : 0), 0)
@@ -263,7 +263,8 @@ function OutcomeArchivePanel() {
             <Card><CardContent className="p-3 text-center"><p className="text-lg font-bold">—</p><p className="text-xs text-muted-foreground">作业/测验</p></CardContent></Card>
             <Card><CardContent className="p-3 text-center"><p className="text-lg font-bold">—</p><p className="text-xs text-muted-foreground">互评活动</p></CardContent></Card>
           </div>
-          <Button onClick={() => { setArchived(true); toast.success("过程性考核归档完成") }} disabled={archived}>
+          <Button onClick={() => { setArchived(true); toast({ title: "过程性考核归档完成" })
+ }} disabled={archived}>
             {archived ? <CheckCircle2 className="h-4 w-4 mr-1" /> : <Save className="h-4 w-4 mr-1" />}
             {archived ? "已归档" : "执行归档"}
           </Button>
@@ -355,7 +356,7 @@ export function PostClassTab() {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={() => toast.success("测评配置已保存")}><Save className="h-4 w-4 mr-1" />保存配置</Button>
+        <Button onClick={() => toast({ title: "测评配置已保存" })}><Save className="h-4 w-4 mr-1" />保存配置</Button>
       </div>
     </div>
   )

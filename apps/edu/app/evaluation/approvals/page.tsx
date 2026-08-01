@@ -9,7 +9,7 @@ import { useSubmitterNames } from "@/hooks/use-submitter-names"
 import { ApprovalListPage, type ApprovalColumn } from "@/components/shared/approval-list-page"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { toast } from "sonner"
+import { toast } from "@zhiyu/ui"
 
 const TYPE_LABELS: Record<string, string> = {
   question_bank: "题库",
@@ -144,13 +144,13 @@ export default function EvaluationApprovalsPage() {
       const success = results.filter((r) => r.status === "fulfilled").length
       const failed = results.length - success
       if (failed === 0) {
-        toast.success(`批量${label}成功，共 ${success} 条`)
+        toast({ title: `批量${label}成功，共 ${success} 条` })
       } else {
-        toast.warning(`批量${label}完成，成功 ${success} 条，失败 ${failed} 条`)
+        toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
       }
       await Promise.all([refreshBank(), refreshExam()])
     } catch (err: any) {
-      toast.error(err.message || `批量${label}失败`)
+      toast({ title: err.message || `批量${label}失败`, variant: "destructive" })
     }
   }
 

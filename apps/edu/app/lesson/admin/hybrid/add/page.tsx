@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Info, Plus, X, BookOpen, Layers, BookMarked, Microscope, Briefcase, Database, FileStack, Monitor, CheckCircle2, BarChart3, ClipboardList, Zap, Shuffle, MessageSquare, HelpCircle, ChevronDown, ChevronRight, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, ImageUp, Link as LinkIcon, AlignLeft } from "lucide-react"
-import { toast, Toaster } from "sonner"
+import { toast } from "@zhiyu/ui"
 import { courseApi, approvalApi, majorApi, fileApi, lessonBatchApi } from "@/lib/api"
 import type { Course } from "@/lib/types/lesson"
 import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
@@ -39,38 +39,13 @@ import {
 const FIRST_NODE_ID = "hybrid-node-1"
 
 function MockRichEditor({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  const toolbarBtn = (icon: React.ReactNode, title: string) => (
-    <button
-      type="button"
-      title={title}
-      disabled
-      className="p-1 rounded text-gray-400 cursor-not-allowed transition-colors"
-    >
-      {icon}
-    </button>
-  )
-
   return (
-    <div className="border rounded-md bg-white overflow-hidden">
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b bg-gray-50/50">
-        {toolbarBtn(<Bold className="h-3.5 w-3.5" />, "加粗")}
-        {toolbarBtn(<Italic className="h-3.5 w-3.5" />, "斜体")}
-        {toolbarBtn(<Underline className="h-3.5 w-3.5" />, "下划线")}
-        <div className="w-px h-3.5 bg-gray-200 mx-1" />
-        {toolbarBtn(<AlignLeft className="h-3.5 w-3.5" />, "左对齐")}
-        {toolbarBtn(<List className="h-3.5 w-3.5" />, "无序列表")}
-        {toolbarBtn(<ListOrdered className="h-3.5 w-3.5" />, "有序列表")}
-        <div className="w-px h-3.5 bg-gray-200 mx-1" />
-        {toolbarBtn(<LinkIcon className="h-3.5 w-3.5" />, "插入链接")}
-        {toolbarBtn(<ImageIcon className="h-3.5 w-3.5" />, "插入图片")}
-      </div>
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="border-0 rounded-none shadow-none focus-visible:ring-0 text-sm min-h-[100px] resize-y"
-      />
-    </div>
+    <Textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="border rounded-md text-sm min-h-[100px] resize-y"
+    />
   )
 }
 
@@ -457,7 +432,7 @@ function HybridCourseAddForm() {
 
   const handleSave = async () => {
     if (!rootForm.name || !rootForm.code) {
-      toast.error("请填写课程名称和课程编码")
+      toast({ title: "请填写课程名称和课程编码", variant: "destructive" })
       return
     }
     setSaving(true)
@@ -472,16 +447,16 @@ function HybridCourseAddForm() {
         } else {
           setExisting(updated)
         }
-        toast.success("草稿已保存")
+        toast({ title: "草稿已保存" })
       } else {
         const created = await courseApi.create(payload)
         setExisting(created)
         hasSavedRef.current = true
-        toast.success("草稿已保存")
+        toast({ title: "草稿已保存" })
         router.replace(`/lesson/admin/hybrid/add?id=${created.id}`)
       }
     } catch (e: any) {
-      toast.error(e?.message || "保存失败，请检查表单后重试")
+      toast({ title: e?.message || "保存失败，请检查表单后重试", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -726,9 +701,9 @@ function HybridCourseAddForm() {
                         try {
                           const res = await fileApi.upload(file)
                           updateRootForm({ coverImage: res.url })
-                          toast.success("封面上传成功")
+                          toast({ title: "封面上传成功" })
                         } catch (err: any) {
-                          toast.error(err?.message || "封面上传失败")
+                          toast({ title: err?.message || "封面上传失败", variant: "destructive" })
                         }
                       }}
                     />
@@ -951,7 +926,6 @@ function HybridCourseAddForm() {
           </div>
         </DialogContent>
       </Dialog>
-      <Toaster />
     </EditorShell>
   )
 }

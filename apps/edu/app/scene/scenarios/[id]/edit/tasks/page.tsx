@@ -126,7 +126,6 @@ import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import type { TaskEvaluationMethod } from "@/lib/types/scene"
 import { methodsToEvalRuleConfig, evalRuleConfigToMethods } from "@/lib/types/evaluation"
 import { useToast } from "@zhiyu/ui"
-import { Toaster } from "@/components/ui/toaster"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { MajorSelect } from "@/components/shared/major-select"
 import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
@@ -1801,7 +1800,6 @@ export default function TasksEditPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Toaster />
     </EditorShell>
   )
 }

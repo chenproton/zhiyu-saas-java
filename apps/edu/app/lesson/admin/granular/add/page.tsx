@@ -11,7 +11,7 @@ import {
   Plus,
   X,
 } from "lucide-react"
-import { toast, Toaster } from "sonner"
+import { toast } from "@zhiyu/ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -150,7 +150,7 @@ function AddGranularPageInner() {
           setSelectedResourceIds(Array.from(resIds).filter((id) => courseResourcePool.some((r) => r.id === id)))
         }
       } catch (err: any) {
-        toast.error(err.message || "加载失败")
+        toast({ title: err.message || "加载失败", variant: "destructive" })
       } finally {
         setLoading(false)
       }
@@ -213,7 +213,7 @@ function AddGranularPageInner() {
 
   const handleSave = async () => {
     if (!courseName) {
-      toast.error("请输入课程名称")
+      toast({ title: "请输入课程名称", variant: "destructive" })
       return
     }
     setSaving(true)
@@ -246,7 +246,7 @@ function AddGranularPageInner() {
             } as any)
           }
         } catch (err: any) {
-          toast.error(`知识点「${kp.name}」保存失败: ${err.message}`)
+          toast({ title: `知识点「${kp.name}」保存失败: ${err.message}`, variant: "destructive" })
           setSaving(false)
           return
         }
@@ -288,17 +288,17 @@ function AddGranularPageInner() {
           await courseApi.saveDraft(editId)
           setCourse((prev) => (prev ? { ...prev, status: "draft" as const } : prev))
         }
-        toast.success("草稿已保存")
+        toast({ title: "草稿已保存" })
         if (Object.keys(kpIdMapping).length > 0) {
           setKnowledgePoints((prev) => prev.map((kp) => kpIdMapping[kp.id] ? { ...kp, id: kpIdMapping[kp.id] } : kp))
         }
       } else {
         const c = await courseApi.create(payload as Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">)
         router.replace(`/lesson/admin/granular/add?id=${c.id}`)
-        toast.success("草稿已保存")
+        toast({ title: "草稿已保存" })
       }
     } catch (err: any) {
-      toast.error(err.message || "保存失败")
+      toast({ title: err.message || "保存失败", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -415,7 +415,7 @@ function AddGranularPageInner() {
                               const res = await fileApi.upload(file)
                               setCoverImage(res.url)
                             } catch (err: any) {
-                              toast.error(err.message || "封面上传失败")
+                              toast({ title: err.message || "封面上传失败", variant: "destructive" })
                             }
                           }
                         }}
@@ -528,7 +528,6 @@ function AddGranularPageInner() {
 
           <PublishCheckPanel node={currentCheckNode} hideEval hideDetailedDescription />
         </div>
-        <Toaster />
       </EditorShell>
   )
 }

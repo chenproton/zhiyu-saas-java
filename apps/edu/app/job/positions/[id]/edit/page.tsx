@@ -29,7 +29,7 @@ import {
   convertApiAbilityDomainToLocal,
   convertApiAbilityToLocal,
 } from '@/lib/converters/job-converters'
-import { toast, Toaster } from 'sonner'
+import { toast } from "@zhiyu/ui"
 import { useAuth } from '@/components/auth-provider'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
@@ -84,7 +84,7 @@ function PositionEditPageContent({ params }: PageProps) {
         setPositions(posList)
         setBatches(batchRes.items.map(convertJobBatchToBatch))
       } catch (err: any) {
-        if (!cancelled) toast.error(err?.message || '请稍后重试')
+        if (!cancelled) toast({ title: err?.message || '请稍后重试', variant: "destructive" })
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -151,7 +151,7 @@ function PositionEditPageContent({ params }: PageProps) {
         setDetailsLoading(false)
         if (!cancelled) {
           console.error('Failed to load position details:', err)
-          toast.error(err?.message || '请稍后重试')
+          toast({ title: err?.message || '请稍后重试', variant: "destructive" })
         }
       }
     })()
@@ -231,10 +231,10 @@ function PositionEditPageContent({ params }: PageProps) {
       const savedPosition = { ...position, status: 'draft' as const }
       setPosition(savedPosition)
       setPositions((prev) => prev.map((p) => (p.id === position.id ? savedPosition : p)))
-      toast.success('草稿已保存')
+      toast({ title: '草稿已保存' })
     } catch (err: any) {
       console.error('Save position failed:', err)
-      toast.error(err?.message || '请稍后重试')
+      toast({ title: err?.message || '请稍后重试', variant: "destructive" })
     } finally {
       setIsSaving(false)
     }
@@ -250,10 +250,10 @@ function PositionEditPageContent({ params }: PageProps) {
     try {
       const res = await fileApi.upload(file)
       updatePositionData({ coverImage: res.url })
-      toast.success('封面上传成功')
+      toast({ title: '封面上传成功' })
     } catch (err: any) {
       console.error('Cover upload failed:', err)
-      toast.error(err?.message || '请稍后重试')
+      toast({ title: err?.message || '请稍后重试', variant: "destructive" })
     } finally {
       setCoverUploading(false)
     }
@@ -389,7 +389,6 @@ function PositionEditPageContent({ params }: PageProps) {
         cancelText="取消"
         onConfirm={() => router.push(`/job/student/${id}`)}
       />
-      <Toaster />
     </EditorShell>
   )
 }

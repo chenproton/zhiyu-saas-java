@@ -283,25 +283,12 @@ function MockRichEditor({
   placeholder?: string
 }) {
   return (
-    <div className="border rounded-md bg-white overflow-hidden">
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b bg-gray-50/50 text-muted-foreground">
-        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => {}}>
-          <span className="text-xs font-bold">B</span>
-        </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => {}}>
-          <span className="text-xs italic">I</span>
-        </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => {}}>
-          <span className="text-xs underline">U</span>
-        </Button>
-      </div>
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="border-0 rounded-none shadow-none focus-visible:ring-0 text-sm min-h-[80px] resize-y"
-      />
-    </div>
+    <Textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="border rounded-md text-sm min-h-[80px] resize-y"
+    />
   )
 }
 

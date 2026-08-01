@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -14,7 +15,19 @@ import (
 
 func RegisterAPIRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(middleware.Timeout(30 * time.Second))
+		// 导入/导出/模板生成涉及大文件解析与批量写入，豁免 30s 短超时，
+		// 其余接口仍受 30s 保护（statement_timeout=15s 为单语句级别，逐行导入不受影响）
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				d := 30 * time.Second
+				if strings.HasPrefix(r.URL.Path, "/api/v1/import/") ||
+					strings.HasPrefix(r.URL.Path, "/api/v1/export/") ||
+					strings.HasPrefix(r.URL.Path, "/api/v1/templates/") {
+					d = 10 * time.Minute
+				}
+				middleware.Timeout(d)(next).ServeHTTP(w, r)
+			})
+		})
 
 		RegisterPublicRoutes(r, h, redisClient)
 		RegisterAuthenticatedRoutes(r, jwtSecret, db, h, redisClient, oplogBuffer)

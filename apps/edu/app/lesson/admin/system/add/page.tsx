@@ -26,7 +26,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react"
-import { toast, Toaster } from "sonner"
+import { toast } from "@zhiyu/ui"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -265,7 +265,7 @@ function AddSystemPageInner() {
         })
         setNodeModes((prev) => ({ ...prev, ...initialModes }))
       } catch (e: any) {
-        toast.error(e.message || "加载课程失败")
+        toast({ title: e.message || "加载课程失败", variant: "destructive" })
       } finally {
         setLoadingEdit(false)
       }
@@ -735,9 +735,9 @@ function AddSystemPageInner() {
         await saveNodes(effectiveCourseId)
       }
 
-      toast.success("草稿已保存")
+      toast({ title: "草稿已保存" })
     } catch (e: any) {
-      toast.error(e.message || "保存失败")
+      toast({ title: e.message || "保存失败", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -813,7 +813,6 @@ function AddSystemPageInner() {
       submitText="完成配置"
       title={isEdit ? "编辑体系课" : "新建体系课"}
     >
-        <Toaster />
         {/* ========== Global Course Info (collapsible, spans full width) ========== */}
         <Collapsible open={globalInfoOpen} onOpenChange={setGlobalInfoOpen} className="mb-6">
           <Card className="border-0 shadow-sm">

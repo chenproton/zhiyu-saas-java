@@ -14,7 +14,6 @@ import { CheckSquare, Eye } from "lucide-react"
 import { useApprovalDialogs } from "@/components/shared/_components/approval-dialogs"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
-import { Toaster } from "sonner"
 
 export interface ApprovalColumn<T> {
   header: string
@@ -203,7 +202,6 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
 
   return (
     <>
-      <Toaster />
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>

@@ -85,7 +85,11 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 	sort.Slice(migrations, func(i, j int) bool {
 		vi, _ := strconv.Atoi(strings.Split(migrations[i], "_")[0])
 		vj, _ := strconv.Atoi(strings.Split(migrations[j], "_")[0])
-		return vi < vj
+		if vi != vj {
+			return vi < vj
+		}
+		// 同号迁移（历史遗留编号）按文件名稳定排序，保证 up/down 顺序确定
+		return migrations[i] < migrations[j]
 	})
 
 	for _, name := range migrations {

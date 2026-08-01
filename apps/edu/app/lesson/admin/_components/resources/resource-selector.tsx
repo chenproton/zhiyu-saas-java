@@ -27,7 +27,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { fileApi, nodeResourceApi, courseResourceApi, resourceLibraryApi } from "@/lib/api"
-import { toast } from "sonner"
+import { toast } from "@zhiyu/ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -202,7 +202,7 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
       setApiAvailable(true)
     } catch (e: any) {
       setApiAvailable(false)
-      toast.error(e.message || "加载资源库失败")
+      toast({ title: e.message || "加载资源库失败", variant: "destructive" })
     } finally {
       setLoadingPool(false)
     }
@@ -276,7 +276,7 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
   const handleFileSelect = async (file: File) => {
     const err = validateResourceFile(file, newResType)
     if (err) {
-      toast.error(err)
+      toast({ title: err, variant: "destructive" })
       return
     }
     setNewResFile(file)
@@ -316,14 +316,14 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
         fileUrl = res.url
         uploadedSize = res.size
       } catch (e: any) {
-        toast.error(e.message || "上传失败")
+        toast({ title: e.message || "上传失败", variant: "destructive" })
         setNewResUploading(false)
         return
       }
     }
 
     if (newResType === "link" && !fileUrl) {
-      toast.error("请填写链接地址")
+      toast({ title: "请填写链接地址", variant: "destructive" })
       return
     }
 
@@ -358,7 +358,7 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
           await nodeResourceApi.bind({ nodeId: effectiveNodeId, resourceId: created.id })
         }
       } catch (e: any) {
-        toast.error(e.message || "资源保存失败，已转为本地资源")
+        toast({ title: e.message || "资源保存失败，已转为本地资源", variant: "destructive" })
       }
     }
 
@@ -367,7 +367,7 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
     resetUploadForm()
     setShowUpload(false)
     setShowUploadTypePicker(false)
-    toast.success("资源已上传并选中")
+    toast({ title: "资源已上传并选中" })
   }
 
   const selectedResources = selectedIds.map((id) => mergedPool.find((r) => r.id === id)).filter(Boolean) as ResourceItem[]
