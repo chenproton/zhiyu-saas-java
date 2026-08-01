@@ -128,7 +128,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     } finally {
       setLoading(false)
     }
-  }, [api, workflowApi, toast])
+  }, [api, toast])
 
   useEffect(() => {
     let cancelled = false

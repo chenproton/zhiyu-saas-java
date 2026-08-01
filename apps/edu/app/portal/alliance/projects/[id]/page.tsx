@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -48,7 +49,7 @@ export default function AlliancePublicProjectDetailPage() {
       </div>
 
       {project.coverImage && (
-        <img src={project.coverImage} alt={project.name} className="w-full max-h-64 object-cover rounded-xl" />
+        <Image src={project.coverImage} alt={project.name} width={1200} height={675} className="w-full max-h-64 object-cover rounded-xl" />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

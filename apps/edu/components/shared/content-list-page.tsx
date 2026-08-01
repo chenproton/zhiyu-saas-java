@@ -267,6 +267,14 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   // listParams 常由调用方以内联对象传入，引用每次渲染都会变化；
   // 通过 JSON 序列化得到内容 key，相同内容时 key 不变，从而避免不必要的 reload。
   const listParamsKey = useMemo(() => JSON.stringify(listParams || {}), [listParams])
+  // 参数内容变化时通过 bump reloadKey 间接触发重新加载
+  const prevListParamsKey = useRef(listParamsKey)
+  useEffect(() => {
+    if (prevListParamsKey.current !== listParamsKey) {
+      prevListParamsKey.current = listParamsKey
+      setReloadKey((k) => k + 1)
+    }
+  }, [listParamsKey])
 
   const {
     fileInputRef,
@@ -366,7 +374,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     } finally {
       setIsLoading(false)
     }
-  }, [tenantId, listParamsKey, currentUserId, approvalTargetType, approvalApi, batchApi, itemApi, entityLabel])
+  }, [tenantId, currentUserId, approvalTargetType, approvalApi, batchApi, itemApi, entityLabel])
 
   useEffect(() => { (async () => { await loadData() })() }, [loadData, reloadKey])
 

@@ -25,10 +25,8 @@ export function reportError(err: unknown, context: string | ErrorContext): void 
 
   if (process.env.NODE_ENV === "production") {
     // 生产环境可接入外部监控；目前先保持 console.error 以免完全静默
-    // eslint-disable-next-line no-console
     console.error("[app-error]", payload)
   } else {
-    // eslint-disable-next-line no-console
     console.error(`[app-error] ${ctx.source}:`, message, err, ctx.extras ?? "")
   }
 }

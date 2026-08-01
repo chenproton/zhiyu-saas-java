@@ -217,7 +217,7 @@ export function UserSelector({
     })
     return () => { cancelled = true }
     // valueKey 已稳定化 value 内容，避免数组引用变化导致重复请求
-  }, [valueKey, userCache, usePortalApi, mergeUserCache])
+  }, [valueKey, value, userCache, usePortalApi, mergeUserCache])
 
   useEffect(() => {
     if (open) queueMicrotask(() => setSelectedIds([...value]))

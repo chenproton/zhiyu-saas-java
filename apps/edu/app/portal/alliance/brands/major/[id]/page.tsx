@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,7 +47,7 @@ export default function AlliancePublicMajorBrandDetailPage() {
       </div>
 
       {brand.coverImage && (
-        <img src={brand.coverImage} alt={brand.name} className="w-full max-h-64 object-cover rounded-xl" />
+        <Image src={brand.coverImage} alt={brand.name} width={1200} height={675} className="w-full max-h-64 object-cover rounded-xl" />
       )}
 
       {brand.description && (

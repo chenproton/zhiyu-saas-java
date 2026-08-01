@@ -67,6 +67,26 @@ function countByType(nodes: OrgNode[], type: OrgNodeType): number {
   return count
 }
 
+function mapToOrgNode(
+  node: Organization & { children?: (Organization & { children?: any[] })[] },
+  typeMap: Record<string, string>
+): OrgNode {
+  const sortedChildren = node.children
+    ? [...node.children].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((child) => mapToOrgNode(child, typeMap))
+    : undefined
+  return {
+    id: node.id,
+    name: node.name,
+    type: typeMap[node.typeId] || "组织",
+    typeId: node.typeId,
+    parentId: node.parentId,
+    order: node.sortOrder,
+    memberCount: node.memberCount,
+    expanded: true,
+    children: sortedChildren,
+  }
+}
+
 function totalMembers(nodes: OrgNode[]): number {
   return nodes.reduce((sum, node) => sum + node.memberCount, 0)
 }
@@ -223,26 +243,6 @@ export default function OrgStructurePage() {
       map[t.id] = t.name
     })
     return map
-  }
-
-  const mapToOrgNode = (
-    node: Organization & { children?: (Organization & { children?: any[] })[] },
-    typeMap: Record<string, string>
-  ): OrgNode => {
-    const sortedChildren = node.children
-      ? [...node.children].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((child) => mapToOrgNode(child, typeMap))
-      : undefined
-    return {
-      id: node.id,
-      name: node.name,
-      type: typeMap[node.typeId] || "组织",
-      typeId: node.typeId,
-      parentId: node.parentId,
-      order: node.sortOrder,
-      memberCount: node.memberCount,
-      expanded: true,
-      children: sortedChildren,
-    }
   }
 
   const fetchData = useCallback(async () => {

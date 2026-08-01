@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,7 +53,7 @@ export default function AlliancePublicAchievementDetailPage() {
       </div>
 
       {achievement.coverImage && (
-        <img src={achievement.coverImage} alt={achievement.title} className="w-full max-h-64 object-cover rounded-xl" />
+        <Image src={achievement.coverImage} alt={achievement.title} width={1200} height={675} className="w-full max-h-64 object-cover rounded-xl" />
       )}
 
       {achievement.description && (

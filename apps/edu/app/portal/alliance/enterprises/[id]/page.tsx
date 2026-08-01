@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -49,7 +50,7 @@ export default function AlliancePublicEnterpriseDetailPage() {
       </div>
 
       {enterprise.logoUrl && (
-        <img src={enterprise.logoUrl} alt={enterprise.name} className="h-16 object-contain" />
+        <Image src={enterprise.logoUrl} alt={enterprise.name} width={64} height={64} className="h-16 object-contain" />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -87,7 +88,9 @@ export default function AlliancePublicEnterpriseDetailPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {enterprise.coverPhotos.map((photo, idx) => (
-                <img key={idx} src={photo} alt={`${enterprise.name} 照片 ${idx + 1}`} className="w-full h-40 object-cover rounded-lg" />
+                <div key={idx} className="relative w-full h-40 rounded-lg overflow-hidden">
+                  <Image src={photo} alt={`${enterprise.name} 照片 ${idx + 1}`} fill className="object-cover" />
+                </div>
               ))}
             </div>
           </CardContent>

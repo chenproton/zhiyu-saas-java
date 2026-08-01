@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -39,7 +40,7 @@ export default function AlliancePublicExpertDetailPage() {
 
       <div className="flex items-start gap-4">
         {expert.avatarUrl && (
-          <img src={expert.avatarUrl} alt={expert.name} className="h-20 w-20 rounded-full object-cover" />
+          <Image src={expert.avatarUrl} alt={expert.name} width={80} height={80} className="h-20 w-20 rounded-full object-cover" />
         )}
         <div className="flex-1">
           <div className="flex items-start justify-between">
@@ -115,7 +116,9 @@ export default function AlliancePublicExpertDetailPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {expert.photos.map((photo, idx) => (
-                <img key={idx} src={photo} alt={`${expert.name} 照片 ${idx + 1}`} className="w-full h-40 object-cover rounded-lg" />
+                <div key={idx} className="relative w-full h-40 rounded-lg overflow-hidden">
+                  <Image src={photo} alt={`${expert.name} 照片 ${idx + 1}`} fill className="object-cover" />
+                </div>
               ))}
             </div>
           </CardContent>
