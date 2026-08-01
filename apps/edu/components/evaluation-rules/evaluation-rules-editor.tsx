@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -30,6 +29,7 @@ import {
   ClipboardList,
 } from "lucide-react"
 import { useMemo, useState, useRef, useLayoutEffect, useCallback, useEffect } from "react"
+import type { ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -607,7 +607,7 @@ export function EvaluationRulesEditor({
             return <div key={g.id} className={cn("flex items-center justify-center text-white text-[10px] font-medium", g.color)} style={{ width: `${width}%` }}>{g.grade}</div>
           })}
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[...gradeMapping].sort((a, b) => b.maxScore - a.maxScore).map((g, i) => {
             const c = gradeColors[i % gradeColors.length]
             return (
@@ -920,8 +920,8 @@ export function EvaluationRulesEditor({
     })
 
     return (
-      <div className="flex gap-4 h-[60vh] min-h-[480px]">
-        <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+      <div className="flex gap-4 min-h-[320px] max-h-[60vh] max-lg:flex-col">
+        <div className="w-full lg:w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
           <Tabs value={questionTab} onValueChange={v => setQuestionTab(v as "my" | "collab" | "public")} className="mb-3">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="my">我的</TabsTrigger>
@@ -976,7 +976,7 @@ export function EvaluationRulesEditor({
             )}
           </div>
         </div>
-        <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+        <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium text-gray-700">已选择题目 ({selectedIds.length}{maxCount ? `/${maxCount}` : ""})</p>
             {showAutoSelect && <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" disabled title="自动抽题功能开发中">自动选择</Button>}
@@ -1042,15 +1042,15 @@ export function EvaluationRulesEditor({
             </div>
             <Button onClick={handleAddRdqLocal}><Plus className="h-4 w-4 mr-1" />新增现场问答题</Button>
           </div>
-          <div className="flex gap-4">
-            <div className="w-3/5 flex flex-col border rounded-xl p-3">
+          <div className="flex gap-4 max-lg:flex-col">
+            <div className="w-full lg:w-3/5 flex flex-col border rounded-xl p-3">
               <div className="flex items-center gap-1 mb-2 flex-wrap">
                 {majorOptions.map(opt => (
                   <button key={opt.id} onClick={() => setRdqMajorTab(opt.id)} className={cn("px-2.5 py-1 rounded-md text-[11px] transition-all", rdqMajorTab === opt.id ? "bg-primary/10 text-primary font-medium" : "text-gray-500 hover:bg-gray-100")}>{opt.name}</button>
                 ))}
               </div>
               <p className="text-sm font-medium mb-2 text-gray-700">{rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`)}</p>
-              <div className="min-h-[300px] max-h-[400px] overflow-y-auto pr-1">
+              <div className="min-h-[200px] max-h-[400px] overflow-y-auto pr-1">
                 {loadingRdq ? (
                   <div className="text-center text-gray-400 py-8"><p className="text-sm">加载中...</p></div>
                 ) : filteredRdq.length === 0 ? (
@@ -1082,9 +1082,9 @@ export function EvaluationRulesEditor({
                 )}
               </div>
             </div>
-            <div className="w-2/5 border rounded-xl p-3 flex flex-col">
+            <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col">
               <p className="text-sm font-medium mb-3 text-gray-700">已配置现场问答题 ({selectedRdqList.length})</p>
-              <div className="min-h-[300px] max-h-[400px] overflow-y-auto">
+              <div className="min-h-[200px] max-h-[400px] overflow-y-auto">
                 {selectedRdqList.length === 0 ? (
                   <div className="text-center text-gray-400 py-8"><FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" /><p className="text-xs">请从左侧选择现场问答题</p></div>
                 ) : (
@@ -1103,7 +1103,7 @@ export function EvaluationRulesEditor({
           </div>
           <div className="border rounded-xl p-4 mt-4">
             <p className="text-sm font-medium mb-3">抽题规则</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-gray-500">抽题方式</Label>
                 <Select value={(getResourceConfig("random_draw", {}) as any).drawMode ?? "random"} onValueChange={v => updateResourceConfig("random_draw", { drawMode: v })}>
@@ -1180,7 +1180,7 @@ export function EvaluationRulesEditor({
             </div>
             {mockResReview.requiresMaterial && (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div>
                 </div>
                 <div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label><Textarea value={mockResReview.submitFormatDesc} onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的材料要求..." rows={2} className="text-sm" /></div>
@@ -1221,7 +1221,7 @@ export function EvaluationRulesEditor({
                 <div key={step.id} className="p-3 rounded-lg border">
                   {editingReviewStepId === step.id ? (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <Input value={editingStepLabel} onChange={e => setEditingStepLabel(e.target.value)} placeholder="步骤名称" className="text-sm h-8" />
                         <Select value={step.subjectType || ""} onValueChange={v => setReviewStepsAndSync(reviewSteps.map(s => s.id === step.id ? { ...s, subjectType: v } : s))}>
                           <SelectTrigger className="text-sm h-8"><SelectValue placeholder="请选择评价主体" /></SelectTrigger>
@@ -1257,7 +1257,7 @@ export function EvaluationRulesEditor({
             </div>
             {showAddStep && (
               <div className="mt-2 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/[0.02] space-y-2">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Input value={newStepLabel} onChange={e => setNewStepLabel(e.target.value)} placeholder="步骤名称" className="text-sm h-8" />
                   <Select value={newStepSubjectType} onValueChange={v => setNewStepSubjectType(v)}>
                     <SelectTrigger className="text-sm h-8"><SelectValue placeholder="请选择评价主体" /></SelectTrigger>
@@ -1326,7 +1326,7 @@ export function EvaluationRulesEditor({
           </div>
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">考卷设置</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label className="text-xs text-gray-500">考试时长（分钟）</Label><Input type="number" value={paperCfg.duration ?? 60} onChange={e => setPaperCfg({ duration: Math.max(0, parseInt(e.target.value) || 0) })} className="mt-1 text-sm" min={0} /></div>
               <div><Label className="text-xs text-gray-500">允许重考</Label><div className="mt-2 flex items-center gap-2"><Switch checked={paperCfg.allowRetake ?? false} onCheckedChange={v => setPaperCfg({ allowRetake: v })} /><span className="text-xs text-gray-600">{(paperCfg.allowRetake ?? false) ? "是" : "否"}</span></div></div>
               {(paperCfg.allowRetake ?? false) && <div><Label className="text-xs text-gray-500">最多重考次数</Label><Input type="number" value={paperCfg.retakeCount ?? 1} onChange={e => setPaperCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div>}
@@ -1337,7 +1337,7 @@ export function EvaluationRulesEditor({
             </div>
             <div className="mt-4 pt-4 border-t">
               <Label className="text-xs text-gray-500 mb-2">试卷启用条件</Label>
-              <div className="grid grid-cols-3 gap-3 mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
                 {[
                   { key: "manual", label: "手动启用", desc: "老师手动开启后学生可作答" },
                   { key: "scheduled", label: "定时启用", desc: "预设开始结束时间，到时间自动开启关闭" },
@@ -1350,7 +1350,7 @@ export function EvaluationRulesEditor({
                 ))}
               </div>
               {(paperCfg.activationMode ?? "manual") === "scheduled" && (
-                <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><Label className="text-xs text-gray-500">启用时间</Label><Input type="datetime-local" value={paperCfg.scheduledTime ?? ""} onChange={e => setPaperCfg({ scheduledTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" /></div>
                   <div><Label className="text-xs text-gray-500">停用时间</Label><Input type="datetime-local" value={paperCfg.scheduledEndTime ?? ""} onChange={e => setPaperCfg({ scheduledEndTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" /></div>
                 </div>
@@ -1390,7 +1390,7 @@ export function EvaluationRulesEditor({
           />
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">答题规则</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-gray-500">答题方式</Label>
                 <Select value={qbDrawMode} onValueChange={v => setQbDrawMode(v as "all" | "practice")}>
@@ -1406,7 +1406,7 @@ export function EvaluationRulesEditor({
               <div className="flex items-center gap-2"><Switch checked={mockResQuestionBank.shuffleQuestions} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, shuffleQuestions: v })} /><span className="text-xs text-gray-600">题目乱序</span></div>
               <div className="flex items-center gap-2"><Switch checked={mockResQuestionBank.showResult} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, showResult: v })} /><span className="text-xs text-gray-600">提交后展示成绩</span></div>
             </div>
-            {mockResQuestionBank.allowRetake && <div className="mt-3 grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">最多重考次数</Label><Input type="number" value={mockResQuestionBank.retakeCount} onChange={e => setMockResQuestionBank({ ...mockResQuestionBank, retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div>}
+            {mockResQuestionBank.allowRetake && <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">最多重考次数</Label><Input type="number" value={mockResQuestionBank.retakeCount} onChange={e => setMockResQuestionBank({ ...mockResQuestionBank, retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div>}
           </div>
         </div>
       )
@@ -1417,7 +1417,7 @@ export function EvaluationRulesEditor({
           <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-100 text-sm text-cyan-700"><div className="flex items-center gap-2 mb-2"><Info className="h-4 w-4" /><span className="font-medium">成果评价说明</span></div><p>成果评价时教师根据学生提交的成果材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p></div>
           <div className="border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3"><p className="text-sm font-medium">成果材料要求</p><div className="flex items-center gap-2"><Switch checked={mockResOutcome.requiresMaterial} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, requiresMaterial: v })} /><span className="text-xs text-gray-600">是否需要提交成果材料</span></div></div>
-            {mockResOutcome.requiresMaterial && (<><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResOutcome.deadlineDays} onChange={e => setMockResOutcome({ ...mockResOutcome, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div><div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label><Textarea value={mockResOutcome.submitFormatDesc} onChange={e => setMockResOutcome({ ...mockResOutcome, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的成果材料要求..." rows={2} className="text-sm" /></div></>)}
+            {mockResOutcome.requiresMaterial && (<><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResOutcome.deadlineDays} onChange={e => setMockResOutcome({ ...mockResOutcome, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div><div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label><Textarea value={mockResOutcome.submitFormatDesc} onChange={e => setMockResOutcome({ ...mockResOutcome, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的成果材料要求..." rows={2} className="text-sm" /></div></>)}
             <div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label><Textarea value={mockResOutcome.venueResources} onChange={e => setMockResOutcome({ ...mockResOutcome, venueResources: e.target.value })} placeholder="请描述评价所需的场地、设备及环境资源准备要求..." rows={2} className="text-sm" /></div>
             <div className="mt-3"><div className="flex items-center gap-2"><Switch checked={mockResOutcome.allowResubmit} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, allowResubmit: v })} /><span className="text-xs text-gray-600">允许重新提交</span></div></div>
           </div>
@@ -1430,7 +1430,7 @@ export function EvaluationRulesEditor({
           <div className="p-4 bg-pink-50 rounded-lg border border-pink-100 text-sm text-pink-700"><div className="flex items-center gap-2 mb-2"><Info className="h-4 w-4" /><span className="font-medium">作业说明</span></div><p>学生提交作业后，教师按评分规则进行打分。评价点配置请在「评价标准配置」卡片中设置。</p></div>
           <div className="border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3"><p className="text-sm font-medium">作业提交要求</p><div className="flex items-center gap-2"><Switch checked={mockResHomework.requiresMaterial} onCheckedChange={v => setMockResHomework({ ...mockResHomework, requiresMaterial: v })} /><span className="text-xs text-gray-600">是否需要提交作业材料</span></div></div>
-            {mockResHomework.requiresMaterial && (<><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResHomework.deadlineDays} onChange={e => setMockResHomework({ ...mockResHomework, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div><div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label><Textarea value={mockResHomework.submitFormatDesc} onChange={e => setMockResHomework({ ...mockResHomework, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的作业格式要求..." rows={2} className="text-sm" /></div></>)}
+            {mockResHomework.requiresMaterial && (<><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResHomework.deadlineDays} onChange={e => setMockResHomework({ ...mockResHomework, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div><div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label><Textarea value={mockResHomework.submitFormatDesc} onChange={e => setMockResHomework({ ...mockResHomework, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的作业格式要求..." rows={2} className="text-sm" /></div></>)}
             <div className="mt-3"><div className="flex items-center gap-2"><Switch checked={mockResHomework.allowResubmit} onCheckedChange={v => setMockResHomework({ ...mockResHomework, allowResubmit: v })} /><span className="text-xs text-gray-600">允许重新提交</span></div></div>
           </div>
         </div>
@@ -1452,7 +1452,7 @@ export function EvaluationRulesEditor({
           />
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">答题规则</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-gray-500">时间限制</Label>
                 <div className="flex flex-wrap gap-2 mt-1">
@@ -1650,8 +1650,8 @@ export function EvaluationRulesEditor({
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse min-w-[900px]">
-                  <thead><tr className="border-b bg-gray-50 text-gray-500 text-xs"><th className="py-2.5 px-2 text-left w-12">序号</th><th className="py-2.5 px-2 text-left min-w-[360px]">评价维度名称/关联知识点/能力点</th><th className="py-2.5 px-2 text-left min-w-[440px]">评价等级</th><th className="py-2.5 px-2 text-center w-16">权重(%)</th><th className="py-2.5 px-2 text-center w-14">操作</th></tr></thead>
+                <table className="w-full text-sm border-collapse min-w-[720px]">
+                  <thead><tr className="border-b bg-gray-50 text-gray-500 text-xs"><th className="py-2.5 px-2 text-left w-12">序号</th><th className="py-2.5 px-2 text-left min-w-[280px]">评价维度名称/关联知识点/能力点</th><th className="py-2.5 px-2 text-left min-w-[320px]">评价等级</th><th className="py-2.5 px-2 text-center w-16">权重(%)</th><th className="py-2.5 px-2 text-center w-14">操作</th></tr></thead>
                   <tbody>
                     {info.points.map((ep, idx) => (
                       <tr key={ep.id} className="border-b hover:bg-gray-50/50 transition-colors">
@@ -1681,8 +1681,8 @@ export function EvaluationRulesEditor({
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse min-w-[700px]">
-                  <thead><tr className="border-b bg-gray-50 text-gray-500 text-xs"><th className="py-2.5 px-2 text-left w-16">序号</th><th className="py-2.5 px-2 text-left min-w-[300px]">评价项/评分标准描述</th><th className="py-2.5 px-2 text-left min-w-[200px]">加减分规则</th><th className="py-2.5 px-2 text-center w-20">分值</th><th className="py-2.5 px-2 text-center w-16">操作</th></tr></thead>
+                <table className="w-full text-sm border-collapse min-w-[560px]">
+                  <thead><tr className="border-b bg-gray-50 text-gray-500 text-xs"><th className="py-2.5 px-2 text-left w-16">序号</th><th className="py-2.5 px-2 text-left min-w-[240px]">评价项/评分标准描述</th><th className="py-2.5 px-2 text-left min-w-[160px]">加减分规则</th><th className="py-2.5 px-2 text-center w-20">分值</th><th className="py-2.5 px-2 text-center w-16">操作</th></tr></thead>
                   <tbody>
                     {(draftScheme.scoreRuleItems || []).map((item, idx) => (
                       <tr key={item.id} className="border-b hover:bg-gray-50/50 transition-colors">
@@ -1817,19 +1817,58 @@ export function EvaluationRulesEditor({
     )
   })() : null
 
+  const StepCard = ({ step, title, icon, summary, description, badge, configured, tone = "default", onClick }: {
+    step: number
+    title: string
+    icon: ReactNode
+    summary: string
+    description: string
+    badge?: string
+    configured?: boolean
+    tone?: "default" | "success"
+    onClick?: () => void
+  }) => {
+    const isSuccess = tone === "success"
+    const className = cn(
+      "relative p-4 rounded-xl border bg-white text-left transition-all w-full h-full",
+      onClick && "group",
+      onClick && (isSuccess ? "hover:border-green-300 hover:bg-green-50/50" : "hover:border-primary/50 hover:bg-primary/[0.02]")
+    )
+    const content = (
+      <>
+        <div className={cn("absolute top-3 right-3 w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-medium border", isSuccess ? "bg-green-50 text-green-600 border-green-100" : "bg-primary/10 text-primary border-primary/20")}>{step}</div>
+        <div className="flex items-center gap-2 mb-3">
+          <div className={cn("p-1.5 rounded-md", isSuccess ? "bg-green-50 text-green-600" : "bg-primary/10 text-primary")}>
+            {icon}
+          </div>
+          <span className="text-xs font-medium text-gray-600">{title}</span>
+          {badge
+            ? <Badge variant="outline" className="text-[10px] ml-auto">{badge}</Badge>
+            : configured && <CheckCircle2 className={cn("h-3.5 w-3.5 ml-auto", isSuccess ? "text-green-500" : "text-primary")} />}
+        </div>
+        <p className="text-sm font-semibold truncate pr-6">{summary}</p>
+        <p className="text-xs text-gray-400 mt-1">{description}</p>
+      </>
+    )
+    return onClick
+      ? <button type="button" onClick={onClick} className={className}>{content}</button>
+      : <div className={className}>{content}</div>
+  }
+
   const ObjectCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
     const currentObject = config.methodEvalObjects[methodKey] || config.evalObject
     const labels: Record<string, string> = { individual: "个人", group: "小组" }
     const descs: Record<string, string> = { individual: "以个人为单位", group: "以小组为单位" }
     return (
-      <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
-        <div className="flex items-center gap-2 mb-2">
-          <Users className="h-4 w-4 text-gray-400 group-hover:text-primary" />
-          <span className="text-xs font-medium text-gray-500">测评对象</span>
-        </div>
-        <p className="text-sm font-semibold truncate">{labels[currentObject] || "未选择"}</p>
-        <p className="text-xs text-gray-400 truncate mt-0.5">{descs[currentObject] || "点击配置"}</p>
-      </button>
+      <StepCard
+        step={1}
+        title="测评对象"
+        icon={<Users className="h-4 w-4" />}
+        summary={labels[currentObject] || "未选择"}
+        description={descs[currentObject] || "点击配置"}
+        configured={!!labels[currentObject]}
+        onClick={onClick}
+      />
     )
   }
 
@@ -1839,39 +1878,30 @@ export function EvaluationRulesEditor({
     const enabledSubjects = currentSubjects.filter(s => s.enabled && !(s.type === "peer" && evalObject !== "group"))
     const totalWeight = enabledSubjects.reduce((s, sub) => s + (sub.params?.weightPercent || 0), 0)
     return (
-      <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <UserCheck className="h-4 w-4 text-gray-400 group-hover:text-primary" />
-            <span className="text-xs font-medium text-gray-500">评价主体</span>
-          </div>
-          {enabledSubjects.length > 0 && <Badge variant="outline" className="text-[10px]">{enabledSubjects.length} 类</Badge>}
-        </div>
-        <p className="text-sm font-semibold truncate">
-          {enabledSubjects.length === 0 ? "未配置" : enabledSubjects.map(s => subjectLabels[s.type]).join("、")}
-        </p>
-        <p className="text-xs text-gray-400 truncate mt-0.5">
-          {enabledSubjects.length === 0 ? "点击配置" : `总权重 ${totalWeight}%`}
-        </p>
-      </button>
+      <StepCard
+        step={2}
+        title="评价主体"
+        icon={<UserCheck className="h-4 w-4" />}
+        summary={enabledSubjects.length === 0 ? "未配置" : enabledSubjects.map(s => subjectLabels[s.type]).join("、")}
+        description={enabledSubjects.length === 0 ? "点击配置" : `总权重 ${totalWeight}%`}
+        badge={enabledSubjects.length > 0 ? `${enabledSubjects.length} 类` : undefined}
+        onClick={onClick}
+      />
     )
   }
 
   const ResourceCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
     const summary = getMethodConfigSummary(methodKey)
     return (
-      <button onClick={onClick} className="relative p-4 rounded-xl border text-left transition-all hover:border-blue-400 hover:bg-blue-50/30 bg-white group h-full">
-        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[10px] flex items-center justify-center font-medium border border-blue-100">3</div>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-1.5 rounded-md bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
-            <Database className="h-4 w-4" />
-          </div>
-          <span className="text-xs font-medium text-gray-600">测评资源</span>
-          {summary.configured && <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 ml-auto" />}
-        </div>
-        <p className="text-sm font-semibold truncate pr-6">{summary.summary || "未配置"}</p>
-        <p className="text-xs text-gray-400 mt-1">{summary.configured ? "点击修改测评资源" : "点击配置测评资源"}</p>
-      </button>
+      <StepCard
+        step={3}
+        title="测评资源"
+        icon={<Database className="h-4 w-4" />}
+        summary={summary.summary || "未配置"}
+        description={summary.configured ? "点击修改测评资源" : "点击配置测评资源"}
+        configured={summary.configured}
+        onClick={onClick}
+      />
     )
   }
 
@@ -1879,18 +1909,15 @@ export function EvaluationRulesEditor({
     const info = getMethodEvalInfo(methodKey)
     const subTypeCount = Object.entries(info.points.reduce((acc, p) => { if (p.subType) acc[p.subType] = (acc[p.subType] || 0) + 1; return acc; }, {} as Record<string, number>)).map(([k, v]) => `${evalSubTypeLabels[k as EvalSubType]}${v}`)
     return (
-      <button onClick={onClick} className="relative p-4 rounded-xl border text-left transition-all hover:border-purple-400 hover:bg-purple-50/30 bg-white group h-full">
-        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-purple-50 text-purple-600 text-[10px] flex items-center justify-center font-medium border border-purple-100">4</div>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-1.5 rounded-md bg-purple-50 text-purple-600 group-hover:bg-purple-100 transition-colors">
-            <Target className="h-4 w-4" />
-          </div>
-          <span className="text-xs font-medium text-gray-600">评价标准配置</span>
-          {info.points.length > 0 && <Badge variant="outline" className="text-[10px] ml-auto">{info.points.length} 点</Badge>}
-        </div>
-        <p className="text-sm font-semibold truncate pr-6">{info.points.length === 0 ? "未配置评价点" : `${info.points.length} 个评价点`}</p>
-        <p className="text-xs text-gray-400 mt-1">{subTypeCount.length === 0 ? "点击配置评价标准" : subTypeCount.join(" · ")}</p>
-      </button>
+      <StepCard
+        step={4}
+        title="评价标准配置"
+        icon={<Target className="h-4 w-4" />}
+        summary={info.points.length === 0 ? "未配置评价点" : `${info.points.length} 个评价点`}
+        description={subTypeCount.length === 0 ? "点击配置评价标准" : subTypeCount.join(" · ")}
+        badge={info.points.length > 0 ? `${info.points.length} 点` : undefined}
+        onClick={onClick}
+      />
     )
   }
 
@@ -1899,7 +1926,7 @@ export function EvaluationRulesEditor({
     return (
       <div className="space-y-4">
         <p className="text-sm text-gray-500 mb-4">选择本评价方式的测评对象类型</p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             { key: "individual", label: "个人", desc: "以学生个人为单位进行测评", icon: <User className="h-6 w-6" /> },
             { key: "group", label: "小组", desc: "以小组为单位进行测评", icon: <Users className="h-6 w-6" /> },
@@ -1961,7 +1988,7 @@ export function EvaluationRulesEditor({
             <Scale className="h-3.5 w-3.5 mr-1" />一键平均权重
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {currentSubjects.filter(s => displayTypes.includes(s.type as typeof displayTypes[number])).map(subject => {
             const originalIdx = currentSubjects.findIndex(s => s.type === subject.type)
             const methodAllowed = (allowedSubjectsForMethod[methodKey] || []).includes(subject.type)
@@ -1981,7 +2008,7 @@ export function EvaluationRulesEditor({
                 {subject.enabled && (
                   <div className="pl-8 space-y-2">
                     {subject.type === "teacher" && (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                           <Label className="text-[11px] text-gray-500">专业背景要求</Label>
                           <Input value={subject.params?.teacherBackground || ""} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, teacherBackground: e.target.value } })} placeholder="计算机/软件工程相关专业" className="mt-0.5 text-xs h-8" />
@@ -2016,7 +2043,7 @@ export function EvaluationRulesEditor({
                     )}
                     {subject.type === "enterprise_mentor" && (
                       <>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div>
                             <Label className="text-[11px] text-gray-500">专业领域</Label>
                             <Input value={subject.params?.expertise || ""} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, expertise: e.target.value } })} placeholder="网络安全 / 渗透测试" className="mt-0.5 text-xs h-8" />
@@ -2056,7 +2083,7 @@ export function EvaluationRulesEditor({
                     )}
                     {subject.type === "peer" && (
                       <>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div>
                             <Label className="text-[11px] text-gray-500">互评人数</Label>
                             <Input type="number" value={subject.params?.peerCount || 3} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, peerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-0.5 text-xs h-8" min={1} />
@@ -2080,7 +2107,7 @@ export function EvaluationRulesEditor({
                             <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div>
                             <Label className="text-[11px] text-gray-500">互评规则</Label>
                             <Select value={subject.params?.peerRule || ""} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, peerRule: v } })}>
@@ -2104,7 +2131,7 @@ export function EvaluationRulesEditor({
                     )}
                     {subject.type === "self" && (
                       <>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div>
                             <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
                             <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
@@ -2183,7 +2210,7 @@ export function EvaluationRulesEditor({
                   <div className={cn("flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium", methodWeightTotal === 100 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600")}><span>合计</span><span>{methodWeightTotal}%</span>{methodWeightTotal !== 100 && <span className="text-[10px]">(需等于100%)</span>}</div>
                   <Button variant="outline" size="sm" className="text-xs h-8" onClick={distributeMethodWeights}><RotateCcw className="h-3.5 w-3.5 mr-1" />一键平均</Button>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {getMethodInstances().map(({ methodKey, instanceIndex }) => {
                     const method = evaluationMethodOptions.find(o => o.key === methodKey)
                     if (!method) return null
@@ -2215,31 +2242,12 @@ export function EvaluationRulesEditor({
                   <div className="flex-1 min-w-0"><p className="text-sm font-semibold">{displayLabel}</p><p className="text-xs text-gray-400">{method.desc}</p></div>
                 </div>
                 <div className="p-4">
-                  <div className="flex items-center gap-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                     <ObjectCard methodKey={methodKey} onClick={() => openDialog("object", methodKey)} />
-                    <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
-                      <span className="text-[10px] font-medium">①</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </div>
                     <SubjectCard methodKey={methodKey} onClick={() => openDialog("subject", methodKey)} />
-                    <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
-                      <span className="text-[10px] font-medium">②</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </div>
                     <ResourceCard methodKey={methodKey} onClick={() => openDialog("resource", methodKey)} />
-                    <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
-                      <span className="text-[10px] font-medium">③</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </div>
                     {(methodKey === "question_bank" || methodKey === "paper" || methodKey === "quiz") ? (
-                      <div className="flex-1 min-w-0 p-4 rounded-xl border text-left bg-green-50/50 border-green-100">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Target className="h-4 w-4 text-green-500" />
-                          <span className="text-xs font-medium text-green-600">评价标准配置</span>
-                        </div>
-                        <p className="text-sm font-semibold text-green-700">自动读取得分</p>
-                        <p className="text-xs text-green-500 truncate mt-0.5">系统将自动读取测评资源的得分</p>
-                      </div>
+                      <StepCard tone="success" step={4} title="评价标准配置" icon={<Target className="h-4 w-4" />} summary="自动读取得分" description="系统将自动读取测评资源的得分" configured />
                     ) : <MethodCard methodKey={methodKey} onClick={() => openDialog("method", methodKey)} />}
                   </div>
                 </div>
@@ -2254,7 +2262,7 @@ export function EvaluationRulesEditor({
   const subDialogs = (
     <>
       <Dialog open={erDialogOpen === "object"} onOpenChange={v => !v && setErDialogOpen(null)}>
-        <DialogContent className="sm:max-w-[63vw] max-w-[63vw] max-h-[90vh] overflow-y-auto">
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>测评对象配置</DialogTitle>
             <DialogDescription>
@@ -2266,7 +2274,7 @@ export function EvaluationRulesEditor({
       </Dialog>
 
       <Dialog open={erDialogOpen === "subject"} onOpenChange={v => !v && setErDialogOpen(null)}>
-        <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
+        <DialogContent size="xl">
           <DialogHeader>
             <DialogTitle>评价主体配置</DialogTitle>
             <DialogDescription>
@@ -2278,14 +2286,14 @@ export function EvaluationRulesEditor({
       </Dialog>
 
       <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
-        <DialogContent className="sm:max-w-[85vw] max-w-[85vw] h-[92vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-5xl">
           <DialogHeader><DialogTitle>测评资源配置</DialogTitle><DialogDescription>配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源</DialogDescription></DialogHeader>
           {evalResourceOnlyPanel}
         </DialogContent>
       </Dialog>
 
       <Dialog open={erDialogOpen === "method"} onOpenChange={v => !v && setErDialogOpen(null)}>
-        <DialogContent className="sm:max-w-[90vw] max-w-[90vw] h-[92vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-6xl">
           <DialogHeader><DialogTitle>评价标准配置</DialogTitle><DialogDescription>配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价点与评分规则</DialogDescription></DialogHeader>
           {methodDialogContent}
         </DialogContent>
@@ -2328,8 +2336,8 @@ export function EvaluationRulesEditor({
             const filteredKp = knowledgePoints.filter(k => !rubricKpSearch || k.name.includes(rubricKpSearch) || k.description?.includes(rubricKpSearch) || (k.code && k.code.includes(rubricKpSearch)))
             const toggleKp = (kpId: string) => { if (!field || !pointId) return; const newIds = selectedIds.includes(kpId) ? selectedIds.filter(id => id !== kpId) : [...selectedIds, kpId]; updateEvalPoint(field, pointId, { knowledgePointIds: newIds }); }
             return (
-              <div className="flex gap-4 flex-1 min-h-0 py-2">
-                <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+              <div className="flex gap-4 flex-1 min-h-0 py-2 max-lg:flex-col">
+                <div className="w-full lg:w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
                   <div className="relative mb-3"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /><Input value={rubricKpSearch} onChange={e => setRubricKpSearch(e.target.value)} placeholder="搜索知识点名称、描述或编码..." className="pl-9" /></div>
                   <div className="flex-1 overflow-y-auto">
                     <table className="w-full text-sm">
@@ -2350,7 +2358,7 @@ export function EvaluationRulesEditor({
                     </table>
                   </div>
                 </div>
-                <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+                <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
                   <p className="text-sm font-medium mb-3 text-gray-700">已选择知识点 ({selectedIds.length})</p>
                   <div className="flex-1 overflow-y-auto space-y-2">
                     {selectedIds.length === 0 && <div className="text-center text-gray-400 py-8"><Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" /><p className="text-xs">从左侧选择知识点</p></div>}
@@ -2379,8 +2387,8 @@ export function EvaluationRulesEditor({
             const filteredAb = abilityPoints.filter(a => !rubricAbSearch || a.name.includes(rubricAbSearch) || a.description?.includes(rubricAbSearch) || (a.code && a.code.includes(rubricAbSearch)))
             const toggleAb = (abId: string) => { if (!field || !pointId) return; const newIds = selectedIds.includes(abId) ? selectedIds.filter(id => id !== abId) : [...selectedIds, abId]; updateEvalPoint(field, pointId, { abilityPointIds: newIds }); }
             return (
-              <div className="flex gap-4 flex-1 min-h-0 py-2">
-                <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+              <div className="flex gap-4 flex-1 min-h-0 py-2 max-lg:flex-col">
+                <div className="w-full lg:w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
                   <div className="relative mb-3"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /><Input value={rubricAbSearch} onChange={e => setRubricAbSearch(e.target.value)} placeholder="搜索能力点名称、描述或编码..." className="pl-9" /></div>
                   <div className="flex-1 overflow-y-auto">
                     <table className="w-full text-sm">
@@ -2401,7 +2409,7 @@ export function EvaluationRulesEditor({
                     </table>
                   </div>
                 </div>
-                <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+                <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
                   <p className="text-sm font-medium mb-3 text-gray-700">已选择能力点 ({selectedIds.length})</p>
                   <div className="flex-1 overflow-y-auto space-y-2">
                     {selectedIds.length === 0 && <div className="text-center text-gray-400 py-8"><Award className="h-8 w-8 mx-auto mb-2 opacity-50" /><p className="text-xs">从左侧选择能力点</p></div>}
