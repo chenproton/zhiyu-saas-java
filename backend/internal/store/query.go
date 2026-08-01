@@ -273,6 +273,7 @@ var (
 	"issue_date DESC",
 	"last_updated DESC",
 	"qb.is_draft_pool DESC, qb.created_at DESC",
+	"tp.entry_year DESC, tp.created_at DESC",
 	"min_score ASC",
 	"module_key ASC",
 	"n.sort_order ASC, n.id ASC",
@@ -339,6 +340,7 @@ var (
 	"theme",
 	"title",
 	"tp.name",
+	"tp.code",
 	"username",
 	}
 )
