@@ -2,21 +2,17 @@ package handler
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type QuestionBankHandler struct {
-	DB *pgxpool.Pool
+	Service *service.EvaluationService
 }
 
 type QuestionBankListResponse struct {
@@ -26,12 +22,12 @@ type QuestionBankListResponse struct {
 
 type CreateQuestionBankRequest struct {
 	Name                string   `json:"name"`
-	Description         string   `json:"description"`
+	Description         *string  `json:"description"`
 	CoverImage          *string  `json:"coverImage"`
 	CollaboratorIDs     []string `json:"collaboratorIds"`
 	CollaboratorDeptIDs []string `json:"collaboratorDeptIds"`
-	KnowledgePointIds   []string `json:"knowledgePointIds"`
 	BatchID             *string  `json:"batchId"`
+	KnowledgePointIds   []string `json:"knowledgePointIds"`
 }
 
 func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -41,54 +37,17 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
+	h.Service.EnsureDraftPool(r.Context(), effectiveTenantID, claims.UserID)
 
-	h.ensureDraftPool(r.Context(), effectiveTenantID, claims.UserID)
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	if effectiveTenantID != "" {
-		where = append(where, "qb.tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if status != "" {
-		where = append(where, "qb.status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(qb.name ILIKE $"+itoa(argIdx)+" OR qb.description ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM question_banks qb WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-	query := `
-		SELECT qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
+	cfg := store.ListQueryConfig[domain.QuestionBank]{
+		Table: "question_banks qb LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM questions q WHERE q.bank_id = qb.id) qcnt ON true LEFT JOIN users cr_u ON cr_u.id = qb.creator_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') AS ids FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) kparr ON true",
+		SelectColumns: `qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
 			COALESCE(qcnt.cnt, 0) AS question_count,
 			qb.creator_id,
 			COALESCE(cr_u.name, qb.creator_id::text) AS creator_name,
@@ -100,44 +59,40 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 			), '{}') AS collaborator_names,
 			qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
 			COALESCE(kparr.ids, '{}') AS knowledge_point_ids,
-			qb.created_at, qb.updated_at
-		FROM question_banks qb
-		LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM questions q WHERE q.bank_id = qb.id) qcnt ON true
-		LEFT JOIN users cr_u ON cr_u.id = qb.creator_id
-		LEFT JOIN LATERAL (SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') AS ids FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) kparr ON true
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY qb.is_draft_pool DESC, qb.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+			qb.created_at, qb.updated_at`,
+		TenantScoped:  true,
+		TenantColumn:  "qb.tenant_id",
+		SearchColumns: []string{"qb.name", "qb.description"},
+		OrderBy:       "qb.is_draft_pool DESC, qb.created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      store.ScanQuestionBankRows,
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("qb.status = " + qb.NextArg(status))
+			}
+		},
+	}
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListQuestionBanks(r.Context(), params, cfg)
 	if err != nil {
-		slog.Error("list question banks query failed", "err", err)
 		respondError(w, http.StatusInternalServerError, "查询题库失败")
 		return
 	}
-	defer rows.Close()
-
-	items, err := h.scanQuestionBankRows(rows)
-	if err != nil {
-		slog.Error("scan question banks failed", "err", err)
-		respondError(w, http.StatusInternalServerError, "读取题库失败")
-		return
-	}
-
 	respondJSON(w, http.StatusOK, QuestionBankListResponse{Items: items, Total: total})
 }
 
 func (h *QuestionBankHandler) Get(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
+	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
-	bank, err := h.fetchQuestionBank(r.Context(), id)
+	bank, err := h.Service.GetQuestionBank(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题库不存在")
 		return
@@ -160,31 +115,28 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	id := uuid.NewString()
-	code, err := generateUniqueEntityCode(r.Context(), h.DB, "TK", "question_banks", tenantID)
+	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), "TK", "question_banks", tenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "生成question bank code失败")
 		return
 	}
-	creatorID := claims.UserID
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
 
-	_, err = tx.Exec(r.Context(), `
-		INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count, creator_id,
-			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
-		VALUES ($1, $2, $3, $4, $5, $6, 'draft', 0, $7, $8, $9, $10, 'v1.0', 'mine', false)
-	`, id, tenantID, code, req.Name, req.Description, req.CoverImage, creatorID, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), emptyStrToNil(req.BatchID))
+	bank, err := h.Service.CreateQuestionBank(r.Context(), tenantID, &store.QuestionBankCreateParams{
+		Code:                code,
+		Name:                req.Name,
+		Description:         req.Description,
+		CoverImage:          req.CoverImage,
+		CreatorID:           claims.UserID,
+		CollaboratorIDs:     coalesceStringSlice(req.CollaboratorIDs),
+		CollaboratorDeptIDs: coalesceStringSlice(req.CollaboratorDeptIDs),
+		BatchID:             emptyStrToNil(req.BatchID),
+		KnowledgePointIDs:   req.KnowledgePointIds,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
@@ -193,27 +145,6 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "创建题库失败")
 		return
 	}
-
-	for _, kpID := range req.KnowledgePointIds {
-		if kpID == "" {
-			continue
-		}
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO question_bank_knowledge_points (question_bank_id, knowledge_point_id)
-			VALUES ($1, $2)
-		`, id, kpID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "插入知识点绑定失败")
-			return
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	bank, _ := h.fetchQuestionBank(r.Context(), id)
 	respondJSON(w, http.StatusCreated, bank)
 }
 
@@ -225,7 +156,7 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchQuestionBank(r.Context(), id)
+	existing, err := h.Service.GetQuestionBank(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题库不存在")
 		return
@@ -239,17 +170,16 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" {
 		req.Name = existing.Name
 	}
-	if req.Description == "" {
-		req.Description = existing.Description
+	if req.Description == nil || *req.Description == "" {
+		existingDesc := existing.Description
+		req.Description = &existingDesc
 	}
 	if req.CoverImage == nil {
 		req.CoverImage = existing.CoverImage
 	}
-
 	collaboratorIDs := req.CollaboratorIDs
 	if collaboratorIDs == nil {
 		collaboratorIDs = existing.CollaboratorIDs
@@ -259,18 +189,21 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		collaboratorDeptIDs = existing.CollaboratorDeptIDs
 	}
 
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
 		return
 	}
-	defer tx.Rollback(r.Context())
 
-	_, err = tx.Exec(r.Context(), `
-		UPDATE question_banks SET name = $1, description = $2, cover_image = $3,
-			collaborator_ids = $4, collaborator_dept_ids = $5, batch_id = $6, updated_at = NOW()
-		WHERE id = $7
-	`, req.Name, req.Description, req.CoverImage, collaboratorIDs, collaboratorDeptIDs, emptyStrToNil(req.BatchID), id)
+	bank, err := h.Service.UpdateQuestionBank(r.Context(), id, &store.QuestionBankUpdateParams{
+		TenantID:            tenantID,
+		Name:                req.Name,
+		Description:         req.Description,
+		CoverImage:          req.CoverImage,
+		CollaboratorIDs:     collaboratorIDs,
+		CollaboratorDeptIDs: collaboratorDeptIDs,
+		BatchID:             emptyStrToNil(req.BatchID),
+		KnowledgePointIDs:   req.KnowledgePointIds,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
@@ -279,32 +212,6 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "更新题库失败")
 		return
 	}
-
-	_, err = tx.Exec(r.Context(), `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "清空知识点绑定失败")
-		return
-	}
-	for _, kpID := range req.KnowledgePointIds {
-		if kpID == "" {
-			continue
-		}
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO question_bank_knowledge_points (question_bank_id, knowledge_point_id)
-			VALUES ($1, $2)
-		`, id, kpID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "插入知识点绑定失败")
-			return
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	bank, _ := h.fetchQuestionBank(r.Context(), id)
 	respondJSON(w, http.StatusOK, bank)
 }
 
@@ -316,7 +223,7 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	bank, err := h.fetchQuestionBank(r.Context(), id)
+	bank, err := h.Service.GetQuestionBank(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题库不存在")
 		return
@@ -325,9 +232,7 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "草稿库不允许删除")
 		return
 	}
-
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM question_banks WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.DeleteQuestionBank(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除题库失败")
 		return
 	}
@@ -336,166 +241,66 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *QuestionBankHandler) actions() contentActions {
 	return contentActions{
-		db:         h.DB,
+		db:         h.Service.Queryer(),
+		pool:       h.Service.Store(),
 		table:      "question_banks",
-		entityName: "question bank",
+		entityName: "question_bank",
 		targetType: "question_bank",
 		inviteCol:  "collaborator_ids",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
-			return h.fetchQuestionBank(ctx, id)
+			return h.Service.GetQuestionBank(ctx, id)
 		},
 	}
 }
 
 func (h *QuestionBankHandler) Submit(w http.ResponseWriter, r *http.Request) {
-	if err := h.rejectDraftPool(r); err != nil {
-		respondError(w, http.StatusForbidden, "草稿库不允许提交审批")
+	if h.isDraftPool(r, w) {
 		return
 	}
 	h.actions().transition(w, r, domain.StatusPending)
 }
 
 func (h *QuestionBankHandler) Review(w http.ResponseWriter, r *http.Request) {
-	if err := h.rejectDraftPool(r); err != nil {
-		respondError(w, http.StatusForbidden, "草稿库不允许审核")
-		return
-	}
 	h.actions().review(w, r)
 }
 
 func (h *QuestionBankHandler) Publish(w http.ResponseWriter, r *http.Request) {
-	if err := h.rejectDraftPool(r); err != nil {
-		respondError(w, http.StatusForbidden, "草稿库不允许发布")
+	if h.isDraftPool(r, w) {
 		return
 	}
 	h.actions().transition(w, r, domain.StatusPublished)
 }
 
 func (h *QuestionBankHandler) Archive(w http.ResponseWriter, r *http.Request) {
-	if err := h.rejectDraftPool(r); err != nil {
-		respondError(w, http.StatusForbidden, "草稿库不允许归档")
-		return
-	}
 	h.actions().transition(w, r, domain.StatusArchived)
 }
 
 func (h *QuestionBankHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
-	if err := h.rejectDraftPool(r); err != nil {
-		respondError(w, http.StatusForbidden, "草稿库不允许取消发布")
-		return
-	}
 	h.actions().transition(w, r, domain.StatusDraft)
 }
 
 func (h *QuestionBankHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
-	if err := h.rejectDraftPool(r); err != nil {
-		respondError(w, http.StatusForbidden, "草稿库不允许撤回")
-		return
-	}
 	h.actions().transition(w, r, domain.StatusDraft)
 }
 
 func (h *QuestionBankHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
-	if err := h.rejectDraftPool(r); err != nil {
-		respondError(w, http.StatusForbidden, "草稿库不允许保存草稿")
-		return
-	}
 	h.actions().saveDraft(w, r)
 }
 
 func (h *QuestionBankHandler) Invite(w http.ResponseWriter, r *http.Request) {
-	if err := h.rejectDraftPool(r); err != nil {
-		respondError(w, http.StatusForbidden, "草稿库不允许邀请共建")
-		return
-	}
 	h.actions().invite(w, r)
 }
 
-func (h *QuestionBankHandler) rejectDraftPool(r *http.Request) error {
+// isDraftPool 草稿池禁止提交/发布，返回 true 并写入 400 响应。
+func (h *QuestionBankHandler) isDraftPool(r *http.Request, w http.ResponseWriter) bool {
 	id := chi.URLParam(r, "id")
-	var isDraftPool bool
-	err := h.DB.QueryRow(r.Context(), `SELECT is_draft_pool FROM question_banks WHERE id = $1`, id).Scan(&isDraftPool)
+	isDraftPool, err := h.Service.IsDraftPool(r.Context(), id)
 	if err != nil {
-		return err
+		return false
 	}
 	if isDraftPool {
-		return fmt.Errorf("不能对草稿池执行此操作")
+		respondError(w, http.StatusBadRequest, "不能对草稿池执行此操作")
+		return true
 	}
-	return nil
-}
-
-func (h *QuestionBankHandler) fetchQuestionBank(ctx context.Context, id string) (domain.QuestionBank, error) {
-	var b domain.QuestionBank
-	var coverImage, creatorID, batchID *string
-	err := h.DB.QueryRow(ctx, `
-		SELECT qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
-                (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
-                qb.creator_id,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
-			qb.collaborator_ids,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(qb.collaborator_ids) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
-			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) AS knowledge_point_ids,
-			qb.created_at, qb.updated_at
-		FROM question_banks qb WHERE qb.id = $1
-	`, id).Scan(
-		&b.ID, &b.Code, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
-		&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
-		&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
-		&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
-	)
-	if err != nil {
-		return b, err
-	}
-	b.CoverImage = coverImage
-	b.CreatorID = creatorID
-	b.BatchID = batchID
-	return b, nil
-}
-
-func (h *QuestionBankHandler) scanQuestionBankRows(rows pgx.Rows) ([]domain.QuestionBank, error) {
-	items := make([]domain.QuestionBank, 0)
-	for rows.Next() {
-		var b domain.QuestionBank
-		var coverImage, creatorID, batchID *string
-		if err := rows.Scan(
-			&b.ID, &b.Code, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
-			&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
-			&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
-			&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		b.CoverImage = coverImage
-		b.CreatorID = creatorID
-		b.BatchID = batchID
-		items = append(items, b)
-	}
-	return items, nil
-}
-
-func (h *QuestionBankHandler) ensureDraftPool(ctx context.Context, tenantID, userID string) {
-	var count int
-	err := h.DB.QueryRow(ctx,
-		`SELECT COUNT(*) FROM question_banks WHERE tenant_id = $1 AND creator_id = $2 AND is_draft_pool = true`,
-		tenantID, userID,
-	).Scan(&count)
-	if err != nil || count > 0 {
-		return
-	}
-
-	code, err := generateUniqueEntityCode(ctx, h.DB, "TK", "question_banks", tenantID)
-	if err != nil {
-		code = generateEntityCode("TK")
-	}
-
-	_, _ = h.DB.Exec(ctx, `
-		INSERT INTO question_banks (id, tenant_id, code, name, description, status, question_count, creator_id,
-			collaborator_ids, collaborator_dept_ids, version, owner_type, is_draft_pool)
-		VALUES (gen_random_uuid(), $1, $2, '我的草稿库', '', 'draft', 0, $3, '{}', '{}', 'v1.0', 'mine', true)
-	`, tenantID, code, userID)
+	return false
 }

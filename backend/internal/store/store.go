@@ -49,6 +49,7 @@ type Store struct {
 	courses         *CourseStore
 	courseHomeworks *CourseHomeworkStore
 	courseAssess    *CourseAssessmentStore
+	questionBanks   *QuestionBankStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -83,6 +84,7 @@ func New(db *pgxpool.Pool) *Store {
 		courses:         NewCourseStore(db),
 		courseHomeworks: NewCourseHomeworkStore(db),
 		courseAssess:    NewCourseAssessmentStore(db),
+		questionBanks:   NewQuestionBankStore(db),
 	}
 }
 
@@ -118,6 +120,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		courses:         NewCourseStore(tx),
 		courseHomeworks: NewCourseHomeworkStore(tx),
 		courseAssess:    NewCourseAssessmentStore(tx),
+		questionBanks:   NewQuestionBankStore(tx),
 	}
 }
 
@@ -264,6 +267,11 @@ func (s *Store) CourseHomeworks() *CourseHomeworkStore {
 // CourseAssessments 返回评估生成 store。
 func (s *Store) CourseAssessments() *CourseAssessmentStore {
 	return s.courseAssess
+}
+
+// QuestionBanks 返回题库 store。
+func (s *Store) QuestionBanks() *QuestionBankStore {
+	return s.questionBanks
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。
