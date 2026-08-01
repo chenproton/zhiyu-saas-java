@@ -401,10 +401,10 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/certifications", certificationHandler.CreateRule)
 			r.Put("/evaluation/certifications/{id}", certificationHandler.UpdateRule)
 			r.Delete("/evaluation/certifications/{id}", certificationHandler.DeleteRule)
-			r.Get("/evaluation/certifications/{ruleId}/items", certificationHandler.ConfigItems)
-			r.Post("/evaluation/certifications/{ruleId}/items", certificationHandler.ConfigItems)
-			r.Get("/evaluation/certifications/items/{itemId}/points", certificationHandler.ConfigPoints)
-			r.Post("/evaluation/certifications/items/{itemId}/points", certificationHandler.ConfigPoints)
+			r.Get("/evaluation/certifications/{id}/items", certificationHandler.ConfigItems)
+			r.Post("/evaluation/certifications/{id}/items", certificationHandler.ConfigItems)
+			r.Get("/evaluation/certifications/items/{id}/points", certificationHandler.ConfigPoints)
+			r.Post("/evaluation/certifications/items/{id}/points", certificationHandler.ConfigPoints)
 
 			graduationHandler := &handler.GraduationHandler{DB: pool}
 			r.Get("/evaluation/graduation/topics", graduationHandler.ListTopics)
