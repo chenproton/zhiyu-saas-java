@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { createTagElement } from "@/lib/dom-utils"
+import { reportError } from "@/lib/error-handling"
 import { taskEvaluationApi } from "@/lib/api"
 import type { GradeMapping } from "@/lib/types/lesson"
 
@@ -535,7 +536,7 @@ export function MethodDialogContent({
                 abilityPointIds: p.abilityPointIds || [],
               })) },
         }
-        await taskEvaluationApi.updateTemplate(schemeId, data).catch(() => {})
+        await taskEvaluationApi.updateTemplate(schemeId, data).catch((err) => reportError(err, { source: "更新任务评价标准模板" }))
         setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
       } else {
         const data = {

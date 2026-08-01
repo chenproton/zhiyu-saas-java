@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Label } from "@/components/ui/label"
+import { reportError } from "@/lib/error-handling"
 import {
   Select,
   SelectContent,
@@ -30,7 +31,7 @@ export function BatchSelector({
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
-    batchApi.list({ limit: 1000 }).then((res) => setBatches(res.items)).catch(() => {})
+    batchApi.list({ limit: 1000 }).then((res) => setBatches(res.items)).catch((err) => reportError(err, { source: "加载批次列表" }))
   }, [batchApi])
 
   return (

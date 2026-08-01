@@ -56,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { useToast } from "@zhiyu/ui"
 import { createTagElement } from "@/lib/dom-utils"
+import { reportError } from "@/lib/error-handling"
 import type { KnowledgePointItem } from "@/lib/types/lesson"
 import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import { useEvalRuleStore } from "@/lib/evaluation-rule-store"
@@ -310,20 +311,26 @@ export function EvaluationRulesEditor({
     try {
       const res = await randomDrawQuestionApi.list({ limit: 9999 })
       setRdqApiQuestions(res.items || [])
-    } catch { /* ignore */ }
-    finally { setLoadingRdq(false) }
+    } catch (err) {
+      reportError(err, { source: "加载现场问答题列表" })
+    } finally { setLoadingRdq(false) }
   }, [])
 
   const loadMajors = useCallback(async () => {
     try {
       const res = await majorApi.list({ limit: 1000 })
       setMajors((res.items || []).map((m: any) => ({ id: m.id, name: m.name })))
-    } catch { /* ignore */ }
+    } catch (err) {
+      reportError(err, { source: "加载专业列表" })
+    }
   }, [])
 
   const loadRubricTemplates = useCallback(async () => {
     try {
-      const res = await taskEvaluationApi.listTemplates({ limit: 200 }).catch(() => ({ items: [] as any[], total: 0 }))
+      const res = await taskEvaluationApi.listTemplates({ limit: 200 }).catch((err) => {
+        reportError(err, { source: "加载评价标准模板列表" })
+        return { items: [] as any[], total: 0 }
+      })
       setRubricLibrary((res.items || []).map((t: any) => ({
         id: t.id,
         name: t.name,
@@ -344,7 +351,9 @@ export function EvaluationRulesEditor({
         mode: t.mode || "rubric",
         scoreRuleItems: t.data?.scoreRuleItems || [],
       })))
-    } catch { /* ignore */ }
+    } catch (err) {
+      reportError(err, { source: "解析评价标准模板" })
+    }
   }, [])
 
   const handleCreateRdq = useCallback(async () => {
@@ -366,7 +375,8 @@ export function EvaluationRulesEditor({
         } as any)
       }
       await loadRdqQuestions()
-    } catch (_) {
+    } catch (err) {
+      reportError(err, { source: "保存现场问答题" })
       toast({ variant: "destructive", title: "保存失败", description: "现场问答题保存失败" })
     }
     setRdqActionOpen(false)
@@ -378,7 +388,8 @@ export function EvaluationRulesEditor({
       await randomDrawQuestionApi.delete(id)
       updateConfig({ randomDrawSelectedIds: config.randomDrawSelectedIds.filter((sid: string) => sid !== id) })
       await loadRdqQuestions()
-    } catch (_) {
+    } catch (err) {
+      reportError(err, { source: "删除现场问答题" })
       toast({ variant: "destructive", title: "删除失败", description: "现场问答题删除失败" })
     }
   }, [config.randomDrawSelectedIds, updateConfig, loadRdqQuestions, toast])
@@ -389,8 +400,9 @@ export function EvaluationRulesEditor({
     try {
       const res = await examApi.list({ limit: 1000 })
       setLoadedExams((res.items || []) as LoadedExam[])
-    } catch { /* ignore */ }
-    finally { setLoadingPapers(false) }
+    } catch (err) {
+      reportError(err, { source: "加载试卷列表" })
+    } finally { setLoadingPapers(false) }
   }, [])
 
   // Mount 时预加载一次依赖数据；load* 均为 useCallback 稳定引用，不会导致循环
@@ -413,7 +425,8 @@ export function EvaluationRulesEditor({
       const created = await examApi.create(data as any)
       addLoadedExam(created as LoadedExam)
       updateConfig({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
-    } catch (_) {
+    } catch (err) {
+      reportError(err, { source: "创建试卷" })
       toast({ variant: "destructive", title: "创建失败", description: "创建试卷失败" })
     }
   }, [updateConfig, toast])
@@ -1589,7 +1602,7 @@ export function EvaluationRulesEditor({
                   abilityPointIds: p.abilityPointIds || [],
                 })) },
           }
-          await taskEvaluationApi.updateTemplate(schemeId, data).catch(() => {})
+          await taskEvaluationApi.updateTemplate(schemeId, data).catch((err) => reportError(err, { source: "更新评价标准模板" }))
           setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
         } else {
           const data = {
@@ -1608,14 +1621,19 @@ export function EvaluationRulesEditor({
                   abilityPointIds: p.abilityPointIds || [],
                 })) },
           }
-          const created = await taskEvaluationApi.createTemplate(data).catch(() => null)
+          const created = await taskEvaluationApi.createTemplate(data).catch((err) => {
+            reportError(err, { source: "创建评价标准模板" })
+            return null
+          })
           if (created) {
             const newScheme: RubricScheme = { id: created.id, name: created.name || updates.name || "新建评价标准", types: updates.types || [], desc: created.description || "", points: info.points.map(p => ({ ...p })), mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [] }
             setRubricLibrary(prev => [...prev, newScheme])
             updateConfig({ [rubricIdField]: created.id } as any)
           }
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        reportError(err, { source: "保存评价标准模板" })
+      }
     }
 
     const editingScheme = editingRubricId ? rubricLibrary.find(s => s.id === editingRubricId) : null

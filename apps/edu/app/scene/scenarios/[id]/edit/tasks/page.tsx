@@ -152,6 +152,7 @@ import { PaperConfigPanel } from "./_components/paper-config-panel"
 import { MethodDialogContent, type MethodDialogCtx } from "./_components/method-config-dialog"
 import { getLoadedExam, upsertLoadedExam, type LoadedExam } from "./_components/shared-defs"
 import { useAuth } from "@/components/auth-provider"
+import { reportError } from "@/lib/error-handling"
 import type {
   Task, PositionAbility, GradeMapping,
 } from "@/lib/types/scene-mock"
@@ -1481,7 +1482,7 @@ export default function TasksEditPage() {
                   const reordered = newTasks.map((t, i) => ({ ...t, order: i + 1 }))
                   setTasks(reordered)
                   setDraggedIdx(null)
-                  taskApi.reorder(scenarioId, reordered.map(t => t.id)).catch(() => {})
+                  taskApi.reorder(scenarioId, reordered.map(t => t.id)).catch((err) => reportError(err, { source: "保存任务排序" }))
                 }}
                 className={cn(
                   "flex items-center gap-3 p-4 bg-white rounded-xl border shadow-sm hover:shadow-md hover:border-primary/30 transition-all group",

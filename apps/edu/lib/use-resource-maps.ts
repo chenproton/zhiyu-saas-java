@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { industryApi, majorApi } from '@/lib/api'
+import { reportError } from './error-handling'
 
 export function useIndustryMap() {
   const [map, setMap] = useState<Map<string, string>>(new Map())
@@ -16,7 +17,7 @@ export function useIndustryMap() {
         })
         setMap(nameMap)
       })
-      .catch(() => {})
+      .catch((err) => reportError(err, { source: "加载行业字典" }))
   }, [])
 
   return map
@@ -35,7 +36,7 @@ export function useMajorMap() {
         })
         setMap(nameMap)
       })
-      .catch(() => {})
+      .catch((err) => reportError(err, { source: "加载专业字典" }))
   }, [])
 
   return map

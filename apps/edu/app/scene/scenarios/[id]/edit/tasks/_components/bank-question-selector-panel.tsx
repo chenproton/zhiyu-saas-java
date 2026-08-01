@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { questionBankApi, questionApi } from "@/lib/api"
+import { reportError } from "@/lib/error-handling"
 import type { QuestionType } from "@/lib/types"
 import {
   getAllQuestions,
@@ -59,23 +60,25 @@ export function BankQuestionSelectorPanel({
   const [scoreDialogOpen, setScoreDialogOpen] = useState(false)
   const [preloadedQuestions, setPreloadedQuestions] = useState<any[]>([])
 
-  const loadBanks = async () => {
+  const loadBanks = useCallback(async () => {
     setLoadingBanks(true)
     try {
       const res = await questionBankApi.list({ limit: 1000 }) as unknown as { items: any[] }
       setBanks(res.items)
-    } catch (_) {} finally { setLoadingBanks(false) }
-  }
+    } catch (err) {
+      reportError(err, { source: "加载题库列表" })
+    } finally { setLoadingBanks(false) }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      await loadBanks()
+      if (!cancelled) await loadBanks()
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [loadBanks])
 
   useEffect(() => {
     const missingIds = selectedIds.filter(qid => !hasCachedQuestion(qid) && !preloadedQuestions.some(q => q.id === qid))
@@ -84,7 +87,10 @@ export function BankQuestionSelectorPanel({
       missingIds.map(async (qid) => {
         try {
           return await questionApi.get(qid) as unknown as any
-        } catch (_) { return null }
+        } catch (err) {
+          reportError(err, { source: "预加载题目详情", extras: { questionId: qid } })
+          return null
+        }
       })
     ).then(results => {
       const loaded = results.filter(Boolean)
@@ -93,14 +99,16 @@ export function BankQuestionSelectorPanel({
     })
   }, [selectedIds, preloadedQuestions])
 
-  const loadQuestions = async (bankId: string) => {
+  const loadQuestions = useCallback(async (bankId: string) => {
     setLoadingQuestions(true)
     try {
       const res = await questionApi.list({ bankId, limit: 1000 }) as unknown as { items: CachedQuestion[] }
       setCachedQuestions(res.items)
       setBankQuestions(res.items)
-    } catch (_) {} finally { setLoadingQuestions(false) }
-  }
+    } catch (err) {
+      reportError(err, { source: "加载题库题目", extras: { bankId } })
+    } finally { setLoadingQuestions(false) }
+  }, [])
 
   const handleSelectBank = (bankId: string, bankName: string) => {
     setSelectedBankId(bankId)
