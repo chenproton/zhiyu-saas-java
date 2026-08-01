@@ -3,11 +3,13 @@ package domain
 import "time"
 
 type WorkspaceDashboard struct {
-	Role          string                   `json:"role"`
-	Announcements []WorkspaceAnnouncement  `json:"announcements"`
-	Todos         []WorkspaceTodo          `json:"todos"`
-	Schedule      []WorkspaceScheduleEvent `json:"schedule"`
-	Stats         *WorkspaceStats          `json:"stats,omitempty"`
+	Role           string                    `json:"role"`
+	Announcements  []WorkspaceAnnouncement   `json:"announcements"`
+	Todos          []WorkspaceTodo           `json:"todos"`
+	Schedule       []WorkspaceScheduleEvent  `json:"schedule"`
+	Stats          *WorkspaceStats           `json:"stats,omitempty"`
+	ResourceStats  []WorkspaceResourceStat   `json:"resourceStats,omitempty"`
+	PersonnelStats []WorkspacePersonnelStat  `json:"personnelStats,omitempty"`
 
 	// Student workspace data
 	Courses      []WorkspaceCourse       `json:"courses"`
@@ -56,6 +58,18 @@ type WorkspaceStats struct {
 	Value1 int    `json:"value1"`
 	Label2 string `json:"label2"`
 	Value2 int    `json:"value2"`
+}
+
+type WorkspaceResourceStat struct {
+	Label string `json:"label"`
+	Value int    `json:"value"`
+	Icon  string `json:"icon,omitempty"`
+	Href  string `json:"href,omitempty"`
+}
+
+type WorkspacePersonnelStat struct {
+	Label string `json:"label"`
+	Value int    `json:"value"`
 }
 
 type WorkspaceCourse struct {

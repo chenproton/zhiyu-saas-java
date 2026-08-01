@@ -32,7 +32,8 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 		role = "student"
 	}
 
-	isTeacher := role == "teacher" || role == "school_admin" || role == "school"
+	isTeacher := role == "teacher" || role == "school" || role == "school_admin"
+	isSchoolAdmin := role == "school_admin"
 
 	dash := domain.WorkspaceDashboard{
 		Role:           role,
@@ -46,6 +47,16 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 		TeacherCourses: []domain.WorkspaceTeacherCourse{},
 		ClassPlans:     []domain.WorkspaceClassPlan{},
 		ClassSessions:  []domain.WorkspaceClassSession{},
+	}
+
+	if isSchoolAdmin {
+		dash.Stats = h.schoolAdminStats(r.Context(), claims.TenantID)
+		dash.ResourceStats = h.schoolAdminResourceStats(r.Context(), claims.TenantID)
+		dash.PersonnelStats = h.schoolAdminPersonnelStats(r.Context(), claims.TenantID)
+		dash.Todos = h.schoolAdminTodos(r.Context(), claims.TenantID)
+		dash.Schedule = []domain.WorkspaceScheduleEvent{}
+		respondJSON(w, http.StatusOK, dash)
+		return
 	}
 
 	dash.Stats = h.stats(r.Context(), claims.UserID, claims.TenantID, isTeacher)
@@ -340,6 +351,119 @@ func (h *PortalHandler) stats(ctx context.Context, userID string, tenantID *stri
 			 WHERE eu.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid))
 	`, tenantID).Scan(&courseCount, &examCount)
 	return &domain.WorkspaceStats{Label1: "可选课程", Value1: courseCount, Label2: "待考测评", Value2: examCount}
+}
+
+func (h *PortalHandler) schoolAdminStats(ctx context.Context, tenantID *string) *domain.WorkspaceStats {
+	var courseCount, pendingApprovalCount int
+	courseQuery := `SELECT COUNT(*) FROM courses WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)`
+	approvalQuery := `SELECT COUNT(*) FROM approval_records WHERE status = 'pending' AND ($1::uuid IS NULL OR tenant_id = $1::uuid)`
+	_ = h.DB.QueryRow(ctx, courseQuery, tenantID).Scan(&courseCount)
+	_ = h.DB.QueryRow(ctx, approvalQuery, tenantID).Scan(&pendingApprovalCount)
+	return &domain.WorkspaceStats{
+		Label1: "课程资源",
+		Value1: courseCount,
+		Label2: "待审批资源",
+		Value2: pendingApprovalCount,
+	}
+}
+
+func (h *PortalHandler) schoolAdminResourceStats(ctx context.Context, tenantID *string) []domain.WorkspaceResourceStat {
+	var courseCount, scenarioCount, positionCount, questionBankCount, examCount, examUsageCount int
+	_ = h.DB.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM courses WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM scenarios WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM career_positions WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM question_banks WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM exams WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM exam_usages WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid))
+	`, tenantID).Scan(&courseCount, &scenarioCount, &positionCount, &questionBankCount, &examCount, &examUsageCount)
+
+	return []domain.WorkspaceResourceStat{
+		{Label: "课程资源", Value: courseCount, Icon: "book-open", Href: "/lesson/admin/system"},
+		{Label: "实践场景", Value: scenarioCount, Icon: "layers", Href: "/scene/"},
+		{Label: "产业岗位", Value: positionCount, Icon: "briefcase", Href: "/job/positions"},
+		{Label: "题库", Value: questionBankCount, Icon: "book-open", Href: "/evaluation/question-banks"},
+		{Label: "试卷", Value: examCount, Icon: "file-text", Href: "/evaluation/exams"},
+		{Label: "考试", Value: examUsageCount, Icon: "check-circle", Href: "/evaluation/exam-usage"},
+	}
+}
+
+func (h *PortalHandler) schoolAdminPersonnelStats(ctx context.Context, tenantID *string) []domain.WorkspacePersonnelStat {
+	query := `
+		SELECT r.code, COUNT(DISTINCT ur.user_id)
+		FROM roles r
+		JOIN user_roles ur ON ur.role_id = r.id
+		WHERE ($1::uuid IS NULL OR r.tenant_id = $1::uuid)
+		  AND r.code IN ('student', 'teacher', 'enterprise_mentor', 'school_admin')
+		GROUP BY r.code
+	`
+	rows, err := h.DB.Query(ctx, query, tenantID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	counts := map[string]int{}
+	for rows.Next() {
+		var code string
+		var count int
+		if err := rows.Scan(&code, &count); err != nil {
+			continue
+		}
+		counts[code] = count
+	}
+
+	return []domain.WorkspacePersonnelStat{
+		{Label: "学生", Value: counts["student"]},
+		{Label: "教职工", Value: counts["teacher"]},
+		{Label: "企业导师", Value: counts["enterprise_mentor"]},
+		{Label: "学校管理员", Value: counts["school_admin"]},
+	}
+}
+
+func (h *PortalHandler) schoolAdminTodos(ctx context.Context, tenantID *string) []domain.WorkspaceTodo {
+	rows, err := h.DB.Query(ctx, `
+		SELECT target_type, COUNT(*)
+		FROM approval_records
+		WHERE status = 'pending' AND ($1::uuid IS NULL OR tenant_id = $1::uuid)
+		GROUP BY target_type
+		ORDER BY COUNT(*) DESC
+	`, tenantID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	typeLabels := map[string]string{
+		"course":           "待审批课程",
+		"scenario":         "待审批场景",
+		"career_position":  "待审批岗位",
+		"question_bank":    "待审批题库",
+		"exam":             "待审批试卷",
+		"training_program": "待审批培养方案",
+	}
+
+	var todos []domain.WorkspaceTodo
+	for rows.Next() {
+		var targetType string
+		var count int
+		if err := rows.Scan(&targetType, &count); err != nil {
+			continue
+		}
+		label, ok := typeLabels[targetType]
+		if !ok {
+			label = "待审批" + targetType
+		}
+		todos = append(todos, domain.WorkspaceTodo{
+			ID:     "pending-" + targetType,
+			Title:  label,
+			Type:   "approve",
+			Count:  count,
+			Urgent: true,
+		})
+	}
+	return todos
 }
 
 func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceCourse {

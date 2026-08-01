@@ -51,6 +51,7 @@ import { TeacherDashboardTab } from "./_components/teacher-dashboard-tab"
 import { TeacherCoursesTab } from "./_components/teacher-courses-tab"
 import { TeacherPortraitsTab } from "./_components/teacher-portraits-tab"
 import { TeacherProfileTab } from "./_components/teacher-profile-tab"
+import { SchoolAdminDashboardTab } from "./_components/school-admin-dashboard-tab"
 
 // 不同身份的服务台内容（非学生角色保留原展示）
 const roleConfigs = {
@@ -161,6 +162,15 @@ const studentTabs = [
   { id: "assessment", label: "测评认证", icon: Award },
   { id: "portrait", label: "学生画像", icon: BarChart3 },
   { id: "community", label: "学习社区", icon: MessageSquare },
+  { id: "profile", label: "个人中心", icon: User },
+]
+
+// 学校管理员工作台 Tab 配置
+const schoolAdminTabs = [
+  { id: "dashboard", label: "工作台首页", icon: LayoutDashboard },
+  { id: "resources", label: "资源运营", icon: BookOpen },
+  { id: "approvals", label: "审批中心", icon: CheckSquare },
+  { id: "overview", label: "学校概览", icon: Building2 },
   { id: "profile", label: "个人中心", icon: User },
 ]
 
@@ -279,6 +289,60 @@ function TeacherWorkspace() {
   )
 }
 
+function SchoolAdminWorkspace() {
+  const [activeTab, setActiveTab] = useState("dashboard")
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+      case "resources":
+        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+      case "approvals":
+        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+      case "overview":
+        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+      case "profile":
+        return <ProfileTab />
+      default:
+        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Tab 导航 */}
+      <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-1 sticky top-14 z-30">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          {schoolAdminTabs.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                  isActive
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Tab 内容 */}
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {renderTabContent()}
+      </div>
+    </div>
+  )
+}
+
 export default function WorkspacePage() {
   const { user, activeRole, loading: isLoading } = usePortalAuth()
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
@@ -349,7 +413,28 @@ export default function WorkspacePage() {
     )
   }
 
-  // 非学生角色保持原有通用工作台（教师/学校管理员共用 teacher/admin 配置）
+  // 学校管理员角色展示资源运营管理驾驶舱
+  if (currentRole === "school_admin") {
+    return (
+      <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">学校管理员工作台</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              欢迎回来，管理员。管理全校教学资源、审批与人员。
+            </p>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
+            <Building2 className="w-5 h-5 text-blue-600" />
+            <span className="text-sm font-medium text-gray-700">当前角色：{activeRole?.name || "学校管理员"}</span>
+          </div>
+        </div>
+        <SchoolAdminWorkspace />
+      </div>
+    )
+  }
+
+  // 非学生角色保持原有通用工作台（企业用户等共用 enterprise/admin 配置）
   const roleConfigKey: keyof typeof roleConfigs =
     currentRole === "student" ? "teacher" : currentRole === "teacher" ? "teacher" : "admin"
   const config = roleConfigs[roleConfigKey] || roleConfigs.teacher

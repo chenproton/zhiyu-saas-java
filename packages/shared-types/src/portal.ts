@@ -36,6 +36,18 @@ export interface WorkspaceStats {
   value2: number
 }
 
+export interface WorkspaceResourceStat {
+  label: string
+  value: number
+  icon?: string
+  href?: string
+}
+
+export interface WorkspacePersonnelStat {
+  label: string
+  value: number
+}
+
 export interface WorkspaceCourse {
   id: string
   code: string
@@ -126,6 +138,8 @@ export interface WorkspaceDashboard {
   todos: WorkspaceTodo[]
   schedule: WorkspaceScheduleEvent[]
   stats?: WorkspaceStats
+  resourceStats?: WorkspaceResourceStat[]
+  personnelStats?: WorkspacePersonnelStat[]
   courses: WorkspaceCourse[]
   sceneTasks: WorkspaceSceneTask[]
   exams: WorkspaceExam[]
