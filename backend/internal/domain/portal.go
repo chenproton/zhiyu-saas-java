@@ -10,6 +10,7 @@ type WorkspaceDashboard struct {
 	Stats          *WorkspaceStats           `json:"stats,omitempty"`
 	ResourceStats  []WorkspaceResourceStat   `json:"resourceStats,omitempty"`
 	PersonnelStats []WorkspacePersonnelStat  `json:"personnelStats,omitempty"`
+	ResourceGrowth []WorkspaceResourceGrowth `json:"resourceGrowth,omitempty"`
 
 	// Student workspace data
 	Courses      []WorkspaceCourse       `json:"courses"`
@@ -70,6 +71,16 @@ type WorkspaceResourceStat struct {
 type WorkspacePersonnelStat struct {
 	Label string `json:"label"`
 	Value int    `json:"value"`
+}
+
+type WorkspaceResourceGrowth struct {
+	Month           string `json:"month"`
+	Courses         int    `json:"courses"`
+	Scenarios       int    `json:"scenarios"`
+	CareerPositions int    `json:"careerPositions"`
+	QuestionBanks   int    `json:"questionBanks"`
+	Exams           int    `json:"exams"`
+	ExamUsages      int    `json:"examUsages"`
 }
 
 type WorkspaceCourse struct {

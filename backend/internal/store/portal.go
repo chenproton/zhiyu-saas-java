@@ -716,3 +716,65 @@ func (s *PortalStore) PeriodLabelMap(ctx context.Context, tenantID *string) map[
 	}
 	return m
 }
+
+// SchoolAdminResourceGrowth 学校管理员资源增长趋势（按月）。
+func (s *PortalStore) SchoolAdminResourceGrowth(ctx context.Context, tenantID *string, months int) []domain.WorkspaceResourceGrowth {
+	if months <= 0 {
+		months = 12
+	}
+
+	now := time.Now()
+	monthKeys := make([]string, 0, months)
+	monthIndex := map[string]int{}
+	for i := months - 1; i >= 0; i-- {
+		d := now.AddDate(0, -i, 0)
+		key := d.Format("2006-01")
+		monthKeys = append(monthKeys, key)
+		monthIndex[key] = len(monthKeys) - 1
+	}
+
+	result := make([]domain.WorkspaceResourceGrowth, months)
+	for i, key := range monthKeys {
+		result[i].Month = key
+	}
+
+	queries := []struct {
+		table   string
+		dateCol string
+		setter  func(idx int, val int)
+	}{
+		{"courses", "created_at", func(idx int, val int) { result[idx].Courses = val }},
+		{"scenarios", "created_at", func(idx int, val int) { result[idx].Scenarios = val }},
+		{"career_positions", "created_at", func(idx int, val int) { result[idx].CareerPositions = val }},
+		{"question_banks", "created_at", func(idx int, val int) { result[idx].QuestionBanks = val }},
+		{"exams", "created_at", func(idx int, val int) { result[idx].Exams = val }},
+		{"exam_usages", "created_at", func(idx int, val int) { result[idx].ExamUsages = val }},
+	}
+
+	for _, q := range queries {
+		rows, err := s.q.Query(ctx, `
+			SELECT TO_CHAR(DATE_TRUNC('month', `+q.dateCol+`), 'YYYY-MM') AS month, COUNT(*)
+			FROM `+q.table+`
+			WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)
+			  AND `+q.dateCol+` >= $2
+			GROUP BY DATE_TRUNC('month', `+q.dateCol+`)
+			ORDER BY month
+		`, tenantID, now.AddDate(0, -months, 0))
+		if err != nil {
+			continue
+		}
+		for rows.Next() {
+			var month string
+			var count int
+			if err := rows.Scan(&month, &count); err != nil {
+				continue
+			}
+			if idx, ok := monthIndex[month]; ok {
+				q.setter(idx, count)
+			}
+		}
+		rows.Close()
+	}
+
+	return result
+}
