@@ -168,7 +168,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		jobBannerHandler:              &handler.JobBannerHandler{DB: db},
 		scenarioHandler:               &handler.ScenarioHandler{Service: service.NewScenarioService(svc), DB: st},
 		scenarioCloneHandler:          &handler.ScenarioCloneHandler{Service: service.NewScenarioService(svc)},
-		scenarioTaskHandler:           &handler.ScenarioTaskHandler{DB: db},
+		scenarioTaskHandler:           &handler.ScenarioTaskHandler{Service: service.NewScenarioService(svc)},
 		taskEvaluationHandler:         &handler.TaskEvaluationHandler{DB: db},
 		taskResourceHandler:           &handler.TaskResourceHandler{Service: service.NewResourceBindingService(svc)},
 		taskKnowledgeAbilityHandler:   &handler.TaskKnowledgeAbilityHandler{Service: service.NewScenarioConfigService(svc)},

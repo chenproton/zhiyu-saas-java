@@ -83,3 +83,50 @@ func (s *ScenarioService) CloneScenario(ctx context.Context, tenantID, oldScenar
 
 // ErrScenarioNotInTenant 场景不属于当前租户。
 var ErrScenarioNotInTenant = errors.New("scenario not in tenant")
+
+// ListTasks 查询任务列表。
+func (s *ScenarioService) ListTasks(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.ScenarioTask]) ([]domain.ScenarioTask, int, error) {
+	items, total, err := s.st.ScenarioTasks().List(ctx, p, cfg)
+	if err != nil {
+		return nil, 0, err
+	}
+	s.st.ScenarioTasks().PopulateEvalData(ctx, items)
+	return items, total, nil
+}
+
+// GetTask 查询单个任务。
+func (s *ScenarioService) GetTask(ctx context.Context, id string) (*domain.ScenarioTask, error) {
+	t, err := s.st.ScenarioTasks().Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	s.st.ScenarioTasks().PopulateEvalData(ctx, []domain.ScenarioTask{*t})
+	return t, nil
+}
+
+// ScenarioTenantID 查询场景租户。
+func (s *ScenarioService) ScenarioTenantID(ctx context.Context, scenarioID string) (*string, error) {
+	return s.st.ScenarioTasks().ScenarioTenantID(ctx, scenarioID)
+}
+
+// CreateTask 创建任务。
+func (s *ScenarioService) CreateTask(ctx context.Context, p *store.ScenarioTaskParams) (*domain.ScenarioTask, error) {
+	return s.st.ScenarioTasks().Create(ctx, p)
+}
+
+// UpdateTask 更新任务。
+func (s *ScenarioService) UpdateTask(ctx context.Context, id, tenantID string, p *store.ScenarioTaskParams) (*domain.ScenarioTask, error) {
+	return s.st.ScenarioTasks().Update(ctx, id, tenantID, p)
+}
+
+// DeleteTask 删除任务。
+func (s *ScenarioService) DeleteTask(ctx context.Context, id, tenantID string) error {
+	return s.st.ScenarioTasks().Delete(ctx, id, tenantID)
+}
+
+// ReorderTasks 批量重排任务（事务内）。
+func (s *ScenarioService) ReorderTasks(ctx context.Context, scenarioID string, taskIDs []string) error {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.ScenarioTasks().Reorder(ctx, txStore.Q(), scenarioID, taskIDs)
+	})
+}

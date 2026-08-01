@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -389,4 +390,16 @@ func recordView(ctx context.Context, db store.Queryer, targetType, targetID stri
 		}
 	}
 	return store.RecordView(ctx, db, targetType, targetID, userID, tenantID)
+}
+
+// jsonMapBytes 将 JSONMap 序列化为 []byte（nil 返回 "{}"）。
+func jsonMapBytes(m domain.JSONMap) []byte {
+	if m == nil {
+		return []byte("{}")
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return []byte("{}")
+	}
+	return b
 }

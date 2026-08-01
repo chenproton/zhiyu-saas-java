@@ -263,7 +263,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/scene/scenarios/{id}/archive", scenarioHandler.Archive)
 			r.Post("/scene/scenarios/{id}/clone", scenarioCloneHandler.Clone)
 
-			scenarioTaskHandler := &handler.ScenarioTaskHandler{DB: pool}
+			scenarioTaskHandler := &handler.ScenarioTaskHandler{Service: service.NewScenarioService(svc2)}
 			r.Get("/scene/tasks", scenarioTaskHandler.List)
 			r.Get("/scene/tasks/{id}", scenarioTaskHandler.Get)
 			r.Post("/scene/tasks", scenarioTaskHandler.Create)
