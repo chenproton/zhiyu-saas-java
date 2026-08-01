@@ -422,7 +422,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/graduation/evaluations", graduationHandler.EvaluationsCRUD)
 			r.Get("/evaluation/graduation/query", graduationHandler.QueryResults)
 
-			studentPortraitHandler := &handler.StudentPortraitHandler{DB: pool}
+			studentPortraitHandler := handler.NewStudentPortraitHandler(pool)
 			r.Get("/evaluation/portraits", studentPortraitHandler.List)
 			r.Get("/evaluation/portraits/{id}", studentPortraitHandler.Get)
 			r.Post("/evaluation/portraits/generate", studentPortraitHandler.Generate)

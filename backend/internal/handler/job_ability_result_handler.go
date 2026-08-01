@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -11,17 +10,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/store"
 	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type JobAbilityResultHandler struct {
-	DB  *pgxpool.Pool
-	Agg *service.JobAbilityAggregator
+	Service *service.EvaluationService
+	Agg     *service.JobAbilityAggregator
 }
 
 func NewJobAbilityResultHandler(db *pgxpool.Pool) *JobAbilityResultHandler {
-	return &JobAbilityResultHandler{DB: db, Agg: service.NewJobAbilityAggregator(db)}
+	return &JobAbilityResultHandler{Service: service.NewEvaluationService(service.New(store.New(db))), Agg: service.NewJobAbilityAggregator(db)}
 }
 
 type JobAbilityResultItem struct {
@@ -71,20 +70,6 @@ type JobAbilityAggregateLog struct {
 	FinishedAt       *time.Time `json:"finishedAt,omitempty"`
 }
 
-const jobAbilityResultColumns = `
-	r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), u.student_no,
-	r.class_name, r.major_id, r.major_name,
-	r.total_ability_points, r.achieved_ability_points, r.achievement_rate, r.grade, r.evaluated_at`
-
-func scanJobAbilityResultRow(rows pgx.Rows) (JobAbilityResultItem, error) {
-	var item JobAbilityResultItem
-	err := rows.Scan(&item.ID, &item.CareerPositionID, &item.PositionName, &item.UserID, &item.UserName, &item.StudentNo,
-		&item.ClassName, &item.MajorID, &item.MajorName,
-		&item.TotalAbilityPoints, &item.AchievedAbilityPoints, &item.AchievementRate, &item.Grade, &item.EvaluatedAt)
-	return item, err
-}
-
-// List GET /evaluation/job-ability/results
 func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -95,72 +80,43 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	qb := store.NewListQueryBuilder()
-	qb.AddCondition("r.tenant_id = " + qb.NextArg(tenantID))
-	if v := r.URL.Query().Get("careerPositionId"); v != "" {
-		qb.AddCondition("r.career_position_id = " + qb.NextArg(v))
+	f := store.JobAbilityResultFilter{
+		TenantID:         tenantID,
+		CareerPositionID: r.URL.Query().Get("careerPositionId"),
+		UserID:           r.URL.Query().Get("userId"),
+		Grade:            r.URL.Query().Get("grade"),
+		Search:           r.URL.Query().Get("search"),
 	}
-	if v := r.URL.Query().Get("userId"); v != "" {
-		qb.AddCondition("r.user_id = " + qb.NextArg(v))
-	}
-	if v := r.URL.Query().Get("grade"); v != "" {
-		qb.AddCondition("r.grade = " + qb.NextArg(v))
-	}
-	if v := r.URL.Query().Get("search"); v != "" {
-		qb.AddCondition("(u.name ILIKE " + qb.NextArg("%"+v+"%") + " OR u.student_no ILIKE " + qb.NextArg("%"+v+"%") + ")")
-	}
-	where := qb.WhereClause()
-
-	var total int
-	if err := h.DB.QueryRow(r.Context(), `
-		SELECT COUNT(*) FROM job_ability_results r
-		LEFT JOIN users u ON u.id = r.user_id
-		WHERE `+where, qb.Args()...).Scan(&total); err != nil {
-		slog.Error("查询岗位能力结果失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询岗位能力结果失败")
-		return
-	}
-
-	page, err := parseInt(r.URL.Query().Get("page"), 1)
-	if err != nil || page < 1 {
+	page, _ := parseInt(r.URL.Query().Get("page"), 1)
+	if page < 1 {
 		page = 1
 	}
-	limit, err := parseInt(r.URL.Query().Get("limit"), 50)
-	if err != nil || limit < 1 {
+	limit, _ := parseInt(r.URL.Query().Get("limit"), 50)
+	if limit < 1 {
 		limit = 50
 	}
 	if limit > MaxPageSize {
 		limit = MaxPageSize
 	}
 
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT `+jobAbilityResultColumns+`
-		FROM job_ability_results r
-		LEFT JOIN users u ON u.id = r.user_id
-		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
-		WHERE `+where+`
-		ORDER BY r.evaluated_at DESC
-		LIMIT `+itoa(limit)+` OFFSET `+itoa((page-1)*limit), qb.Args()...)
+	rows, total, err := h.Service.ListJobAbilityResults(r.Context(), f, limit, (page-1)*limit)
 	if err != nil {
-		slog.Error("查询岗位能力结果失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询岗位能力结果失败")
 		return
 	}
-	defer rows.Close()
-
-	items := make([]JobAbilityResultItem, 0)
-	for rows.Next() {
-		item, err := scanJobAbilityResultRow(rows)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "读取岗位能力结果失败")
-			return
-		}
-		items = append(items, item)
+	items := make([]JobAbilityResultItem, 0, len(rows))
+	for _, r2 := range rows {
+		items = append(items, JobAbilityResultItem{
+			ID: r2.ID, CareerPositionID: r2.CareerPositionID, PositionName: r2.PositionName,
+			UserID: r2.UserID, UserName: r2.UserName, StudentNo: r2.StudentNo,
+			ClassName: r2.ClassName, MajorID: r2.MajorID, MajorName: r2.MajorName,
+			TotalAbilityPoints: r2.TotalAbilityPoints, AchievedAbilityPoints: r2.AchievedAbilityPoints,
+			AchievementRate: r2.AchievementRate, Grade: r2.Grade, EvaluatedAt: r2.EvaluatedAt,
+		})
 	}
 	respondJSON(w, http.StatusOK, JobAbilityResultListResponse{Items: items, Total: total})
 }
 
-// Get GET /evaluation/job-ability/results/{id}
 func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -172,30 +128,31 @@ func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 
-	var item JobAbilityResultItem
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT `+jobAbilityResultColumns+`, r.ability_point_details, r.grade_history
-		FROM job_ability_results r
-		LEFT JOIN users u ON u.id = r.user_id
-		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
-		WHERE r.id = $1 AND r.tenant_id = $2
-	`, id, tenantID).Scan(&item.ID, &item.CareerPositionID, &item.PositionName, &item.UserID, &item.UserName, &item.StudentNo,
-		&item.ClassName, &item.MajorID, &item.MajorName,
-		&item.TotalAbilityPoints, &item.AchievedAbilityPoints, &item.AchievementRate, &item.Grade, &item.EvaluatedAt,
-		&item.AbilityPointDetails, &item.GradeHistory)
+	row, details, history, err := h.Service.GetJobAbilityResult(r.Context(), id, tenantID)
 	if err == pgx.ErrNoRows {
 		respondError(w, http.StatusNotFound, "岗位能力结果不存在")
 		return
 	}
 	if err != nil {
-		slog.Error("查询岗位能力结果详情失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询岗位能力结果详情失败")
 		return
+	}
+	item := JobAbilityResultItem{
+		ID: row.ID, CareerPositionID: row.CareerPositionID, PositionName: row.PositionName,
+		UserID: row.UserID, UserName: row.UserName, StudentNo: row.StudentNo,
+		ClassName: row.ClassName, MajorID: row.MajorID, MajorName: row.MajorName,
+		TotalAbilityPoints: row.TotalAbilityPoints, AchievedAbilityPoints: row.AchievedAbilityPoints,
+		AchievementRate: row.AchievementRate, Grade: row.Grade, EvaluatedAt: row.EvaluatedAt,
+	}
+	if details != nil {
+		item.AbilityPointDetails = *details
+	}
+	if history != nil {
+		item.GradeHistory = *history
 	}
 	respondJSON(w, http.StatusOK, item)
 }
 
-// Summary GET /evaluation/job-ability/results/summary
 func (h *JobAbilityResultHandler) Summary(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -205,35 +162,21 @@ func (h *JobAbilityResultHandler) Summary(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT r.career_position_id, COALESCE(cp.name, ''), COUNT(*), COALESCE(AVG(r.achievement_rate), 0)
-		FROM job_ability_results r
-		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
-		WHERE r.tenant_id = $1
-		GROUP BY r.career_position_id, cp.name
-		ORDER BY COUNT(*) DESC
-	`, tenantID)
+	rows, err := h.Service.SummaryJobAbilityResults(r.Context(), tenantID)
 	if err != nil {
-		slog.Error("查询岗位能力汇总失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询岗位能力汇总失败")
 		return
 	}
-	defer rows.Close()
-
-	items := make([]JobAbilitySummaryItem, 0)
-	for rows.Next() {
-		var item JobAbilitySummaryItem
-		if err := rows.Scan(&item.PositionID, &item.PositionName, &item.StudentCount, &item.AvgRate); err != nil {
-			respondError(w, http.StatusInternalServerError, "读取岗位能力汇总失败")
-			return
-		}
-		items = append(items, item)
+	items := make([]JobAbilitySummaryItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, JobAbilitySummaryItem{
+			PositionID: row.PositionID, PositionName: row.PositionName,
+			StudentCount: row.StudentCount, AvgRate: row.AvgRate,
+		})
 	}
 	respondJSON(w, http.StatusOK, items)
 }
 
-// Aggregate POST /evaluation/job-ability/aggregate — 异步执行汇聚，立即返回 202 + logId。
 func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -243,7 +186,6 @@ func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-
 	var req JobAbilityAggregateRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -255,21 +197,17 @@ func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Reque
 
 	logID, err := h.Agg.CreateLog(r.Context(), tenantID, req.CareerPositionID)
 	if err != nil {
-		slog.Error("创建汇聚日志失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "触发汇聚失败")
 		return
 	}
-
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
 		_ = h.Agg.RunAggregate(ctx, logID, tenantID, req.CareerPositionID, req.UserIDs)
 	}()
-
 	respondJSON(w, http.StatusAccepted, map[string]string{"logId": logID, "status": "running"})
 }
 
-// AggregateStatus GET /evaluation/job-ability/aggregate/status?careerPositionId=&logId=
 func (h *JobAbilityResultHandler) AggregateStatus(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -286,30 +224,24 @@ func (h *JobAbilityResultHandler) AggregateStatus(w http.ResponseWriter, r *http
 	}
 	logID := r.URL.Query().Get("logId")
 
-	var log JobAbilityAggregateLog
+	var log *store.JobAbilityAggregateLog
 	var err error
 	if logID != "" {
-		err = h.DB.QueryRow(r.Context(), `
-			SELECT id, career_position_id, status, student_count, updated_count, error_message, started_at, finished_at
-			FROM job_ability_aggregate_logs
-			WHERE id = $1
-		`, logID).Scan(&log.ID, &log.CareerPositionID, &log.Status, &log.StudentCount, &log.UpdatedCount, &log.ErrorMessage, &log.StartedAt, &log.FinishedAt)
+		log, err = h.Service.GetAggregateLog(r.Context(), logID)
 	} else {
-		err = h.DB.QueryRow(r.Context(), `
-			SELECT id, career_position_id, status, student_count, updated_count, error_message, started_at, finished_at
-			FROM job_ability_aggregate_logs
-			WHERE tenant_id = $1 AND career_position_id = $2 AND started_at > NOW() - INTERVAL '1 hour'
-			ORDER BY started_at DESC LIMIT 1
-		`, tenantID, positionID).Scan(&log.ID, &log.CareerPositionID, &log.Status, &log.StudentCount, &log.UpdatedCount, &log.ErrorMessage, &log.StartedAt, &log.FinishedAt)
+		log, err = h.Service.GetRecentAggregateLog(r.Context(), tenantID, positionID)
 	}
 	if err == pgx.ErrNoRows {
 		respondError(w, http.StatusNotFound, "暂无汇聚记录")
 		return
 	}
 	if err != nil {
-		slog.Error("查询汇聚状态失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询汇聚状态失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, log)
+	respondJSON(w, http.StatusOK, JobAbilityAggregateLog{
+		ID: log.ID, CareerPositionID: log.CareerPositionID, Status: log.Status,
+		StudentCount: log.StudentCount, UpdatedCount: log.UpdatedCount,
+		ErrorMessage: log.ErrorMessage, StartedAt: log.StartedAt, FinishedAt: log.FinishedAt,
+	})
 }

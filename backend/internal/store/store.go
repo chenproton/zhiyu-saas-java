@@ -61,6 +61,8 @@ type Store struct {
 	evalMethods     *EvaluationMethodStore
 	appeals         *AppealStore
 	evalResults     *EvaluationResultStore
+	studentPortrait *StudentPortraitStore
+	jobAbilityRes   *JobAbilityResultStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -107,6 +109,8 @@ func New(db *pgxpool.Pool) *Store {
 		evalMethods:     NewEvaluationMethodStore(db),
 		appeals:         NewAppealStore(db),
 		evalResults:     NewEvaluationResultStore(db),
+		studentPortrait: NewStudentPortraitStore(db),
+		jobAbilityRes:   NewJobAbilityResultStore(db),
 	}
 }
 
@@ -154,6 +158,8 @@ func NewWithTx(tx pgx.Tx) *Store {
 		evalMethods:     NewEvaluationMethodStore(tx),
 		appeals:         NewAppealStore(tx),
 		evalResults:     NewEvaluationResultStore(tx),
+		studentPortrait: NewStudentPortraitStore(tx),
+		jobAbilityRes:   NewJobAbilityResultStore(tx),
 	}
 }
 
@@ -360,6 +366,16 @@ func (s *Store) Appeals() *AppealStore {
 // EvaluationResults 返回评价结果 store。
 func (s *Store) EvaluationResults() *EvaluationResultStore {
 	return s.evalResults
+}
+
+// StudentPortraits 返回学生画像 store。
+func (s *Store) StudentPortraits() *StudentPortraitStore {
+	return s.studentPortrait
+}
+
+// JobAbilityResults 返回岗位能力结果 store。
+func (s *Store) JobAbilityResults() *JobAbilityResultStore {
+	return s.jobAbilityRes
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

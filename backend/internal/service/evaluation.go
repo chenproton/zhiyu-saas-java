@@ -635,3 +635,58 @@ func (s *EvaluationService) syncExamResultScore(ctx context.Context, taskID, met
 	}
 	s.st.EvaluationResults().UpdateExamResultScore(ctx, examResultID, score)
 }
+
+// ListStudentPortraits 查询学生画像列表。
+func (s *EvaluationService) ListStudentPortraits(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.StudentAbilityPortrait]) ([]domain.StudentAbilityPortrait, int, error) {
+	return s.st.StudentPortraits().ListPortraits(ctx, p, cfg)
+}
+
+// GetStudentPortrait 查询单个画像。
+func (s *EvaluationService) GetStudentPortrait(ctx context.Context, id string) (*domain.StudentAbilityPortrait, error) {
+	return s.st.StudentPortraits().GetPortrait(ctx, id)
+}
+
+// GetStudentPortraitByUserPosition 查询用户岗位画像。
+func (s *EvaluationService) GetStudentPortraitByUserPosition(ctx context.Context, userID, careerPositionID string) (*domain.StudentAbilityPortrait, error) {
+	return s.st.StudentPortraits().GetPortraitByUserPosition(ctx, userID, careerPositionID)
+}
+
+// ListStudentArchives 查询学生档案列表。
+func (s *EvaluationService) ListStudentArchives(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.StudentAbilityArchive]) ([]domain.StudentAbilityArchive, int, error) {
+	return s.st.StudentPortraits().ListArchives(ctx, p, cfg)
+}
+
+// CreateStudentArchive 创建学生档案。
+func (s *EvaluationService) CreateStudentArchive(ctx context.Context, p *store.StudentArchiveCreateParams) (*domain.StudentAbilityArchive, error) {
+	return s.st.StudentPortraits().CreateArchive(ctx, p)
+}
+
+// DeleteStudentArchive 删除学生档案。
+func (s *EvaluationService) DeleteStudentArchive(ctx context.Context, id, tenantID string) (bool, error) {
+	return s.st.StudentPortraits().DeleteArchive(ctx, id, tenantID)
+}
+
+// ListJobAbilityResults 查询岗位能力结果。
+func (s *EvaluationService) ListJobAbilityResults(ctx context.Context, f store.JobAbilityResultFilter, limit, offset int) ([]store.JobAbilityResultRow, int, error) {
+	return s.st.JobAbilityResults().ListJobAbilityResults(ctx, f, limit, offset)
+}
+
+// GetJobAbilityResult 查询单个岗位能力结果。
+func (s *EvaluationService) GetJobAbilityResult(ctx context.Context, id, tenantID string) (*store.JobAbilityResultRow, *domain.JSONSlice, *domain.JSONSlice, error) {
+	return s.st.JobAbilityResults().GetJobAbilityResult(ctx, id, tenantID)
+}
+
+// SummaryJobAbilityResults 岗位能力汇总。
+func (s *EvaluationService) SummaryJobAbilityResults(ctx context.Context, tenantID string) ([]store.JobAbilitySummaryRow, error) {
+	return s.st.JobAbilityResults().Summary(ctx, tenantID)
+}
+
+// GetAggregateLog 查询汇聚日志。
+func (s *EvaluationService) GetAggregateLog(ctx context.Context, logID string) (*store.JobAbilityAggregateLog, error) {
+	return s.st.JobAbilityResults().GetAggregateLogByID(ctx, logID)
+}
+
+// GetRecentAggregateLog 查询最近汇聚日志。
+func (s *EvaluationService) GetRecentAggregateLog(ctx context.Context, tenantID, positionID string) (*store.JobAbilityAggregateLog, error) {
+	return s.st.JobAbilityResults().GetRecentAggregateLog(ctx, tenantID, positionID)
+}
