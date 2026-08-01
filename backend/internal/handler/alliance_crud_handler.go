@@ -429,3 +429,34 @@ func (h *AllianceHandler) agreementCRUD() allianceCRUDConfig[domain.AllianceAgre
 		},
 	}
 }
+
+// ===== 品牌 =====
+
+func (h *AllianceHandler) brandCRUD() allianceCRUDConfig[domain.AllianceBrand] {
+	return allianceCRUDConfig[domain.AllianceBrand]{
+		LogName:      "品牌",
+		NotFoundMsg:  "品牌不存在",
+		CreateErrMsg: "创建失败",
+		UpdateErrMsg: "更新失败",
+		DeleteErrMsg: "删除失败",
+		ValidateCreate: func(t *domain.AllianceBrand) string {
+			if t.Name == "" || t.BrandType == "" {
+				return "品牌名称和类型不能为空"
+			}
+			return ""
+		},
+		PrepareCreate: func(t *domain.AllianceBrand, tenantID, userID string) {
+			t.TenantID = tenantID
+		},
+		CreateFn: func(ctx context.Context, t *domain.AllianceBrand, tenantID, userID string) (string, error) {
+			return h.Store.CreateBrand(ctx, t)
+		},
+		UpdateFn: func(ctx context.Context, id string, t *domain.AllianceBrand) error {
+			return h.Store.UpdateBrand(ctx, id, t)
+		},
+		DeleteFn: h.Store.DeleteBrand,
+		GetFn: func(ctx context.Context, id, tenantID string) (any, error) {
+			return h.Store.GetBrandByID(ctx, id, tenantID)
+		},
+	}
+}

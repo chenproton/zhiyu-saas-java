@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -681,15 +682,9 @@ func (h *AllianceHandler) DeleteDictionaryItem(w http.ResponseWriter, r *http.Re
 // ===== 品牌 =====
 
 func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
 	brandType := r.URL.Query().Get("brandType")
 	status := r.URL.Query().Get("status")
-
-	items, total, err := executeListQuery[domain.AllianceBrand](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceBrand]{
+	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceBrand]{
 		Table:         "alliance_brands",
 		SelectColumns: "id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, student_id, enterprise_id, position_id, major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at",
 		TenantScoped:  true,
@@ -704,115 +699,23 @@ func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
 			}
 		},
 		ScanRows: h.Store.ScanBrandRows,
-	})
-	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
-		slog.Error("查询品牌列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询品牌列表失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
+	}, "查询品牌列表失败")
 }
 
 func (h *AllianceHandler) GetBrand(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	b, err := h.Store.GetBrandByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "品牌不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, b)
+	allianceGet(w, r, h.Store.GetBrandByID, "品牌不存在")
 }
 
 func (h *AllianceHandler) CreateBrand(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	var b domain.AllianceBrand
-	if !decodeBody(w, r, &b) {
-		return
-	}
-	b.TenantID = tenantID
-	if b.Name == "" || b.BrandType == "" {
-		respondError(w, http.StatusBadRequest, "品牌名称和类型不能为空")
-		return
-	}
-
-	id, err := h.Store.CreateBrand(r.Context(), &b)
-	if err != nil {
-		slog.Error("创建品牌失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建失败")
-		return
-	}
-	brand, _ := h.Store.GetBrandByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusCreated, brand)
+	allianceCreate(w, r, h.brandCRUD())
 }
 
 func (h *AllianceHandler) UpdateBrand(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetBrandByID(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "品牌不存在")
-		return
-	}
-
-	var b domain.AllianceBrand
-	if !decodeBody(w, r, &b) {
-		return
-	}
-	if err := h.Store.UpdateBrand(r.Context(), id, &b); err != nil {
-		slog.Error("更新品牌失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新失败")
-		return
-	}
-	brand, _ := h.Store.GetBrandByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusOK, brand)
+	allianceUpdate(w, r, h.brandCRUD())
 }
 
 func (h *AllianceHandler) DeleteBrand(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if err := h.Store.DeleteBrand(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	allianceDelete(w, r, h.brandCRUD())
 }
 
 // ===== 公开 API（门户前台） =====
@@ -868,23 +771,13 @@ func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AllianceHandler) ListPublicBrands(w http.ResponseWriter, r *http.Request) {
-	brandType := r.URL.Query().Get("brandType")
-	items, err := h.Store.ListPublicBrands(r.Context(), brandType)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceBrand, error) {
+		return h.Store.ListPublicBrands(ctx, r.URL.Query().Get("brandType"))
+	})
 }
 
 func (h *AllianceHandler) GetPublicBrand(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	b, err := h.Store.GetPublicBrandByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "品牌不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, b)
+	alliancePublicGet(w, r, h.Store.GetPublicBrandByID, "品牌不存在")
 }
 
 func (h *AllianceHandler) GetPublicStats(w http.ResponseWriter, r *http.Request) {
