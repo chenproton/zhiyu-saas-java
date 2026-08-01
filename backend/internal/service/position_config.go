@@ -67,3 +67,28 @@ func (s *PositionConfigService) UpdateResponsibility(ctx context.Context, id str
 func (s *PositionConfigService) DeleteResponsibility(ctx context.Context, id string) error {
 	return s.st.PositionResponsibilities().Delete(ctx, id)
 }
+
+// ListCertificates 查询岗位证书列表。
+func (s *PositionConfigService) ListCertificates(ctx context.Context, careerPositionID string, limit, offset int) ([]domain.PositionCertificate, int, error) {
+	return s.st.PositionCertificates().List(ctx, careerPositionID, limit, offset)
+}
+
+// GetCertificate 查询单个岗位证书。
+func (s *PositionConfigService) GetCertificate(ctx context.Context, id string) (*domain.PositionCertificate, error) {
+	return s.st.PositionCertificates().Get(ctx, id)
+}
+
+// CreateCertificate 创建岗位证书。
+func (s *PositionConfigService) CreateCertificate(ctx context.Context, tenantID string, p *store.PositionCertificateParams) (*domain.PositionCertificate, error) {
+	return s.st.PositionCertificates().Create(ctx, tenantID, p)
+}
+
+// UpdateCertificate 更新岗位证书。
+func (s *PositionConfigService) UpdateCertificate(ctx context.Context, tenantID string, p *store.PositionCertificateUpdateParams) (*domain.PositionCertificate, error) {
+	return s.st.PositionCertificates().Update(ctx, tenantID, p)
+}
+
+// DeleteCertificate 删除岗位证书。
+func (s *PositionConfigService) DeleteCertificate(ctx context.Context, id string) error {
+	return s.st.PositionCertificates().Delete(ctx, id)
+}

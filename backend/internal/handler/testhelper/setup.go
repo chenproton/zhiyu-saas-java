@@ -183,7 +183,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/subscriptions/{id}", subscriptionHandler.Update)
 
 			positionHandler := &handler.PositionHandler{DB: pool}
-			positionCloneHandler := &handler.PositionCloneHandler{DB: pool}
+			positionCloneHandler := &handler.PositionCloneHandler{Service: service.NewPositionCloneService(svc2)}
 			r.Get("/job/positions", positionHandler.List)
 			r.Get("/job/positions/{id}", positionHandler.Get)
 			r.Post("/job/positions", positionHandler.Create)
@@ -216,7 +216,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/job/position-responsibilities/{id}", positionResponsibilityHandler.Update)
 			r.Delete("/job/position-responsibilities/{id}", positionResponsibilityHandler.Delete)
 
-			positionCertificateHandler := &handler.PositionCertificateHandler{DB: pool}
+			positionCertificateHandler := &handler.PositionCertificateHandler{Service: service.NewPositionConfigService(svc2)}
 			r.Get("/job/position-certificates", positionCertificateHandler.List)
 			r.Get("/job/position-certificates/{id}", positionCertificateHandler.Get)
 			r.Post("/job/position-certificates", positionCertificateHandler.Create)

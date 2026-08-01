@@ -36,6 +36,8 @@ type Store struct {
 	resourceBind   *ResourceBindingStore
 	positionAbility *PositionAbilityStore
 	positionResp    *PositionResponsibilityStore
+	positionCert    *PositionCertificateStore
+	positionClone   *PositionCloneStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -57,6 +59,8 @@ func New(db *pgxpool.Pool) *Store {
 		resourceBind:   NewResourceBindingStore(db),
 		positionAbility: NewPositionAbilityStore(db),
 		positionResp:    NewPositionResponsibilityStore(db),
+		positionCert:    NewPositionCertificateStore(db),
+		positionClone:   NewPositionCloneStore(db),
 	}
 }
 
@@ -79,6 +83,8 @@ func NewWithTx(tx pgx.Tx) *Store {
 		resourceBind:   NewResourceBindingStore(tx),
 		positionAbility: NewPositionAbilityStore(tx),
 		positionResp:    NewPositionResponsibilityStore(tx),
+		positionCert:    NewPositionCertificateStore(tx),
+		positionClone:   NewPositionCloneStore(tx),
 	}
 }
 
@@ -160,6 +166,16 @@ func (s *Store) PositionAbilities() *PositionAbilityStore {
 // PositionResponsibilities 返回岗位职责 store。
 func (s *Store) PositionResponsibilities() *PositionResponsibilityStore {
 	return s.positionResp
+}
+
+// PositionCertificates 返回岗位证书 store。
+func (s *Store) PositionCertificates() *PositionCertificateStore {
+	return s.positionCert
+}
+
+// PositionClone 返回岗位克隆 store。
+func (s *Store) PositionClone() *PositionCloneStore {
+	return s.positionClone
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

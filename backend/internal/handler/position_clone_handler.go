@@ -1,22 +1,18 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 type PositionCloneHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionCloneService
 }
 
 type ClonePositionRequest struct {
@@ -38,21 +34,8 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	slog.Info("[ClonePosition] start", "position_id", id, "user_id", claims.UserID)
-
-	src, err := h.fetchSourcePosition(r.Context(), id)
-	if err != nil {
-		slog.Error("[ClonePosition] fetch source failed", "position_id", id, "error", err)
-		respondError(w, http.StatusNotFound, "岗位不存在")
-		return
-	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
-		return
-	}
-	if src.TenantID != nil && *src.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -62,84 +45,26 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newName := req.Name
-	if newName == "" {
-		newName = *src.Name + " (克隆)"
-	}
-
-	ctx := r.Context()
-	tx, err := h.DB.Begin(ctx)
+	newID, err := h.Service.Clone(r.Context(), tenantID, id, req.Name, claims.UserID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(ctx)
-
-	newID := uuid.NewString()
-	code, err := generateUniqueEntityCode(ctx, tx, "GW", "career_positions", tenantID)
-	if err != nil {
-		slog.Error("[ClonePosition] generate code failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "生成position code失败")
-		return
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO career_positions (id, tenant_id, code, batch_id, name, short_name, industry_id, position_type,
-			salary_min, salary_max, cover_image, description, requirements, career_path,
-			version, status, created_by, collaborators)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'draft', $16, $17)
-	`, newID, tenantID, code, src.BatchID, newName, src.ShortName, src.IndustryID, src.PositionType,
-		src.SalaryMin, src.SalaryMax, src.CoverImage, src.Description, src.Requirements,
-		src.CareerPath, src.Version, claims.UserID, coalesceStringSlice(src.Collaborators))
-	if err != nil {
+		if service.IsNotFound(err) {
+			respondError(w, http.StatusNotFound, "岗位不存在")
+			return
+		}
+		if err == service.ErrPositionNotInTenant {
+			respondError(w, http.StatusForbidden, "权限不足")
+			return
+		}
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
 			return
 		}
-		slog.Error("[ClonePosition] insert position failed", "error", err)
+		slog.Error("[ClonePosition] clone failed", "position_id", id, "error", err)
 		respondError(w, http.StatusInternalServerError, "克隆岗位失败")
 		return
 	}
 
-	if err := h.clonePositionMajors(ctx, tx, id, newID); err != nil {
-		slog.Error("[ClonePosition] clone majors failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "克隆岗位专业失败")
-		return
-	}
-
-	respIDMap := make(map[string]string)
-	if err := h.clonePositionResponsibilities(ctx, tx, id, newID, tenantID, respIDMap); err != nil {
-		slog.Error("[ClonePosition] clone responsibilities failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "克隆职责失败")
-		return
-	}
-
-	bindingIDMap := make(map[string]string)
-	if err := h.clonePositionAbilityBindings(ctx, tx, id, newID, tenantID, respIDMap, bindingIDMap); err != nil {
-		slog.Error("[ClonePosition] clone ability bindings failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "克隆能力绑定失败")
-		return
-	}
-
-	if err := h.cloneAbilityDomains(ctx, tx, id, newID, tenantID, bindingIDMap); err != nil {
-		slog.Error("[ClonePosition] clone ability domains failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "克隆能力域失败")
-		return
-	}
-
-	if err := h.clonePositionCertificates(ctx, tx, id, newID, tenantID); err != nil {
-		slog.Error("[ClonePosition] clone certificates failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "克隆证书失败")
-		return
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		slog.Error("[ClonePosition] commit failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	handler := &PositionHandler{DB: h.DB}
-	pos, err := handler.fetchPosition(ctx, newID)
+	pos, err := h.Service.FetchPosition(r.Context(), newID)
 	if err != nil {
 		slog.Error("[ClonePosition] fetch cloned position failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "获取cloned position失败")
@@ -147,250 +72,4 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("[ClonePosition] success", "new_position_id", newID)
 	respondJSON(w, http.StatusCreated, pos)
-}
-
-type sourcePositionFields struct {
-	Name          *string
-	ShortName     *string
-	IndustryID    *string
-	PositionType  string
-	SalaryMin     *int
-	SalaryMax     *int
-	CoverImage    *string
-	Description   *string
-	Requirements  []string
-	CareerPath    *string
-	Version       string
-	Collaborators []string
-	BatchID       *string
-	TenantID      *string
-}
-
-func (h *PositionCloneHandler) fetchSourcePosition(ctx context.Context, id string) (*sourcePositionFields, error) {
-	var s sourcePositionFields
-	var posType domain.PositionType
-	err := h.DB.QueryRow(ctx, `
-		SELECT name, short_name, industry_id, position_type, salary_min, salary_max,
-			cover_image, description, requirements, career_path, version, collaborators, batch_id, tenant_id
-		FROM career_positions WHERE id = $1
-	`, id).Scan(&s.Name, &s.ShortName, &s.IndustryID, &posType,
-		&s.SalaryMin, &s.SalaryMax, &s.CoverImage, &s.Description,
-		&s.Requirements, &s.CareerPath, &s.Version, &s.Collaborators, &s.BatchID, &s.TenantID)
-	if err != nil {
-		return nil, err
-	}
-	s.PositionType = string(posType)
-	return &s, nil
-}
-
-func (h *PositionCloneHandler) clonePositionMajors(ctx context.Context, tx pgx.Tx, oldPositionID, newPositionID string) error {
-	rows, err := tx.Query(ctx, `
-		SELECT major_id FROM career_position_majors WHERE career_position_id = $1
-	`, oldPositionID)
-	if err != nil {
-		slog.Error("[ClonePosition] query majors failed", "error", err)
-		return err
-	}
-	defer rows.Close()
-
-	var majors []string
-	for rows.Next() {
-		var majorID string
-		if err := rows.Scan(&majorID); err != nil {
-			continue
-		}
-		majors = append(majors, majorID)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	for _, majorID := range majors {
-		_, err := tx.Exec(ctx, `
-			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
-		`, newPositionID, majorID)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (h *PositionCloneHandler) clonePositionResponsibilities(ctx context.Context, tx pgx.Tx, oldPositionID, newPositionID, tenantID string, respIDMap map[string]string) error {
-	type respRow struct {
-		OldID       string
-		Name        string
-		Description *string
-		SortOrder   int
-	}
-
-	var rows2 []respRow
-	r, err := tx.Query(ctx, `
-		SELECT id, name, description, sort_order FROM position_responsibilities
-		WHERE career_position_id = $1 ORDER BY sort_order
-	`, oldPositionID)
-	if err != nil {
-		slog.Error("[ClonePosition] query responsibilities failed", "error", err)
-		return err
-	}
-	defer r.Close()
-	for r.Next() {
-		var rr respRow
-		if err := r.Scan(&rr.OldID, &rr.Name, &rr.Description, &rr.SortOrder); err != nil {
-			continue
-		}
-		rows2 = append(rows2, rr)
-	}
-	if err := r.Err(); err != nil {
-		return err
-	}
-
-	for _, rr := range rows2 {
-		newRespID := uuid.NewString()
-		respIDMap[rr.OldID] = newRespID
-		_, err := tx.Exec(ctx, `
-			INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, description, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, newRespID, tenantID, newPositionID, rr.Name, rr.Description, rr.SortOrder)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (h *PositionCloneHandler) clonePositionAbilityBindings(ctx context.Context, tx pgx.Tx, oldPositionID, newPositionID, tenantID string, respIDMap, bindingIDMap map[string]string) error {
-	rows, err := tx.Query(ctx, `
-		SELECT id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight
-		FROM position_ability_bindings WHERE career_position_id = $1
-	`, oldPositionID)
-	if err != nil {
-		slog.Error("[ClonePosition] query ability bindings failed", "error", err)
-		return err
-	}
-	defer rows.Close()
-
-	type bindingRow struct {
-		oldBindingID, oldRespID, abilityPointID, source string
-		domain, requiredLevel                           *string
-		rubricDescription                               *string
-		attributes                                      []string
-		weight                                          float64
-	}
-	var bindings []bindingRow
-	for rows.Next() {
-		var br bindingRow
-		if err := rows.Scan(&br.oldBindingID, &br.oldRespID, &br.abilityPointID, &br.source,
-			&br.domain, &br.requiredLevel, &br.rubricDescription, &br.attributes, &br.weight); err != nil {
-			continue
-		}
-		bindings = append(bindings, br)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	for _, br := range bindings {
-		newRespID, ok := respIDMap[br.oldRespID]
-		if !ok {
-			continue
-		}
-
-		newBindingID := uuid.NewString()
-		bindingIDMap[br.oldBindingID] = newBindingID
-
-		_, err := tx.Exec(ctx, `
-			INSERT INTO position_ability_bindings (
-				id, tenant_id, career_position_id, responsibility_id, ability_point_id, source,
-				domain, required_level, rubric_description, attributes, weight
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		`, newBindingID, tenantID, newPositionID, newRespID, br.abilityPointID, br.source,
-			br.domain, br.requiredLevel, br.rubricDescription, br.attributes, br.weight)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (h *PositionCloneHandler) cloneAbilityDomains(ctx context.Context, tx pgx.Tx, oldPositionID, newPositionID, tenantID string, bindingIDMap map[string]string) error {
-	rows, err := tx.Query(ctx, `
-		SELECT name, description, binding_ids, sort_order
-		FROM ability_domains WHERE career_position_id = $1 ORDER BY sort_order
-	`, oldPositionID)
-	if err != nil {
-		slog.Error("[ClonePosition] query ability domains failed", "error", err)
-		return err
-	}
-	defer rows.Close()
-
-	type domainRow struct {
-		name          string
-		description   *string
-		oldBindingIDs []string
-		sortOrder     int
-	}
-	var domains []domainRow
-	for rows.Next() {
-		var dr domainRow
-		if err := rows.Scan(&dr.name, &dr.description, &dr.oldBindingIDs, &dr.sortOrder); err != nil {
-			continue
-		}
-		domains = append(domains, dr)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	for _, dr := range domains {
-		newBindingIDs := make([]string, 0, len(dr.oldBindingIDs))
-		for _, oldID := range dr.oldBindingIDs {
-			if newID, ok := bindingIDMap[oldID]; ok {
-				newBindingIDs = append(newBindingIDs, newID)
-			}
-		}
-
-		_, err := tx.Exec(ctx, `
-			INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`, uuid.NewString(), tenantID, newPositionID, dr.name, dr.description, coalesceStringSlice(newBindingIDs), dr.sortOrder)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (h *PositionCloneHandler) clonePositionCertificates(ctx context.Context, tx pgx.Tx, oldPositionID, newPositionID, tenantID string) error {
-	rows, err := tx.Query(ctx, `
-		SELECT certificate_library_id FROM position_certificates WHERE career_position_id = $1
-	`, oldPositionID)
-	if err != nil {
-		slog.Error("[ClonePosition] query certificates failed", "error", err)
-		return err
-	}
-	defer rows.Close()
-
-	var libIDs []string
-	for rows.Next() {
-		var libID string
-		if err := rows.Scan(&libID); err != nil {
-			continue
-		}
-		libIDs = append(libIDs, libID)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	for _, libID := range libIDs {
-		_, err := tx.Exec(ctx, `
-			INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
-			VALUES ($1, $2, $3, $4)
-		`, uuid.NewString(), tenantID, newPositionID, libID)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

@@ -322,52 +322,14 @@ func verifyRequestTenant(w http.ResponseWriter, r *http.Request, requestTenantID
 	return true
 }
 
-const entityCodeAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
 // generateEntityCode returns a human-readable code like "GW-A3B7C9D1".
 func generateEntityCode(prefix string) string {
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		// Fall back to a deterministic but still formatted value on entropy failure.
-		return fmt.Sprintf("%s-%08d", prefix, 0)
-	}
-	for i := range b {
-		b[i] = entityCodeAlphabet[int(b[i])%len(entityCodeAlphabet)]
-	}
-	return fmt.Sprintf("%s-%s", prefix, string(b))
+	return store.GenerateEntityCode(prefix)
 }
 
-// generateUniqueEntityCode generates a code and ensures it does not already exist
-// in the given tenant-scoped table. It retries a few times on collision.
-func generateUniqueEntityCode(ctx context.Context, db interface {
-	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
-}, prefix, table, tenantID string) (string, error) {
-	if _, err := sanitizeIdentifier(table, allowedUniqueCodeTables); err != nil {
-		return "", err
-	}
-	for i := 0; i < 10; i++ {
-		code := generateEntityCode(prefix)
-		var exists bool
-		err := db.QueryRow(ctx, fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE tenant_id=$1 AND code=$2)", table), tenantID, code).Scan(&exists)
-		if err != nil {
-			return "", err
-		}
-		if !exists {
-			return code, nil
-		}
-	}
-	return "", fmt.Errorf("生成唯一%s编码失败", prefix)
-}
-
-// allowedUniqueCodeTables lists the tables that may be passed to generateUniqueEntityCode.
-var allowedUniqueCodeTables = []string{
-	"career_positions",
-	"courses",
-	"exams",
-	"question_banks",
-	"questions",
-	"scenarios",
-	"training_programs",
+// generateUniqueEntityCode generates a unique tenant-scoped entity code.
+func generateUniqueEntityCode(ctx context.Context, db store.Queryer, prefix, table, tenantID string) (string, error) {
+	return store.GenerateUniqueEntityCode(ctx, db, prefix, table, tenantID)
 }
 
 // executeListQuery adapts store.ExecuteListQuery to the legacy handler signature:
