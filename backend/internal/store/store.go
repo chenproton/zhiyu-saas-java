@@ -81,6 +81,7 @@ type Store struct {
 	portal          *PortalStore
 	auth            *AuthStore
 	trainingPrograms *TrainingProgramStore
+	contentActions  *ContentActionStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -147,6 +148,7 @@ func New(db *pgxpool.Pool) *Store {
 		portal:          NewPortalStore(db),
 		auth:            NewAuthStore(db),
 		trainingPrograms: NewTrainingProgramStore(db),
+		contentActions:  NewContentActionStore(db, db),
 	}
 }
 
@@ -214,6 +216,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		portal:          NewPortalStore(tx),
 		auth:            NewAuthStore(tx),
 		trainingPrograms: NewTrainingProgramStore(tx),
+		contentActions:  NewContentActionStore(tx, nil),
 	}
 }
 
@@ -520,6 +523,11 @@ func (s *Store) Auth() *AuthStore {
 // TrainingPrograms 返回人培方案 store。
 func (s *Store) TrainingPrograms() *TrainingProgramStore {
 	return s.trainingPrograms
+}
+
+// ContentActions 返回内容型实体共享动作 store。
+func (s *Store) ContentActions() *ContentActionStore {
+	return s.contentActions
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

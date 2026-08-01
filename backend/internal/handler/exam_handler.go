@@ -409,8 +409,7 @@ func (h *ExamHandler) clearLandingExamsCache(r *http.Request, tenantID string) {
 // actions 与状态流转
 func (h *ExamHandler) actions() contentActions {
 	return contentActions{
-		db:         h.Service.Queryer(),
-		pool:       h.Service.Store(),
+		st:         h.Service.Store(),
 		table:      "exams",
 		entityName: "exam",
 		targetType: "exam",

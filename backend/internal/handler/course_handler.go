@@ -394,8 +394,7 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseHandler) actions() contentActions {
 	return contentActions{
-		db:         h.Service.Queryer(),
-		pool:       h.Service.Store(),
+		st:         h.Service.Store(),
 		table:      "courses",
 		entityName: "course",
 		targetType: "course",

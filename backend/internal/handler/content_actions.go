@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -28,18 +27,12 @@ type ContentReviewRequest struct {
 // contentActions 封装内容型实体（岗位/场景/课程/题库/试卷）共享的
 // 状态流转、审核、协作邀请逻辑，消除各 handler 的复制粘贴实现。
 type contentActions struct {
-	db         store.Queryer
-	pool       txBeginner
+	st         *store.Store
 	table      string
 	entityName string
 	targetType string
 	inviteCol  string
 	fetch      func(ctx context.Context, id string) (interface{}, error)
-}
-
-// txBeginner 事务启动器（*pgxpool.Pool 与 *store.Store 均满足）。
-type txBeginner interface {
-	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 // allowedContentTables lists the tables that may be used by contentActions.
@@ -50,42 +43,24 @@ var allowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_cr
 
 // tableFor returns the sanitized table name for contentActions queries.
 func (c contentActions) tableFor(w http.ResponseWriter) (string, bool) {
-	table, err := sanitizeIdentifier(c.table, allowedContentTables)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "表配置无效")
-		return "", false
+	for _, a := range allowedContentTables {
+		if c.table == a {
+			return c.table, true
+		}
 	}
-	return table, true
+	respondError(w, http.StatusInternalServerError, "表配置无效")
+	return "", false
 }
 
 // inviteColFor returns the sanitized invite column name for invite().
 func (c contentActions) inviteColFor(w http.ResponseWriter) (string, bool) {
-	col, err := sanitizeIdentifier(c.inviteCol, allowedInviteColumns)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "邀请列配置无效")
-		return "", false
-	}
-	return col, true
-}
-
-// allowedStatusTransitions 定义内容实体允许的状态流转。
-// key 为当前状态，value 为可进入的目标状态集合。
-var allowedStatusTransitions = map[domain.ContentStatus][]domain.ContentStatus{
-	domain.StatusDraft:     {domain.StatusPending, domain.StatusArchived},
-	domain.StatusRejected:  {domain.StatusDraft, domain.StatusPending, domain.StatusArchived},
-	domain.StatusPending:   {domain.StatusDraft, domain.StatusApproved, domain.StatusRejected},
-	domain.StatusApproved:  {domain.StatusDraft, domain.StatusPublished, domain.StatusArchived},
-	domain.StatusPublished: {domain.StatusDraft, domain.StatusArchived},
-	domain.StatusArchived:  {domain.StatusDraft},
-}
-
-func (c contentActions) canTransition(from, to domain.ContentStatus) bool {
-	for _, s := range allowedStatusTransitions[from] {
-		if s == to {
-			return true
+	for _, a := range allowedInviteColumns {
+		if c.inviteCol == a {
+			return c.inviteCol, true
 		}
 	}
-	return false
+	respondError(w, http.StatusInternalServerError, "邀请列配置无效")
+	return "", false
 }
 
 func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request, id string) bool {
@@ -97,17 +72,16 @@ func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return false
 	}
-	var entityTenantID string
-	err := c.db.QueryRow(r.Context(), `SELECT tenant_id FROM `+table+` WHERE id = $1`, id).Scan(&entityTenantID)
-	if err == pgx.ErrNoRows {
+	tenantID, err := c.st.ContentActions().GetTenantID(r.Context(), table, id)
+	if err == store.ErrNotFound {
 		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return false
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "验证"+c.entityName+"所有权失败")
+		respondServerError(w, r, err, "验证"+c.entityName+"所有权失败")
 		return false
 	}
-	return verifyTenantOwnership(w, r, entityTenantID)
+	return verifyTenantOwnership(w, r, tenantID)
 }
 
 func (c contentActions) saveDraft(w http.ResponseWriter, r *http.Request) {
@@ -134,54 +108,16 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var current domain.ContentStatus
-	err := c.db.QueryRow(r.Context(), `SELECT status FROM `+table+` WHERE id = $1`, id).Scan(&current)
-	if err == pgx.ErrNoRows {
-		respondError(w, http.StatusNotFound, c.entityName+"不存在")
-		return
-	}
-	if err != nil {
-		respondServerError(w, r, err, "获取当前状态失败")
-		return
-	}
-
-	if !c.canTransition(current, status) {
-		respondError(w, http.StatusBadRequest, fmt.Sprintf("无效的状态流转：%s -> %s", current, status))
-		return
-	}
-
-	tx, err := c.pool.Begin(r.Context())
-	if err != nil {
-		respondServerError(w, r, err, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	if _, err := tx.Exec(r.Context(), `UPDATE `+table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新status失败")
-		return
-	}
-
-	// 从审批中撤回时，同步删除审批中心对应的待审批记录
-	if current == domain.StatusPending && status == domain.StatusDraft && c.targetType != "" {
-		if _, err := tx.Exec(r.Context(), `
-			DELETE FROM approval_records
-			WHERE target_type = $1 AND target_id = $2 AND status = $3
-		`, c.targetType, id, string(domain.ApprovalStatusPending)); err != nil {
-			respondError(w, http.StatusInternalServerError, "删除审批记录失败")
+	if err := c.st.ContentActions().Transition(r.Context(), table, id, status, c.targetType, hook); err != nil {
+		if err == store.ErrNotFound {
+			respondError(w, http.StatusNotFound, c.entityName+"不存在")
 			return
 		}
-	}
-
-	if hook != nil {
-		if err := hook(tx, id); err != nil {
-			respondError(w, http.StatusInternalServerError, err.Error())
+		if _, isTransition := err.(interface{ Transition() }); isTransition || err.Error()[:len("invalid transition")] == "invalid transition" {
+			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
+		respondServerError(w, r, err, "状态流转失败")
 		return
 	}
 
@@ -224,13 +160,12 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tag, err := c.db.Exec(r.Context(), `UPDATE `+table+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, status, id, domain.StatusPending)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "审核"+c.entityName+"失败")
-		return
-	}
-	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusBadRequest, c.entityName+"不存在或不在待处理状态")
+	if err := c.st.ContentActions().Review(r.Context(), table, id, status); err != nil {
+		if err == store.ErrNotFound {
+			respondError(w, http.StatusBadRequest, c.entityName+"不存在或不在待处理状态")
+			return
+		}
+		respondServerError(w, r, err, "审核"+c.entityName+"失败")
 		return
 	}
 
@@ -260,11 +195,8 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少用户ID")
 		return
 	}
-	if _, err := c.db.Exec(r.Context(), `
-		UPDATE `+table+` SET `+inviteCol+` = array_append(`+inviteCol+`, $1), updated_at = NOW()
-		WHERE id = $2 AND NOT (`+inviteCol+` @> ARRAY[$1]::uuid[])
-	`, req.UserID, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "邀请协作者失败")
+	if err := c.st.ContentActions().Invite(r.Context(), table, id, inviteCol, req.UserID); err != nil {
+		respondServerError(w, r, err, "邀请协作者失败")
 		return
 	}
 	entity, err := c.fetch(r.Context(), id)

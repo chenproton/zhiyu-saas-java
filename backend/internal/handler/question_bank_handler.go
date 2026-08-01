@@ -229,8 +229,7 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *QuestionBankHandler) actions() contentActions {
 	return contentActions{
-		db:         h.Service.Queryer(),
-		pool:       h.Service.Store(),
+		st:         h.Service.Store(),
 		table:      "question_banks",
 		entityName: "question_bank",
 		targetType: "question_bank",

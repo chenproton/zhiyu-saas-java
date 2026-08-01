@@ -595,8 +595,7 @@ func mapCategory(category string) string {
 
 func (h *PositionHandler) actions() contentActions {
 	return contentActions{
-		db:         h.Service.Queryer(),
-		pool:       h.Service.Store(),
+		st:         h.Service.Store(),
 		table:      "career_positions",
 		entityName: "position",
 		targetType: "career_position",

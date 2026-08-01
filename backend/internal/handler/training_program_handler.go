@@ -330,8 +330,7 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 
 func (h *TrainingProgramHandler) actions() contentActions {
 	return contentActions{
-		db:         h.Service.TrainingProgramQueryer(),
-		pool:       h.Service.TrainingProgramStoreRef(),
+		st:         h.Service.TrainingProgramStoreRef(),
 		table:      "training_programs",
 		entityName: "training_program",
 		targetType: "training_program",

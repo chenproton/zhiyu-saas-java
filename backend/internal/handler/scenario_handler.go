@@ -322,8 +322,7 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioHandler) actions() contentActions {
 	return contentActions{
-		db:         h.DB.Q(),
-		pool:       h.DB,
+		st:         h.DB,
 		table:      "scenarios",
 		entityName: "scenario",
 		targetType: "scenario",
