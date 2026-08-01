@@ -262,8 +262,33 @@ func (s *CourseAssessmentStore) CleanupCourseLevelAssessments(ctx context.Contex
 	return nil
 }
 
+// CourseExamUsage 课程考试安排（评估列表项）。
+type CourseExamUsage struct {
+	ID        string  `json:"id"`
+	ExamID    string  `json:"examId"`
+	ExamName  string  `json:"examName"`
+	IsTemp    bool    `json:"isTemp"`
+	Name      string  `json:"name"`
+	StartTime *string `json:"startTime,omitempty"`
+	EndTime   *string `json:"endTime,omitempty"`
+	Duration  *int    `json:"duration,omitempty"`
+	Status    string  `json:"status"`
+	Type      string  `json:"type"`
+}
+
+// CourseHomework 课程作业（评估列表项）。
+type CourseHomework struct {
+	ID             string  `json:"id"`
+	Title          string  `json:"title"`
+	Requirement    string  `json:"requirement"`
+	NeedAttachment bool    `json:"needAttachment"`
+	Deadline       *string `json:"deadline,omitempty"`
+	Status         string  `json:"status"`
+	Type           string  `json:"type"`
+}
+
 // ListCourseExamUsages 查询课程考试安排列表。
-func (s *CourseAssessmentStore) ListCourseExamUsages(ctx context.Context, tenantID, courseID string) ([]map[string]any, error) {
+func (s *CourseAssessmentStore) ListCourseExamUsages(ctx context.Context, tenantID, courseID string) ([]CourseExamUsage, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT eu.id, eu.exam_id, e.name AS exam_name, e.is_temp, eu.name, eu.start_time, eu.end_time, eu.duration, eu.status
 		FROM exam_usages eu
@@ -276,24 +301,21 @@ func (s *CourseAssessmentStore) ListCourseExamUsages(ctx context.Context, tenant
 	}
 	defer rows.Close()
 
-	items := make([]map[string]any, 0)
+	items := make([]CourseExamUsage, 0)
 	for rows.Next() {
-		var id, examID, examName, name, status string
-		var isTemp bool
+		var item CourseExamUsage
 		var startTime, endTime *time.Time
-		var duration *int
-		if err := rows.Scan(&id, &examID, &examName, &isTemp, &name, &startTime, &endTime, &duration, &status); err != nil {
+		if err := rows.Scan(&item.ID, &item.ExamID, &item.ExamName, &item.IsTemp, &item.Name, &startTime, &endTime, &item.Duration, &item.Status); err != nil {
 			return nil, err
 		}
-		item := map[string]any{
-			"id": id, "examId": examID, "examName": examName, "isTemp": isTemp,
-			"name": name, "duration": duration, "status": status, "type": "exam",
-		}
+		item.Type = "exam"
 		if startTime != nil {
-			item["startTime"] = startTime.Format(time.RFC3339)
+			s := startTime.Format(time.RFC3339)
+			item.StartTime = &s
 		}
 		if endTime != nil {
-			item["endTime"] = endTime.Format(time.RFC3339)
+			s := endTime.Format(time.RFC3339)
+			item.EndTime = &s
 		}
 		items = append(items, item)
 	}
@@ -301,7 +323,7 @@ func (s *CourseAssessmentStore) ListCourseExamUsages(ctx context.Context, tenant
 }
 
 // ListCourseHomeworks 查询课程作业列表。
-func (s *CourseAssessmentStore) ListCourseHomeworks(ctx context.Context, tenantID, courseID string) ([]map[string]any, error) {
+func (s *CourseAssessmentStore) ListCourseHomeworks(ctx context.Context, tenantID, courseID string) ([]CourseHomework, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT id, title, requirement, need_attachment, deadline, status
 		FROM course_homeworks
@@ -313,20 +335,17 @@ func (s *CourseAssessmentStore) ListCourseHomeworks(ctx context.Context, tenantI
 	}
 	defer rows.Close()
 
-	items := make([]map[string]any, 0)
+	items := make([]CourseHomework, 0)
 	for rows.Next() {
-		var id, title, requirement, status string
-		var needAttachment bool
+		var item CourseHomework
 		var deadline *time.Time
-		if err := rows.Scan(&id, &title, &requirement, &needAttachment, &deadline, &status); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.Requirement, &item.NeedAttachment, &deadline, &item.Status); err != nil {
 			return nil, err
 		}
-		item := map[string]any{
-			"id": id, "title": title, "requirement": requirement,
-			"needAttachment": needAttachment, "status": status, "type": "homework",
-		}
+		item.Type = "homework"
 		if deadline != nil {
-			item["deadline"] = deadline.Format(time.RFC3339)
+			s := deadline.Format(time.RFC3339)
+			item.Deadline = &s
 		}
 		items = append(items, item)
 	}

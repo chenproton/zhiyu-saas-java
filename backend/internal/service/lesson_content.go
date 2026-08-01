@@ -545,12 +545,12 @@ func getStringSliceFromJSONMap(m map[string]interface{}, key string) []string {
 }
 
 // ListCourseExamUsages 查询课程考试安排。
-func (s *LessonContentService) ListCourseExamUsages(ctx context.Context, courseID, tenantID string) ([]map[string]any, error) {
+func (s *LessonContentService) ListCourseExamUsages(ctx context.Context, courseID, tenantID string) ([]store.CourseExamUsage, error) {
 	return s.st.CourseAssessments().ListCourseExamUsages(ctx, tenantID, courseID)
 }
 
 // ListCourseHomeworks 查询课程作业列表。
-func (s *LessonContentService) ListCourseHomeworks(ctx context.Context, courseID, tenantID string) ([]map[string]any, error) {
+func (s *LessonContentService) ListCourseHomeworks(ctx context.Context, courseID, tenantID string) ([]store.CourseHomework, error) {
 	return s.st.CourseAssessments().ListCourseHomeworks(ctx, tenantID, courseID)
 }
 
