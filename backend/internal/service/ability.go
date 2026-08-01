@@ -271,3 +271,18 @@ func (s *PositionService) UpsertHybridModule(ctx context.Context, tenantID, id s
 func (s *PositionService) DeleteHybridModule(ctx context.Context, id string) error {
 	return s.st.HybridModules().Delete(ctx, id)
 }
+
+// ListLessonBehaviorRecords 查询课堂行为记录。
+func (s *PositionService) ListLessonBehaviorRecords(ctx context.Context, courseID, startDate, endDate string) ([]domain.LessonBehaviorRecord, error) {
+	return s.st.LessonBehaviors().ListRecords(ctx, courseID, startDate, endDate)
+}
+
+// UpsertLessonBehavior 保存课堂行为记录。
+func (s *PositionService) UpsertLessonBehavior(ctx context.Context, tenantID string, p *store.LessonBehaviorUpsertParams) (*domain.LessonBehaviorRecord, error) {
+	return s.st.LessonBehaviors().Upsert(ctx, tenantID, p)
+}
+
+// ListLandingExams 查询落地考试。
+func (s *PositionService) ListLandingExams(ctx context.Context, tenantID string) ([]store.LandingExam, error) {
+	return s.st.Landing().ListExams(ctx, tenantID)
+}

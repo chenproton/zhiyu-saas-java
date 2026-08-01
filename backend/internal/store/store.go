@@ -74,6 +74,8 @@ type Store struct {
 	resourceCodes   *ResourceCodeStore
 	recommends      *RecommendStore
 	hybridModules   *HybridModuleStore
+	lessonBehaviors *LessonBehaviorStore
+	landing         *LandingStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -133,6 +135,8 @@ func New(db *pgxpool.Pool) *Store {
 		resourceCodes:   NewResourceCodeStore(db),
 		recommends:      NewRecommendStore(db),
 		hybridModules:   NewHybridModuleStore(db),
+		lessonBehaviors: NewLessonBehaviorStore(db),
+		landing:         NewLandingStore(db),
 	}
 }
 
@@ -193,6 +197,8 @@ func NewWithTx(tx pgx.Tx) *Store {
 		resourceCodes:   NewResourceCodeStore(tx),
 		recommends:      NewRecommendStore(tx),
 		hybridModules:   NewHybridModuleStore(tx),
+		lessonBehaviors: NewLessonBehaviorStore(tx),
+		landing:         NewLandingStore(tx),
 	}
 }
 
@@ -464,6 +470,16 @@ func (s *Store) Recommends() *RecommendStore {
 // HybridModules 返回混合模块 store。
 func (s *Store) HybridModules() *HybridModuleStore {
 	return s.hybridModules
+}
+
+// LessonBehaviors 返回课堂行为 store。
+func (s *Store) LessonBehaviors() *LessonBehaviorStore {
+	return s.lessonBehaviors
+}
+
+// Landing 返回落地页 store。
+func (s *Store) Landing() *LandingStore {
+	return s.landing
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

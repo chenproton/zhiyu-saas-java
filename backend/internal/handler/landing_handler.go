@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 type LandingHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionService
 }
 
 type LandingExamItem struct {
@@ -44,104 +44,58 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	args := []interface{}{effectiveTenantID}
-
-	query := `
-		SELECT e.id, e.name, COALESCE(e.description, ''), e.duration,
-			COALESCE((SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = e.id), 0),
-			eu.start_time, eu.end_time,
-			COALESCE(org.name, ''),
-			COALESCE(parent_org.name, '')
-		FROM exams e
-		JOIN exam_usages eu ON eu.exam_id = e.id
-		LEFT JOIN LATERAL (
-			SELECT o.id, o.name, o.parent_id
-			FROM organizations o
-			WHERE o.id = ANY(eu.target_ids)
-			LIMIT 1
-		) org ON TRUE
-		LEFT JOIN organizations parent_org ON parent_org.id = org.parent_id
-		WHERE e.status = 'published' AND e.is_temp = FALSE AND e.tenant_id = $1
-		ORDER BY eu.start_time ASC NULLS LAST
-		LIMIT 100`
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	exams, err := h.Service.ListLandingExams(r.Context(), effectiveTenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询落地考试失败")
 		return
 	}
-	defer rows.Close()
 
-	var items []LandingExamItem
-	for rows.Next() {
-		var item LandingExamItem
-		var startTime, endTime interface{}
-		var orgName, collegeName string
-
-		if err := rows.Scan(
-			&item.ID, &item.Name, &item.Description, &item.Duration,
-			&item.QuestionCount,
-			&startTime, &endTime,
-			&orgName, &collegeName,
-		); err != nil {
-			continue
+	items := make([]LandingExamItem, 0, len(exams))
+	for _, e := range exams {
+		item := LandingExamItem{
+			ID: e.ID, Name: e.Name, Description: e.Description, Duration: e.Duration,
+			QuestionCount: e.QuestionCount, Type: "在线测评",
+			College: e.CollegeName, Major: e.OrgName, TargetAudience: "",
 		}
-
-		item.Type = "在线测评"
-		item.College = collegeName
 		if item.College == "" {
-			item.College = orgName
+			item.College = e.OrgName
 		}
-		item.Major = orgName
-
-		item.TargetAudience = ""
-
-		if t, ok := startTime.(time.Time); ok {
-			item.Time = t.Format("2006-01-02 15:04")
-		} else if t, ok := startTime.(interface{ Format(string) string }); ok {
-			item.Time = t.Format("2006-01-02 15:04")
+		if e.StartTime != nil {
+			item.Time = e.StartTime.Format("2006-01-02 15:04")
 		}
-
-		item.Status = computeExamStatus(startTime, endTime, now)
-
+		item.Status = computeExamStatus(e.StartTime, e.EndTime, now)
 		items = append(items, item)
 	}
-
 	respondJSON(w, http.StatusOK, LandingExamListResponse{Items: items, Total: len(items)})
 }
 
 func computeExamStatus(start, end interface{}, now time.Time) string {
-	var startTime, endTime time.Time
-
-	if t, ok := start.(time.Time); ok {
+	var startTime, endTime *time.Time
+	if t, ok := start.(*time.Time); ok {
 		startTime = t
 	}
-	if t, ok := end.(time.Time); ok {
+	if t, ok := end.(*time.Time); ok {
 		endTime = t
 	}
-
-	if endTime.IsZero() {
+	if startTime == nil || startTime.IsZero() {
+		return "进行中"
+	}
+	if now.Before(*startTime) {
 		return "未开始"
 	}
-	if now.After(endTime) {
+	if endTime != nil && !endTime.IsZero() && now.After(*endTime) {
 		return "已结束"
-	}
-	if !startTime.IsZero() && now.Before(startTime) {
-		return "未开始"
 	}
 	return "进行中"
 }
 
 func joinStrings(parts []string, sep string) string {
-	result := ""
+	out := ""
 	for i, p := range parts {
-		if p == "" {
-			continue
-		}
 		if i > 0 {
-			result += sep
+			out += sep
 		}
-		result += p
+		out += p
 	}
-	return result
+	return out
 }

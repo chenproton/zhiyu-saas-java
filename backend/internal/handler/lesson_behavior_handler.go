@@ -1,18 +1,18 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type LessonBehaviorHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionService
 }
 
 type LessonBehaviorAggregate struct {
@@ -105,7 +105,7 @@ func (h *LessonBehaviorHandler) Aggregate(w http.ResponseWriter, r *http.Request
 	startDate := r.URL.Query().Get("startDate")
 	endDate := r.URL.Query().Get("endDate")
 
-	records, err := h.listRecords(r.Context(), courseID, startDate, endDate)
+	records, err := h.Service.ListLessonBehaviorRecords(r.Context(), courseID, startDate, endDate)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "加载behavior records失败")
 		return
@@ -135,91 +135,16 @@ func (h *LessonBehaviorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	record, err := h.upsert(r.Context(), req, tenantID)
+	record, err := h.Service.UpsertLessonBehavior(r.Context(), tenantID, &store.LessonBehaviorUpsertParams{
+		CourseID: req.CourseID, StudentUserID: req.StudentUserID, RecordDate: req.RecordDate,
+		Attendance: req.Attendance, QuizScore: req.QuizScore, InteractionCount: req.InteractionCount,
+		PraiseCount: req.PraiseCount, RushCorrectCount: req.RushCorrectCount, RushAvgTimeSec: req.RushAvgTimeSec,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "保存behavior record失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, record)
-}
-
-func (h *LessonBehaviorHandler) listRecords(ctx context.Context, courseID, startDate, endDate string) ([]domain.LessonBehaviorRecord, error) {
-	args := []interface{}{courseID}
-	query := `
-		SELECT r.id, r.course_id, r.student_user_id, u.name, r.record_date, r.attendance,
-			   r.quiz_score, r.interaction_count, r.praise_count, r.rush_correct_count, r.rush_avg_time_sec,
-			   r.created_at, r.updated_at
-		FROM lesson_behavior_records r
-		JOIN users u ON u.id = r.student_user_id
-		WHERE r.course_id = $1`
-
-	if startDate != "" {
-		args = append(args, startDate)
-		query += " AND r.record_date >= $" + strconv.Itoa(len(args))
-	}
-	if endDate != "" {
-		args = append(args, endDate)
-		query += " AND r.record_date <= $" + strconv.Itoa(len(args))
-	}
-	query += " ORDER BY r.record_date DESC, r.created_at DESC"
-
-	rows, err := h.DB.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var records []domain.LessonBehaviorRecord
-	for rows.Next() {
-		var rec domain.LessonBehaviorRecord
-		var studentName string
-		var recordDate time.Time
-		var quizScore *float64
-		var rushTime *int
-		if err := rows.Scan(&rec.ID, &rec.CourseID, &rec.StudentUserID, &studentName, &recordDate, &rec.Attendance,
-			&quizScore, &rec.InteractionCount, &rec.PraiseCount, &rec.RushCorrectCount, &rushTime,
-			&rec.CreatedAt, &rec.UpdatedAt); err != nil {
-			return nil, err
-		}
-		rec.StudentName = studentName
-		rec.RecordDate = recordDate.Format("2006-01-02")
-		rec.QuizScore = quizScore
-		rec.RushAvgTimeSec = rushTime
-		records = append(records, rec)
-	}
-	return records, nil
-}
-
-func (h *LessonBehaviorHandler) upsert(ctx context.Context, req CreateLessonBehaviorRequest, tenantID string) (*domain.LessonBehaviorRecord, error) {
-	recordDate := req.RecordDate
-	if recordDate == "" {
-		recordDate = time.Now().Format("2006-01-02")
-	}
-
-	var rec domain.LessonBehaviorRecord
-	var recordDateOut time.Time
-	err := h.DB.QueryRow(ctx, `
-		INSERT INTO lesson_behavior_records
-		(tenant_id, course_id, student_user_id, record_date, attendance, quiz_score, interaction_count, praise_count, rush_correct_count, rush_avg_time_sec)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		ON CONFLICT (course_id, student_user_id, record_date)
-		DO UPDATE SET attendance = EXCLUDED.attendance,
-					  quiz_score = EXCLUDED.quiz_score,
-					  interaction_count = EXCLUDED.interaction_count,
-					  praise_count = EXCLUDED.praise_count,
-					  rush_correct_count = EXCLUDED.rush_correct_count,
-					  rush_avg_time_sec = EXCLUDED.rush_avg_time_sec,
-					  updated_at = NOW()
-		RETURNING id, course_id, student_user_id, record_date, attendance, quiz_score, interaction_count, praise_count, rush_correct_count, rush_avg_time_sec, created_at, updated_at
-	`, tenantID, req.CourseID, req.StudentUserID, recordDate, req.Attendance, req.QuizScore, req.InteractionCount, req.PraiseCount, req.RushCorrectCount, req.RushAvgTimeSec).Scan(
-		&rec.ID, &rec.CourseID, &rec.StudentUserID, &recordDateOut, &rec.Attendance,
-		&rec.QuizScore, &rec.InteractionCount, &rec.PraiseCount, &rec.RushCorrectCount, &rec.RushAvgTimeSec,
-		&rec.CreatedAt, &rec.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	rec.RecordDate = recordDateOut.Format("2006-01-02")
-	return &rec, nil
 }
 
 func (h *LessonBehaviorHandler) buildAggregate(records []domain.LessonBehaviorRecord) LessonBehaviorAggregate {
