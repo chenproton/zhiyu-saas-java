@@ -787,7 +787,7 @@ export default function TasksEditPage() {
   const taskStatesRef = useRef(taskStates)
   useEffect(() => {
     taskStatesRef.current = taskStates
-  })
+  }, [taskStates])
 
   const { loadDatasets } = datasets
   const ensureDatasets = useCallback(async (keys: string[]) => {

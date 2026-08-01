@@ -266,7 +266,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     afterLoadRef.current = afterLoad
     listParamsRef.current = listParams
   })
-  const listParamsKey = JSON.stringify(listParams || {})
+  // listParams 常由调用方以内联对象传入，引用每次渲染都会变化；
+  // 通过 JSON 序列化得到内容 key，相同内容时 key 不变，从而避免不必要的 reload。
+  const listParamsKey = useMemo(() => JSON.stringify(listParams || {}), [listParams])
 
   const {
     fileInputRef,
@@ -368,8 +370,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     } finally {
       setIsLoading(false)
     }
-    // listParamsKey 变化代表 listParams 内容变化，需要重新加载
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, listParamsKey, currentUserId, approvalTargetType, approvalApi, batchApi, itemApi, entityLabel])
 
   useEffect(() => { (async () => { await loadData() })() }, [loadData, reloadKey])

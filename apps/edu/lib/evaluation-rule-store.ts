@@ -293,8 +293,7 @@ export function useEvalRuleStore(options: UseEvalRuleStoreOptions) {
   const initialState = useMemo<EvalRuleState>(() => {
     const base = makeDefaultEvalRuleConfig(normalizedMethods)
     return initialConfig ? { ...base, ...initialConfig, evaluationMethods: normalizedMethods } : base
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // 仅在挂载时计算一次，后续由 props 变化通过 effect 同步
+  }, [normalizedMethods, initialConfig]) // initialState 仅作为 useReducer 初始值使用一次，依赖补全以消除 eslint 警告
 
   const [state, dispatch] = useReducer(reducer, initialState)
   const lastMethodsRef = useRef<string>(JSON.stringify(normalizedMethods))

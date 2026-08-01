@@ -393,13 +393,13 @@ export function EvaluationRulesEditor({
     finally { setLoadingPapers(false) }
   }, [])
 
-  // Preload papers when component mounts
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadPapers() }, [loadPapers])
-
-  // Preload random draw questions, majors, and rubric templates
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadRdqQuestions(); loadMajors(); loadRubricTemplates() }, [loadRdqQuestions, loadMajors, loadRubricTemplates])
+  // Mount 时预加载一次依赖数据；load* 均为 useCallback 稳定引用，不会导致循环
+  useEffect(() => {
+    loadPapers()
+    loadRdqQuestions()
+    loadMajors()
+    loadRubricTemplates()
+  }, [loadPapers, loadRdqQuestions, loadMajors, loadRubricTemplates])
 
   const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))], [majors])
   const majorNameMap = useMemo(() => {
