@@ -151,32 +151,38 @@ func (s *EvaluationService) FetchExamQuestion(ctx context.Context, questionID st
 	return s.st.Exams().FetchQuestion(ctx, questionID)
 }
 
-// AddExamQuestion 添加题目到试卷。
+// AddExamQuestion 添加题目到试卷（事务内：添加 + 重算总分）。
 func (s *EvaluationService) AddExamQuestion(ctx context.Context, tenantID, examID string, q *store.QuestionSnapshot, score float64) error {
-	if err := s.st.Exams().AddQuestion(ctx, tenantID, examID, q, score); err != nil {
-		return err
-	}
-	return s.st.Exams().RecalcExamTotal(ctx, examID)
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		if err := txStore.Exams().AddQuestion(ctx, tenantID, examID, q, score); err != nil {
+			return err
+		}
+		return txStore.Exams().RecalcExamTotal(ctx, examID)
+	})
 }
 
-// RemoveExamQuestion 移除试卷题目。
+// RemoveExamQuestion 移除试卷题目（事务内：移除 + 重算总分）。
 func (s *EvaluationService) RemoveExamQuestion(ctx context.Context, examID, questionID string) error {
-	if err := s.st.Exams().RemoveQuestion(ctx, examID, questionID); err != nil {
-		return err
-	}
-	return s.st.Exams().RecalcExamTotal(ctx, examID)
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		if err := txStore.Exams().RemoveQuestion(ctx, examID, questionID); err != nil {
+			return err
+		}
+		return txStore.Exams().RecalcExamTotal(ctx, examID)
+	})
 }
 
-// UpdateExamQuestionScore 更新题目分数。
+// UpdateExamQuestionScore 更新题目分数（事务内：更新 + 重算总分）。
 func (s *EvaluationService) UpdateExamQuestionScore(ctx context.Context, examID, questionID string, score float64) error {
-	hit, err := s.st.Exams().UpdateQuestionScore(ctx, examID, questionID, score)
-	if err != nil {
-		return err
-	}
-	if !hit {
-		return store.ErrNotFound
-	}
-	return s.st.Exams().RecalcExamTotal(ctx, examID)
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		hit, err := txStore.Exams().UpdateQuestionScore(ctx, examID, questionID, score)
+		if err != nil {
+			return err
+		}
+		if !hit {
+			return store.ErrNotFound
+		}
+		return txStore.Exams().RecalcExamTotal(ctx, examID)
+	})
 }
 
 // BulkUpdateExamScores 批量更新分数（事务内）。
@@ -191,7 +197,7 @@ func (s *EvaluationService) ListExamResults(ctx context.Context, p store.ListPar
 	return s.st.ExamResults().List(ctx, p, cfg)
 }
 
-// SubmitExamResult 提交考试结果（评分编排：拉取题目→判分→写结果→同步 3 类评价）。
+// SubmitExamResult 提交考试结果（评分编排：拉取题目→判分→写结果→同步 3 类评价，全部写在同一事务）。
 func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, userID, usageID string, answers map[string]interface{}, methodKey string) (*domain.ExamResult, error) {
 	examID, totalScore, err := s.st.ExamResults().UsageExamInfo(ctx, usageID)
 	if err != nil {
@@ -233,24 +239,36 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 	}
 
 	answersJSON := domain.JSONMap(answers)
-	result, err := s.st.ExamResults().SaveResult(ctx, tenantID, usageID, userID, &store.SaveExamResultParams{
-		StudentName: profile.Name,
-		ClassName:   profile.ClassName,
-		Grade:       profile.Grade,
-		MajorID:     profile.MajorID,
-		Score:       score,
-		TotalScore:  totalScore,
-		IsPass:      isPass,
-		Answers:     answersJSON,
-	})
-	if err != nil {
+	var result *domain.ExamResult
+	if err := s.WithTx(ctx, func(txStore *store.Store) error {
+		r, err := txStore.ExamResults().SaveResult(ctx, tenantID, usageID, userID, &store.SaveExamResultParams{
+			StudentName: profile.Name,
+			ClassName:   profile.ClassName,
+			Grade:       profile.Grade,
+			MajorID:     profile.MajorID,
+			Score:       score,
+			TotalScore:  totalScore,
+			IsPass:      isPass,
+			Answers:     answersJSON,
+		})
+		if err != nil {
+			return err
+		}
+		result = r
+		if err := txStore.ExamResults().SyncSceneEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey); err != nil {
+			return err
+		}
+		if err := txStore.ExamResults().SyncCourseEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey); err != nil {
+			return err
+		}
+		if err := txStore.ExamResults().SyncNodeEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 	result.MajorName = majorNamePtr
-
-	s.st.ExamResults().SyncSceneEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
-	s.st.ExamResults().SyncCourseEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
-	s.st.ExamResults().SyncNodeEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
 	return result, nil
 }
 

@@ -74,7 +74,7 @@ func (s *UserService) BatchCreate(ctx context.Context, params []*store.UserCreat
 	return created, err
 }
 
-// Update 更新用户基础信息与可选角色重绑。
+// Update 更新用户基础信息与可选角色重绑（事务内）。
 func (s *UserService) Update(ctx context.Context, id, tenantID string, p *store.UserUpdateParams, roleID string) error {
 	existing, err := s.st.Users().Get(ctx, id)
 	if err != nil {
@@ -83,18 +83,20 @@ func (s *UserService) Update(ctx context.Context, id, tenantID string, p *store.
 	if existing.TenantID == nil {
 		return fmt.Errorf("用户缺少租户信息")
 	}
-	if err := s.st.Users().ValidateOrgMajor(ctx, s.st.Q(), *existing.TenantID, p.OrgNodeID, p.MajorID); err != nil {
-		return err
-	}
-	if err := s.st.Users().Update(ctx, p); err != nil {
-		return err
-	}
-	if roleID != "" {
-		if err := s.st.Users().RebindUserRole(ctx, id, roleID, tenantID); err != nil {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		if err := txStore.Users().ValidateOrgMajor(ctx, txStore.Q(), *existing.TenantID, p.OrgNodeID, p.MajorID); err != nil {
 			return err
 		}
-	}
-	return nil
+		if err := txStore.Users().Update(ctx, p); err != nil {
+			return err
+		}
+		if roleID != "" {
+			if err := txStore.Users().RebindUserRole(ctx, id, roleID, tenantID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // Delete 删除用户。

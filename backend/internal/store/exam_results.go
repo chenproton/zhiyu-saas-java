@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -136,7 +137,7 @@ type SaveExamResultParams struct {
 }
 
 // SyncCourseEvaluation 同步课程统一评价（考试目标为课程时）。
-func (s *ExamResultStore) SyncCourseEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) {
+func (s *ExamResultStore) SyncCourseEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) error {
 	if methodKey == "" {
 		methodKey = "paper"
 	}
@@ -147,13 +148,16 @@ func (s *ExamResultStore) SyncCourseEvaluation(ctx context.Context, tenantID, us
 		WHERE id = $1 AND target_type = 'course' AND array_length(target_ids, 1) > 0
 	`, usageID).Scan(&courseID)
 	if err != nil {
-		return
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
 	}
 	status := "evaluated"
 	if hasSubjective {
 		status = "pending"
 	}
-	_, _ = s.q.Exec(ctx, `
+	_, err = s.q.Exec(ctx, `
 		INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
@@ -169,10 +173,11 @@ func (s *ExamResultStore) SyncCourseEvaluation(ctx context.Context, tenantID, us
 			END,
 			updated_at = NOW()
 	`, tenantID, courseID, methodKey, userID, status, score, maxScore, objectiveAnswers)
+	return err
 }
 
 // SyncNodeEvaluation 同步节点统一评价（考试目标为节点时）。
-func (s *ExamResultStore) SyncNodeEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) {
+func (s *ExamResultStore) SyncNodeEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) error {
 	if methodKey == "" {
 		methodKey = "paper"
 	}
@@ -183,13 +188,16 @@ func (s *ExamResultStore) SyncNodeEvaluation(ctx context.Context, tenantID, usag
 		WHERE id = $1 AND target_type = 'node' AND array_length(target_ids, 1) > 0
 	`, usageID).Scan(&nodeID)
 	if err != nil {
-		return
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
 	}
 	status := "evaluated"
 	if hasSubjective {
 		status = "pending"
 	}
-	_, _ = s.q.Exec(ctx, `
+	_, err = s.q.Exec(ctx, `
 		INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key)
@@ -205,10 +213,11 @@ func (s *ExamResultStore) SyncNodeEvaluation(ctx context.Context, tenantID, usag
 			END,
 			updated_at = NOW()
 	`, tenantID, nodeID, methodKey, userID, status, score, maxScore, objectiveAnswers)
+	return err
 }
 
 // SyncSceneEvaluation 同步场景统一评价（考试目标为任务时）。
-func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) {
+func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) error {
 	if methodKey == "" {
 		methodKey = "paper"
 	}
@@ -220,7 +229,10 @@ func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usa
 		WHERE eu.id = $1
 	`, usageID)
 	if err != nil {
-		return
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
 	}
 	defer rows.Close()
 	type syncRow struct {
@@ -232,9 +244,12 @@ func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usa
 	for rows.Next() {
 		var r syncRow
 		if err := rows.Scan(&r.methodKey, &r.taskID, &r.scenarioID); err != nil {
-			continue
+			return err
 		}
 		targets = append(targets, r)
+	}
+	if err := rows.Err(); err != nil {
+		return err
 	}
 	status := "evaluated"
 	if hasSubjective {
@@ -244,7 +259,7 @@ func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usa
 		if t.methodKey != methodKey {
 			continue
 		}
-		_, _ = s.q.Exec(ctx, `
+		if _, err := s.q.Exec(ctx, `
 			INSERT INTO scene_evaluation_results (tenant_id, scenario_id, task_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			ON CONFLICT (tenant_id, scenario_id, task_id, evaluatee_id, method_key)
@@ -259,8 +274,11 @@ func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usa
 					ELSE NULL
 				END,
 				updated_at = NOW()
-		`, tenantID, t.scenarioID, t.taskID, methodKey, userID, status, score, maxScore, objectiveAnswers)
+		`, tenantID, t.scenarioID, t.taskID, methodKey, userID, status, score, maxScore, objectiveAnswers); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // ScanExamResultRows 扫描考试结果行。
