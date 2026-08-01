@@ -224,33 +224,33 @@ export function EvaluationRulesEditor({
       })
     if (!changed) return
     lastSyncedReviewStepsRef.current = incoming
-    if (incoming.length > 0) {
-      // Defer state update to avoid cascading renders while still syncing external prop changes.
-      queueMicrotask(() => {
-        setReviewSteps(incoming.map((rs, i) => ({
-          id: uid(`rs-${i}`),
-          label: rs.label,
-          desc: rs.description || "",
-          enabled: rs.enabled,
-          subjectType: rs.subjectType || "",
-          weight: rs.weight,
-        })))
-      })
-    }
+    setReviewSteps(incoming.map((rs, i) => ({
+      id: uid(`rs-${i}`),
+      label: rs.label,
+      desc: rs.description || "",
+      enabled: rs.enabled,
+      subjectType: rs.subjectType || "",
+      weight: rs.weight,
+    })))
   }, [configProp.reviewSteps])
 
-  useEffect(() => {
-    const synced: EvalRuleReviewStepInput[] = reviewSteps.map((rs, i) => ({
-      label: rs.label,
-      description: rs.desc || null,
-      enabled: rs.enabled,
-      subjectType: rs.subjectType || null,
-      weight: rs.weight,
-      sortOrder: i,
-    }))
-    lastSyncedReviewStepsRef.current = synced
-    store.setReviewSteps(synced)
-  }, [reviewSteps, store])
+  // 用户操作驱动本地 state 与 store 同步，避免 useEffect 双向同步导致的无限重渲染
+  const setReviewStepsAndSync = useCallback((updater: React.SetStateAction<ReviewStep[]>) => {
+    setReviewSteps(prev => {
+      const next = typeof updater === "function" ? (updater as (prev: ReviewStep[]) => ReviewStep[])(prev) : updater
+      const synced: EvalRuleReviewStepInput[] = next.map((rs, i) => ({
+        label: rs.label,
+        description: rs.desc || null,
+        enabled: rs.enabled,
+        subjectType: rs.subjectType || null,
+        weight: rs.weight,
+        sortOrder: i,
+      }))
+      lastSyncedReviewStepsRef.current = synced
+      store.setReviewSteps(synced)
+      return next
+    })
+  }, [store])
   const [showAddStep, setShowAddStep] = useState(false)
   const [newStepLabel, setNewStepLabel] = useState("")
   const [newStepDesc, setNewStepDesc] = useState("")
@@ -1207,7 +1207,7 @@ export function EvaluationRulesEditor({
                   const base = Math.floor(100 / count)
                   const remainder = 100 % count
                   const newSteps = reviewSteps.map(s => !s.enabled ? s : { ...s, weight: base + (enabled.findIndex(e => e.id === s.id) < remainder ? 1 : 0) })
-                  setReviewSteps(newSteps)
+                  setReviewStepsAndSync(newSteps)
                 }}><RotateCcw className="h-3.5 w-3.5 mr-1" />一键平均权重</Button>
                 <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setShowAddStep(true); setNewStepLabel(""); setNewStepDesc(""); }}><Plus className="h-3.5 w-3.5 mr-1" />新增步骤</Button>
               </div>
@@ -1219,7 +1219,7 @@ export function EvaluationRulesEditor({
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <Input value={editingStepLabel} onChange={e => setEditingStepLabel(e.target.value)} placeholder="步骤名称" className="text-sm h-8" />
-                        <Select value={step.subjectType || ""} onValueChange={v => setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, subjectType: v } : s))}>
+                        <Select value={step.subjectType || ""} onValueChange={v => setReviewStepsAndSync(reviewSteps.map(s => s.id === step.id ? { ...s, subjectType: v } : s))}>
                           <SelectTrigger className="text-sm h-8"><SelectValue placeholder="请选择评价主体" /></SelectTrigger>
                           <SelectContent>
                             {Object.entries(subjectLabels).map(([k, label]) => <SelectItem key={k} value={k}>{label}</SelectItem>)}
@@ -1228,7 +1228,7 @@ export function EvaluationRulesEditor({
                       </div>
                       <Input value={editingStepDesc} onChange={e => setEditingStepDesc(e.target.value)} placeholder="步骤描述" className="text-sm h-8" />
                       <div className="flex items-center gap-2">
-                        <Button size="sm" className="h-7 text-xs" onClick={() => { setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, label: editingStepLabel || s.label, desc: editingStepDesc || s.desc } : s)); setEditingReviewStepId(null); }}>保存</Button>
+                        <Button size="sm" className="h-7 text-xs" onClick={() => { setReviewStepsAndSync(reviewSteps.map(s => s.id === step.id ? { ...s, label: editingStepLabel || s.label, desc: editingStepDesc || s.desc } : s)); setEditingReviewStepId(null); }}>保存</Button>
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingReviewStepId(null)}>取消</Button>
                       </div>
                     </div>
@@ -1236,15 +1236,15 @@ export function EvaluationRulesEditor({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                          <Switch checked={step.enabled} onCheckedChange={v => { if (v && !step.subjectType) setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, enabled: v, subjectType: "teacher" } : s)); else setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, enabled: v } : s)); }} />
+                          <Switch checked={step.enabled} onCheckedChange={v => { if (v && !step.subjectType) setReviewStepsAndSync(reviewSteps.map(s => s.id === step.id ? { ...s, enabled: v, subjectType: "teacher" } : s)); else setReviewStepsAndSync(reviewSteps.map(s => s.id === step.id ? { ...s, enabled: v } : s)); }} />
                           <div><p className="text-sm font-medium">{step.label}</p><p className="text-xs text-gray-400">{step.desc}</p></div>
                         </div>
                         <Badge variant={step.subjectType ? "secondary" : "outline"} className="text-[10px]">{step.subjectType ? (subjectLabels[step.subjectType] || step.subjectType) : "未绑定"}</Badge>
                       </div>
                       <div className="flex items-center gap-2">
-                        {step.enabled && <div className="flex items-center gap-1"><Input type="number" value={step.weight || 0} onChange={e => setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } : s))} className="h-7 text-xs w-14 text-center" min={0} max={100} /><span className="text-xs text-gray-400">%</span></div>}
+                        {step.enabled && <div className="flex items-center gap-1"><Input type="number" value={step.weight || 0} onChange={e => setReviewStepsAndSync(reviewSteps.map(s => s.id === step.id ? { ...s, weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } : s))} className="h-7 text-xs w-14 text-center" min={0} max={100} /><span className="text-xs text-gray-400">%</span></div>}
                         <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-400 hover:text-primary" onClick={() => { setEditingReviewStepId(step.id); setEditingStepLabel(step.label); setEditingStepDesc(step.desc); }}><PenTool className="h-3 w-3" /></Button>
-                        {reviewSteps.length > 1 && <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-400 hover:text-red-500" onClick={() => setReviewSteps(reviewSteps.filter(s => s.id !== step.id))}><Trash2 className="h-3 w-3" /></Button>}
+                        {reviewSteps.length > 1 && <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-400 hover:text-red-500" onClick={() => setReviewStepsAndSync(reviewSteps.filter(s => s.id !== step.id))}><Trash2 className="h-3 w-3" /></Button>}
                       </div>
                     </div>
                   )}
@@ -1262,7 +1262,7 @@ export function EvaluationRulesEditor({
                 </div>
                 <Input value={newStepDesc} onChange={e => setNewStepDesc(e.target.value)} placeholder="步骤描述" className="text-sm h-8" />
                 <div className="flex items-center gap-2">
-                  <Button size="sm" className="h-7 text-xs" onClick={() => { if (!newStepLabel.trim() || !newStepSubjectType) return; setReviewSteps([...reviewSteps, { id: uid("rs"), label: newStepLabel, desc: newStepDesc, enabled: true, subjectType: newStepSubjectType, weight: 0 }]); setShowAddStep(false); setNewStepLabel(""); setNewStepDesc(""); setNewStepSubjectType(""); }}>添加</Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={() => { if (!newStepLabel.trim() || !newStepSubjectType) return; setReviewStepsAndSync([...reviewSteps, { id: uid("rs"), label: newStepLabel, desc: newStepDesc, enabled: true, subjectType: newStepSubjectType, weight: 0 }]); setShowAddStep(false); setNewStepLabel(""); setNewStepDesc(""); setNewStepSubjectType(""); }}>添加</Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowAddStep(false); setNewStepLabel(""); setNewStepDesc(""); setNewStepSubjectType(""); }}>取消</Button>
                 </div>
               </div>
