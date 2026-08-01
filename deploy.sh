@@ -18,14 +18,15 @@
 set -euo pipefail
 
 # ── 参数 ──
-BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false
+BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false; FORCE_FLAG=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --branch) BRANCH_NAME="$2"; shift 2 ;;
     --clean) CLEAN_BUILD=true; shift ;;
+    --force) FORCE_FLAG=true; shift ;;
     --skip-merge) SKIP_MERGE=true; shift ;;
     --help|-h)
-      echo "用法: $0 --branch <分支名> [--clean] [--skip-merge]"; exit 0 ;;
+      echo "用法: $0 --branch <分支名> [--clean] [--force] [--skip-merge]"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
@@ -274,6 +275,7 @@ if ! command -v docker >/dev/null 2>&1; then
     bash "$local_docker_script" 2>/dev/null || pkg_install docker.io
     systemctl enable --now docker 2>/dev/null || true
   else
+    warn "无法使用本地离线安装脚本，将通过 curl | bash 安装 docker（未校验 checksum，建议部署前人工核验 get.docker.com 脚本）"
     curl -fsSL https://get.docker.com | bash 2>/dev/null || pkg_install docker.io
     systemctl enable --now docker 2>/dev/null || true
   fi
@@ -394,6 +396,7 @@ if ! command -v node >/dev/null 2>&1; then
     cp -f "$local_node" "$NODE_TARBALL"
     HAVE_NODE_TARBALL=true
   elif command -v apt-get >/dev/null 2>&1; then
+    warn "无法使用本地 Node.js 安装包，将通过 curl | bash 安装 NodeSource 源（未校验 checksum，建议部署前人工核验 nodesource.com 脚本）"
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>/dev/null
     pkg_install nodejs
     command -v node >/dev/null 2>&1 && NODE_INSTALLED=true
@@ -645,6 +648,18 @@ BUILD_BACKEND=true
 
 if $BUILD_BACKEND; then
   log "构建后端"
+  log "  质量门禁: gofmt / go vet / go test"
+  if gofmt -l "$BACKEND_DIR" | grep -q .; then
+    warn "gofmt 检查失败，存在未格式化文件："
+    gofmt -l "$BACKEND_DIR" | head -10
+    die "gofmt 检查未通过，请先运行 gofmt -w ."
+  fi
+  (cd "$BACKEND_DIR" && go vet ./...) || die "go vet ./... 失败"
+  if command -v pg_isready >/dev/null 2>&1 && pg_isready "$DATABASE_URL" >/dev/null 2>&1; then
+    (cd "$BACKEND_DIR" && go test ./...) || die "go test ./... 失败"
+  else
+    warn "数据库不可用，跳过 go test（环境限制，非代码错误）"
+  fi
   mkdir -p "$BUILD_CACHE/go-cache"
   if [[ -d "$BACKEND_DIR/vendor" ]]; then
     (cd "$BACKEND_DIR" && CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
@@ -696,6 +711,10 @@ CACHED_LOCK=""; [[ -f "$BUILD_CACHE/lock-hash" ]] && CACHED_LOCK=$(cat "$BUILD_C
 
 if $BUILD_FRONTEND; then
   log "构建前端"
+
+  log "  质量门禁: pnpm typecheck / pnpm lint"
+  (cd "$BUILD_ROOT" && pnpm typecheck) || die "pnpm typecheck 失败"
+  (cd "$BUILD_ROOT" && pnpm lint) || die "pnpm lint 失败"
 
   if $NEED_INSTALL; then
     log "  安装依赖..."
@@ -826,7 +845,13 @@ if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
 fi
 
 compose ps
-[[ "$CLEAN_BUILD" == "true" ]] && docker builder prune --all --force >/dev/null 2>&1 || true
+if [[ "$CLEAN_BUILD" == "true" ]]; then
+  if [[ "$FORCE_FLAG" == "true" ]]; then
+    docker builder prune --all --force >/dev/null 2>&1 || true
+  else
+    warn "--clean 未加 --force，跳过 docker builder prune --all（该操作会清空宿主全局构建缓存）"
+  fi
+fi
 
 # 清理过旧的镜像标签，每侧保留最近 5 个
 prune_old_images "zhiyu-backend" 5
@@ -844,6 +869,10 @@ if [[ -f "$NGINX_CONF" ]]; then
   export NGINX_SERVER_NAME NGINX_DEFAULT_SERVER NGINX_PORT BACKEND_PORT EDU_PORT KKFILEVIEW_HOST_PORT
 
   # 将模板中的 ${VAR:-default} → ${VAR}，再用 envsubst 替换
+  if [[ -f "$NGINX_DST" ]]; then
+    cp -a "$NGINX_DST" "$NGINX_DST.bak.$(date +%Y%m%d%H%M%S)"
+    log "已备份原 nginx 配置: $NGINX_DST.bak.$(date +%Y%m%d%H%M%S)"
+  fi
   sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
 
   # 若配置了 SSL 域名和证书，生成 HTTPS 网关配置
