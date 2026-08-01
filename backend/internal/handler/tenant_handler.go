@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -73,20 +74,20 @@ type adminUserInfo struct {
 }
 
 func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.Tenant](r.Context(), h.DB, r, listQueryConfig[domain.Tenant]{
+	items, total, err := executeListQuery[domain.Tenant](r.Context(), h.DB, r, store.ListQueryConfig[domain.Tenant]{
 		Table:         "tenants",
 		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "id",
 		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 	}, h.scanTenantRows)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

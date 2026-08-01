@@ -39,20 +39,20 @@ type UpdateCertificateLibraryRequest struct {
 func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	creatorID := r.URL.Query().Get("creatorId")
 
-	items, total, err := executeListQuery[domain.CertificateLibraryItem](r.Context(), h.DB, r, listQueryConfig[domain.CertificateLibraryItem]{
+	items, total, err := executeListQuery[domain.CertificateLibraryItem](r.Context(), h.DB, r, store.ListQueryConfig[domain.CertificateLibraryItem]{
 		Table:         "certificate_library",
 		SelectColumns: "id, tenant_id, name, url, description, image_url, creator_id, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "description"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if creatorID != "" {
-				qb.addCondition("creator_id = " + qb.nextArg(creatorID))
+				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
 			}
 		},
 		ScanRows: h.Store.ScanRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

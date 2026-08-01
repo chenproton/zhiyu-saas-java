@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type EvaluationResultHandler struct {
@@ -65,35 +66,35 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, total, err := executeListQuery[domain.SceneEvaluationResult](r.Context(), h.DB, r, listQueryConfig[domain.SceneEvaluationResult]{
+	items, total, err := executeListQuery[domain.SceneEvaluationResult](r.Context(), h.DB, r, store.ListQueryConfig[domain.SceneEvaluationResult]{
 		Table:         "scene_evaluation_results",
 		SelectColumns: "id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by",
 		TenantScoped:  true,
 		OrderBy:       "id DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if middleware.HasRole(claims, "student") {
-				qb.addCondition("evaluatee_id = " + qb.nextArg(claims.UserID))
+				qb.AddCondition("evaluatee_id = " + qb.NextArg(claims.UserID))
 				return
 			}
-			if taskID := r.URL.Query().Get("taskId"); taskID != "" {
-				qb.addCondition("task_id = " + qb.nextArg(taskID))
+			if taskID := p.Values["taskId"]; taskID != "" {
+				qb.AddCondition("task_id = " + qb.NextArg(taskID))
 			}
-			if sceneID := r.URL.Query().Get("sceneId"); sceneID != "" {
-				qb.addCondition("scene_id = " + qb.nextArg(sceneID))
+			if sceneID := p.Values["sceneId"]; sceneID != "" {
+				qb.AddCondition("scene_id = " + qb.NextArg(sceneID))
 			}
-			if methodKey := r.URL.Query().Get("methodKey"); methodKey != "" {
-				qb.addCondition("method_key = " + qb.nextArg(methodKey))
+			if methodKey := p.Values["methodKey"]; methodKey != "" {
+				qb.AddCondition("method_key = " + qb.NextArg(methodKey))
 			}
-			if evaluateeID := r.URL.Query().Get("evaluateeId"); evaluateeID != "" {
-				qb.addCondition("evaluatee_id = " + qb.nextArg(evaluateeID))
+			if evaluateeID := p.Values["evaluateeId"]; evaluateeID != "" {
+				qb.AddCondition("evaluatee_id = " + qb.NextArg(evaluateeID))
 			}
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 	}, h.scanResultRows)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

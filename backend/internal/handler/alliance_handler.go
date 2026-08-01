@@ -82,7 +82,7 @@ func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Reques
 func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	rating := r.URL.Query().Get("rating")
-	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceEnterprise]{
+	allianceList(w, r, h.Store.DB, store.ListQueryConfig[domain.AllianceEnterprise]{
 		Table: "alliance_enterprises",
 		SelectColumns: "id, tenant_id, name, enterprise_type, industry, region, description, " +
 			"logo_url, cover_image, status, rating, cooperation_types, contact_person, " +
@@ -93,12 +93,12 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "industry"},
 		OrderBy:       "created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 			if rating != "" {
-				qb.addCondition("rating = " + qb.nextArg(rating))
+				qb.AddCondition("rating = " + qb.NextArg(rating))
 			}
 		},
 		ScanRows: h.Store.ScanEnterpriseRows,
@@ -227,15 +227,15 @@ func (h *AllianceHandler) DeleteEnterpriseAgreement(w http.ResponseWriter, r *ht
 
 func (h *AllianceHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 	phase := r.URL.Query().Get("phase")
-	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceProject]{
+	allianceList(w, r, h.Store.DB, store.ListQueryConfig[domain.AllianceProject]{
 		Table:         "alliance_projects",
 		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if phase != "" {
-				qb.addCondition("phase = " + qb.nextArg(phase))
+				qb.AddCondition("phase = " + qb.NextArg(phase))
 			}
 		},
 		ScanRows: h.Store.ScanProjectRows,
@@ -351,18 +351,18 @@ func (h *AllianceHandler) DeleteMilestone(w http.ResponseWriter, r *http.Request
 func (h *AllianceHandler) ListAchievements(w http.ResponseWriter, r *http.Request) {
 	achieveType := r.URL.Query().Get("type")
 	status := r.URL.Query().Get("status")
-	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceAchievement]{
+	allianceList(w, r, h.Store.DB, store.ListQueryConfig[domain.AllianceAchievement]{
 		Table:         "alliance_achievements",
 		SelectColumns: "id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"title"},
 		OrderBy:       "created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if achieveType != "" {
-				qb.addCondition("type = " + qb.nextArg(achieveType))
+				qb.AddCondition("type = " + qb.NextArg(achieveType))
 			}
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.Store.ScanAchievementRows,
@@ -389,15 +389,15 @@ func (h *AllianceHandler) DeleteAchievement(w http.ResponseWriter, r *http.Reque
 
 func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
-	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceExpert]{
+	allianceList(w, r, h.Store.DB, store.ListQueryConfig[domain.AllianceExpert]{
 		Table:         "alliance_experts",
 		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "title", "industry"},
 		OrderBy:       "created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.Store.ScanExpertRows,
@@ -424,15 +424,15 @@ func (h *AllianceHandler) DeleteExpert(w http.ResponseWriter, r *http.Request) {
 
 func (h *AllianceHandler) ListAgreements(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
-	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceAgreement]{
+	allianceList(w, r, h.Store.DB, store.ListQueryConfig[domain.AllianceAgreement]{
 		Table:         "alliance_agreements",
 		SelectColumns: "id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.Store.ScanAgreementRows,
@@ -464,7 +464,7 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	items, total, err := executeListQuery[domain.AlliancePermission](r.Context(), h.Store.DB, r, listQueryConfig[domain.AlliancePermission]{
+	items, total, err := executeListQuery[domain.AlliancePermission](r.Context(), h.Store.DB, r, store.ListQueryConfig[domain.AlliancePermission]{
 		Table:         "alliance_permissions",
 		SelectColumns: "id, tenant_id, account_name, account_type, enterprise_id, expert_id, is_enabled, resource_permissions, platform_permissions, created_at, updated_at",
 		TenantScoped:  true,
@@ -473,7 +473,7 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 		ScanRows:      h.Store.ScanPermissionRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
@@ -684,18 +684,18 @@ func (h *AllianceHandler) DeleteDictionaryItem(w http.ResponseWriter, r *http.Re
 func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
 	brandType := r.URL.Query().Get("brandType")
 	status := r.URL.Query().Get("status")
-	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceBrand]{
+	allianceList(w, r, h.Store.DB, store.ListQueryConfig[domain.AllianceBrand]{
 		Table:         "alliance_brands",
 		SelectColumns: "id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, student_id, enterprise_id, position_id, major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "sort_order ASC, created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if brandType != "" {
-				qb.addCondition("brand_type = " + qb.nextArg(brandType))
+				qb.AddCondition("brand_type = " + qb.NextArg(brandType))
 			}
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.Store.ScanBrandRows,

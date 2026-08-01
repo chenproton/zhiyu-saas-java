@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ApprovalHandler struct {
@@ -41,27 +42,27 @@ func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, total, err := executeListQuery[domain.ApprovalRecord](r.Context(), h.DB, r, listQueryConfig[domain.ApprovalRecord]{
+	items, total, err := executeListQuery[domain.ApprovalRecord](r.Context(), h.DB, r, store.ListQueryConfig[domain.ApprovalRecord]{
 		Table:         "approval_records",
 		SelectColumns: "id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id, history, created_at, updated_at",
 		TenantScoped:  true,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if targetType := r.URL.Query().Get("targetType"); targetType != "" {
-				qb.addCondition("target_type = " + qb.nextArg(targetType))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if targetType := p.Values["targetType"]; targetType != "" {
+				qb.AddCondition("target_type = " + qb.NextArg(targetType))
 			}
-			if targetID := r.URL.Query().Get("targetId"); targetID != "" {
-				qb.addCondition("target_id = " + qb.nextArg(targetID))
+			if targetID := p.Values["targetId"]; targetID != "" {
+				qb.AddCondition("target_id = " + qb.NextArg(targetID))
 			}
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
-			if submitterID := r.URL.Query().Get("submitterId"); submitterID != "" {
-				qb.addCondition("submitter_id = " + qb.nextArg(submitterID))
+			if submitterID := p.Values["submitterId"]; submitterID != "" {
+				qb.AddCondition("submitter_id = " + qb.NextArg(submitterID))
 			}
 		},
 	}, h.scanApprovalRows)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

@@ -5,19 +5,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // Superadmin console handlers for /api/v1/admin/tenants.
 // 按产品决策：内部隐藏控制台，不做鉴权，跨租户管理。
 
 func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.Tenant](r.Context(), h.DB, r, listQueryConfig[domain.Tenant]{
+	items, total, err := executeListQuery[domain.Tenant](r.Context(), h.DB, r, store.ListQueryConfig[domain.Tenant]{
 		Table:         "tenants",
 		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
 		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 	}, h.scanTenantRows)

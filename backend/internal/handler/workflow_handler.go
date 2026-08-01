@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type WorkflowHandler struct {
@@ -45,22 +46,22 @@ func (h *WorkflowHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, total, err := executeListQuery[domain.Workflow](r.Context(), h.DB, r, listQueryConfig[domain.Workflow]{
+	items, total, err := executeListQuery[domain.Workflow](r.Context(), h.DB, r, store.ListQueryConfig[domain.Workflow]{
 		Table:         "workflows",
 		SelectColumns: "id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if scene := r.URL.Query().Get("scene"); scene != "" {
-				qb.addCondition("scene = " + qb.nextArg(scene))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if scene := p.Values["scene"]; scene != "" {
+				qb.AddCondition("scene = " + qb.NextArg(scene))
 			}
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 	}, h.scanWorkflowRows)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

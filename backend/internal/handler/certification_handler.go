@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CertificationHandler struct {
@@ -101,16 +102,16 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	cfg := listQueryConfig[domain.CertificationRule]{
+	cfg := store.ListQueryConfig[domain.CertificationRule]{
 		Table:         "certification_rules",
 		SelectColumns: "id, career_position_id, status, rule_source, level_mapping, created_at, updated_at",
 		TenantScoped:  true,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
-			if positionID := r.URL.Query().Get("careerPositionId"); positionID != "" {
-				qb.addCondition("career_position_id = " + qb.nextArg(positionID))
+			if positionID := p.Values["careerPositionId"]; positionID != "" {
+				qb.AddCondition("career_position_id = " + qb.NextArg(positionID))
 			}
 		},
 		ScanRows: h.scanRuleRows,
@@ -118,7 +119,7 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

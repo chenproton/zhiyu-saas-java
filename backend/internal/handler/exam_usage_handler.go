@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ExamUsageHandler struct {
@@ -44,23 +45,23 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 	examID := r.URL.Query().Get("examId")
 	status := r.URL.Query().Get("status")
 
-	items, total, err := executeListQuery[domain.ExamUsage](r.Context(), h.DB, r, listQueryConfig[domain.ExamUsage]{
+	items, total, err := executeListQuery[domain.ExamUsage](r.Context(), h.DB, r, store.ListQueryConfig[domain.ExamUsage]{
 		Table:         "exam_usages",
 		SelectColumns: "id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if examID != "" {
-				qb.addCondition("exam_id = " + qb.nextArg(examID))
+				qb.AddCondition("exam_id = " + qb.NextArg(examID))
 			}
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.scanExamUsageRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

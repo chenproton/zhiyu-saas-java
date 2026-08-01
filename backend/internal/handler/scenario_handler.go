@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioHandler struct {
@@ -101,7 +102,7 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.Scenario]{
+	cfg := store.ListQueryConfig[domain.Scenario]{
 		Table: "scenarios s LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true",
 		SelectColumns: `s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count`,
 		TenantScoped:  true,
@@ -110,20 +111,20 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		SearchParam:   "search",
 		OrderBy:       "s.created_at DESC",
 		DefaultLimit:  50,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			status := r.URL.Query().Get("status")
-			batchID := r.URL.Query().Get("batchId")
-			careerPositionID := r.URL.Query().Get("careerPositionId")
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			status := p.Values["status"]
+			batchID := p.Values["batchId"]
+			careerPositionID := p.Values["careerPositionId"]
 			if status != "" {
-				qb.addCondition("s.status = " + qb.nextArg(status))
+				qb.AddCondition("s.status = " + qb.NextArg(status))
 			} else {
-				qb.addCondition("s.status != " + qb.nextArg("archived"))
+				qb.AddCondition("s.status != " + qb.NextArg("archived"))
 			}
 			if batchID != "" {
-				qb.addCondition("s.batch_id = " + qb.nextArg(batchID))
+				qb.AddCondition("s.batch_id = " + qb.NextArg(batchID))
 			}
 			if careerPositionID != "" {
-				qb.addCondition("s.career_position_id = " + qb.nextArg(careerPositionID))
+				qb.AddCondition("s.career_position_id = " + qb.NextArg(careerPositionID))
 			}
 		},
 		ScanRows: h.scanScenarioRows,
@@ -131,7 +132,7 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

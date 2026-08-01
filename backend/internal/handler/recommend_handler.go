@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type RecommendHandler struct {
@@ -49,24 +50,24 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 	majorID := r.URL.Query().Get("majorId")
 	careerPositionID := r.URL.Query().Get("careerPositionId")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.PositionRecommendation]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.PositionRecommendation]{
 		Table:         "position_recommendations pr LEFT JOIN majors m ON m.id = pr.major_id",
 		SelectColumns: "pr.id, pr.major_id, COALESCE(m.name, '') AS major_name, pr.career_position_id, pr.position_type, pr.reason, pr.sort_order, pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "pr.tenant_id",
 		OrderBy:       "pr.sort_order ASC, pr.created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if majorID != "" {
-				qb.addCondition("pr.major_id = " + qb.nextArg(majorID))
+				qb.AddCondition("pr.major_id = " + qb.NextArg(majorID))
 			}
 			if careerPositionID != "" {
-				qb.addCondition("pr.career_position_id = " + qb.nextArg(careerPositionID))
+				qb.AddCondition("pr.career_position_id = " + qb.NextArg(careerPositionID))
 			}
 		},
 		ScanRows: h.scanRecommendRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

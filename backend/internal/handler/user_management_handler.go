@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -97,34 +98,34 @@ type BindUserRolesRequest struct {
 
 
 func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
-	cfg := listQueryConfig[domain.User]{
+	cfg := store.ListQueryConfig[domain.User]{
 		Table:         "users",
 		SelectColumns: `id, tenant_id, institution_id, org_node_id, major_id, role, platform, login_name, username, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at`,
 		TenantScoped:  true,
 		SearchColumns: []string{"username", "name", "email"},
 		ScanRows:      h.scanUserRows,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if institutionID := r.URL.Query().Get("institutionId"); institutionID != "" {
-				qb.addCondition("institution_id = " + qb.nextArg(institutionID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if institutionID := p.Values["institutionId"]; institutionID != "" {
+				qb.AddCondition("institution_id = " + qb.NextArg(institutionID))
 			}
-			if roleID := r.URL.Query().Get("roleId"); roleID != "" {
-				qb.addCondition("EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = " + qb.nextArg(roleID) + ")")
+			if roleID := p.Values["roleId"]; roleID != "" {
+				qb.AddCondition("EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = " + qb.NextArg(roleID) + ")")
 			}
-			if roleCode := r.URL.Query().Get("roleCode"); roleCode != "" {
-				qb.addCondition("EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = " + qb.nextArg(roleCode) + ")")
+			if roleCode := p.Values["roleCode"]; roleCode != "" {
+				qb.AddCondition("EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = " + qb.NextArg(roleCode) + ")")
 			}
-			if orgNodeID := r.URL.Query().Get("orgNodeId"); orgNodeID != "" {
-				qb.addCondition("org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = " + qb.nextArg(orgNodeID) + " UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)")
+			if orgNodeID := p.Values["orgNodeId"]; orgNodeID != "" {
+				qb.AddCondition("org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = " + qb.NextArg(orgNodeID) + " UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)")
 			}
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

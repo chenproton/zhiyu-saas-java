@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CourseHandler struct {
@@ -88,7 +89,7 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.Course]{
+	cfg := store.ListQueryConfig[domain.Course]{
 		Table: "courses c LEFT JOIN majors m ON m.id = c.major_id LEFT JOIN industries i ON i.id = c.industry_id LEFT JOIN lesson_batches lb ON lb.id = c.batch_id LEFT JOIN view_counters vc ON vc.target_type = 'course' AND vc.target_id = c.id",
 		SelectColumns: `c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version, c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name, c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description, c.knowledge_point_ids::text[] AS knowledge_point_ids, c.ability_point_ids::text[] AS ability_point_ids, c.resource_ids::text[] AS resource_ids, c.eval_data, c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name, c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count, COALESCE(vc.cnt, 0) AS view_count, c.study_count, c.created_at, c.updated_at`,
 		TenantScoped:  true,
@@ -97,22 +98,22 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 		SearchParam:   "search",
 		OrderBy:       "c.created_at DESC",
 		DefaultLimit:  50,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			courseType := r.URL.Query().Get("type")
-			category := r.URL.Query().Get("category")
-			status := r.URL.Query().Get("status")
-			batchID := r.URL.Query().Get("batchId")
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			courseType := p.Values["type"]
+			category := p.Values["category"]
+			status := p.Values["status"]
+			batchID := p.Values["batchId"]
 			if courseType != "" {
-				qb.addCondition("c.type = " + qb.nextArg(courseType))
+				qb.AddCondition("c.type = " + qb.NextArg(courseType))
 			}
 			if category != "" {
-				qb.addCondition("c.category = " + qb.nextArg(category))
+				qb.AddCondition("c.category = " + qb.NextArg(category))
 			}
 			if status != "" {
-				qb.addCondition("c.status = " + qb.nextArg(status))
+				qb.AddCondition("c.status = " + qb.NextArg(status))
 			}
 			if batchID != "" {
-				qb.addCondition("c.batch_id = " + qb.nextArg(batchID))
+				qb.AddCondition("c.batch_id = " + qb.NextArg(batchID))
 			}
 		},
 		ScanRows: h.scanCourseRows,
@@ -120,7 +121,7 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

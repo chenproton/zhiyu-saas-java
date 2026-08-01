@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type RandomDrawQuestionHandler struct {
@@ -43,15 +44,15 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 
 	majorID := r.URL.Query().Get("majorId")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.RandomDrawQuestion]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.RandomDrawQuestion]{
 		Table:         "random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id",
 		SelectColumns: "rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at",
 		TenantScoped:  false,
 		SearchColumns: []string{"rdq.name", "rdq.description", "m.name"},
 		DefaultLimit:  200,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if majorID != "" {
-				qb.addCondition("rdq.major_id = " + qb.nextArg(majorID))
+				qb.AddCondition("rdq.major_id = " + qb.NextArg(majorID))
 			}
 		},
 		ScanRows: h.scanRows,

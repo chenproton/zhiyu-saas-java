@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type GraduationHandler struct {
@@ -74,21 +75,21 @@ func (h *GraduationHandler) ListTopics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.GraduationProjectTopic]{
+	cfg := store.ListQueryConfig[domain.GraduationProjectTopic]{
 		Table:         "graduation_project_topics",
 		SelectColumns: "id, tenant_id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanTopicRows)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
 			respondError(w, http.StatusInternalServerError, "查询毕业设计课题失败")
@@ -330,13 +331,13 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	items, total, err := executeListQuery[domain.GraduationProjectArchive](r.Context(), h.DB, r, listQueryConfig[domain.GraduationProjectArchive]{
+	items, total, err := executeListQuery[domain.GraduationProjectArchive](r.Context(), h.DB, r, store.ListQueryConfig[domain.GraduationProjectArchive]{
 		Table:         "graduation_project_archives",
 		SelectColumns: "id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification",
 		OrderBy:       "last_updated DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if topicID := r.URL.Query().Get("topicId"); topicID != "" {
-				qb.addCondition("topic_id = " + qb.nextArg(topicID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if topicID := p.Values["topicId"]; topicID != "" {
+				qb.AddCondition("topic_id = " + qb.NextArg(topicID))
 			}
 		},
 		ScanRows: scanGraduationArchiveRows,
@@ -386,16 +387,16 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	items, total, err := executeListQuery[domain.GraduationProjectEvaluation](r.Context(), h.DB, r, listQueryConfig[domain.GraduationProjectEvaluation]{
+	items, total, err := executeListQuery[domain.GraduationProjectEvaluation](r.Context(), h.DB, r, store.ListQueryConfig[domain.GraduationProjectEvaluation]{
 		Table:         "graduation_project_evaluations",
 		SelectColumns: "id, topic_id, user_id, advisor_score, enterprise_score, defense_score, comprehensive_grade, is_excellent, status, evaluated_at",
 		OrderBy:       "evaluated_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if topicID := r.URL.Query().Get("topicId"); topicID != "" {
-				qb.addCondition("topic_id = " + qb.nextArg(topicID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if topicID := p.Values["topicId"]; topicID != "" {
+				qb.AddCondition("topic_id = " + qb.NextArg(topicID))
 			}
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: scanGraduationEvaluationRows,

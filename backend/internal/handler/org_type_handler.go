@@ -36,23 +36,23 @@ type UpdateOrgTypeRequest struct {
 }
 
 func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OrgType](r.Context(), h.DB, r, listQueryConfig[domain.OrgType]{
+	items, total, err := executeListQuery[domain.OrgType](r.Context(), h.DB, r, store.ListQueryConfig[domain.OrgType]{
 		Table:         "org_types",
 		SelectColumns: "id, tenant_id, name, category, description, is_default, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if tenantID := r.URL.Query().Get("tenantId"); tenantID != "" {
-				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if tenantID := p.Values["tenantId"]; tenantID != "" {
+				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
 			}
-			if category := r.URL.Query().Get("category"); category != "" {
-				qb.addCondition("category = " + qb.nextArg(category))
+			if category := p.Values["category"]; category != "" {
+				qb.AddCondition("category = " + qb.NextArg(category))
 			}
 		},
 		ScanRows: h.Store.ScanRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

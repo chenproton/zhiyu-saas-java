@@ -16,6 +16,7 @@ import (
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type SchedulingHandler struct {
@@ -42,15 +43,15 @@ func (h *SchedulingHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.Venue]{
+	cfg := store.ListQueryConfig[domain.Venue]{
 		Table:         "venues",
 		SelectColumns: "id, name, type, capacity, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "name",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if venueType := r.URL.Query().Get("type"); venueType != "" {
-				qb.addCondition("type = " + qb.nextArg(venueType))
+				qb.AddCondition("type = " + qb.NextArg(venueType))
 			}
 		},
 		ScanRows: func(rows pgx.Rows) ([]domain.Venue, error) {
@@ -68,7 +69,7 @@ func (h *SchedulingHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
@@ -206,7 +207,7 @@ func (h *SchedulingHandler) ListPeriodSlots(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cfg := listQueryConfig[domain.PeriodSlot]{
+	cfg := store.ListQueryConfig[domain.PeriodSlot]{
 		Table:         "period_slots",
 		SelectColumns: "id, name, sort_order, start_time::text, end_time::text",
 		TenantScoped:  true,
@@ -216,7 +217,7 @@ func (h *SchedulingHandler) ListPeriodSlots(w http.ResponseWriter, r *http.Reque
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
@@ -400,7 +401,7 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	cfg := listQueryConfig[domain.ScheduleEntry]{
+	cfg := store.ListQueryConfig[domain.ScheduleEntry]{
 		Table:         scheduleEntryFrom,
 		SelectColumns: scheduleEntrySelectColumns,
 		TenantScoped:  true,
@@ -413,7 +414,7 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
@@ -424,21 +425,21 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusOK, ScheduleEntryListResponse{Items: items, Total: total})
 }
 
-func scheduleListFilter(r *http.Request, qb *listQueryBuilder) {
-	if termID := r.URL.Query().Get("termId"); termID != "" {
-		qb.addCondition("se.term_id = " + qb.nextArg(termID))
+func scheduleListFilter(p store.ListParams, qb *store.ListQueryBuilder) {
+	if termID := p.Values["termId"]; termID != "" {
+		qb.AddCondition("se.term_id = " + qb.NextArg(termID))
 	}
-	if status := r.URL.Query().Get("status"); status != "" {
-		qb.addCondition("se.status = " + qb.nextArg(status))
+	if status := p.Values["status"]; status != "" {
+		qb.AddCondition("se.status = " + qb.NextArg(status))
 	}
-	if classNodeID := r.URL.Query().Get("classNodeId"); classNodeID != "" {
-		qb.addCondition("(se.class_node_id = " + qb.nextArg(classNodeID) + " OR " + qb.nextArg(classNodeID) + " = ANY(se.class_node_ids))")
+	if classNodeID := p.Values["classNodeId"]; classNodeID != "" {
+		qb.AddCondition("(se.class_node_id = " + qb.NextArg(classNodeID) + " OR " + qb.NextArg(classNodeID) + " = ANY(se.class_node_ids))")
 	}
-	if teacherID := r.URL.Query().Get("teacherId"); teacherID != "" {
-		qb.addCondition("se.teacher_id = " + qb.nextArg(teacherID))
+	if teacherID := p.Values["teacherId"]; teacherID != "" {
+		qb.AddCondition("se.teacher_id = " + qb.NextArg(teacherID))
 	}
-	if entryType := r.URL.Query().Get("type"); entryType != "" {
-		qb.addCondition("se.type = " + qb.nextArg(entryType))
+	if entryType := p.Values["type"]; entryType != "" {
+		qb.AddCondition("se.type = " + qb.NextArg(entryType))
 	}
 }
 
@@ -1220,23 +1221,23 @@ func (h *SchedulingHandler) Timetable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SchedulingHandler) listTimetableEntries(ctx context.Context, tenantID, termID, classNodeID, teacherID, status string) ([]domain.ScheduleEntry, error) {
-	qb := &listQueryBuilder{idx: 1}
-	qb.addCondition("se.tenant_id = " + qb.nextArg(tenantID))
-	qb.addCondition("se.term_id = " + qb.nextArg(termID))
-	qb.addCondition("se.status = " + qb.nextArg(status))
+	qb := store.NewListQueryBuilder()
+	qb.AddCondition("se.tenant_id = " + qb.NextArg(tenantID))
+	qb.AddCondition("se.term_id = " + qb.NextArg(termID))
+	qb.AddCondition("se.status = " + qb.NextArg(status))
 	if classNodeID != "" {
-		qb.addCondition("(se.class_node_id = " + qb.nextArg(classNodeID) + " OR " + qb.nextArg(classNodeID) + " = ANY(se.class_node_ids))")
+		qb.AddCondition("(se.class_node_id = " + qb.NextArg(classNodeID) + " OR " + qb.NextArg(classNodeID) + " = ANY(se.class_node_ids))")
 	}
 	if teacherID != "" {
-		qb.addCondition("se.teacher_id = " + qb.nextArg(teacherID))
+		qb.AddCondition("se.teacher_id = " + qb.NextArg(teacherID))
 	}
 
 	rows, err := h.DB.Query(ctx, `
 		SELECT `+scheduleEntrySelectColumns+`
 		FROM `+scheduleEntryFrom+`
-		WHERE `+qb.whereClause()+`
+		WHERE `+qb.WhereClause()+`
 		ORDER BY se.day_of_week ASC, se.start_week ASC
-	`, qb.args...)
+	`, qb.Args()...)
 	if err != nil {
 		return nil, err
 	}

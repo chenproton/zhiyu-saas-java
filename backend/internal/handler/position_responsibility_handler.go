@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PositionResponsibilityHandler struct {
@@ -42,21 +43,21 @@ func (h *PositionResponsibilityHandler) List(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	cfg := listQueryConfig[domain.PositionResponsibility]{
+	cfg := store.ListQueryConfig[domain.PositionResponsibility]{
 		Table:         "position_responsibilities",
 		SelectColumns: "id, career_position_id, name, description, sort_order",
 		TenantScoped:  false,
 		OrderBy:       "sort_order ASC, id ASC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if careerPositionID := r.URL.Query().Get("careerPositionId"); careerPositionID != "" {
-				qb.addCondition("career_position_id = " + qb.nextArg(careerPositionID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
+				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
 			}
 		},
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanResponsibilityRows)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
 			respondError(w, http.StatusInternalServerError, "查询岗位职责失败")

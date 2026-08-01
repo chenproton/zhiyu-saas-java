@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type TaskEvaluationHandler struct {
@@ -267,19 +268,19 @@ func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	items, total, err := executeListQuery[domain.RubricTemplate](r.Context(), h.DB, r, listQueryConfig[domain.RubricTemplate]{
+	items, total, err := executeListQuery[domain.RubricTemplate](r.Context(), h.DB, r, store.ListQueryConfig[domain.RubricTemplate]{
 		Table:         "rubric_templates",
 		SelectColumns: "id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		SearchParam:   "keyword",
 		OrderBy:       "updated_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			qb.addCondition("is_deleted = false")
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			qb.AddCondition("is_deleted = false")
 		},
 	}, scanRubricTemplates)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

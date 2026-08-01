@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type JobBannerHandler struct {
@@ -47,20 +48,20 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	isEnabledStr := r.URL.Query().Get("isEnabled")
 
-	items, total, err := executeListQuery[domain.JobBannerConfig](r.Context(), h.DB, r, listQueryConfig[domain.JobBannerConfig]{
+	items, total, err := executeListQuery[domain.JobBannerConfig](r.Context(), h.DB, r, store.ListQueryConfig[domain.JobBannerConfig]{
 		Table:         "banner_configs",
 		SelectColumns: "id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
 		TenantScoped:  true,
 		OrderBy:       "sort_order ASC, created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if isEnabledStr != "" {
-				qb.addCondition("is_enabled = " + qb.nextArg(isEnabledStr == "true"))
+				qb.AddCondition("is_enabled = " + qb.NextArg(isEnabledStr == "true"))
 			}
 		},
 		ScanRows: h.scanBannerRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

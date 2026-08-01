@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PositionAbilityHandler struct {
@@ -52,24 +53,24 @@ func (h *PositionAbilityHandler) ListBindings(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	cfg := listQueryConfig[domain.PositionAbilityBinding]{
+	cfg := store.ListQueryConfig[domain.PositionAbilityBinding]{
 		Table:         "position_ability_bindings",
 		SelectColumns: "id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
 		TenantScoped:  true,
 		OrderBy:       "id DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if careerPositionID := r.URL.Query().Get("careerPositionId"); careerPositionID != "" {
-				qb.addCondition("career_position_id = " + qb.nextArg(careerPositionID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
+				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
 			}
-			if responsibilityID := r.URL.Query().Get("responsibilityId"); responsibilityID != "" {
-				qb.addCondition("responsibility_id = " + qb.nextArg(responsibilityID))
+			if responsibilityID := p.Values["responsibilityId"]; responsibilityID != "" {
+				qb.AddCondition("responsibility_id = " + qb.NextArg(responsibilityID))
 			}
 		},
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanBindingRows)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
 			respondError(w, http.StatusInternalServerError, "查询绑定失败")

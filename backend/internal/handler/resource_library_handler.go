@@ -1,20 +1,17 @@
 package handler
 
 import (
-	"context"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ResourceLibraryHandler struct {
-	DB *pgxpool.Pool
+	Service *service.ResourceService
 }
 
 type ResourceLibraryListResponse struct {
@@ -42,98 +39,36 @@ type UpdateResourceLibraryRequest struct {
 	Metadata     domain.JSONMap       `json:"metadata"`
 }
 
-const resourceSelectColumns = `
-	rl.id, rl.tenant_id, rl.name, rl.resource_type, rl.url, rl.description,
-	rl.thumbnail, rl.file_size, rl.metadata, rl.uploaded_by,
-	u.name AS uploader_name, o.name AS uploader_org_name, m.name AS uploader_major_name,
-	rl.created_at, rl.updated_at
-`
-
-const resourceJoinClause = `
-	LEFT JOIN users u ON u.id = rl.uploaded_by
-	LEFT JOIN organizations o ON o.id = u.org_node_id
-	LEFT JOIN majors m ON m.id = u.major_id
-`
-
 func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-	search := r.URL.Query().Get("search")
-	resourceType := r.URL.Query().Get("resourceType")
-	orgName := r.URL.Query().Get("orgName")
-	majorName := r.URL.Query().Get("majorName")
-	uploadedBy := r.URL.Query().Get("uploadedBy")
-
 	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 50); err == nil && v > 0 {
 		limit = v
 	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
+	offset := 0
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
 		offset = v
 	}
 
-	where := []string{"rl.tenant_id = $1"}
-	args := []interface{}{tenantID}
-	argIdx := 2
-
-	if search != "" {
-		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.description ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-	if resourceType != "" {
-		where = append(where, "rl.resource_type = $"+itoa(argIdx))
-		args = append(args, resourceType)
-		argIdx++
-	}
-	if orgName != "" {
-		where = append(where, "o.name = $"+itoa(argIdx))
-		args = append(args, orgName)
-		argIdx++
-	}
-	if majorName != "" {
-		where = append(where, "m.name = $"+itoa(argIdx))
-		args = append(args, majorName)
-		argIdx++
-	}
-	if uploadedBy != "" {
-		where = append(where, "rl.uploaded_by = $"+itoa(argIdx))
-		args = append(args, uploadedBy)
-		argIdx++
+	filter := store.ResourceFilter{
+		Search:       r.URL.Query().Get("search"),
+		ResourceType: r.URL.Query().Get("resourceType"),
+		OrgName:      r.URL.Query().Get("orgName"),
+		MajorName:    r.URL.Query().Get("majorName"),
+		UploadedBy:   r.URL.Query().Get("uploadedBy"),
+		Limit:        limit,
+		Offset:       offset,
 	}
 
-	countQuery := "SELECT COUNT(*) FROM resource_library rl " + resourceJoinClause + " WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT ` + resourceSelectColumns + `
-		FROM resource_library rl
-		` + resourceJoinClause + `
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY rl.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := h.Service.List(r.Context(), tenantID, filter)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询资源失败")
 		return
 	}
-	defer rows.Close()
-
-	items, err := h.scanResourceRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取资源失败")
-		return
-	}
-
 	respondJSON(w, http.StatusOK, ResourceLibraryListResponse{Items: items, Total: total})
 }
 
@@ -144,7 +79,7 @@ func (h *ResourceLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	item, err := h.fetchItem(r.Context(), id)
+	item, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "资源不存在")
 		return
@@ -173,22 +108,20 @@ func (h *ResourceLibraryHandler) Create(w http.ResponseWriter, r *http.Request) 
 	}
 
 	claims := middleware.CurrentUser(r)
-	uploadedBy := claims.UserID
-
-	id := uuid.NewString()
-	if req.Metadata == nil {
-		req.Metadata = domain.JSONMap{}
-	}
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-	`, id, tenantID, req.Name, req.ResourceType, req.URL, req.Description, req.Thumbnail, req.FileSize, req.Metadata, uploadedBy)
+	item, err := h.Service.Create(r.Context(), tenantID, &store.ResourceCreateParams{
+		Name:         req.Name,
+		ResourceType: req.ResourceType,
+		URL:          req.URL,
+		Description:  req.Description,
+		Thumbnail:    req.Thumbnail,
+		FileSize:     req.FileSize,
+		Metadata:     req.Metadata,
+		UploadedBy:   claims.UserID,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建资源失败")
 		return
 	}
-
-	item, _ := h.fetchItem(r.Context(), id)
 	respondJSON(w, http.StatusCreated, item)
 }
 
@@ -199,7 +132,7 @@ func (h *ResourceLibraryHandler) Update(w http.ResponseWriter, r *http.Request) 
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchItem(r.Context(), id)
+	existing, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "资源不存在")
 		return
@@ -214,48 +147,42 @@ func (h *ResourceLibraryHandler) Update(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	name := existing.Name
-	resourceType := existing.ResourceType
-	url := existing.URL
-	description := existing.Description
-	thumbnail := existing.Thumbnail
-	fileSize := existing.FileSize
-	metadata := existing.Metadata
-
+	params := &store.ResourceUpdateParams{
+		Name:         existing.Name,
+		ResourceType: existing.ResourceType,
+		URL:          existing.URL,
+		Description:  existing.Description,
+		Thumbnail:    existing.Thumbnail,
+		FileSize:     existing.FileSize,
+		Metadata:     existing.Metadata,
+	}
 	if req.Name != nil {
-		name = *req.Name
+		params.Name = *req.Name
 	}
 	if req.ResourceType != nil {
-		resourceType = *req.ResourceType
+		params.ResourceType = *req.ResourceType
 	}
 	if req.URL != nil {
-		url = req.URL
+		params.URL = req.URL
 	}
 	if req.Description != nil {
-		description = req.Description
+		params.Description = req.Description
 	}
 	if req.Thumbnail != nil {
-		thumbnail = req.Thumbnail
+		params.Thumbnail = req.Thumbnail
 	}
 	if req.FileSize != nil {
-		fileSize = req.FileSize
+		params.FileSize = req.FileSize
 	}
 	if req.Metadata != nil {
-		metadata = req.Metadata
+		params.Metadata = req.Metadata
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE resource_library SET
-			name = $1, resource_type = $2, url = $3, description = $4,
-			thumbnail = $5, file_size = $6, metadata = $7, updated_at = NOW()
-		WHERE id = $8
-	`, name, resourceType, url, description, thumbnail, fileSize, metadata, id)
+	item, err := h.Service.Update(r.Context(), id, params)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新资源失败")
 		return
 	}
-
-	item, _ := h.fetchItem(r.Context(), id)
 	respondJSON(w, http.StatusOK, item)
 }
 
@@ -266,7 +193,7 @@ func (h *ResourceLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) 
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchItem(r.Context(), id)
+	existing, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "资源不存在")
 		return
@@ -276,75 +203,10 @@ func (h *ResourceLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM resource_library WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *ResourceLibraryHandler) fetchItem(ctx context.Context, id string) (domain.ResourceLibraryItem, error) {
-	var item domain.ResourceLibraryItem
-	var url, description, thumbnail *string
-	var fileSize *int64
-	var uploadedBy *string
-	var uploaderName, uploaderOrgName, uploaderMajorName *string
-	var metadata domain.JSONMap
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT `+resourceSelectColumns+`
-		FROM resource_library rl
-		`+resourceJoinClause+`
-		WHERE rl.id = $1
-	`, id).Scan(
-		&item.ID, &item.TenantID, &item.Name, &item.ResourceType,
-		&url, &description, &thumbnail, &fileSize, &metadata,
-		&uploadedBy, &uploaderName, &uploaderOrgName, &uploaderMajorName,
-		&item.CreatedAt, &item.UpdatedAt,
-	)
-	if err != nil {
-		return item, err
-	}
-	item.URL = url
-	item.Description = description
-	item.Thumbnail = thumbnail
-	item.FileSize = fileSize
-	item.Metadata = metadata
-	item.UploadedBy = uploadedBy
-	item.UploaderName = uploaderName
-	item.UploaderOrgName = uploaderOrgName
-	item.UploaderMajorName = uploaderMajorName
-	return item, nil
-}
-
-func (h *ResourceLibraryHandler) scanResourceRows(rows pgx.Rows) ([]domain.ResourceLibraryItem, error) {
-	items := make([]domain.ResourceLibraryItem, 0)
-	for rows.Next() {
-		var item domain.ResourceLibraryItem
-		var url, description, thumbnail *string
-		var fileSize *int64
-		var uploadedBy *string
-		var uploaderName, uploaderOrgName, uploaderMajorName *string
-		var metadata domain.JSONMap
-		if err := rows.Scan(
-			&item.ID, &item.TenantID, &item.Name, &item.ResourceType,
-			&url, &description, &thumbnail, &fileSize, &metadata,
-			&uploadedBy, &uploaderName, &uploaderOrgName, &uploaderMajorName,
-			&item.CreatedAt, &item.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		item.URL = url
-		item.Description = description
-		item.Thumbnail = thumbnail
-		item.FileSize = fileSize
-		item.Metadata = metadata
-		item.UploadedBy = uploadedBy
-		item.UploaderName = uploaderName
-		item.UploaderOrgName = uploaderOrgName
-		item.UploaderMajorName = uploaderMajorName
-		items = append(items, item)
-	}
-	return items, nil
-}

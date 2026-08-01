@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type QuestionHandler struct {
@@ -50,20 +51,20 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.Question]{
+	cfg := store.ListQueryConfig[domain.Question]{
 		Table:         "questions",
 		SelectColumns: "id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"content"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if bankID := r.URL.Query().Get("bankId"); bankID != "" {
-				qb.addCondition("bank_id = " + qb.nextArg(bankID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if bankID := p.Values["bankId"]; bankID != "" {
+				qb.AddCondition("bank_id = " + qb.NextArg(bankID))
 			}
-			if qType := r.URL.Query().Get("type"); qType != "" {
-				qb.addCondition("type = " + qb.nextArg(qType))
+			if qType := p.Values["type"]; qType != "" {
+				qb.AddCondition("type = " + qb.NextArg(qType))
 			}
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.scanQuestionRows,
@@ -71,7 +72,7 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

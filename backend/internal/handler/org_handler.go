@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type OrgHandler struct {
@@ -50,30 +51,30 @@ type UpdateOrgRequest struct {
 }
 
 func (h *OrgHandler) List(w http.ResponseWriter, r *http.Request) {
-	cfg := listQueryConfig[domain.Organization]{
+	cfg := store.ListQueryConfig[domain.Organization]{
 		Table:         "organizations",
 		SelectColumns: "id, tenant_id, name, type_id, parent_id, sort_order, member_count, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "sort_order ASC, created_at ASC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if tenantID := r.URL.Query().Get("tenantId"); tenantID != "" {
-				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if tenantID := p.Values["tenantId"]; tenantID != "" {
+				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
 			}
-			if typeID := r.URL.Query().Get("typeId"); typeID != "" {
-				qb.addCondition("type_id = " + qb.nextArg(typeID))
+			if typeID := p.Values["typeId"]; typeID != "" {
+				qb.AddCondition("type_id = " + qb.NextArg(typeID))
 			}
-			if parentID := r.URL.Query().Get("parentId"); parentID != "" {
-				qb.addCondition("parent_id = " + qb.nextArg(parentID))
-			} else if r.URL.Query().Get("rootOnly") == "true" {
-				qb.addCondition("parent_id IS NULL")
+			if parentID := p.Values["parentId"]; parentID != "" {
+				qb.AddCondition("parent_id = " + qb.NextArg(parentID))
+			} else if p.Values["rootOnly"] == "true" {
+				qb.AddCondition("parent_id IS NULL")
 			}
 		},
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanOrgRows)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
 			respondError(w, http.StatusInternalServerError, "查询组织失败")

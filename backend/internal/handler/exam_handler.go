@@ -15,6 +15,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ExamHandler struct {
@@ -50,7 +51,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.Exam]{
+	cfg := store.ListQueryConfig[domain.Exam]{
 		Table:         "exams e",
 		SelectColumns: `e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image, e.is_temp, e.collaborator_ids, COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at`,
 		TenantScoped:  true,
@@ -59,11 +60,11 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		SearchParam:   "search",
 		OrderBy:       "e.created_at DESC",
 		DefaultLimit:  50,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			qb.addCondition("e.is_temp = FALSE")
-			status := r.URL.Query().Get("status")
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			qb.AddCondition("e.is_temp = FALSE")
+			status := p.Values["status"]
 			if status != "" {
-				qb.addCondition("e.status = " + qb.nextArg(status))
+				qb.AddCondition("e.status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: func(rows pgx.Rows) ([]domain.Exam, error) {
@@ -74,7 +75,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
 		slog.Error("exam list failed", "err", err)
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

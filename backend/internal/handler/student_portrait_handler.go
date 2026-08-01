@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 	"github.com/zhiyu-saas/backend/internal/service"
 )
 
@@ -56,22 +57,22 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.StudentAbilityPortrait]{
+	cfg := store.ListQueryConfig[domain.StudentAbilityPortrait]{
 		Table:         "student_ability_portraits",
 		SelectColumns: `id, user_id, career_position_id, overall_grade, domain_scores, class_rank, class_total, major_rank, major_total, recommend_positions, updated_at, completed_courses, completed_scenes, total_credits, archive_count, course_records, graduation_qualified, attendance_rate, diploma_badge, dual_badge`,
 		TenantScoped:  true,
 		OrderBy:       "updated_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			// 学生只能查看本人画像
 			if middleware.HasRole(claims, "student") {
-				qb.addCondition("user_id = " + qb.nextArg(claims.UserID))
+				qb.AddCondition("user_id = " + qb.NextArg(claims.UserID))
 				return
 			}
-			if userID := r.URL.Query().Get("userId"); userID != "" {
-				qb.addCondition("user_id = " + qb.nextArg(userID))
+			if userID := p.Values["userId"]; userID != "" {
+				qb.AddCondition("user_id = " + qb.NextArg(userID))
 			}
-			if positionID := r.URL.Query().Get("careerPositionId"); positionID != "" {
-				qb.addCondition("career_position_id = " + qb.nextArg(positionID))
+			if positionID := p.Values["careerPositionId"]; positionID != "" {
+				qb.AddCondition("career_position_id = " + qb.NextArg(positionID))
 			}
 		},
 		ScanRows: h.scanPortraitRows,
@@ -79,7 +80,7 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
@@ -173,13 +174,13 @@ func (h *StudentPortraitHandler) ListArchives(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	cfg := listQueryConfig[domain.StudentAbilityArchive]{
+	cfg := store.ListQueryConfig[domain.StudentAbilityArchive]{
 		Table:         "student_ability_archives",
 		SelectColumns: `id, user_id, material_type, material_name, issuing_org, obtain_date, level, audit_status, audit_remark, converted_credit, direction, is_enabled, created_at`,
 		TenantScoped:  true,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if userID := r.URL.Query().Get("userId"); userID != "" {
-				qb.addCondition("user_id = " + qb.nextArg(userID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if userID := p.Values["userId"]; userID != "" {
+				qb.AddCondition("user_id = " + qb.NextArg(userID))
 			}
 		},
 		ScanRows: h.scanArchiveRows,
@@ -187,7 +188,7 @@ func (h *StudentPortraitHandler) ListArchives(w http.ResponseWriter, r *http.Req
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

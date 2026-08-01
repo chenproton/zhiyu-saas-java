@@ -48,7 +48,7 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	items, total, err := executeListQuery[domain.MicroCertTemplate](r.Context(), h.DB, r, listQueryConfig[domain.MicroCertTemplate]{
+	items, total, err := executeListQuery[domain.MicroCertTemplate](r.Context(), h.DB, r, store.ListQueryConfig[domain.MicroCertTemplate]{
 		Table:         "micro_cert_templates",
 		SelectColumns: "id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at",
 		TenantScoped:  true,
@@ -56,7 +56,7 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 		ScanRows:      h.Store.ScanTemplateRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
@@ -68,20 +68,20 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.CertIssuanceRecord](r.Context(), h.DB, r, listQueryConfig[domain.CertIssuanceRecord]{
+	items, total, err := executeListQuery[domain.CertIssuanceRecord](r.Context(), h.DB, r, store.ListQueryConfig[domain.CertIssuanceRecord]{
 		Table:         "cert_issuance_records",
 		SelectColumns: "id, template_id, user_id, cert_number, issue_date, expire_date, status, revoked_at, revoke_reason",
 		TenantScoped:  true,
 		OrderBy:       "issue_date DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if templateID := r.URL.Query().Get("templateId"); templateID != "" {
-				qb.addCondition("template_id = " + qb.nextArg(templateID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if templateID := p.Values["templateId"]; templateID != "" {
+				qb.AddCondition("template_id = " + qb.NextArg(templateID))
 			}
 		},
 		ScanRows: h.Store.ScanIssuanceRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

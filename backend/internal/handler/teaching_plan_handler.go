@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type TeachingPlanHandler struct {
@@ -55,24 +56,24 @@ func (h *TeachingPlanHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.TeachingPlan]{
+	cfg := store.ListQueryConfig[domain.TeachingPlan]{
 		Table:         "teaching_plans p LEFT JOIN training_programs tp ON tp.id = p.program_id LEFT JOIN terms t ON t.id = p.term_id LEFT JOIN majors m ON m.id = p.major_id",
 		SelectColumns: "p.id, p.program_id, COALESCE(tp.name, '') AS program_name, p.term_id, COALESCE(t.name, '') AS term_name, p.major_id, COALESCE(m.name, '') AS major_name, p.entry_year, p.status, (SELECT COUNT(*) FROM teaching_plan_entries e WHERE e.plan_id = p.id) AS entry_count, p.generated_at, p.confirmed_at",
 		TenantScoped:  true,
 		TenantColumn:  "p.tenant_id",
 		OrderBy:       "p.generated_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if termID := r.URL.Query().Get("termId"); termID != "" {
-				qb.addCondition("p.term_id = " + qb.nextArg(termID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if termID := p.Values["termId"]; termID != "" {
+				qb.AddCondition("p.term_id = " + qb.NextArg(termID))
 			}
-			if programID := r.URL.Query().Get("programId"); programID != "" {
-				qb.addCondition("p.program_id = " + qb.nextArg(programID))
+			if programID := p.Values["programId"]; programID != "" {
+				qb.AddCondition("p.program_id = " + qb.NextArg(programID))
 			}
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("p.status = " + qb.nextArg(status))
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("p.status = " + qb.NextArg(status))
 			}
-			if majorID := r.URL.Query().Get("majorId"); majorID != "" {
-				qb.addCondition("p.major_id = " + qb.nextArg(majorID))
+			if majorID := p.Values["majorId"]; majorID != "" {
+				qb.AddCondition("p.major_id = " + qb.NextArg(majorID))
 			}
 		},
 		ScanRows: scanTeachingPlanRows,
@@ -80,7 +81,7 @@ func (h *TeachingPlanHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

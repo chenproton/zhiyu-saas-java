@@ -34,7 +34,7 @@ type allianceCRUDConfig[T any] struct {
 }
 
 // allianceList 统一 "claims 检查 → executeListQuery → {items,total}" 的列表流程。
-func allianceList[T any](w http.ResponseWriter, r *http.Request, db listQueryDB, cfg listQueryConfig[T], errMsg string) {
+func allianceList[T any](w http.ResponseWriter, r *http.Request, db store.ListQueryDB, cfg store.ListQueryConfig[T], errMsg string) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePortal(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -42,7 +42,7 @@ func allianceList[T any](w http.ResponseWriter, r *http.Request, db listQueryDB,
 	}
 	items, total, err := executeListQuery(r.Context(), db, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

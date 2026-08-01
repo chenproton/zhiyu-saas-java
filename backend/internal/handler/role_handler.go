@@ -43,20 +43,20 @@ type AssignRoleRequest struct {
 func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 
-	items, total, err := executeListQuery[domain.Role](r.Context(), h.DB, r, listQueryConfig[domain.Role]{
+	items, total, err := executeListQuery[domain.Role](r.Context(), h.DB, r, store.ListQueryConfig[domain.Role]{
 		Table:         "roles",
 		SelectColumns: "id, tenant_id, code, name, description, permissions, user_count, status, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.Store.ScanRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

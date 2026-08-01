@@ -2,11 +2,11 @@ package handler
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CourseBatchHandler struct {
@@ -25,10 +25,10 @@ func NewCourseBatchHandler(db *pgxpool.Pool) *CourseBatchHandler {
 			SearchColumns:      []string{"name", "code"},
 			TenantScoped:       true,
 			TenantFilterColumn: "lb.tenant_id",
-			ExtraListFilters: func(r *http.Request, qb *listQueryBuilder) {
-				majorID := r.URL.Query().Get("majorId")
+			ExtraListFilters: func(p store.ListParams, qb *store.ListQueryBuilder) {
+				majorID := p.Values["majorId"]
 				if majorID != "" {
-					qb.addCondition("lb.major_id = " + qb.nextArg(majorID))
+					qb.AddCondition("lb.major_id = " + qb.NextArg(majorID))
 				}
 			},
 			CreateExtraCols:  []string{"course_count"},

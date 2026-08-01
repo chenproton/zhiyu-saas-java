@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioTaskHandler struct {
@@ -63,23 +64,23 @@ func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.ScenarioTask]{
+	cfg := store.ListQueryConfig[domain.ScenarioTask]{
 		Table:         "scenario_tasks",
 		SelectColumns: taskSelectColumns,
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "code"},
 		OrderBy:       "sort_order",
 		ScanRows:      h.scanTaskRows,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if scenarioID := r.URL.Query().Get("scenarioId"); scenarioID != "" {
-				qb.addCondition("scenario_id = " + qb.nextArg(scenarioID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if scenarioID := p.Values["scenarioId"]; scenarioID != "" {
+				qb.AddCondition("scenario_id = " + qb.NextArg(scenarioID))
 			}
 		},
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

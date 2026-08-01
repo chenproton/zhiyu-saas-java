@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type NodeEvaluationResultHandler struct {
@@ -32,21 +33,21 @@ func (h *NodeEvaluationResultHandler) List(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.NodeEvaluationResult]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.NodeEvaluationResult]{
 		Table: "node_evaluation_results",
 		SelectColumns: "id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, " +
 			"total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, " +
 			"comment, graded_at, graded_by",
 		TenantScoped: true,
 		OrderBy:      "created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			qb.addCondition("node_id = " + qb.nextArg(nodeID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			qb.AddCondition("node_id = " + qb.NextArg(nodeID))
 			if middleware.HasRole(claims, "student") {
-				qb.addCondition("evaluatee_id = " + qb.nextArg(claims.UserID))
+				qb.AddCondition("evaluatee_id = " + qb.NextArg(claims.UserID))
 				return
 			}
 			if evaluateeID != "" {
-				qb.addCondition("evaluatee_id = " + qb.nextArg(evaluateeID))
+				qb.AddCondition("evaluatee_id = " + qb.NextArg(evaluateeID))
 			}
 		},
 		ScanRows: h.scanRows,

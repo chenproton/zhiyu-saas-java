@@ -4,6 +4,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/handler"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -111,6 +112,8 @@ type Handlers struct {
 }
 
 func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client) *Handlers {
+	st := store.New(db)
+	svc := service.New(st)
 	return &Handlers{
 		authHandler:                   handler.NewAuthHandler(db, jwtSecret),
 		fileHandler:                   fileHandler,
@@ -201,7 +204,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		randomDrawQuestionHandler:     &handler.RandomDrawQuestionHandler{DB: db},
 		landingHandler:                &handler.LandingHandler{DB: db},
 		certGradeHandler:              &handler.CertGradeHandler{DB: db},
-		resourceLibraryHandler:        &handler.ResourceLibraryHandler{DB: db},
+		resourceLibraryHandler:        &handler.ResourceLibraryHandler{Service: service.NewResourceService(svc)},
 		onSiteQuestionLibraryHandler:  &handler.OnSiteQuestionLibraryHandler{DB: db, Store: store.NewOnSiteQuestionLibraryStore(db)},
 		jobAbilityResultHandler:       handler.NewJobAbilityResultHandler(db),
 		affairsTermHandler:            &handler.AffairsTermHandler{DB: db},

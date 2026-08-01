@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AffairsTermHandler struct {
@@ -38,15 +39,15 @@ func (h *AffairsTermHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.Term]{
+	cfg := store.ListQueryConfig[domain.Term]{
 		Table:         "terms",
 		SelectColumns: "id, name, to_char(start_date, 'YYYY-MM-DD') AS start_date, to_char(end_date, 'YYYY-MM-DD') AS end_date, weeks_count, is_current, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "start_date DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if isCurrent := r.URL.Query().Get("isCurrent"); isCurrent == "true" {
-				qb.addCondition("is_current = true")
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if isCurrent := p.Values["isCurrent"]; isCurrent == "true" {
+				qb.AddCondition("is_current = true")
 			}
 		},
 		ScanRows: scanTermRows,
@@ -54,7 +55,7 @@ func (h *AffairsTermHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

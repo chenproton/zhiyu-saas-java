@@ -43,7 +43,7 @@ type ToggleStaffTitleStatusRequest struct {
 }
 
 func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
-	cfg := listQueryConfig[domain.StaffTitle]{
+	cfg := store.ListQueryConfig[domain.StaffTitle]{
 		Table:         "staff_titles",
 		SelectColumns: "id, tenant_id, code, name, description, user_count, status, created_at",
 		TenantScoped:  true,
@@ -53,7 +53,7 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

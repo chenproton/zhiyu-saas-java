@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AbilityHandler struct {
@@ -47,20 +48,20 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isPublic := r.URL.Query().Get("isPublic") == "true"
-	cfg := listQueryConfig[domain.AbilityPoint]{
+	cfg := store.ListQueryConfig[domain.AbilityPoint]{
 		Table:         "ability_points",
 		SelectColumns: "id, name, code, description, category, attributes, is_public, creator_id, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "description"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if isPublic {
-				qb.addCondition("is_public = " + qb.nextArg(true))
+				qb.AddCondition("is_public = " + qb.NextArg(true))
 			}
-			if category := r.URL.Query().Get("category"); category != "" {
-				qb.addCondition("category = " + qb.nextArg(category))
+			if category := p.Values["category"]; category != "" {
+				qb.AddCondition("category = " + qb.NextArg(category))
 			}
-			if creatorID := r.URL.Query().Get("creatorId"); creatorID != "" {
-				qb.addCondition("creator_id = " + qb.nextArg(creatorID))
+			if creatorID := p.Values["creatorId"]; creatorID != "" {
+				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
 			}
 		},
 		ScanRows: h.scanAbilityRows,
@@ -68,7 +69,7 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

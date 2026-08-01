@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type NodeQuizHandler struct {
@@ -66,21 +67,21 @@ func (h *NodeQuizHandler) ListQuizzes(w http.ResponseWriter, r *http.Request) {
 
 	nodeID := r.URL.Query().Get("nodeId")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.NodeQuiz]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.NodeQuiz]{
 		Table:         "node_quizzes",
 		SelectColumns: "id, node_id, title, type, time_limit",
 		TenantScoped:  true,
 		OrderBy:       "id DESC",
 		NoPagination:  true,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if nodeID != "" {
-				qb.addCondition("node_id = " + qb.nextArg(nodeID))
+				qb.AddCondition("node_id = " + qb.NextArg(nodeID))
 			}
 		},
 		ScanRows: h.scanNodeQuizRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

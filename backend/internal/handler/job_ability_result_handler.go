@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 	"github.com/zhiyu-saas/backend/internal/service"
 )
 
@@ -94,27 +95,27 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	qb := &listQueryBuilder{idx: 1}
-	qb.addCondition("r.tenant_id = " + qb.nextArg(tenantID))
+	qb := store.NewListQueryBuilder()
+	qb.AddCondition("r.tenant_id = " + qb.NextArg(tenantID))
 	if v := r.URL.Query().Get("careerPositionId"); v != "" {
-		qb.addCondition("r.career_position_id = " + qb.nextArg(v))
+		qb.AddCondition("r.career_position_id = " + qb.NextArg(v))
 	}
 	if v := r.URL.Query().Get("userId"); v != "" {
-		qb.addCondition("r.user_id = " + qb.nextArg(v))
+		qb.AddCondition("r.user_id = " + qb.NextArg(v))
 	}
 	if v := r.URL.Query().Get("grade"); v != "" {
-		qb.addCondition("r.grade = " + qb.nextArg(v))
+		qb.AddCondition("r.grade = " + qb.NextArg(v))
 	}
 	if v := r.URL.Query().Get("search"); v != "" {
-		qb.addCondition("(u.name ILIKE " + qb.nextArg("%"+v+"%") + " OR u.student_no ILIKE " + qb.nextArg("%"+v+"%") + ")")
+		qb.AddCondition("(u.name ILIKE " + qb.NextArg("%"+v+"%") + " OR u.student_no ILIKE " + qb.NextArg("%"+v+"%") + ")")
 	}
-	where := qb.whereClause()
+	where := qb.WhereClause()
 
 	var total int
 	if err := h.DB.QueryRow(r.Context(), `
 		SELECT COUNT(*) FROM job_ability_results r
 		LEFT JOIN users u ON u.id = r.user_id
-		WHERE `+where, qb.args...).Scan(&total); err != nil {
+		WHERE `+where, qb.Args()...).Scan(&total); err != nil {
 		slog.Error("查询岗位能力结果失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询岗位能力结果失败")
 		return
@@ -139,7 +140,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
 		WHERE `+where+`
 		ORDER BY r.evaluated_at DESC
-		LIMIT `+itoa(limit)+` OFFSET `+itoa((page-1)*limit), qb.args...)
+		LIMIT `+itoa(limit)+` OFFSET `+itoa((page-1)*limit), qb.Args()...)
 	if err != nil {
 		slog.Error("查询岗位能力结果失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询岗位能力结果失败")

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ResourceCodeHandler struct {
@@ -40,23 +41,23 @@ func (h *ResourceCodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	resType := r.URL.Query().Get("type")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.ResourceCode]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.ResourceCode]{
 		Table:         "resource_codes",
 		SelectColumns: "id, tenant_id, code, name, description, type, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if tenantID != "" {
-				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
+				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
 			}
 			if resType != "" {
-				qb.addCondition("type = " + qb.nextArg(resType))
+				qb.AddCondition("type = " + qb.NextArg(resType))
 			}
 		},
 		ScanRows: h.scanResourceCodeRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

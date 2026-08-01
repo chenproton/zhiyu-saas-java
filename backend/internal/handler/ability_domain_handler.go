@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AbilityDomainHandler struct {
@@ -46,20 +47,20 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	careerPositionID := r.URL.Query().Get("careerPositionId")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.AbilityDomain]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.AbilityDomain]{
 		Table:         "ability_domains",
 		SelectColumns: "id, tenant_id, career_position_id, name, description, binding_ids, sort_order",
 		TenantScoped:  true,
 		OrderBy:       "sort_order ASC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if careerPositionID != "" {
-				qb.addCondition("career_position_id = " + qb.nextArg(careerPositionID))
+				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
 			}
 		},
 		ScanRows: h.scanDomainRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

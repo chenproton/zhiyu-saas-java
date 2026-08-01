@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioGradeHandler struct {
@@ -38,17 +39,17 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 		return
 	}
 
-	cfg := listQueryConfig[domain.ScenarioGradeMapping]{
+	cfg := store.ListQueryConfig[domain.ScenarioGradeMapping]{
 		Table:         "scenario_grade_mappings",
 		SelectColumns: "id, scenario_id, task_id, level, min_score, max_score, description, color",
 		TenantScoped:  true,
 		OrderBy:       "min_score ASC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if scenarioID := r.URL.Query().Get("scenarioId"); scenarioID != "" {
-				qb.addCondition("scenario_id = " + qb.nextArg(scenarioID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if scenarioID := p.Values["scenarioId"]; scenarioID != "" {
+				qb.AddCondition("scenario_id = " + qb.NextArg(scenarioID))
 			}
-			if taskID := r.URL.Query().Get("taskId"); taskID != "" {
-				qb.addCondition("task_id = " + qb.nextArg(taskID))
+			if taskID := p.Values["taskId"]; taskID != "" {
+				qb.AddCondition("task_id = " + qb.NextArg(taskID))
 			}
 		},
 		ScanRows: h.scanGradeMappingRows,
@@ -56,7 +57,7 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

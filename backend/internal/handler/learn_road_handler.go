@@ -42,14 +42,14 @@ func (h *LearnRoadHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.LearnRoad]{
+	cfg := store.ListQueryConfig[domain.LearnRoad]{
 		Table:         "learn_roads",
 		SelectColumns: "id, name, description, position_ids, steps, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if name := r.URL.Query().Get("name"); name != "" {
-				qb.addCondition("name ILIKE " + qb.nextArg("%"+name+"%"))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if name := p.Values["name"]; name != "" {
+				qb.AddCondition("name ILIKE " + qb.NextArg("%"+name+"%"))
 			}
 		},
 		ScanRows: h.Store.ScanRows,
@@ -57,7 +57,7 @@ func (h *LearnRoadHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

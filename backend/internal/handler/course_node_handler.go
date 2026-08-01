@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CourseNodeHandler struct {
@@ -143,26 +144,26 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	courseID := r.URL.Query().Get("courseId")
 	parentID := r.URL.Query().Get("parentId")
 
-	bases, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[courseNodeBase]{
+	bases, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[courseNodeBase]{
 		Table:         "system_course_nodes n",
 		SelectColumns: "n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name, n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status",
 		TenantScoped:  true,
 		OrderBy:       "n.sort_order ASC, n.id ASC",
 		NoPagination:  true,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if courseID != "" {
-				qb.addCondition("n.course_id = " + qb.nextArg(courseID))
+				qb.AddCondition("n.course_id = " + qb.NextArg(courseID))
 			}
 			if parentID != "" {
-				qb.addCondition("n.parent_id = " + qb.nextArg(parentID))
-			} else if r.URL.Query().Get("rootOnly") == "true" {
-				qb.addCondition("n.parent_id IS NULL")
+				qb.AddCondition("n.parent_id = " + qb.NextArg(parentID))
+			} else if p.Values["rootOnly"] == "true" {
+				qb.AddCondition("n.parent_id IS NULL")
 			}
 		},
 		ScanRows: h.scanCourseNodeBaseRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

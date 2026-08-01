@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type LogHandler struct {
@@ -24,23 +25,23 @@ type OperationLogListResponse struct {
 }
 
 func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.LoginLog](r.Context(), h.DB, r, listQueryConfig[domain.LoginLog]{
+	items, total, err := executeListQuery[domain.LoginLog](r.Context(), h.DB, r, store.ListQueryConfig[domain.LoginLog]{
 		Table:         "login_logs",
 		SelectColumns: "id, tenant_id, user_id, user_name, ip, location, device, status, created_at",
 		TenantScoped:  true,
 		OrderBy:       "created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if userID := r.URL.Query().Get("userId"); userID != "" {
-				qb.addCondition("user_id = " + qb.nextArg(userID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if userID := p.Values["userId"]; userID != "" {
+				qb.AddCondition("user_id = " + qb.NextArg(userID))
 			}
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.scanLoginLogRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
@@ -52,26 +53,26 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OperationLog](r.Context(), h.DB, r, listQueryConfig[domain.OperationLog]{
+	items, total, err := executeListQuery[domain.OperationLog](r.Context(), h.DB, r, store.ListQueryConfig[domain.OperationLog]{
 		Table:         "operation_logs",
 		SelectColumns: "id, tenant_id, user_id, user_name, module, action, target_type, target_id, detail, ip, status, created_at",
 		TenantScoped:  true,
 		OrderBy:       "created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if userID := r.URL.Query().Get("userId"); userID != "" {
-				qb.addCondition("user_id = " + qb.nextArg(userID))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if userID := p.Values["userId"]; userID != "" {
+				qb.AddCondition("user_id = " + qb.NextArg(userID))
 			}
-			if module := r.URL.Query().Get("module"); module != "" {
-				qb.addCondition("module = " + qb.nextArg(module))
+			if module := p.Values["module"]; module != "" {
+				qb.AddCondition("module = " + qb.NextArg(module))
 			}
-			if action := r.URL.Query().Get("action"); action != "" {
-				qb.addCondition("action = " + qb.nextArg(action))
+			if action := p.Values["action"]; action != "" {
+				qb.AddCondition("action = " + qb.NextArg(action))
 			}
 		},
 		ScanRows: h.scanOperationLogRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

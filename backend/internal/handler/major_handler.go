@@ -40,20 +40,20 @@ type UpdateMajorRequest struct {
 func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 	enabledStr := r.URL.Query().Get("enabled")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.Major]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.Major]{
 		Table:         "majors",
 		SelectColumns: "id, tenant_id, code, name, alias, enabled, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if enabledStr != "" {
-				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
+				qb.AddCondition("enabled = " + qb.NextArg(enabledStr == "true"))
 			}
 		},
 		ScanRows: h.Store.ScanRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

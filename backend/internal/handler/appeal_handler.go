@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AppealHandler struct {
@@ -43,22 +44,22 @@ func (h *AppealHandler) List(w http.ResponseWriter, r *http.Request) {
 	appealType := r.URL.Query().Get("type")
 	status := r.URL.Query().Get("status")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.AppealRecord]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.AppealRecord]{
 		Table:         "appeal_records",
 		SelectColumns: "id, user_id, type, reason, status, created_at",
 		TenantScoped:  true,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if appealType != "" {
-				qb.addCondition("type = " + qb.nextArg(appealType))
+				qb.AddCondition("type = " + qb.NextArg(appealType))
 			}
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
 		ScanRows: h.scanAppealRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

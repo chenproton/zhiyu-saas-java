@@ -43,7 +43,7 @@ type UpdateOnSiteQuestionLibraryRequest struct {
 }
 
 func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OnSiteQuestionLibraryItem](r.Context(), h.DB, r, listQueryConfig[domain.OnSiteQuestionLibraryItem]{
+	items, total, err := executeListQuery[domain.OnSiteQuestionLibraryItem](r.Context(), h.DB, r, store.ListQueryConfig[domain.OnSiteQuestionLibraryItem]{
 		Table:         "on_site_question_library",
 		SelectColumns: "id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at",
 		TenantScoped:  true,
@@ -51,7 +51,7 @@ func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Reque
 		ScanRows:      h.Store.ScanRows,
 	})
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

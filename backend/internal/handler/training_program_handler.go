@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type TrainingProgramHandler struct {
@@ -59,23 +60,23 @@ func (h *TrainingProgramHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := listQueryConfig[domain.TrainingProgram]{
+	cfg := store.ListQueryConfig[domain.TrainingProgram]{
 		Table:         "training_programs tp LEFT JOIN majors m ON m.id = tp.major_id LEFT JOIN users cu ON cu.id = tp.created_by LEFT JOIN batches lb ON lb.id = tp.batch_id",
 		SelectColumns: "tp.id, tp.name, tp.code, tp.major_id, COALESCE(m.name, '') AS major_name, tp.entry_year, tp.level, tp.duration, tp.total_credits, tp.status, tp.description, (SELECT COUNT(*) FROM training_program_courses c WHERE c.program_id = tp.id) AS course_count, tp.created_by, COALESCE(cu.name, '') AS created_by_name, tp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(tp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, tp.batch_id, COALESCE(lb.name, '') AS batch_name, tp.created_at, tp.updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "tp.tenant_id",
 		SearchColumns: []string{"tp.name"},
 		OrderBy:       "tp.created_at DESC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if status := r.URL.Query().Get("status"); status != "" {
-				qb.addCondition("tp.status = " + qb.nextArg(status))
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("tp.status = " + qb.NextArg(status))
 			}
-			if majorID := r.URL.Query().Get("majorId"); majorID != "" {
-				qb.addCondition("tp.major_id = " + qb.nextArg(majorID))
+			if majorID := p.Values["majorId"]; majorID != "" {
+				qb.AddCondition("tp.major_id = " + qb.NextArg(majorID))
 			}
-			if entryYear := r.URL.Query().Get("entryYear"); entryYear != "" {
+			if entryYear := p.Values["entryYear"]; entryYear != "" {
 				if v, err := parseInt(entryYear, 0); err == nil && v > 0 {
-					qb.addCondition("tp.entry_year = " + qb.nextArg(v))
+					qb.AddCondition("tp.entry_year = " + qb.NextArg(v))
 				}
 			}
 		},
@@ -84,7 +85,7 @@ func (h *TrainingProgramHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

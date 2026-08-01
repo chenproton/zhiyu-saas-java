@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type BatchCreateRequest struct {
@@ -46,7 +47,7 @@ type BatchTableConfig struct {
 
 	SearchColumns []string
 
-	ExtraListFilters listQueryFilter
+	ExtraListFilters store.ListQueryFilter
 
 	CreateExtraCols []string
 	CreateExtraVals []any
@@ -96,28 +97,28 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 		tenantColumn = "tenant_id"
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[any]{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[any]{
 		Table:         h.Config.TableName,
 		SelectColumns: h.Config.SelectColumns,
 		TenantScoped:  h.Config.TenantScoped,
 		TenantColumn:  tenantColumn,
 		SearchColumns: h.Config.SearchColumns,
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if orgNodeID != "" {
-				qb.addCondition("org_node_id = " + qb.nextArg(orgNodeID))
+				qb.AddCondition("org_node_id = " + qb.NextArg(orgNodeID))
 			}
 			if status != "" {
-				qb.addCondition("status = " + qb.nextArg(status))
+				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 			if h.Config.ExtraListFilters != nil {
-				h.Config.ExtraListFilters(r, qb)
+				h.Config.ExtraListFilters(p, qb)
 			}
 		},
 		ScanRows: h.Config.ScanRows,
 	})
 	if err != nil {
 		slog.Error("batch list failed", "entity", h.Config.EntityName, "error", err)
-		if errors.Is(err, ErrMissingTenant) {
+		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
