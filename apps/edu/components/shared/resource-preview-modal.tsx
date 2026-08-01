@@ -11,8 +11,19 @@ const MIN_WIDTH = 320
 const MIN_HEIGHT = 200
 const OFFSET = 24
 const MAX_OPEN_MODALS = 5
+const BASE_Z_INDEX = 100
 
-let globalZIndexCounter = 100
+// 从 DOM 中取当前打开弹窗的最大 z-index 并 +1。
+// 弹窗关闭即从 DOM 移除，计数器随之自然回落，无需模块级可变状态。
+function nextZIndex(): number {
+  if (typeof document === "undefined") return BASE_Z_INDEX
+  let max = BASE_Z_INDEX
+  document.querySelectorAll<HTMLElement>("[data-resource-preview]").forEach((el) => {
+    const z = parseInt(el.style.zIndex || "0", 10)
+    if (z > max) max = z
+  })
+  return max + 1
+}
 
 function buildKkFileViewUrl(fileUrl: string): string {
   const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : ""
@@ -56,7 +67,7 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
     }
 
     bringToFrontRef.current = () => {
-      const nextZ = ++globalZIndexCounter
+      const nextZ = nextZIndex()
       zIndexRef.current = nextZ
       setZIndex(nextZ)
       applyLayoutRef.current()
@@ -77,7 +88,7 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
         setPosition(initialPosition)
         setSize({})
         if (zIndexRef.current === 0) {
-          const nextZ = ++globalZIndexCounter
+          const nextZ = nextZIndex()
           zIndexRef.current = nextZ
           setZIndex(nextZ)
         }
@@ -179,6 +190,7 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
       <div className="fixed inset-0 bg-black/40 z-[90]" onClick={() => onOpenChange(false)} />
       <div
         ref={contentRef}
+        data-resource-preview
         className={cn(
           "fixed top-1/2 left-1/2 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-3 shadow-none group",
           "contain-[layout_style_paint]",

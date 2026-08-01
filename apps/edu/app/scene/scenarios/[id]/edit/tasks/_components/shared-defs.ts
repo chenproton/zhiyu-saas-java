@@ -94,6 +94,12 @@ export function clearLoadedExams(): void {
   _loadedExams.length = 0
 }
 
+export function clearAllCaches(): void {
+  _allQuestions.length = 0
+  _questionCache.clear()
+  _loadedExams.length = 0
+}
+
 export const typeColorMap: Record<string, string> = {
   single: "bg-blue-500",
   multiple: "bg-indigo-500",

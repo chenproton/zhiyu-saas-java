@@ -150,7 +150,7 @@ import { BankQuestionSelectorPanel } from "./_components/bank-question-selector-
 import { RandomDrawResourcePanel } from "./_components/random-draw-resource-panel"
 import { PaperConfigPanel } from "./_components/paper-config-panel"
 import { MethodDialogContent, type MethodDialogCtx } from "./_components/method-config-dialog"
-import { getLoadedExam, upsertLoadedExam, type LoadedExam } from "./_components/shared-defs"
+import { getLoadedExam, upsertLoadedExam, clearAllCaches, type LoadedExam } from "./_components/shared-defs"
 import { useAuth } from "@/components/auth-provider"
 import { reportError } from "@/lib/error-handling"
 import type {
@@ -780,6 +780,13 @@ export default function TasksEditPage() {
       scenarioDataRef,
     })
   }, [loadDatasets])
+
+  // 离开编辑页时清理模块级缓存，避免跨场景污染
+  useEffect(() => {
+    return () => {
+      clearAllCaches()
+    }
+  }, [])
 
   // Load core data on mount (其余数据集按卡片/对话框首次激活时懒加载)
   useEffect(() => {
