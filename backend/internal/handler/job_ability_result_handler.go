@@ -101,7 +101,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, total, err := h.Service.ListJobAbilityResults(r.Context(), f, limit, (page-1)*limit)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询岗位能力结果失败")
+		respondServerError(w, r, err, "查询岗位能力结果失败")
 		return
 	}
 	items := make([]JobAbilityResultItem, 0, len(rows))
@@ -134,7 +134,7 @@ func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询岗位能力结果详情失败")
+		respondServerError(w, r, err, "查询岗位能力结果详情失败")
 		return
 	}
 	item := JobAbilityResultItem{
@@ -164,7 +164,7 @@ func (h *JobAbilityResultHandler) Summary(w http.ResponseWriter, r *http.Request
 	}
 	rows, err := h.Service.SummaryJobAbilityResults(r.Context(), tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询岗位能力汇总失败")
+		respondServerError(w, r, err, "查询岗位能力汇总失败")
 		return
 	}
 	items := make([]JobAbilitySummaryItem, 0, len(rows))
@@ -197,7 +197,7 @@ func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Reque
 
 	logID, err := h.Agg.CreateLog(r.Context(), tenantID, req.CareerPositionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "触发汇聚失败")
+		respondServerError(w, r, err, "触发汇聚失败")
 		return
 	}
 	go func() {
@@ -236,7 +236,7 @@ func (h *JobAbilityResultHandler) AggregateStatus(w http.ResponseWriter, r *http
 		return
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询汇聚状态失败")
+		respondServerError(w, r, err, "查询汇聚状态失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, JobAbilityAggregateLog{

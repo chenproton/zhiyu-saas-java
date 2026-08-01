@@ -100,7 +100,7 @@ func (h *OnSiteQuestionLibraryHandler) Create(w http.ResponseWriter, r *http.Req
 		CreatorID:         claims.UserID,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建题目失败")
+		respondServerError(w, r, err, "创建题目失败")
 		return
 	}
 
@@ -168,7 +168,7 @@ func (h *OnSiteQuestionLibraryHandler) Update(w http.ResponseWriter, r *http.Req
 		Tags:              ts,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新题目失败")
+		respondServerError(w, r, err, "更新题目失败")
 		return
 	}
 

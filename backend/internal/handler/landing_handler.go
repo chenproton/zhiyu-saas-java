@@ -46,7 +46,7 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	exams, err := h.Service.ListLandingExams(r.Context(), effectiveTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询落地考试失败")
+		respondServerError(w, r, err, "查询落地考试失败")
 		return
 	}
 

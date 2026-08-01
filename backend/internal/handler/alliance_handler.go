@@ -269,7 +269,7 @@ func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request)
 	pid := chi.URLParam(r, "pid")
 	items, err := h.Store.ListMilestones(r.Context(), pid)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
@@ -586,7 +586,7 @@ func (h *AllianceHandler) ListDictionaryItems(w http.ResponseWriter, r *http.Req
 
 	items, err := h.Store.ListDictionaries(r.Context(), dictType, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})

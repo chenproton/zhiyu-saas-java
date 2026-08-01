@@ -85,7 +85,7 @@ func (h *TaskResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 	}
 	rows, total, err := h.Service.List(r.Context(), tenantID, search, bind, taskID, limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询资源失败")
+		respondServerError(w, r, err, "查询资源失败")
 		return
 	}
 	items := make([]domain.TaskResource, 0, len(rows))
@@ -143,7 +143,7 @@ func (h *TaskResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		UploadedBy:  &uploadedBy,
 	}, nil)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建资源失败")
+		respondServerError(w, r, err, "创建资源失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, toTaskResource(row))
@@ -170,7 +170,7 @@ func (h *TaskResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 
 	id, err := h.Service.Bind(r.Context(), tenantID, "task_resource_bindings", "task_id", req.TaskID, req.ResourceID, nil)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "绑定资源失败")
+		respondServerError(w, r, err, "绑定资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

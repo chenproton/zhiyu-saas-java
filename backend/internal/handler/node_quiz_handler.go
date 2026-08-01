@@ -74,7 +74,7 @@ func (h *NodeQuizHandler) ListQuizzes(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListQuizzes(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询测验失败")
+		respondServerError(w, r, err, "查询测验失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, NodeQuizListResponse{Items: items, Total: total})
@@ -106,7 +106,7 @@ func (h *NodeQuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 		TimeLimit: req.TimeLimit,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建测验失败")
+		respondServerError(w, r, err, "创建测验失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, quiz)
@@ -139,7 +139,7 @@ func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 		TimeLimit: req.TimeLimit,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新测验失败")
+		respondServerError(w, r, err, "更新测验失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, quiz)
@@ -178,7 +178,7 @@ func (h *NodeQuizHandler) ListQuestions(w http.ResponseWriter, r *http.Request) 
 
 	items, total, err := h.Service.ListQuizQuestions(r.Context(), quizID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询题目失败")
+		respondServerError(w, r, err, "查询题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, NodeQuizQuestionListResponse{Items: items, Total: total})
@@ -218,7 +218,7 @@ func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		SortOrder: req.SortOrder,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "添加题目失败")
+		respondServerError(w, r, err, "添加题目失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, question)
@@ -254,7 +254,7 @@ func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 		SortOrder: req.SortOrder,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新题目失败")
+		respondServerError(w, r, err, "更新题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, question)

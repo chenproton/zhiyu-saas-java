@@ -107,7 +107,7 @@ func (h *LessonBehaviorHandler) Aggregate(w http.ResponseWriter, r *http.Request
 
 	records, err := h.Service.ListLessonBehaviorRecords(r.Context(), courseID, startDate, endDate)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "加载behavior records失败")
+		respondServerError(w, r, err, "加载behavior records失败")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *LessonBehaviorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		PraiseCount: req.PraiseCount, RushCorrectCount: req.RushCorrectCount, RushAvgTimeSec: req.RushAvgTimeSec,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "保存behavior record失败")
+		respondServerError(w, r, err, "保存behavior record失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, record)

@@ -139,7 +139,7 @@ func (h *SchedulingHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) 
 		Capacity: req.Capacity,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新场地失败")
+		respondServerError(w, r, err, "更新场地失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, venue)
@@ -289,7 +289,7 @@ func (h *SchedulingHandler) UpdatePeriodSlot(w http.ResponseWriter, r *http.Requ
 		EndTime:   emptyStrToNil(req.EndTime),
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新节次失败")
+		respondServerError(w, r, err, "更新节次失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, slot)
@@ -657,7 +657,7 @@ func (h *SchedulingHandler) DeleteSchedule(w http.ResponseWriter, r *http.Reques
 		return txStore.Scheduling().DeleteScheduleWithRestore(ctx, txStore.Q(), id, tenantID, entry.PlanEntryID)
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除排课失败")
+		respondServerError(w, r, err, "删除排课失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -812,7 +812,7 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	// 教学计划全部条目
 	entries, err := h.Service.ListPlanEntryBriefs(r.Context(), tenantID, termID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询教学计划失败")
+		respondServerError(w, r, err, "查询教学计划失败")
 		return
 	}
 	rowIdx := 3

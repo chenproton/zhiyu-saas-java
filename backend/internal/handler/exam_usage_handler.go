@@ -61,7 +61,7 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListExamUsages(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询考试安排列表失败")
+		respondServerError(w, r, err, "查询考试安排列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ExamUsageListResponse{Items: items, Total: total})
@@ -113,7 +113,7 @@ func (h *ExamUsageHandler) Create(w http.ResponseWriter, r *http.Request) {
 		CreatorID:   claims.UserID,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建考试安排失败")
+		respondServerError(w, r, err, "创建考试安排失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, usage)
@@ -149,7 +149,7 @@ func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		TargetIDs:   coalesceStringSlice(req.TargetIDs),
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新考试安排失败")
+		respondServerError(w, r, err, "更新考试安排失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, usage)

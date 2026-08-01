@@ -122,7 +122,7 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 	}
 	items, total, err := h.Service.ListCertificationRules(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询认证规则失败")
+		respondServerError(w, r, err, "查询认证规则失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, CertificationRuleListResponse{Items: items, Total: total})
@@ -168,7 +168,7 @@ func (h *CertificationHandler) CreateRule(w http.ResponseWriter, r *http.Request
 	}
 	rule, err := h.Service.CreateCertificationRule(r.Context(), tenantID, req.CareerPositionID, req.RuleSource)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建认证规则失败")
+		respondServerError(w, r, err, "创建认证规则失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, rule)
@@ -196,7 +196,7 @@ func (h *CertificationHandler) UpdateRuleStatus(w http.ResponseWriter, r *http.R
 	}
 	rule, err := h.Service.UpdateCertificationRuleStatus(r.Context(), id, tenantID, req.Status)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新规则状态失败")
+		respondServerError(w, r, err, "更新规则状态失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, rule)
@@ -223,7 +223,7 @@ func (h *CertificationHandler) UpdateRule(w http.ResponseWriter, r *http.Request
 	}
 	rule, err := h.Service.UpdateCertificationRule(r.Context(), id, req.CareerPositionID, req.RuleSource)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新认证规则失败")
+		respondServerError(w, r, err, "更新认证规则失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, rule)
@@ -274,16 +274,16 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 		}
 		item, err := h.Service.CreateCertificationItem(r.Context(), tenantID, ruleID, req.Name, req.SortOrder)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "创建认证项失败")
-			return
-		}
+		respondServerError(w, r, err, "创建认证项失败")
+		return
+	}
 		respondJSON(w, http.StatusCreated, item)
 		return
 	}
 
 	items, err := h.Service.ListCertificationItems(r.Context(), ruleID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询认证项失败")
+		respondServerError(w, r, err, "查询认证项失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, CertificationItemListResponse{Items: items, Total: len(items)})
@@ -331,16 +331,16 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 			Weight:             req.Weight,
 		})
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "创建认证点失败")
-			return
-		}
+		respondServerError(w, r, err, "创建认证点失败")
+		return
+	}
 		respondJSON(w, http.StatusCreated, point)
 		return
 	}
 
 	points, err := h.Service.ListCertificationPoints(r.Context(), itemID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询认证点失败")
+		respondServerError(w, r, err, "查询认证点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, CertificationPointListResponse{Items: points, Total: len(points)})
@@ -491,7 +491,7 @@ func (h *CertificationHandler) UpdateItem(w http.ResponseWriter, r *http.Request
 	}
 	item, err := h.Service.UpdateCertificationItem(r.Context(), id, req.Name, req.SortOrder)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新认证项失败")
+		respondServerError(w, r, err, "更新认证项失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)
@@ -527,7 +527,7 @@ func (h *CertificationHandler) UpdatePoint(w http.ResponseWriter, r *http.Reques
 		Weight:             req.Weight,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新认证点失败")
+		respondServerError(w, r, err, "更新认证点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, point)
@@ -553,7 +553,7 @@ func (h *CertificationHandler) CreateTask(w http.ResponseWriter, r *http.Request
 	}
 	task, err := h.Service.CreateCertificationTask(r.Context(), tenantID, chi.URLParam(r, "pointId"), req.TaskID, req.MaxScore, req.Weight)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建关联任务失败")
+		respondServerError(w, r, err, "创建关联任务失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, task)
@@ -576,7 +576,7 @@ func (h *CertificationHandler) UpdateTask(w http.ResponseWriter, r *http.Request
 	}
 	task, err := h.Service.UpdateCertificationTask(r.Context(), id, tenantID, req.TaskID, req.MaxScore, req.Weight)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新关联任务失败")
+		respondServerError(w, r, err, "更新关联任务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, task)
@@ -615,7 +615,7 @@ func (h *CertificationHandler) GetFullRule(w http.ResponseWriter, r *http.Reques
 
 	items, points, tasks, err := h.Service.GetCertificationFull(r.Context(), ruleID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询完整规则失败")
+		respondServerError(w, r, err, "查询完整规则失败")
 		return
 	}
 

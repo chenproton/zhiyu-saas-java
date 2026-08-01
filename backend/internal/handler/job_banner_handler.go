@@ -60,7 +60,7 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListBanners(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询列表失败")
+		respondServerError(w, r, err, "查询列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, JobBannerListResponse{Items: items, Total: total})
@@ -106,7 +106,7 @@ func (h *JobBannerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		IsEnabled: req.IsEnabled,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建轮播图失败")
+		respondServerError(w, r, err, "创建轮播图失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, banner)
@@ -138,7 +138,7 @@ func (h *JobBannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		IsEnabled: req.IsEnabled,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新轮播图失败")
+		respondServerError(w, r, err, "更新轮播图失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, banner)

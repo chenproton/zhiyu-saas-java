@@ -125,7 +125,7 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListCourses(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询课程列表失败")
+		respondServerError(w, r, err, "查询课程列表失败")
 		return
 	}
 
@@ -190,7 +190,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), prefix, "courses", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成课程代码失败")
+		respondServerError(w, r, err, "生成课程代码失败")
 		return
 	}
 

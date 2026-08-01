@@ -146,7 +146,7 @@ func (h *MicroCertHandler) CreateTemplate(w http.ResponseWriter, r *http.Request
 		CoverImage:   req.CoverImage,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建微证书模板失败")
+		respondServerError(w, r, err, "创建微证书模板失败")
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *MicroCertHandler) IssueCerts(w http.ResponseWriter, r *http.Request) {
 
 	count, err := h.Store.IssueCerts(r.Context(), tenantID, req.TemplateID, req.UserIDs)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "颁发证书失败")
+		respondServerError(w, r, err, "颁发证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]int{"count": count})

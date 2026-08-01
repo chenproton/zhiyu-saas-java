@@ -75,7 +75,7 @@ func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListApprovals(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询审批记录失败")
+		respondServerError(w, r, err, "查询审批记录失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ApprovalListResponse{Items: items, Total: total})
@@ -117,7 +117,7 @@ func (h *ApprovalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Status: string(domain.ApprovalStatusPending), SubmitterID: user.UserID, History: domain.JSONSlice{},
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建审批记录失败")
+		respondServerError(w, r, err, "创建审批记录失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, record)

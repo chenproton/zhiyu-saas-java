@@ -70,7 +70,7 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListQuestions(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询题目列表失败")
+		respondServerError(w, r, err, "查询题目列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, QuestionListResponse{Items: items, Total: total})
@@ -122,7 +122,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), "TM", "questions", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成题目编码失败")
+		respondServerError(w, r, err, "生成题目编码失败")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Source:          req.Source,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建题目失败")
+		respondServerError(w, r, err, "创建题目失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, q)
@@ -185,7 +185,7 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Source:          req.Source,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新题目失败")
+		respondServerError(w, r, err, "更新题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, q)
@@ -252,7 +252,7 @@ func (h *QuestionHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 
 	count, err := h.Service.BatchCreateQuestions(r.Context(), tenantID, req.BankID, claims.UserID, items)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "批量创建题目失败")
+		respondServerError(w, r, err, "批量创建题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]int{"count": count})

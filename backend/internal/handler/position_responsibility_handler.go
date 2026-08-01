@@ -48,7 +48,7 @@ func (h *PositionResponsibilityHandler) List(w http.ResponseWriter, r *http.Requ
 	params, _ := listParamsFromRequest(r, false)
 	items, total, err := h.Service.ListResponsibilities(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询岗位职责失败")
+		respondServerError(w, r, err, "查询岗位职责失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, PositionResponsibilityListResponse{Items: items, Total: total})
@@ -91,7 +91,7 @@ func (h *PositionResponsibilityHandler) Create(w http.ResponseWriter, r *http.Re
 		SortOrder:        req.SortOrder,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建岗位职责失败")
+		respondServerError(w, r, err, "创建岗位职责失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, item)
@@ -125,7 +125,7 @@ func (h *PositionResponsibilityHandler) Update(w http.ResponseWriter, r *http.Re
 		SortOrder:        req.SortOrder,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新岗位职责失败")
+		respondServerError(w, r, err, "更新岗位职责失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)

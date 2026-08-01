@@ -48,7 +48,7 @@ func (h *UserRelationHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := h.Service.List(r.Context(), effectiveTenantID, r.URL.Query().Get("search"), limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询用户关系失败")
+		respondServerError(w, r, err, "查询用户关系失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, UserRelationListResponse{Items: items, Total: total})
@@ -112,7 +112,7 @@ func (h *UserRelationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	deleted, err := h.Service.Delete(r.Context(), id, effectiveTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除用户关系失败")
+		respondServerError(w, r, err, "删除用户关系失败")
 		return
 	}
 	if !deleted {

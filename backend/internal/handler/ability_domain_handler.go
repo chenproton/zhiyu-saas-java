@@ -60,7 +60,7 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListAbilityDomains(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询能力域失败")
+		respondServerError(w, r, err, "查询能力域失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, AbilityDomainListResponse{Items: items, Total: total})
@@ -91,7 +91,7 @@ func (h *AbilityDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SortOrder:        req.SortOrder,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建能力域失败")
+		respondServerError(w, r, err, "创建能力域失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, d)
@@ -144,7 +144,7 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		SortOrder:        req.SortOrder,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新能力域失败")
+		respondServerError(w, r, err, "更新能力域失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, d)

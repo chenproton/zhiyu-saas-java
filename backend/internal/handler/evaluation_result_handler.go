@@ -95,7 +95,7 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListEvaluationResults(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询评价结果失败")
+		respondServerError(w, r, err, "查询评价结果失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, EvaluationResultListResponse{Items: items, Total: total})
@@ -162,7 +162,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		DrawnQuestions:    jsonRawMessageToJSONMap(req.DrawnQuestions),
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "提交评价结果失败")
+		respondServerError(w, r, err, "提交评价结果失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, res)
@@ -192,7 +192,7 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		SubjectiveContent: jsonRawMessageToJSONMap(req.SubjectiveContent),
 	}, res.TaskID, res.MethodKey, res.EvaluateeID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "评分失败")
+		respondServerError(w, r, err, "评分失败")
 		return
 	}
 	res, _ = h.Service.GetEvaluationResult(r.Context(), id)
@@ -226,7 +226,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 
 	_, err := h.Service.BatchGradeEvaluationResults(r.Context(), claims.UserID, items)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "批量评分失败")
+		respondServerError(w, r, err, "批量评分失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]int{"count": len(items)})

@@ -67,7 +67,7 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListQuestionBanks(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询题库失败")
+		respondServerError(w, r, err, "查询题库失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, QuestionBankListResponse{Items: items, Total: total})
@@ -110,7 +110,7 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), "TK", "question_banks", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成question bank code失败")
+		respondServerError(w, r, err, "生成question bank code失败")
 		return
 	}
 

@@ -36,7 +36,7 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 	}
 	items, err := h.Service.ListEvaluationCategories(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询分类失败")
+		respondServerError(w, r, err, "查询分类失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, EvaluationMethodCategoryListResponse{Items: items, Total: len(items)})
@@ -68,7 +68,7 @@ func (h *EvaluationMethodHandler) ListMethods(w http.ResponseWriter, r *http.Req
 	}
 	items, total, err := h.Service.ListEvaluationMethods(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询测评方式失败")
+		respondServerError(w, r, err, "查询测评方式失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, EvaluationMethodListResponse{Items: items, Total: total})
@@ -91,7 +91,7 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 	}
 	method, err := h.Service.ToggleEvaluationMethod(r.Context(), id, req.Enabled)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "切换测评方式失败")
+		respondServerError(w, r, err, "切换测评方式失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, method)

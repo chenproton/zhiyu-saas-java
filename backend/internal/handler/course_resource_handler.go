@@ -56,7 +56,7 @@ func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Req
 
 	items, total, err := h.Service.ListCourseResources(r.Context(), tenantID, r.URL.Query().Get("courseId"), r.URL.Query().Get("search"), limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询课程资源失败")
+		respondServerError(w, r, err, "查询课程资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, CourseResourceListResponse{Items: items, Total: total})
@@ -100,7 +100,7 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return store.CourseSyncBind(ctx, q, courseID, resourceID)
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建课程资源失败")
+		respondServerError(w, r, err, "创建课程资源失败")
 		return
 	}
 	var res domain.NodeResource
@@ -142,7 +142,7 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 		return store.CourseSyncBind(ctx, q, courseID, resourceID)
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "绑定课程资源失败")
+		respondServerError(w, r, err, "绑定课程资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

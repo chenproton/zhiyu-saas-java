@@ -89,7 +89,7 @@ func (h *GraduationHandler) ListTopics(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListGraduationTopics(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询毕业设计课题失败")
+		respondServerError(w, r, err, "查询毕业设计课题失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, GraduationTopicListResponse{Items: items, Total: total})
@@ -237,7 +237,7 @@ func (h *GraduationHandler) ApplyTopic(w http.ResponseWriter, r *http.Request) {
 	}
 	applied, err := h.Service.ApplyGraduationTopic(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "申请课题失败")
+		respondServerError(w, r, err, "申请课题失败")
 		return
 	}
 	if !applied {
@@ -269,9 +269,9 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 		}
 		archive, err := h.Service.CreateGraduationArchive(r.Context(), tenantID, req.TopicID, req.UserID, req.Phase)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "创建毕业档案失败")
-			return
-		}
+		respondServerError(w, r, err, "创建毕业档案失败")
+		return
+	}
 		respondJSON(w, http.StatusCreated, archive)
 		return
 	}
@@ -294,7 +294,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 	}
 	items, total, err := h.Service.ListGraduationArchives(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询毕业档案失败")
+		respondServerError(w, r, err, "查询毕业档案失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, GraduationArchiveListResponse{Items: items, Total: total})
@@ -325,9 +325,9 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 			ComprehensiveGrade: req.ComprehensiveGrade, IsExcellent: req.IsExcellent,
 		})
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "创建毕业评价失败")
-			return
-		}
+		respondServerError(w, r, err, "创建毕业评价失败")
+		return
+	}
 		respondJSON(w, http.StatusCreated, eval)
 		return
 	}
@@ -353,7 +353,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 	}
 	items, total, err := h.Service.ListGraduationEvaluations(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询毕业评价失败")
+		respondServerError(w, r, err, "查询毕业评价失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, GraduationEvaluationListResponse{Items: items, Total: total})
@@ -375,7 +375,7 @@ func (h *GraduationHandler) QueryResults(w http.ResponseWriter, r *http.Request)
 	}
 	items, total, err := h.Service.QueryGraduationResults(r.Context(), limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询毕业查询结果失败")
+		respondServerError(w, r, err, "查询毕业查询结果失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, GraduationQueryListResponse{Items: items, Total: total})

@@ -95,7 +95,7 @@ func (h *ScenarioGradeHandler) UpsertGradeMapping(w http.ResponseWriter, r *http
 		Color:       req.Color,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新或创建成绩映射失败")
+		respondServerError(w, r, err, "更新或创建成绩映射失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, m)

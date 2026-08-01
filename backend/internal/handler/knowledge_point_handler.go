@@ -64,7 +64,7 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListKnowledgePoints(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询知识点失败")
+		respondServerError(w, r, err, "查询知识点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, KnowledgePointListResponse{Items: items, Total: total})

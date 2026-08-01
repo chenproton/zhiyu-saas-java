@@ -62,14 +62,14 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	destPath := filepath.Join(h.UploadDir, filename)
 	destFile, err := os.Create(destPath)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建文件失败")
+		respondServerError(w, r, err, "创建文件失败")
 		return
 	}
 	defer destFile.Close()
 
 	size, err := io.Copy(destFile, file)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "保存文件失败")
+		respondServerError(w, r, err, "保存文件失败")
 		return
 	}
 
@@ -131,7 +131,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 
 	tmpDir, err := os.MkdirTemp("", "lo-preview-")
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建temp dir失败")
+		respondServerError(w, r, err, "创建temp dir失败")
 		return
 	}
 	defer os.RemoveAll(tmpDir)
@@ -177,7 +177,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	outPath := filepath.Join(tmpDir, base+"."+outExt)
 	outBytes, err := os.ReadFile(outPath)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取converted file失败")
+		respondServerError(w, r, err, "读取converted file失败")
 		return
 	}
 

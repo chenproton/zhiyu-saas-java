@@ -67,7 +67,7 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListRecommends(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询推荐失败")
+		respondServerError(w, r, err, "查询推荐失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, RecommendListResponse{Items: items, Total: total})
@@ -96,7 +96,7 @@ func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Reason: req.Reason, SortOrder: req.SortOrder, IsEnabled: req.IsEnabled, CreatedBy: claims.UserID,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建推荐失败")
+		respondServerError(w, r, err, "创建推荐失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, rec)
@@ -125,7 +125,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Reason: req.Reason, SortOrder: req.SortOrder, IsEnabled: req.IsEnabled,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新推荐失败")
+		respondServerError(w, r, err, "更新推荐失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, rec)

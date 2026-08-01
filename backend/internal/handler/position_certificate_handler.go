@@ -52,7 +52,7 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 
 	items, total, err := h.Service.ListCertificates(r.Context(), r.URL.Query().Get("careerPositionId"), limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询证书失败")
+		respondServerError(w, r, err, "查询证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, PositionCertificateListResponse{Items: items, Total: total})
@@ -102,7 +102,7 @@ func (h *PositionCertificateHandler) Create(w http.ResponseWriter, r *http.Reque
 		ImageURL:         req.ImageURL,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建证书失败")
+		respondServerError(w, r, err, "创建证书失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, item)
@@ -144,7 +144,7 @@ func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Reque
 		ImageURL:         req.ImageURL,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新证书失败")
+		respondServerError(w, r, err, "更新证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)

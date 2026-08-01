@@ -65,7 +65,7 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 
 	grades, allComps, allLB, err := h.Service.ListCertGrades(r.Context(), positionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询grade data失败")
+		respondServerError(w, r, err, "查询grade data失败")
 		return
 	}
 

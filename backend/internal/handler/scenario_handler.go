@@ -133,7 +133,7 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询场景方案失败")
+		respondServerError(w, r, err, "查询场景方案失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ScenarioListResponse{Items: items, Total: total})
@@ -193,7 +193,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	code, err := store.GenerateUniqueEntityCode(r.Context(), h.DB.Q(), "CJ", "scenarios", *tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成scenario code失败")
+		respondServerError(w, r, err, "生成scenario code失败")
 		return
 	}
 
@@ -296,7 +296,7 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 		CoBuilderIDs:     coBuilderIDs,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新场景方案失败")
+		respondServerError(w, r, err, "更新场景方案失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, scenario)

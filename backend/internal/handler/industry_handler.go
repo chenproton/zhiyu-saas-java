@@ -192,7 +192,7 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	childCount, err := h.Store.CountChildren(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "检查子行业失败")
+		respondServerError(w, r, err, "检查子行业失败")
 		return
 	}
 	if childCount > 0 {

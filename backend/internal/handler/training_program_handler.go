@@ -79,7 +79,7 @@ func (h *TrainingProgramHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListTrainingPrograms(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询人培方案失败")
+		respondServerError(w, r, err, "查询人培方案失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, TrainingProgramListResponse{Items: items, Total: total})
@@ -135,7 +135,7 @@ func (h *TrainingProgramHandler) Create(w http.ResponseWriter, r *http.Request) 
 		Description: emptyStrToNil(req.Description), CreatedBy: claims.UserID,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建人培方案失败")
+		respondServerError(w, r, err, "创建人培方案失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, program)
@@ -191,7 +191,7 @@ func (h *TrainingProgramHandler) Update(w http.ResponseWriter, r *http.Request) 
 		Description: emptyStrToNil(req.Description),
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新人培方案失败")
+		respondServerError(w, r, err, "更新人培方案失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, program)
@@ -252,7 +252,7 @@ func (h *TrainingProgramHandler) Publish(w http.ResponseWriter, r *http.Request)
 	}
 	program, err = h.Service.UpdateTrainingProgramStatus(r.Context(), id, tenantID, status)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新方案状态失败")
+		respondServerError(w, r, err, "更新方案状态失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, program)
@@ -275,7 +275,7 @@ func (h *TrainingProgramHandler) ListCourses(w http.ResponseWriter, r *http.Requ
 	}
 	courses, err := h.Service.ListTrainingProgramCourses(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询课程设置失败")
+		respondServerError(w, r, err, "查询课程设置失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]interface{}{"items": courses, "total": len(courses)})
@@ -387,7 +387,7 @@ func (h *TrainingProgramHandler) Clone(w http.ResponseWriter, r *http.Request) {
 
 	newID, err := h.Service.CloneTrainingProgram(ctx, tenantID, claims.UserID, src, newName)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "克隆失败")
+		respondServerError(w, r, err, "克隆失败")
 		return
 	}
 	program, _ := h.Service.GetTrainingProgram(ctx, newID, tenantID)

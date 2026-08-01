@@ -62,7 +62,7 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新订阅失败")
+		respondServerError(w, r, err, "更新订阅失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, sub)
@@ -112,9 +112,9 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 			Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
 		})
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "更新订阅失败")
-			return
-		}
+		respondServerError(w, r, err, "更新订阅失败")
+		return
+	}
 		respondJSON(w, http.StatusOK, updated)
 		return
 	}
@@ -123,7 +123,7 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 		TenantID: tenantID, Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建订阅失败")
+		respondServerError(w, r, err, "创建订阅失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, sub)

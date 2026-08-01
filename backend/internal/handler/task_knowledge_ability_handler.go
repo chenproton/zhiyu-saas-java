@@ -43,7 +43,7 @@ func (h *TaskKnowledgeAbilityHandler) BindKnowledge(w http.ResponseWriter, r *ht
 
 	binding, err := h.Service.BindKnowledge(r.Context(), tenantID, req.TaskID, req.KnowledgePointID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "绑定知识失败")
+		respondServerError(w, r, err, "绑定知识失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, binding)
@@ -84,7 +84,7 @@ func (h *TaskKnowledgeAbilityHandler) BindAbility(w http.ResponseWriter, r *http
 
 	binding, err := h.Service.BindAbility(r.Context(), tenantID, req.TaskID, req.AbilityPointID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "绑定能力点失败")
+		respondServerError(w, r, err, "绑定能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, binding)

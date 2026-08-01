@@ -183,7 +183,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	userCount, err := h.Store.CountUserRefs(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "检查专业引用失败")
+		respondServerError(w, r, err, "检查专业引用失败")
 		return
 	}
 	if userCount > 0 {

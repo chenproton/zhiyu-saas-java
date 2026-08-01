@@ -48,7 +48,7 @@ func (h *CertificationModelHandler) GetModel(w http.ResponseWriter, r *http.Requ
 
 	rule, err := h.Service.FindPositionRule(r.Context(), positionID, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询认证规则失败")
+		respondServerError(w, r, err, "查询认证规则失败")
 		return
 	}
 	ruleID := ""
@@ -58,7 +58,7 @@ func (h *CertificationModelHandler) GetModel(w http.ResponseWriter, r *http.Requ
 
 	domains, err := service.LoadCertificationModel(r.Context(), h.DB, tenantID, positionID, ruleID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "组装岗位能力模型失败")
+		respondServerError(w, r, err, "组装岗位能力模型失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, certificationModelResponse{
@@ -119,7 +119,7 @@ func (h *CertificationModelHandler) PutWeights(w http.ResponseWriter, r *http.Re
 
 	err := h.Service.PutCertificationWeights(r.Context(), tenantID, positionID, pointWeights, taskWeights)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "保存权重失败")
+		respondServerError(w, r, err, "保存权重失败")
 		return
 	}
 

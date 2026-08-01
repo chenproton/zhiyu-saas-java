@@ -244,7 +244,7 @@ func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, 
 		Permissions: perms,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成令牌失败")
+		respondServerError(w, r, err, "生成令牌失败")
 		return
 	}
 
@@ -276,7 +276,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.fetchUserByID(r.Context(), claims.UserID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询用户信息失败")
+		respondServerError(w, r, err, "查询用户信息失败")
 		return
 	}
 

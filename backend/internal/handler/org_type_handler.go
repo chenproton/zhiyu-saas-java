@@ -194,7 +194,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	refCount, err := h.Store.CountOrgRefs(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "检查组织类型引用失败")
+		respondServerError(w, r, err, "检查组织类型引用失败")
 		return
 	}
 	if refCount > 0 {

@@ -70,7 +70,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListExams(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询考试失败")
+		respondServerError(w, r, err, "查询考试失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ExamListResponse{Items: items, Total: total})
@@ -123,7 +123,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), "SJ", "exams", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成考试编码失败")
+		respondServerError(w, r, err, "生成考试编码失败")
 		return
 	}
 

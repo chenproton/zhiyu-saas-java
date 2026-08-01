@@ -77,7 +77,7 @@ func (h *TaskEvaluationHandler) ListMethods(w http.ResponseWriter, r *http.Reque
 
 	configs, err := h.Service.ListMethods(r.Context(), taskID, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询测评方式失败")
+		respondServerError(w, r, err, "查询测评方式失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, TaskEvaluationMethodListResponse{Methods: configs})
@@ -200,7 +200,7 @@ func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Req
 	}
 	items, total, err := h.Service.ListTemplates(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询评分模板失败")
+		respondServerError(w, r, err, "查询评分模板失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, RubricTemplateListResponse{Items: items, Total: total})
@@ -256,7 +256,7 @@ func (h *TaskEvaluationHandler) CreateTemplate(w http.ResponseWriter, r *http.Re
 		Data:        req.Data,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建评分模板失败")
+		respondServerError(w, r, err, "创建评分模板失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, t)
@@ -300,7 +300,7 @@ func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 		Data:        req.Data,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新评分模板失败")
+		respondServerError(w, r, err, "更新评分模板失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, t)

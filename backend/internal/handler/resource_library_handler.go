@@ -66,7 +66,7 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := h.Service.List(r.Context(), tenantID, filter)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询资源失败")
+		respondServerError(w, r, err, "查询资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ResourceLibraryListResponse{Items: items, Total: total})
@@ -119,7 +119,7 @@ func (h *ResourceLibraryHandler) Create(w http.ResponseWriter, r *http.Request) 
 		UploadedBy:   claims.UserID,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建资源失败")
+		respondServerError(w, r, err, "创建资源失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, item)
@@ -180,7 +180,7 @@ func (h *ResourceLibraryHandler) Update(w http.ResponseWriter, r *http.Request) 
 
 	item, err := h.Service.Update(r.Context(), id, params)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新资源失败")
+		respondServerError(w, r, err, "更新资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)

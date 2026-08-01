@@ -60,7 +60,7 @@ func (h *AppealHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListAppeals(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询申诉失败")
+		respondServerError(w, r, err, "查询申诉失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, AppealListResponse{Items: items, Total: total})
@@ -101,7 +101,7 @@ func (h *AppealHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	appeal, err := h.Service.CreateAppeal(r.Context(), tenantID, req.UserID, req.Type, req.Reason)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建申诉失败")
+		respondServerError(w, r, err, "创建申诉失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, appeal)
@@ -124,7 +124,7 @@ func (h *AppealHandler) Process(w http.ResponseWriter, r *http.Request) {
 	}
 	appeal, err := h.Service.ProcessAppeal(r.Context(), id, req.Status)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "处理申诉失败")
+		respondServerError(w, r, err, "处理申诉失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, appeal)

@@ -61,7 +61,7 @@ func (h *NodeHomeworkHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListNodeHomeworks(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询作业失败")
+		respondServerError(w, r, err, "查询作业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, NodeHomeworkListResponse{Items: items, Total: total})
@@ -109,7 +109,7 @@ func (h *NodeHomeworkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Deadline:       req.Deadline,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建作业失败")
+		respondServerError(w, r, err, "创建作业失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, hw)
@@ -143,7 +143,7 @@ func (h *NodeHomeworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Deadline:       req.Deadline,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新作业失败")
+		respondServerError(w, r, err, "更新作业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, hw)

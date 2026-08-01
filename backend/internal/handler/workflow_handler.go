@@ -56,7 +56,7 @@ func (h *WorkflowHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListWorkflows(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询审批流程失败")
+		respondServerError(w, r, err, "查询审批流程失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, WorkflowListResponse{Items: items, Total: total})

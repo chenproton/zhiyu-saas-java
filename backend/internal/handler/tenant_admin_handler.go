@@ -28,7 +28,7 @@ func (h *TenantHandler) AdminListAdmins(w http.ResponseWriter, r *http.Request) 
 
 	items, err := h.AdminService.List(r.Context(), tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询管理员失败")
+		respondServerError(w, r, err, "查询管理员失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items, "total": len(items)})
@@ -143,7 +143,7 @@ func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Reques
 
 	newPassword, err := h.AdminService.ResetPassword(r.Context(), adminID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "保存password失败")
+		respondServerError(w, r, err, "保存password失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "newPassword": newPassword})

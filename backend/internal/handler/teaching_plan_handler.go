@@ -76,7 +76,7 @@ func (h *TeachingPlanHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListTeachingPlans(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询教学计划失败")
+		respondServerError(w, r, err, "查询教学计划失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, TeachingPlanListResponse{Items: items, Total: total})
@@ -114,7 +114,7 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	}
 	courses, err := h.Service.FetchTeachingPlanCourses(ctx, req.ProgramID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询方案课程失败")
+		respondServerError(w, r, err, "查询方案课程失败")
 		return
 	}
 	if len(courses) == 0 {
@@ -145,7 +145,7 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		MajorID: program.MajorID, EntryYear: program.EntryYear,
 	}, courses, posScenMap, weeksCount)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成教学计划失败")
+		respondServerError(w, r, err, "生成教学计划失败")
 		return
 	}
 
@@ -242,7 +242,7 @@ func (h *TeachingPlanHandler) UpdateEntry(w http.ResponseWriter, r *http.Request
 
 	err = h.Service.UpdateTeachingPlanEntry(r.Context(), id, tenantID, entry, req.Credits, req.TotalHours, req.ClassNodeIDs)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新计划条目失败")
+		respondServerError(w, r, err, "更新计划条目失败")
 		return
 	}
 	entry, _ = h.Service.GetTeachingPlanEntry(r.Context(), id, tenantID)

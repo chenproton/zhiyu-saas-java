@@ -95,7 +95,7 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询岗位失败")
+		respondServerError(w, r, err, "查询岗位失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
@@ -143,7 +143,7 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 	params, _ := listParamsFromRequest(r, false)
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询岗位失败")
+		respondServerError(w, r, err, "查询岗位失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
@@ -507,7 +507,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		AbilityDomains:   abilityDomains,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "保存岗位失败")
+		respondServerError(w, r, err, "保存岗位失败")
 		return
 	}
 
@@ -531,7 +531,7 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	isfav, err := h.Service.GetFavorite(r.Context(), claims.UserID, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询收藏状态失败")
+		respondServerError(w, r, err, "查询收藏状态失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav})
@@ -546,7 +546,7 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 	id := chi.URLParam(r, "id")
 	isfav, err := h.Service.ToggleFavorite(r.Context(), claims.UserID, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "切换收藏失败")
+		respondServerError(w, r, err, "切换收藏失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav})
@@ -574,7 +574,7 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 	params, _ := listParamsFromRequest(r, false)
 	items, total, err := h.Service.ListFavorites(r.Context(), claims.UserID, params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询收藏岗位失败")
+		respondServerError(w, r, err, "查询收藏岗位失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})

@@ -123,7 +123,7 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询用户列表失败")
+		respondServerError(w, r, err, "查询用户列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, UserListResponse{Items: items, Total: total})
@@ -498,7 +498,7 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 
 	count, err := h.Service.BatchDelete(r.Context(), callerTenantID, req.UserIDs)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "批量删除用户失败")
+		respondServerError(w, r, err, "批量删除用户失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]int64{"count": count})

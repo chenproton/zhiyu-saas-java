@@ -66,7 +66,7 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListAbilities(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询列表失败")
+		respondServerError(w, r, err, "查询列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, AbilityListResponse{Items: items, Total: total})

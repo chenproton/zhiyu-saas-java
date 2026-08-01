@@ -100,6 +100,17 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
 }
 
+// respondServerError 统一返回 500 并记录原始错误，便于线上排查。
+func respondServerError(w http.ResponseWriter, r *http.Request, err error, message string) {
+	slog.Error("handler server error",
+		slog.String("method", r.Method),
+		slog.String("path", r.URL.Path),
+		slog.String("message", message),
+		slog.String("error", err.Error()),
+	)
+	respondError(w, http.StatusInternalServerError, message)
+}
+
 // decodeBody 解析 JSON 请求体，失败时写 400 响应并返回 false。
 func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) bool {
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {

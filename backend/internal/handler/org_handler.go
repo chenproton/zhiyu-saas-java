@@ -72,7 +72,7 @@ func (h *OrgHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询组织失败")
+		respondServerError(w, r, err, "查询组织失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, OrgListResponse{Items: items, Total: total})
@@ -88,13 +88,13 @@ func (h *OrgHandler) Tree(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.Service.Tree(r.Context(), effectiveTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询组织失败")
+		respondServerError(w, r, err, "查询组织失败")
 		return
 	}
 
 	counts, err := h.Service.MemberCounts(r.Context(), effectiveTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "统计组织成员失败")
+		respondServerError(w, r, err, "统计组织成员失败")
 		return
 	}
 	for i := range items {
@@ -148,7 +148,7 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SortOrder: req.SortOrder,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建组织失败")
+		respondServerError(w, r, err, "创建组织失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, org)

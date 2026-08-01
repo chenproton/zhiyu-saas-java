@@ -60,7 +60,7 @@ func (h *PositionAbilityHandler) ListBindings(w http.ResponseWriter, r *http.Req
 	}
 	items, total, err := h.Service.ListAbilityBindings(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询绑定失败")
+		respondServerError(w, r, err, "查询绑定失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, PositionAbilityListResponse{Items: items, Total: total})
@@ -100,7 +100,7 @@ func (h *PositionAbilityHandler) CreateBinding(w http.ResponseWriter, r *http.Re
 		Weight:            req.Weight,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建绑定失败")
+		respondServerError(w, r, err, "创建绑定失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, binding)
@@ -139,7 +139,7 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 		Weight:            req.Weight,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新绑定失败")
+		respondServerError(w, r, err, "更新绑定失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, binding)

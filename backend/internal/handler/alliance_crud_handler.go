@@ -168,7 +168,7 @@ func allianceDelete[T any](w http.ResponseWriter, r *http.Request, cfg allianceC
 func alliancePublicList[T any](w http.ResponseWriter, r *http.Request, listFn func(ctx context.Context) ([]T, error)) {
 	items, err := listFn(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})

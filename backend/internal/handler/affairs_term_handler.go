@@ -53,7 +53,7 @@ func (h *AffairsTermHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListTerms(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询学期列表失败")
+		respondServerError(w, r, err, "查询学期列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, TermListResponse{Items: items, Total: total})

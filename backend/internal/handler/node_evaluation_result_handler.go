@@ -53,7 +53,7 @@ func (h *NodeEvaluationResultHandler) List(w http.ResponseWriter, r *http.Reques
 		ScanRows: h.scanRows,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询节点测评结果失败")
+		respondServerError(w, r, err, "查询节点测评结果失败")
 		return
 	}
 

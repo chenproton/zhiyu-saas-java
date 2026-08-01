@@ -182,7 +182,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Status:      req.Status,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新职称失败")
+		respondServerError(w, r, err, "更新职称失败")
 		return
 	}
 
@@ -210,7 +210,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	userCount, err := h.Store.CountUserRefs(r.Context(), title.TenantID, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "检查职称引用失败")
+		respondServerError(w, r, err, "检查职称引用失败")
 		return
 	}
 	if userCount > 0 {

@@ -56,7 +56,7 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListExamResults(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询考试结果失败")
+		respondServerError(w, r, err, "查询考试结果失败")
 		return
 	}
 	for i := range items {

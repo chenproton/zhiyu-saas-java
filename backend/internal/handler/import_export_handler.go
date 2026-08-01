@@ -124,7 +124,7 @@ func (h *ImportExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 	cols := strings.Join(meta.defaultCols, ", ")
 	rows, err := h.DB.Query(r.Context(), fmt.Sprintf(`SELECT %s FROM %s WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 1000`, cols, entity), tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "导出失败")
+		respondServerError(w, r, err, "导出失败")
 		return
 	}
 	defer rows.Close()

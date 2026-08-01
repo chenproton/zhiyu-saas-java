@@ -53,7 +53,7 @@ func (h *HybridModuleHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListHybridModules(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询混合模块失败")
+		respondServerError(w, r, err, "查询混合模块失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, HybridModuleListResponse{Items: items, Total: total})
@@ -80,7 +80,7 @@ func (h *HybridModuleHandler) UpsertModule(w http.ResponseWriter, r *http.Reques
 		NodeID: req.NodeID, ModuleKey: req.ModuleKey, Mode: req.Mode, Data: req.Data,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "保存混合模块失败")
+		respondServerError(w, r, err, "保存混合模块失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, module)

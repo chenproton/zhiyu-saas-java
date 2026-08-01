@@ -79,7 +79,7 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListStudentPortraits(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询学生画像失败")
+		respondServerError(w, r, err, "查询学生画像失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, StudentPortraitListResponse{Items: items, Total: total})
@@ -173,7 +173,7 @@ func (h *StudentPortraitHandler) ListArchives(w http.ResponseWriter, r *http.Req
 	}
 	items, total, err := h.Service.ListStudentArchives(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询学生档案列表失败")
+		respondServerError(w, r, err, "查询学生档案列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, StudentArchiveListResponse{Items: items, Total: total})
@@ -212,7 +212,7 @@ func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Re
 		Direction:    direction,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建学生档案失败")
+		respondServerError(w, r, err, "创建学生档案失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, archive)
@@ -231,7 +231,7 @@ func (h *StudentPortraitHandler) DeleteArchive(w http.ResponseWriter, r *http.Re
 	id := chi.URLParam(r, "id")
 	deleted, err := h.Service.DeleteStudentArchive(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除学生档案失败")
+		respondServerError(w, r, err, "删除学生档案失败")
 		return
 	}
 	if !deleted {

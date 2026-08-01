@@ -70,7 +70,7 @@ func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListTasks(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询任务失败")
+		respondServerError(w, r, err, "查询任务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ScenarioTaskListResponse{Items: items, Total: total})
@@ -140,7 +140,7 @@ func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		TenantID:            scenarioTenantID,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建任务失败")
+		respondServerError(w, r, err, "创建任务失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, task)
@@ -202,7 +202,7 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		TenantID:            newScenarioTenantID,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新任务失败")
+		respondServerError(w, r, err, "更新任务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, result)

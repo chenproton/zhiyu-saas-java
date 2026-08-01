@@ -26,7 +26,7 @@ func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
 	params, _ := listParamsFromRequest(r, false)
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询租户失败")
+		respondServerError(w, r, err, "查询租户失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, TenantListResponse{Items: items, Total: total})
@@ -64,7 +64,7 @@ func (h *TenantHandler) AdminCreate(w http.ResponseWriter, r *http.Request) {
 
 	tenant, err := h.Service.Get(r.Context(), result.TenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建租户失败")
+		respondServerError(w, r, err, "创建租户失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, CreateTenantResponse{
@@ -114,7 +114,7 @@ func (h *TenantHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
 		EducationNature:   req.EducationNature,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新租户失败")
+		respondServerError(w, r, err, "更新租户失败")
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *TenantHandler) AdminDelete(w http.ResponseWriter, r *http.Request) {
 
 	err := h.Service.DeleteTenant(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除租户失败")
+		respondServerError(w, r, err, "删除租户失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id, "deleted": "true"})

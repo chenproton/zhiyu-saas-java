@@ -141,7 +141,7 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "获取当前状态失败")
+		respondServerError(w, r, err, "获取当前状态失败")
 		return
 	}
 
@@ -152,7 +152,7 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 
 	tx, err := c.pool.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
+		respondServerError(w, r, err, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())

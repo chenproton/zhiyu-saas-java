@@ -90,7 +90,7 @@ func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Requ
 		Weight:     req.Weight,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新或创建权重失败")
+		respondServerError(w, r, err, "更新或创建权重失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, wgt)

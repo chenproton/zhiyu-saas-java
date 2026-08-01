@@ -35,7 +35,7 @@ func (h *UserExtensionFieldHandler) List(w http.ResponseWriter, r *http.Request)
 
 	items, err := h.Service.List(r.Context(), tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "确保default extension fields失败")
+		respondServerError(w, r, err, "确保default extension fields失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, UserExtensionFieldListResponse{Items: items})
@@ -74,7 +74,7 @@ func (h *UserExtensionFieldHandler) Update(w http.ResponseWriter, r *http.Reques
 		ApplicableRoleCodes: req.ApplicableRoleCodes,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新扩展字段失败")
+		respondServerError(w, r, err, "更新扩展字段失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, updated)

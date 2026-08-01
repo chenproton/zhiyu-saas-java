@@ -125,13 +125,13 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	bases, total, err := h.Service.ListNodeBases(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询课程节点失败")
+		respondServerError(w, r, err, "查询课程节点失败")
 		return
 	}
 
 	items, err := h.enrichCourseNodes(r.Context(), bases)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
+		respondServerError(w, r, err, "丰富课程节点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, CourseNodeListResponse{Items: items, Total: total})
@@ -151,7 +151,7 @@ func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.enrichCourseNodes(r.Context(), []courseNodeBase{*base})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
+		respondServerError(w, r, err, "丰富课程节点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, items[0])
@@ -199,13 +199,13 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Status:              req.Status,
 	}, kpIDs, resIDs)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建课程节点失败")
+		respondServerError(w, r, err, "创建课程节点失败")
 		return
 	}
 
 	items, err := h.enrichCourseNodes(r.Context(), []courseNodeBase{*node})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
+		respondServerError(w, r, err, "丰富课程节点失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, items[0])
@@ -259,13 +259,13 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Status:              req.Status,
 	}, kpIDs, resIDs)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新课程节点失败")
+		respondServerError(w, r, err, "更新课程节点失败")
 		return
 	}
 
 	items, err := h.enrichCourseNodes(r.Context(), []courseNodeBase{*node})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
+		respondServerError(w, r, err, "丰富课程节点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, items[0])

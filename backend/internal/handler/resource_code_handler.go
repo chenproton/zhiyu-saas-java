@@ -58,7 +58,7 @@ func (h *ResourceCodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.ListResourceCodes(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询资源编码失败")
+		respondServerError(w, r, err, "查询资源编码失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ResourceCodeListResponse{Items: items, Total: total})
@@ -135,7 +135,7 @@ func (h *ResourceCodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name, Description: req.Description, Type: req.Type,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新资源编码失败")
+		respondServerError(w, r, err, "更新资源编码失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, resourceCode)

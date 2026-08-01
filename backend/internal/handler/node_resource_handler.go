@@ -61,7 +61,7 @@ func (h *NodeResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 	}
 	rows, total, err := h.Service.List(r.Context(), tenantID, search, bind, nodeID, limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询节点资源失败")
+		respondServerError(w, r, err, "查询节点资源失败")
 		return
 	}
 	items := make([]domain.NodeResource, 0, len(rows))
@@ -118,7 +118,7 @@ func (h *NodeResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		FileSize:    fileSize,
 	}, nil)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建节点资源失败")
+		respondServerError(w, r, err, "创建节点资源失败")
 		return
 	}
 	var res domain.NodeResource
@@ -156,7 +156,7 @@ func (h *NodeResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 
 	id, err := h.Service.Bind(r.Context(), tenantID, "node_resource_bindings", "node_id", req.NodeID, req.ResourceID, nil)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "绑定节点资源失败")
+		respondServerError(w, r, err, "绑定节点资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

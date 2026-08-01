@@ -91,7 +91,7 @@ func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询租户列表失败")
+		respondServerError(w, r, err, "查询租户列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, TenantListResponse{Items: items, Total: total})
@@ -152,7 +152,7 @@ func (h *TenantHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	tenant, err := h.Service.Get(r.Context(), result.TenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建租户失败")
+		respondServerError(w, r, err, "创建租户失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, CreateTenantResponse{
@@ -215,7 +215,7 @@ func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 		EducationNature:  req.EducationNature,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新租户失败")
+		respondServerError(w, r, err, "更新租户失败")
 		return
 	}
 
