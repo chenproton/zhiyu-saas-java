@@ -186,7 +186,7 @@ func (s *CourseNodeStore) ResourcesByIDs(ctx context.Context, ids []string) (map
 		return out, nil
 	}
 	rows, err := s.q.Query(ctx, `
-		SELECT rl.id, rl.name, rl.resource_type, COALESCE(rl.url, ''), rl.file_size::int
+		SELECT rl.id, rl.name, rl.resource_type, COALESCE(rl.url, ''), COALESCE(rl.file_size, 0)::int
 		FROM unnest($1::uuid[]) AS res_id
 		JOIN resource_library rl ON rl.id = res_id
 	`, ids)
@@ -272,7 +272,7 @@ func (s *CourseNodeStore) OriginalSourceResources(ctx context.Context, courseIDs
 			rl.name,
 			rl.resource_type,
 			COALESCE(rl.url, '') AS url,
-			rl.file_size::int AS size
+			COALESCE(rl.file_size, 0)::int AS size
 		FROM course_resource_bindings crb
 		JOIN resource_library rl ON rl.id = crb.resource_id
 		WHERE crb.course_id = ANY($1)
