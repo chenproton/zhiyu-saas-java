@@ -297,6 +297,7 @@ var (
 
 	allowedListQueryTenantColumns = []string{
 	"",
+	"tenant_id",
 	"ab.tenant_id",
 	"b.tenant_id",
 	"c.tenant_id",
