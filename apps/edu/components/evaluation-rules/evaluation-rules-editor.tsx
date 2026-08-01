@@ -28,7 +28,7 @@ import {
   BookOpen,
   ClipboardList,
 } from "lucide-react"
-import { useMemo, useState, useRef, useLayoutEffect, useCallback, useEffect } from "react"
+import { useMemo, useState, useRef, useCallback, useEffect } from "react"
 import type { ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -55,8 +55,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { useToast } from "@zhiyu/ui"
-import { createTagElement } from "@/lib/dom-utils"
 import { reportError } from "@/lib/error-handling"
+import { MixedTagEditor } from "@/components/shared/mixed-tag-editor"
 import type { KnowledgePointItem } from "@/lib/types/lesson"
 import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import { useEvalRuleStore } from "@/lib/evaluation-rule-store"
@@ -1499,64 +1499,6 @@ export function EvaluationRulesEditor({
     }
   }
 
-  function MixedTagEditor({ text, knowledgePointIds, abilityPointIds, onChange, onOpenKpDialog, onOpenAbDialog }: { text: string; knowledgePointIds: string[]; abilityPointIds: string[]; onChange: (updates: { name?: string; knowledgePointIds?: string[]; abilityPointIds?: string[] }) => void; onOpenKpDialog: () => void; onOpenAbDialog: () => void; }) {
-    const ref = useRef<HTMLDivElement>(null)
-    const isComposing = useRef(false)
-    const onChangeRef = useRef(onChange)
-    onChangeRef.current = onChange
-
-    const createTagSpan = (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
-      if (type === 'kp') {
-        const kp = knowledgePoints.find(k => k.id === id)
-        if (!kp) return null
-        return createTagElement('kp', id, kp.name, () => {
-          onChangeRef.current({ knowledgePointIds: knowledgePointIds.filter(i => i !== id) })
-        })
-      } else {
-        const ab = abilityPoints.find(a => a.id === id)
-        if (!ab) return null
-        return createTagElement('ab', id, ab.name, () => {
-          onChangeRef.current({ abilityPointIds: abilityPointIds.filter(i => i !== id) })
-        })
-      }
-    }
-
-    useLayoutEffect(() => {
-      const el = ref.current
-      if (!el) return
-      if (text) el.textContent = text
-      else el.innerHTML = ''
-      knowledgePointIds.forEach(kpid => { const span = createTagSpan('kp', kpid); if (span) el.appendChild(span); })
-      abilityPointIds.forEach(abId => { const span = createTagSpan('ab', abId); if (span) el.appendChild(span); })
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
-    const handleBlur = () => {
-      if (isComposing.current) return
-      const el = ref.current
-      if (!el) return
-      let newText = ''
-      const newKpIds: string[] = []
-      const newAbIds: string[] = []
-      el.childNodes.forEach(node => {
-        if (node.nodeType === Node.TEXT_NODE) newText += node.textContent || ''
-        else if (node.nodeType === Node.ELEMENT_NODE) {
-          const dataset = (node as HTMLElement).dataset
-          if (dataset.tag) { if (dataset.type === 'kp' && dataset.id) newKpIds.push(dataset.id); if (dataset.type === 'ab' && dataset.id) newAbIds.push(dataset.id); }
-        }
-      })
-      onChangeRef.current({ name: newText, knowledgePointIds: newKpIds, abilityPointIds: newAbIds })
-    }
-
-    return (
-      <div className="min-h-[32px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm flex flex-wrap gap-1 items-center">
-        <div ref={ref} contentEditable suppressContentEditableWarning className="flex-1 outline-none min-w-[80px] text-sm leading-6 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400" data-placeholder="输入评价维度" onBlur={handleBlur} onCompositionStart={() => { isComposing.current = true }} onCompositionEnd={() => { isComposing.current = false }} onPaste={(e) => { e.preventDefault(); const pasted = e.clipboardData.getData('text/plain'); document.execCommand('insertText', false, pasted); }} />
-        <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onClick={onOpenKpDialog}>关联考查知识点</Button>
-        <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onClick={onOpenAbDialog}>关联考查能力点</Button>
-      </div>
-    )
-  }
-
   const methodDialogContent = erDialogMethod ? (() => {
     const info = getMethodEvalInfo(erDialogMethod)
     const rubricIdField = erDialogMethod === "random_draw" ? "randomDrawRubricId" : erDialogMethod === "review" ? "reviewRubricId" : erDialogMethod === "outcome" ? "outcomeRubricId" : erDialogMethod === "homework" ? "homeworkRubricId" : "reviewRubricId"
@@ -1673,7 +1615,7 @@ export function EvaluationRulesEditor({
                     {info.points.map((ep, idx) => (
                       <tr key={ep.id} className="border-b hover:bg-gray-50/50 transition-colors">
                         <td className="py-3 px-2"><span className="text-gray-600 align-middle">{idx + 1}</span></td>
-                        <td className="py-3 px-2"><MixedTagEditor text={ep.name} knowledgePointIds={ep.knowledgePointIds || []} abilityPointIds={ep.abilityPointIds || []} onChange={updates => updateEvalPoint(info.field, ep.id, updates)} onOpenKpDialog={() => openRubricKpDialog(ep.id, info.field)} onOpenAbDialog={() => openRubricAbDialog(ep.id, info.field)} /></td>
+                        <td className="py-3 px-2"><MixedTagEditor text={ep.name} knowledgePointIds={ep.knowledgePointIds || []} abilityPointIds={ep.abilityPointIds || []} knowledgePoints={knowledgePoints} abilityPoints={abilityPoints} onChange={updates => updateEvalPoint(info.field, ep.id, updates)} onOpenKpDialog={() => openRubricKpDialog(ep.id, info.field)} onOpenAbDialog={() => openRubricAbDialog(ep.id, info.field)} /></td>
                         <td className="py-3 px-2"><button onClick={() => { setEditingGradeMappingPointId(ep.id); setGradeMappingDialogOpen(true); }} className="text-xs text-left text-primary hover:underline w-full block">{ep.gradeMapping?.map(gm => <div key={gm.id} className="truncate leading-relaxed" title={`${gm.grade} (${gm.minScore}-${gm.maxScore}分) ${gm.remark}`}>{gm.grade} ({gm.minScore}-{gm.maxScore}分) {gm.remark}</div>)}{!ep.gradeMapping?.length && "点击配置评价等级"}</button></td>
                         <td className="py-3 px-2"><Input type="number" value={ep.weight || 0} onChange={e => updateEvalPoint(info.field, ep.id, { weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} className="h-8 text-sm text-center" /></td>
                         <td className="py-3 px-2 text-center"><button className="text-red-500 hover:text-red-600 text-xs" onClick={() => removeEvalPoint(info.field, ep.id)}>删除</button></td>
