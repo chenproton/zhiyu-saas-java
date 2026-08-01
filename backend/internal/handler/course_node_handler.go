@@ -2,20 +2,17 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CourseNodeHandler struct {
-	DB *pgxpool.Pool
+	Service *service.LessonContentService
 }
 
 type CourseNodeListResponse struct {
@@ -23,30 +20,29 @@ type CourseNodeListResponse struct {
 	Total int                        `json:"total"`
 }
 
-// SystemCourseNodeResponse 是前端编辑页需要的完整节点模型。
 type SystemCourseNodeResponse struct {
-	ID                  string                           `json:"id"`
-	CourseID            string                           `json:"courseId"`
-	ParentID            *string                          `json:"parentId,omitempty"`
-	Name                string                           `json:"name"`
-	Code                *string                          `json:"code,omitempty"`
-	Order               int                              `json:"order"`
-	Type                string                           `json:"type"`
-	SourceID            *string                          `json:"sourceId,omitempty"`
-	SourceName          *string                          `json:"sourceName,omitempty"`
-	TeachingGoals       *string                          `json:"teachingGoals,omitempty"`
-	DetailedDescription *string                          `json:"detailedDescription,omitempty"`
-	DescriptionPdf      *string                          `json:"descriptionPdf,omitempty"`
-	Background          *string                          `json:"background,omitempty"`
-	EstimatedHours      *float64                         `json:"estimatedHours,omitempty"`
-	Duration            *float64                         `json:"duration,omitempty"`
-	Difficulty          *int                             `json:"difficulty,omitempty"`
-	KnowledgePoints     []SystemCourseNodeKnowledgePoint `json:"knowledgePoints,omitempty"`
-	Resources           []SystemCourseNodeResource       `json:"resources,omitempty"`
-	Quizzes             []domain.NodeQuiz                `json:"quizzes,omitempty"`
-	Homeworks           []domain.NodeHomework            `json:"homeworks,omitempty"`
-	EvalData            domain.JSONMap                   `json:"evalData,omitempty"`
-	Status              string                           `json:"status"`
+	ID                  string                          `json:"id"`
+	CourseID            string                          `json:"courseId"`
+	ParentID            *string                         `json:"parentId,omitempty"`
+	Name                string                          `json:"name"`
+	Code                *string                         `json:"code,omitempty"`
+	Order               int                             `json:"order"`
+	Type                string                          `json:"type"`
+	SourceID            *string                         `json:"sourceId,omitempty"`
+	SourceName          *string                         `json:"sourceName,omitempty"`
+	TeachingGoals       *string                         `json:"teachingGoals,omitempty"`
+	DetailedDescription *string                         `json:"detailedDescription,omitempty"`
+	DescriptionPdf      *string                         `json:"descriptionPdf,omitempty"`
+	Background          *string                         `json:"background,omitempty"`
+	EstimatedHours      *float64                        `json:"estimatedHours,omitempty"`
+	Duration            *float64                        `json:"duration,omitempty"`
+	Difficulty          *int                            `json:"difficulty,omitempty"`
+	EvalData            domain.JSONMap                  `json:"evalData,omitempty"`
+	Status              string                          `json:"status"`
+	KnowledgePoints     []SystemCourseNodeKnowledgePoint `json:"knowledgePoints"`
+	Resources           []SystemCourseNodeResource      `json:"resources"`
+	Quizzes             []domain.NodeQuiz               `json:"quizzes"`
+	Homeworks           []domain.NodeHomework           `json:"homeworks"`
 }
 
 type SystemCourseNodeKnowledgePoint struct {
@@ -62,78 +58,39 @@ type SystemCourseNodeResource struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
 	URL  string `json:"url"`
-	Size *int   `json:"size,omitempty"`
+	Size int    `json:"size"`
 }
 
 type CreateCourseNodeRequest struct {
-	CourseID            string           `json:"courseId"`
-	ParentID            *string          `json:"parentId"`
-	Name                string           `json:"name"`
-	Code                *string          `json:"code"`
-	SortOrder           int              `json:"sortOrder"`
-	RefType             string           `json:"refType"`
-	SourceID            *string          `json:"sourceId"`
-	SourceName          *string          `json:"sourceName"`
-	TeachingGoals       *string          `json:"teachingGoals"`
-	DetailedDescription *string          `json:"detailedDescription"`
-	DescriptionPdf      *string          `json:"descriptionPdf"`
-	Background          *string          `json:"background"`
-	EstimatedHours      *float64         `json:"estimatedHours"`
-	Duration            *float64         `json:"duration"`
-	Difficulty          *int             `json:"difficulty"`
+	CourseID            string          `json:"courseId"`
+	ParentID            *string         `json:"parentId"`
+	Name                string          `json:"name"`
+	Code                *string         `json:"code"`
+	SortOrder           int             `json:"sortOrder"`
+	RefType             string          `json:"refType"`
+	SourceID            *string         `json:"sourceId"`
+	SourceName          *string         `json:"sourceName"`
+	TeachingGoals       *string         `json:"teachingGoals"`
+	DetailedDescription *string         `json:"detailedDescription"`
+	DescriptionPdf      *string         `json:"descriptionPdf"`
+	Background          *string         `json:"background"`
+	EstimatedHours      *float64        `json:"estimatedHours"`
+	Duration            *float64        `json:"duration"`
+	Difficulty          *int            `json:"difficulty"`
 	KnowledgePointIds   domain.JSONSlice `json:"knowledgePointIds"`
 	ResourceIds         domain.JSONSlice `json:"resourceIds"`
-	EvalData            domain.JSONMap   `json:"evalData"`
-	Status              string           `json:"status"`
+	EvalData            domain.JSONMap  `json:"evalData"`
+	Status              string          `json:"status"`
 }
 
-type UpdateCourseNodeRequest struct {
-	Name                string           `json:"name"`
-	Code                *string          `json:"code"`
-	SortOrder           int              `json:"sortOrder"`
-	RefType             string           `json:"refType"`
-	SourceID            *string          `json:"sourceId"`
-	SourceName          *string          `json:"sourceName"`
-	TeachingGoals       *string          `json:"teachingGoals"`
-	DetailedDescription *string          `json:"detailedDescription"`
-	DescriptionPdf      *string          `json:"descriptionPdf"`
-	Background          *string          `json:"background"`
-	EstimatedHours      *float64         `json:"estimatedHours"`
-	Duration            *float64         `json:"duration"`
-	Difficulty          *int             `json:"difficulty"`
-	KnowledgePointIds   domain.JSONSlice `json:"knowledgePointIds"`
-	ResourceIds         domain.JSONSlice `json:"resourceIds"`
-	EvalData            domain.JSONMap   `json:"evalData"`
-	Status              string           `json:"status"`
-}
+type UpdateCourseNodeRequest = CreateCourseNodeRequest
 
 type ReorderCourseNodesRequest struct {
 	CourseID string   `json:"courseId"`
 	NodeIDs  []string `json:"nodeIds"`
 }
 
-type courseNodeBase struct {
-	ID                  string
-	CourseID            string
-	ParentID            *string
-	Name                string
-	Code                *string
-	SortOrder           int
-	RefType             string
-	SourceID            *string
-	SourceName          *string
-	TeachingGoals       *string
-	DetailedDescription *string
-	DescriptionPdf      *string
-	Background          *string
-	EstimatedHours      *float64
-	Duration            *float64
-	Difficulty          *int
-	KnowledgePointIds   []string
-	ResourceIds         []string
-	EvalData            domain.JSONMap
-	Status              string
-}
+type courseNodeBase = store.CourseNodeBase
 
 func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
@@ -144,7 +101,7 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	courseID := r.URL.Query().Get("courseId")
 	parentID := r.URL.Query().Get("parentId")
 
-	bases, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[courseNodeBase]{
+	cfg := store.ListQueryConfig[store.CourseNodeBase]{
 		Table:         "system_course_nodes n",
 		SelectColumns: "n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name, n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status",
 		TenantScoped:  true,
@@ -160,13 +117,14 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.AddCondition("n.parent_id IS NULL")
 			}
 		},
-		ScanRows: h.scanCourseNodeBaseRows,
-	})
+	}
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	bases, total, err := h.Service.ListNodeBases(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询课程节点失败")
 		return
 	}
@@ -176,7 +134,6 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, CourseNodeListResponse{Items: items, Total: total})
 }
 
@@ -187,12 +144,17 @@ func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	node, err := h.fetchCourseNode(r.Context(), id)
+	base, err := h.Service.GetNodeBase(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
-	respondJSON(w, http.StatusOK, node)
+	items, err := h.enrichCourseNodes(r.Context(), []courseNodeBase{*base})
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, items[0])
 }
 
 func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -209,53 +171,44 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	id := uuid.NewString()
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
-	if req.EvalData == nil {
-		req.EvalData = domain.JSONMap{}
-	}
 
-	_, err = tx.Exec(r.Context(), `
-		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, code, sort_order, ref_type, source_id, source_name,
-			teaching_goals, detailed_description, description_pdf, background, estimated_hours,
-			duration, difficulty, knowledge_point_ids, resource_ids, eval_data, status)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
-	`, id, tenantID, req.CourseID, req.ParentID, req.Name, req.Code, req.SortOrder, req.RefType, req.SourceID, req.SourceName,
-		req.TeachingGoals, req.DetailedDescription, req.DescriptionPdf, req.Background, req.EstimatedHours,
-		req.Duration, req.Difficulty, kpIDs, resIDs, req.EvalData, req.Status)
+	node, err := h.Service.CreateNode(r.Context(), tenantID, &store.CourseNodeCreateParams{
+		CourseID:            req.CourseID,
+		ParentID:            req.ParentID,
+		Name:                req.Name,
+		Code:                req.Code,
+		SortOrder:           req.SortOrder,
+		RefType:             req.RefType,
+		SourceID:            req.SourceID,
+		SourceName:          req.SourceName,
+		TeachingGoals:       req.TeachingGoals,
+		DetailedDescription: req.DetailedDescription,
+		DescriptionPdf:      req.DescriptionPdf,
+		Background:          req.Background,
+		EstimatedHours:      req.EstimatedHours,
+		Duration:            req.Duration,
+		Difficulty:          req.Difficulty,
+		EvalData:            req.EvalData,
+		Status:              req.Status,
+	}, kpIDs, resIDs)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建课程节点失败")
 		return
 	}
 
-	for _, kpID := range kpIDs {
-		_, _ = tx.Exec(r.Context(), `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID)
-	}
-	for _, resID := range resIDs {
-		_, _ = tx.Exec(r.Context(), `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID)
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
+	items, err := h.enrichCourseNodes(r.Context(), []courseNodeBase{*node})
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
 		return
 	}
-
-	node, _ := h.fetchCourseNode(r.Context(), id)
-	respondJSON(w, http.StatusCreated, node)
+	respondJSON(w, http.StatusCreated, items[0])
 }
 
 func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -265,7 +218,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchCourseNode(r.Context(), id); err != nil {
+	if _, err := h.Service.GetNodeBase(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
@@ -281,51 +234,41 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
-	if req.EvalData == nil {
-		req.EvalData = domain.JSONMap{}
-	}
 	if req.RefType == "original" {
 		kpIDs = []string{}
 		resIDs = []string{}
 	}
 
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	_, err = tx.Exec(r.Context(), `
-		UPDATE system_course_nodes SET name = $1, code = $2, sort_order = $3, ref_type = $4, source_id = $5,
-			source_name = $6, teaching_goals = $7, detailed_description = $8, description_pdf = $9,
-			background = $10, estimated_hours = $11, duration = $12, difficulty = $13,
-			knowledge_point_ids = $14, resource_ids = $15, eval_data = $16, status = $17, updated_at = NOW()
-		WHERE id = $18
-	`, req.Name, req.Code, req.SortOrder, req.RefType, req.SourceID, req.SourceName, req.TeachingGoals,
-		req.DetailedDescription, req.DescriptionPdf, req.Background, req.EstimatedHours,
-		req.Duration, req.Difficulty, kpIDs, resIDs, req.EvalData, req.Status, id)
+	node, err := h.Service.UpdateNode(r.Context(), id, &store.CourseNodeUpdateParams{
+		CourseID:            req.CourseID,
+		ParentID:            req.ParentID,
+		Name:                req.Name,
+		Code:                req.Code,
+		SortOrder:           req.SortOrder,
+		RefType:             req.RefType,
+		SourceID:            req.SourceID,
+		SourceName:          req.SourceName,
+		TeachingGoals:       req.TeachingGoals,
+		DetailedDescription: req.DetailedDescription,
+		DescriptionPdf:      req.DescriptionPdf,
+		Background:          req.Background,
+		EstimatedHours:      req.EstimatedHours,
+		Duration:            req.Duration,
+		Difficulty:          req.Difficulty,
+		EvalData:            req.EvalData,
+		Status:              req.Status,
+	}, kpIDs, resIDs)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新课程节点失败")
 		return
 	}
 
-	_, _ = tx.Exec(r.Context(), `DELETE FROM node_knowledge_point_bindings WHERE node_id = $1`, id)
-	_, _ = tx.Exec(r.Context(), `DELETE FROM node_resource_bindings WHERE node_id = $1`, id)
-	for _, kpID := range kpIDs {
-		_, _ = tx.Exec(r.Context(), `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID)
-	}
-	for _, resID := range resIDs {
-		_, _ = tx.Exec(r.Context(), `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID)
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
+	items, err := h.enrichCourseNodes(r.Context(), []courseNodeBase{*node})
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
 		return
 	}
-
-	node, _ := h.fetchCourseNode(r.Context(), id)
-	respondJSON(w, http.StatusOK, node)
+	respondJSON(w, http.StatusOK, items[0])
 }
 
 func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -335,13 +278,11 @@ func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchCourseNode(r.Context(), id); err != nil {
+	if _, err := h.Service.GetNodeBase(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM system_course_nodes WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.DeleteNode(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除课程节点失败")
 		return
 	}
@@ -362,71 +303,14 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
+	if err := h.Service.ReorderNodes(r.Context(), req.CourseID, req.NodeIDs); err != nil {
+		respondError(w, http.StatusInternalServerError, "重新排序nodes失败")
 		return
 	}
-	defer tx.Rollback(r.Context())
-
-	for i, nodeID := range req.NodeIDs {
-		_, err := tx.Exec(r.Context(), `
-			UPDATE system_course_nodes SET sort_order = $1, updated_at = NOW()
-			WHERE id = $2 AND course_id = $3
-		`, i, nodeID, req.CourseID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "重新排序nodes失败")
-			return
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
 	respondJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-func (h *CourseNodeHandler) fetchCourseNode(ctx context.Context, id string) (*SystemCourseNodeResponse, error) {
-	var base courseNodeBase
-	err := h.DB.QueryRow(ctx, `
-		SELECT n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours,
-			n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status
-		FROM system_course_nodes n WHERE n.id = $1
-	`, id).Scan(
-		&base.ID, &base.CourseID, &base.ParentID, &base.Name, &base.Code, &base.SortOrder, &base.RefType, &base.SourceID, &base.SourceName,
-		&base.TeachingGoals, &base.DetailedDescription, &base.DescriptionPdf, &base.Background, &base.EstimatedHours,
-		&base.Duration, &base.Difficulty, &base.KnowledgePointIds, &base.ResourceIds, &base.EvalData, &base.Status,
-	)
-	if err != nil {
-		return nil, err
-	}
-	items, err := h.enrichCourseNodes(ctx, []courseNodeBase{base})
-	if err != nil {
-		return nil, err
-	}
-	return &items[0], nil
-}
-
-func (h *CourseNodeHandler) scanCourseNodeBaseRows(rows pgx.Rows) ([]courseNodeBase, error) {
-	items := make([]courseNodeBase, 0)
-	for rows.Next() {
-		var n courseNodeBase
-		if err := rows.Scan(
-			&n.ID, &n.CourseID, &n.ParentID, &n.Name, &n.Code, &n.SortOrder, &n.RefType, &n.SourceID, &n.SourceName,
-			&n.TeachingGoals, &n.DetailedDescription, &n.DescriptionPdf, &n.Background, &n.EstimatedHours,
-			&n.Duration, &n.Difficulty, &n.KnowledgePointIds, &n.ResourceIds, &n.EvalData, &n.Status,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, n)
-	}
-	return items, nil
-}
-
+// enrichCourseNodes 组装节点响应（知识点/资源/测验/作业/original 继承）。
 func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []courseNodeBase) ([]SystemCourseNodeResponse, error) {
 	items := make([]SystemCourseNodeResponse, len(bases))
 	nodeIndex := make(map[string]int, len(bases))
@@ -455,14 +339,14 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 		nodeIndex[b.ID] = i
 		nodeIDs = append(nodeIDs, b.ID)
 	}
-
 	if len(nodeIDs) == 0 {
 		return items, nil
 	}
 
-	// knowledge points
 	kpIDSet := make(map[string]bool)
 	resIDSet := make(map[string]bool)
+	originalSourceIDs := make([]string, 0, len(items))
+	nodeIDBySource := make(map[string][]string, len(items))
 	for _, b := range bases {
 		for _, id := range b.KnowledgePointIds {
 			kpIDSet[id] = true
@@ -470,202 +354,98 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 		for _, id := range b.ResourceIds {
 			resIDSet[id] = true
 		}
-	}
-
-	kpIDs := make([]string, 0, len(kpIDSet))
-	for id := range kpIDSet {
-		kpIDs = append(kpIDs, id)
-	}
-	resIDs := make([]string, 0, len(resIDSet))
-	for id := range resIDSet {
-		resIDs = append(resIDs, id)
-	}
-
-	kpMap := make(map[string]SystemCourseNodeKnowledgePoint)
-	if len(kpIDs) > 0 {
-		if rows, err := h.DB.Query(ctx, `
-			SELECT kp.id, kp.name, kp.code, kp.description, kp.linked
-			FROM knowledge_points kp
-			WHERE kp.id = ANY($1::uuid[])
-		`, kpIDs); err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var kp SystemCourseNodeKnowledgePoint
-				if err := rows.Scan(&kp.ID, &kp.Name, &kp.Code, &kp.Description, &kp.Linked); err != nil {
-					return nil, err
-				}
-				kpMap[kp.ID] = kp
-			}
-		} else {
-			return nil, err
-		}
-	}
-
-	resMap := make(map[string]SystemCourseNodeResource)
-	if len(resIDs) > 0 {
-		if rows, err := h.DB.Query(ctx, `
-			SELECT rl.id, rl.name, rl.resource_type, COALESCE(rl.url, ''), rl.file_size::int
-			FROM unnest($1::uuid[]) AS res_id
-			JOIN resource_library rl ON rl.id = res_id
-		`, resIDs); err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var res SystemCourseNodeResource
-				if err := rows.Scan(&res.ID, &res.Name, &res.Type, &res.URL, &res.Size); err != nil {
-					return nil, err
-				}
-				resMap[res.ID] = res
-			}
-		} else {
-			return nil, err
-		}
-	}
-
-	for i, b := range bases {
-		for _, id := range b.KnowledgePointIds {
-			if kp, ok := kpMap[id]; ok {
-				items[i].KnowledgePoints = append(items[i].KnowledgePoints, kp)
-			}
-		}
-		for _, id := range b.ResourceIds {
-			if res, ok := resMap[id]; ok {
-				items[i].Resources = append(items[i].Resources, res)
-			}
-		}
-	}
-
-	// quizzes
-	if rows, err := h.DB.Query(ctx, `
-		SELECT id, node_id, title, type, time_limit
-		FROM node_quizzes
-		WHERE node_id = ANY($1)
-		ORDER BY id ASC
-	`, nodeIDs); err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var q domain.NodeQuiz
-			if err := rows.Scan(&q.ID, &q.NodeID, &q.Title, &q.Type, &q.TimeLimit); err != nil {
-				return nil, err
-			}
-			if idx, ok := nodeIndex[q.NodeID]; ok {
-				items[idx].Quizzes = append(items[idx].Quizzes, q)
-			}
-		}
-	} else {
-		return nil, err
-	}
-
-	// homeworks
-	if rows, err := h.DB.Query(ctx, `
-		SELECT id, node_id, title, requirement, need_attachment, deadline
-		FROM node_homeworks
-		WHERE node_id = ANY($1)
-		ORDER BY id ASC
-	`, nodeIDs); err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var hw domain.NodeHomework
-			if err := rows.Scan(&hw.ID, &hw.NodeID, &hw.Title, &hw.Requirement, &hw.NeedAttachment, &hw.Deadline); err != nil {
-				return nil, err
-			}
-			if idx, ok := nodeIndex[hw.NodeID]; ok {
-				items[idx].Homeworks = append(items[idx].Homeworks, hw)
-			}
-		}
-	} else {
-		return nil, err
-	}
-
-	// original 节点从来源颗粒课继承知识点和资源（以绑定表为准，避免 courses 数组字段为空）
-	originalSourceIDs := make([]string, 0, len(items))
-	nodeIDBySource := make(map[string][]string, len(items))
-	for _, b := range bases {
 		if b.RefType == "original" && b.SourceID != nil && *b.SourceID != "" {
 			sourceID := *b.SourceID
 			originalSourceIDs = append(originalSourceIDs, sourceID)
 			nodeIDBySource[sourceID] = append(nodeIDBySource[sourceID], b.ID)
 		}
 	}
-	if len(originalSourceIDs) > 0 {
-		// 先收集各 original 节点已有的知识点/资源 ID，避免重复追加
-		kpSeen := make(map[string]map[string]bool)
-		resSeen := make(map[string]map[string]bool)
-		for _, b := range bases {
-			if b.RefType != "original" {
-				continue
-			}
-			if kpSeen[b.ID] == nil {
-				kpSeen[b.ID] = make(map[string]bool)
-			}
-			for _, id := range b.KnowledgePointIds {
-				kpSeen[b.ID][id] = true
-			}
-			if resSeen[b.ID] == nil {
-				resSeen[b.ID] = make(map[string]bool)
-			}
-			for _, id := range b.ResourceIds {
-				resSeen[b.ID][id] = true
+	allKPIDs := make([]string, 0, len(kpIDSet))
+	for id := range kpIDSet {
+		allKPIDs = append(allKPIDs, id)
+	}
+	allResIDs := make([]string, 0, len(resIDSet))
+	for id := range resIDSet {
+		allResIDs = append(allResIDs, id)
+	}
+
+	data, err := h.Service.EnrichNodes(ctx, nodeIDs, allKPIDs, allResIDs, originalSourceIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, b := range bases {
+		for _, id := range b.KnowledgePointIds {
+			if kp, ok := data.KnowledgePoints[id]; ok {
+				items[i].KnowledgePoints = append(items[i].KnowledgePoints, SystemCourseNodeKnowledgePoint{
+					ID: kp.ID, Name: kp.Name, Code: kp.Code, Description: kp.Description, Linked: kp.Linked,
+				})
 			}
 		}
-
-		// knowledge points from granular course bindings
-		if rows, err := h.DB.Query(ctx, `
-			SELECT ckb.course_id, kp.id, kp.name, kp.code, kp.description, TRUE AS linked
-			FROM course_knowledge_bindings ckb
-			JOIN knowledge_points kp ON kp.id = ckb.knowledge_point_id
-			WHERE ckb.course_id = ANY($1) AND ckb.bind_type = 'course'
-		`, originalSourceIDs); err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var courseID string
-				var kp SystemCourseNodeKnowledgePoint
-				if err := rows.Scan(&courseID, &kp.ID, &kp.Name, &kp.Code, &kp.Description, &kp.Linked); err != nil {
-					return nil, err
-				}
-				for _, nodeID := range nodeIDBySource[courseID] {
-					if idx, ok := nodeIndex[nodeID]; ok {
-						if kpSeen[nodeID][kp.ID] {
-							continue
-						}
-						kpSeen[nodeID][kp.ID] = true
-						items[idx].KnowledgePoints = append(items[idx].KnowledgePoints, kp)
-					}
-				}
+		for _, id := range b.ResourceIds {
+			if res, ok := data.Resources[id]; ok {
+				items[i].Resources = append(items[i].Resources, SystemCourseNodeResource{
+					ID: res.ID, Name: res.Name, Type: res.Type, URL: res.URL, Size: res.Size,
+				})
 			}
-		} else {
-			return nil, err
 		}
+	}
 
-		// resources from granular course bindings
-		if rows, err := h.DB.Query(ctx, `
-			SELECT crb.course_id, rl.id,
-				rl.name,
-				rl.resource_type,
-				COALESCE(rl.url, '') AS url,
-				rl.file_size::int AS size
-			FROM course_resource_bindings crb
-			JOIN resource_library rl ON rl.id = crb.resource_id
-			WHERE crb.course_id = ANY($1)
-		`, originalSourceIDs); err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var courseID string
-				var res SystemCourseNodeResource
-				if err := rows.Scan(&courseID, &res.ID, &res.Name, &res.Type, &res.URL, &res.Size); err != nil {
-					return nil, err
-				}
-				for _, nodeID := range nodeIDBySource[courseID] {
-					if idx, ok := nodeIndex[nodeID]; ok {
-						if resSeen[nodeID][res.ID] {
-							continue
-						}
-						resSeen[nodeID][res.ID] = true
-						items[idx].Resources = append(items[idx].Resources, res)
+	for _, q := range data.Quizzes {
+		if idx, ok := nodeIndex[q.NodeID]; ok {
+			items[idx].Quizzes = append(items[idx].Quizzes, q)
+		}
+	}
+	for _, hw := range data.Homeworks {
+		if idx, ok := nodeIndex[hw.NodeID]; ok {
+			items[idx].Homeworks = append(items[idx].Homeworks, hw)
+		}
+	}
+
+	// original 节点从来源颗粒课继承知识点/资源
+	kpSeen := make(map[string]map[string]bool)
+	resSeen := make(map[string]map[string]bool)
+	for _, b := range bases {
+		if b.RefType != "original" {
+			continue
+		}
+		kpSeen[b.ID] = make(map[string]bool)
+		for _, id := range b.KnowledgePointIds {
+			kpSeen[b.ID][id] = true
+		}
+		resSeen[b.ID] = make(map[string]bool)
+		for _, id := range b.ResourceIds {
+			resSeen[b.ID][id] = true
+		}
+	}
+	for courseID, kps := range data.OriginalKP {
+		for _, nodeID := range nodeIDBySource[courseID] {
+			if idx, ok := nodeIndex[nodeID]; ok {
+				for _, kp := range kps {
+					if kpSeen[nodeID][kp.ID] {
+						continue
 					}
+					kpSeen[nodeID][kp.ID] = true
+					items[idx].KnowledgePoints = append(items[idx].KnowledgePoints, SystemCourseNodeKnowledgePoint{
+						ID: kp.ID, Name: kp.Name, Code: kp.Code, Description: kp.Description, Linked: kp.Linked,
+					})
 				}
 			}
-		} else {
-			return nil, err
+		}
+	}
+	for courseID, resList := range data.OriginalRes {
+		for _, nodeID := range nodeIDBySource[courseID] {
+			if idx, ok := nodeIndex[nodeID]; ok {
+				for _, res := range resList {
+					if resSeen[nodeID][res.ID] {
+						continue
+					}
+					resSeen[nodeID][res.ID] = true
+					items[idx].Resources = append(items[idx].Resources, SystemCourseNodeResource{
+						ID: res.ID, Name: res.Name, Type: res.Type, URL: res.URL, Size: res.Size,
+					})
+				}
+			}
 		}
 	}
 

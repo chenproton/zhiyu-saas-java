@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -925,17 +924,6 @@ func (h *CourseHandler) scanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
 	return items, nil
 }
 
-func jsonSliceToUUIDSlice(ids domain.JSONSlice) []string {
-	out := make([]string, 0, len(ids))
-	for _, v := range ids {
-		s, ok := v.(string)
-		if !ok || s == "" || strings.HasPrefix(s, "kp-custom-") {
-			continue
-		}
-		out = append(out, s)
-	}
-	return out
-}
 
 func (h *CourseHandler) replaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, kpIDs, resIDs []string) {
 	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id = $1 AND bind_type = 'course'`, courseID)

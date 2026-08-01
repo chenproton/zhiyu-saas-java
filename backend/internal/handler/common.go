@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/jackc/pgx/v5"
@@ -402,4 +403,16 @@ func jsonMapBytes(m domain.JSONMap) []byte {
 		return []byte("{}")
 	}
 	return b
+}
+
+func jsonSliceToUUIDSlice(ids domain.JSONSlice) []string {
+	out := make([]string, 0, len(ids))
+	for _, v := range ids {
+		s, ok := v.(string)
+		if !ok || s == "" || strings.HasPrefix(s, "kp-custom-") {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }

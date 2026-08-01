@@ -177,3 +177,99 @@ func (s *LessonContentService) GetCourse(ctx context.Context, id string) (*domai
 
 // ErrCourseNotInTenant 课程不属于当前租户。
 var ErrCourseNotInTenant = errors.New("course not in tenant")
+
+// ListNodeBases 查询节点基础行。
+func (s *LessonContentService) ListNodeBases(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[store.CourseNodeBase]) ([]store.CourseNodeBase, int, error) {
+	return s.st.CourseNodes().List(ctx, p, cfg)
+}
+
+// GetNodeBase 查询单个节点基础行。
+func (s *LessonContentService) GetNodeBase(ctx context.Context, id string) (*store.CourseNodeBase, error) {
+	return s.st.CourseNodes().Get(ctx, id)
+}
+
+// CreateNode 创建节点（事务内绑定知识点/资源）。
+func (s *LessonContentService) CreateNode(ctx context.Context, tenantID string, p *store.CourseNodeCreateParams, kpIDs, resIDs []string) (*store.CourseNodeBase, error) {
+	var node *store.CourseNodeBase
+	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		n, err := txStore.CourseNodes().Create(ctx, txStore.Q(), tenantID, p, kpIDs, resIDs)
+		if err != nil {
+			return err
+		}
+		node = n
+		return nil
+	})
+	return node, err
+}
+
+// UpdateNode 更新节点（事务内重绑知识点/资源）。
+func (s *LessonContentService) UpdateNode(ctx context.Context, id string, p *store.CourseNodeUpdateParams, kpIDs, resIDs []string) (*store.CourseNodeBase, error) {
+	var node *store.CourseNodeBase
+	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		n, err := txStore.CourseNodes().Update(ctx, txStore.Q(), id, p, kpIDs, resIDs)
+		if err != nil {
+			return err
+		}
+		node = n
+		return nil
+	})
+	return node, err
+}
+
+// DeleteNode 删除节点。
+func (s *LessonContentService) DeleteNode(ctx context.Context, id string) error {
+	return s.st.CourseNodes().Delete(ctx, id)
+}
+
+// ReorderNodes 批量重排节点（事务内）。
+func (s *LessonContentService) ReorderNodes(ctx context.Context, courseID string, nodeIDs []string) error {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.CourseNodes().Reorder(ctx, txStore.Q(), courseID, nodeIDs)
+	})
+}
+
+// NodeEnrichData 节点富化查询（知识点/资源/测验/作业/original 继承）。
+type NodeEnrichData struct {
+	KnowledgePoints map[string]store.NodeKnowledgePoint
+	Resources       map[string]store.NodeResource
+	Quizzes         []domain.NodeQuiz
+	Homeworks       []domain.NodeHomework
+	OriginalKP      map[string][]store.NodeKnowledgePoint
+	OriginalRes     map[string][]store.NodeResource
+}
+
+// EnrichNodes 批量查询节点富化数据。
+func (s *LessonContentService) EnrichNodes(ctx context.Context, nodeIDs []string, allKPIDs, allResIDs, originalSourceIDs []string) (*NodeEnrichData, error) {
+	kp, err := s.st.CourseNodes().KnowledgePointsByIDs(ctx, allKPIDs)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.st.CourseNodes().ResourcesByIDs(ctx, allResIDs)
+	if err != nil {
+		return nil, err
+	}
+	quizzes, err := s.st.CourseNodes().QuizzesByNodeIDs(ctx, nodeIDs)
+	if err != nil {
+		return nil, err
+	}
+	homeworks, err := s.st.CourseNodes().HomeworksByNodeIDs(ctx, nodeIDs)
+	if err != nil {
+		return nil, err
+	}
+	origKP, err := s.st.CourseNodes().OriginalSourceKnowledgePoints(ctx, originalSourceIDs)
+	if err != nil {
+		return nil, err
+	}
+	origRes, err := s.st.CourseNodes().OriginalSourceResources(ctx, originalSourceIDs)
+	if err != nil {
+		return nil, err
+	}
+	return &NodeEnrichData{
+		KnowledgePoints: kp,
+		Resources:       res,
+		Quizzes:         quizzes,
+		Homeworks:       homeworks,
+		OriginalKP:      origKP,
+		OriginalRes:     origRes,
+	}, nil
+}

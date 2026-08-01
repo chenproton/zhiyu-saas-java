@@ -320,7 +320,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/lesson/knowledge-points/{id}", knowledgePointHandler.Update)
 			r.Delete("/lesson/knowledge-points/{id}", knowledgePointHandler.Delete)
 
-			courseNodeHandler := &handler.CourseNodeHandler{DB: pool}
+			courseNodeHandler := &handler.CourseNodeHandler{Service: service.NewLessonContentService(svc2)}
 			r.Get("/lesson/nodes", courseNodeHandler.List)
 			r.Get("/lesson/nodes/{id}", courseNodeHandler.Get)
 			r.Post("/lesson/nodes", courseNodeHandler.Create)
