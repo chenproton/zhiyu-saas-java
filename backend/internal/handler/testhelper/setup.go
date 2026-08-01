@@ -409,7 +409,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/certifications/items/{id}/points", certificationHandler.ConfigPoints)
 			r.Post("/evaluation/certifications/items/{id}/points", certificationHandler.ConfigPoints)
 
-			graduationHandler := &handler.GraduationHandler{DB: pool}
+			graduationHandler := &handler.GraduationHandler{Service: service.NewEvaluationService(svc2)}
 			r.Get("/evaluation/graduation/topics", graduationHandler.ListTopics)
 			r.Get("/evaluation/graduation/topics/{id}", graduationHandler.GetTopic)
 			r.Post("/evaluation/graduation/topics", graduationHandler.CreateTopic)

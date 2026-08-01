@@ -690,3 +690,60 @@ func (s *EvaluationService) GetAggregateLog(ctx context.Context, logID string) (
 func (s *EvaluationService) GetRecentAggregateLog(ctx context.Context, tenantID, positionID string) (*store.JobAbilityAggregateLog, error) {
 	return s.st.JobAbilityResults().GetRecentAggregateLog(ctx, tenantID, positionID)
 }
+
+// ListGraduationTopics 查询课题列表。
+func (s *EvaluationService) ListGraduationTopics(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.GraduationProjectTopic]) ([]domain.GraduationProjectTopic, int, error) {
+	return s.st.Graduations().ListTopics(ctx, p, cfg)
+}
+
+// GetGraduationTopic 查询单个课题。
+func (s *EvaluationService) GetGraduationTopic(ctx context.Context, id string) (*domain.GraduationProjectTopic, error) {
+	return s.st.Graduations().GetTopic(ctx, id)
+}
+
+// CreateGraduationTopic 创建课题。
+func (s *EvaluationService) CreateGraduationTopic(ctx context.Context, p *store.GraduationTopicParams) (*domain.GraduationProjectTopic, error) {
+	return s.st.Graduations().CreateTopic(ctx, p)
+}
+
+// UpdateGraduationTopic 更新课题。
+func (s *EvaluationService) UpdateGraduationTopic(ctx context.Context, id string, p *store.GraduationTopicParams) (*domain.GraduationProjectTopic, error) {
+	return s.st.Graduations().UpdateTopic(ctx, id, p)
+}
+
+// DeleteGraduationTopic 删除课题（事务）。
+func (s *EvaluationService) DeleteGraduationTopic(ctx context.Context, id string) error {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.Graduations().DeleteTopic(ctx, txStore.Q(), id)
+	})
+}
+
+// ApplyGraduationTopic 申请课题。
+func (s *EvaluationService) ApplyGraduationTopic(ctx context.Context, id string) (bool, error) {
+	return s.st.Graduations().ApplyTopic(ctx, id)
+}
+
+// ListGraduationArchives 查询档案列表。
+func (s *EvaluationService) ListGraduationArchives(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.GraduationProjectArchive]) ([]domain.GraduationProjectArchive, int, error) {
+	return s.st.Graduations().ListArchives(ctx, p, cfg)
+}
+
+// CreateGraduationArchive 创建档案。
+func (s *EvaluationService) CreateGraduationArchive(ctx context.Context, tenantID, topicID, userID, phase string) (*domain.GraduationProjectArchive, error) {
+	return s.st.Graduations().CreateArchive(ctx, tenantID, topicID, userID, phase)
+}
+
+// ListGraduationEvaluations 查询评价列表。
+func (s *EvaluationService) ListGraduationEvaluations(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.GraduationProjectEvaluation]) ([]domain.GraduationProjectEvaluation, int, error) {
+	return s.st.Graduations().ListEvaluations(ctx, p, cfg)
+}
+
+// CreateGraduationEvaluation 创建评价。
+func (s *EvaluationService) CreateGraduationEvaluation(ctx context.Context, p *store.GraduationEvaluationParams) (*domain.GraduationProjectEvaluation, error) {
+	return s.st.Graduations().CreateEvaluation(ctx, p)
+}
+
+// QueryGraduationResults 查询毕业结果。
+func (s *EvaluationService) QueryGraduationResults(ctx context.Context, limit, offset int) ([]domain.GraduationQueryResult, int, error) {
+	return s.st.Graduations().QueryGraduationResults(ctx, limit, offset)
+}
