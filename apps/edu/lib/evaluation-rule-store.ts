@@ -300,6 +300,10 @@ export function useEvalRuleStore(options: UseEvalRuleStoreOptions) {
   const lastMethodsRef = useRef<string>(JSON.stringify(normalizedMethods))
   const onChangeRef = useRef(onChange)
 
+  // 标记是否需要跳过下一次通知：prop 同步导致的状态变化不应反向通知父组件，避免无限循环
+  const skipNextNotificationRef = useRef(false)
+  const isInitialRenderRef = useRef(true)
+
   useEffect(() => {
     onChangeRef.current = onChange
   }, [onChange])
@@ -309,6 +313,7 @@ export function useEvalRuleStore(options: UseEvalRuleStoreOptions) {
     const serialized = JSON.stringify(normalizedMethods)
     if (lastMethodsRef.current === serialized) return
     lastMethodsRef.current = serialized
+    skipNextNotificationRef.current = true
     dispatch({ type: "SET_METHODS", payload: normalizedMethods })
   }, [normalizedMethods])
 
@@ -320,17 +325,26 @@ export function useEvalRuleStore(options: UseEvalRuleStoreOptions) {
     const serialized = JSON.stringify(initialConfig)
     if (lastInitialConfigRef.current === serialized) return
     lastInitialConfigRef.current = serialized
+    skipNextNotificationRef.current = true
     dispatch({ type: "SET_CONFIG", payload: initialConfig })
   }, [initialConfig])
 
-  // 通知外部变化
+  // 通知外部变化：跳过首次渲染以及由 prop 同步触发的那一次渲染，防止受控组件无限重渲染
   useEffect(() => {
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false
+      return
+    }
+    if (skipNextNotificationRef.current) {
+      skipNextNotificationRef.current = false
+      return
+    }
     if (onChangeRef.current) {
       const exportConfig: EvalRuleConfig = {
         ...state,
         evaluationMethods: state.evaluationMethods.map(m =>
           m === "homework" ? ("exam" as EvalRuleMethodKey) : m
-        ) as EvalRuleMethodKey[],
+        ) as EvalRuleConfig["evaluationMethods"],
       }
       onChangeRef.current(exportConfig)
     }
