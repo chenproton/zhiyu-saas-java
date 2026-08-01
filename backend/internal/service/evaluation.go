@@ -57,3 +57,42 @@ func (s *EvaluationService) IsDraftPool(ctx context.Context, id string) (bool, e
 func (s *EvaluationService) Queryer() store.Queryer {
 	return s.st.Q()
 }
+
+// ListQuestions 查询题目列表。
+func (s *EvaluationService) ListQuestions(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.Question]) ([]domain.Question, int, error) {
+	return s.st.Questions().List(ctx, p, cfg)
+}
+
+// GetQuestion 查询单个题目。
+func (s *EvaluationService) GetQuestion(ctx context.Context, id string) (*domain.Question, error) {
+	return s.st.Questions().Get(ctx, id)
+}
+
+// CreateQuestion 创建题目。
+func (s *EvaluationService) CreateQuestion(ctx context.Context, tenantID string, p *store.QuestionCreateParams) (*domain.Question, error) {
+	return s.st.Questions().Create(ctx, tenantID, p)
+}
+
+// UpdateQuestion 更新题目。
+func (s *EvaluationService) UpdateQuestion(ctx context.Context, id string, p *store.QuestionUpdateParams) (*domain.Question, error) {
+	return s.st.Questions().Update(ctx, id, p)
+}
+
+// DeleteQuestion 删除题目。
+func (s *EvaluationService) DeleteQuestion(ctx context.Context, id string) error {
+	return s.st.Questions().Delete(ctx, id)
+}
+
+// BatchCreateQuestions 批量创建题目（事务内）。
+func (s *EvaluationService) BatchCreateQuestions(ctx context.Context, tenantID, bankID, creatorID string, items []store.QuestionCreateParams) (int, error) {
+	var count int
+	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		c, err := txStore.Questions().BatchCreate(ctx, txStore.Q(), tenantID, bankID, creatorID, items)
+		if err != nil {
+			return err
+		}
+		count = c
+		return nil
+	})
+	return count, err
+}
