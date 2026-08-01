@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@zhiyu/ui"
 import { HoverActionBar } from "@/components/shared/hover-action-bar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -1063,9 +1064,7 @@ export default function GradingDetailPage() {
                             {step.description && <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{step.description}</p>}
                           </div>
                           {completed && (
-                            <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-green-50 text-green-600 border-green-200 shrink-0">
-                              已完成
-                            </Badge>
+                            <StatusBadge status="已完成" className="text-[10px] h-5 px-1.5 border shrink-0" />
                           )}
                         </label>
                       )

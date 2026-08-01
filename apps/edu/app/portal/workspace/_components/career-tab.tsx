@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { StatusBadge } from "@zhiyu/ui"
 import { SectionCard } from "./section-card"
 
 // 收藏数据暂由后端提供，当前无收藏 API，默认空状态
@@ -59,12 +60,6 @@ const categoryConfig = {
   scenes: { label: "实践场景", icon: Layers, color: "amber" as const },
   courses: { label: "数字课程", icon: BookOpen, color: "emerald" as const },
   exams: { label: "测评资源", icon: FileText, color: "purple" as const },
-}
-
-const statusBadge: Record<string, string> = {
-  "进行中": "bg-emerald-50 text-emerald-600",
-  "未开始": "bg-gray-100 text-gray-500",
-  "已完成": "bg-blue-50 text-blue-600",
 }
 
 export function CareerTab() {
@@ -215,7 +210,7 @@ export function CareerTab() {
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs text-gray-500">{scene.company}</span>
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${statusBadge[scene.status]}`}>{scene.status}</span>
+                      <StatusBadge status={scene.status} className="text-[10px] px-1.5 py-0.5 rounded" />
                       <button
                         onClick={(e) => {
                           e.stopPropagation()

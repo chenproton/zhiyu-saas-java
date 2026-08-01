@@ -28,6 +28,18 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   confirmed:     { label: "已确认",  color: "#16a34a", bg: "#dcfce7" },
   planned:       { label: "待排课",  color: "#d97706", bg: "#fef3c7" },
   scheduled:     { label: "已排课",  color: "#2563eb", bg: "#dbeafe" },
+  // Portal workspace 中文状态键（与后端/共享类型保持一致）
+  "未开始":      { label: "未开始",  color: "#4b5563", bg: "#f3f4f6" },
+  "进行中":      { label: "进行中",  color: "#2563eb", bg: "#eff6ff" },
+  "待提交":      { label: "待提交",  color: "#d97706", bg: "#fef3c7" },
+  "已批改":      { label: "已批改",  color: "#7c3aed", bg: "#ede9fe" },
+  "已完成":      { label: "已完成",  color: "#16a34a", bg: "#dcfce7" },
+  "待考":        { label: "待考",    color: "#d97706", bg: "#fef3c7" },
+  "已结课":      { label: "已结课",  color: "#16a34a", bg: "#dcfce7" },
+  // 评分/阅卷场景
+  graded:        { label: "已评分",  color: "#16a34a", bg: "#dcfce7" },
+  "已评分":      { label: "已评分",  color: "#16a34a", bg: "#dcfce7" },
+  "待评分":      { label: "待评分",  color: "#d97706", bg: "#fef3c7" },
 }
 
 export function getStatusConfig(status: string): StatusConfig {

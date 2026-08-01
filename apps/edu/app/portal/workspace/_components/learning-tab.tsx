@@ -5,6 +5,7 @@ import { BarChart3, BookOpen, Clock, Layers, Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { StatusBadge } from "@zhiyu/ui"
 import { SectionCard } from "./section-card"
 import { StatCard } from "./stat-card"
 import { portalApi } from "@/lib/api"
@@ -42,14 +43,6 @@ export function LearningTab() {
     if (sceneFilter !== "all" && s.status !== sceneFilter) return false
     return true
   })
-
-  const statusVariantMap: Record<string, string> = {
-    未开始: "bg-gray-100 text-gray-600",
-    进行中: "bg-blue-50 text-blue-600",
-    待提交: "bg-amber-50 text-amber-600",
-    已批改: "bg-purple-50 text-purple-600",
-    已完成: "bg-emerald-50 text-emerald-600",
-  }
 
   const difficultyColorMap: Record<string, string> = {
     简单: "text-emerald-600",
@@ -115,9 +108,7 @@ export function LearningTab() {
                             {task.sceneName} · 目标岗位：{task.position}
                           </p>
                         </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-md font-medium shrink-0 ${statusVariantMap[task.status]}`}>
-                          {task.status}
-                        </span>
+                        <StatusBadge status={task.status} className="shrink-0" />
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {task.abilityTags.map((tag) => (

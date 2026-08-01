@@ -60,12 +60,6 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
 
-const courseStatusVariantMap: Record<string, string> = {
-  进行中: "bg-blue-50 text-blue-600",
-  未开始: "bg-gray-100 text-gray-600",
-  已结课: "bg-emerald-50 text-emerald-600",
-}
-
 const gradeColorMap: Record<string, string> = {
   A: "bg-emerald-100 text-emerald-700",
   B: "bg-blue-100 text-blue-700",

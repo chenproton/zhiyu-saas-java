@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Award, FileCheck, GraduationCap, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { StatusBadge } from "@zhiyu/ui"
 import { SectionCard } from "./section-card"
 import { portalApi } from "@/lib/api"
 import type { WorkspaceExam } from "@/lib/types"
@@ -27,12 +28,6 @@ interface PositionAssessment {
 
 // 岗位能力认定数据应由后端测评结果 API 提供，默认空状态
 const emptyPositionAssessments: PositionAssessment[] = []
-
-const statusVariantMap: Record<string, string> = {
-  待考: "bg-amber-50 text-amber-600",
-  进行中: "bg-blue-50 text-blue-600",
-  已完成: "bg-emerald-50 text-emerald-600",
-}
 
 const typeIconMap: Record<string, typeof GraduationCap> = {
   随堂测: FileCheck,
@@ -142,9 +137,7 @@ export function AssessmentTab() {
                     </TableCell>
                     <TableCell className="text-xs">{exam.type}</TableCell>
                     <TableCell>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${statusVariantMap[exam.status]}`}>
-                        {exam.status}
-                      </span>
+                      <StatusBadge status={exam.status} className="text-[10px] px-1.5 py-0.5 rounded" />
                     </TableCell>
                     <TableCell className="text-xs text-gray-500">{exam.startTime || "-"}</TableCell>
                     <TableCell className="text-xs text-gray-500">{exam.duration}分钟</TableCell>

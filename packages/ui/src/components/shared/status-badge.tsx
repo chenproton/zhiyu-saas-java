@@ -3,14 +3,14 @@
 import { Loader2 } from "lucide-react"
 import { getStatusConfig } from "@zhiyu/shared-types"
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
+export function StatusBadge({ status, label, className }: { status: string; label?: string; className?: string }) {
   const config = getStatusConfig(status)
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${className || ""}`}
       style={{ background: config.bg, color: config.color }}
     >
-      {config.label}
+      {label ?? config.label}
     </span>
   )
 }

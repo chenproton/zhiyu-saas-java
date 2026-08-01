@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { StatusBadge } from "@zhiyu/ui"
 import { Card, CardContent } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -291,9 +292,11 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
                                                 <div className="flex items-center gap-2">
                                                   <span className="font-medium text-gray-800 text-sm">{item.studentName}</span>
                                                   <span className="text-xs text-gray-400">{item.studentNumber}</span>
-                                                  <Badge variant="outline" className={cn("text-[10px]", item.status === "pending" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-green-50 text-green-600 border-green-200")}>
-                                                    {item.status === "pending" ? "待评分" : "已评分"}
-                                                  </Badge>
+                                                  <StatusBadge
+                                                    status={item.status === "pending" ? "pending" : "graded"}
+                                                    label={item.status === "pending" ? "待评分" : "已评分"}
+                                                    className="text-[10px] border"
+                                                  />
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
                                                   <Clock className="h-3 w-3" />
