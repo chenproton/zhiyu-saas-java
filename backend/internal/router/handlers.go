@@ -175,7 +175,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		scenarioWeightHandler:         &handler.ScenarioWeightHandler{Service: service.NewScenarioConfigService(svc)},
 		scenarioGradeHandler:          &handler.ScenarioGradeHandler{Service: service.NewScenarioConfigService(svc)},
 		sceneBatchHandler:             handler.NewSceneBatchHandler(db),
-		courseHandler:                 &handler.CourseHandler{DB: db},
+		courseHandler:                 &handler.CourseHandler{Service: service.NewLessonContentService(svc), DB: db},
 		courseCloneHandler:            &handler.CourseCloneHandler{Service: service.NewLessonContentService(svc)},
 		knowledgePointHandler:         &handler.KnowledgePointHandler{Service: service.NewLessonContentService(svc)},
 		courseNodeHandler:             &handler.CourseNodeHandler{Service: service.NewLessonContentService(svc)},

@@ -302,7 +302,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/scene/grade-mappings", scenarioGradeHandler.UpsertGradeMapping)
 			r.Put("/scene/grade-mappings/{id}", scenarioGradeHandler.UpsertGradeMapping)
 
-			courseHandler := &handler.CourseHandler{DB: pool}
+			courseHandler := &handler.CourseHandler{Service: service.NewLessonContentService(svc2), DB: pool}
 			r.Get("/lesson/courses", courseHandler.List)
 			r.Get("/lesson/courses/{id}", courseHandler.Get)
 			r.Post("/lesson/courses", courseHandler.Create)

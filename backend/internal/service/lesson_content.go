@@ -273,3 +273,48 @@ func (s *LessonContentService) EnrichNodes(ctx context.Context, nodeIDs []string
 		OriginalRes:     origRes,
 	}, nil
 }
+
+// ListCourses 查询课程列表。
+func (s *LessonContentService) ListCourses(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.Course]) ([]domain.Course, int, error) {
+	return s.st.Courses().List(ctx, p, cfg)
+}
+
+// GetCourseDetail 查询单个课程。
+func (s *LessonContentService) GetCourseDetail(ctx context.Context, id string) (*domain.Course, error) {
+	return s.st.Courses().Get(ctx, id)
+}
+
+// CreateCourse 创建课程。
+func (s *LessonContentService) CreateCourse(ctx context.Context, tenantID string, p *store.CourseCreateParams) (*domain.Course, error) {
+	course, err := s.st.Courses().Create(ctx, tenantID, p)
+	if err != nil {
+		return nil, err
+	}
+	s.st.Courses().ReplaceCourseBindings(ctx, course.ID, tenantID, p.CreatorID, p.KnowledgePointIds, p.ResourceIds)
+	s.st.Courses().SyncKnowledgePointGranularLessons(ctx, tenantID, course.ID, p.KnowledgePointIds)
+	return course, nil
+}
+
+// UpdateCourse 更新课程。
+func (s *LessonContentService) UpdateCourse(ctx context.Context, id, tenantID, userID string, p *store.CourseUpdateParams, replaceBindings bool, kpIDs, resIDs []string) (*domain.Course, error) {
+	course, err := s.st.Courses().Update(ctx, id, p)
+	if err != nil {
+		return nil, err
+	}
+	if replaceBindings {
+		s.st.Courses().ReplaceCourseBindings(ctx, id, tenantID, userID, kpIDs, resIDs)
+		s.st.Courses().SyncKnowledgePointGranularLessons(ctx, tenantID, id, kpIDs)
+	}
+	return course, nil
+}
+
+// DeleteCourse 删除课程。
+func (s *LessonContentService) DeleteCourse(ctx context.Context, id string) error {
+	return s.st.Courses().Delete(ctx, id)
+}
+
+
+// Queryer 暴露底层查询器。
+func (s *LessonContentService) Queryer() store.Queryer {
+	return s.st.Q()
+}

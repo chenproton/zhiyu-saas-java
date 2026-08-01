@@ -14,11 +14,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CourseHandler struct {
-	DB *pgxpool.Pool
+	Service *service.LessonContentService
+	DB      *pgxpool.Pool
 }
 
 type CourseListResponse struct {
@@ -118,12 +120,13 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 		ScanRows: h.scanCourseRows,
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListCourses(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询课程列表失败")
 		return
 	}
@@ -138,7 +141,7 @@ func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	course, err := h.fetchCourse(r.Context(), id)
+	course, err := h.Service.GetCourseDetail(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "课程不存在")
 		return
@@ -176,13 +179,6 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.Type == "granular" {
 		prefix = "KL"
 	}
-	code, err := generateUniqueEntityCode(r.Context(), h.DB, prefix, "courses", tenantID)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成课程代码失败")
-		return
-	}
-
-	id := uuid.NewString()
 	if req.CoCreatorIds == nil {
 		req.CoCreatorIds = domain.JSONSlice{}
 	}
@@ -193,16 +189,41 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.EvalData == nil {
 		req.EvalData = domain.JSONMap{}
 	}
-	_, err = h.DB.Exec(r.Context(), `
-		INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
-			online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
-			status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
-			knowledge_point_ids, ability_point_ids, resource_ids, eval_data, node_count, resource_count, study_count)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, $23::uuid[], $24, $25::uuid[], $26::uuid[], $27::uuid[], $28, 0, 0, 0)
-	`, id, tenantID, code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
-		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, coIDs, emptyStrToNil(req.BatchID),
-		kpIDs, apIDs, resIDs, req.EvalData)
+
+	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), prefix, "courses", tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "生成课程代码失败")
+		return
+	}
+
+	course, err := h.Service.CreateCourse(r.Context(), tenantID, &store.CourseCreateParams{
+		Code:              code,
+		Name:              req.Name,
+		Type:              req.Type,
+		Category:          req.Category,
+		MajorID:           req.MajorID,
+		TeacherID:         req.TeacherID,
+		IndustryID:        req.IndustryID,
+		Version:           req.Version,
+		OnlineHours:       req.OnlineHours,
+		OfflineHours:      req.OfflineHours,
+		OnlineWeight:      req.OnlineWeight,
+		OfflineWeight:     req.OfflineWeight,
+		Semester:          req.Semester,
+		ClassName:         req.ClassName,
+		CoverColor:        req.CoverColor,
+		CoverImage:        req.CoverImage,
+		CourseTag:         req.CourseTag,
+		Difficulty:        req.Difficulty,
+		Description:       req.Description,
+		CreatorID:         claims.UserID,
+		CoCreatorIds:      coIDs,
+		BatchID:           emptyStrToNil(req.BatchID),
+		KnowledgePointIds: kpIDs,
+		AbilityPointIds:   apIDs,
+		ResourceIds:       resIDs,
+		EvalData:          req.EvalData,
+	})
 	if err != nil {
 		slog.Error("创建课程失败", "error", err)
 		if isUniqueViolation(err) {
@@ -212,10 +233,6 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "创建课程失败")
 		return
 	}
-
-	h.replaceCourseBindings(r.Context(), id, tenantID, claims.UserID, kpIDs, resIDs)
-
-	course, _ := h.fetchCourse(r.Context(), id)
 	respondJSON(w, http.StatusCreated, course)
 }
 
@@ -320,18 +337,33 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.EvalData = existing.EvalData
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE courses SET name = $1, type = $2, category = $3, major_id = $4, teacher_id = $5,
-			industry_id = $6, version = $7, online_hours = $8, offline_hours = $9, online_weight = $10,
-			offline_weight = $11, semester = $12, class_name = $13, cover_color = $14, cover_image = $15,
-			course_tag = $16, difficulty = $17, description = $18, co_creator_ids = $19, batch_id = $20,
-			knowledge_point_ids = $21, ability_point_ids = $22, resource_ids = $23, eval_data = $24,
-			resource_count = COALESCE(array_length($23::uuid[], 1), 0), updated_at = NOW()
-		WHERE id = $25
-	`, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
-		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, req.CoCreatorIds, emptyStrToNil(batchID),
-		kpIDs, apIDs, resIDs, req.EvalData, id)
+	replaceBindings := req.KnowledgePointIds != nil || req.ResourceIds != nil
+	course, err := h.Service.UpdateCourse(r.Context(), id, tenantID, claims.UserID, &store.CourseUpdateParams{
+		Name:              req.Name,
+		Type:              req.Type,
+		Category:          req.Category,
+		MajorID:           req.MajorID,
+		TeacherID:         req.TeacherID,
+		IndustryID:        req.IndustryID,
+		Version:           req.Version,
+		OnlineHours:       req.OnlineHours,
+		OfflineHours:      req.OfflineHours,
+		OnlineWeight:      req.OnlineWeight,
+		OfflineWeight:     req.OfflineWeight,
+		Semester:          req.Semester,
+		ClassName:         req.ClassName,
+		CoverColor:        req.CoverColor,
+		CoverImage:        req.CoverImage,
+		CourseTag:         req.CourseTag,
+		Difficulty:        req.Difficulty,
+		Description:       req.Description,
+		CoCreatorIds:      jsonSliceToUUIDSlice(req.CoCreatorIds),
+		BatchID:           emptyStrToNil(batchID),
+		KnowledgePointIds: kpIDs,
+		AbilityPointIds:   apIDs,
+		ResourceIds:       resIDs,
+		EvalData:          req.EvalData,
+	}, replaceBindings, kpIDs, resIDs)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
@@ -340,12 +372,6 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "更新课程失败")
 		return
 	}
-
-	if req.KnowledgePointIds != nil || req.ResourceIds != nil {
-		h.replaceCourseBindings(r.Context(), id, tenantID, claims.UserID, kpIDs, resIDs)
-	}
-
-	course, _ := h.fetchCourse(r.Context(), id)
 	respondJSON(w, http.StatusOK, course)
 }
 
@@ -361,15 +387,7 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.DB.Exec(r.Context(), `UPDATE training_program_courses SET course_id = NULL WHERE course_id = $1`, id)
-	h.DB.Exec(r.Context(), `UPDATE teaching_plan_entries SET course_id = NULL WHERE course_id = $1`, id)
-	h.DB.Exec(r.Context(), `UPDATE schedule_entries SET course_id = NULL WHERE course_id = $1`, id)
-	h.DB.Exec(r.Context(), `DELETE FROM course_homework_submissions WHERE course_id = $1`, id)
-	h.DB.Exec(r.Context(), `DELETE FROM course_homeworks WHERE course_id = $1`, id)
-	h.DB.Exec(r.Context(), `DELETE FROM course_evaluation_results WHERE course_id = $1`, id)
-
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM courses WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.DeleteCourse(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除课程失败")
 		return
 	}
@@ -378,7 +396,8 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseHandler) actions() contentActions {
 	return contentActions{
-		db:         h.DB,
+		db:         h.Service.Queryer(),
+		pool:       h.Service.Store(),
 		table:      "courses",
 		entityName: "course",
 		targetType: "course",
@@ -874,36 +893,7 @@ func (h *CourseHandler) Invite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CourseHandler) fetchCourse(ctx context.Context, id string) (*domain.Course, error) {
-	var c domain.Course
-	err := h.DB.QueryRow(ctx, `
-		SELECT c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
-			c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name,
-			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
-			c.knowledge_point_ids::text[] AS knowledge_point_ids,
-			c.ability_point_ids::text[] AS ability_point_ids,
-			c.resource_ids::text[] AS resource_ids,
-			c.eval_data,
-			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
-			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
-			COALESCE(vc.cnt, 0) AS view_count,
-			c.study_count, c.created_at, c.updated_at
-		FROM courses c
-		LEFT JOIN majors m ON m.id = c.major_id
-		LEFT JOIN industries i ON i.id = c.industry_id
-		LEFT JOIN lesson_batches lb ON lb.id = c.batch_id
-		LEFT JOIN view_counters vc ON vc.target_type = 'course' AND vc.target_id = c.id
-		WHERE c.id = $1
-	`, id).Scan(
-		&c.ID, &c.Code, &c.Name, &c.Type, &c.Category, &c.MajorID, &c.MajorName, &c.TeacherID, &c.IndustryID, &c.IndustryName, &c.Version,
-		&c.OnlineHours, &c.OfflineHours, &c.OnlineWeight, &c.OfflineWeight, &c.Semester, &c.ClassName,
-		&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.Difficulty, &c.Description,
-		&c.KnowledgePointIds, &c.AbilityPointIds, &c.ResourceIds, &c.EvalData, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
-		&c.NodeCount, &c.ResourceCount, &c.ViewCount, &c.StudyCount, &c.CreatedAt, &c.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
+	return h.Service.GetCourseDetail(ctx, id)
 }
 
 func (h *CourseHandler) scanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
