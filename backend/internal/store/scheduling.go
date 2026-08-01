@@ -284,24 +284,24 @@ func (s *SchedulingStore) DeleteScheduleWithRestore(ctx context.Context, tx Quer
 
 // ScheduleCreateParams 排课参数。
 type ScheduleCreateParams struct {
-	TenantID    string
-	TermID      string
-	PlanEntryID *string
-	CourseName  string
-	CourseCode  *string
-	CourseID    *string
-	Type        string
-	ClassNodeID string
+	TenantID     string
+	TermID       string
+	PlanEntryID  *string
+	CourseName   string
+	CourseCode   *string
+	CourseID     *string
+	Type         string
+	ClassNodeID  string
 	ClassNodeIDs []string
-	TeacherID   *string
-	DayOfWeek   int
-	Periods     domain.JSONSlice
-	StartWeek   int
-	EndWeek     int
-	WeekPattern string
-	VenueID     *string
-	ScenarioID  *string
-	Source      string
+	TeacherID    *string
+	DayOfWeek    int
+	Periods      domain.JSONSlice
+	StartWeek    int
+	EndWeek      int
+	WeekPattern  string
+	VenueID      *string
+	ScenarioID   *string
+	Source       string
 }
 
 // ===== 冲突/查询辅助 =====
@@ -394,17 +394,17 @@ func (s *SchedulingStore) CheckScheduleConflicts(ctx context.Context, tenantID, 
 
 // ScheduleConflictParams 冲突校验参数。
 type ScheduleConflictParams struct {
-	TermID      string
-	PlanEntryID *string
-	ClassNodeID string
+	TermID       string
+	PlanEntryID  *string
+	ClassNodeID  string
 	ClassNodeIDs []string
-	TeacherID   *string
-	DayOfWeek   int
-	Periods     domain.JSONSlice
-	StartWeek   int
-	EndWeek     int
-	WeekPattern string
-	VenueID     *string
+	TeacherID    *string
+	DayOfWeek    int
+	Periods      domain.JSONSlice
+	StartWeek    int
+	EndWeek      int
+	WeekPattern  string
+	VenueID      *string
 }
 
 // ResolveCourseIDByCode 按课程编码查询课程。
@@ -695,6 +695,87 @@ func ScanScheduleEntryRows(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
 	return items, nil
 }
 
+const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at, COALESCE(se.class_node_ids, '{}') AS class_node_ids, COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names"
+
+const scheduleEntryListFrom = "schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id"
+
+// ScanScheduleEntryListRows 扫描排课列表行（含 class_name/class_names 等联表列）。
+func ScanScheduleEntryListRows(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
+	items := make([]domain.ScheduleEntry, 0)
+	for rows.Next() {
+		var e domain.ScheduleEntry
+		if err := rows.Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.CourseID, &e.Type,
+			&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.DayOfWeek, &e.Periods,
+			&e.StartWeek, &e.EndWeek, &e.WeekPattern, &e.VenueID, &e.VenueName,
+			&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt,
+			&e.ClassNodeIDs, &e.ClassNames); err != nil {
+			return nil, err
+		}
+		items = append(items, e)
+	}
+	return items, nil
+}
+
+func scheduleListFilter(p ListParams, qb *ListQueryBuilder) {
+	if termID := p.Values["termId"]; termID != "" {
+		qb.AddCondition("se.term_id = " + qb.NextArg(termID))
+	}
+	if status := p.Values["status"]; status != "" {
+		qb.AddCondition("se.status = " + qb.NextArg(status))
+	}
+	if classNodeID := p.Values["classNodeId"]; classNodeID != "" {
+		qb.AddCondition("(se.class_node_id = " + qb.NextArg(classNodeID) + " OR " + qb.NextArg(classNodeID) + " = ANY(se.class_node_ids))")
+	}
+	if teacherID := p.Values["teacherId"]; teacherID != "" {
+		qb.AddCondition("se.teacher_id = " + qb.NextArg(teacherID))
+	}
+	if entryType := p.Values["type"]; entryType != "" {
+		qb.AddCondition("se.type = " + qb.NextArg(entryType))
+	}
+}
+
+// ListConfig 返回排课列表查询配置，SQL 片段沉淀在 store 层。
+func (s *SchedulingStore) ListSchedulesConfig() ListQueryConfig[domain.ScheduleEntry] {
+	return ListQueryConfig[domain.ScheduleEntry]{
+		Table:         scheduleEntryListFrom,
+		SelectColumns: scheduleEntrySelectColumns,
+		TenantScoped:  true,
+		TenantColumn:  "se.tenant_id",
+		OrderBy:       "se.day_of_week ASC, se.start_week ASC",
+		DefaultLimit:  200,
+		ExtraFilter:   scheduleListFilter,
+		ScanRows:      ScanScheduleEntryListRows,
+	}
+}
+
+// ListVenuesConfig 返回场地列表查询配置。
+func (s *SchedulingStore) ListVenuesConfig() ListQueryConfig[domain.Venue] {
+	return ListQueryConfig[domain.Venue]{
+		Table:         "venues",
+		SelectColumns: "id, name, type, capacity, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		OrderBy:       "name",
+		ScanRows:      ScanVenueRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if venueType := p.Values["type"]; venueType != "" {
+				qb.AddCondition("type = " + qb.NextArg(venueType))
+			}
+		},
+	}
+}
+
+// ListPeriodSlotsConfig 返回节次列表查询配置。
+func (s *SchedulingStore) ListPeriodSlotsConfig() ListQueryConfig[domain.PeriodSlot] {
+	return ListQueryConfig[domain.PeriodSlot]{
+		Table:         "period_slots",
+		SelectColumns: "id, name, sort_order, start_time::text, end_time::text",
+		TenantScoped:  true,
+		OrderBy:       "sort_order ASC",
+		ScanRows:      ScanPeriodSlotRows,
+	}
+}
+
 // jsonSliceToStrings JSONSlice 转字符串数组。
 func jsonSliceToStrings(s domain.JSONSlice) []string {
 	out := make([]string, 0, len(s))
@@ -784,11 +865,11 @@ func (s *SchedulingStore) ListScheduledExportMap(ctx context.Context, tenantID, 
 
 // PlanEntryBrief 教学计划条目简要。
 type PlanEntryBrief struct {
-	ID         string
-	CourseName string
-	EntryType  string
-	StartWeek  int
-	EndWeek    int
+	ID          string
+	CourseName  string
+	EntryType   string
+	StartWeek   int
+	EndWeek     int
 	WeekPattern string
 }
 

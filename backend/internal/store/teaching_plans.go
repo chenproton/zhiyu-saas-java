@@ -186,6 +186,29 @@ func (s *TeachingPlanStore) List(ctx context.Context, p ListParams, cfg ListQuer
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanTeachingPlanRows)
 }
 
+// ListConfig 返回教学计划列表查询配置，SQL 片段沉淀在 store 层。
+func (s *TeachingPlanStore) ListConfig() ListQueryConfig[domain.TeachingPlan] {
+	return ListQueryConfig[domain.TeachingPlan]{
+		Table:         "teaching_plans p LEFT JOIN training_programs tp ON tp.id = p.program_id LEFT JOIN terms t ON t.id = p.term_id LEFT JOIN majors m ON m.id = p.major_id",
+		SelectColumns: "p.id, p.program_id, COALESCE(tp.name, '') AS program_name, p.term_id, COALESCE(t.name, '') AS term_name, p.major_id, COALESCE(m.name, '') AS major_name, p.entry_year, p.status, (SELECT COUNT(*) FROM teaching_plan_entries e WHERE e.plan_id = p.id) AS entry_count, p.generated_at, p.confirmed_at",
+		TenantScoped:  true,
+		TenantColumn:  "p.tenant_id",
+		OrderBy:       "p.generated_at DESC",
+		ScanRows:      ScanTeachingPlanRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("p.status = " + qb.NextArg(status))
+			}
+			if programID := p.Values["programId"]; programID != "" {
+				qb.AddCondition("p.program_id = " + qb.NextArg(programID))
+			}
+			if termID := p.Values["termId"]; termID != "" {
+				qb.AddCondition("p.term_id = " + qb.NextArg(termID))
+			}
+		},
+	}
+}
+
 // Get 查询单个教学计划。
 func (s *TeachingPlanStore) Get(ctx context.Context, id, tenantID string) (*domain.TeachingPlan, error) {
 	var plan domain.TeachingPlan

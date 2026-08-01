@@ -26,6 +26,33 @@ func (s *UserStore) List(ctx context.Context, p ListParams, cfg ListQueryConfig[
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanUserRows)
 }
 
+// ListConfig 返回用户列表查询配置（含角色过滤 EXISTS 与组织子树递归 CTE），SQL 片段沉淀在 store 层。
+func (s *UserStore) ListConfig() ListQueryConfig[domain.User] {
+	return ListQueryConfig[domain.User]{
+		Table:         "users",
+		SelectColumns: "id, tenant_id, institution_id, org_node_id, major_id, role, platform, login_name, username, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"username", "name", "email"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if institutionID := p.Values["institutionId"]; institutionID != "" {
+				qb.AddCondition("institution_id = " + qb.NextArg(institutionID))
+			}
+			if roleID := p.Values["roleId"]; roleID != "" {
+				qb.AddCondition("EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = " + qb.NextArg(roleID) + ")")
+			}
+			if roleCode := p.Values["roleCode"]; roleCode != "" {
+				qb.AddCondition("EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = " + qb.NextArg(roleCode) + ")")
+			}
+			if orgNodeID := p.Values["orgNodeId"]; orgNodeID != "" {
+				qb.AddCondition("org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = " + qb.NextArg(orgNodeID) + " UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)")
+			}
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
 // Get 按 ID 查询用户（含平台字段）。
 func (s *UserStore) Get(ctx context.Context, id string) (*domain.User, error) {
 	u, err := s.fetchUser(ctx, s.q, id)

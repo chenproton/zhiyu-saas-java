@@ -20,7 +20,7 @@ type TeachingPlanListResponse struct {
 }
 
 type TeachingPlanDetailResponse struct {
-	TeachingPlan domain.TeachingPlan      `json:"plan"`
+	TeachingPlan domain.TeachingPlan        `json:"plan"`
 	Entries      []domain.TeachingPlanEntry `json:"entries"`
 }
 
@@ -30,18 +30,18 @@ type GenerateTeachingPlanRequest struct {
 }
 
 type UpdateTeachingPlanEntryRequest struct {
-	WeekHours    *int     `json:"weekHours"`
-	StartWeek    *int     `json:"startWeek"`
-	EndWeek      *int     `json:"endWeek"`
-	WeekPattern  *string  `json:"weekPattern"`
-	ClassNodeID  *string  `json:"classNodeId"`
+	WeekHours    *int      `json:"weekHours"`
+	StartWeek    *int      `json:"startWeek"`
+	EndWeek      *int      `json:"endWeek"`
+	WeekPattern  *string   `json:"weekPattern"`
+	ClassNodeID  *string   `json:"classNodeId"`
 	ClassNodeIDs *[]string `json:"classNodeIds"`
-	TeacherID    *string  `json:"teacherId"`
-	TeacherType  *string  `json:"teacherType"`
-	VenueType    *string  `json:"venueType"`
-	Credits      *float64 `json:"credits"`
-	TotalHours   *int     `json:"totalHours"`
-	Status       *string  `json:"status"`
+	TeacherID    *string   `json:"teacherId"`
+	TeacherType  *string   `json:"teacherType"`
+	VenueType    *string   `json:"venueType"`
+	Credits      *float64  `json:"credits"`
+	TotalHours   *int      `json:"totalHours"`
+	Status       *string   `json:"status"`
 }
 
 func (h *TeachingPlanHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -50,25 +50,7 @@ func (h *TeachingPlanHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	cfg := store.ListQueryConfig[domain.TeachingPlan]{
-		Table:         "teaching_plans p LEFT JOIN training_programs tp ON tp.id = p.program_id LEFT JOIN terms t ON t.id = p.term_id LEFT JOIN majors m ON m.id = p.major_id",
-		SelectColumns: "p.id, p.program_id, COALESCE(tp.name, '') AS program_name, p.term_id, COALESCE(t.name, '') AS term_name, p.major_id, COALESCE(m.name, '') AS major_name, p.entry_year, p.status, (SELECT COUNT(*) FROM teaching_plan_entries e WHERE e.plan_id = p.id) AS entry_count, p.generated_at, p.confirmed_at",
-		TenantScoped:  true,
-		TenantColumn:  "p.tenant_id",
-		OrderBy:       "p.generated_at DESC",
-		ScanRows:      store.ScanTeachingPlanRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("p.status = " + qb.NextArg(status))
-			}
-			if programID := p.Values["programId"]; programID != "" {
-				qb.AddCondition("p.program_id = " + qb.NextArg(programID))
-			}
-			if termID := p.Values["termId"]; termID != "" {
-				qb.AddCondition("p.term_id = " + qb.NextArg(termID))
-			}
-		},
-	}
+	cfg := h.Service.Store().TeachingPlans().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

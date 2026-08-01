@@ -41,19 +41,7 @@ func (h *SchedulingHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.Venue]{
-		Table:         "venues",
-		SelectColumns: "id, name, type, capacity, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		OrderBy:       "name",
-		ScanRows:      store.ScanVenueRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if venueType := r.URL.Query().Get("type"); venueType != "" {
-				qb.AddCondition("type = " + qb.NextArg(venueType))
-			}
-		},
-	}
+	cfg := h.Service.Store().Scheduling().ListVenuesConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -194,14 +182,7 @@ func (h *SchedulingHandler) ListPeriodSlots(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.PeriodSlot]{
-		Table:         "period_slots",
-		SelectColumns: "id, name, sort_order, start_time::text, end_time::text",
-		TenantScoped:  true,
-		OrderBy:       "sort_order ASC",
-		ScanRows:      store.ScanPeriodSlotRows,
-	}
-
+	cfg := h.Service.Store().Scheduling().ListPeriodSlotsConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -361,26 +342,6 @@ type ScheduleEntryRequest struct {
 	ScenarioID   *string          `json:"scenarioId"`
 }
 
-const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at, COALESCE(se.class_node_ids, '{}') AS class_node_ids, COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names"
-
-const scheduleEntryFrom = "schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id"
-
-func scanScheduleEntryRow(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
-	items := make([]domain.ScheduleEntry, 0)
-	for rows.Next() {
-		var e domain.ScheduleEntry
-		if err := rows.Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.CourseID, &e.Type,
-			&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.DayOfWeek, &e.Periods,
-			&e.StartWeek, &e.EndWeek, &e.WeekPattern, &e.VenueID, &e.VenueName,
-			&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt,
-			&e.ClassNodeIDs, &e.ClassNames); err != nil {
-			return nil, err
-		}
-		items = append(items, e)
-	}
-	return items, nil
-}
-
 func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -388,16 +349,7 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.ScheduleEntry]{
-		Table:         scheduleEntryFrom,
-		SelectColumns: scheduleEntrySelectColumns,
-		TenantScoped:  true,
-		TenantColumn:  "se.tenant_id",
-		OrderBy:       "se.day_of_week ASC, se.start_week ASC",
-		DefaultLimit:  200,
-		ExtraFilter:   scheduleListFilter,
-		ScanRows:      scanScheduleEntryRow,
-	}
+	cfg := h.Service.Store().Scheduling().ListSchedulesConfig()
 
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
@@ -415,24 +367,6 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 		return
 	}
 	respondJSON(w, http.StatusOK, ScheduleEntryListResponse{Items: items, Total: total})
-}
-
-func scheduleListFilter(p store.ListParams, qb *store.ListQueryBuilder) {
-	if termID := p.Values["termId"]; termID != "" {
-		qb.AddCondition("se.term_id = " + qb.NextArg(termID))
-	}
-	if status := p.Values["status"]; status != "" {
-		qb.AddCondition("se.status = " + qb.NextArg(status))
-	}
-	if classNodeID := p.Values["classNodeId"]; classNodeID != "" {
-		qb.AddCondition("(se.class_node_id = " + qb.NextArg(classNodeID) + " OR " + qb.NextArg(classNodeID) + " = ANY(se.class_node_ids))")
-	}
-	if teacherID := p.Values["teacherId"]; teacherID != "" {
-		qb.AddCondition("se.teacher_id = " + qb.NextArg(teacherID))
-	}
-	if entryType := p.Values["type"]; entryType != "" {
-		qb.AddCondition("se.type = " + qb.NextArg(entryType))
-	}
 }
 
 func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Request) {
@@ -514,24 +448,24 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 	}
 
 	id, err := h.Service.CreateSchedule(ctx, &store.ScheduleCreateParams{
-		TenantID:    tenantID,
-		TermID:      req.TermID,
-		PlanEntryID: emptyStrToNil(req.PlanEntryID),
-		CourseName:  req.CourseName,
-		CourseCode:  emptyStrToNil(req.CourseCode),
-		CourseID:    courseID,
-		Type:        entryType,
-		ClassNodeID: primaryClass,
+		TenantID:     tenantID,
+		TermID:       req.TermID,
+		PlanEntryID:  emptyStrToNil(req.PlanEntryID),
+		CourseName:   req.CourseName,
+		CourseCode:   emptyStrToNil(req.CourseCode),
+		CourseID:     courseID,
+		Type:         entryType,
+		ClassNodeID:  primaryClass,
 		ClassNodeIDs: classIDs,
-		TeacherID:   emptyStrToNil(req.TeacherID),
-		DayOfWeek:   req.DayOfWeek,
-		Periods:     req.Periods,
-		StartWeek:   req.StartWeek,
-		EndWeek:     req.EndWeek,
-		WeekPattern: weekPattern,
-		VenueID:     emptyStrToNil(req.VenueID),
-		ScenarioID:  emptyStrToNil(req.ScenarioID),
-		Source:      "manual",
+		TeacherID:    emptyStrToNil(req.TeacherID),
+		DayOfWeek:    req.DayOfWeek,
+		Periods:      req.Periods,
+		StartWeek:    req.StartWeek,
+		EndWeek:      req.EndWeek,
+		WeekPattern:  weekPattern,
+		VenueID:      emptyStrToNil(req.VenueID),
+		ScenarioID:   emptyStrToNil(req.ScenarioID),
+		Source:       "manual",
 	})
 	if err != nil {
 		slog.Error("创建排课失败", "error", err)
@@ -836,7 +770,8 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	// ===== 参考表：教师名单（全部教师） =====
 	teacherSheet := "【参考】教师名单"
 	f.NewSheet(teacherSheet)
-	f.SetCellValue(teacherSheet, "A1", "教师姓名"); f.SetCellStyle(teacherSheet, "A1", "A1", hdrStyle)
+	f.SetCellValue(teacherSheet, "A1", "教师姓名")
+	f.SetCellStyle(teacherSheet, "A1", "A1", hdrStyle)
 	teacherNames, _ := h.Service.ListTeacherNames(r.Context(), tenantID)
 	ti := 2
 	for _, n := range teacherNames {
@@ -850,8 +785,10 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	// ===== 参考表：场地名单（全部场地） =====
 	venueSheet := "【参考】场地名单"
 	f.NewSheet(venueSheet)
-	f.SetCellValue(venueSheet, "A1", "场地名称"); f.SetCellStyle(venueSheet, "A1", "A1", hdrStyle)
-	f.SetCellValue(venueSheet, "B1", "类型"); f.SetCellStyle(venueSheet, "B1", "B1", hdrStyle)
+	f.SetCellValue(venueSheet, "A1", "场地名称")
+	f.SetCellStyle(venueSheet, "A1", "A1", hdrStyle)
+	f.SetCellValue(venueSheet, "B1", "类型")
+	f.SetCellStyle(venueSheet, "B1", "B1", hdrStyle)
 	venueBriefs, _ := h.Service.ListVenueBriefs(r.Context(), tenantID)
 	vi := 2
 	for _, v := range venueBriefs {
@@ -863,12 +800,14 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 		}
 		vi++
 	}
-	f.SetColWidth(venueSheet, "A", "A", 20); f.SetColWidth(venueSheet, "B", "B", 16)
+	f.SetColWidth(venueSheet, "A", "A", 20)
+	f.SetColWidth(venueSheet, "B", "B", 16)
 
 	// ===== 参考表：班级名单（全部班级组织节点） =====
 	classSheet := "【参考】班级名单"
 	f.NewSheet(classSheet)
-	f.SetCellValue(classSheet, "A1", "班级名称"); f.SetCellStyle(classSheet, "A1", "A1", hdrStyle)
+	f.SetCellValue(classSheet, "A1", "班级名称")
+	f.SetCellStyle(classSheet, "A1", "A1", hdrStyle)
 	classNames, _ := h.Service.ListClassNames(r.Context(), tenantID)
 	ci2 := 2
 	for _, n := range classNames {
@@ -882,9 +821,12 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	// ===== 参考表：节次表 =====
 	periodSheet := "【参考】节次表"
 	f.NewSheet(periodSheet)
-	f.SetCellValue(periodSheet, "A1", "节次名称"); f.SetCellStyle(periodSheet, "A1", "A1", hdrStyle)
-	f.SetCellValue(periodSheet, "B1", "开始时间"); f.SetCellStyle(periodSheet, "B1", "B1", hdrStyle)
-	f.SetCellValue(periodSheet, "C1", "结束时间"); f.SetCellStyle(periodSheet, "C1", "C1", hdrStyle)
+	f.SetCellValue(periodSheet, "A1", "节次名称")
+	f.SetCellStyle(periodSheet, "A1", "A1", hdrStyle)
+	f.SetCellValue(periodSheet, "B1", "开始时间")
+	f.SetCellStyle(periodSheet, "B1", "B1", hdrStyle)
+	f.SetCellValue(periodSheet, "C1", "结束时间")
+	f.SetCellStyle(periodSheet, "C1", "C1", hdrStyle)
 	periodSlots, _ := h.Service.ListPeriodSlots(r.Context(), tenantID)
 	pi := 2
 	for _, ps := range periodSlots {

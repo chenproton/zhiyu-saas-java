@@ -45,47 +45,11 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	publicOnly := claims == nil
 
-	baseCfg := store.ListQueryConfig[domain.CareerPosition]{
-		Table: "career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
-		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, cp.created_at, cp.updated_at`,
-		SearchColumns: []string{"cp.name"},
-		SearchParam:   "search",
-		OrderBy:       "cp.created_at DESC",
-		DefaultLimit:  50,
-		ScanRows:      store.ScanPositionRows,
-	}
-
 	var cfg store.ListQueryConfig[domain.CareerPosition]
 	if publicOnly {
-		cfg = baseCfg
-		cfg.TenantScoped = false
-		cfg.ExtraFilter = func(p store.ListParams, qb *store.ListQueryBuilder) {
-			qb.AddCondition("cp.status = " + qb.NextArg(string(domain.StatusPublished)))
-			positionType := p.Values["positionType"]
-			if positionType != "" {
-				qb.AddCondition("cp.position_type = " + qb.NextArg(positionType))
-			}
-		}
+		cfg = h.Service.Store().Positions().PublicListConfig()
 	} else {
-		cfg = baseCfg
-		cfg.TenantScoped = true
-		cfg.TenantColumn = "cp.tenant_id"
-		cfg.ExtraFilter = func(p store.ListParams, qb *store.ListQueryBuilder) {
-			batchID := p.Values["batchId"]
-			status := p.Values["status"]
-			positionType := p.Values["positionType"]
-			if batchID != "" {
-				qb.AddCondition("cp.batch_id = " + qb.NextArg(batchID))
-			}
-			if status != "" {
-				qb.AddCondition("cp.status = " + qb.NextArg(status))
-			} else {
-				qb.AddCondition("cp.status != " + qb.NextArg("archived"))
-			}
-			if positionType != "" {
-				qb.AddCondition("cp.position_type = " + qb.NextArg(positionType))
-			}
-		}
+		cfg = h.Service.Store().Positions().AdminListConfig()
 	}
 
 	params, ok := listParamsFromRequest(r, !publicOnly)
@@ -123,23 +87,7 @@ func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
-	cfg := store.ListQueryConfig[domain.CareerPosition]{
-		Table: "career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
-		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, cp.created_at, cp.updated_at`,
-		TenantScoped:  false,
-		SearchColumns: []string{"cp.name"},
-		SearchParam:   "search",
-		OrderBy:       "cp.created_at DESC",
-		DefaultLimit:  50,
-		ScanRows:      store.ScanPositionRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			qb.AddCondition("cp.status = " + qb.NextArg(string(domain.StatusPublished)))
-			positionType := p.Values["positionType"]
-			if positionType != "" {
-				qb.AddCondition("cp.position_type = " + qb.NextArg(positionType))
-			}
-		},
-	}
+	cfg := h.Service.Store().Positions().PublicListConfig()
 	params, _ := listParamsFromRequest(r, false)
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
@@ -559,18 +507,7 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.CareerPosition]{
-		Table: "position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
-		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, cp.created_at, cp.updated_at`,
-		TenantScoped:  false,
-		OrderBy:       "cp.created_at DESC",
-		DefaultLimit:  50,
-		ScanRows:      store.ScanPositionRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			qb.AddCondition("cp.status = " + qb.NextArg(string(domain.StatusPublished)))
-			qb.AddCondition("pf.user_id = " + qb.NextArg(claims.UserID))
-		},
-	}
+	cfg := h.Service.Store().Positions().FavoritesListConfig(claims.UserID)
 	params, _ := listParamsFromRequest(r, false)
 	items, total, err := h.Service.ListFavorites(r.Context(), claims.UserID, params, cfg)
 	if err != nil {

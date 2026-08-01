@@ -83,13 +83,13 @@ func (s *ExamStore) Delete(ctx context.Context, id string) error {
 
 // QuestionSnapshot 题目快照（AddQuestion 用）。
 type QuestionSnapshot struct {
-	ID      string
-	Type    domain.QuestionType
-	Content string
-	Options []byte
-	Answer  []byte
+	ID       string
+	Type     domain.QuestionType
+	Content  string
+	Options  []byte
+	Answer   []byte
 	Analysis *string
-	Score   float64
+	Score    float64
 }
 
 // FetchQuestion 查询题目快照。
@@ -277,6 +277,27 @@ func ScanExamRows(rows pgx.Rows) ([]domain.Exam, error) {
 		items = append(items, e)
 	}
 	return items, nil
+}
+
+// ListConfig 返回试卷列表查询配置，SQL 片段沉淀在 store 层。
+func (s *ExamStore) ListConfig() ListQueryConfig[domain.Exam] {
+	return ListQueryConfig[domain.Exam]{
+		Table:         "exams e",
+		SelectColumns: "e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image, e.is_temp, e.collaborator_ids, COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at",
+		TenantScoped:  true,
+		TenantColumn:  "e.tenant_id",
+		SearchColumns: []string{"e.name", "e.description"},
+		SearchParam:   "search",
+		OrderBy:       "e.created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      ScanExamRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			qb.AddCondition("e.is_temp = FALSE")
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("e.status = " + qb.NextArg(status))
+			}
+		},
+	}
 }
 
 // BatchFetchExamQuestions 批量查询试卷题目（按 exam_id 分组）。

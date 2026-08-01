@@ -24,41 +24,41 @@ type UserListResponse struct {
 }
 
 type CreateUserRequest struct {
-	TenantID      string       `json:"tenantId"`
-	InstitutionID *string      `json:"institutionId"`
-	OrgNodeID     *string      `json:"orgNodeId"`
-	MajorID       *string      `json:"majorId"`
-	Role          *string      `json:"role"`
-	RoleID        *string      `json:"roleId"`
+	TenantID      string              `json:"tenantId"`
+	InstitutionID *string             `json:"institutionId"`
+	OrgNodeID     *string             `json:"orgNodeId"`
+	MajorID       *string             `json:"majorId"`
+	Role          *string             `json:"role"`
+	RoleID        *string             `json:"roleId"`
 	Platform      domain.UserPlatform `json:"platform"`
-	Username      string       `json:"username"`
-	LoginName     *string      `json:"loginName"`
-	Password      string       `json:"password"`
-	Name          string       `json:"name"`
-	Email         *string      `json:"email"`
-	Phone         *string      `json:"phone"`
-	AvatarURL     *string      `json:"avatarUrl"`
-	StudentNo     *string      `json:"studentNo"`
-	WorkID        *string      `json:"workId"`
-	IDCard        *string      `json:"idCard"`
-	TitleIDs      []string     `json:"titleIds"`
+	Username      string              `json:"username"`
+	LoginName     *string             `json:"loginName"`
+	Password      string              `json:"password"`
+	Name          string              `json:"name"`
+	Email         *string             `json:"email"`
+	Phone         *string             `json:"phone"`
+	AvatarURL     *string             `json:"avatarUrl"`
+	StudentNo     *string             `json:"studentNo"`
+	WorkID        *string             `json:"workId"`
+	IDCard        *string             `json:"idCard"`
+	TitleIDs      []string            `json:"titleIds"`
 }
 
 type UpdateUserRequest struct {
-	InstitutionID *string `json:"institutionId"`
-	OrgNodeID     *string `json:"orgNodeId"`
-	MajorID       *string `json:"majorId"`
-	Role          *string `json:"role"`
-	RoleID        *string `json:"roleId"`
-	Username      string  `json:"username"`
-	LoginName     *string `json:"loginName"`
-	Name          string  `json:"name"`
-	Email         *string `json:"email"`
-	Phone         *string `json:"phone"`
-	AvatarURL     *string `json:"avatarUrl"`
-	StudentNo     *string `json:"studentNo"`
-	WorkID        *string `json:"workId"`
-	IDCard        *string `json:"idCard"`
+	InstitutionID *string  `json:"institutionId"`
+	OrgNodeID     *string  `json:"orgNodeId"`
+	MajorID       *string  `json:"majorId"`
+	Role          *string  `json:"role"`
+	RoleID        *string  `json:"roleId"`
+	Username      string   `json:"username"`
+	LoginName     *string  `json:"loginName"`
+	Name          string   `json:"name"`
+	Email         *string  `json:"email"`
+	Phone         *string  `json:"phone"`
+	AvatarURL     *string  `json:"avatarUrl"`
+	StudentNo     *string  `json:"studentNo"`
+	WorkID        *string  `json:"workId"`
+	IDCard        *string  `json:"idCard"`
 	TitleIDs      []string `json:"titleIds"`
 }
 
@@ -75,8 +75,8 @@ type ResetPasswordRequest struct {
 }
 
 type BatchGraduateRequest struct {
-	UserIDs       []string `json:"userIds"`
-	GraduateYear  *int     `json:"graduateYear"`
+	UserIDs      []string `json:"userIds"`
+	GraduateYear *int     `json:"graduateYear"`
 }
 
 type BatchDeleteUsersRequest struct {
@@ -84,8 +84,8 @@ type BatchDeleteUsersRequest struct {
 }
 
 type BatchUpdateOrgNodeRequest struct {
-	UserIDs    []string `json:"userIds"`
-	OrgNodeID  *string  `json:"orgNodeId"`
+	UserIDs   []string `json:"userIds"`
+	OrgNodeID *string  `json:"orgNodeId"`
 }
 
 type BindUserRolesRequest struct {
@@ -93,29 +93,7 @@ type BindUserRolesRequest struct {
 }
 
 func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
-	cfg := store.ListQueryConfig[domain.User]{
-		Table:         "users",
-		SelectColumns: `id, tenant_id, institution_id, org_node_id, major_id, role, platform, login_name, username, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at`,
-		TenantScoped:  true,
-		SearchColumns: []string{"username", "name", "email"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if institutionID := p.Values["institutionId"]; institutionID != "" {
-				qb.AddCondition("institution_id = " + qb.NextArg(institutionID))
-			}
-			if roleID := p.Values["roleId"]; roleID != "" {
-				qb.AddCondition("EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = " + qb.NextArg(roleID) + ")")
-			}
-			if roleCode := p.Values["roleCode"]; roleCode != "" {
-				qb.AddCondition("EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = " + qb.NextArg(roleCode) + ")")
-			}
-			if orgNodeID := p.Values["orgNodeId"]; orgNodeID != "" {
-				qb.AddCondition("org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = " + qb.NextArg(orgNodeID) + " UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)")
-			}
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Users().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

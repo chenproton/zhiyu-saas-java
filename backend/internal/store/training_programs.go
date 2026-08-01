@@ -24,6 +24,27 @@ func (s *TrainingProgramStore) List(ctx context.Context, p ListParams, cfg ListQ
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanTrainingProgramRows)
 }
 
+// ListConfig 返回人培方案列表查询配置，SQL 片段沉淀在 store 层。
+func (s *TrainingProgramStore) ListConfig() ListQueryConfig[domain.TrainingProgram] {
+	return ListQueryConfig[domain.TrainingProgram]{
+		Table:         "training_programs tp LEFT JOIN majors m ON m.id = tp.major_id LEFT JOIN users cu ON cu.id = tp.created_by LEFT JOIN batches lb ON lb.id = tp.batch_id",
+		SelectColumns: "tp.id, tp.name, tp.code, tp.major_id, COALESCE(m.name, '') AS major_name, tp.entry_year, tp.level, tp.duration, tp.total_credits, tp.status, tp.description, (SELECT COUNT(*) FROM training_program_courses c WHERE c.program_id = tp.id) AS course_count, tp.created_by, COALESCE(cu.name, '') AS created_by_name, tp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(tp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, tp.batch_id, COALESCE(lb.name, '') AS batch_name, tp.created_at, tp.updated_at",
+		TenantScoped:  true,
+		TenantColumn:  "tp.tenant_id",
+		SearchColumns: []string{"tp.name", "tp.code"},
+		OrderBy:       "tp.entry_year DESC, tp.created_at DESC",
+		ScanRows:      ScanTrainingProgramRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("tp.status = " + qb.NextArg(status))
+			}
+			if majorID := p.Values["majorId"]; majorID != "" {
+				qb.AddCondition("tp.major_id = " + qb.NextArg(majorID))
+			}
+		},
+	}
+}
+
 // Get 查询单个人培方案。
 func (s *TrainingProgramStore) Get(ctx context.Context, id, tenantID string) (*domain.TrainingProgram, error) {
 	p, err := s.fetchProgram(ctx, id, tenantID)
@@ -147,29 +168,29 @@ func (s *TrainingProgramStore) PutCourses(ctx context.Context, tx Queryer, progr
 
 // ProgramCourseItem 课程项。
 type ProgramCourseItem struct {
-	Name        string
-	Code        *string
-	Credits     *float64
-	Hours       *int
-	Semester    *string
-	Nature      string
-	Assessment  *string
-	PositionID  *string
-	CourseID    *string
-	SortOrder   int
+	Name       string
+	Code       *string
+	Credits    *float64
+	Hours      *int
+	Semester   *string
+	Nature     string
+	Assessment *string
+	PositionID *string
+	CourseID   *string
+	SortOrder  int
 }
 
 // TrainingProgramParams 人培方案参数。
 type TrainingProgramParams struct {
-	Name        string
-	Code        *string
-	MajorID     *string
-	EntryYear   int
-	Level       *string
-	Duration    *int
+	Name         string
+	Code         *string
+	MajorID      *string
+	EntryYear    int
+	Level        *string
+	Duration     *int
 	TotalCredits *float64
-	Description *string
-	CreatedBy   string
+	Description  *string
+	CreatedBy    string
 }
 
 func (s *TrainingProgramStore) fetchProgram(ctx context.Context, id, tenantID string) (*domain.TrainingProgram, error) {

@@ -46,23 +46,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.Exam]{
-		Table:         "exams e",
-		SelectColumns: `e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image, e.is_temp, e.collaborator_ids, COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at`,
-		TenantScoped:  true,
-		TenantColumn:  "e.tenant_id",
-		SearchColumns: []string{"e.name", "e.description"},
-		SearchParam:   "search",
-		OrderBy:       "e.created_at DESC",
-		DefaultLimit:  50,
-		ScanRows:      store.ScanExamRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			qb.AddCondition("e.is_temp = FALSE")
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("e.status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Exams().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

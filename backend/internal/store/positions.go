@@ -24,6 +24,77 @@ func (s *PositionStore) List(ctx context.Context, p ListParams, cfg ListQueryCon
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanPositionRows)
 }
 
+const positionSelectColumns = "cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, cp.created_at, cp.updated_at"
+
+const positionListFrom = "career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id"
+
+const positionFavoritesFrom = "position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id"
+
+// AdminListConfig 返回管理端岗位列表查询配置（租户隔离 + 管理过滤条件）。
+func (s *PositionStore) AdminListConfig() ListQueryConfig[domain.CareerPosition] {
+	return ListQueryConfig[domain.CareerPosition]{
+		Table:         positionListFrom,
+		SelectColumns: positionSelectColumns,
+		TenantScoped:  true,
+		TenantColumn:  "cp.tenant_id",
+		SearchColumns: []string{"cp.name"},
+		SearchParam:   "search",
+		OrderBy:       "cp.created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      ScanPositionRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			batchID := p.Values["batchId"]
+			status := p.Values["status"]
+			positionType := p.Values["positionType"]
+			if batchID != "" {
+				qb.AddCondition("cp.batch_id = " + qb.NextArg(batchID))
+			}
+			if status != "" {
+				qb.AddCondition("cp.status = " + qb.NextArg(status))
+			} else {
+				qb.AddCondition("cp.status != " + qb.NextArg("archived"))
+			}
+			if positionType != "" {
+				qb.AddCondition("cp.position_type = " + qb.NextArg(positionType))
+			}
+		},
+	}
+}
+
+// PublicListConfig 返回前台公开岗位列表查询配置（仅已发布）。
+func (s *PositionStore) PublicListConfig() ListQueryConfig[domain.CareerPosition] {
+	return ListQueryConfig[domain.CareerPosition]{
+		Table:         positionListFrom,
+		SelectColumns: positionSelectColumns,
+		SearchColumns: []string{"cp.name"},
+		SearchParam:   "search",
+		OrderBy:       "cp.created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      ScanPositionRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			qb.AddCondition("cp.status = " + qb.NextArg(string(domain.StatusPublished)))
+			if positionType := p.Values["positionType"]; positionType != "" {
+				qb.AddCondition("cp.position_type = " + qb.NextArg(positionType))
+			}
+		},
+	}
+}
+
+// FavoritesListConfig 返回当前用户收藏岗位列表查询配置。
+func (s *PositionStore) FavoritesListConfig(userID string) ListQueryConfig[domain.CareerPosition] {
+	return ListQueryConfig[domain.CareerPosition]{
+		Table:         positionFavoritesFrom,
+		SelectColumns: positionSelectColumns,
+		OrderBy:       "cp.created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      ScanPositionRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			qb.AddCondition("cp.status = " + qb.NextArg(string(domain.StatusPublished)))
+			qb.AddCondition("pf.user_id = " + qb.NextArg(userID))
+		},
+	}
+}
+
 // Get 查询单个岗位。
 func (s *PositionStore) Get(ctx context.Context, id string) (*domain.CareerPosition, error) {
 	pos, err := s.fetchPosition(ctx, id)

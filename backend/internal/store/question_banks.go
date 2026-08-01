@@ -13,6 +13,25 @@ type QuestionBankStore struct {
 	q Queryer
 }
 
+// ListConfig 返回题库列表查询配置，SQL 片段沉淀在 store 层。
+func (s *QuestionBankStore) ListConfig() ListQueryConfig[domain.QuestionBank] {
+	return ListQueryConfig[domain.QuestionBank]{
+		Table:         "question_banks qb LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM questions q WHERE q.bank_id = qb.id) qcnt ON true LEFT JOIN users cr_u ON cr_u.id = qb.creator_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') AS ids FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) kparr ON true",
+		SelectColumns: "qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status, COALESCE(qcnt.cnt, 0) AS question_count, qb.creator_id, COALESCE(cr_u.name, qb.creator_id::text) AS creator_name, qb.collaborator_ids, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(qb.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool, COALESCE(kparr.ids, '{}') AS knowledge_point_ids, qb.created_at, qb.updated_at",
+		TenantScoped:  true,
+		TenantColumn:  "qb.tenant_id",
+		SearchColumns: []string{"qb.name", "qb.description"},
+		OrderBy:       "qb.is_draft_pool DESC, qb.created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      ScanQuestionBankRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("qb.status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
 // NewQuestionBankStore 创建题库 store。
 func NewQuestionBankStore(q Queryer) *QuestionBankStore {
 	return &QuestionBankStore{q: q}

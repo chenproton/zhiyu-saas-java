@@ -55,23 +55,7 @@ func (h *TrainingProgramHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	cfg := store.ListQueryConfig[domain.TrainingProgram]{
-		Table:         "training_programs tp LEFT JOIN majors m ON m.id = tp.major_id LEFT JOIN users cu ON cu.id = tp.created_by LEFT JOIN batches lb ON lb.id = tp.batch_id",
-		SelectColumns: "tp.id, tp.name, tp.code, tp.major_id, COALESCE(m.name, '') AS major_name, tp.entry_year, tp.level, tp.duration, tp.total_credits, tp.status, tp.description, (SELECT COUNT(*) FROM training_program_courses c WHERE c.program_id = tp.id) AS course_count, tp.created_by, COALESCE(cu.name, '') AS created_by_name, tp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(tp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, tp.batch_id, COALESCE(lb.name, '') AS batch_name, tp.created_at, tp.updated_at",
-		TenantScoped:  true,
-		TenantColumn:  "tp.tenant_id",
-		SearchColumns: []string{"tp.name", "tp.code"},
-		OrderBy:       "tp.entry_year DESC, tp.created_at DESC",
-		ScanRows:      store.ScanTrainingProgramRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("tp.status = " + qb.NextArg(status))
-			}
-			if majorID := p.Values["majorId"]; majorID != "" {
-				qb.AddCondition("tp.major_id = " + qb.NextArg(majorID))
-			}
-		},
-	}
+	cfg := h.Service.Store().TrainingPrograms().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -341,17 +325,30 @@ func (h *TrainingProgramHandler) actions() contentActions {
 	}
 }
 
-func (h *TrainingProgramHandler) Submit(w http.ResponseWriter, r *http.Request)     { h.actions().transition(w, r, domain.StatusPending) }
-func (h *TrainingProgramHandler) Review(w http.ResponseWriter, r *http.Request)     { h.actions().review(w, r) }
+func (h *TrainingProgramHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusPending)
+}
+func (h *TrainingProgramHandler) Review(w http.ResponseWriter, r *http.Request) {
+	h.actions().review(w, r)
+}
 func (h *TrainingProgramHandler) PublishAction(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusPublished)
 }
-func (h *TrainingProgramHandler) Archive(w http.ResponseWriter, r *http.Request)   { h.actions().transition(w, r, domain.StatusArchived) }
-func (h *TrainingProgramHandler) Unpublish(w http.ResponseWriter, r *http.Request) { h.actions().transition(w, r, domain.StatusDraft) }
-func (h *TrainingProgramHandler) Withdraw(w http.ResponseWriter, r *http.Request)  { h.actions().transition(w, r, domain.StatusDraft) }
-func (h *TrainingProgramHandler) SaveDraft(w http.ResponseWriter, r *http.Request) { h.actions().saveDraft(w, r) }
-func (h *TrainingProgramHandler) Invite(w http.ResponseWriter, r *http.Request)    { h.actions().invite(w, r) }
-
+func (h *TrainingProgramHandler) Archive(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusArchived)
+}
+func (h *TrainingProgramHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+func (h *TrainingProgramHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+func (h *TrainingProgramHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	h.actions().saveDraft(w, r)
+}
+func (h *TrainingProgramHandler) Invite(w http.ResponseWriter, r *http.Request) {
+	h.actions().invite(w, r)
+}
 
 func (h *TrainingProgramHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)

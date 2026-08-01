@@ -100,32 +100,7 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.Scenario]{
-		Table: "scenarios s LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true",
-		SelectColumns: `s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count`,
-		TenantScoped:  true,
-		TenantColumn:  "s.tenant_id",
-		SearchColumns: []string{"s.name", "s.code"},
-		SearchParam:   "search",
-		OrderBy:       "s.created_at DESC",
-		DefaultLimit:  50,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			status := p.Values["status"]
-			batchID := p.Values["batchId"]
-			careerPositionID := p.Values["careerPositionId"]
-			if status != "" {
-				qb.AddCondition("s.status = " + qb.NextArg(status))
-			} else {
-				qb.AddCondition("s.status != " + qb.NextArg("archived"))
-			}
-			if batchID != "" {
-				qb.AddCondition("s.batch_id = " + qb.NextArg(batchID))
-			}
-			if careerPositionID != "" {
-				qb.AddCondition("s.career_position_id = " + qb.NextArg(careerPositionID))
-			}
-		},
-	}
+	cfg := h.Service.Store().Scenarios().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
