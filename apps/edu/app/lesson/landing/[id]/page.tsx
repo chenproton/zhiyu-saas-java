@@ -1,19 +1,35 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
-  ArrowLeft, ListChecks, FolderOpen, GitBranch, Target,
-  Clock, Layers, BookOpen, Sparkles, PlayCircle, FileText,
-  Send, CheckCircle2,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+  ArrowLeft,
+  ListChecks,
+  FolderOpen,
+  GitBranch,
+  Target,
+  Clock,
+  Layers,
+  BookOpen,
+  Sparkles,
+  PlayCircle,
+  FileText,
+  Send,
+  CheckCircle2,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   courseApi,
   courseAssessmentsApi,
@@ -23,52 +39,64 @@ import {
   knowledgeApi,
   nodeHomeworkApi,
   nodeEvaluationResultApi,
-} from "@/lib/api"
+} from '@/lib/api'
+import type { Course, SystemCourseNode, NodeResource, KnowledgePoint } from '@/lib/types'
 import type {
-  Course,
-  SystemCourseNode,
-  NodeResource,
-  KnowledgePoint,
-} from "@/lib/types"
-import type { CourseAssessmentsResponse, CourseAssessmentHomework, CourseHomeworkSubmission, NodeHomework, NodeHomeworkSubmission, NodeEvaluationResult, NodeQuiz } from "@zhiyu/api-client"
-import { useAuth } from "@/components/auth-provider"
-import { PlatformFooter } from "@/components/job/student/platform-footer"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+  CourseAssessmentsResponse,
+  CourseAssessmentHomework,
+  CourseHomeworkSubmission,
+  NodeHomework,
+  NodeHomeworkSubmission,
+  NodeEvaluationResult,
+  NodeQuiz,
+} from '@zhiyu/api-client'
+import { useAuth } from '@/components/auth-provider'
+import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 const TABS = [
-  { value: "nodes", label: "课程目录", icon: ListChecks },
-  { value: "resources", label: "课程资源", icon: FolderOpen },
-  { value: "knowledge", label: "知识图谱", icon: GitBranch },
-  { value: "evaluation", label: "评价标准", icon: Target },
+  { value: 'nodes', label: '课程目录', icon: ListChecks },
+  { value: 'resources', label: '课程资源', icon: FolderOpen },
+  { value: 'knowledge', label: '知识图谱', icon: GitBranch },
+  { value: 'evaluation', label: '评价标准', icon: Target },
 ]
 
 const coverGradients = [
-  "linear-gradient(135deg,#059669,#10b981)",
-  "linear-gradient(135deg,#0891b2,#06b6d4)",
-  "linear-gradient(135deg,#7c3aed,#8b5cf6)",
-  "linear-gradient(135deg,#db2777,#ec4899)",
-  "linear-gradient(135deg,#ea580c,#f97316)",
+  'linear-gradient(135deg,#059669,#10b981)',
+  'linear-gradient(135deg,#0891b2,#06b6d4)',
+  'linear-gradient(135deg,#7c3aed,#8b5cf6)',
+  'linear-gradient(135deg,#db2777,#ec4899)',
+  'linear-gradient(135deg,#ea580c,#f97316)',
 ]
 
 const courseTypeLabels: Record<string, string> = {
-  system: "体系课", granular: "颗粒课", hybrid: "混合课",
+  system: '体系课',
+  granular: '颗粒课',
+  hybrid: '混合课',
 }
 
 const difficultyMap: Record<number, { color: string; label: string }> = {
-  1: { color: "#22c55e", label: "入门" },
-  2: { color: "#eab308", label: "初级" },
-  3: { color: "#f97316", label: "中级" },
-  4: { color: "#ef4444", label: "高级" },
-  5: { color: "#8b5cf6", label: "专家" },
+  1: { color: '#22c55e', label: '入门' },
+  2: { color: '#eab308', label: '初级' },
+  3: { color: '#f97316', label: '中级' },
+  4: { color: '#ef4444', label: '高级' },
+  5: { color: '#8b5cf6', label: '专家' },
 }
 
 const resourceTypeLabels: Record<string, string> = {
-  document: "文档", video: "视频", link: "链接", file: "文件",
-  spreadsheet: "表格", presentation: "演示", image: "图片",
-  audio: "音频", pdf: "PDF", venue: "场所", facility: "设施",
-  software: "软件",
+  document: '文档',
+  video: '视频',
+  link: '链接',
+  file: '文件',
+  spreadsheet: '表格',
+  presentation: '演示',
+  image: '图片',
+  audio: '音频',
+  pdf: 'PDF',
+  venue: '场所',
+  facility: '设施',
+  software: '软件',
 }
-
 
 function KnowledgeTab({ knowledgeList }: { knowledgeList: KnowledgePoint[] }) {
   if (knowledgeList.length === 0) {
@@ -91,20 +119,30 @@ function KnowledgeTab({ knowledgeList }: { knowledgeList: KnowledgePoint[] }) {
           知识体系说明
         </div>
         <p className="text-sm text-[#475569]">
-          本课程涵盖 <strong className="text-emerald-600">{knowledgeList.length}</strong> 个知识点，帮助学生系统掌握专业知识体系。
+          本课程涵盖 <strong className="text-emerald-600">{knowledgeList.length}</strong>{' '}
+          个知识点，帮助学生系统掌握专业知识体系。
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {knowledgeList.map((kp) => (
-          <div key={kp.id} className="border border-slate-200 rounded-xl p-4 bg-white hover:border-emerald-200 hover:shadow-md transition-all">
+          <div
+            key={kp.id}
+            className="border border-slate-200 rounded-xl p-4 bg-white hover:border-emerald-200 hover:shadow-md transition-all"
+          >
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <BookOpen className="w-4 h-4" />
               </div>
               <div className="font-semibold text-sm text-slate-800">{kp.name}</div>
             </div>
-            {kp.code && <div className="text-[11px] text-slate-400 mb-1 font-mono">ID：{kp.code}</div>}
-            {kp.description && <div className="text-xs text-slate-500 leading-relaxed line-clamp-3">{kp.description}</div>}
+            {kp.code && (
+              <div className="text-[11px] text-slate-400 mb-1 font-mono">ID：{kp.code}</div>
+            )}
+            {kp.description && (
+              <div className="text-xs text-slate-500 leading-relaxed line-clamp-3">
+                {kp.description}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -117,14 +155,14 @@ export default function CourseDetailPage() {
   const id = params.id as string
   const router = useRouter()
   const searchParams = useSearchParams()
-  const highlightNodeId = searchParams.get("node")
+  const highlightNodeId = searchParams.get('node')
 
   const { user, activeRoleCode } = useAuth()
-  const isStudent = activeRoleCode === "student"
+  const isStudent = activeRoleCode === 'student'
 
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("nodes")
+  const [activeTab, setActiveTab] = useState('nodes')
 
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [resources, setResources] = useState<NodeResource[]>([])
@@ -134,29 +172,31 @@ export default function CourseDetailPage() {
 
   const [submitOpen, setSubmitOpen] = useState(false)
   const [activeHomework, setActiveHomework] = useState<CourseAssessmentHomework | null>(null)
-  const [submitContent, setSubmitContent] = useState("")
-  const [submitUrls, setSubmitUrls] = useState("")
+  const [submitContent, setSubmitContent] = useState('')
+  const [submitUrls, setSubmitUrls] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const [gradeOpen, setGradeOpen] = useState(false)
   const [submissions, setSubmissions] = useState<CourseHomeworkSubmission[]>([])
   const [gradeSubmission, setGradeSubmission] = useState<CourseHomeworkSubmission | null>(null)
-  const [gradeScore, setGradeScore] = useState("")
-  const [gradeComment, setGradeComment] = useState("")
+  const [gradeScore, setGradeScore] = useState('')
+  const [gradeComment, setGradeComment] = useState('')
   const [grading, setGrading] = useState(false)
 
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null)
   const [activeNodeHomework, setActiveNodeHomework] = useState<NodeHomework | null>(null)
   const [nodeSubmitOpen, setNodeSubmitOpen] = useState(false)
-  const [nodeSubmitContent, setNodeSubmitContent] = useState("")
-  const [nodeSubmitUrls, setNodeSubmitUrls] = useState("")
+  const [nodeSubmitContent, setNodeSubmitContent] = useState('')
+  const [nodeSubmitUrls, setNodeSubmitUrls] = useState('')
   const [nodeSubmitting, setNodeSubmitting] = useState(false)
 
   const [nodeGradeOpen, setNodeGradeOpen] = useState(false)
   const [nodeSubmissions, setNodeSubmissions] = useState<NodeHomeworkSubmission[]>([])
-  const [nodeGradeSubmission, setNodeGradeSubmission] = useState<NodeHomeworkSubmission | null>(null)
-  const [nodeGradeScore, setNodeGradeScore] = useState("")
-  const [nodeGradeComment, setNodeGradeComment] = useState("")
+  const [nodeGradeSubmission, setNodeGradeSubmission] = useState<NodeHomeworkSubmission | null>(
+    null,
+  )
+  const [nodeGradeScore, setNodeGradeScore] = useState('')
+  const [nodeGradeComment, setNodeGradeComment] = useState('')
   const [nodeGrading, setNodeGrading] = useState(false)
 
   const [nodeResults, setNodeResults] = useState<Map<string, NodeEvaluationResult[]>>(new Map())
@@ -175,21 +215,26 @@ export default function CourseDetailPage() {
         if (!cancelled) setLoading(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   useEffect(() => {
     if (!id || !course) return
 
-    courseNodeApi.list({ courseId: id, limit: 1000 } as any)
+    courseNodeApi
+      .list({ courseId: id, limit: 1000 } as any)
       .then((res) => setNodes((res.items || []) as any))
       .catch(() => setNodes([]))
 
-    courseResourceApi.list({ courseId: id, limit: 10000 })
+    courseResourceApi
+      .list({ courseId: id, limit: 10000 })
       .then((res) => setResources(res.items || []))
       .catch(() => setResources([]))
 
-    knowledgeApi.list({ limit: 1000 })
+    knowledgeApi
+      .list({ limit: 1000 })
       .then((res) => {
         const m = new Map<string, KnowledgePoint>()
         ;(res.items || []).forEach((k) => m.set(k.id, k))
@@ -197,10 +242,11 @@ export default function CourseDetailPage() {
       })
       .catch(() => setKnowledgeMap(new Map()))
 
-    if (course.type === "system" && activeTab === "evaluation") {
+    if (course.type === 'system' && activeTab === 'evaluation') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state is necessary for UX
       setAssessmentsLoading(true)
-      courseAssessmentsApi.get(id)
+      courseAssessmentsApi
+        .get(id)
         .then(setAssessments)
         .catch(() => setAssessments({ exams: [], homeworks: [] }))
         .finally(() => setAssessmentsLoading(false))
@@ -213,7 +259,8 @@ export default function CourseDetailPage() {
     const next = new Map<string, NodeEvaluationResult[]>()
     let pending = nodes.length
     nodes.forEach((node) => {
-      nodeEvaluationResultApi.list({ nodeId: node.id, evaluateeId: user.id, limit: 50 })
+      nodeEvaluationResultApi
+        .list({ nodeId: node.id, evaluateeId: user.id, limit: 50 })
         .then((res) => {
           next.set(node.id, res.items || [])
         })
@@ -234,7 +281,7 @@ export default function CourseDetailPage() {
     if (!highlightNodeId) return
     const el = document.getElementById(`course-node-${highlightNodeId}`)
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }, [highlightNodeId, nodes])
 
@@ -242,7 +289,9 @@ export default function CourseDetailPage() {
   const courseKnowledgeList = useMemo(() => {
     const ids = new Set(course?.knowledgePointIds || [])
     nodes.forEach((n) => n.knowledgePointIds?.forEach((kid) => ids.add(kid)))
-    return Array.from(ids).map((kid) => knowledgeMap.get(kid)).filter(Boolean) as KnowledgePoint[]
+    return Array.from(ids)
+      .map((kid) => knowledgeMap.get(kid))
+      .filter(Boolean) as KnowledgePoint[]
   }, [course, nodes, knowledgeMap])
 
   const totalEvalCount = useMemo(() => {
@@ -256,31 +305,44 @@ export default function CourseDetailPage() {
   const diff = difficultyMap[course?.difficulty ?? 3] || difficultyMap[3]
 
   const evalMethodLabels: Record<string, string> = {
-    paper: "试卷", question_bank: "题库", quiz: "测验",
-    homework: "作业", random_draw: "随机抽题", review: "评审", outcome: "成果",
+    paper: '试卷',
+    question_bank: '题库',
+    quiz: '测验',
+    homework: '作业',
+    random_draw: '随机抽题',
+    review: '评审',
+    outcome: '成果',
   }
   const evalMethodColors: Record<string, string> = {
-    paper: "#0ea5e9", question_bank: "#8b5cf6", quiz: "#06b6d4",
-    homework: "#f59e0b", random_draw: "#6366f1", review: "#f43f5e", outcome: "#10b981",
+    paper: '#0ea5e9',
+    question_bank: '#8b5cf6',
+    quiz: '#06b6d4',
+    homework: '#f59e0b',
+    random_draw: '#6366f1',
+    review: '#f43f5e',
+    outcome: '#10b981',
   }
 
   function getNodeEvalMethods(node: SystemCourseNode) {
     const evalRuleConfig = (node.evalData as any)?.evalRuleConfig
     const methods = (evalRuleConfig?.evaluationMethods || []) as string[]
-    const methodResourceConfigs = (evalRuleConfig?.methodResourceConfigs || {}) as Record<string, Record<string, any>>
+    const methodResourceConfigs = (evalRuleConfig?.methodResourceConfigs || {}) as Record<
+      string,
+      Record<string, any>
+    >
     return methods.map((methodKey) => ({
       methodKey,
       resourceConfig: methodResourceConfigs[methodKey] || {},
-      isExam: ["paper", "question_bank", "quiz"].includes(methodKey),
-      isHomework: methodKey === "homework",
+      isExam: ['paper', 'question_bank', 'quiz'].includes(methodKey),
+      isHomework: methodKey === 'homework',
     }))
   }
 
   function getNodeExamHref(nodeId: string, methodKey: string, rc: Record<string, any>) {
-    const examId = methodKey === "paper" ? rc.paperId : rc.examId
+    const examId = methodKey === 'paper' ? rc.paperId : rc.examId
     const usageId = rc.usageId
-    if (!examId) return "#"
-    return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${methodKey}&usage=${usageId || ""}&course=${id}`
+    if (!examId) return '#'
+    return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${methodKey}&usage=${usageId || ''}&course=${id}`
   }
 
   if (loading) {
@@ -303,7 +365,12 @@ export default function CourseDetailPage() {
             <BookOpen className="w-10 h-10 opacity-40" />
           </div>
           <div className="text-lg font-semibold text-slate-600">课程不存在或暂未公开</div>
-          <Link href="/lesson/landing" className="text-emerald-600 hover:text-emerald-700 mt-3 text-sm font-medium">返回课程列表</Link>
+          <Link
+            href="/lesson/landing"
+            className="text-emerald-600 hover:text-emerald-700 mt-3 text-sm font-medium"
+          >
+            返回课程列表
+          </Link>
         </div>
         <PlatformFooter />
       </div>
@@ -316,7 +383,7 @@ export default function CourseDetailPage() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "nodes":
+      case 'nodes':
         return (
           <div>
             {nodes.length === 0 ? (
@@ -329,124 +396,168 @@ export default function CourseDetailPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {nodes.sort((a, b) => a.sortOrder - b.sortOrder).map((node, idx) => {
-                  const nodeResources = resources.filter((r) => (r as any).nodeId === node.id)
-                  const nodeKnow = node.knowledgePointIds?.length || 0
-                  const evalMethods = getNodeEvalMethods(node)
-                  const results = nodeResults.get(node.id) || []
-                  return (
-                    <div
-                      key={node.id}
-                      id={`course-node-${node.id}`}
-                      className={`group bg-white rounded-xl border overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-emerald-200 transition-all ${highlightNodeId === node.id ? "ring-2 ring-emerald-400 border-emerald-300" : "border-slate-200"}`}
-                    >
-                      <div className="flex items-center gap-4 p-5">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-emerald-500/25">
-                          {idx + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <div className="text-[15px] font-semibold text-slate-800 truncate">{node.name}</div>
-                            {node.refType === "original" && (
-                              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-purple-50 text-purple-600 border-purple-200 shrink-0">引用颗粒课</span>
+                {nodes
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((node, idx) => {
+                    const nodeResources = resources.filter((r) => (r as any).nodeId === node.id)
+                    const nodeKnow = node.knowledgePointIds?.length || 0
+                    const evalMethods = getNodeEvalMethods(node)
+                    const results = nodeResults.get(node.id) || []
+                    return (
+                      <div
+                        key={node.id}
+                        id={`course-node-${node.id}`}
+                        className={`group bg-white rounded-xl border overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-emerald-200 transition-all ${highlightNodeId === node.id ? 'ring-2 ring-emerald-400 border-emerald-300' : 'border-slate-200'}`}
+                      >
+                        <div className="flex items-center gap-4 p-5">
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-emerald-500/25">
+                            {idx + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <div className="text-[15px] font-semibold text-slate-800 truncate">
+                                {node.name}
+                              </div>
+                              {node.refType === 'original' && (
+                                <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-purple-50 text-purple-600 border-purple-200 shrink-0">
+                                  引用颗粒课
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                              {node.duration && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  {node.duration} 课时
+                                </span>
+                              )}
+                              {nodeResources.length > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <FolderOpen className="w-3.5 h-3.5" />
+                                  {nodeResources.length} 个资源
+                                </span>
+                              )}
+                              {nodeKnow > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <GitBranch className="w-3.5 h-3.5" />
+                                  {nodeKnow} 个知识点
+                                </span>
+                              )}
+                            </div>
+                            {node.teachingGoals && (
+                              <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+                                {node.teachingGoals}
+                              </p>
                             )}
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                            {node.duration && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{node.duration} 课时</span>}
-                            {nodeResources.length > 0 && <span className="flex items-center gap-1"><FolderOpen className="w-3.5 h-3.5" />{nodeResources.length} 个资源</span>}
-                            {nodeKnow > 0 && <span className="flex items-center gap-1"><GitBranch className="w-3.5 h-3.5" />{nodeKnow} 个知识点</span>}
-                          </div>
-                          {node.teachingGoals && (
-                            <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">{node.teachingGoals}</p>
-                          )}
                         </div>
-                      </div>
 
-                      {evalMethods.length > 0 && (
-                        <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {evalMethods.map(({ methodKey, resourceConfig, isExam, isHomework }) => {
-                              const label = evalMethodLabels[methodKey] || methodKey
-                              const color = evalMethodColors[methodKey] || "#94a3b8"
-                              const result = results.find((r) => r.methodKey === methodKey)
-                              const hw = isHomework ? (node.homeworks || [])[0] : undefined
-                              return (
-                                <div
-                                  key={methodKey}
-                                  className="bg-white rounded-lg border border-slate-200 p-3 hover:border-emerald-200 hover:shadow-sm transition-all"
-                                >
-                                  <div className="flex items-center gap-2 mb-2">
+                        {evalMethods.length > 0 && (
+                          <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {evalMethods.map(
+                                ({ methodKey, resourceConfig, isExam, isHomework }) => {
+                                  const label = evalMethodLabels[methodKey] || methodKey
+                                  const color = evalMethodColors[methodKey] || '#94a3b8'
+                                  const result = results.find((r) => r.methodKey === methodKey)
+                                  const hw = isHomework ? (node.homeworks || [])[0] : undefined
+                                  return (
                                     <div
-                                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
-                                      style={{ backgroundColor: color }}
+                                      key={methodKey}
+                                      className="bg-white rounded-lg border border-slate-200 p-3 hover:border-emerald-200 hover:shadow-sm transition-all"
                                     >
-                                      {isHomework ? <FileText className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm font-semibold text-slate-800 truncate">{label}</div>
-                                      <div className="text-[11px] text-slate-400">
-                                        {isExam ? "在线考试" : isHomework ? "作业提交" : "测评"}
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <div
+                                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
+                                          style={{ backgroundColor: color }}
+                                        >
+                                          {isHomework ? (
+                                            <FileText className="w-4 h-4" />
+                                          ) : (
+                                            <BookOpen className="w-4 h-4" />
+                                          )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-semibold text-slate-800 truncate">
+                                            {label}
+                                          </div>
+                                          <div className="text-[11px] text-slate-400">
+                                            {isExam ? '在线考试' : isHomework ? '作业提交' : '测评'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center justify-between">
+                                        {result ? (
+                                          <span
+                                            className={`text-xs font-medium px-2 py-0.5 rounded-full border ${result.status === 'evaluated' ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-amber-600 bg-amber-50 border-amber-200'}`}
+                                          >
+                                            {result.status === 'evaluated'
+                                              ? `得分 ${result.totalScore}/${result.maxScore}`
+                                              : '待评分'}
+                                          </span>
+                                        ) : (
+                                          <span className="text-xs text-slate-400">未开始</span>
+                                        )}
+                                        {isExam ? (
+                                          <Link
+                                            href={getNodeExamHref(
+                                              node.id,
+                                              methodKey,
+                                              resourceConfig,
+                                            )}
+                                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                                          >
+                                            {resourceConfig.examId || resourceConfig.paperId
+                                              ? '进入考试 →'
+                                              : '未配置'}
+                                          </Link>
+                                        ) : isHomework && hw ? (
+                                          <button
+                                            onClick={async () => {
+                                              setActiveNodeId(node.id)
+                                              setActiveNodeHomework(hw)
+                                              if (isStudent) {
+                                                setNodeSubmitContent('')
+                                                setNodeSubmitUrls('')
+                                                setNodeSubmitOpen(true)
+                                              } else {
+                                                try {
+                                                  const res = await nodeHomeworkApi.listSubmissions(
+                                                    node.id,
+                                                    hw.id,
+                                                  )
+                                                  setNodeSubmissions(res.items || [])
+                                                  setNodeGradeOpen(true)
+                                                } catch {
+                                                  setNodeSubmissions([])
+                                                  setNodeGradeOpen(true)
+                                                }
+                                              }
+                                            }}
+                                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                                          >
+                                            {isStudent ? '提交作业 →' : '批改作业 →'}
+                                          </button>
+                                        ) : (
+                                          <span className="text-xs text-slate-400">未配置</span>
+                                        )}
                                       </div>
                                     </div>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    {result ? (
-                                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${result.status === "evaluated" ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-amber-600 bg-amber-50 border-amber-200"}`}>
-                                        {result.status === "evaluated" ? `得分 ${result.totalScore}/${result.maxScore}` : "待评分"}
-                                      </span>
-                                    ) : (
-                                      <span className="text-xs text-slate-400">未开始</span>
-                                    )}
-                                    {isExam ? (
-                                      <Link
-                                        href={getNodeExamHref(node.id, methodKey, resourceConfig)}
-                                        className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
-                                      >
-                                        {resourceConfig.examId || resourceConfig.paperId ? "进入考试 →" : "未配置"}
-                                      </Link>
-                                    ) : isHomework && hw ? (
-                                      <button
-                                        onClick={async () => {
-                                          setActiveNodeId(node.id)
-                                          setActiveNodeHomework(hw)
-                                          if (isStudent) {
-                                            setNodeSubmitContent("")
-                                            setNodeSubmitUrls("")
-                                            setNodeSubmitOpen(true)
-                                          } else {
-                                            try {
-                                              const res = await nodeHomeworkApi.listSubmissions(node.id, hw.id)
-                                              setNodeSubmissions(res.items || [])
-                                              setNodeGradeOpen(true)
-                                            } catch {
-                                              setNodeSubmissions([])
-                                              setNodeGradeOpen(true)
-                                            }
-                                          }
-                                        }}
-                                        className="text-xs font-medium text-emerald-600 hover:text-emerald-700 cursor-pointer"
-                                      >
-                                        {isStudent ? "提交作业 →" : "批改作业 →"}
-                                      </button>
-                                    ) : (
-                                      <span className="text-xs text-slate-400">未配置</span>
-                                    )}
-                                  </div>
-                                </div>
-                              )
-                            })}
+                                  )
+                                },
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                        )}
+                      </div>
+                    )
+                  })}
               </div>
             )}
           </div>
         )
 
-      case "resources":
+      case 'resources':
         return (
           <div>
             <div className="text-sm text-slate-500 mb-4">
@@ -467,38 +578,55 @@ export default function CourseDetailPage() {
                   nodes.forEach((n) => nodeMap.set(n.id, n.name))
                   const byNode = new Map<string, NodeResource[]>()
                   resources.forEach((r) => {
-                    const nid = (r as any).nodeId || "course"
+                    const nid = (r as any).nodeId || 'course'
                     const list = byNode.get(nid) || []
                     list.push(r)
                     byNode.set(nid, list)
                   })
                   return Array.from(byNode.entries()).map(([nid, resList]) => {
-                    const nodeName = nid === "course" ? "课程全局资源" : (nodeMap.get(nid) || nid)
+                    const nodeName = nid === 'course' ? '课程全局资源' : nodeMap.get(nid) || nid
                     return (
                       <div key={nid}>
                         <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-emerald-500" />
                           {nodeName}
-                          <span className="text-xs text-slate-400 font-normal">({resList.length})</span>
+                          <span className="text-xs text-slate-400 font-normal">
+                            ({resList.length})
+                          </span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {resList.map((r) => {
                             const typeColors: Record<string, string> = {
-                              document: "bg-blue-50 text-blue-600 border-blue-100",
-                              video: "bg-amber-50 text-amber-600 border-amber-100",
-                              link: "bg-purple-50 text-purple-600 border-purple-100",
-                              file: "bg-emerald-50 text-emerald-600 border-emerald-100",
+                              document: 'bg-blue-50 text-blue-600 border-blue-100',
+                              video: 'bg-amber-50 text-amber-600 border-amber-100',
+                              link: 'bg-purple-50 text-purple-600 border-purple-100',
+                              file: 'bg-emerald-50 text-emerald-600 border-emerald-100',
                             }
                             return (
-                              <div key={r.id} className="group bg-slate-50 rounded-xl p-3.5 border border-slate-100 hover:border-emerald-200 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                              <div
+                                key={r.id}
+                                className="group bg-slate-50 rounded-xl p-3.5 border border-slate-100 hover:border-emerald-200 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                              >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{r.name}</div>
+                                    <div className="text-sm font-semibold text-slate-800 mb-1.5 truncate">
+                                      {r.name}
+                                    </div>
                                     <div className="flex items-center gap-2 text-xs text-slate-400">
-                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                                      <span
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || 'bg-slate-100 text-slate-500 border-slate-200'}`}
+                                      >
                                         {resourceTypeLabels[r.type] || r.type}
                                       </span>
-                                      {r.size && <span>{r.size < 1024 ? `${r.size}B` : r.size < 1048576 ? `${(r.size / 1024).toFixed(1)}KB` : `${(r.size / 1048576).toFixed(1)}MB`}</span>}
+                                      {r.size && (
+                                        <span>
+                                          {r.size < 1024
+                                            ? `${r.size}B`
+                                            : r.size < 1048576
+                                              ? `${(r.size / 1024).toFixed(1)}KB`
+                                              : `${(r.size / 1048576).toFixed(1)}MB`}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -515,10 +643,10 @@ export default function CourseDetailPage() {
           </div>
         )
 
-      case "knowledge":
+      case 'knowledge':
         return <KnowledgeTab knowledgeList={courseKnowledgeList} />
 
-      case "evaluation":
+      case 'evaluation':
         return (
           <div className="space-y-6">
             {/* 课程级测评任务 */}
@@ -532,7 +660,8 @@ export default function CourseDetailPage() {
                   <Skeleton className="h-20 w-full" />
                   <Skeleton className="h-20 w-full" />
                 </div>
-              ) : !assessments || (assessments.exams.length === 0 && assessments.homeworks.length === 0) ? (
+              ) : !assessments ||
+                (assessments.exams.length === 0 && assessments.homeworks.length === 0) ? (
                 <div className="text-center py-10 text-slate-400 rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
                   <div className="text-[14px] font-medium text-slate-600">暂无课程级测评任务</div>
                   <div className="text-[12px] mt-1">发布系统课后将自动生成考试/作业安排</div>
@@ -540,41 +669,62 @@ export default function CourseDetailPage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {assessments.exams.map((exam) => (
-                    <div key={exam.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all">
+                    <div
+                      key={exam.id}
+                      className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all"
+                    >
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                           <BookOpen className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-slate-800 truncate">{exam.name}</div>
-                          <div className="text-[11px] text-slate-400">{exam.isTemp ? "动态组卷" : "固定试卷"} · {exam.duration ? `${exam.duration} 分钟` : "不限时"}</div>
+                          <div className="text-sm font-semibold text-slate-800 truncate">
+                            {exam.name}
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            {exam.isTemp ? '动态组卷' : '固定试卷'} ·{' '}
+                            {exam.duration ? `${exam.duration} 分钟` : '不限时'}
+                          </div>
                         </div>
                       </div>
                       <Link
-                        href={isStudent ? `/evaluation/landing/exams/${exam.examId}?usage=${exam.id}&course=${id}` : `/evaluation/exam-usages/${exam.id}`}
+                        href={
+                          isStudent
+                            ? `/evaluation/landing/exams/${exam.examId}?usage=${exam.id}&course=${id}`
+                            : `/evaluation/exam-usages/${exam.id}`
+                        }
                         className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700"
                       >
-                        {isStudent ? "进入考试 →" : "查看安排 →"}
+                        {isStudent ? '进入考试 →' : '查看安排 →'}
                       </Link>
                     </div>
                   ))}
                   {assessments.homeworks.map((hw) => (
-                    <div key={hw.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all">
+                    <div
+                      key={hw.id}
+                      className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all"
+                    >
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                           <FileText className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-slate-800 truncate">{hw.title}</div>
-                          {hw.requirement && <div className="text-[11px] text-slate-400 line-clamp-1">{hw.requirement}</div>}
+                          <div className="text-sm font-semibold text-slate-800 truncate">
+                            {hw.title}
+                          </div>
+                          {hw.requirement && (
+                            <div className="text-[11px] text-slate-400 line-clamp-1">
+                              {hw.requirement}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <button
                         onClick={async () => {
                           setActiveHomework(hw)
                           if (isStudent) {
-                            setSubmitContent("")
-                            setSubmitUrls("")
+                            setSubmitContent('')
+                            setSubmitUrls('')
                             setSubmitOpen(true)
                           } else {
                             try {
@@ -589,7 +739,7 @@ export default function CourseDetailPage() {
                         }}
                         className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700 cursor-pointer"
                       >
-                        {isStudent ? "提交作业 →" : "批改作业 →"}
+                        {isStudent ? '提交作业 →' : '批改作业 →'}
                       </button>
                     </div>
                   ))}
@@ -601,7 +751,9 @@ export default function CourseDetailPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold text-slate-800">节点评价标准</h3>
-                <span className="text-sm text-slate-500">共 <strong className="text-emerald-600">{totalEvalCount}</strong> 个节点</span>
+                <span className="text-sm text-slate-500">
+                  共 <strong className="text-emerald-600">{totalEvalCount}</strong> 个节点
+                </span>
               </div>
               {totalEvalCount === 0 ? (
                 <div className="text-center py-10 text-slate-400 rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
@@ -609,22 +761,35 @@ export default function CourseDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {nodes.filter((n) => n.teachingGoals).map((node) => (
-                    <div key={node.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                          <Target className="w-4 h-4" />
+                  {nodes
+                    .filter((n) => n.teachingGoals)
+                    .map((node) => (
+                      <div
+                        key={node.id}
+                        className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                            <Target className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-slate-800 truncate">
+                              {node.name}
+                            </div>
+                            {node.duration && (
+                              <span className="text-[11px] text-slate-400">
+                                预计 {node.duration} 课时
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-slate-800 truncate">{node.name}</div>
-                          {node.duration && <span className="text-[11px] text-slate-400">预计 {node.duration} 课时</span>}
-                        </div>
+                        {node.teachingGoals && (
+                          <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 rounded-lg p-3">
+                            {node.teachingGoals}
+                          </p>
+                        )}
                       </div>
-                      {node.teachingGoals && (
-                        <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 rounded-lg p-3">{node.teachingGoals}</p>
-                      )}
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
@@ -637,15 +802,29 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" }}>
+    <div
+      className="min-h-screen flex flex-col bg-[#f8fafc]"
+      style={{
+        fontFamily:
+          "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      }}
+    >
       <div className="bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
         <div className="max-w-[1400px] mx-auto px-6 py-5">
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
-            <button onClick={() => router.back()} className="hover:text-emerald-600 transition-colors flex items-center gap-1 cursor-pointer">
-              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">←</span> 返回上一页
+            <button
+              onClick={() => router.back()}
+              className="hover:text-emerald-600 transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                ←
+              </span>{' '}
+              返回上一页
             </button>
             <span className="text-slate-300">/</span>
-            <Link href="/lesson/landing" className="hover:text-emerald-600 transition-colors">课程列表</Link>
+            <Link href="/lesson/landing" className="hover:text-emerald-600 transition-colors">
+              课程列表
+            </Link>
             <span className="text-slate-300">/</span>
             <span className="text-slate-800 font-medium truncate">{course.name}</span>
           </div>
@@ -660,17 +839,22 @@ export default function CourseDetailPage() {
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                     {!course.coverImage && (
-                      <BookOpen className="w-16 h-16 text-white/90 relative z-10" style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.2))" }} />
+                      <BookOpen
+                        className="w-16 h-16 text-white/90 relative z-10"
+                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}
+                      />
                     )}
                     <span className="absolute bottom-3 right-3 z-10 bg-black/40 backdrop-blur-sm text-white px-2.5 py-1 rounded-lg text-[11px] border border-white/10">
-                      v{course.version || "1.0"}
+                      v{course.version || '1.0'}
                     </span>
                   </div>
 
                   <div className="flex-1 flex flex-col min-w-0">
                     <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                       <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-                        <h1 className="text-[26px] font-bold text-slate-900 truncate">{course.name}</h1>
+                        <h1 className="text-[26px] font-bold text-slate-900 truncate">
+                          {course.name}
+                        </h1>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 font-medium shrink-0 border border-emerald-200">
                           {courseTypeLabels[course.type] || course.type}
                         </span>
@@ -678,27 +862,43 @@ export default function CourseDetailPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 mb-3">
-                      <span className="flex items-center gap-1.5">创建人：{course.creatorId.slice(0, 8)}</span>
-                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> 更新于 {formatDate(course.updatedAt)}</span>
-                      <span className="flex items-center gap-1.5"><Layers className="w-3.5 h-3.5" /> {course.nodeCount} 节点</span>
+                      <span className="flex items-center gap-1.5">
+                        创建人：{course.creatorId.slice(0, 8)}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" /> 更新于 {formatDate(course.updatedAt)}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5" /> {course.nodeCount} 节点
+                      </span>
                     </div>
 
                     {course.description && (
-                      <p className="text-sm text-slate-600 leading-relaxed mb-4 line-clamp-3">{course.description}</p>
+                      <p className="text-sm text-slate-600 leading-relaxed mb-4 line-clamp-3">
+                        {course.description}
+                      </p>
                     )}
 
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
                       {course.majorName && (
                         <div className="flex items-center gap-2">
                           <span className="text-slate-400 shrink-0">适用专业：</span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium">{course.majorName}</span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium">
+                            {course.majorName}
+                          </span>
                         </div>
                       )}
                       {course.difficulty && (
                         <div className="flex items-center gap-2">
                           <span className="text-slate-400 shrink-0">难度等级：</span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] border font-medium"
-                            style={{ backgroundColor: diff.color + "15", color: diff.color, borderColor: diff.color + "30" }}>
+                          <span
+                            className="px-2.5 py-0.5 rounded-full text-[11px] border font-medium"
+                            style={{
+                              backgroundColor: diff.color + '15',
+                              color: diff.color,
+                              borderColor: diff.color + '30',
+                            }}
+                          >
                             {diff.label}
                           </span>
                         </div>
@@ -734,15 +934,21 @@ export default function CourseDetailPage() {
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
                     <span className="text-sm text-slate-500">知识点</span>
-                    <span className="text-sm font-bold text-emerald-600">{courseKnowledgeList.length}</span>
+                    <span className="text-sm font-bold text-emerald-600">
+                      {courseKnowledgeList.length}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
                     <span className="text-sm text-slate-500">线上课时</span>
-                    <span className="text-sm font-bold text-emerald-600">{course.onlineHours || 0}h</span>
+                    <span className="text-sm font-bold text-emerald-600">
+                      {course.onlineHours || 0}h
+                    </span>
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <span className="text-sm text-slate-500">线下课时</span>
-                    <span className="text-sm font-bold text-emerald-600">{course.offlineHours || 0}h</span>
+                    <span className="text-sm font-bold text-emerald-600">
+                      {course.offlineHours || 0}h
+                    </span>
                   </div>
                 </div>
               </div>
@@ -760,19 +966,33 @@ export default function CourseDetailPage() {
                 onClick={() => setActiveTab(t.value)}
                 className={`
                   py-4 px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
-                  ${activeTab === t.value ? "text-emerald-600 font-semibold" : "text-slate-500 hover:text-emerald-600 hover:bg-emerald-50/40"}
+                  ${activeTab === t.value ? 'text-emerald-600 font-semibold' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50/40'}
                 `}
               >
-                <t.icon className={`w-4 h-4 ${activeTab === t.value ? "text-emerald-500" : "text-slate-400"}`} />
+                <t.icon
+                  className={`w-4 h-4 ${activeTab === t.value ? 'text-emerald-500' : 'text-slate-400'}`}
+                />
                 {t.label}
-                {t.value === "nodes" && nodes.length > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>{nodes.length}</span>
+                {t.value === 'nodes' && nodes.length > 0 && (
+                  <span
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}
+                  >
+                    {nodes.length}
+                  </span>
                 )}
-                {t.value === "resources" && totalResources > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>{totalResources}</span>
+                {t.value === 'resources' && totalResources > 0 && (
+                  <span
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}
+                  >
+                    {totalResources}
+                  </span>
                 )}
-                {t.value === "knowledge" && courseKnowledgeList.length > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>{courseKnowledgeList.length}</span>
+                {t.value === 'knowledge' && courseKnowledgeList.length > 0 && (
+                  <span
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}
+                  >
+                    {courseKnowledgeList.length}
+                  </span>
                 )}
                 {activeTab === t.value && (
                   <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-emerald-500 rounded-t-full" />
@@ -781,9 +1001,7 @@ export default function CourseDetailPage() {
             ))}
           </div>
 
-          <div className="p-6 min-h-[500px]">
-            {renderTabContent()}
-          </div>
+          <div className="p-6 min-h-[500px]">{renderTabContent()}</div>
         </div>
       </main>
 
@@ -796,19 +1014,33 @@ export default function CourseDetailPage() {
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label className="text-xs">作业要求</Label>
-              <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{activeHomework?.requirement || "无"}</p>
+              <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">
+                {activeHomework?.requirement || '无'}
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">作答内容</Label>
-              <Textarea value={submitContent} onChange={(e) => setSubmitContent(e.target.value)} placeholder="请输入作业内容" className="min-h-[120px] text-sm" />
+              <Textarea
+                value={submitContent}
+                onChange={(e) => setSubmitContent(e.target.value)}
+                placeholder="请输入作业内容"
+                className="min-h-[120px] text-sm"
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">附件链接（多个用逗号分隔）</Label>
-              <Input value={submitUrls} onChange={(e) => setSubmitUrls(e.target.value)} placeholder="https://..." className="text-sm h-9" />
+              <Input
+                value={submitUrls}
+                onChange={(e) => setSubmitUrls(e.target.value)}
+                placeholder="https://..."
+                className="text-sm h-9"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setSubmitOpen(false)}>取消</Button>
+            <Button variant="outline" size="sm" onClick={() => setSubmitOpen(false)}>
+              取消
+            </Button>
             <Button
               size="sm"
               disabled={submitting}
@@ -818,17 +1050,21 @@ export default function CourseDetailPage() {
                 try {
                   await courseHomeworkApi.submit(id, activeHomework.id, {
                     content: submitContent,
-                    attachmentUrls: submitUrls.split(",").map((s) => s.trim()).filter(Boolean),
+                    attachmentUrls: submitUrls
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
                   })
                   setSubmitOpen(false)
                 } catch {
-                  alert("提交失败")
+                  alert('提交失败')
                 } finally {
                   setSubmitting(false)
                 }
               }}
             >
-              <Send className="h-3.5 w-3.5 mr-1" />{submitting ? "提交中..." : "提交"}
+              <Send className="h-3.5 w-3.5 mr-1" />
+              {submitting ? '提交中...' : '提交'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -844,14 +1080,24 @@ export default function CourseDetailPage() {
             <div className="space-y-3 py-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">学生作答</Label>
-                <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 min-h-[80px]">{gradeSubmission.content || "无内容"}</p>
+                <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 min-h-[80px]">
+                  {gradeSubmission.content || '无内容'}
+                </p>
               </div>
               {gradeSubmission.attachmentUrls && gradeSubmission.attachmentUrls.length > 0 && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">附件</Label>
                   <div className="flex flex-wrap gap-2">
                     {gradeSubmission.attachmentUrls.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="text-xs text-emerald-600 hover:underline">附件 {i + 1}</a>
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-emerald-600 hover:underline"
+                      >
+                        附件 {i + 1}
+                      </a>
                     ))}
                   </div>
                 </div>
@@ -859,11 +1105,22 @@ export default function CourseDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">得分</Label>
-                  <Input type="number" value={gradeScore} onChange={(e) => setGradeScore(e.target.value)} placeholder="0-100" className="h-9 text-sm" />
+                  <Input
+                    type="number"
+                    value={gradeScore}
+                    onChange={(e) => setGradeScore(e.target.value)}
+                    placeholder="0-100"
+                    className="h-9 text-sm"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">评语</Label>
-                  <Input value={gradeComment} onChange={(e) => setGradeComment(e.target.value)} placeholder="评语" className="h-9 text-sm" />
+                  <Input
+                    value={gradeComment}
+                    onChange={(e) => setGradeComment(e.target.value)}
+                    placeholder="评语"
+                    className="h-9 text-sm"
+                  />
                 </div>
               </div>
             </div>
@@ -877,18 +1134,20 @@ export default function CourseDetailPage() {
                     key={s.id}
                     onClick={() => {
                       setGradeSubmission(s)
-                      setGradeScore(s.score !== undefined ? String(s.score) : "")
-                      setGradeComment(s.comment || "")
+                      setGradeScore(s.score !== undefined ? String(s.score) : '')
+                      setGradeComment(s.comment || '')
                     }}
                     className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">{s.studentName}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === "graded" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
-                        {s.status === "graded" ? `已批 ${s.score}分` : "待批改"}
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${s.status === 'graded' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}
+                      >
+                        {s.status === 'graded' ? `已批 ${s.score}分` : '待批改'}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1 truncate">{s.content || "无内容"}</p>
+                    <p className="text-xs text-slate-400 mt-1 truncate">{s.content || '无内容'}</p>
                   </button>
                 ))
               )}
@@ -897,10 +1156,12 @@ export default function CourseDetailPage() {
           <DialogFooter>
             {gradeSubmission ? (
               <>
-                <Button variant="outline" size="sm" onClick={() => setGradeSubmission(null)}>返回列表</Button>
+                <Button variant="outline" size="sm" onClick={() => setGradeSubmission(null)}>
+                  返回列表
+                </Button>
                 <Button
                   size="sm"
-                  disabled={grading || gradeScore === ""}
+                  disabled={grading || gradeScore === ''}
                   onClick={async () => {
                     if (!activeHomework || !gradeSubmission) return
                     setGrading(true)
@@ -913,17 +1174,20 @@ export default function CourseDetailPage() {
                       const res = await courseHomeworkApi.listSubmissions(id, activeHomework.id)
                       setSubmissions(res.items || [])
                     } catch {
-                      alert("批改失败")
+                      alert('批改失败')
                     } finally {
                       setGrading(false)
                     }
                   }}
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{grading ? "保存中..." : "保存评分"}
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                  {grading ? '保存中...' : '保存评分'}
                 </Button>
               </>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => setGradeOpen(false)}>关闭</Button>
+              <Button variant="outline" size="sm" onClick={() => setGradeOpen(false)}>
+                关闭
+              </Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -938,19 +1202,33 @@ export default function CourseDetailPage() {
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label className="text-xs">作业要求</Label>
-              <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{activeNodeHomework?.requirement || "无"}</p>
+              <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">
+                {activeNodeHomework?.requirement || '无'}
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">作答内容</Label>
-              <Textarea value={nodeSubmitContent} onChange={(e) => setNodeSubmitContent(e.target.value)} placeholder="请输入作业内容" className="min-h-[120px] text-sm" />
+              <Textarea
+                value={nodeSubmitContent}
+                onChange={(e) => setNodeSubmitContent(e.target.value)}
+                placeholder="请输入作业内容"
+                className="min-h-[120px] text-sm"
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">附件链接（多个用逗号分隔）</Label>
-              <Input value={nodeSubmitUrls} onChange={(e) => setNodeSubmitUrls(e.target.value)} placeholder="https://..." className="text-sm h-9" />
+              <Input
+                value={nodeSubmitUrls}
+                onChange={(e) => setNodeSubmitUrls(e.target.value)}
+                placeholder="https://..."
+                className="text-sm h-9"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setNodeSubmitOpen(false)}>取消</Button>
+            <Button variant="outline" size="sm" onClick={() => setNodeSubmitOpen(false)}>
+              取消
+            </Button>
             <Button
               size="sm"
               disabled={nodeSubmitting}
@@ -960,17 +1238,21 @@ export default function CourseDetailPage() {
                 try {
                   await nodeHomeworkApi.submit(activeNodeId, activeNodeHomework.id, {
                     content: nodeSubmitContent,
-                    attachmentUrls: nodeSubmitUrls.split(",").map((s) => s.trim()).filter(Boolean),
+                    attachmentUrls: nodeSubmitUrls
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
                   })
                   setNodeSubmitOpen(false)
                 } catch {
-                  alert("提交失败")
+                  alert('提交失败')
                 } finally {
                   setNodeSubmitting(false)
                 }
               }}
             >
-              <Send className="h-3.5 w-3.5 mr-1" />{nodeSubmitting ? "提交中..." : "提交"}
+              <Send className="h-3.5 w-3.5 mr-1" />
+              {nodeSubmitting ? '提交中...' : '提交'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -986,26 +1268,48 @@ export default function CourseDetailPage() {
             <div className="space-y-3 py-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">学生作答</Label>
-                <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 min-h-[80px]">{nodeGradeSubmission.content || "无内容"}</p>
+                <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 min-h-[80px]">
+                  {nodeGradeSubmission.content || '无内容'}
+                </p>
               </div>
-              {nodeGradeSubmission.attachmentUrls && nodeGradeSubmission.attachmentUrls.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">附件</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {nodeGradeSubmission.attachmentUrls.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="text-xs text-emerald-600 hover:underline">附件 {i + 1}</a>
-                    ))}
+              {nodeGradeSubmission.attachmentUrls &&
+                nodeGradeSubmission.attachmentUrls.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">附件</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {nodeGradeSubmission.attachmentUrls.map((url, i) => (
+                        <a
+                          key={i}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-emerald-600 hover:underline"
+                        >
+                          附件 {i + 1}
+                        </a>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">得分</Label>
-                  <Input type="number" value={nodeGradeScore} onChange={(e) => setNodeGradeScore(e.target.value)} placeholder="0-100" className="h-9 text-sm" />
+                  <Input
+                    type="number"
+                    value={nodeGradeScore}
+                    onChange={(e) => setNodeGradeScore(e.target.value)}
+                    placeholder="0-100"
+                    className="h-9 text-sm"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">评语</Label>
-                  <Input value={nodeGradeComment} onChange={(e) => setNodeGradeComment(e.target.value)} placeholder="评语" className="h-9 text-sm" />
+                  <Input
+                    value={nodeGradeComment}
+                    onChange={(e) => setNodeGradeComment(e.target.value)}
+                    placeholder="评语"
+                    className="h-9 text-sm"
+                  />
                 </div>
               </div>
             </div>
@@ -1019,18 +1323,20 @@ export default function CourseDetailPage() {
                     key={s.id}
                     onClick={() => {
                       setNodeGradeSubmission(s)
-                      setNodeGradeScore(s.score !== undefined ? String(s.score) : "")
-                      setNodeGradeComment(s.comment || "")
+                      setNodeGradeScore(s.score !== undefined ? String(s.score) : '')
+                      setNodeGradeComment(s.comment || '')
                     }}
                     className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">{s.studentName}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === "graded" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
-                        {s.status === "graded" ? `已批 ${s.score}分` : "待批改"}
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${s.status === 'graded' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}
+                      >
+                        {s.status === 'graded' ? `已批 ${s.score}分` : '待批改'}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1 truncate">{s.content || "无内容"}</p>
+                    <p className="text-xs text-slate-400 mt-1 truncate">{s.content || '无内容'}</p>
                   </button>
                 ))
               )}
@@ -1039,33 +1345,46 @@ export default function CourseDetailPage() {
           <DialogFooter>
             {nodeGradeSubmission ? (
               <>
-                <Button variant="outline" size="sm" onClick={() => setNodeGradeSubmission(null)}>返回列表</Button>
+                <Button variant="outline" size="sm" onClick={() => setNodeGradeSubmission(null)}>
+                  返回列表
+                </Button>
                 <Button
                   size="sm"
-                  disabled={nodeGrading || nodeGradeScore === ""}
+                  disabled={nodeGrading || nodeGradeScore === ''}
                   onClick={async () => {
                     if (!activeNodeId || !activeNodeHomework || !nodeGradeSubmission) return
                     setNodeGrading(true)
                     try {
-                      await nodeHomeworkApi.grade(activeNodeId, activeNodeHomework.id, nodeGradeSubmission.id, {
-                        score: parseFloat(nodeGradeScore),
-                        comment: nodeGradeComment,
-                      })
+                      await nodeHomeworkApi.grade(
+                        activeNodeId,
+                        activeNodeHomework.id,
+                        nodeGradeSubmission.id,
+                        {
+                          score: parseFloat(nodeGradeScore),
+                          comment: nodeGradeComment,
+                        },
+                      )
                       setNodeGradeSubmission(null)
-                      const res = await nodeHomeworkApi.listSubmissions(activeNodeId, activeNodeHomework.id)
+                      const res = await nodeHomeworkApi.listSubmissions(
+                        activeNodeId,
+                        activeNodeHomework.id,
+                      )
                       setNodeSubmissions(res.items || [])
                     } catch {
-                      alert("批改失败")
+                      alert('批改失败')
                     } finally {
                       setNodeGrading(false)
                     }
                   }}
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{nodeGrading ? "保存中..." : "保存评分"}
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                  {nodeGrading ? '保存中...' : '保存评分'}
                 </Button>
               </>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => setNodeGradeOpen(false)}>关闭</Button>
+              <Button variant="outline" size="sm" onClick={() => setNodeGradeOpen(false)}>
+                关闭
+              </Button>
             )}
           </DialogFooter>
         </DialogContent>

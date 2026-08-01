@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { useState, useRef } from "react"
-import { X, Link2, PenLine } from "lucide-react"
+import { useState, useRef } from 'react'
+import { X, Link2, PenLine } from 'lucide-react'
 
 interface KnowledgePoint {
   id: string
@@ -14,7 +14,7 @@ const GRAPH_NODES: string[] = []
 
 export default function KnowledgeEditor() {
   const [points, setPoints] = useState<KnowledgePoint[]>([])
-  const [input, setInput] = useState("")
+  const [input, setInput] = useState('')
   const [showSuggest, setShowSuggest] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -22,7 +22,7 @@ export default function KnowledgeEditor() {
     if (!name.trim()) return
     if (points.some((p) => p.name === name.trim())) return
     setPoints((prev) => [...prev, { id: String(Date.now()), name: name.trim(), linked }])
-    setInput("")
+    setInput('')
     setShowSuggest(false)
   }
 
@@ -31,7 +31,9 @@ export default function KnowledgeEditor() {
   }
 
   const suggestions = input.trim()
-    ? GRAPH_NODES.filter((n) => n.toLowerCase().includes(input.toLowerCase()) && !points.some((p) => p.name === n))
+    ? GRAPH_NODES.filter(
+        (n) => n.toLowerCase().includes(input.toLowerCase()) && !points.some((p) => p.name === n),
+      )
     : []
 
   return (
@@ -45,9 +47,9 @@ export default function KnowledgeEditor() {
             <span
               key={p.id}
               className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                p.linked ? "bg-indigo-50 text-indigo-600" : "bg-gray-100 text-gray-600"
+                p.linked ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'
               }`}
-              title={p.linked ? "已关联知识图谱节点" : "未关联知识图谱（纯文本）"}
+              title={p.linked ? '已关联知识图谱节点' : '未关联知识图谱（纯文本）'}
             >
               {p.linked ? <Link2 className="w-3 h-3" /> : <PenLine className="w-3 h-3" />}
               {p.name}
@@ -67,14 +69,14 @@ export default function KnowledgeEditor() {
               setShowSuggest(true)
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === 'Enter') {
                 e.preventDefault()
                 const matched = GRAPH_NODES.find((n) => n.toLowerCase() === input.toLowerCase())
                 addPoint(input, !!matched)
               }
             }}
             onBlur={() => setTimeout(() => setShowSuggest(false), 150)}
-            placeholder={points.length === 0 ? "输入知识点..." : ""}
+            placeholder={points.length === 0 ? '输入知识点...' : ''}
             className="flex-1 min-w-[80px] outline-none text-sm bg-transparent"
           />
         </div>

@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { type ReactNode, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft, Pencil } from "lucide-react"
+import { type ReactNode, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { ArrowLeft, Pencil } from 'lucide-react'
 
 export interface AllianceDetailShellTab<T extends string = string> {
   key: T
@@ -37,13 +37,13 @@ export function AllianceDetailShell<T extends string = string>({
   defaultTab,
   loading,
   notFound,
-  notFoundMessage = "数据不存在",
+  notFoundMessage = '数据不存在',
 }: AllianceDetailShellProps<T>) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const urlTab = searchParams.get("tab")
+  const urlTab = searchParams.get('tab')
 
-  const [activeTab, setActiveTab] = useState<string>(defaultTab ?? tabs[0]?.key ?? "")
+  const [activeTab, setActiveTab] = useState<string>(defaultTab ?? tabs[0]?.key ?? '')
   const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
   if (urlTab !== prevUrlTab) {
     setPrevUrlTab(urlTab)
@@ -62,7 +62,8 @@ export function AllianceDetailShell<T extends string = string>({
         <p className="text-muted-foreground mb-4">{notFoundMessage}</p>
         {backHref && (
           <Button variant="outline" size="sm" onClick={() => router.push(backHref)}>
-            <ArrowLeft className="h-4 w-4 mr-1" />返回列表
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            返回列表
           </Button>
         )}
       </div>
@@ -77,11 +78,13 @@ export function AllianceDetailShell<T extends string = string>({
       <div className="flex items-center gap-4 flex-wrap">
         {backHref ? (
           <Button variant="ghost" size="sm" onClick={() => router.push(backHref)}>
-            <ArrowLeft className="h-4 w-4 mr-1" />返回
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            返回
           </Button>
         ) : (
           <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" />返回
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            返回
           </Button>
         )}
         <div>
@@ -91,12 +94,9 @@ export function AllianceDetailShell<T extends string = string>({
         {statusBadge}
         <div className="flex-1" />
         {editHref && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(editHref)}
-          >
-            <Pencil className="h-4 w-4 mr-1" />编辑
+          <Button variant="outline" size="sm" onClick={() => router.push(editHref)}>
+            <Pencil className="h-4 w-4 mr-1" />
+            编辑
           </Button>
         )}
         {actions}
@@ -110,8 +110,8 @@ export function AllianceDetailShell<T extends string = string>({
             onClick={() => setActiveTab(t.key as string)}
             className={`px-4 py-2 text-sm border-b-2 transition-colors whitespace-nowrap ${
               activeTab === t.key
-                ? "border-primary text-primary font-medium"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? 'border-primary text-primary font-medium'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             {t.label}

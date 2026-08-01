@@ -7,7 +7,7 @@ export interface CareerPosition {
   industryId?: string
   majorIds: string[]
   majorNames?: string[]
-  positionType: "enterprise" | "teaching"
+  positionType: 'enterprise' | 'teaching'
   salaryMin?: number
   salaryMax?: number
   coverImage?: string
@@ -15,7 +15,7 @@ export interface CareerPosition {
   requirements: string[]
   careerPath?: string
   version: string
-  status: "draft" | "pending" | "approved" | "rejected" | "published" | "archived"
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
   createdBy: string
   createdByName?: string
   collaborators: string[]
@@ -60,7 +60,7 @@ export interface AbilityPoint {
   name: string
   code?: string
   description?: string
-  category: "knowledge" | "skill" | "quality"
+  category: 'knowledge' | 'skill' | 'quality'
   attributes: string[]
   isPublic: boolean
   creatorId?: string
@@ -72,7 +72,7 @@ export interface PositionAbilityBinding {
   careerPositionId: string
   responsibilityId: string
   abilityPointId: string
-  source: "public" | "custom"
+  source: 'public' | 'custom'
   domain?: string
   requiredLevel: string
   rubricDescription?: string
@@ -98,7 +98,7 @@ export interface JobBatch {
   majorId?: string
   majorName?: string // Deprecated: 仅兼容旧读取
   workflowId?: string
-  status: "open" | "closed"
+  status: 'open' | 'closed'
   positionCount: number
   publishedCount: number
   pendingCount: number

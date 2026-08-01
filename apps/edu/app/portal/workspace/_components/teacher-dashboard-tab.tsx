@@ -1,36 +1,45 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useEffect } from "react"
-import type { LucideIcon } from "lucide-react"
+import { useState, useMemo, useEffect } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import {
-  Bell, BookOpen, Calendar, CheckSquare, ChevronLeft, ChevronRight,
-  Clock, GraduationCap, ClipboardList,
-  ExternalLink, PlayCircle, TrendingUp, FileCheck,
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
+  Bell,
+  BookOpen,
+  Calendar,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  GraduationCap,
+  ClipboardList,
+  ExternalLink,
+  PlayCircle,
+  TrendingUp,
+  FileCheck,
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SectionCard } from "./section-card"
-import { CourseDetailDialog } from "./teacher-courses-tab"
-import { PrepAssociateDialog } from "./prep-associate-dialog"
-import { GradingIframeDialog } from "./grading-iframe-dialog"
-import { HybridGradingDialog } from "./hybrid-grading-dialog"
-import { portalApi } from "@/lib/api"
-import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from "@/lib/external-links"
-import type { WorkspaceDashboard, WorkspaceScheduleEvent } from "@/lib/types"
-import type { WorkspaceClassPlan, WorkspaceClassSession } from "@/lib/types"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { SectionCard } from './section-card'
+import { CourseDetailDialog } from './teacher-courses-tab'
+import { PrepAssociateDialog } from './prep-associate-dialog'
+import { GradingIframeDialog } from './grading-iframe-dialog'
+import { HybridGradingDialog } from './hybrid-grading-dialog'
+import { portalApi } from '@/lib/api'
+import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from '@/lib/external-links'
+import type { WorkspaceDashboard, WorkspaceScheduleEvent } from '@/lib/types'
+import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import { formatDate, formatDateTime } from "@/lib/format-utils"
-import {
-  type TeacherScheduleEvent,
-  type PrepAssociationRecord,
-} from "../_data/mock-teacher-data"
+import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { type TeacherScheduleEvent, type PrepAssociationRecord } from '../_data/mock-teacher-data'
 
 const typeIconMap: Record<string, LucideIcon> = {
   grade: GraduationCap,
@@ -40,23 +49,32 @@ const typeIconMap: Record<string, LucideIcon> = {
 }
 
 const typeLabelMap: Record<string, string> = {
-  grade: "成绩",
-  approve: "审批",
-  homework: "作业",
-  review: "审核",
+  grade: '成绩',
+  approve: '审批',
+  homework: '作业',
+  review: '审核',
 }
 
 interface TeacherDashboardTabProps {
   onTabChange: (tab: string) => void
   prepAssociations?: Record<string, PrepAssociationRecord>
-  onAssociate?: (fn: (prev: Record<string, PrepAssociationRecord>) => Record<string, PrepAssociationRecord>) => void
+  onAssociate?: (
+    fn: (prev: Record<string, PrepAssociationRecord>) => Record<string, PrepAssociationRecord>,
+  ) => void
 }
 
-export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAssociate }: TeacherDashboardTabProps) {
+export function TeacherDashboardTab({
+  onTabChange,
+  prepAssociations = {},
+  onAssociate,
+}: TeacherDashboardTabProps) {
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
-    portalApi.workspaceDashboard({ role: "teacher" }).then((res) => setDashboard(res)).catch(() => setDashboard(null))
+    portalApi
+      .workspaceDashboard({ role: 'teacher' })
+      .then((res) => setDashboard(res))
+      .catch(() => setDashboard(null))
   }, [])
 
   const announcements = dashboard?.announcements || []
@@ -66,18 +84,18 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
   const classSessions = dashboard?.classSessions || []
 
   const [prepDialogOpen, setPrepDialogOpen] = useState(false)
-  const [prepPlanId, setPrepPlanId] = useState("")
-  const [prepSessionId, setPrepSessionId] = useState("")
-  const [prepPlanName, setPrepPlanName] = useState("")
+  const [prepPlanId, setPrepPlanId] = useState('')
+  const [prepSessionId, setPrepSessionId] = useState('')
+  const [prepPlanName, setPrepPlanName] = useState('')
   const [prepIsHybrid, setPrepIsHybrid] = useState(true)
-  const [prepUrl, setPrepUrl] = useState("")
+  const [prepUrl, setPrepUrl] = useState('')
 
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false)
-  const [gradeSessionTitle, setGradeSessionTitle] = useState("")
-  const [gradeClassName, setGradeClassName] = useState("")
+  const [gradeSessionTitle, setGradeSessionTitle] = useState('')
+  const [gradeClassName, setGradeClassName] = useState('')
   const [hybridGradeDialogOpen, setHybridGradeDialogOpen] = useState(false)
-  const [hybridGradeSessionTitle, setHybridGradeSessionTitle] = useState("")
-  const [hybridGradeClassName, setHybridGradeClassName] = useState("")
+  const [hybridGradeSessionTitle, setHybridGradeSessionTitle] = useState('')
+  const [hybridGradeClassName, setHybridGradeClassName] = useState('')
   const [prepSessionLabels, setPrepSessionLabels] = useState<Record<string, string>>({})
 
   return (
@@ -94,18 +112,23 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
               prepAssociations={prepAssociations}
               onAssociate={onAssociate}
               onPrepRequest={(planId, sessionId, planName, isHybrid, url, sessionLabel) => {
-                setPrepPlanId(planId); setPrepSessionId(sessionId)
+                setPrepPlanId(planId)
+                setPrepSessionId(sessionId)
                 setPrepPlanName(planName)
-                setPrepIsHybrid(isHybrid); setPrepUrl(url); setPrepDialogOpen(true)
-                if (sessionLabel) setPrepSessionLabels(prev => ({ ...prev, [sessionId]: sessionLabel }))
+                setPrepIsHybrid(isHybrid)
+                setPrepUrl(url)
+                setPrepDialogOpen(true)
+                if (sessionLabel)
+                  setPrepSessionLabels((prev) => ({ ...prev, [sessionId]: sessionLabel }))
               }}
               onGradeRequest={(title, className, isHybrid) => {
                 if (isHybrid) {
                   setHybridGradeSessionTitle(title)
-                  setHybridGradeClassName(className || "")
+                  setHybridGradeClassName(className || '')
                   setHybridGradeDialogOpen(true)
                 } else {
-                  setGradeSessionTitle(title); setGradeClassName(className || "")
+                  setGradeSessionTitle(title)
+                  setGradeClassName(className || '')
                   setGradeDialogOpen(true)
                 }
               }}
@@ -113,13 +136,13 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
           </SectionCard>
         </div>
 
-    <div className="space-y-3">
+        <div className="space-y-3">
           {/* 今日待办 */}
           <SectionCard
             title="待办事项"
             icon={CheckSquare}
             iconColor="rose"
-            action={{ label: "全部待办", onClick: () => onTabChange("courses") }}
+            action={{ label: '全部待办', onClick: () => onTabChange('courses') }}
           >
             <ScrollArea className="h-[260px]">
               <div className="space-y-2 pr-2">
@@ -149,7 +172,7 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge
-                          variant={item.urgent ? "destructive" : "secondary"}
+                          variant={item.urgent ? 'destructive' : 'secondary'}
                           className="text-xs bg-white border-gray-100"
                         >
                           {item.count}
@@ -164,7 +187,7 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
           </SectionCard>
 
           {/* 通知公告 */}
-          <SectionCard title="通知公告" icon={Bell} iconColor="blue" action={{ label: "全部通知" }}>
+          <SectionCard title="通知公告" icon={Bell} iconColor="blue" action={{ label: '全部通知' }}>
             <ScrollArea className="h-[240px]">
               <div className="space-y-2 pr-2">
                 {announcements.length === 0 && (
@@ -176,7 +199,7 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
                     className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group"
                   >
                     <Badge
-                      variant={item.type === "重要" ? "destructive" : "secondary"}
+                      variant={item.type === '重要' ? 'destructive' : 'secondary'}
                       className="shrink-0 text-xs px-1.5 py-0 h-5 mt-0.5 bg-white border-gray-100"
                     >
                       {item.type}
@@ -187,7 +210,9 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
                       </p>
                       <p className="text-xs text-gray-500">{item.date}</p>
                     </div>
-                    {item.isNew && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />}
+                    {item.isNew && (
+                      <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+                    )}
                   </div>
                 ))}
               </div>
@@ -201,13 +226,16 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
         planId={prepPlanId}
         planName={prepPlanName}
         isHybrid={prepIsHybrid}
-        currentSubItemIds={prepAssociations[prepSessionId]?.subItems.map(s => s.id)}
+        currentSubItemIds={prepAssociations[prepSessionId]?.subItems.map((s) => s.id)}
         prepUrl={prepUrl}
         onConfirm={(subItems) => {
           if (onAssociate) {
             onAssociate((prev) => ({
               ...prev,
-              [prepSessionId]: { planId: prepPlanId, subItems: subItems.map(s => ({ id: s.id, name: s.name })) },
+              [prepSessionId]: {
+                planId: prepPlanId,
+                subItems: subItems.map((s) => ({ id: s.id, name: s.name })),
+              },
             }))
           }
         }}
@@ -228,16 +256,59 @@ export function TeacherDashboardTab({ onTabChange, prepAssociations = {}, onAsso
   )
 }
 
-const allPeriods = ["上午 1", "上午 2", "上午 3", "上午 4", "下午 1", "下午 2", "下午 3", "下午 4", "晚自习 1"]
-const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+const allPeriods = [
+  '上午 1',
+  '上午 2',
+  '上午 3',
+  '上午 4',
+  '下午 1',
+  '下午 2',
+  '下午 3',
+  '下午 4',
+  '晚自习 1',
+]
+const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
-const scheduleTypeConfig: Record<string, { bg: string; border: string; badge: string; label: string }> = {
-  course: { bg: "bg-blue-50", border: "border-blue-200", badge: "border-blue-300 text-blue-600", label: "课程" },
-  scene: { bg: "bg-emerald-50", border: "border-emerald-200", badge: "border-emerald-300 text-emerald-600", label: "实践场景" },
-  meeting: { bg: "bg-amber-50", border: "border-amber-200", badge: "border-amber-300 text-amber-600", label: "会议" },
-  training: { bg: "bg-cyan-50", border: "border-cyan-200", badge: "border-cyan-300 text-cyan-600", label: "培训" },
-  exam: { bg: "bg-purple-50", border: "border-purple-200", badge: "border-purple-300 text-purple-600", label: "检查" },
-  todo: { bg: "bg-gray-50", border: "border-gray-200", badge: "border-gray-300 text-gray-600", label: "待办" },
+const scheduleTypeConfig: Record<
+  string,
+  { bg: string; border: string; badge: string; label: string }
+> = {
+  course: {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    badge: 'border-blue-300 text-blue-600',
+    label: '课程',
+  },
+  scene: {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    badge: 'border-emerald-300 text-emerald-600',
+    label: '实践场景',
+  },
+  meeting: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    badge: 'border-amber-300 text-amber-600',
+    label: '会议',
+  },
+  training: {
+    bg: 'bg-cyan-50',
+    border: 'border-cyan-200',
+    badge: 'border-cyan-300 text-cyan-600',
+    label: '培训',
+  },
+  exam: {
+    bg: 'bg-purple-50',
+    border: 'border-purple-200',
+    badge: 'border-purple-300 text-purple-600',
+    label: '检查',
+  },
+  todo: {
+    bg: 'bg-gray-50',
+    border: 'border-gray-200',
+    badge: 'border-gray-300 text-gray-600',
+    label: '待办',
+  },
 }
 
 interface DashboardSelectedCourse {
@@ -267,11 +338,11 @@ function getWeeksInMonth(year: number, month: number) {
 }
 
 function getCourseUrls(event: TeacherScheduleEvent) {
-  const isHybrid = event.type !== "scene"
+  const isHybrid = event.type !== 'scene'
   if (isHybrid) {
     return {
       isHybrid: true,
-      prepUrl: "/lesson/admin/hybrid/add?id=hybrid-1",
+      prepUrl: '/lesson/admin/hybrid/add?id=hybrid-1',
       learnUrl: `${COURSE_LEARN_URL}/learn/courses/hybrid/hybrid-1/teacherlearn`,
     }
   }
@@ -287,15 +358,32 @@ interface CourseScheduleTableProps {
   classPlans?: WorkspaceClassPlan[]
   classSessions?: WorkspaceClassSession[]
   prepAssociations?: Record<string, PrepAssociationRecord>
-  onAssociate?: (fn: (prev: Record<string, PrepAssociationRecord>) => Record<string, PrepAssociationRecord>) => void
-  onPrepRequest?: (planId: string, sessionId: string, planName: string, isHybrid: boolean, url: string, sessionLabel?: string) => void
+  onAssociate?: (
+    fn: (prev: Record<string, PrepAssociationRecord>) => Record<string, PrepAssociationRecord>,
+  ) => void
+  onPrepRequest?: (
+    planId: string,
+    sessionId: string,
+    planName: string,
+    isHybrid: boolean,
+    url: string,
+    sessionLabel?: string,
+  ) => void
   onGradeRequest?: (title: string, className: string, isHybrid: boolean) => void
 }
 
-function CourseScheduleTable({ events = [], classPlans = [], classSessions = [], prepAssociations = {}, onAssociate, onPrepRequest, onGradeRequest }: CourseScheduleTableProps = {}) {
+function CourseScheduleTable({
+  events = [],
+  classPlans = [],
+  classSessions = [],
+  prepAssociations = {},
+  onAssociate,
+  onPrepRequest,
+  onGradeRequest,
+}: CourseScheduleTableProps = {}) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<DashboardSelectedCourse | null>(null)
-  const [dialogTab, setDialogTab] = useState("tracking")
+  const [dialogTab, setDialogTab] = useState('tracking')
   const [currentDate, setCurrentDate] = useState(() => new Date())
 
   const year = currentDate.getFullYear()
@@ -310,11 +398,27 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
   }, [year, month, weekStart])
   const weeksInMonth = getWeeksInMonth(year, month - 1)
 
-  const goPrevWeek = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d) }
-  const goNextWeek = () => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d) }
+  const goPrevWeek = () => {
+    const d = new Date(currentDate)
+    d.setDate(d.getDate() - 7)
+    setCurrentDate(d)
+  }
+  const goNextWeek = () => {
+    const d = new Date(currentDate)
+    d.setDate(d.getDate() + 7)
+    setCurrentDate(d)
+  }
   const goToday = () => setCurrentDate(new Date())
-  const handleYearChange = (v: string) => { const d = new Date(currentDate); d.setFullYear(Number(v)); setCurrentDate(d) }
-  const handleMonthChange = (v: string) => { const d = new Date(currentDate); d.setMonth(Number(v) - 1); setCurrentDate(d) }
+  const handleYearChange = (v: string) => {
+    const d = new Date(currentDate)
+    d.setFullYear(Number(v))
+    setCurrentDate(d)
+  }
+  const handleMonthChange = (v: string) => {
+    const d = new Date(currentDate)
+    d.setMonth(Number(v) - 1)
+    setCurrentDate(d)
+  }
   const handleWeekChange = (v: string) => {
     const targetWeek = Number(v)
     const firstDay = new Date(year, month - 1, 1)
@@ -325,12 +429,12 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
 
   const openActionDialog = (event: TeacherScheduleEvent, tab: string) => {
     const matchingPlan = classPlans.find(
-      (p) => p.course === event.title && (event.className ? p.name === event.className : true)
+      (p) => p.course === event.title && (event.className ? p.name === event.className : true),
     )
     setSelectedCourse({
       id: matchingPlan?.id || event.id,
       name: event.title,
-      className: event.className || event.tag || "",
+      className: event.className || event.tag || '',
       students: matchingPlan?.students || 0,
     })
     setDialogTab(tab)
@@ -358,7 +462,9 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
                 </SelectTrigger>
                 <SelectContent>
                   {[2025, 2026, 2027].map((y) => (
-                    <SelectItem key={y} value={String(y)} className="text-xs">{y}年</SelectItem>
+                    <SelectItem key={y} value={String(y)} className="text-xs">
+                      {y}年
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -368,7 +474,9 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <SelectItem key={m} value={String(m)} className="text-xs">{m}月</SelectItem>
+                    <SelectItem key={m} value={String(m)} className="text-xs">
+                      {m}月
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -378,19 +486,36 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from({ length: weeksInMonth }, (_, i) => i + 1).map((w) => (
-                    <SelectItem key={w} value={String(w)} className="text-xs">第{w}周</SelectItem>
+                    <SelectItem key={w} value={String(w)} className="text-xs">
+                      第{w}周
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <div className="flex items-center">
-                <Button variant="outline" size="icon" className="h-8 w-8 rounded-r-none border-r-0" onClick={goPrevWeek}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-r-none border-r-0"
+                  onClick={goPrevWeek}
+                >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </Button>
-                <Button variant="outline" size="icon" className="h-8 w-8 rounded-l-none" onClick={goNextWeek}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-l-none"
+                  onClick={goNextWeek}
+                >
                   <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
               </div>
-              <Button variant="outline" size="sm" className="h-8 text-[11px] px-2" onClick={goToday}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-[11px] px-2"
+                onClick={goToday}
+              >
                 今天
               </Button>
             </div>
@@ -401,7 +526,10 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
             节次 / 星期
           </div>
           {days.map((d) => (
-            <div key={d} className="p-3 text-sm font-semibold text-gray-700 text-center border-r border-gray-200 last:border-r-0">
+            <div
+              key={d}
+              className="p-3 text-sm font-semibold text-gray-700 text-center border-r border-gray-200 last:border-r-0"
+            >
               {d}
             </div>
           ))}
@@ -414,16 +542,21 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
             {[1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => {
               const event = events.find((e) => e.dayOfWeek === dayOfWeek && e.period === period)
               const config = event ? scheduleTypeConfig[event.type] : null
-              const isCourseLike = event?.type === "course" || event?.type === "scene"
-                if (event && config && isCourseLike) {
+              const isCourseLike = event?.type === 'course' || event?.type === 'scene'
+              if (event && config && isCourseLike) {
                 const urls = getCourseUrls(event)
                 const matchingPlan = classPlans.find(
-                  (p) => p.course === event.title && (event.className ? p.name === event.className : true)
+                  (p) =>
+                    p.course === event.title &&
+                    (event.className ? p.name === event.className : true),
                 )
                 const pid = matchingPlan?.id || event.id
                 const session = matchingPlan
                   ? classSessions.find(
-                      (s) => s.courseId === matchingPlan.id && s.weekday === days[event.dayOfWeek - 1] && s.period === event.period
+                      (s) =>
+                        s.courseId === matchingPlan.id &&
+                        s.weekday === days[event.dayOfWeek - 1] &&
+                        s.period === event.period,
                     )
                   : null
                 const sessionKey = session?.id || `${pid}-${event.dayOfWeek}-${event.period}`
@@ -433,23 +566,38 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
                     <PopoverTrigger asChild>
                       <div className="p-1.5 border-r border-gray-200 last:border-r-0 min-h-[80px]">
                         <div
-                          className={`w-full h-full rounded-lg p-2 text-xs space-y-1 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer ring-1 ring-transparent ${urls.isHybrid ? "hover:ring-blue-300/50" : "hover:ring-emerald-300/50"} ${config.bg} border ${config.border}`}
+                          className={`w-full h-full rounded-lg p-2 text-xs space-y-1 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer ring-1 ring-transparent ${urls.isHybrid ? 'hover:ring-blue-300/50' : 'hover:ring-emerald-300/50'} ${config.bg} border ${config.border}`}
                         >
                           <div className="flex items-center gap-1">
-                            <Badge variant="outline" className={`text-[10px] h-4 px-1 font-medium ${config.badge}`}>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] h-4 px-1 font-medium ${config.badge}`}
+                            >
                               {config.label}
                             </Badge>
-                            {event.tag && <span className="text-[10px] text-gray-500 truncate">{event.tag}</span>}
+                            {event.tag && (
+                              <span className="text-[10px] text-gray-500 truncate">
+                                {event.tag}
+                              </span>
+                            )}
                           </div>
                           <div className="font-semibold text-gray-900 truncate">{event.title}</div>
-                          {event.description && <div className="text-[10px] text-gray-500 truncate">{event.description}</div>}
+                          {event.description && (
+                            <div className="text-[10px] text-gray-500 truncate">
+                              {event.description}
+                            </div>
+                          )}
                           {event.location && (
                             <div className="text-[10px] text-gray-500 flex items-center gap-1">
                               <span>📍</span>
                               {event.location}
                             </div>
                           )}
-                          <div className={`text-[10px] font-medium mt-0.5 ${urls.isHybrid ? "text-blue-500" : "text-emerald-600"}`}>点击查看操作</div>
+                          <div
+                            className={`text-[10px] font-medium mt-0.5 ${urls.isHybrid ? 'text-blue-500' : 'text-emerald-600'}`}
+                          >
+                            点击查看操作
+                          </div>
                         </div>
                       </div>
                     </PopoverTrigger>
@@ -461,31 +609,54 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
                     >
                       <div className="space-y-2">
                         <div className="flex items-center gap-1.5 pb-2 border-b border-gray-100">
-                          <span className="text-sm font-semibold text-gray-800 truncate flex-1">{event.title}</span>
+                          <span className="text-sm font-semibold text-gray-800 truncate flex-1">
+                            {event.title}
+                          </span>
                           {event.className && (
-                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{event.className}</Badge>
+                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                              {event.className}
+                            </Badge>
                           )}
                         </div>
                         {(() => {
                           if (existingAssoc && existingAssoc.subItems.length > 0) {
                             return (
-                              <div className={`rounded-lg border p-2 space-y-1 ${urls.isHybrid ? "border-blue-100 bg-blue-50/50" : "border-emerald-100 bg-emerald-50/50"}`}>
-                                <span className={`text-[10px] font-medium block ${urls.isHybrid ? "text-blue-500" : "text-emerald-600"}`}>
-                                  {urls.isHybrid ? "已关联节次" : "已关联任务"}（{existingAssoc.subItems.length}）
+                              <div
+                                className={`rounded-lg border p-2 space-y-1 ${urls.isHybrid ? 'border-blue-100 bg-blue-50/50' : 'border-emerald-100 bg-emerald-50/50'}`}
+                              >
+                                <span
+                                  className={`text-[10px] font-medium block ${urls.isHybrid ? 'text-blue-500' : 'text-emerald-600'}`}
+                                >
+                                  {urls.isHybrid ? '已关联节次' : '已关联任务'}（
+                                  {existingAssoc.subItems.length}）
                                 </span>
                                 <div className="space-y-0.5 max-h-[100px] overflow-y-auto">
                                   {existingAssoc.subItems.map((si) => (
-                                    <div key={si.id} className={`text-xs text-gray-700 pl-2 border-l-2 ${urls.isHybrid ? "border-blue-200" : "border-emerald-200"}`}>
+                                    <div
+                                      key={si.id}
+                                      className={`text-xs text-gray-700 pl-2 border-l-2 ${urls.isHybrid ? 'border-blue-200' : 'border-emerald-200'}`}
+                                    >
                                       {si.name}
                                     </div>
                                   ))}
                                 </div>
-                                <Button size="sm" variant="link"
-                                  className={`text-[10px] h-5 p-0 ${urls.isHybrid ? "text-blue-600" : "text-emerald-600"}`}
+                                <Button
+                                  size="sm"
+                                  variant="link"
+                                  className={`text-[10px] h-5 p-0 ${urls.isHybrid ? 'text-blue-600' : 'text-emerald-600'}`}
                                   onClick={() => {
-                                    if (onPrepRequest) onPrepRequest(pid, sessionKey, event.title, urls.isHybrid, urls.prepUrl, `${days[event.dayOfWeek - 1]} ${event.period}`)
-                                  }}>
-                                   修改关联
+                                    if (onPrepRequest)
+                                      onPrepRequest(
+                                        pid,
+                                        sessionKey,
+                                        event.title,
+                                        urls.isHybrid,
+                                        urls.prepUrl,
+                                        `${days[event.dayOfWeek - 1]} ${event.period}`,
+                                      )
+                                  }}
+                                >
+                                  修改关联
                                 </Button>
                               </div>
                             )
@@ -494,25 +665,47 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
                         })()}
                         <span className="text-[10px] text-gray-400 block">操作</span>
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline"
-                            className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? "border-blue-200 text-blue-600 hover:bg-blue-50" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"}`}
-                              onClick={() => {
-                                if (onPrepRequest) onPrepRequest(pid, sessionKey, event.title, urls.isHybrid, urls.prepUrl, `${days[event.dayOfWeek - 1]} ${event.period}`)
-                              }}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                            onClick={() => {
+                              if (onPrepRequest)
+                                onPrepRequest(
+                                  pid,
+                                  sessionKey,
+                                  event.title,
+                                  urls.isHybrid,
+                                  urls.prepUrl,
+                                  `${days[event.dayOfWeek - 1]} ${event.period}`,
+                                )
+                            }}
+                          >
                             <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                            {urls.isHybrid ? "前往备课" : "导学准备"}
+                            {urls.isHybrid ? '前往备课' : '导学准备'}
                           </Button>
-                          <Button size="sm" variant="outline"
-                            className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? "border-blue-200 text-blue-600 hover:bg-blue-50" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"}`}
-                            onClick={() => window.open(urls.learnUrl, "_blank")}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                            onClick={() => window.open(urls.learnUrl, '_blank')}
+                          >
                             <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                             {urls.isHybrid ? "前往上课" : "前往导学"}
+                            {urls.isHybrid ? '前往上课' : '前往导学'}
                           </Button>
-                          <Button size="sm" variant="outline"
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="flex-1 justify-center text-[11px] h-7 px-2 border-amber-200 text-amber-600 hover:bg-amber-50"
                             onClick={() => {
-                              if (onGradeRequest) onGradeRequest(`${event.title} · ${event.period}`, event.className || event.tag || "", urls.isHybrid)
-                            }}>
+                              if (onGradeRequest)
+                                onGradeRequest(
+                                  `${event.title} · ${event.period}`,
+                                  event.className || event.tag || '',
+                                  urls.isHybrid,
+                                )
+                            }}
+                          >
                             <GraduationCap className="h-3.5 w-3.5 mr-1" />
                             前往评分
                           </Button>
@@ -520,15 +713,21 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
                         <div className="pt-2 mt-1 border-t border-dashed border-gray-200">
                           <span className="text-[10px] text-gray-400 block mb-1.5">数据查看</span>
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="ghost"
-                              className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? "text-blue-600 hover:bg-blue-50" : "text-emerald-600 hover:bg-emerald-50"}`}
-                              onClick={() => openActionDialog(event, "tracking")}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'text-blue-600 hover:bg-blue-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                              onClick={() => openActionDialog(event, 'tracking')}
+                            >
                               <TrendingUp className="h-3.5 w-3.5 mr-1" />
                               教学进展
                             </Button>
-                            <Button size="sm" variant="ghost"
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="flex-1 justify-center text-[11px] h-7 px-2 text-purple-600 hover:bg-purple-50"
-                              onClick={() => openActionDialog(event, "assessment")}>
+                              onClick={() => openActionDialog(event, 'assessment')}
+                            >
                               <FileCheck className="h-3.5 w-3.5 mr-1" />
                               测评进展
                             </Button>
@@ -542,18 +741,29 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
               return (
                 <div
                   key={dayOfWeek}
-                  className={`p-1.5 border-r border-gray-200 last:border-r-0 min-h-[80px] ${!event ? "bg-gray-50/30" : ""}`}
+                  className={`p-1.5 border-r border-gray-200 last:border-r-0 min-h-[80px] ${!event ? 'bg-gray-50/30' : ''}`}
                 >
                   {event && config ? (
-                    <div className={`w-full h-full rounded-lg p-2 text-xs space-y-1 transition-all hover:shadow-sm hover:scale-[1.02] cursor-pointer ${config.bg} border ${config.border}`}>
+                    <div
+                      className={`w-full h-full rounded-lg p-2 text-xs space-y-1 transition-all hover:shadow-sm hover:scale-[1.02] cursor-pointer ${config.bg} border ${config.border}`}
+                    >
                       <div className="flex items-center gap-1">
-                        <Badge variant="outline" className={`text-[10px] h-4 px-1 font-medium ${config.badge}`}>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] h-4 px-1 font-medium ${config.badge}`}
+                        >
                           {config.label}
                         </Badge>
-                        {event.tag && <span className="text-[10px] text-gray-500 truncate">{event.tag}</span>}
+                        {event.tag && (
+                          <span className="text-[10px] text-gray-500 truncate">{event.tag}</span>
+                        )}
                       </div>
                       <div className="font-semibold text-gray-900 truncate">{event.title}</div>
-                      {event.description && <div className="text-[10px] text-gray-500 truncate">{event.description}</div>}
+                      {event.description && (
+                        <div className="text-[10px] text-gray-500 truncate">
+                          {event.description}
+                        </div>
+                      )}
                       {event.location && (
                         <div className="text-[10px] text-gray-500 flex items-center gap-1">
                           <span>📍</span>

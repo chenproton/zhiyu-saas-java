@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useState, useRef, useCallback } from "react"
-import { importExportApi, downloadBlob, type ImportPreviewResult } from "@zhiyu/api-client"
-import { useToast } from "./use-toast"
+import { useState, useRef, useCallback } from 'react'
+import { importExportApi, downloadBlob, type ImportPreviewResult } from '@zhiyu/api-client'
+import { useToast } from './use-toast'
 
 type ImportEntityType = Parameters<typeof importExportApi.downloadTemplate>[0]
 
@@ -23,16 +23,16 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
 
   const handleAddFiles = useCallback((files: FileList | null) => {
     if (files && files.length > 0) {
-      setImportFiles(prev => {
-        const existingNames = new Set(prev.map(f => f.name + "_" + f.size))
-        const newFiles = Array.from(files).filter(f => !existingNames.has(f.name + "_" + f.size))
+      setImportFiles((prev) => {
+        const existingNames = new Set(prev.map((f) => f.name + '_' + f.size))
+        const newFiles = Array.from(files).filter((f) => !existingNames.has(f.name + '_' + f.size))
         return [...prev, ...newFiles]
       })
     }
   }, [])
 
   const handleRemoveFile = useCallback((index: number) => {
-    setImportFiles(prev => prev.filter((_, i) => i !== index))
+    setImportFiles((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
   const handleClearFiles = useCallback(() => {
@@ -44,11 +44,12 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
     setIsImporting(true)
     try {
       const result = await importExportApi.importExcel(importType, importFiles, overwrite)
-      const errorHint = result.errors && result.errors.length > 0
-        ? `，错误：${result.errors.slice(0, 3).join(";")}`
-        : ""
+      const errorHint =
+        result.errors && result.errors.length > 0
+          ? `，错误：${result.errors.slice(0, 3).join(';')}`
+          : ''
       toast({
-        title: "导入完成",
+        title: '导入完成',
         description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`,
       })
       setImportFiles([])
@@ -56,7 +57,11 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
       await onSuccess()
       return true
     } catch (err: unknown) {
-      toast({ variant: "destructive", title: "导入失败", description: err instanceof Error ? err.message : "导入失败" })
+      toast({
+        variant: 'destructive',
+        title: '导入失败',
+        description: err instanceof Error ? err.message : '导入失败',
+      })
       return false
     } finally {
       setIsImporting(false)
@@ -75,7 +80,11 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
       }
       return await executeImport(false)
     } catch (err: unknown) {
-      toast({ variant: "destructive", title: "导入失败", description: err instanceof Error ? err.message : "导入失败" })
+      toast({
+        variant: 'destructive',
+        title: '导入失败',
+        description: err instanceof Error ? err.message : '导入失败',
+      })
       setIsImporting(false)
       return false
     }
@@ -87,7 +96,11 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
       const res = await importExportApi.downloadTemplate(importType)
       downloadBlob(await res.blob(), templateFileName)
     } catch (err: unknown) {
-      toast({ variant: "destructive", title: "下载模板失败", description: err instanceof Error ? err.message : "下载模板失败" })
+      toast({
+        variant: 'destructive',
+        title: '下载模板失败',
+        description: err instanceof Error ? err.message : '下载模板失败',
+      })
     } finally {
       setIsDownloading(false)
     }

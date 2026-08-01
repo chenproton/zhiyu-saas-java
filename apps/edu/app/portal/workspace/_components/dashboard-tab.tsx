@@ -1,17 +1,27 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import type { LucideIcon } from "lucide-react"
-import { Bell, BookOpen, Briefcase, Calendar, CheckSquare, ChevronRight, Clock, GraduationCap, Layers } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { SectionCard } from "./section-card"
-import { WorkspaceScheduleGrid } from "./workspace-schedule-grid"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalApi } from "@/lib/api"
-import type { WorkspaceAnnouncement, WorkspaceTodo, WorkspaceScheduleEvent } from "@/lib/types"
-import { reportError } from "@/lib/error-handling"
-import { useToast } from "@zhiyu/ui"
+import { useEffect, useState } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  Bell,
+  BookOpen,
+  Briefcase,
+  Calendar,
+  CheckSquare,
+  ChevronRight,
+  Clock,
+  GraduationCap,
+  Layers,
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { SectionCard } from './section-card'
+import { WorkspaceScheduleGrid } from './workspace-schedule-grid'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalApi } from '@/lib/api'
+import type { WorkspaceAnnouncement, WorkspaceTodo, WorkspaceScheduleEvent } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
+import { useToast } from '@zhiyu/ui'
 
 interface DashboardTabProps {
   onTabChange: (tab: string) => void
@@ -25,10 +35,10 @@ const typeIconMap: Record<string, LucideIcon> = {
 }
 
 const typeLabelMap: Record<string, string> = {
-  course: "课程",
-  scene: "场景",
-  exam: "测评",
-  report: "报告",
+  course: '课程',
+  scene: '场景',
+  exam: '测评',
+  report: '报告',
 }
 
 export function DashboardTab({ onTabChange }: DashboardTabProps) {
@@ -39,18 +49,21 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
   const [schedule, setSchedule] = useState<WorkspaceScheduleEvent[]>([])
 
   useEffect(() => {
-    portalApi.workspaceDashboard(activeRoleCode ? { role: activeRoleCode } : undefined).then((res) => {
-      setAnnouncements(res.announcements || [])
-      setTodos(res.todos || [])
-      setSchedule(res.schedule || [])
-    }).catch((err) => {
-      reportError(err, { source: "加载工作台 dashboard" })
-      toast({
-        variant: "destructive",
-        title: "加载失败",
-        description: err instanceof Error ? err.message : "加载工作台 dashboard 失败",
+    portalApi
+      .workspaceDashboard(activeRoleCode ? { role: activeRoleCode } : undefined)
+      .then((res) => {
+        setAnnouncements(res.announcements || [])
+        setTodos(res.todos || [])
+        setSchedule(res.schedule || [])
       })
-    })
+      .catch((err) => {
+        reportError(err, { source: '加载工作台 dashboard' })
+        toast({
+          variant: 'destructive',
+          title: '加载失败',
+          description: err instanceof Error ? err.message : '加载工作台 dashboard 失败',
+        })
+      })
   }, [activeRoleCode, toast])
 
   return (
@@ -69,7 +82,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
             title="今日待办"
             icon={CheckSquare}
             iconColor="rose"
-            action={{ label: "查看全部", onClick: () => onTabChange("learning") }}
+            action={{ label: '查看全部', onClick: () => onTabChange('learning') }}
           >
             <ScrollArea className="h-[260px]">
               <div className="space-y-2 pr-2">
@@ -99,7 +112,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge
-                          variant={item.urgent ? "destructive" : "secondary"}
+                          variant={item.urgent ? 'destructive' : 'secondary'}
                           className="text-xs bg-white border-gray-100"
                         >
                           {item.count}
@@ -114,7 +127,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
           </SectionCard>
 
           {/* 通知公告 */}
-          <SectionCard title="通知公告" icon={Bell} iconColor="blue" action={{ label: "查看全部" }}>
+          <SectionCard title="通知公告" icon={Bell} iconColor="blue" action={{ label: '查看全部' }}>
             <ScrollArea className="h-[220px]">
               <div className="space-y-2 pr-2">
                 {announcements.length === 0 && (
@@ -126,7 +139,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                     className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group"
                   >
                     <Badge
-                      variant={item.type === "重要" ? "destructive" : "secondary"}
+                      variant={item.type === '重要' ? 'destructive' : 'secondary'}
                       className="shrink-0 text-xs px-1.5 py-0 h-5 mt-0.5 bg-white border-gray-100"
                     >
                       {item.type}
@@ -137,7 +150,9 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                       </p>
                       <p className="text-xs text-gray-500">{item.date}</p>
                     </div>
-                    {item.isNew && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />}
+                    {item.isNew && (
+                      <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+                    )}
                   </div>
                 ))}
               </div>

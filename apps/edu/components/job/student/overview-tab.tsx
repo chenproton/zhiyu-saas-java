@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { Info, Route } from "lucide-react"
-import type { CareerPosition } from "@/lib/types"
+import { Info, Route } from 'lucide-react'
+import type { CareerPosition } from '@/lib/types'
 
 interface OverviewTabProps {
   position: CareerPosition
@@ -16,7 +16,7 @@ export function OverviewTab({ position }: OverviewTabProps) {
           岗位简介
         </h3>
         <p className="text-[14px] text-[#1f2937] leading-[1.8] whitespace-pre-line">
-          {position.description || "暂无岗位介绍"}
+          {position.description || '暂无岗位介绍'}
         </p>
       </div>
 

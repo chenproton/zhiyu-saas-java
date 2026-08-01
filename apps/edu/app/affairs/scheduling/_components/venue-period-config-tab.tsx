@@ -1,18 +1,25 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useState } from "react"
-import { Plus, FileEdit, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useCallback, useEffect, useState } from 'react'
+import { Plus, FileEdit, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -20,15 +27,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { useToast } from "@zhiyu/ui"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { termApi, venueApi, periodSlotApi } from "@/lib/api"
-import type { AffairsTerm, Venue, PeriodSlot } from "@/lib/types"
+} from '@/components/ui/table'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { useToast } from '@zhiyu/ui'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { termApi, venueApi, periodSlotApi } from '@/lib/api'
+import type { AffairsTerm, Venue, PeriodSlot } from '@/lib/types'
 
-const VENUE_TYPES = ["教室", "机房", "实训室", "实验室", "校外基地"]
+const VENUE_TYPES = ['教室', '机房', '实训室', '实验室', '校外基地']
 
 // ==================== 学期管理 ====================
 
@@ -42,10 +49,10 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
   const [saving, setSaving] = useState(false)
 
   // 表单
-  const [name, setName] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [weeksCount, setWeeksCount] = useState("16")
+  const [name, setName] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [weeksCount, setWeeksCount] = useState('16')
   const [isCurrent, setIsCurrent] = useState(false)
 
   const loadItems = useCallback(async () => {
@@ -53,7 +60,11 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
       const res = await termApi.list({ limit: 100 })
       setItems(res.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "查询学期列表失败" })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '查询学期列表失败',
+      })
     } finally {
       setLoading(false)
     }
@@ -68,10 +79,10 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
 
   const openCreate = () => {
     setEditing(null)
-    setName("")
-    setStartDate("")
-    setEndDate("")
-    setWeeksCount("16")
+    setName('')
+    setStartDate('')
+    setEndDate('')
+    setWeeksCount('16')
     setIsCurrent(false)
     setDialogOpen(true)
   }
@@ -96,12 +107,16 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
       } else {
         await termApi.create(payload)
       }
-      toast({ title: editing ? "学期已更新" : "学期已创建" })
+      toast({ title: editing ? '学期已更新' : '学期已创建' })
       setDialogOpen(false)
       await loadItems()
       onTermsChanged?.()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "保存学期失败" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err.message || '保存学期失败',
+      })
     } finally {
       setSaving(false)
     }
@@ -111,12 +126,16 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
     if (!deleteTarget) return
     try {
       await termApi.delete(deleteTarget.id)
-      toast({ title: "学期已删除" })
+      toast({ title: '学期已删除' })
       setDeleteTarget(null)
       await loadItems()
       onTermsChanged?.()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message || "删除学期失败" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err.message || '删除学期失败',
+      })
     }
   }
 
@@ -125,7 +144,9 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">学期管理</h3>
-          <p className="text-xs text-muted-foreground">教学计划与排课均依赖学期，请先维护学期信息</p>
+          <p className="text-xs text-muted-foreground">
+            教学计划与排课均依赖学期，请先维护学期信息
+          </p>
         </div>
         <Button size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
@@ -147,7 +168,9 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-20 text-center text-muted-foreground">加载中...</TableCell>
+                <TableCell colSpan={6} className="h-20 text-center text-muted-foreground">
+                  加载中...
+                </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
@@ -159,18 +182,31 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
               items.map((t) => (
                 <TableRow key={t.id} className="group">
                   <TableCell className="font-medium">{t.name}</TableCell>
-                  <TableCell><span className="text-sm">{t.startDate}</span></TableCell>
-                  <TableCell><span className="text-sm">{t.endDate}</span></TableCell>
-                  <TableCell><span className="text-sm">{t.weeksCount}</span></TableCell>
+                  <TableCell>
+                    <span className="text-sm">{t.startDate}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{t.endDate}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{t.weeksCount}</span>
+                  </TableCell>
                   <TableCell>
                     {t.isCurrent ? (
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">当前学期</span>
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                        当前学期
+                      </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableRowActions className="sticky right-0 bg-white">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openEdit(t)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => openEdit(t)}
+                    >
                       <FileEdit className="mr-1 h-3 w-3" />
                       编辑
                     </Button>
@@ -194,18 +230,26 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "编辑学期" : "新建学期"}</DialogTitle>
+            <DialogTitle>{editing ? '编辑学期' : '新建学期'}</DialogTitle>
             <DialogDescription>设为当前学期后，其他学期将自动取消当前标记</DialogDescription>
           </DialogHeader>
           <FieldGroup className="py-4">
             <Field>
               <FieldLabel>学期名称 *</FieldLabel>
-              <Input placeholder="如 2025-2026-1" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                placeholder="如 2025-2026-1"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field>
                 <FieldLabel>开始日期 *</FieldLabel>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
               </Field>
               <Field>
                 <FieldLabel>结束日期 *</FieldLabel>
@@ -214,7 +258,12 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
             </div>
             <Field>
               <FieldLabel>周数</FieldLabel>
-              <Input type="number" min={1} value={weeksCount} onChange={(e) => setWeeksCount(e.target.value)} />
+              <Input
+                type="number"
+                min={1}
+                value={weeksCount}
+                onChange={(e) => setWeeksCount(e.target.value)}
+              />
             </Field>
             <Field>
               <div className="flex items-center justify-between">
@@ -224,9 +273,11 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
             </Field>
           </FieldGroup>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>取消</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              取消
+            </Button>
             <Button onClick={handleSave} disabled={!name || !startDate || !endDate || saving}>
-              {saving ? "保存中..." : "保存"}
+              {saving ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -236,7 +287,7 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="删除学期"
-        description={`确定删除学期「${deleteTarget?.name || ""}」吗？已被教学计划或排课引用的学期无法删除。`}
+        description={`确定删除学期「${deleteTarget?.name || ''}」吗？已被教学计划或排课引用的学期无法删除。`}
         variant="destructive"
         confirmText="删除"
         onConfirm={handleDelete}
@@ -256,16 +307,20 @@ function VenuesSection() {
   const [deleteTarget, setDeleteTarget] = useState<Venue | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const [name, setName] = useState("")
-  const [type, setType] = useState("")
-  const [capacity, setCapacity] = useState("")
+  const [name, setName] = useState('')
+  const [type, setType] = useState('')
+  const [capacity, setCapacity] = useState('')
 
   const loadItems = useCallback(async () => {
     try {
       const res = await venueApi.list({ limit: 500 })
       setItems(res.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "查询场地列表失败" })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '查询场地列表失败',
+      })
     } finally {
       setLoading(false)
     }
@@ -279,9 +334,9 @@ function VenuesSection() {
 
   const openCreate = () => {
     setEditing(null)
-    setName("")
-    setType("")
-    setCapacity("")
+    setName('')
+    setType('')
+    setCapacity('')
     setDialogOpen(true)
   }
 
@@ -289,7 +344,7 @@ function VenuesSection() {
     setEditing(v)
     setName(v.name)
     setType(v.type)
-    setCapacity(v.capacity != null ? String(v.capacity) : "")
+    setCapacity(v.capacity != null ? String(v.capacity) : '')
     setDialogOpen(true)
   }
 
@@ -303,11 +358,15 @@ function VenuesSection() {
       } else {
         await venueApi.create(payload)
       }
-      toast({ title: editing ? "场地已更新" : "场地已创建" })
+      toast({ title: editing ? '场地已更新' : '场地已创建' })
       setDialogOpen(false)
       await loadItems()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "保存场地失败" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err.message || '保存场地失败',
+      })
     } finally {
       setSaving(false)
     }
@@ -317,11 +376,15 @@ function VenuesSection() {
     if (!deleteTarget) return
     try {
       await venueApi.delete(deleteTarget.id)
-      toast({ title: "场地已删除" })
+      toast({ title: '场地已删除' })
       setDeleteTarget(null)
       await loadItems()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message || "删除场地失败" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err.message || '删除场地失败',
+      })
     }
   }
 
@@ -330,7 +393,9 @@ function VenuesSection() {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">场地管理</h3>
-          <p className="text-xs text-muted-foreground">排课时可选择场地，删除被引用的场地会被拒绝</p>
+          <p className="text-xs text-muted-foreground">
+            排课时可选择场地，删除被引用的场地会被拒绝
+          </p>
         </div>
         <Button size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
@@ -350,7 +415,9 @@ function VenuesSection() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">加载中...</TableCell>
+                <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
+                  加载中...
+                </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
@@ -362,10 +429,19 @@ function VenuesSection() {
               items.map((v) => (
                 <TableRow key={v.id} className="group">
                   <TableCell className="font-medium">{v.name}</TableCell>
-                  <TableCell><span className="text-sm">{v.type}</span></TableCell>
-                  <TableCell><span className="text-sm">{v.capacity != null ? `${v.capacity} 人` : "-"}</span></TableCell>
+                  <TableCell>
+                    <span className="text-sm">{v.type}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{v.capacity != null ? `${v.capacity} 人` : '-'}</span>
+                  </TableCell>
                   <TableRowActions className="sticky right-0 bg-white">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openEdit(v)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => openEdit(v)}
+                    >
                       <FileEdit className="mr-1 h-3 w-3" />
                       编辑
                     </Button>
@@ -389,13 +465,17 @@ function VenuesSection() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "编辑场地" : "新建场地"}</DialogTitle>
+            <DialogTitle>{editing ? '编辑场地' : '新建场地'}</DialogTitle>
             <DialogDescription>场地类型用于教学计划条目的场地类型匹配</DialogDescription>
           </DialogHeader>
           <FieldGroup className="py-4">
             <Field>
               <FieldLabel>场地名称 *</FieldLabel>
-              <Input placeholder="如 A栋-301" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                placeholder="如 A栋-301"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </Field>
             <Field>
               <FieldLabel>场地类型 *</FieldLabel>
@@ -405,20 +485,30 @@ function VenuesSection() {
                 </SelectTrigger>
                 <SelectContent>
                   {VENUE_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
             <Field>
               <FieldLabel>容量（人）</FieldLabel>
-              <Input type="number" min={0} placeholder="选填" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+              <Input
+                type="number"
+                min={0}
+                placeholder="选填"
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+              />
             </Field>
           </FieldGroup>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>取消</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              取消
+            </Button>
             <Button onClick={handleSave} disabled={!name || !type || saving}>
-              {saving ? "保存中..." : "保存"}
+              {saving ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -428,7 +518,7 @@ function VenuesSection() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="删除场地"
-        description={`确定删除场地「${deleteTarget?.name || ""}」吗？已被排课引用的场地无法删除。`}
+        description={`确定删除场地「${deleteTarget?.name || ''}」吗？已被排课引用的场地无法删除。`}
         variant="destructive"
         confirmText="删除"
         onConfirm={handleDelete}
@@ -448,17 +538,21 @@ function PeriodSlotsSection() {
   const [deleteTarget, setDeleteTarget] = useState<PeriodSlot | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const [name, setName] = useState("")
-  const [sortOrder, setSortOrder] = useState("")
-  const [startTime, setStartTime] = useState("")
-  const [endTime, setEndTime] = useState("")
+  const [name, setName] = useState('')
+  const [sortOrder, setSortOrder] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
 
   const loadItems = useCallback(async () => {
     try {
       const res = await periodSlotApi.list({ limit: 100 })
       setItems(res.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "查询节次列表失败" })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '查询节次列表失败',
+      })
     } finally {
       setLoading(false)
     }
@@ -472,10 +566,10 @@ function PeriodSlotsSection() {
 
   const openCreate = () => {
     setEditing(null)
-    setName("")
+    setName('')
     setSortOrder(String((items[items.length - 1]?.sortOrder || 0) + 1))
-    setStartTime("")
-    setEndTime("")
+    setStartTime('')
+    setEndTime('')
     setDialogOpen(true)
   }
 
@@ -483,8 +577,8 @@ function PeriodSlotsSection() {
     setEditing(s)
     setName(s.name)
     setSortOrder(String(s.sortOrder))
-    setStartTime(s.startTime ? s.startTime.slice(0, 5) : "")
-    setEndTime(s.endTime ? s.endTime.slice(0, 5) : "")
+    setStartTime(s.startTime ? s.startTime.slice(0, 5) : '')
+    setEndTime(s.endTime ? s.endTime.slice(0, 5) : '')
     setDialogOpen(true)
   }
 
@@ -503,11 +597,15 @@ function PeriodSlotsSection() {
       } else {
         await periodSlotApi.create(payload)
       }
-      toast({ title: editing ? "节次已更新" : "节次已创建" })
+      toast({ title: editing ? '节次已更新' : '节次已创建' })
       setDialogOpen(false)
       await loadItems()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "保存节次失败" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err.message || '保存节次失败',
+      })
     } finally {
       setSaving(false)
     }
@@ -517,11 +615,15 @@ function PeriodSlotsSection() {
     if (!deleteTarget) return
     try {
       await periodSlotApi.delete(deleteTarget.id)
-      toast({ title: "节次已删除" })
+      toast({ title: '节次已删除' })
       setDeleteTarget(null)
       await loadItems()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message || "删除节次失败" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err.message || '删除节次失败',
+      })
     }
   }
 
@@ -530,7 +632,9 @@ function PeriodSlotsSection() {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">节次管理</h3>
-          <p className="text-xs text-muted-foreground">节次作为课表网格的行，排课与导入均按节次名称匹配</p>
+          <p className="text-xs text-muted-foreground">
+            节次作为课表网格的行，排课与导入均按节次名称匹配
+          </p>
         </div>
         <Button size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
@@ -551,7 +655,9 @@ function PeriodSlotsSection() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">加载中...</TableCell>
+                <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                  加载中...
+                </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
@@ -563,11 +669,22 @@ function PeriodSlotsSection() {
               items.map((s) => (
                 <TableRow key={s.id} className="group">
                   <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell><span className="text-sm">{s.startTime ? s.startTime.slice(0, 5) : "-"}</span></TableCell>
-                  <TableCell><span className="text-sm">{s.endTime ? s.endTime.slice(0, 5) : "-"}</span></TableCell>
-                  <TableCell><span className="text-sm">{s.sortOrder}</span></TableCell>
+                  <TableCell>
+                    <span className="text-sm">{s.startTime ? s.startTime.slice(0, 5) : '-'}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{s.endTime ? s.endTime.slice(0, 5) : '-'}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{s.sortOrder}</span>
+                  </TableCell>
                   <TableRowActions className="sticky right-0 bg-white">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openEdit(s)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => openEdit(s)}
+                    >
                       <FileEdit className="mr-1 h-3 w-3" />
                       编辑
                     </Button>
@@ -591,18 +708,28 @@ function PeriodSlotsSection() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "编辑节次" : "新建节次"}</DialogTitle>
-            <DialogDescription>节次名称需与排课/导入时填写的名称一致（如 上午1-2）</DialogDescription>
+            <DialogTitle>{editing ? '编辑节次' : '新建节次'}</DialogTitle>
+            <DialogDescription>
+              节次名称需与排课/导入时填写的名称一致（如 上午1-2）
+            </DialogDescription>
           </DialogHeader>
           <FieldGroup className="py-4">
             <Field>
               <FieldLabel>节次名称 *</FieldLabel>
-              <Input placeholder="如 上午1-2" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                placeholder="如 上午1-2"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </Field>
             <div className="grid grid-cols-3 gap-4">
               <Field>
                 <FieldLabel>开始时间</FieldLabel>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
               </Field>
               <Field>
                 <FieldLabel>结束时间</FieldLabel>
@@ -610,14 +737,21 @@ function PeriodSlotsSection() {
               </Field>
               <Field>
                 <FieldLabel>排序</FieldLabel>
-                <Input type="number" min={0} value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
+                <Input
+                  type="number"
+                  min={0}
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                />
               </Field>
             </div>
           </FieldGroup>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>取消</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              取消
+            </Button>
             <Button onClick={handleSave} disabled={!name || saving}>
-              {saving ? "保存中..." : "保存"}
+              {saving ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -627,7 +761,7 @@ function PeriodSlotsSection() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="删除节次"
-        description={`确定删除节次「${deleteTarget?.name || ""}」吗？`}
+        description={`确定删除节次「${deleteTarget?.name || ''}」吗？`}
         variant="destructive"
         confirmText="删除"
         onConfirm={handleDelete}

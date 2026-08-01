@@ -1,18 +1,18 @@
-"use client"
+'use client'
 
-import { useState, useRef } from "react"
-import { Upload, Trash2, Eye, File, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useRef } from 'react'
+import { Upload, Trash2, Eye, File, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { fileApi } from "@/lib/api"
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { fileApi } from '@/lib/api'
 
 interface RichTextEditorProps {
   value: string
@@ -24,31 +24,39 @@ interface RichTextEditorProps {
   toast: any
 }
 
-export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, pdfUrl, onPdfChange, toast }: RichTextEditorProps) {
-  const [mode, setMode] = useState<"rich_text" | "pdf">("rich_text")
+export function RichTextEditor({
+  value,
+  onChange,
+  placeholder,
+  minHeight = 300,
+  pdfUrl,
+  onPdfChange,
+  toast,
+}: RichTextEditorProps) {
+  const [mode, setMode] = useState<'rich_text' | 'pdf'>('rich_text')
   const [pdfUploading, setPdfUploading] = useState(false)
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
-  const pdfFileName = pdfUrl ? pdfUrl.split("/").pop() || pdfUrl : ""
+  const pdfFileName = pdfUrl ? pdfUrl.split('/').pop() || pdfUrl : ''
 
   const handlePdfUpload = async (file: File) => {
     if (!file) return
-    if (file.type !== "application/pdf") {
-      toast.error("请上传 PDF 文件")
+    if (file.type !== 'application/pdf') {
+      toast.error('请上传 PDF 文件')
       return
     }
     if (file.size > 20 * 1024 * 1024) {
-      toast.error("文件大小超过 20MB")
+      toast.error('文件大小超过 20MB')
       return
     }
     setPdfUploading(true)
     try {
       const res = await fileApi.upload(file)
       onPdfChange?.(res.url)
-      toast.success("上传成功")
+      toast.success('上传成功')
     } catch (err: any) {
-      toast.error("上传失败", { description: err.message })
+      toast.error('上传失败', { description: err.message })
     } finally {
       setPdfUploading(false)
     }
@@ -86,20 +94,17 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
 
   return (
     <div className="space-y-3">
-      <Tabs value={mode} onValueChange={(v) => setMode(v as "rich_text" | "pdf")}>
+      <Tabs value={mode} onValueChange={(v) => setMode(v as 'rich_text' | 'pdf')}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="rich_text">自定义编辑</TabsTrigger>
           <TabsTrigger value="pdf">上传自定义文件</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {mode === "rich_text" ? (
+      {mode === 'rich_text' ? (
         <div className="flex flex-col">
           <p className="text-xs text-gray-500 mb-2">可编写详细的学习目标（纯文本）</p>
-          <div
-            className="border rounded-lg overflow-hidden flex flex-col"
-            style={{ minHeight }}
-          >
+          <div className="border rounded-lg overflow-hidden flex flex-col" style={{ minHeight }}>
             <div className="p-4 flex-1 bg-white">
               <Textarea
                 value={value}
@@ -119,7 +124,10 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
         <div
           className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 space-y-4 cursor-pointer hover:border-primary/30 hover:bg-gray-50/50 transition-colors"
           onClick={() => !pdfUploading && pdfInputRef.current?.click()}
-          onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+          onDragOver={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
           onDrop={onPdfDrop}
         >
           <input
@@ -127,10 +135,10 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
             type="file"
             accept="application/pdf"
             className="hidden"
-            onChange={e => {
+            onChange={(e) => {
               const file = e.target.files?.[0]
               if (file) handlePdfUpload(file)
-              e.target.value = ""
+              e.target.value = ''
             }}
           />
           {pdfUrl ? (
@@ -144,7 +152,11 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
           ) : (
             <>
               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
-                {pdfUploading ? <Loader2 className="h-8 w-8 text-gray-400 animate-spin" /> : <Upload className="h-8 w-8 text-gray-400" />}
+                {pdfUploading ? (
+                  <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+                ) : (
+                  <Upload className="h-8 w-8 text-gray-400" />
+                )}
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-700">点击或拖拽上传课程说明书</p>
@@ -153,15 +165,26 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
             </>
           )}
           {pdfUrl && (
-            <div className="flex items-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
+            <div
+              className="flex items-center gap-2 pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
-                <Eye className="h-4 w-4 mr-1" />预览
+                <Eye className="h-4 w-4 mr-1" />
+                预览
               </Button>
-              <Button variant="outline" size="sm" disabled={pdfUploading} onClick={() => pdfInputRef.current?.click()}>
-                <Upload className="h-4 w-4 mr-1" />重新上传
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pdfUploading}
+                onClick={() => pdfInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                重新上传
               </Button>
               <Button variant="outline" size="sm" onClick={() => onPdfChange?.(null)}>
-                <Trash2 className="h-4 w-4 mr-1" />移除文件
+                <Trash2 className="h-4 w-4 mr-1" />
+                移除文件
               </Button>
             </div>
           )}
@@ -173,18 +196,20 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <File className="h-5 w-5 text-red-500" />
-              <span className="truncate">{pdfFileName || "文件预览"}</span>
+              <span className="truncate">{pdfFileName || '文件预览'}</span>
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50">
             {pdfUrl ? (
-              <iframe src={pdfUrl} title={pdfFileName || "PDF 预览"} className="w-full h-full" />
+              <iframe src={pdfUrl} title={pdfFileName || 'PDF 预览'} className="w-full h-full" />
             ) : (
               <div className="h-full flex items-center justify-center text-gray-400">暂无文件</div>
             )}
           </div>
           <DialogFooter className="shrink-0 gap-2">
-            <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>关闭</Button>
+            <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>
+              关闭
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

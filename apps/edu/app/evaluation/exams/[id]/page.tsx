@@ -1,42 +1,65 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
-import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2, SlidersHorizontal, ChevronDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
-import { RandomQuestionDialog } from "@/components/evaluation/random-question-dialog"
-import { ManualQuestionDialog } from "@/components/evaluation/manual-question-dialog"
-import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog"
-import { QuestionPreview } from "@/components/evaluation/question-preview"
-import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
+import {
+  ArrowLeft,
+  GripVertical,
+  Trash2,
+  Eye,
+  FileText,
+  Wand2,
+  Hand,
+  Plus,
+  Edit,
+  FileUp,
+  Rocket,
+  ImageIcon,
+  Users,
+  Building2,
+  SlidersHorizontal,
+  ChevronDown,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
+import { RandomQuestionDialog } from '@/components/evaluation/random-question-dialog'
+import { ManualQuestionDialog } from '@/components/evaluation/manual-question-dialog'
+import { QuestionFormDialog } from '@/components/evaluation/question-form-dialog'
+import { QuestionPreview } from '@/components/evaluation/question-preview'
+import { ScoreConfigDialog } from '@/components/evaluation/score-config-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useData } from "@/components/providers/data-provider"
-import type { Question, ExamQuestion, ExamFormData, QuestionType, QuestionFormData } from "@/lib/types"
-import { QUESTION_TYPE_LABELS, canPerformAction } from "@/lib/types"
+} from '@/components/ui/dropdown-menu'
+import { useData } from '@/components/providers/data-provider'
+import type {
+  Question,
+  ExamQuestion,
+  ExamFormData,
+  QuestionType,
+  QuestionFormData,
+} from '@/lib/types'
+import { QUESTION_TYPE_LABELS, canPerformAction } from '@/lib/types'
 
 const TYPE_COLORS: Record<QuestionType, string> = {
-  single: "bg-blue-500",
-  multiple: "bg-indigo-500",
-  judge: "bg-amber-500",
-  fill: "bg-purple-500",
-  essay: "bg-rose-500",
-  short_answer: "bg-teal-500",
+  single: 'bg-blue-500',
+  multiple: 'bg-indigo-500',
+  judge: 'bg-amber-500',
+  fill: 'bg-purple-500',
+  essay: 'bg-rose-500',
+  short_answer: 'bg-teal-500',
 }
-import { cn } from "@/lib/utils"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+import { cn } from '@/lib/utils'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 export default function ExamComposerPage() {
   const params = useParams()
   const router = useRouter()
@@ -69,7 +92,7 @@ export default function ExamComposerPage() {
   const exam = getExam(examId)
 
   const draftPoolBank = useMemo(() => {
-    return questionBanks.find(b => b.isDraftPool === true)
+    return questionBanks.find((b) => b.isDraftPool === true)
   }, [questionBanks])
 
   const [formOpen, setFormOpen] = useState(false)
@@ -79,43 +102,49 @@ export default function ExamComposerPage() {
   const [randomDialogOpen, setRandomDialogOpen] = useState(false)
   const [manualDialogOpen, setManualDialogOpen] = useState(false)
   const [questionFormOpen, setQuestionFormOpen] = useState(false)
-  const [defaultQuestionType, setDefaultQuestionType] = useState<QuestionType>("single")
+  const [defaultQuestionType, setDefaultQuestionType] = useState<QuestionType>('single')
   const [scoreTypeDialogOpen, setScoreTypeDialogOpen] = useState(false)
   const [editScores, setEditScores] = useState<Record<string, string>>({})
   const [savingScoreId, setSavingScoreId] = useState<string | null>(null)
 
   const selectedQuestionIds = useMemo(() => {
-    return exam?.questions?.map(q => q.questionId) || []
+    return exam?.questions?.map((q) => q.questionId) || []
   }, [exam])
 
-  const commitScore = useCallback((questionId: string) => {
-    const raw = editScores[questionId]
-    if (raw === undefined) return
-    const score = Number(raw)
-    if (isNaN(score) || score <= 0) return
-    setSavingScoreId(questionId)
-    updateExamQuestionScore(examId, questionId, score).finally(() => {
-      setSavingScoreId(null)
-      setEditScores((prev) => {
-        const next = { ...prev }
-        delete next[questionId]
-        return next
+  const commitScore = useCallback(
+    (questionId: string) => {
+      const raw = editScores[questionId]
+      if (raw === undefined) return
+      const score = Number(raw)
+      if (isNaN(score) || score <= 0) return
+      setSavingScoreId(questionId)
+      updateExamQuestionScore(examId, questionId, score).finally(() => {
+        setSavingScoreId(null)
+        setEditScores((prev) => {
+          const next = { ...prev }
+          delete next[questionId]
+          return next
+        })
       })
-    })
-  }, [examId, editScores, updateExamQuestionScore])
+    },
+    [examId, editScores, updateExamQuestionScore],
+  )
 
-  const handleScoreKeyDown = useCallback((e: React.KeyboardEvent, questionId: string) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      commitScore(questionId)
-    } else if (e.key === 'Escape') {
-      setEditScores((prev) => {
-        const next = { ...prev }
-        delete next[questionId]
-        return next
-      })
-    }
-  }, [commitScore])
+  const handleScoreKeyDown = useCallback(
+    (e: React.KeyboardEvent, questionId: string) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        commitScore(questionId)
+      } else if (e.key === 'Escape') {
+        setEditScores((prev) => {
+          const next = { ...prev }
+          delete next[questionId]
+          return next
+        })
+      }
+    },
+    [commitScore],
+  )
 
   const totalScore = useMemo(() => {
     return exam?.questions?.reduce((sum, q) => sum + (q.score || 0), 0) ?? 0
@@ -146,7 +175,8 @@ export default function ExamComposerPage() {
     )
   }
 
-  const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published', 'archived'].includes(exam.status)
+  const canEdit =
+    !isPreview && ['draft', 'rejected', 'approved', 'published', 'archived'].includes(exam.status)
   const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
 
   const handleExamUpdate = (data: ExamFormData) => {
@@ -154,7 +184,7 @@ export default function ExamComposerPage() {
   }
 
   const handleAddQuestions = (questions: Question[]) => {
-    questions.forEach(question => {
+    questions.forEach((question) => {
       addQuestionToExam(examId, question)
     })
   }
@@ -200,7 +230,7 @@ export default function ExamComposerPage() {
     const newQuestions = [...exam.questions]
     const [dragged] = newQuestions.splice(draggedIndex, 1)
     newQuestions.splice(index, 0, dragged)
-    
+
     reorderExamQuestions(examId, newQuestions)
     setDraggedIndex(index)
   }
@@ -259,8 +289,8 @@ export default function ExamComposerPage() {
     return mins > 0 ? `${hours} 小时 ${mins} 分钟` : `${hours} 小时`
   }
 
-
-  const getCollaboratorNames = () => (exam.collaboratorNames || exam.collaboratorIds || []).filter(Boolean)
+  const getCollaboratorNames = () =>
+    (exam.collaboratorNames || exam.collaboratorIds || []).filter(Boolean)
   const getCollaboratorDeptNames = () => (exam.collaboratorDeptIds || []).filter(Boolean)
 
   // 转换 ExamQuestion 为 Question 格式以供预览
@@ -270,15 +300,19 @@ export default function ExamComposerPage() {
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">
       {/* 返回按钮 */}
       <div className="px-6 pt-4">
-        <Button variant="ghost" size="sm" onClick={() => {
-          if (isPreview) {
-            router.back()
-          } else {
-            router.push("/evaluation/exams")
-          }
-        }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (isPreview) {
+              router.back()
+            } else {
+              router.push('/evaluation/exams')
+            }
+          }}
+        >
           <ArrowLeft />
-          {isPreview ? "返回" : "返回组卷列表"}
+          {isPreview ? '返回' : '返回组卷列表'}
         </Button>
       </div>
 
@@ -290,12 +324,7 @@ export default function ExamComposerPage() {
               <div className="flex gap-4">
                 {exam.coverImage ? (
                   <div className="relative shrink-0 size-24 overflow-hidden rounded-lg">
-                    <Image
-                      src={exam.coverImage}
-                      alt={exam.name}
-                      fill
-                      className="object-cover"
-                    />
+                    <Image src={exam.coverImage} alt={exam.name} fill className="object-cover" />
                   </div>
                 ) : (
                   <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -308,7 +337,7 @@ export default function ExamComposerPage() {
                     <Badge variant="outline">{exam.version}</Badge>
                   </div>
                   <CardDescription className="mt-2">
-                    {exam.description || "暂无描述"}
+                    {exam.description || '暂无描述'}
                   </CardDescription>
                 </div>
               </div>
@@ -316,12 +345,17 @@ export default function ExamComposerPage() {
                 <div className="flex items-start gap-2">
                   {canEdit && (
                     <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
-                        <Edit className="mr-1 size-4" />
-                        编辑信息
-                      </Button>
+                      <Edit className="mr-1 size-4" />
+                      编辑信息
+                    </Button>
                   )}
                   {canPublish && (
-                    <Button variant="outline" size="sm" className="text-indigo-600 hover:text-indigo-700" onClick={() => updateExamStatus(examId, 'publish')}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-indigo-600 hover:text-indigo-700"
+                      onClick={() => updateExamStatus(examId, 'publish')}
+                    >
                       <Rocket className="mr-1 size-4" />
                       发布
                     </Button>
@@ -333,23 +367,23 @@ export default function ExamComposerPage() {
           <CardContent>
             <div className="flex flex-wrap gap-6 text-sm">
               <div>
-                <span className="text-muted-foreground">创建人:</span>{" "}
-                <strong>{exam.creatorName || exam.creatorId || "-"}</strong>
+                <span className="text-muted-foreground">创建人:</span>{' '}
+                <strong>{exam.creatorName || exam.creatorId || '-'}</strong>
               </div>
               <div>
-                <span className="text-muted-foreground">题目数量:</span>{" "}
+                <span className="text-muted-foreground">题目数量:</span>{' '}
                 <strong>{exam.questions.length}</strong>
               </div>
               <div>
-                <span className="text-muted-foreground">总分:</span>{" "}
+                <span className="text-muted-foreground">总分:</span>{' '}
                 <strong>{totalScore} 分</strong>
               </div>
               <div>
-                <span className="text-muted-foreground">创建时间:</span>{" "}
+                <span className="text-muted-foreground">创建时间:</span>{' '}
                 {formatDate(exam.createdAt)}
               </div>
               <div>
-                <span className="text-muted-foreground">更新时间:</span>{" "}
+                <span className="text-muted-foreground">更新时间:</span>{' '}
                 {formatDate(exam.updatedAt)}
               </div>
             </div>
@@ -394,7 +428,7 @@ export default function ExamComposerPage() {
           <div>
             <h3 className="font-semibold">试卷题目</h3>
             <p className="text-sm text-muted-foreground">
-              {canEdit ? "拖拽调整顺序，点击分值可修改" : "查看试卷题目"}
+              {canEdit ? '拖拽调整顺序，点击分值可修改' : '查看试卷题目'}
             </p>
           </div>
           {canEdit && (
@@ -433,53 +467,40 @@ export default function ExamComposerPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setRandomDialogOpen(true)}
-                >
-                  <Wand2 className="mr-1 size-4" />
-                  自动抽题
-                </Button>
-              <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setManualDialogOpen(true)}
-                >
-                  <Hand className="mr-1 size-4" />
-                  手动抽题
-                </Button>
+              <Button variant="outline" size="sm" onClick={() => setRandomDialogOpen(true)}>
+                <Wand2 className="mr-1 size-4" />
+                自动抽题
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setManualDialogOpen(true)}>
+                <Hand className="mr-1 size-4" />
+                手动抽题
+              </Button>
               <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Plus className="mr-1 size-4" />
-                      新增题目
-                      <ChevronDown className="ml-1 size-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
-                      <DropdownMenuItem
-                        key={type}
-                        onClick={() => {
-                          setDefaultQuestionType(type)
-                          setQuestionFormOpen(true)
-                        }}
-                      >
-                        {QUESTION_TYPE_LABELS[type]}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              <Button
-                  variant="outline"
-                  size="sm"
-                  disabled
-                  title="批量导入题目功能开发中"
-                >
-                  <FileUp className="mr-1 size-4" />
-                  批量导入题目
-                </Button>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Plus className="mr-1 size-4" />
+                    新增题目
+                    <ChevronDown className="ml-1 size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+                    <DropdownMenuItem
+                      key={type}
+                      onClick={() => {
+                        setDefaultQuestionType(type)
+                        setQuestionFormOpen(true)
+                      }}
+                    >
+                      {QUESTION_TYPE_LABELS[type]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline" size="sm" disabled title="批量导入题目功能开发中">
+                <FileUp className="mr-1 size-4" />
+                批量导入题目
+              </Button>
             </div>
           )}
         </div>
@@ -492,9 +513,7 @@ export default function ExamComposerPage() {
                 <FileText className="mx-auto mb-2 size-12 text-muted-foreground/50" />
                 <p className="text-muted-foreground">暂无题目</p>
                 {canEdit && (
-                  <p className="text-sm text-muted-foreground">
-                    点击上方按钮抽取或新增题目
-                  </p>
+                  <p className="text-sm text-muted-foreground">点击上方按钮抽取或新增题目</p>
                 )}
               </div>
             </div>
@@ -508,19 +527,19 @@ export default function ExamComposerPage() {
                   onDragOver={(e) => handleDragOver(e, index)}
                   onDragEnd={handleDragEnd}
                   className={cn(
-                    "group flex items-center gap-3 rounded-lg border bg-card py-2.5 px-3 transition-colors",
-                    canEdit && "cursor-move hover:border-primary/50",
-                    draggedIndex === index && "opacity-50"
+                    'group flex items-center gap-3 rounded-lg border bg-card py-2.5 px-3 transition-colors',
+                    canEdit && 'cursor-move hover:border-primary/50',
+                    draggedIndex === index && 'opacity-50',
                   )}
                 >
-                  {canEdit && (
-                    <GripVertical className="size-4 shrink-0 text-muted-foreground" />
-                  )}
+                  {canEdit && <GripVertical className="size-4 shrink-0 text-muted-foreground" />}
                   <span className="shrink-0 text-xs font-medium text-muted-foreground w-5">
                     {index + 1}.
                   </span>
                   <p className="flex-1 text-sm line-clamp-1 min-w-0">{question.content}</p>
-                  <Badge className={`text-xs text-white shrink-0 hover:opacity-90 ${TYPE_COLORS[question.type]}`}>
+                  <Badge
+                    className={`text-xs text-white shrink-0 hover:opacity-90 ${TYPE_COLORS[question.type]}`}
+                  >
                     {QUESTION_TYPE_LABELS[question.type]}
                   </Badge>
                   {canEdit ? (
@@ -530,7 +549,9 @@ export default function ExamComposerPage() {
                         min={0.5}
                         step={0.5}
                         value={editScores[question.id] ?? String(question.score)}
-                        onChange={(e) => setEditScores((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                        onChange={(e) =>
+                          setEditScores((prev) => ({ ...prev, [question.id]: e.target.value }))
+                        }
                         onBlur={() => commitScore(question.id)}
                         onKeyDown={(e) => handleScoreKeyDown(e, question.id)}
                         className="h-6 w-14 text-xs"
@@ -540,7 +561,9 @@ export default function ExamComposerPage() {
                       <span className="text-xs text-muted-foreground">分</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground shrink-0">{question.score} 分</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {question.score} 分
+                    </span>
                   )}
                   <div className="flex shrink-0 items-center gap-1">
                     <Button

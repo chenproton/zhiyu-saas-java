@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState, useRef } from "react"
-import { resourceLibraryApi, fileApi } from "@/lib/api"
-import { type ResourceLibraryItem } from "@/lib/types/library"
-import { useToast } from "@zhiyu/ui"
+import { useCallback, useEffect, useState, useRef } from 'react'
+import { resourceLibraryApi, fileApi } from '@/lib/api'
+import { type ResourceLibraryItem } from '@/lib/types/library'
+import { useToast } from '@zhiyu/ui'
 import {
   resourceTypeExtensionMap,
   fileTypesWithUpload,
   RESOURCE_MAX_FILE_SIZE,
-} from "@/lib/resource-type-constants"
+} from '@/lib/resource-type-constants'
 
 export function useResourceCrud(resourceType?: string) {
   const { toast } = useToast()
@@ -14,18 +14,18 @@ export function useResourceCrud(resourceType?: string) {
 
   const [items, setItems] = useState<ResourceLibraryItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ResourceLibraryItem | null>(null)
-  const [name, setName] = useState("")
-  const [url, setUrl] = useState("")
-  const [description, setDescription] = useState("")
+  const [name, setName] = useState('')
+  const [url, setUrl] = useState('')
+  const [description, setDescription] = useState('')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const isFileType = fileTypesWithUpload.includes(resourceType || "")
+  const isFileType = fileTypesWithUpload.includes(resourceType || '')
 
   const loadItems = useCallback(async () => {
     setLoading(true)
@@ -37,9 +37,9 @@ export function useResourceCrud(resourceType?: string) {
       setItems(res.items)
     } catch (err: any) {
       toast({
-        variant: "destructive",
-        title: "加载失败",
-        description: err.message || "无法获取资源列表",
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '无法获取资源列表',
       })
     } finally {
       setLoading(false)
@@ -57,9 +57,9 @@ export function useResourceCrud(resourceType?: string) {
   }, [loadItems])
 
   const resetDialog = () => {
-    setName("")
-    setUrl("")
-    setDescription("")
+    setName('')
+    setUrl('')
+    setDescription('')
     setUploadFile(null)
     setUploading(false)
   }
@@ -73,8 +73,8 @@ export function useResourceCrud(resourceType?: string) {
   const handleOpenEdit = (item: ResourceLibraryItem) => {
     setEditingItem(item)
     setName(item.name)
-    setUrl(item.url || "")
-    setDescription(item.description || "")
+    setUrl(item.url || '')
+    setDescription(item.description || '')
     setUploadFile(null)
     setUploading(false)
     setIsDialogOpen(true)
@@ -84,22 +84,22 @@ export function useResourceCrud(resourceType?: string) {
     if (!deleteTarget) return
     try {
       await resourceLibraryApi.delete(deleteTarget)
-      toast({ title: "删除成功" })
+      toast({ title: '删除成功' })
       loadItems()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message })
+      toast({ variant: 'destructive', title: '删除失败', description: err.message })
     } finally {
       setDeleteTarget(null)
     }
   }
 
   const validateResourceFile = (file: File, type: string): string | null => {
-    if (file.size > RESOURCE_MAX_FILE_SIZE) return "文件大小超过 100MB"
+    if (file.size > RESOURCE_MAX_FILE_SIZE) return '文件大小超过 100MB'
     const allowed = resourceTypeExtensionMap[type] || []
     if (allowed.length === 0) return null
-    const ext = file.name.split(".").pop()?.toLowerCase() || ""
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
     if (!allowed.includes(ext)) {
-      return `不支持的文件格式，请上传 ${allowed.map((e) => `.${e}`).join("、")} 文件`
+      return `不支持的文件格式，请上传 ${allowed.map((e) => `.${e}`).join('、')} 文件`
     }
     return null
   }
@@ -111,7 +111,7 @@ export function useResourceCrud(resourceType?: string) {
     if (file && fileTypesWithUpload.includes(fileType)) {
       const err = validateResourceFile(file, fileType)
       if (err) {
-        toast({ variant: "destructive", title: "文件校验失败", description: err })
+        toast({ variant: 'destructive', title: '文件校验失败', description: err })
         return
       }
       setUploadFile(file)
@@ -121,7 +121,7 @@ export function useResourceCrud(resourceType?: string) {
   const handleFileSelect = (file: File, fileType: string) => {
     const err = validateResourceFile(file, fileType)
     if (err) {
-      toast({ variant: "destructive", title: "文件校验失败", description: err })
+      toast({ variant: 'destructive', title: '文件校验失败', description: err })
       return
     }
     setUploadFile(file)
@@ -129,7 +129,7 @@ export function useResourceCrud(resourceType?: string) {
 
   const handleSubmit = async (submitType: string) => {
     if (!name.trim()) {
-      toast({ variant: "destructive", title: "名称不能为空" })
+      toast({ variant: 'destructive', title: '名称不能为空' })
       return
     }
 
@@ -143,7 +143,7 @@ export function useResourceCrud(resourceType?: string) {
         finalUrl = res.url
         finalSize = res.size
       } catch (err: any) {
-        toast({ variant: "destructive", title: "文件上传失败", description: err.message })
+        toast({ variant: 'destructive', title: '文件上传失败', description: err.message })
         setUploading(false)
         return
       } finally {
@@ -156,22 +156,22 @@ export function useResourceCrud(resourceType?: string) {
       resourceType: submitType as any,
       url: finalUrl || undefined,
       description: description.trim() || undefined,
-      thumbnail: submitType === "image" ? finalUrl || undefined : undefined,
+      thumbnail: submitType === 'image' ? finalUrl || undefined : undefined,
       fileSize: finalSize,
     }
 
     try {
       if (editingItem) {
         await resourceLibraryApi.update(editingItem.id, payload as any)
-        toast({ title: "更新成功" })
+        toast({ title: '更新成功' })
       } else {
         await resourceLibraryApi.create(payload as any)
-        toast({ title: "创建成功" })
+        toast({ title: '创建成功' })
       }
       setIsDialogOpen(false)
       loadItems()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message })
+      toast({ variant: 'destructive', title: '保存失败', description: err.message })
     }
   }
 

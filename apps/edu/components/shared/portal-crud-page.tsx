@@ -1,21 +1,35 @@
-"use client"
+'use client'
 
-import { useEffect, useState, useMemo, type ReactNode } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Search, Trash2, Plus, Loader2, Upload } from "lucide-react"
-import { useToast } from "@zhiyu/ui"
-import { useImportFlow, type UseImportFlowOptions } from "@/hooks/use-import-flow"
-import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { useEffect, useState, useMemo, type ReactNode } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Search, Trash2, Plus, Loader2, Upload } from 'lucide-react'
+import { useToast } from '@zhiyu/ui'
+import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
+import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 
 export interface PortalCrudPageConfig<T extends { id: string; enabled?: boolean }> {
   title: string
@@ -31,12 +45,12 @@ export interface PortalCrudPageConfig<T extends { id: string; enabled?: boolean 
 
   filterItems: (items: T[], searchTerm: string) => T[]
 
-  importConfig: Omit<UseImportFlowOptions, "onSuccess">
+  importConfig: Omit<UseImportFlowOptions, 'onSuccess'>
   colSpan: number
   renderTableHeader: () => ReactNode
   renderTableRow: (
     item: T,
-    actions: { edit: () => void; delete: () => void; toggle: () => void }
+    actions: { edit: () => void; delete: () => void; toggle: () => void },
   ) => ReactNode
 
   createDefault: () => T
@@ -73,7 +87,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   createHref,
 }: PortalCrudPageConfig<T>) {
   const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formItem, setFormItem] = useState<T | null>(null)
   const [saving, setSaving] = useState(false)
@@ -107,7 +121,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
 
   const filteredItems = useMemo(
     () => filterItems(items, searchTerm),
-    [items, searchTerm, filterItems]
+    [items, searchTerm, filterItems],
   )
 
   const openCreateDialog = () => {
@@ -129,9 +143,9 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
       await onRetry()
     } catch (err) {
       toast({
-        variant: "destructive",
-        title: "保存失败",
-        description: err instanceof Error ? err.message : "未知错误",
+        variant: 'destructive',
+        title: '保存失败',
+        description: err instanceof Error ? err.message : '未知错误',
       })
     } finally {
       setSaving(false)
@@ -144,9 +158,9 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
       await onRetry()
     } catch (err) {
       toast({
-        variant: "destructive",
-        title: "操作失败",
-        description: err instanceof Error ? err.message : "未知错误",
+        variant: 'destructive',
+        title: '操作失败',
+        description: err instanceof Error ? err.message : '未知错误',
       })
     }
   }
@@ -156,14 +170,14 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     setDeleting(true)
     try {
       await onDelete(deleteTarget)
-      toast({ title: "删除成功" })
+      toast({ title: '删除成功' })
       setDeleteTarget(null)
       await onRetry()
     } catch (err) {
       toast({
-        variant: "destructive",
-        title: "删除失败",
-        description: err instanceof Error ? err.message : "未知错误",
+        variant: 'destructive',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
       })
     } finally {
       setDeleting(false)
@@ -236,9 +250,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           <div className="rounded-lg border border-border bg-card">
             <Table>
               <TableHeader>
-                <TableRow className="border-border">
-                  {renderTableHeader()}
-                </TableRow>
+                <TableRow className="border-border">{renderTableHeader()}</TableRow>
               </TableHeader>
               <TableBody>
                 {filteredItems.map((item) => (
@@ -252,7 +264,10 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
                 ))}
                 {filteredItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={colSpan} className="text-center text-sm text-muted-foreground py-8">
+                    <TableCell
+                      colSpan={colSpan}
+                      className="text-center text-sm text-muted-foreground py-8"
+                    >
                       暂无{entityLabel}数据
                     </TableCell>
                   </TableRow>
@@ -281,7 +296,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
         downloadLabel={`下载${entityLabel}批量导入模板`}
         onDownload={handleDownloadTemplate}
         uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-        importLabel={() => "开始导入"}
+        importLabel={() => '开始导入'}
         onImport={handleImport}
         files={importFiles}
         onAddFiles={handleAddFiles}
@@ -313,9 +328,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
               {formItem?.id ? `修改${entityLabel}信息` : `添加新${entityLabel}`}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {formItem && renderForm(formItem, setFormItem)}
-          </div>
+          <div className="grid gap-4 py-4">{formItem && renderForm(formItem, setFormItem)}</div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
               取消
@@ -330,11 +343,13 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
         title="确认删除"
-        description={deleteTarget ? getDeleteDescription(deleteTarget) : ""}
+        description={deleteTarget ? getDeleteDescription(deleteTarget) : ''}
         variant="destructive"
-        confirmText={deleting ? "删除中..." : "删除"}
+        confirmText={deleting ? '删除中...' : '删除'}
         onConfirm={confirmDelete}
       />
     </div>

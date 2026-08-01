@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { CheckCircle2, AlertCircle } from "lucide-react"
-import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
+import { CheckCircle2, AlertCircle } from 'lucide-react'
+import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
 
 interface PublishCheckPanelProps {
   node: SystemCourseNode | undefined
@@ -18,65 +18,68 @@ interface CheckItem {
 
 const CHECK_ITEMS: CheckItem[] = [
   {
-    key: "name",
-    label: "节点名称",
+    key: 'name',
+    label: '节点名称',
     check: (node) => !!node.name?.trim(),
     getStatus: (node) => `已填写：${node.name}`,
   },
   {
-    key: "goals",
-    label: "学习目标",
+    key: 'goals',
+    label: '学习目标',
     check: (node) => !!node.teachingGoals?.trim(),
     getStatus: (node) => {
-      const lines = node.teachingGoals?.split("\n").filter((l) => l.trim()) ?? []
+      const lines = node.teachingGoals?.split('\n').filter((l) => l.trim()) ?? []
       return `已填写：${lines.length} 条目标`
     },
   },
   {
-    key: "knowledge",
-    label: "涉及知识点",
+    key: 'knowledge',
+    label: '涉及知识点',
     check: (node) => (node.knowledgePoints?.length ?? 0) > 0,
     getStatus: (node) => `已关联：${node.knowledgePoints?.length ?? 0} 个知识点`,
   },
   {
-    key: "duration",
-    label: "预估课时",
-    check: (node) => typeof node.duration === "number" && node.duration > 0,
+    key: 'duration',
+    label: '预估课时',
+    check: (node) => typeof node.duration === 'number' && node.duration > 0,
     getStatus: (node) => `已设置：${node.duration} 课时`,
   },
   {
-    key: "resources",
-    label: "课程资源",
+    key: 'resources',
+    label: '课程资源',
     check: (node) => (node.resources?.length ?? 0) > 0,
     getStatus: (node) => `已上传：${node.resources?.length ?? 0} 个文件`,
   },
   {
-    key: "detailedDescription",
-    label: "详细描述",
+    key: 'detailedDescription',
+    label: '详细描述',
     check: (node) => !!node.detailedDescription?.trim(),
     getStatus: (node) => {
       const len = node.detailedDescription?.length ?? 0
-      return len > 0 ? `已填写：${len} 字符` : "未填写详细描述"
+      return len > 0 ? `已填写：${len} 字符` : '未填写详细描述'
     },
   },
 ]
 
-export default function PublishCheckPanel({ node, hideEval = false, hideDetailedDescription = false }: PublishCheckPanelProps) {
-  const nodeEvalData = (node?.evalData || {}) as { methods?: string[]; evalRuleConfig?: Record<string, any> }
+export default function PublishCheckPanel({
+  node,
+  hideEval = false,
+  hideDetailedDescription = false,
+}: PublishCheckPanelProps) {
+  const nodeEvalData = (node?.evalData || {}) as {
+    methods?: string[]
+    evalRuleConfig?: Record<string, any>
+  }
   const evalMethods = nodeEvalData.methods || nodeEvalData.evalRuleConfig?.evaluationMethods || []
   const evalCheck: CheckItem & { passed: boolean; statusText: string } = {
-    key: "nodeEval",
-    label: "节点评价规则",
+    key: 'nodeEval',
+    label: '节点评价规则',
     check: () => evalMethods.length > 0,
     getStatus: () =>
-      evalMethods.length > 0
-        ? `已配置：${evalMethods.length} 种测评方式`
-        : "未配置节点评价规则",
+      evalMethods.length > 0 ? `已配置：${evalMethods.length} 种测评方式` : '未配置节点评价规则',
     passed: evalMethods.length > 0,
     statusText:
-      evalMethods.length > 0
-        ? `已配置：${evalMethods.length} 种测评方式`
-        : "未配置节点评价规则",
+      evalMethods.length > 0 ? `已配置：${evalMethods.length} 种测评方式` : '未配置节点评价规则',
   }
 
   if (!node) {
@@ -85,8 +88,12 @@ export default function PublishCheckPanel({ node, hideEval = false, hideDetailed
         <div className="bg-white rounded-xl border border-gray-100 p-4 sticky top-[88px]">
           {!hideEval && (
             <div className="space-y-2">
-              <div className={`flex items-center gap-2 p-2 rounded ${evalCheck.passed ? "" : "bg-amber-50"}`}>
-                <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${evalCheck.passed ? "bg-green-100" : "bg-amber-100"}`}>
+              <div
+                className={`flex items-center gap-2 p-2 rounded ${evalCheck.passed ? '' : 'bg-amber-50'}`}
+              >
+                <span
+                  className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${evalCheck.passed ? 'bg-green-100' : 'bg-amber-100'}`}
+                >
                   {evalCheck.passed ? (
                     <CheckCircle2 className="w-3 h-3 text-green-500" />
                   ) : (
@@ -95,7 +102,11 @@ export default function PublishCheckPanel({ node, hideEval = false, hideDetailed
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-800">{evalCheck.label}</p>
-                  <p className={`text-[10px] truncate ${evalCheck.passed ? "text-green-600" : "text-amber-600"}`}>{evalCheck.statusText}</p>
+                  <p
+                    className={`text-[10px] truncate ${evalCheck.passed ? 'text-green-600' : 'text-amber-600'}`}
+                  >
+                    {evalCheck.statusText}
+                  </p>
                 </div>
               </div>
             </div>
@@ -106,7 +117,9 @@ export default function PublishCheckPanel({ node, hideEval = false, hideDetailed
     )
   }
 
-  const items = CHECK_ITEMS.filter((item) => !(hideDetailedDescription && item.key === "detailedDescription"))
+  const items = CHECK_ITEMS.filter(
+    (item) => !(hideDetailedDescription && item.key === 'detailedDescription'),
+  )
 
   const results = items.map((item) => ({
     ...item,
@@ -138,13 +151,11 @@ export default function PublishCheckPanel({ node, hideEval = false, hideDetailed
           {results.map((r) => (
             <div
               key={r.key}
-              className={`flex items-center gap-2 p-2 rounded ${
-                r.passed ? "" : "bg-amber-50"
-              }`}
+              className={`flex items-center gap-2 p-2 rounded ${r.passed ? '' : 'bg-amber-50'}`}
             >
               <span
                 className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                  r.passed ? "bg-green-100" : "bg-amber-100"
+                  r.passed ? 'bg-green-100' : 'bg-amber-100'
                 }`}
               >
                 {r.passed ? (
@@ -157,7 +168,7 @@ export default function PublishCheckPanel({ node, hideEval = false, hideDetailed
                 <p className="text-xs text-gray-800">{r.label}</p>
                 <p
                   className={`text-[10px] truncate ${
-                    r.passed ? "text-green-600" : "text-amber-600"
+                    r.passed ? 'text-green-600' : 'text-amber-600'
                   }`}
                 >
                   {r.statusText}
@@ -168,11 +179,7 @@ export default function PublishCheckPanel({ node, hideEval = false, hideDetailed
         </div>
         <div className="mt-4 pt-4 border-t border-gray-100">
           <div className="flex items-center gap-2 mb-2">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                allDone ? "bg-green-500" : "bg-amber-500"
-              }`}
-            />
+            <span className={`w-2 h-2 rounded-full ${allDone ? 'bg-green-500' : 'bg-amber-500'}`} />
             <span className="text-xs text-gray-700">
               {completed}/{total} 项已完成
             </span>
@@ -180,15 +187,15 @@ export default function PublishCheckPanel({ node, hideEval = false, hideDetailed
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                allDone ? "bg-green-500" : "bg-amber-500"
+                allDone ? 'bg-green-500' : 'bg-amber-500'
               }`}
               style={{ width: `${(completed / total) * 100}%` }}
             />
           </div>
           <p className="text-[10px] text-gray-400 mt-2">
             {allDone
-              ? "💡 所有检查项已完成，可以发布课程"
-              : `💡 建议完善${emptyFields.join("、")}，提升课程规划准确性`}
+              ? '💡 所有检查项已完成，可以发布课程'
+              : `💡 建议完善${emptyFields.join('、')}，提升课程规划准确性`}
           </p>
         </div>
       </div>

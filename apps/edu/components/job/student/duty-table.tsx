@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import { useMemo, useState } from "react"
-import { ListChecks, ChevronLeft, ChevronRight, X, Star } from "lucide-react"
-import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from "@/lib/types/job"
-import { Button } from "@/components/ui/button"
-import { AbilityPointCard } from "./ability-point-card"
+import { useMemo, useState } from 'react'
+import { ListChecks, ChevronLeft, ChevronRight, X, Star } from 'lucide-react'
+import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from '@/lib/types/job'
+import { Button } from '@/components/ui/button'
+import { AbilityPointCard } from './ability-point-card'
 
 interface DutyTableProps {
   responsibilities: PositionResponsibility[]
@@ -13,7 +13,12 @@ interface DutyTableProps {
   requirements: string[]
 }
 
-export function DutyTable({ responsibilities, bindings, abilityPoints, requirements }: DutyTableProps) {
+export function DutyTable({
+  responsibilities,
+  bindings,
+  abilityPoints,
+  requirements,
+}: DutyTableProps) {
   const [modalDuty, setModalDuty] = useState<PositionResponsibility | null>(null)
   const [page, setPage] = useState(0)
 
@@ -33,7 +38,9 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
 
   const abilityMap = useMemo(() => {
     const map: Record<string, AbilityPoint> = {}
-    abilityPoints.forEach((a) => { map[a.id] = a })
+    abilityPoints.forEach((a) => {
+      map[a.id] = a
+    })
     return map
   }, [abilityPoints])
 
@@ -51,7 +58,11 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
       <div>
         <h4 className="text-base font-medium text-[#1f2937] mb-4 flex items-center gap-2">
           <ListChecks className="w-5 h-5 text-blue-500" />
-          岗位职责(<strong className="text-blue-500 mx-1">{responsibilities.length || requirements.length}</strong>项)
+          岗位职责(
+          <strong className="text-blue-500 mx-1">
+            {responsibilities.length || requirements.length}
+          </strong>
+          项)
         </h4>
 
         {responsibilities.length > 0 ? (
@@ -60,7 +71,9 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
               <tr className="bg-[#fafafa]">
                 <th className="text-left p-4 text-sm font-medium text-[#64748b] w-24">编号</th>
                 <th className="text-left p-4 text-sm font-medium text-[#64748b]">职责描述</th>
-                <th className="text-left p-4 text-sm font-medium text-[#64748b] w-40">关联能力点</th>
+                <th className="text-left p-4 text-sm font-medium text-[#64748b] w-40">
+                  关联能力点
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -68,7 +81,11 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
                 const items = grouped.find((g) => g.responsibility.id === resp.id)?.abilities || []
                 return (
                   <tr key={resp.id} className="border-b border-[#f5f5f4] hover:bg-[#fafafa]">
-                    <td className="p-4"><span className="text-xs text-[#94a3b8] font-medium">T-{String(i + 1).padStart(3, "0")}</span></td>
+                    <td className="p-4">
+                      <span className="text-xs text-[#94a3b8] font-medium">
+                        T-{String(i + 1).padStart(3, '0')}
+                      </span>
+                    </td>
                     <td className="p-4 text-sm text-[#475569]">{resp.name}</td>
                     <td className="p-4">
                       <span className="text-sm font-medium text-blue-500">{items.length} 个</span>
@@ -76,7 +93,10 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
                         variant="outline"
                         size="sm"
                         className="ml-2 h-7 px-2 text-xs rounded"
-                        onClick={() => { setModalDuty(resp); setPage(0) }}
+                        onClick={() => {
+                          setModalDuty(resp)
+                          setPage(0)
+                        }}
                       >
                         查看详情
                       </Button>
@@ -114,14 +134,23 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
       </div>
 
       {modalDuty && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setModalDuty(null)}>
-          <div className="bg-white rounded-2xl w-[1000px] max-w-[95vw] max-h-[86vh] overflow-hidden shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setModalDuty(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-[1000px] max-w-[95vw] max-h-[86vh] overflow-hidden shadow-xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#f1f5f9]">
               <div>
                 <div className="text-lg font-semibold text-[#1f2937]">职责关联能力点</div>
                 <div className="text-xs text-[#64748b] mt-1">正在查看：{modalDuty.name}</div>
               </div>
-              <button className="text-[#94a3b8] hover:text-[#1f2937] p-1" onClick={() => setModalDuty(null)}>
+              <button
+                className="text-[#94a3b8] hover:text-[#1f2937] p-1"
+                onClick={() => setModalDuty(null)}
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -129,7 +158,19 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
             <div className="p-6 overflow-y-auto flex-1 bg-[#f8fafc]">
               {modalAbilities.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-[#64748b]">
-                  <svg className="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25m-2.25 2.25V4.5m-6 0h12" /></svg>
+                  <svg
+                    className="w-12 h-12 mb-3 opacity-50"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25m-2.25 2.25V4.5m-6 0h12"
+                    />
+                  </svg>
                   该职责暂无关联能力点
                 </div>
               ) : (
@@ -158,7 +199,7 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
                         <button
                           key={i}
                           onClick={() => setPage(i)}
-                          className={`w-2 h-2 rounded-full transition-all ${page === i ? "bg-blue-500 w-5" : "bg-[#e2e8f0]"}`}
+                          className={`w-2 h-2 rounded-full transition-all ${page === i ? 'bg-blue-500 w-5' : 'bg-[#e2e8f0]'}`}
                         />
                       ))}
                       <button
@@ -172,8 +213,7 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
                   )}
 
                   <p className="text-xs text-[#94a3b8] text-center mt-3">
-                    <Star className="w-3 h-3 inline mr-1" />
-                    共 {modalAbilities.length} 个能力点
+                    <Star className="w-3 h-3 inline mr-1" />共 {modalAbilities.length} 个能力点
                   </p>
                 </>
               )}
@@ -184,5 +224,3 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
     </div>
   )
 }
-
-

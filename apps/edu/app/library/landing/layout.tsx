@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { TopNav } from "@/components/portal/top-nav"
+import { TopNav } from '@/components/portal/top-nav'
 
 export default function LibraryLandingLayout({
   children,

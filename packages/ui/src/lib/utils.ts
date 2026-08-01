@@ -11,8 +11,8 @@ export function generateId(prefix?: string): string {
 }
 
 export function formatFileSize(size: string | undefined | null): string {
-  if (!size) return ""
+  if (!size) return ''
   const bytes = Number(size)
-  if (Number.isNaN(bytes)) return ""
+  if (Number.isNaN(bytes)) return ''
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }

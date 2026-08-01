@@ -1,22 +1,22 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { portalRequest } from "@/lib/api"
-import { allianceLabel } from "@zhiyu/shared-types"
-import type { AllianceBrand } from "@/lib/types"
-import { reportError } from "@/lib/error-handling"
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { portalRequest } from '@/lib/api'
+import { allianceLabel } from '@zhiyu/shared-types'
+import type { AllianceBrand } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 
 export default function AlliancePublicTeacherBrandPage() {
   const [items, setItems] = useState<AllianceBrand[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    portalRequest<{ items: AllianceBrand[] }>("/alliance/public/brands?brandType=teacher")
+    portalRequest<{ items: AllianceBrand[] }>('/alliance/public/brands?brandType=teacher')
       .then((data) => setItems(data.items || []))
       .catch((err) => {
-        reportError(err, { source: "加载师资品牌列表" })
+        reportError(err, { source: '加载师资品牌列表' })
       })
       .finally(() => setLoading(false))
   }, [])
@@ -36,7 +36,7 @@ export default function AlliancePublicTeacherBrandPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{item.name}</CardTitle>
-                  <Badge variant="outline">{allianceLabel("brandStatus", item.status)}</Badge>
+                  <Badge variant="outline">{allianceLabel('brandStatus', item.status)}</Badge>
                 </div>
                 {item.description && (
                   <CardDescription className="line-clamp-3">{item.description}</CardDescription>

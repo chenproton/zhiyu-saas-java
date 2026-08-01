@@ -1,27 +1,33 @@
-"use client"
+'use client'
 
-import { useEffect, useState, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { TableCell, TableHead } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Pencil, Trash2, ExternalLink } from "lucide-react"
-import Link from "next/link"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { PortalCrudPage } from "@/components/shared/portal-crud-page"
-import { BrandRelationSelect } from "@/components/shared/brand-relation-select"
-import type { AllianceBrand, AllianceListResponse } from "@/lib/types"
+import { useEffect, useState, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
+import { TableCell, TableHead } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Pencil, Trash2, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalRequest } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
+import type { AllianceBrand, AllianceListResponse } from '@/lib/types'
 
-const brandType = "culture"
-const brandLabel = "文化思政品牌"
-const brandDesc = "管理典型案例、思政资源与文化活动"
+const brandType = 'culture'
+const brandLabel = '文化思政品牌'
+const brandDesc = '管理典型案例、思政资源与文化活动'
 
 export default function AllianceCultureBrandPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -35,10 +41,12 @@ export default function AllianceCultureBrandPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await portalRequest<AllianceListResponse<AllianceBrand>>(`/alliance/brands?brandType=${brandType}`)
+      const data = await portalRequest<AllianceListResponse<AllianceBrand>>(
+        `/alliance/brands?brandType=${brandType}`,
+      )
       setItems(data.items || [])
     } catch (e: any) {
-      setError(e.message || "加载失败")
+      setError(e.message || '加载失败')
     } finally {
       setLoading(false)
     }
@@ -64,12 +72,13 @@ export default function AllianceCultureBrandPage() {
       error={error}
       onRetry={fetchItems}
       filterItems={(filtered, search) =>
-        filtered.filter((b) =>
-          !search ||
-          b.name.toLowerCase().includes(search.toLowerCase())
-        )
+        filtered.filter((b) => !search || b.name.toLowerCase().includes(search.toLowerCase()))
       }
-      importConfig={{ importType: "alliance-brands", entityLabel: "品牌内容", templateFileName: "品牌内容批量导入模板.xlsx" }}
+      importConfig={{
+        importType: 'alliance-brands',
+        entityLabel: '品牌内容',
+        templateFileName: '品牌内容批量导入模板.xlsx',
+      }}
       colSpan={6}
       renderTableHeader={() => (
         <>
@@ -84,43 +93,64 @@ export default function AllianceCultureBrandPage() {
       renderTableRow={(item: any, actions: any) => (
         <>
           <TableCell className="font-medium">{item.name}</TableCell>
-          <TableCell><StatusBadge status={item.status} /></TableCell>
-          <TableCell>{item.isFeatured ? "是" : "否"}</TableCell>
-          <TableCell>{item.isPublic ? "是" : "否"}</TableCell>
+          <TableCell>
+            <StatusBadge status={item.status} />
+          </TableCell>
+          <TableCell>{item.isFeatured ? '是' : '否'}</TableCell>
+          <TableCell>{item.isPublic ? '是' : '否'}</TableCell>
           <TableCell>{item.viewCount}</TableCell>
           <TableRowActions>
             <Link href={`/portal/apps/alliance/brands/${item.id}`}>
-              <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
+              <Button variant="ghost" size="sm">
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                查看
+              </Button>
             </Link>
-            <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
-            <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
+            <Button variant="ghost" size="sm" onClick={actions.edit}>
+              <Pencil className="h-3.5 w-3.5 mr-1" />
+              编辑
+            </Button>
+            <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              删除
+            </Button>
           </TableRowActions>
         </>
       )}
-      createDefault={() => ({
-        id: "",
-        name: "",
-        brandType: brandType as any,
-        status: "draft",
-        description: "",
-        coverImage: "",
-        isPublic: false as any,
-        isFeatured: false as any,
-        viewCount: 0,
-        enabled: true as any,
-        createdAt: "",
-        updatedAt: "",
-      } as AllianceBrand & { enabled?: boolean })}
+      createDefault={() =>
+        ({
+          id: '',
+          name: '',
+          brandType: brandType as any,
+          status: 'draft',
+          description: '',
+          coverImage: '',
+          isPublic: false as any,
+          isFeatured: false as any,
+          viewCount: 0,
+          enabled: true as any,
+          createdAt: '',
+          updatedAt: '',
+        }) as AllianceBrand & { enabled?: boolean }
+      }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
           <div className="grid gap-2">
             <Label>名称 *</Label>
-            <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />
+            <Input
+              value={item.name || ''}
+              onChange={(e: any) => setItem({ ...item, name: e.target.value })}
+            />
           </div>
           <div className="grid gap-2">
             <Label>状态</Label>
-            <Select value={item.status || "draft"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={item.status || 'draft'}
+              onValueChange={(v: any) => setItem({ ...item, status: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="draft">草稿</SelectItem>
                 <SelectItem value="published">已发布</SelectItem>
@@ -130,42 +160,64 @@ export default function AllianceCultureBrandPage() {
           </div>
           <div className="grid gap-2">
             <Label>描述</Label>
-            <Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={3} />
+            <Textarea
+              value={item.description || ''}
+              onChange={(e: any) => setItem({ ...item, description: e.target.value })}
+              rows={3}
+            />
           </div>
           <div className="grid gap-2">
             <Label>封面图 URL</Label>
-            <Input value={item.coverImage || ""} onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })} placeholder="https://..." />
+            <Input
+              value={item.coverImage || ''}
+              onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })}
+              placeholder="https://..."
+            />
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Switch checked={item.isPublic || false} onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })} />
+              <Switch
+                checked={item.isPublic || false}
+                onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })}
+              />
               <Label>公开显示</Label>
             </div>
             <div className="flex items-center gap-2">
-              <Switch checked={item.isFeatured || false} onCheckedChange={(v: any) => setItem({ ...item, isFeatured: v })} />
+              <Switch
+                checked={item.isFeatured || false}
+                onCheckedChange={(v: any) => setItem({ ...item, isFeatured: v })}
+              />
               <Label>推荐</Label>
             </div>
           </div>
           <div className="grid gap-2">
             <Label>专业 ID</Label>
-            <BrandRelationSelect label="关联专业" value={item.majorId || ""} onChange={(v: any) => setItem({ ...item, majorId: v })} fetchUrl="/majors?limit=1000" />
+            <BrandRelationSelect
+              label="关联专业"
+              value={item.majorId || ''}
+              onChange={(v: any) => setItem({ ...item, majorId: v })}
+              fetchUrl="/majors?limit=1000"
+            />
           </div>
         </div>
       )}
-      getDeleteDescription={(item: any) => (<>确定要删除品牌「{item.name}」吗？</>)}
+      getDeleteDescription={(item: any) => <>确定要删除品牌「{item.name}」吗？</>}
       onSave={async (item: any, isEdit: boolean) => {
         item.brandType = brandType
         if (isEdit) {
-          await portalRequest(`/alliance/brands/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
+          await portalRequest(`/alliance/brands/${item.id}`, {
+            method: 'PUT',
+            body: JSON.stringify(item),
+          })
         } else {
-          await portalRequest("/alliance/brands", { method: "POST", body: JSON.stringify(item) })
+          await portalRequest('/alliance/brands', { method: 'POST', body: JSON.stringify(item) })
         }
-        toast({ title: `品牌已${isEdit ? "更新" : "创建"}` })
+        toast({ title: `品牌已${isEdit ? '更新' : '创建'}` })
         await fetchItems()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/brands/${item.id}`, { method: "DELETE" })
-        toast({ title: "品牌已删除" })
+        await portalRequest(`/alliance/brands/${item.id}`, { method: 'DELETE' })
+        toast({ title: '品牌已删除' })
         await fetchItems()
       }}
       onToggleEnabled={async () => {}}

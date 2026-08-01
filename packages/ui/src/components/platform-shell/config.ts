@@ -1,4 +1,4 @@
-import type { PlatformIcon } from "./icons"
+import type { PlatformIcon } from './icons'
 
 export interface PlatformCatalogItem {
   id: string
@@ -38,7 +38,7 @@ export interface UserMenuItem {
   label: string
   href?: string
   icon?: PlatformIcon
-  tone?: "default" | "danger"
+  tone?: 'default' | 'danger'
 }
 
 export interface PlatformNavigationConfig {

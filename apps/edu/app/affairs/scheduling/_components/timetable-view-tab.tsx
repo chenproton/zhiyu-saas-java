@@ -1,26 +1,26 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useState } from "react"
-import { Send } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useCallback, useEffect, useState } from 'react'
+import { Send } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { useToast } from "@zhiyu/ui"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { OrgNodePicker } from "@/components/shared/org-node-picker"
-import { ScheduleGrid } from "@/components/shared/schedule-grid"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { usePortalUsers } from "@/hooks/use-portal-users"
-import { periodSlotApi, scheduleApi } from "@/lib/api"
-import type { AffairsTerm, PeriodSlot, ScheduleEntry } from "@/lib/types"
-import { cn } from "@/lib/utils"
+} from '@/components/ui/select'
+import { useToast } from '@zhiyu/ui'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { OrgNodePicker } from '@/components/shared/org-node-picker'
+import { ScheduleGrid } from '@/components/shared/schedule-grid'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { usePortalUsers } from '@/hooks/use-portal-users'
+import { periodSlotApi, scheduleApi } from '@/lib/api'
+import type { AffairsTerm, PeriodSlot, ScheduleEntry } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
-type ViewMode = "class" | "teacher"
+type ViewMode = 'class' | 'teacher'
 
 interface TimetableViewTabProps {
   term: AffairsTerm | null
@@ -30,13 +30,16 @@ interface TimetableViewTabProps {
 export function TimetableViewTab({ term }: TimetableViewTabProps) {
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
-  const { users: teachers, loading: teachersLoading } = usePortalUsers({ roleCode: "teacher", pageSize: 100 })
+  const { users: teachers, loading: teachersLoading } = usePortalUsers({
+    roleCode: 'teacher',
+    pageSize: 100,
+  })
 
-  const [viewMode, setViewMode] = useState<ViewMode>("class")
-  const [viewStatus, setViewStatus] = useState<"draft" | "published">("draft")
+  const [viewMode, setViewMode] = useState<ViewMode>('class')
+  const [viewStatus, setViewStatus] = useState<'draft' | 'published'>('draft')
   const [classNodeId, setClassNodeId] = useState<string | undefined>(undefined)
-  const [teacherId, setTeacherId] = useState("")
-  const [week, setWeek] = useState("")
+  const [teacherId, setTeacherId] = useState('')
+  const [week, setWeek] = useState('')
   const [entries, setEntries] = useState<ScheduleEntry[]>([])
   const [version, setVersion] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -47,7 +50,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
   const loadTimetable = useCallback(async () => {
     if (!term) return
     const params =
-      viewMode === "class"
+      viewMode === 'class'
         ? classNodeId
           ? { termId: term.id, classNodeId, status: viewStatus }
           : null
@@ -65,7 +68,11 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
       setEntries(res.items)
       setVersion(res.version)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "查询课表失败" })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '查询课表失败',
+      })
     } finally {
       setLoading(false)
     }
@@ -95,13 +102,17 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
     try {
       const res = await scheduleApi.publish(term.id)
       toast({
-        title: "课表已发布",
+        title: '课表已发布',
         description: `本次发布 ${res.published} 条，当前版本 v${res.version}，学生/教师工作台已可见`,
       })
       setPublishOpen(false)
       await loadTimetable()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "发布失败", description: err.message || "发布课表失败" })
+      toast({
+        variant: 'destructive',
+        title: '发布失败',
+        description: err.message || '发布课表失败',
+      })
     } finally {
       setPublishing(false)
     }
@@ -122,43 +133,45 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
         <div className="flex flex-wrap items-center gap-3">
           {/* 视角切换 */}
           <div className="flex items-center rounded-lg border p-0.5">
-            {(["class", "teacher"] as const).map((mode) => (
+            {(['class', 'teacher'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-all",
-                  viewMode === mode ? "bg-blue-600 text-white" : "text-gray-500 hover:text-gray-900"
+                  'rounded-md px-3 py-1.5 text-sm font-medium transition-all',
+                  viewMode === mode
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-500 hover:text-gray-900',
                 )}
               >
-                {mode === "class" ? "班级视图" : "教师视图"}
+                {mode === 'class' ? '班级视图' : '教师视图'}
               </button>
             ))}
           </div>
 
           {/* 状态切换：草稿/已发布 */}
           <div className="flex items-center rounded-lg border p-0.5">
-            {(["draft", "published"] as const).map((s) => (
+            {(['draft', 'published'] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setViewStatus(s)}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-all",
-                  viewStatus === s ? "bg-blue-600 text-white" : "text-gray-500 hover:text-gray-900"
+                  'rounded-md px-3 py-1.5 text-sm font-medium transition-all',
+                  viewStatus === s ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-900',
                 )}
               >
-                {s === "draft" ? "草稿" : "已发布"}
+                {s === 'draft' ? '草稿' : '已发布'}
               </button>
             ))}
           </div>
 
-          {viewMode === "class" ? (
+          {viewMode === 'class' ? (
             <div className="w-[240px]">
               <OrgNodePicker
                 tenantId={tenantId}
                 value={classNodeId}
                 onChange={setClassNodeId}
-                selectableTypes={["班级"]}
+                selectableTypes={['班级']}
                 placeholder="选择班级"
                 title="选择班级"
               />
@@ -166,13 +179,13 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
           ) : (
             <Select value={teacherId} onValueChange={setTeacherId}>
               <SelectTrigger className="w-[240px]">
-                <SelectValue placeholder={teachersLoading ? "加载中..." : "选择教师"} />
+                <SelectValue placeholder={teachersLoading ? '加载中...' : '选择教师'} />
               </SelectTrigger>
               <SelectContent>
                 {teachers.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.name}
-                    {u.workId ? `（${u.workId}）` : ""}
+                    {u.workId ? `（${u.workId}）` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -180,7 +193,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
           )}
 
           {/* 周次筛选 */}
-          <Select value={week || "all"} onValueChange={(v) => setWeek(v === "all" ? "" : v)}>
+          <Select value={week || 'all'} onValueChange={(v) => setWeek(v === 'all' ? '' : v)}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
             </SelectTrigger>
@@ -215,13 +228,13 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
           week={week ? Number(week) : undefined}
           loading={loading}
           emptyText={
-            viewMode === "class"
+            viewMode === 'class'
               ? classNodeId
-                ? "该班级当前学期暂无已发布课表"
-                : "请选择班级查看课表"
+                ? '该班级当前学期暂无已发布课表'
+                : '请选择班级查看课表'
               : teacherId
-                ? "该教师当前学期暂无已发布课表"
-                : "请选择教师查看课表"
+                ? '该教师当前学期暂无已发布课表'
+                : '请选择教师查看课表'
           }
         />
       </div>
@@ -231,7 +244,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
         onOpenChange={setPublishOpen}
         title="发布课表"
         description={`确定发布「${term.name}」的全部草稿排课吗？发布后版本号 +1，学生/教师工作台即可查看。`}
-        confirmText={publishing ? "发布中..." : "确认发布"}
+        confirmText={publishing ? '发布中...' : '确认发布'}
         onConfirm={handlePublish}
       />
     </div>

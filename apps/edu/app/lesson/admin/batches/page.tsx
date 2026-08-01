@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { BatchGroupPage } from "@/components/shared/batch-group-page"
-import { lessonBatchApi } from "@/lib/api"
+import { BatchGroupPage } from '@/components/shared/batch-group-page'
+import { lessonBatchApi } from '@/lib/api'
 
 export default function BatchesPage() {
   return (

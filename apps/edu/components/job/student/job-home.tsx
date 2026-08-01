@@ -1,55 +1,70 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
-  Search, Flag, Heart, Crosshair, Sparkles, Filter, X,
-  TrendingUp, GraduationCap, ChevronRight,
-  Layers, ListChecks, Factory, Building2,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi } from "@/lib/api"
-import { useAuth } from "@/components/auth-provider"
-import { useIndustryMap } from "@/lib/use-resource-maps"
-import type { CareerPosition, Scenario } from "@/lib/types"
-import { StatsBar } from "./stats-bar"
-import { JobCard } from "./job-card"
-import { SceneCard } from "@/components/scene/student/scene-card"
-import { LandingPagination } from "@/components/shared/landing-pagination"
-import { LandingFilterRow } from "@/components/shared/landing-filter-row"
-import { RankingList } from "./ranking-list"
-import { PlatformFooter } from "./platform-footer"
+  Search,
+  Flag,
+  Heart,
+  Crosshair,
+  Sparkles,
+  Filter,
+  X,
+  TrendingUp,
+  GraduationCap,
+  ChevronRight,
+  Layers,
+  ListChecks,
+  Factory,
+  Building2,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi } from '@/lib/api'
+import { useAuth } from '@/components/auth-provider'
+import { useIndustryMap } from '@/lib/use-resource-maps'
+import type { CareerPosition, Scenario } from '@/lib/types'
+import { StatsBar } from './stats-bar'
+import { JobCard } from './job-card'
+import { SceneCard } from '@/components/scene/student/scene-card'
+import { LandingPagination } from '@/components/shared/landing-pagination'
+import { LandingFilterRow } from '@/components/shared/landing-filter-row'
+import { RankingList } from './ranking-list'
+import { PlatformFooter } from './platform-footer'
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
-  { value: "default", label: "默认排序" },
-  { value: "hot", label: "最多收藏" },
-  { value: "recent", label: "最近收录" },
-  { value: "update", label: "最近更新" },
+  { value: 'default', label: '默认排序' },
+  { value: 'hot', label: '最多收藏' },
+  { value: 'recent', label: '最近收录' },
+  { value: 'update', label: '最近更新' },
 ]
 const SCENE_SORT_OPTIONS = [
-  { value: "default", label: "默认排序" },
-  { value: "recent", label: "最近收录" },
-  { value: "update", label: "最近更新" },
-  { value: "tasks", label: "最多任务" },
+  { value: 'default', label: '默认排序' },
+  { value: 'recent', label: '最近收录' },
+  { value: 'update', label: '最近更新' },
+  { value: 'tasks', label: '最多任务' },
 ]
 
 const difficultyMap: Record<number, string> = {
-  1: "入门", 2: "初级", 3: "中级", 4: "高级", 5: "专家",
+  1: '入门',
+  2: '初级',
+  3: '中级',
+  4: '高级',
+  5: '专家',
 }
 
 interface JobHomeProps {
-  mode?: "job" | "scene"
+  mode?: 'job' | 'scene'
 }
 
-export function JobHome({ mode = "job" }: JobHomeProps) {
+export function JobHome({ mode = 'job' }: JobHomeProps) {
   const router = useRouter()
   const { user } = useAuth()
   const industryMap = useIndustryMap()
   const listRef = useRef<HTMLDivElement>(null)
-  const isScene = mode === "scene"
+  const isScene = mode === 'scene'
 
   const [positions, setPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
@@ -59,13 +74,13 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
   const [loading, setLoading] = useState(true)
 
   const [currentPage, setCurrentPage] = useState(1)
-  const [sort, setSort] = useState("default")
-  const [keyword, setKeyword] = useState("")
-  const [selectedIndustry, setSelectedIndustry] = useState<string>("全部")
-  const [selectedMajor, setSelectedMajor] = useState<string>("全部")
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("全部")
-  const [selectedPosition, setSelectedPosition] = useState<string>("全部")
-  const [selectedProfession, setSelectedProfession] = useState<string>("全部")
+  const [sort, setSort] = useState('default')
+  const [keyword, setKeyword] = useState('')
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('全部')
+  const [selectedMajor, setSelectedMajor] = useState<string>('全部')
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('全部')
+  const [selectedPosition, setSelectedPosition] = useState<string>('全部')
+  const [selectedProfession, setSelectedProfession] = useState<string>('全部')
 
   useEffect(() => {
     ;(async () => {
@@ -75,12 +90,16 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
       if (isScene) {
         fetches.push(
           scenarioApi
-            .list({ status: "published", limit: 1000 })
+            .list({ status: 'published', limit: 1000 })
             .then(async (res) => {
               const scens = res.items || []
               setScenarios(scens)
               const results = await Promise.all(
-                scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
+                scens.map((s) =>
+                  taskApi
+                    .list({ scenarioId: s.id, limit: 1000 })
+                    .catch(() => ({ items: [], total: 0 })),
+                ),
               )
               const map = new Map<string, number>()
               scens.forEach((s, idx) => {
@@ -88,20 +107,23 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
               })
               setTaskCountMap(map)
             })
-            .catch(() => { setScenarios([]); setTaskCountMap(new Map()) })
+            .catch(() => {
+              setScenarios([])
+              setTaskCountMap(new Map())
+            }),
         )
         fetches.push(
           publicPositionApi
-            .list({ status: "published", limit: 1000 })
+            .list({ status: 'published', limit: 1000 })
             .then((res) => setPositions(res.items || []))
-            .catch(() => setPositions([]))
+            .catch(() => setPositions([])),
         )
       } else {
         fetches.push(
           publicPositionApi
-            .list({ status: "published", limit: 1000 })
+            .list({ status: 'published', limit: 1000 })
             .then((res) => setPositions(res.items || []))
-            .catch(() => setPositions([]))
+            .catch(() => setPositions([])),
         )
       }
 
@@ -125,14 +147,19 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
   useEffect(() => {
     if (isScene) return
     scenarioApi
-      .list({ status: "published", limit: 1000 })
+      .list({ status: 'published', limit: 1000 })
       .then(async (res) => {
         const scens = res.items || []
         setScenarios(scens)
         const related = scens.filter((s) => s.careerPositionId)
-        if (related.length === 0) { setTaskCountMap(new Map()); return }
+        if (related.length === 0) {
+          setTaskCountMap(new Map())
+          return
+        }
         const results = await Promise.all(
-          related.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
+          related.map((s) =>
+            taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })),
+          ),
         )
         const map = new Map<string, number>()
         related.forEach((s, idx) => {
@@ -143,12 +170,18 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         })
         setTaskCountMap(map)
       })
-      .catch(() => { setScenarios([]); setTaskCountMap(new Map()) })
+      .catch(() => {
+        setScenarios([])
+        setTaskCountMap(new Map())
+      })
   }, [isScene])
 
   useEffect(() => {
     ;(async () => {
-      if (!user) { setFavoritePositions([]); return }
+      if (!user) {
+        setFavoritePositions([])
+        return
+      }
       try {
         const res = await positionApi.listFavorites()
         setFavoritePositions(res.items || [])
@@ -172,8 +205,10 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
   const industries = useMemo(() => {
     if (isScene) {
       const set = new Set<string>()
-      scenarios.forEach((s) => { s.industryNames?.forEach((n) => n && set.add(n)) })
-      return ["全部", ...Array.from(set).sort()]
+      scenarios.forEach((s) => {
+        s.industryNames?.forEach((n) => n && set.add(n))
+      })
+      return ['全部', ...Array.from(set).sort()]
     }
     const set = new Set<string>()
     positions.forEach((p) => {
@@ -182,19 +217,30 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         if (name) set.add(name)
       }
     })
-    return ["全部", ...Array.from(set).sort()]
+    return ['全部', ...Array.from(set).sort()]
   }, [isScene, scenarios, positions, industryMap])
 
   const majors = useMemo(() => {
     const set = new Set<string>()
-    positions.forEach((p) => p.majorNames?.forEach((m) => { if (m) set.add(m) }))
-    return ["全部", ...Array.from(set).sort()]
+    positions.forEach((p) =>
+      p.majorNames?.forEach((m) => {
+        if (m) set.add(m)
+      }),
+    )
+    return ['全部', ...Array.from(set).sort()]
   }, [positions])
 
   const difficulties = useMemo(() => {
     const nums = new Set<number>()
-    scenarios.forEach((s) => { if (s.difficulty) nums.add(s.difficulty) })
-    return ["全部", ...Array.from(nums).sort().map((n) => difficultyMap[n] || String(n))]
+    scenarios.forEach((s) => {
+      if (s.difficulty) nums.add(s.difficulty)
+    })
+    return [
+      '全部',
+      ...Array.from(nums)
+        .sort()
+        .map((n) => difficultyMap[n] || String(n)),
+    ]
   }, [scenarios])
 
   const positionNames = useMemo(() => {
@@ -206,32 +252,36 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         set.add(idToName.get(s.careerPositionId)!)
       }
     })
-    return ["全部", ...Array.from(set).sort()]
+    return ['全部', ...Array.from(set).sort()]
   }, [isScene, scenarios, positions])
 
   const professionNames = useMemo(() => {
     if (!isScene) return []
     const set = new Set<string>()
-    scenarios.forEach((s) => { s.professionNames?.forEach((n) => n && set.add(n)) })
-    return ["全部", ...Array.from(set).sort()]
+    scenarios.forEach((s) => {
+      s.professionNames?.forEach((n) => n && set.add(n))
+    })
+    return ['全部', ...Array.from(set).sort()]
   }, [isScene, scenarios])
 
   const sceneFiltered = useMemo(() => {
     let list = [...scenarios]
-    if (selectedIndustry !== "全部") {
+    if (selectedIndustry !== '全部') {
       list = list.filter((s) => s.industryNames?.includes(selectedIndustry))
     }
-    if (selectedPosition !== "全部") {
+    if (selectedPosition !== '全部') {
       const idToName = new Map(positions.map((p) => [p.id, p.shortName || p.name]))
-      const targetId = Array.from(idToName.entries()).find(([, name]) => name === selectedPosition)?.[0]
+      const targetId = Array.from(idToName.entries()).find(
+        ([, name]) => name === selectedPosition,
+      )?.[0]
       if (targetId) {
         list = list.filter((s) => s.careerPositionId === targetId)
       }
     }
-    if (selectedProfession !== "全部") {
+    if (selectedProfession !== '全部') {
       list = list.filter((s) => s.professionNames?.includes(selectedProfession))
     }
-    if (selectedDifficulty !== "全部") {
+    if (selectedDifficulty !== '全部') {
       list = list.filter((s) => difficultyMap[s.difficulty] === selectedDifficulty)
     }
     if (keyword.trim()) {
@@ -241,28 +291,48 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           s.name.toLowerCase().includes(k) ||
           (s.code?.toLowerCase().includes(k) ?? false) ||
           (s.background?.toLowerCase().includes(k) ?? false) ||
-          s.id.toLowerCase().includes(k)
+          s.id.toLowerCase().includes(k),
       )
     }
     switch (sort) {
-      case "tasks":
-        list.sort((a, b) => (taskCountMap.get(b.id) ?? 0) - (taskCountMap.get(a.id) ?? 0) || a.name.localeCompare(b.name, "zh-CN"))
+      case 'tasks':
+        list.sort(
+          (a, b) =>
+            (taskCountMap.get(b.id) ?? 0) - (taskCountMap.get(a.id) ?? 0) ||
+            a.name.localeCompare(b.name, 'zh-CN'),
+        )
         break
-      case "recent":
+      case 'recent':
         list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         break
-      case "update":
+      case 'update':
         list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         break
       default:
-        list.sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
+        list.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
         break
     }
     return list
-  }, [scenarios, selectedIndustry, selectedPosition, selectedProfession, selectedDifficulty, keyword, sort, taskCountMap, positions])
+  }, [
+    scenarios,
+    selectedIndustry,
+    selectedPosition,
+    selectedProfession,
+    selectedDifficulty,
+    keyword,
+    sort,
+    taskCountMap,
+    positions,
+  ])
 
-  const hotPositionIds = useMemo(() => new Set(hotPositions.map((h) => h.positionId)), [hotPositions])
-  const hotOrderMap = useMemo(() => new Map(hotPositions.map((h) => [h.positionId, h.order])), [hotPositions])
+  const hotPositionIds = useMemo(
+    () => new Set(hotPositions.map((h) => h.positionId)),
+    [hotPositions],
+  )
+  const hotOrderMap = useMemo(
+    () => new Map(hotPositions.map((h) => [h.positionId, h.order])),
+    [hotPositions],
+  )
 
   const recommendedPositions = useMemo(() => {
     if (!isScene) return []
@@ -274,10 +344,10 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
 
   const jobFiltered = useMemo(() => {
     let list = [...positions]
-    if (selectedIndustry !== "全部") {
+    if (selectedIndustry !== '全部') {
       list = list.filter((p) => p.industryId && industryMap.get(p.industryId) === selectedIndustry)
     }
-    if (selectedMajor !== "全部") {
+    if (selectedMajor !== '全部') {
       list = list.filter((p) => p.majorNames?.includes(selectedMajor))
     }
     if (keyword.trim()) {
@@ -286,17 +356,21 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         (p) =>
           p.name.toLowerCase().includes(k) ||
           (p.shortName?.toLowerCase().includes(k) ?? false) ||
-          p.id.toLowerCase().includes(k)
+          p.id.toLowerCase().includes(k),
       )
     }
     switch (sort) {
-      case "hot":
-        list.sort((a, b) => (b.favoriteCount ?? 0) - (a.favoriteCount ?? 0) || a.name.localeCompare(b.name, "zh-CN"))
+      case 'hot':
+        list.sort(
+          (a, b) =>
+            (b.favoriteCount ?? 0) - (a.favoriteCount ?? 0) ||
+            a.name.localeCompare(b.name, 'zh-CN'),
+        )
         break
-      case "recent":
+      case 'recent':
         list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         break
-      case "update":
+      case 'update':
         list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         break
       default: {
@@ -306,7 +380,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder
           if (aOrder !== undefined) return -1
           if (bOrder !== undefined) return 1
-          return a.name.localeCompare(b.name, "zh-CN")
+          return a.name.localeCompare(b.name, 'zh-CN')
         })
         break
       }
@@ -326,18 +400,39 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
     ;(async () => {
       setCurrentPage(1)
     })()
-  }, [selectedIndustry, selectedMajor, selectedPosition, selectedProfession, selectedDifficulty, keyword, sort])
+  }, [
+    selectedIndustry,
+    selectedMajor,
+    selectedPosition,
+    selectedProfession,
+    selectedDifficulty,
+    keyword,
+    sort,
+  ])
 
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []
-    if (selectedIndustry !== "全部") filters.push({ type: "industry", label: `行业：${selectedIndustry}` })
-    if (!isScene && selectedMajor !== "全部") filters.push({ type: "major", label: `专业：${selectedMajor}` })
-    if (isScene && selectedPosition !== "全部") filters.push({ type: "position", label: `岗位：${selectedPosition}` })
-    if (isScene && selectedProfession !== "全部") filters.push({ type: "profession", label: `专业：${selectedProfession}` })
-    if (isScene && selectedDifficulty !== "全部") filters.push({ type: "difficulty", label: `难度：${selectedDifficulty}` })
-    if (keyword.trim()) filters.push({ type: "keyword", label: `关键词：${keyword.trim()}` })
+    if (selectedIndustry !== '全部')
+      filters.push({ type: 'industry', label: `行业：${selectedIndustry}` })
+    if (!isScene && selectedMajor !== '全部')
+      filters.push({ type: 'major', label: `专业：${selectedMajor}` })
+    if (isScene && selectedPosition !== '全部')
+      filters.push({ type: 'position', label: `岗位：${selectedPosition}` })
+    if (isScene && selectedProfession !== '全部')
+      filters.push({ type: 'profession', label: `专业：${selectedProfession}` })
+    if (isScene && selectedDifficulty !== '全部')
+      filters.push({ type: 'difficulty', label: `难度：${selectedDifficulty}` })
+    if (keyword.trim()) filters.push({ type: 'keyword', label: `关键词：${keyword.trim()}` })
     return filters
-  }, [selectedIndustry, selectedMajor, selectedPosition, selectedProfession, selectedDifficulty, keyword, isScene])
+  }, [
+    selectedIndustry,
+    selectedMajor,
+    selectedPosition,
+    selectedProfession,
+    selectedDifficulty,
+    keyword,
+    isScene,
+  ])
 
   const stats = useMemo(() => {
     if (isScene) {
@@ -381,7 +476,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
   const executeSearch = () => {
     setCurrentPage(1)
     setTimeout(() => {
-      listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 50)
   }
 
@@ -391,13 +486,12 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
     <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
       {/* Hero Banner */}
       <div className="relative w-full pt-16 overflow-hidden">
-
         <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.88)] via-[rgba(59,130,246,0.78)] to-[rgba(124,58,237,0.78)]" />
         <div
           className="absolute inset-0 opacity-[0.12]"
           style={{
             backgroundImage: `linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)`,
-            backgroundSize: "48px 48px",
+            backgroundSize: '48px 48px',
           }}
         />
         <div className="absolute top-[-80px] right-[10%] w-[420px] h-[420px] rounded-full bg-white/10 blur-[100px] pointer-events-none" />
@@ -406,25 +500,35 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           <div className="flex-1 pt-4">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-              {isScene ? "场景化实践 · 任务驱动教学" : "对接产业前沿 · 赋能岗位能力学习"}
+              {isScene ? '场景化实践 · 任务驱动教学' : '对接产业前沿 · 赋能岗位能力学习'}
             </div>
             <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
               {isScene ? (
-                <>场景化实践教学<br />以真实场景驱动能力成长</>
+                <>
+                  场景化实践教学
+                  <br />
+                  以真实场景驱动能力成长
+                </>
               ) : (
-                <>对接产业前沿<br />开启岗位能力学习新征程</>
+                <>
+                  对接产业前沿
+                  <br />
+                  开启岗位能力学习新征程
+                </>
               )}
             </h1>
             <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
               {isScene
-                ? "基于真实业务场景的任务化训练，从入门到专家，系统提升综合实战能力"
-                : "链接真实岗位场景，构建从认知到胜任的能力进阶闭环"}
+                ? '基于真实业务场景的任务化训练，从入门到专家，系统提升综合实战能力'
+                : '链接真实岗位场景，构建从认知到胜任的能力进阶闭环'}
             </p>
             <Button
               className="inline-flex items-center gap-2 bg-white text-blue-600 hover:bg-blue-50 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
-              onClick={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() =>
+                listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
             >
-              {isScene ? "浏览场景" : "浏览岗位"} <ChevronRight className="w-4 h-4" />
+              {isScene ? '浏览场景' : '浏览岗位'} <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
@@ -448,8 +552,12 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                     {recommendedPositions.map((pos) => (
                       <Link key={pos.id} href={`/job/student/${pos.id}/learn`}>
                         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
-                          <span className="flex-1 text-[13px] truncate group-hover:text-yellow-200 transition-colors">{pos.shortName || pos.name}</span>
-                          <span className="text-[11px] text-white/40 shrink-0">v{pos.version || "1.0"}</span>
+                          <span className="flex-1 text-[13px] truncate group-hover:text-yellow-200 transition-colors">
+                            {pos.shortName || pos.name}
+                          </span>
+                          <span className="text-[11px] text-white/40 shrink-0">
+                            v{pos.version || '1.0'}
+                          </span>
                         </div>
                       </Link>
                     ))}
@@ -474,8 +582,12 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                     {favoritePositions.map((pos) => (
                       <Link key={pos.id} href={`/job/student/${pos.id}/learn`}>
                         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
-                          <span className="flex-1 text-[13px] truncate group-hover:text-rose-200 transition-colors">{pos.shortName || pos.name}</span>
-                          <span className="text-[11px] text-white/40 shrink-0">v{pos.version || "1.0"}</span>
+                          <span className="flex-1 text-[13px] truncate group-hover:text-rose-200 transition-colors">
+                            {pos.shortName || pos.name}
+                          </span>
+                          <span className="text-[11px] text-white/40 shrink-0">
+                            v{pos.version || '1.0'}
+                          </span>
                         </div>
                       </Link>
                     ))}
@@ -499,18 +611,51 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         <div className="max-w-[1400px] mx-auto px-8 -mt-10 relative z-20 w-full">
           <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Layers, value: stats.total, label: "实践场景", gradient: "from-blue-500 to-blue-400", light: "from-blue-500/20 to-blue-400/5" },
-              { icon: ListChecks, value: stats.taskCount, label: "任务总数", gradient: "from-violet-500 to-violet-400", light: "from-violet-500/20 to-violet-400/5" },
-              { icon: Factory, value: stats.industryCount, label: "覆盖行业", gradient: "from-emerald-500 to-emerald-400", light: "from-emerald-500/20 to-emerald-400/5" },
-              { icon: Building2, value: stats.favoriteTotal, label: "关联岗位", gradient: "from-amber-500 to-amber-400", light: "from-amber-500/20 to-amber-400/5" },
+              {
+                icon: Layers,
+                value: stats.total,
+                label: '实践场景',
+                gradient: 'from-blue-500 to-blue-400',
+                light: 'from-blue-500/20 to-blue-400/5',
+              },
+              {
+                icon: ListChecks,
+                value: stats.taskCount,
+                label: '任务总数',
+                gradient: 'from-violet-500 to-violet-400',
+                light: 'from-violet-500/20 to-violet-400/5',
+              },
+              {
+                icon: Factory,
+                value: stats.industryCount,
+                label: '覆盖行业',
+                gradient: 'from-emerald-500 to-emerald-400',
+                light: 'from-emerald-500/20 to-emerald-400/5',
+              },
+              {
+                icon: Building2,
+                value: stats.favoriteTotal,
+                label: '关联岗位',
+                gradient: 'from-amber-500 to-amber-400',
+                light: 'from-amber-500/20 to-amber-400/5',
+              },
             ].map((s, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-[#f8fafc] cursor-default group">
-                <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient} shrink-0 overflow-hidden`}>
-                  <div className={`absolute inset-0 bg-gradient-to-br ${s.light} opacity-0 group-hover:opacity-100 transition-opacity`} />
+              <div
+                key={i}
+                className="flex items-center gap-4 p-4 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-[#f8fafc] cursor-default group"
+              >
+                <div
+                  className={`relative w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient} shrink-0 overflow-hidden`}
+                >
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-br ${s.light} opacity-0 group-hover:opacity-100 transition-opacity`}
+                  />
                   <s.icon className="w-7 h-7 relative z-10" strokeWidth={1.8} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[28px] font-bold text-[#0f172a] leading-none tracking-tight">{s.value.toLocaleString()}</div>
+                  <div className="text-[28px] font-bold text-[#0f172a] leading-none tracking-tight">
+                    {s.value.toLocaleString()}
+                  </div>
                   <div className="text-[13px] text-[#64748b] mt-1 font-medium">{s.label}</div>
                 </div>
               </div>
@@ -531,7 +676,9 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   </div>
                   目标推荐岗位
                 </div>
-                <div className="text-xs text-slate-400 cursor-pointer hover:text-blue-600 transition-colors">全部 <ChevronRight className="w-3 h-3 inline" /></div>
+                <div className="text-xs text-slate-400 cursor-pointer hover:text-blue-600 transition-colors">
+                  全部 <ChevronRight className="w-3 h-3 inline" />
+                </div>
               </div>
               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-center px-4">
                 <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
@@ -550,7 +697,10 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   </div>
                   我的心仪岗位
                 </div>
-                <Link href="/job/student" className="text-xs text-slate-400 hover:text-blue-600 cursor-pointer transition-colors">
+                <Link
+                  href="/job/student"
+                  className="text-xs text-slate-400 hover:text-blue-600 cursor-pointer transition-colors"
+                >
                   全部 <ChevronRight className="w-3 h-3 inline" />
                 </Link>
               </div>
@@ -559,28 +709,39 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
                     <Heart className="w-7 h-7 text-slate-300" />
                   </div>
-                  <div className="text-sm font-semibold text-slate-600">快去查看岗位点击收藏吧！</div>
+                  <div className="text-sm font-semibold text-slate-600">
+                    快去查看岗位点击收藏吧！
+                  </div>
                   <div className="text-xs mt-1">浏览岗位资源，收藏你感兴趣的岗位</div>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
                   {favoritePositions.slice(0, 5).map((pos, i) => {
                     const display = pos.shortName || pos.name
-                    const category = pos.industryId && industryMap.get(pos.industryId)
-                      ? industryMap.get(pos.industryId)
-                      : (pos.positionType === "enterprise" ? "企业" : "教学")
+                    const category =
+                      pos.industryId && industryMap.get(pos.industryId)
+                        ? industryMap.get(pos.industryId)
+                        : pos.positionType === 'enterprise'
+                          ? '企业'
+                          : '教学'
                     const majors = pos.majorNames?.filter(Boolean) || []
-                    const palette = { bg: "bg-blue-50/70", hover: "hover:bg-blue-100/60", border: "border-blue-100" }
+                    const palette = {
+                      bg: 'bg-blue-50/70',
+                      hover: 'hover:bg-blue-100/60',
+                      border: 'border-blue-100',
+                    }
                     return (
                       <Link key={pos.id} href={`/job/student/${pos.id}`}>
-                        <div className={`flex items-start gap-2.5 px-2.5 py-2 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}>
+                        <div
+                          className={`flex items-start gap-2.5 px-2.5 py-2 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}
+                        >
                           <div className="flex-1 min-w-0 flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                               <span className="flex-1 text-[13px] font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
                                 {display}
                               </span>
                               <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/70 text-slate-500 whitespace-nowrap font-medium border border-slate-200">
-                                v{pos.version || "1.0"}
+                                v{pos.version || '1.0'}
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px] overflow-hidden min-w-0">
@@ -593,7 +754,10 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                                 </span>
                               ) : (
                                 majors.map((m) => (
-                                  <span key={m} className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0">
+                                  <span
+                                    key={m}
+                                    className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0"
+                                  >
                                     {m}
                                   </span>
                                 ))
@@ -622,7 +786,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
               </div>
               <Button
                 className="self-start bg-white text-indigo-600 hover:bg-blue-50 hover:-translate-y-0.5 rounded-full h-10 px-6 text-[13px] font-semibold shadow-lg transition-all"
-                onClick={() => router.push("/evaluation")}
+                onClick={() => router.push('/evaluation')}
               >
                 开始测评 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
@@ -643,20 +807,58 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
             <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
               <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
               <Filter className="w-4 h-4 text-blue-500" />
-              {isScene ? "场景筛选" : "岗位筛选"}
+              {isScene ? '场景筛选' : '岗位筛选'}
             </div>
             <div className="space-y-0">
               {isScene ? (
                 <>
-                  <LandingFilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} accentColor="blue" />
-                  <LandingFilterRow label="岗位" items={positionNames} selected={selectedPosition} onSelect={setSelectedPosition} accentColor="blue" />
-                  <LandingFilterRow label="专业" items={professionNames} selected={selectedProfession} onSelect={setSelectedProfession} accentColor="blue" />
-                  <LandingFilterRow label="难度" items={difficulties} selected={selectedDifficulty} onSelect={setSelectedDifficulty} showBorder={false} accentColor="blue" />
+                  <LandingFilterRow
+                    label="行业"
+                    items={industries}
+                    selected={selectedIndustry}
+                    onSelect={setSelectedIndustry}
+                    accentColor="blue"
+                  />
+                  <LandingFilterRow
+                    label="岗位"
+                    items={positionNames}
+                    selected={selectedPosition}
+                    onSelect={setSelectedPosition}
+                    accentColor="blue"
+                  />
+                  <LandingFilterRow
+                    label="专业"
+                    items={professionNames}
+                    selected={selectedProfession}
+                    onSelect={setSelectedProfession}
+                    accentColor="blue"
+                  />
+                  <LandingFilterRow
+                    label="难度"
+                    items={difficulties}
+                    selected={selectedDifficulty}
+                    onSelect={setSelectedDifficulty}
+                    showBorder={false}
+                    accentColor="blue"
+                  />
                 </>
               ) : (
                 <>
-                  <LandingFilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} accentColor="blue" />
-                  <LandingFilterRow label="专业" items={majors} selected={selectedMajor} onSelect={setSelectedMajor} showBorder={false} accentColor="blue" />
+                  <LandingFilterRow
+                    label="行业"
+                    items={industries}
+                    selected={selectedIndustry}
+                    onSelect={setSelectedIndustry}
+                    accentColor="blue"
+                  />
+                  <LandingFilterRow
+                    label="专业"
+                    items={majors}
+                    selected={selectedMajor}
+                    onSelect={setSelectedMajor}
+                    showBorder={false}
+                    accentColor="blue"
+                  />
                 </>
               )}
             </div>
@@ -672,18 +874,25 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                     <X
                       className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors"
                       onClick={() => {
-                        if (f.type === "industry") setSelectedIndustry("全部")
-                        if (f.type === "major") setSelectedMajor("全部")
-                        if (f.type === "position") setSelectedPosition("全部")
-                        if (f.type === "profession") setSelectedProfession("全部")
-                        if (f.type === "difficulty") setSelectedDifficulty("全部")
-                        if (f.type === "keyword") setKeyword("")
+                        if (f.type === 'industry') setSelectedIndustry('全部')
+                        if (f.type === 'major') setSelectedMajor('全部')
+                        if (f.type === 'position') setSelectedPosition('全部')
+                        if (f.type === 'profession') setSelectedProfession('全部')
+                        if (f.type === 'difficulty') setSelectedDifficulty('全部')
+                        if (f.type === 'keyword') setKeyword('')
                       }}
                     />
                   </span>
                 ))}
                 <button
-                  onClick={() => { setSelectedIndustry("全部"); setSelectedMajor("全部"); setSelectedPosition("全部"); setSelectedProfession("全部"); setSelectedDifficulty("全部"); setKeyword("") }}
+                  onClick={() => {
+                    setSelectedIndustry('全部')
+                    setSelectedMajor('全部')
+                    setSelectedPosition('全部')
+                    setSelectedProfession('全部')
+                    setSelectedDifficulty('全部')
+                    setKeyword('')
+                  }}
                   className="text-[13px] text-blue-600 hover:text-blue-700 font-medium"
                 >
                   清空筛选
@@ -701,7 +910,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   onClick={() => setSort(s.value)}
                   className={`
                     px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium
-                    ${sort === s.value ? "bg-blue-500 text-white shadow-md" : "text-[#475569] hover:text-blue-600 hover:bg-[#f8fafc]"}
+                    ${sort === s.value ? 'bg-blue-500 text-white shadow-md' : 'text-[#475569] hover:text-blue-600 hover:bg-[#f8fafc]'}
                   `}
                 >
                   {s.label}
@@ -713,8 +922,12 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
               <Input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") executeSearch() }}
-                placeholder={isScene ? "搜索场景名称、编码或关键词" : "搜索岗位名称、岗位编码或关键词"}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') executeSearch()
+                }}
+                placeholder={
+                  isScene ? '搜索场景名称、编码或关键词' : '搜索岗位名称、岗位编码或关键词'
+                }
                 className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all"
               />
               <Button
@@ -729,7 +942,8 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           <div className="text-[13px] text-[#64748b] mb-5">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-              当前共展示 <b className="text-blue-600">{filtered.length}</b> {isScene ? "个场景查看入口" : "个岗位查看入口"}
+              当前共展示 <b className="text-blue-600">{filtered.length}</b>{' '}
+              {isScene ? '个场景查看入口' : '个岗位查看入口'}
             </span>
           </div>
 
@@ -737,7 +951,10 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse shadow-sm" />
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse shadow-sm"
+                />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -746,7 +963,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                 <Search className="w-8 h-8 opacity-30" />
               </div>
               <div className="text-[15px] font-medium text-[#475569]">
-                {isScene ? "暂无匹配的场景" : "暂无匹配的岗位"}
+                {isScene ? '暂无匹配的场景' : '暂无匹配的岗位'}
               </div>
               <div className="text-[13px] mt-1">试试调整筛选条件或搜索关键词</div>
             </div>
@@ -779,7 +996,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                 totalPages={totalPages}
                 onPageChange={(p) => {
                   setCurrentPage(p)
-                  listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }}
                 accentColor="blue"
               />
@@ -795,7 +1012,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           width: 4px;
         }
         .custom-scrollbar-thin::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.3);
+          background: rgba(255, 255, 255, 0.3);
           border-radius: 2px;
         }
         .custom-scrollbar-thin::-webkit-scrollbar-track {

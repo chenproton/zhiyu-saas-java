@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import {
   Dialog,
@@ -6,11 +6,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import type { Question } from "@/lib/types"
-import { QUESTION_TYPE_LABELS } from "@/lib/types"
+} from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import type { Question } from '@/lib/types'
+import { QUESTION_TYPE_LABELS } from '@/lib/types'
 
 interface QuestionPreviewProps {
   open: boolean
@@ -23,15 +23,15 @@ export function QuestionPreview({ open, onOpenChange, question }: QuestionPrevie
 
   const renderAnswer = () => {
     switch (question.type) {
-      case "single":
-      case "essay":
+      case 'single':
+      case 'essay':
         return <span>{question.answer as string}</span>
-      case "multiple":
-        return <span>{(question.answer as string[]).join(", ")}</span>
-      case "judge":
-        return <span>{question.answer === "true" ? "正确" : "错误"}</span>
-      case "fill":
-        return <span>{(question.answer as string[]).join(", ")}</span>
+      case 'multiple':
+        return <span>{(question.answer as string[]).join(', ')}</span>
+      case 'judge':
+        return <span>{question.answer === 'true' ? '正确' : '错误'}</span>
+      case 'fill':
+        return <span>{(question.answer as string[]).join(', ')}</span>
       default:
         return null
     }

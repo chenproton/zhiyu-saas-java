@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import { useMemo } from "react"
+import { useMemo } from 'react'
 import type {
   CareerPosition,
   PositionAbilityBinding,
   AbilityPoint,
   AbilityDomain,
-} from "@zhiyu/shared-types"
-import { GraphDataProvider } from "@/components/knowledge-graph/graph-data-context"
-import type { GraphNode, GraphEdge } from "@/components/knowledge-graph/types"
-import { KnowledgeGraphShell } from "@/components/knowledge-graph/knowledge-graph-shell"
+} from '@zhiyu/shared-types'
+import { GraphDataProvider } from '@/components/knowledge-graph/graph-data-context'
+import type { GraphNode, GraphEdge } from '@/components/knowledge-graph/types'
+import { KnowledgeGraphShell } from '@/components/knowledge-graph/knowledge-graph-shell'
 
 interface KnowledgeGraphProps {
   position: CareerPosition
@@ -39,7 +39,7 @@ export function KnowledgeGraph({
     graphNodes.push({
       id: position.id,
       label: position.shortName || position.name,
-      type: "position",
+      type: 'position',
     })
 
     // 合并真实能力领域 + 从 binding.domain 生成的兜底领域
@@ -47,12 +47,14 @@ export function KnowledgeGraph({
     abilityDomains.forEach((d) => domainByName.set(d.name, d))
 
     const coveredBindingIds = new Set<string>()
-    abilityDomains.forEach((d) => (d.bindingIds || []).forEach((id: string) => coveredBindingIds.add(id)))
+    abilityDomains.forEach((d) =>
+      (d.bindingIds || []).forEach((id: string) => coveredBindingIds.add(id)),
+    )
 
     const fallbackDomains: AbilityDomain[] = []
     bindings.forEach((b) => {
       if (coveredBindingIds.has(b.id)) return
-      const name = b.domain || "综合能力"
+      const name = b.domain || '综合能力'
       if (!domainByName.has(name)) {
         domainByName.set(name, {
           id: `domain-fallback-${name}`,
@@ -69,7 +71,7 @@ export function KnowledgeGraph({
 
     // 能力领域节点
     allDomains.forEach((domain) => {
-      graphNodes.push({ id: domain.id, label: domain.name, type: "domain" })
+      graphNodes.push({ id: domain.id, label: domain.name, type: 'domain' })
       graphEdges.push({ source: position.id, target: domain.id })
     })
 
@@ -81,15 +83,15 @@ export function KnowledgeGraph({
       bindings
         .filter((b) => {
           if (hasExplicitBindings) return domainBindingIds.has(b.id)
-          return (b.domain || "综合能力") === domain.name
+          return (b.domain || '综合能力') === domain.name
         })
         .forEach((b) => {
           const abilityPoint = abilityPointMap.get(b.abilityPointId)
           const unitId = abilityPoint?.id || b.abilityPointId
-          const unitLabel = abilityPoint?.name || b.domain || "未命名能力"
+          const unitLabel = abilityPoint?.name || b.domain || '未命名能力'
           if (!unitNodeIds.has(unitId)) {
             unitNodeIds.add(unitId)
-            graphNodes.push({ id: unitId, label: unitLabel, type: "unit" })
+            graphNodes.push({ id: unitId, label: unitLabel, type: 'unit' })
           }
           graphEdges.push({ source: domain.id, target: unitId })
         })
@@ -107,7 +109,7 @@ export function KnowledgeGraph({
       units: abilityPoints,
       bindings,
     }),
-    [position, allDomains, abilityPoints, bindings]
+    [position, allDomains, abilityPoints, bindings],
   )
 
   return (

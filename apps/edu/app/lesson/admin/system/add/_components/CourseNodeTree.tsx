@@ -1,38 +1,40 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useCallback, useRef } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useMemo, useCallback, useRef } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import {
-  Plus,
-  MoreHorizontal,
-  GripVertical,
-  BookOpen,
-} from "lucide-react"
-import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
-import { NODE_REF_TYPE_LABELS, NODE_REF_TYPE_COLORS } from "@/lib/types/lesson-source"
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { Plus, MoreHorizontal, GripVertical, BookOpen } from 'lucide-react'
+import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
+import { NODE_REF_TYPE_LABELS, NODE_REF_TYPE_COLORS } from '@/lib/types/lesson-source'
 
 interface CourseNodeTreeProps {
   nodes: SystemCourseNode[]
   selectedNodeId: string | null
   onSelect: (nodeId: string) => void
-  onAddNode: (parentId: string | null, name: string, order: number, type?: NodeRefType, sourceId?: string, sourceName?: string) => void
+  onAddNode: (
+    parentId: string | null,
+    name: string,
+    order: number,
+    type?: NodeRefType,
+    sourceId?: string,
+    sourceName?: string,
+  ) => void
   onUpdateNode: (nodeId: string, updates: Partial<SystemCourseNode>) => void
   onDeleteNode: (nodeId: string) => void
   onReorderNodes: (nodeId: string, targetNodeId: string) => void
@@ -83,11 +85,11 @@ export default function CourseNodeTree({
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
 
   /* add dialog state */
-  const [newNodeName, setNewNodeName] = useState("")
-  const [newNodeParent, setNewNodeParent] = useState<string>("root")
+  const [newNodeName, setNewNodeName] = useState('')
+  const [newNodeParent, setNewNodeParent] = useState<string>('root')
   const nextOrderRef = useRef(1)
 
-  const [editNodeName, setEditNodeName] = useState("")
+  const [editNodeName, setEditNodeName] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null)
@@ -98,12 +100,12 @@ export default function CourseNodeTree({
     (parentId: string | null = null) => {
       const siblings = nodes.filter((n) => n.parentId === parentId)
       const nextOrder = siblings.length > 0 ? Math.max(...siblings.map((n) => n.order)) + 1 : 1
-      setNewNodeName("")
-      setNewNodeParent(parentId ?? "root")
+      setNewNodeName('')
+      setNewNodeParent(parentId ?? 'root')
       nextOrderRef.current = nextOrder
       setAddDialogOpen(true)
     },
-    [nodes]
+    [nodes],
   )
 
   const openEditDialog = useCallback(
@@ -114,13 +116,13 @@ export default function CourseNodeTree({
       setEditNodeName(node.name)
       setEditDialogOpen(true)
     },
-    [nodes]
+    [nodes],
   )
 
   const handleConfirmAdd = () => {
     if (!newNodeName.trim()) return
-    const parentId = newNodeParent === "root" ? null : newNodeParent
-    onAddNode(parentId, newNodeName.trim(), nextOrderRef.current, "normal")
+    const parentId = newNodeParent === 'root' ? null : newNodeParent
+    onAddNode(parentId, newNodeName.trim(), nextOrderRef.current, 'normal')
     setAddDialogOpen(false)
   }
 
@@ -144,7 +146,7 @@ export default function CourseNodeTree({
 
   const handleDragStart = (e: React.DragEvent, nodeId: string) => {
     setDraggingId(nodeId)
-    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.effectAllowed = 'move'
   }
 
   const handleDragOver = (e: React.DragEvent, nodeId: string) => {
@@ -178,10 +180,12 @@ export default function CourseNodeTree({
       <div key={node.id}>
         <div
           className={cn(
-            "tree-node flex items-center gap-1 px-1 py-1 rounded cursor-pointer text-sm transition-colors select-none",
-            isActive ? "bg-blue-50 text-blue-600 border-l-2 border-blue-500" : "text-gray-600 hover:bg-gray-50",
-            isDragging && "opacity-40",
-            isDragOver && "border-t-2 border-blue-500"
+            'tree-node flex items-center gap-1 px-1 py-1 rounded cursor-pointer text-sm transition-colors select-none',
+            isActive
+              ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-500'
+              : 'text-gray-600 hover:bg-gray-50',
+            isDragging && 'opacity-40',
+            isDragOver && 'border-t-2 border-blue-500',
           )}
           style={{ paddingLeft: `${8 + level * 10}px` }}
           draggable
@@ -199,7 +203,9 @@ export default function CourseNodeTree({
             {node.name}
           </span>
           {node.type && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${NODE_REF_TYPE_COLORS[node.type]}`}>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${NODE_REF_TYPE_COLORS[node.type]}`}
+            >
               {NODE_REF_TYPE_LABELS[node.type]}
             </span>
           )}
@@ -219,10 +225,7 @@ export default function CourseNodeTree({
               <DropdownMenuItem onClick={() => openAddDialog(node.id)}>
                 + 添加子节点
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-red-500"
-                onClick={() => handleDelete(node.id)}
-              >
+              <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(node.id)}>
                 🗑 删除
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -237,10 +240,10 @@ export default function CourseNodeTree({
     )
   }
 
-  const isRootAdd = newNodeParent === "root"
+  const isRootAdd = newNodeParent === 'root'
   const parentNode = useMemo(
     () => (!isRootAdd ? nodes.find((n) => n.id === newNodeParent) : null),
-    [isRootAdd, newNodeParent, nodes]
+    [isRootAdd, newNodeParent, nodes],
   )
 
   return (
@@ -273,17 +276,20 @@ export default function CourseNodeTree({
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>{isRootAdd ? "添加节点" : "添加子节点"}</DialogTitle>
+            <DialogTitle>{isRootAdd ? '添加节点' : '添加子节点'}</DialogTitle>
             {!isRootAdd && parentNode && (
               <p className="text-xs text-gray-500 mt-1">
-                将在「<span className="font-medium text-gray-700">{parentNode.name}</span>」下添加子节点
+                将在「<span className="font-medium text-gray-700">{parentNode.name}</span>
+                」下添加子节点
               </p>
             )}
           </DialogHeader>
 
           <div className="py-2 space-y-4">
             <div>
-              <Label className="text-sm">节点名称 <span className="text-red-500">*</span></Label>
+              <Label className="text-sm">
+                节点名称 <span className="text-red-500">*</span>
+              </Label>
               <Input
                 value={newNodeName}
                 onChange={(e) => setNewNodeName(e.target.value)}
@@ -291,9 +297,7 @@ export default function CourseNodeTree({
                 maxLength={50}
                 className="mt-1.5"
               />
-              <p className="text-xs text-gray-400 text-right mt-1">
-                {newNodeName.length} / 50
-              </p>
+              <p className="text-xs text-gray-400 text-right mt-1">{newNodeName.length} / 50</p>
             </div>
           </div>
 
@@ -335,7 +339,9 @@ export default function CourseNodeTree({
 
       <ConfirmDialog
         open={deleteNodeId !== null}
-        onOpenChange={(open) => { if (!open) setDeleteNodeId(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteNodeId(null)
+        }}
         title="删除节点"
         description="确定删除该节点吗？删除后其所有子节点也将被删除。"
         variant="destructive"

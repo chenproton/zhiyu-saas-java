@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useState, useCallback, useEffect } from "react"
-import { approvalApi, workflowApi } from "@/lib/api"
-import type { ApprovalRecord, Workflow, WorkflowStep } from "@/lib/types/backend"
-import { toast } from "@zhiyu/ui"
+import { useState, useCallback, useEffect } from 'react'
+import { approvalApi, workflowApi } from '@/lib/api'
+import type { ApprovalRecord, Workflow, WorkflowStep } from '@/lib/types/backend'
+import { toast } from '@zhiyu/ui'
 
 export interface ApprovalStepInfo {
   currentStepIndex: number
@@ -29,7 +29,10 @@ interface UseApprovalsReturn {
   getStepInfo: (record?: ApprovalRecord | null) => ApprovalStepInfo | undefined
 }
 
-export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions): UseApprovalsReturn {
+export function useApprovals({
+  targetType,
+  limit = 1000,
+}: UseApprovalsOptions): UseApprovalsReturn {
   const [records, setRecords] = useState<ApprovalRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [workflows, setWorkflows] = useState<Map<string, Workflow>>(new Map())
@@ -43,9 +46,9 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
       const workflowIds = Array.from(
         new Set(
           res.items
-            .filter((a) => a.status === "pending" && a.workflowId)
-            .map((a) => a.workflowId as string)
-        )
+            .filter((a) => a.status === 'pending' && a.workflowId)
+            .map((a) => a.workflowId as string),
+        ),
       )
       if (workflowIds.length > 0) {
         try {
@@ -60,7 +63,7 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
         }
       }
     } catch (err: any) {
-      toast({ title: err.message || "无法获取审批数据", variant: "destructive" })
+      toast({ title: err.message || '无法获取审批数据', variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -72,76 +75,94 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
     })()
   }, [refresh])
 
-  const getStepInfo = useCallback((record?: ApprovalRecord | null): ApprovalStepInfo | undefined => {
-    if (!record || record.status !== "pending") return undefined
-    const workflow = record.workflowId ? workflows.get(record.workflowId) : undefined
-    const totalSteps = workflow?.steps?.length || 1
-    const currentStepIndex = Math.min(record.currentStepIdx, Math.max(0, totalSteps - 1))
-    const step = workflow?.steps?.[currentStepIndex]
-    return {
-      currentStepIndex,
-      totalSteps,
-      currentStepName: step?.name || `第 ${currentStepIndex + 1} 步`,
-      isFinalStep: currentStepIndex >= totalSteps - 1,
-      steps: workflow?.steps || [],
-    }
-  }, [workflows])
-
-  const approve = useCallback(async (id: string, comment?: string) => {
-    try {
-      const result = await approvalApi.review(id, { status: "approved", comment })
-      if (result.status === "approved") {
-        toast({ title: "审批通过" })
-      } else {
-        toast({ title: "审批意见已记录" })
+  const getStepInfo = useCallback(
+    (record?: ApprovalRecord | null): ApprovalStepInfo | undefined => {
+      if (!record || record.status !== 'pending') return undefined
+      const workflow = record.workflowId ? workflows.get(record.workflowId) : undefined
+      const totalSteps = workflow?.steps?.length || 1
+      const currentStepIndex = Math.min(record.currentStepIdx, Math.max(0, totalSteps - 1))
+      const step = workflow?.steps?.[currentStepIndex]
+      return {
+        currentStepIndex,
+        totalSteps,
+        currentStepName: step?.name || `第 ${currentStepIndex + 1} 步`,
+        isFinalStep: currentStepIndex >= totalSteps - 1,
+        steps: workflow?.steps || [],
       }
-      await refresh()
-    } catch (err: any) {
-      toast({ title: err.message || "审批失败", variant: "destructive" })
-    }
-  }, [refresh])
+    },
+    [workflows],
+  )
 
-  const reject = useCallback(async (id: string, comment?: string) => {
-    try {
-      const result = await approvalApi.review(id, { status: "rejected", comment })
-      if (result.status === "rejected") {
-        toast({ title: "已驳回" })
-      } else {
-        toast({ title: "驳回意见已记录" })
+  const approve = useCallback(
+    async (id: string, comment?: string) => {
+      try {
+        const result = await approvalApi.review(id, { status: 'approved', comment })
+        if (result.status === 'approved') {
+          toast({ title: '审批通过' })
+        } else {
+          toast({ title: '审批意见已记录' })
+        }
+        await refresh()
+      } catch (err: any) {
+        toast({ title: err.message || '审批失败', variant: 'destructive' })
       }
-      await refresh()
-    } catch (err: any) {
-      toast({ title: err.message || "驳回失败", variant: "destructive" })
-    }
-  }, [refresh])
+    },
+    [refresh],
+  )
 
-  const batchReview = useCallback(async (ids: string[], status: "approved" | "rejected", comment?: string) => {
-    if (ids.length === 0) return
-    const label = status === "approved" ? "通过" : "驳回"
-    try {
-      const results = await Promise.allSettled(
-        ids.map((id) => approvalApi.review(id, { status, comment }))
-      )
-      const success = results.filter((r) => r.status === "fulfilled").length
-      const failed = results.length - success
-      if (failed === 0) {
-        toast({ title: `批量${label}成功，共 ${success} 条` })
-      } else {
-        toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
+  const reject = useCallback(
+    async (id: string, comment?: string) => {
+      try {
+        const result = await approvalApi.review(id, { status: 'rejected', comment })
+        if (result.status === 'rejected') {
+          toast({ title: '已驳回' })
+        } else {
+          toast({ title: '驳回意见已记录' })
+        }
+        await refresh()
+      } catch (err: any) {
+        toast({ title: err.message || '驳回失败', variant: 'destructive' })
       }
-      await refresh()
-    } catch (err: any) {
-      toast({ title: err.message || `批量${label}失败`, variant: "destructive" })
-    }
-  }, [refresh])
+    },
+    [refresh],
+  )
 
-  const batchApprove = useCallback(async (ids: string[], comment?: string) => {
-    await batchReview(ids, "approved", comment)
-  }, [batchReview])
+  const batchReview = useCallback(
+    async (ids: string[], status: 'approved' | 'rejected', comment?: string) => {
+      if (ids.length === 0) return
+      const label = status === 'approved' ? '通过' : '驳回'
+      try {
+        const results = await Promise.allSettled(
+          ids.map((id) => approvalApi.review(id, { status, comment })),
+        )
+        const success = results.filter((r) => r.status === 'fulfilled').length
+        const failed = results.length - success
+        if (failed === 0) {
+          toast({ title: `批量${label}成功，共 ${success} 条` })
+        } else {
+          toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
+        }
+        await refresh()
+      } catch (err: any) {
+        toast({ title: err.message || `批量${label}失败`, variant: 'destructive' })
+      }
+    },
+    [refresh],
+  )
 
-  const batchReject = useCallback(async (ids: string[], comment?: string) => {
-    await batchReview(ids, "rejected", comment)
-  }, [batchReview])
+  const batchApprove = useCallback(
+    async (ids: string[], comment?: string) => {
+      await batchReview(ids, 'approved', comment)
+    },
+    [batchReview],
+  )
+
+  const batchReject = useCallback(
+    async (ids: string[], comment?: string) => {
+      await batchReview(ids, 'rejected', comment)
+    },
+    [batchReview],
+  )
 
   return { records, loading, approve, reject, batchApprove, batchReject, refresh, getStepInfo }
 }

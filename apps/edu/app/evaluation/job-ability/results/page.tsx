@@ -1,25 +1,25 @@
-"use client"
+'use client'
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "next/navigation"
-import { ChevronLeft, ChevronRight, Eye, RefreshCw, Search } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { ChevronLeft, ChevronRight, Eye, RefreshCw, Search } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -27,57 +27,56 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { useToast } from "@zhiyu/ui"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { jobAbilityResultApi } from "@/lib/api"
-import type { JobAbilityResult, JobAbilitySummaryItem } from "@/lib/types"
-import { cn } from "@/lib/utils"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+} from '@/components/ui/table'
+import { useToast } from '@zhiyu/ui'
+import { PageHeaderCard } from '@/components/shared/page-header-card'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { jobAbilityResultApi } from '@/lib/api'
+import type { JobAbilityResult, JobAbilitySummaryItem } from '@/lib/types'
+import { cn } from '@/lib/utils'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 const PAGE_SIZE = 20
 
 const AGGREGATE_POLL_INTERVAL_MS = 3000
 const AGGREGATE_POLL_MAX_ATTEMPTS = 15
 
-const GRADE_OPTIONS = ["了解", "理解", "掌握", "熟练", "精通"] as const
+const GRADE_OPTIONS = ['了解', '理解', '掌握', '熟练', '精通'] as const
 
 function gradeBadgeClass(grade?: string): string {
   switch (grade) {
-    case "精通":
-      return "bg-purple-50 text-purple-600 border-purple-200"
-    case "熟练":
-      return "bg-green-50 text-green-600 border-green-200"
-    case "掌握":
-      return "bg-blue-50 text-blue-600 border-blue-200"
-    case "理解":
-      return "bg-amber-50 text-amber-600 border-amber-200"
-    case "了解":
-      return "bg-gray-50 text-gray-500 border-gray-200"
+    case '精通':
+      return 'bg-purple-50 text-purple-600 border-purple-200'
+    case '熟练':
+      return 'bg-green-50 text-green-600 border-green-200'
+    case '掌握':
+      return 'bg-blue-50 text-blue-600 border-blue-200'
+    case '理解':
+      return 'bg-amber-50 text-amber-600 border-amber-200'
+    case '了解':
+      return 'bg-gray-50 text-gray-500 border-gray-200'
     default:
-      return "bg-gray-50 text-gray-500 border-gray-200"
+      return 'bg-gray-50 text-gray-500 border-gray-200'
   }
 }
 
-
 function JobAbilityResultsContent() {
   const searchParams = useSearchParams()
-  const positionIdParam = searchParams.get("positionId")
+  const positionIdParam = searchParams.get('positionId')
   const { toast } = useToast()
 
   const [summary, setSummary] = useState<JobAbilitySummaryItem[]>([])
   const [summaryLoading, setSummaryLoading] = useState(true)
-  const [selectedPositionId, setSelectedPositionId] = useState<string>(positionIdParam || "")
+  const [selectedPositionId, setSelectedPositionId] = useState<string>(positionIdParam || '')
 
   const [results, setResults] = useState<JobAbilityResult[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(!!positionIdParam)
 
-  const [search, setSearch] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [gradeFilter, setGradeFilter] = useState<string>("all")
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [gradeFilter, setGradeFilter] = useState<string>('all')
 
   const [aggregating, setAggregating] = useState(false)
   const aggregateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -101,7 +100,12 @@ function JobAbilityResultsContent() {
   }, [search])
 
   // 筛选条件变化时重置分页并进入加载态（在事件回调中同步执行）
-  const applyFilters = (updates: { positionId?: string; search?: string; grade?: string; page?: number }) => {
+  const applyFilters = (updates: {
+    positionId?: string
+    search?: string
+    grade?: string
+    page?: number
+  }) => {
     setLoading(true)
     if (updates.page !== undefined) setPage(updates.page)
     else setPage(1)
@@ -126,9 +130,9 @@ function JobAbilityResultsContent() {
       .catch((err) => {
         if (cancelled) return
         toast({
-          title: "加载失败",
-          description: err instanceof Error ? err.message : "获取岗位汇总失败",
-          variant: "destructive",
+          title: '加载失败',
+          description: err instanceof Error ? err.message : '获取岗位汇总失败',
+          variant: 'destructive',
         })
       })
       .finally(() => {
@@ -148,7 +152,7 @@ function JobAbilityResultsContent() {
         const res = await jobAbilityResultApi.list({
           careerPositionId: selectedPositionId,
           search: debouncedSearch || undefined,
-          grade: gradeFilter === "all" ? undefined : gradeFilter,
+          grade: gradeFilter === 'all' ? undefined : gradeFilter,
           page,
           limit: PAGE_SIZE,
         })
@@ -158,9 +162,9 @@ function JobAbilityResultsContent() {
       } catch (err) {
         if (cancelled) return
         toast({
-          title: "加载失败",
-          description: err instanceof Error ? err.message : "获取认定结果失败",
-          variant: "destructive",
+          title: '加载失败',
+          description: err instanceof Error ? err.message : '获取认定结果失败',
+          variant: 'destructive',
         })
         setResults([])
         setTotal(0)
@@ -201,9 +205,9 @@ function JobAbilityResultsContent() {
       triggerLogId = triggered.logId
     } catch (err) {
       toast({
-        title: "触发失败",
-        description: err instanceof Error ? err.message : "汇聚任务提交失败",
-        variant: "destructive",
+        title: '触发失败',
+        description: err instanceof Error ? err.message : '汇聚任务提交失败',
+        variant: 'destructive',
       })
       setAggregating(false)
       return
@@ -214,35 +218,35 @@ function JobAbilityResultsContent() {
       attempts += 1
       try {
         const status = await jobAbilityResultApi.aggregateStatus(careerPositionId, triggerLogId)
-        if (status?.status === "success") {
+        if (status?.status === 'success') {
           setAggregating(false)
           const updatedCount = status.updatedCount ?? 0
           toast({
-            title: "汇聚完成",
+            title: '汇聚完成',
             description:
               updatedCount > 0
                 ? `汇聚完成，更新 ${updatedCount} 名学生`
-                : "更新 0 条，请确认规则已发布且学生已有评分",
+                : '更新 0 条，请确认规则已发布且学生已有评分',
           })
           setLoading(true)
           setListReloadKey((k) => k + 1)
           refreshSummary()
           return
         }
-        if (status?.status === "failed") {
+        if (status?.status === 'failed') {
           setAggregating(false)
           toast({
-            title: "汇聚失败",
-            description: status.errorMessage || "汇聚任务执行失败",
-            variant: "destructive",
+            title: '汇聚失败',
+            description: status.errorMessage || '汇聚任务执行失败',
+            variant: 'destructive',
           })
           return
         }
         if (attempts >= AGGREGATE_POLL_MAX_ATTEMPTS) {
           setAggregating(false)
           toast({
-            title: "汇聚仍在进行",
-            description: "汇聚仍在进行，稍后请手动刷新",
+            title: '汇聚仍在进行',
+            description: '汇聚仍在进行，稍后请手动刷新',
           })
           return
         }
@@ -250,9 +254,9 @@ function JobAbilityResultsContent() {
       } catch (err) {
         setAggregating(false)
         toast({
-          title: "查询汇聚状态失败",
-          description: err instanceof Error ? err.message : "获取汇聚状态失败",
-          variant: "destructive",
+          title: '查询汇聚状态失败',
+          description: err instanceof Error ? err.message : '获取汇聚状态失败',
+          variant: 'destructive',
         })
       }
     }
@@ -267,9 +271,9 @@ function JobAbilityResultsContent() {
       setDetail(await jobAbilityResultApi.get(id))
     } catch (err) {
       toast({
-        title: "加载失败",
-        description: err instanceof Error ? err.message : "获取结果明细失败",
-        variant: "destructive",
+        title: '加载失败',
+        description: err instanceof Error ? err.message : '获取结果明细失败',
+        variant: 'destructive',
       })
     } finally {
       setDetailLoading(false)
@@ -295,15 +299,17 @@ function JobAbilityResultsContent() {
                 key={item.positionId}
                 onClick={() => applyFilters({ positionId: item.positionId })}
                 className={cn(
-                  "flex w-full flex-col rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                  'flex w-full flex-col rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
                   selectedPositionId === item.positionId
-                    ? "bg-primary/10 font-medium text-primary"
-                    : "text-gray-700 hover:bg-gray-50",
+                    ? 'bg-primary/10 font-medium text-primary'
+                    : 'text-gray-700 hover:bg-gray-50',
                 )}
               >
                 <div className="flex items-center justify-between">
                   <span className="truncate">{item.positionName}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{item.studentCount} 人</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {item.studentCount} 人
+                  </span>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   平均达标率 {(item.avgRate ?? 0).toFixed(1)}%
@@ -321,7 +327,7 @@ function JobAbilityResultsContent() {
           description={
             selectedPosition
               ? `查看「${selectedPosition.positionName}」的能力认定结果`
-              : "查看各岗位的能力认定结果"
+              : '查看各岗位的能力认定结果'
           }
           className="mb-4"
           actions={
@@ -331,7 +337,7 @@ function JobAbilityResultsContent() {
               onClick={handleAggregate}
               disabled={!selectedPositionId || aggregating}
             >
-              <RefreshCw className={cn("mr-1.5 h-4 w-4", aggregating && "animate-spin")} />
+              <RefreshCw className={cn('mr-1.5 h-4 w-4', aggregating && 'animate-spin')} />
               手动汇聚
             </Button>
           }
@@ -376,7 +382,9 @@ function JobAbilityResultsContent() {
                   <TableHead className="w-[130px]">能力点达成</TableHead>
                   <TableHead className="w-[90px]">达标率</TableHead>
                   <TableHead className="w-[90px]">等级</TableHead>
-                  <TableHead className="sticky right-0 w-[120px] bg-white text-right">操作</TableHead>
+                  <TableHead className="sticky right-0 w-[120px] bg-white text-right">
+                    操作
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -389,27 +397,38 @@ function JobAbilityResultsContent() {
                 ) : results.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                      {selectedPositionId ? "暂无符合条件的认定结果" : "请在左侧选择岗位"}
+                      {selectedPositionId ? '暂无符合条件的认定结果' : '请在左侧选择岗位'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   results.map((result) => (
                     <TableRow key={result.id} className="group">
                       <TableCell className="font-medium">{result.studentName}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{result.studentId}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{result.className || "-"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{result.majorName || "-"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {result.studentId}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {result.className || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {result.majorName || '-'}
+                      </TableCell>
                       <TableCell>
                         <span className="text-sm">
                           {result.achievedAbilityPoints}/{result.totalAbilityPoints} 能力点
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm font-medium">{(result.achievementRate ?? 0).toFixed(1)}%</span>
+                        <span className="text-sm font-medium">
+                          {(result.achievementRate ?? 0).toFixed(1)}%
+                        </span>
                       </TableCell>
                       <TableCell>
                         {result.grade ? (
-                          <Badge variant="outline" className={cn("text-xs", gradeBadgeClass(result.grade))}>
+                          <Badge
+                            variant="outline"
+                            className={cn('text-xs', gradeBadgeClass(result.grade))}
+                          >
                             {result.grade}
                           </Badge>
                         ) : (
@@ -471,7 +490,7 @@ function JobAbilityResultsContent() {
             <DialogDescription>
               {detail
                 ? `${detail.studentName}（${detail.studentId}）· ${detail.positionName}`
-                : "加载中..."}
+                : '加载中...'}
             </DialogDescription>
           </DialogHeader>
           {detailLoading ? (
@@ -486,7 +505,7 @@ function JobAbilityResultsContent() {
                   达标率 {(detail.achievementRate ?? 0).toFixed(1)}%
                 </span>
                 {detail.grade && (
-                  <Badge variant="outline" className={cn("text-xs", gradeBadgeClass(detail.grade))}>
+                  <Badge variant="outline" className={cn('text-xs', gradeBadgeClass(detail.grade))}>
                     {detail.grade}
                   </Badge>
                 )}
@@ -510,22 +529,24 @@ function JobAbilityResultsContent() {
                         <TableRow key={point.abilityPointId || index}>
                           <TableCell className="text-sm">{point.abilityPointName}</TableCell>
                           <TableCell className="text-sm">
-                            {point.maxScore != null ? `${point.score}/${point.maxScore}` : point.score}
+                            {point.maxScore != null
+                              ? `${point.score}/${point.maxScore}`
+                              : point.score}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {point.weight != null ? `${point.weight}%` : "-"}
+                            {point.weight != null ? `${point.weight}%` : '-'}
                           </TableCell>
                           <TableCell>
                             <Badge
                               variant="outline"
                               className={cn(
-                                "text-xs",
+                                'text-xs',
                                 point.achieved
-                                  ? "bg-green-50 text-green-600 border-green-200"
-                                  : "bg-red-50 text-red-600 border-red-200",
+                                  ? 'bg-green-50 text-green-600 border-green-200'
+                                  : 'bg-red-50 text-red-600 border-red-200',
                               )}
                             >
-                              {point.achieved ? "已达成" : "未达成"}
+                              {point.achieved ? '已达成' : '未达成'}
                             </Badge>
                           </TableCell>
                         </TableRow>

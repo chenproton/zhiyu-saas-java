@@ -36,7 +36,7 @@ export interface SceneEvaluationResult {
   evaluateeId: string
   evaluatorId?: string
   evaluatorType?: string
-  status: "pending" | "evaluated"
+  status: 'pending' | 'evaluated'
   totalScore?: number
   maxScore: number
   evalPointScores: Record<string, any>

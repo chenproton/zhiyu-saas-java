@@ -1,28 +1,56 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ComboboxSelect } from '@/components/shared/combobox-select'
 
-import { usePortalUsers } from "@/hooks/use-portal-users"
-import { useOrgTree } from "@/hooks/use-org-tree"
-import { portalUserManagementApi } from "@/lib/api"
-import { Badge } from "@/components/ui/badge"
-import { useToast, StatusBadge } from "@zhiyu/ui"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { Search, Trash2, Loader2, AlertCircle, RotateCcw, Check, ChevronDown, X, ChevronLeft, ChevronRight, Users, KeyRound, Power } from "lucide-react"
+import { usePortalUsers } from '@/hooks/use-portal-users'
+import { useOrgTree } from '@/hooks/use-org-tree'
+import { portalUserManagementApi } from '@/lib/api'
+import { Badge } from '@/components/ui/badge'
+import { useToast, StatusBadge } from '@zhiyu/ui'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ResetPasswordDialog } from '@/components/shared/reset-password-dialog'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import {
+  Search,
+  Trash2,
+  Loader2,
+  AlertCircle,
+  RotateCcw,
+  Check,
+  ChevronDown,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  KeyRound,
+  Power,
+} from 'lucide-react'
 
 export default function AccountsPage() {
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
-  const [searchText, setSearchText] = useState("")
+  const [searchText, setSearchText] = useState('')
   const { users, roles, total, page, pageSize, setPage, loading, error, refetch } = usePortalUsers({
     search: searchText || undefined,
   })
@@ -50,11 +78,15 @@ export default function AccountsPage() {
     setBindSaving(true)
     try {
       await portalUserManagementApi.bindRoles(bindTarget.id, bindRoleIds)
-      toast({ title: "角色绑定成功" })
+      toast({ title: '角色绑定成功' })
       setBindTarget(null)
       await refetch()
     } catch (err) {
-      toast({ variant: "destructive", title: "绑定失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '绑定失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setBindSaving(false)
     }
@@ -65,13 +97,17 @@ export default function AccountsPage() {
   }
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
-    const nextStatus = currentStatus === "active" ? "disabled" : "active"
+    const nextStatus = currentStatus === 'active' ? 'disabled' : 'active'
     try {
       await portalUserManagementApi.updateStatus(id, nextStatus)
-      toast({ title: nextStatus === "active" ? "账户已启用" : "账户已禁用" })
+      toast({ title: nextStatus === 'active' ? '账户已启用' : '账户已禁用' })
       await refetch()
     } catch (err) {
-      toast({ variant: "destructive", title: "操作失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '操作失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     }
   }
 
@@ -83,16 +119,22 @@ export default function AccountsPage() {
     if (!deleteTarget) return
     try {
       await portalUserManagementApi.delete(deleteTarget.id)
-      toast({ title: "删除成功" })
+      toast({ title: '删除成功' })
       await refetch()
       setDeleteTarget(null)
     } catch (err) {
-      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     }
   }
 
   const toggleSelectAccount = (id: string) => {
-    setSelectedAccounts((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
+    setSelectedAccounts((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    )
   }
 
   const toggleSelectAll = () => {
@@ -115,7 +157,11 @@ export default function AccountsPage() {
       await portalUserManagementApi.batchDelete(batchDeleteTarget)
       toast({ title: `成功删除 ${batchDeleteTarget.length} 个账户` })
     } catch (err) {
-      toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '批量删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setBatchDeleting(false)
       setSelectedAccounts([])
@@ -132,12 +178,12 @@ export default function AccountsPage() {
       name: user.name,
       roleNames: user.roleNames ?? [],
       roleIds: user.roleIds ?? [],
-      orgNodeName: orgNode?.name || "—",
+      orgNodeName: orgNode?.name || '—',
       orgTypeName: orgTypeName || undefined,
-      loginName: user.username || user.loginName || "",
-      rawLoginName: user.loginName || "",
+      loginName: user.username || user.loginName || '',
+      rawLoginName: user.loginName || '',
       status: user.status,
-      lastLogin: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("zh-CN") : "—",
+      lastLogin: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('zh-CN') : '—',
     }
   })
 
@@ -157,8 +203,17 @@ export default function AccountsPage() {
         </div>
         <div className="flex items-center gap-2">
           {selectedAccounts.length > 0 && (
-            <Button variant="destructive" size="sm" disabled={batchDeleting} onClick={handleBatchDelete}>
-              {batchDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={batchDeleting}
+              onClick={handleBatchDelete}
+            >
+              {batchDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-1" />
+              )}
               批量删除({selectedAccounts.length})
             </Button>
           )}
@@ -173,7 +228,8 @@ export default function AccountsPage() {
             <p className="text-sm opacity-90">{error}</p>
           </div>
           <Button variant="outline" size="sm" onClick={refetch}>
-            <RotateCcw className="h-4 w-4 mr-1" />重试
+            <RotateCcw className="h-4 w-4 mr-1" />
+            重试
           </Button>
         </div>
       )}
@@ -200,7 +256,7 @@ export default function AccountsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12">
+                <TableCell colSpan={9} className="text-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                   <p className="mt-2 text-sm text-muted-foreground">加载中...</p>
                 </TableCell>
@@ -208,7 +264,7 @@ export default function AccountsPage() {
             ) : accounts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground py-12">
-                  {searchText ? "未找到匹配的账户" : "暂无账户数据"}
+                  {searchText ? '未找到匹配的账户' : '暂无账户数据'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -225,7 +281,12 @@ export default function AccountsPage() {
                     <div className="flex flex-wrap gap-1">
                       {account.roleNames.length > 0 ? (
                         account.roleNames.map((rn) => (
-                          <span key={rn} className="px-2 py-1 rounded text-xs bg-primary/10 text-primary">{rn}</span>
+                          <span
+                            key={rn}
+                            className="px-2 py-1 rounded text-xs bg-primary/10 text-primary"
+                          >
+                            {rn}
+                          </span>
                         ))
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -236,7 +297,9 @@ export default function AccountsPage() {
                     <div className="flex items-center gap-1.5">
                       <span>{account.orgNodeName}</span>
                       {account.orgTypeName && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">{account.orgTypeName}</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
+                          {account.orgTypeName}
+                        </span>
                       )}
                     </div>
                   </TableCell>
@@ -245,56 +308,56 @@ export default function AccountsPage() {
                     <StatusBadge status={account.status} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">{account.lastLogin}</TableCell>
-                    <TableRowActions>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => openBindDialog(account)}
-                      >
-                        <Users className="mr-1 h-3 w-3" />
-                        绑定角色
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => handleResetPassword(account.id, account.name)}
-                      >
-                        <KeyRound className="mr-1 h-3 w-3" />
-                        重置密码
-                      </Button>
-                      {account.status === "active" ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                          onClick={() => handleToggleStatus(account.id, account.status)}
-                        >
-                          <Power className="mr-1 h-3 w-3" />
-                          禁用账户
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                          onClick={() => handleToggleStatus(account.id, account.status)}
-                        >
-                          <Power className="mr-1 h-3 w-3" />
-                          启用账户
-                        </Button>
-                      )}
+                  <TableRowActions>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => openBindDialog(account)}
+                    >
+                      <Users className="mr-1 h-3 w-3" />
+                      绑定角色
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => handleResetPassword(account.id, account.name)}
+                    >
+                      <KeyRound className="mr-1 h-3 w-3" />
+                      重置密码
+                    </Button>
+                    {account.status === 'active' ? (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => handleDelete(account.id, account.name)}
+                        onClick={() => handleToggleStatus(account.id, account.status)}
                       >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        删除
-                       </Button>
-                    </TableRowActions>
+                        <Power className="mr-1 h-3 w-3" />
+                        禁用账户
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                        onClick={() => handleToggleStatus(account.id, account.status)}
+                      >
+                        <Power className="mr-1 h-3 w-3" />
+                        启用账户
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={() => handleDelete(account.id, account.name)}
+                    >
+                      <Trash2 className="mr-1 h-3 w-3" />
+                      删除
+                    </Button>
+                  </TableRowActions>
                 </TableRow>
               ))
             )}
@@ -314,7 +377,9 @@ export default function AccountsPage() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
+            <span className="text-sm text-muted-foreground">
+              {page} / {totalPages}
+            </span>
             <Button
               variant="outline"
               size="sm"
@@ -327,11 +392,18 @@ export default function AccountsPage() {
         </div>
       )}
 
-      <Dialog open={!!bindTarget} onOpenChange={(open) => { if (!open) setBindTarget(null) }}>
+      <Dialog
+        open={!!bindTarget}
+        onOpenChange={(open) => {
+          if (!open) setBindTarget(null)
+        }}
+      >
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle>绑定角色 - {bindTarget?.name}</DialogTitle>
-            <DialogDescription>为用户绑定 1 个或多个角色，用户登录后可在顶栏切换当前角色</DialogDescription>
+            <DialogDescription>
+              为用户绑定 1 个或多个角色，用户登录后可在顶栏切换当前角色
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <ComboboxSelect
@@ -346,7 +418,9 @@ export default function AccountsPage() {
               renderOption={(o, selected) => (
                 <>
                   <span className="flex-1">{o.label}</span>
-                  <span className="mr-2 font-mono text-xs text-muted-foreground">{roles.find((r) => r.id === o.value)?.code}</span>
+                  <span className="mr-2 font-mono text-xs text-muted-foreground">
+                    {roles.find((r) => r.id === o.value)?.code}
+                  </span>
                   {selected && <Check className="h-4 w-4 text-primary" />}
                 </>
               )}
@@ -359,7 +433,11 @@ export default function AccountsPage() {
                 return (
                   <Badge key={id} variant="secondary" className="gap-1">
                     {r.name}
-                    <button type="button" onClick={() => setBindRoleIds((prev) => prev.filter((i) => i !== id))} className="ml-0.5 rounded-full hover:text-destructive">
+                    <button
+                      type="button"
+                      onClick={() => setBindRoleIds((prev) => prev.filter((i) => i !== id))}
+                      className="ml-0.5 rounded-full hover:text-destructive"
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -371,7 +449,9 @@ export default function AccountsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBindTarget(null)} disabled={bindSaving}>取消</Button>
+            <Button variant="outline" onClick={() => setBindTarget(null)} disabled={bindSaving}>
+              取消
+            </Button>
             <Button onClick={handleBindRoles} disabled={bindSaving || bindRoleIds.length === 0}>
               {bindSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
               保存
@@ -382,18 +462,22 @@ export default function AccountsPage() {
 
       <ResetPasswordDialog
         open={!!resetTarget}
-        onOpenChange={(open) => { if (!open) setResetTarget(null) }}
+        onOpenChange={(open) => {
+          if (!open) setResetTarget(null)
+        }}
         userId={resetTarget?.id}
         userName={resetTarget?.name}
         onSuccess={async () => {
-          toast({ title: "密码重置成功" })
+          toast({ title: '密码重置成功' })
           await refetch()
         }}
       />
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
         title="确认删除"
         description={`确定要删除账户「${deleteTarget?.name}」吗？此操作不可撤销。`}
         variant="destructive"
@@ -402,7 +486,9 @@ export default function AccountsPage() {
 
       <ConfirmDialog
         open={batchDeleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setBatchDeleteTarget(null) }}
+        onOpenChange={(open) => {
+          if (!open) setBatchDeleteTarget(null)
+        }}
         title="确认批量删除"
         description={`确定要删除选中的 ${batchDeleteTarget?.length || 0} 个账户吗？此操作不可撤销。`}
         variant="destructive"

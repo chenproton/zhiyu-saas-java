@@ -1,17 +1,17 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -19,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -27,28 +27,28 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { useData } from "@/components/providers/data-provider"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { examUsageApi } from "@/lib/api"
-import type { ExamUsage } from "@/lib/types"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { useData } from '@/components/providers/data-provider'
+import { PageHeaderCard } from '@/components/shared/page-header-card'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { examUsageApi } from '@/lib/api'
+import type { ExamUsage } from '@/lib/types'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
-const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage["targetType"]>, string> = {
-  class: "班级",
-  major: "专业",
-  department: "部门",
-  public: "公开",
+const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage['targetType']>, string> = {
+  class: '班级',
+  major: '专业',
+  department: '部门',
+  public: '公开',
 }
 
-type FilterStatus = ExamUsage["status"] | "all"
+type FilterStatus = ExamUsage['status'] | 'all'
 
 export default function ExamUsagePage() {
   const router = useRouter()
@@ -56,8 +56,8 @@ export default function ExamUsagePage() {
 
   const [usages, setUsages] = useState<ExamUsage[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>("all")
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createSubmitting, setCreateSubmitting] = useState(false)
 
@@ -65,14 +65,14 @@ export default function ExamUsagePage() {
   const [deletingUsageId, setDeletingUsageId] = useState<string | null>(null)
 
   // 创建考试使用表单
-  const [formExamId, setFormExamId] = useState("")
-  const [formName, setFormName] = useState("")
-  const [formDescription, setFormDescription] = useState("")
-  const [formDuration, setFormDuration] = useState("")
-  const [formStartTime, setFormStartTime] = useState("")
-  const [formEndTime, setFormEndTime] = useState("")
-  const [formTargetType, setFormTargetType] = useState<ExamUsage["targetType"]>("class")
-  const [formTargetIds, setFormTargetIds] = useState("")
+  const [formExamId, setFormExamId] = useState('')
+  const [formName, setFormName] = useState('')
+  const [formDescription, setFormDescription] = useState('')
+  const [formDuration, setFormDuration] = useState('')
+  const [formStartTime, setFormStartTime] = useState('')
+  const [formEndTime, setFormEndTime] = useState('')
+  const [formTargetType, setFormTargetType] = useState<ExamUsage['targetType']>('class')
+  const [formTargetIds, setFormTargetIds] = useState('')
 
   const loadUsages = async () => {
     setLoading(true)
@@ -107,8 +107,8 @@ export default function ExamUsagePage() {
       const exam = examMap.get(usage.examId)
       const matchSearch =
         usage.name.toLowerCase().includes(search.toLowerCase()) ||
-        (exam?.name || "").toLowerCase().includes(search.toLowerCase())
-      const matchStatus = statusFilter === "all" || usage.status === statusFilter
+        (exam?.name || '').toLowerCase().includes(search.toLowerCase())
+      const matchStatus = statusFilter === 'all' || usage.status === statusFilter
       return matchSearch && matchStatus
     })
   }, [search, statusFilter, usages, examMap])
@@ -116,22 +116,22 @@ export default function ExamUsagePage() {
   const stats = useMemo(() => {
     return {
       total: usages.length,
-      draft: usages.filter((u) => u.status === "draft").length,
-      pending: usages.filter((u) => u.status === "pending").length,
-      inProgress: usages.filter((u) => u.status === "in_progress").length,
-      finished: usages.filter((u) => u.status === "finished").length,
+      draft: usages.filter((u) => u.status === 'draft').length,
+      pending: usages.filter((u) => u.status === 'pending').length,
+      inProgress: usages.filter((u) => u.status === 'in_progress').length,
+      finished: usages.filter((u) => u.status === 'finished').length,
     }
   }, [usages])
 
   const resetForm = () => {
-    setFormExamId("")
-    setFormName("")
-    setFormDescription("")
-    setFormDuration("")
-    setFormStartTime("")
-    setFormEndTime("")
-    setFormTargetType("class")
-    setFormTargetIds("")
+    setFormExamId('')
+    setFormName('')
+    setFormDescription('')
+    setFormDuration('')
+    setFormStartTime('')
+    setFormEndTime('')
+    setFormTargetType('class')
+    setFormTargetIds('')
   }
 
   const openCreateDialog = () => {
@@ -152,10 +152,10 @@ export default function ExamUsagePage() {
         endTime: formEndTime || undefined,
         targetType: formTargetType,
         targetIds: formTargetIds
-          .split(",")
+          .split(',')
           .map((id) => id.trim())
           .filter(Boolean),
-        status: "draft",
+        status: 'draft',
       })
       setCreateDialogOpen(false)
       resetForm()
@@ -188,10 +188,9 @@ export default function ExamUsagePage() {
     await loadUsages()
   }
 
-
-  const canStart = (status: ExamUsage["status"]) => status === "draft" || status === "pending"
-  const canFinish = (status: ExamUsage["status"]) => status === "in_progress"
-  const canDelete = (status: ExamUsage["status"]) => status === "draft" || status === "finished"
+  const canStart = (status: ExamUsage['status']) => status === 'draft' || status === 'pending'
+  const canFinish = (status: ExamUsage['status']) => status === 'in_progress'
+  const canDelete = (status: ExamUsage['status']) => status === 'draft' || status === 'finished'
 
   const isFormValid = formExamId && formName
 
@@ -208,34 +207,34 @@ export default function ExamUsagePage() {
         }
         stats={[
           {
-            label: "考试总数",
+            label: '考试总数',
             value: stats.total,
             icon: <Clock className="size-4 text-blue-500" />,
-            iconClassName: "bg-blue-50",
+            iconClassName: 'bg-blue-50',
           },
           {
-            label: "草稿",
+            label: '草稿',
             value: stats.draft,
             icon: <Clock className="size-4 text-gray-500" />,
-            iconClassName: "bg-gray-50",
+            iconClassName: 'bg-gray-50',
           },
           {
-            label: "待开始",
+            label: '待开始',
             value: stats.pending,
             icon: <PlayCircle className="size-4 text-amber-500" />,
-            iconClassName: "bg-amber-50",
+            iconClassName: 'bg-amber-50',
           },
           {
-            label: "进行中",
+            label: '进行中',
             value: stats.inProgress,
             icon: <PlayCircle className="size-4 text-green-500" />,
-            iconClassName: "bg-green-50",
+            iconClassName: 'bg-green-50',
           },
           {
-            label: "已结束",
+            label: '已结束',
             value: stats.finished,
             icon: <CheckCircle2 className="size-4 text-gray-500" />,
-            iconClassName: "bg-gray-50",
+            iconClassName: 'bg-gray-50',
           },
         ]}
       />
@@ -300,77 +299,83 @@ export default function ExamUsagePage() {
                   return (
                     <TableRow key={usage.id} className="group">
                       <TableCell className="font-medium">{usage.name}</TableCell>
-                      <TableCell>{exam?.name || "-"}</TableCell>
+                      <TableCell>{exam?.name || '-'}</TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground line-clamp-2">
-                          {usage.description || "-"}
+                          {usage.description || '-'}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{usage.duration ? `${usage.duration} 分钟` : "-"}</span>
+                        <span className="text-sm">
+                          {usage.duration ? `${usage.duration} 分钟` : '-'}
+                        </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {usage.startTime || usage.endTime ? (
                           <div className="text-xs">
-                            <div>{usage.startTime ? formatDate(usage.startTime) : "-"}</div>
-                            <div>至 {usage.endTime ? formatDate(usage.endTime) : "-"}</div>
+                            <div>{usage.startTime ? formatDate(usage.startTime) : '-'}</div>
+                            <div>至 {usage.endTime ? formatDate(usage.endTime) : '-'}</div>
                           </div>
                         ) : (
                           <span className="text-xs">-</span>
                         )}
                       </TableCell>
-                      <TableCell><StatusBadge status={usage.status} /></TableCell>
+                      <TableCell>
+                        <StatusBadge status={usage.status} />
+                      </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
-                          {usage.targetType ? TARGET_TYPE_LABELS[usage.targetType] : "-"}
+                          {usage.targetType ? TARGET_TYPE_LABELS[usage.targetType] : '-'}
                         </span>
                       </TableCell>
                       <TableRowActions className="sticky right-0 bg-white">
-                          {canStart(usage.status) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700"
-                              onClick={() => handleStart(usage.id)}
-                            >
-                              <PlayCircle className="mr-1 h-3 w-3" />
-                              开始考试
-                            </Button>
-                          )}
-                          {canFinish(usage.status) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
-                              onClick={() => handleFinish(usage.id)}
-                            >
-                              <CheckCircle2 className="mr-1 h-3 w-3" />
-                              结束考试
-                            </Button>
-                          )}
-                          {usage.status === "finished" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => router.push(`/evaluation/exam-usage/results?usageId=${usage.id}`)}
-                            >
-                              <Eye className="mr-1 h-3 w-3" />
-                              查看考试结果
-                            </Button>
-                          )}
-                          {canDelete(usage.status) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                              onClick={() => openDeleteDialog(usage.id)}
-                            >
-                              <Trash2 className="mr-1 h-3 w-3" />
-                              删除
-                            </Button>
-                          )}
-                        </TableRowActions>
+                        {canStart(usage.status) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-green-600 hover:text-green-700"
+                            onClick={() => handleStart(usage.id)}
+                          >
+                            <PlayCircle className="mr-1 h-3 w-3" />
+                            开始考试
+                          </Button>
+                        )}
+                        {canFinish(usage.status) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
+                            onClick={() => handleFinish(usage.id)}
+                          >
+                            <CheckCircle2 className="mr-1 h-3 w-3" />
+                            结束考试
+                          </Button>
+                        )}
+                        {usage.status === 'finished' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() =>
+                              router.push(`/evaluation/exam-usage/results?usageId=${usage.id}`)
+                            }
+                          >
+                            <Eye className="mr-1 h-3 w-3" />
+                            查看考试结果
+                          </Button>
+                        )}
+                        {canDelete(usage.status) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                            onClick={() => openDeleteDialog(usage.id)}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            删除
+                          </Button>
+                        )}
+                      </TableRowActions>
                     </TableRow>
                   )
                 })
@@ -457,7 +462,7 @@ export default function ExamUsagePage() {
               <FieldLabel>目标类型</FieldLabel>
               <Select
                 value={formTargetType}
-                onValueChange={(v) => setFormTargetType(v as ExamUsage["targetType"])}
+                onValueChange={(v) => setFormTargetType(v as ExamUsage['targetType'])}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="请选择目标类型" />
@@ -481,11 +486,15 @@ export default function ExamUsagePage() {
             </Field>
           </FieldGroup>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)} disabled={createSubmitting}>
+            <Button
+              variant="outline"
+              onClick={() => setCreateDialogOpen(false)}
+              disabled={createSubmitting}
+            >
               取消
             </Button>
             <Button onClick={handleCreate} disabled={!isFormValid || createSubmitting}>
-              {createSubmitting ? "提交中..." : "创建"}
+              {createSubmitting ? '提交中...' : '创建'}
             </Button>
           </DialogFooter>
         </DialogContent>

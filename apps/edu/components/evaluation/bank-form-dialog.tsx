@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -8,11 +8,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
 import {
   Select,
   SelectContent,
@@ -20,15 +20,15 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { X, Upload, ImageIcon } from "lucide-react"
-import Image from "next/image"
-import type { QuestionBank, QuestionBankFormData } from "@/lib/types"
-import { evaluationBatchApi, fileApi } from "@/lib/api"
-import { UserSelector } from "@/components/shared/user-selector"
-import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@zhiyu/ui"
+} from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { X, Upload, ImageIcon } from 'lucide-react'
+import Image from 'next/image'
+import type { QuestionBank, QuestionBankFormData } from '@/lib/types'
+import { evaluationBatchApi, fileApi } from '@/lib/api'
+import { UserSelector } from '@/components/shared/user-selector'
+import { useAuth } from '@/components/auth-provider'
+import { useToast } from '@zhiyu/ui'
 interface BankFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -36,19 +36,14 @@ interface BankFormDialogProps {
   onSubmit: (data: QuestionBankFormData) => void
 }
 
-export function BankFormDialog({
-  open,
-  onOpenChange,
-  bank,
-  onSubmit,
-}: BankFormDialogProps) {
+export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormDialogProps) {
   const { tenantId } = useAuth()
   const { toast } = useToast()
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [coverUrl, setCoverUrl] = useState<string>("")
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [coverUrl, setCoverUrl] = useState<string>('')
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([])
-  const [batchId, setBatchId] = useState<string>("")
+  const [batchId, setBatchId] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
   const [loadingBatches, setLoadingBatches] = useState(false)
@@ -67,7 +62,9 @@ export function BankFormDialog({
         if (!cancelled) setLoadingBatches(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [open])
 
   useEffect(() => {
@@ -75,15 +72,15 @@ export function BankFormDialog({
       if (bank) {
         setName(bank.name)
         setDescription(bank.description)
-        setCoverUrl(bank.coverImage || "")
+        setCoverUrl(bank.coverImage || '')
         setCollaboratorIds(bank.collaboratorIds || [])
-        setBatchId(bank.batchId || "")
+        setBatchId(bank.batchId || '')
       } else {
-        setName("")
-        setDescription("")
-        setCoverUrl("")
+        setName('')
+        setDescription('')
+        setCoverUrl('')
         setCollaboratorIds([])
-        setBatchId("")
+        setBatchId('')
       }
     })
   }, [bank, open])
@@ -106,12 +103,12 @@ export function BankFormDialog({
     if (!file) return
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "提示", description: "文件大小不能超过 5MB" })
+      toast({ variant: 'destructive', title: '提示', description: '文件大小不能超过 5MB' })
       return
     }
 
-    if (!file.type.startsWith("image/")) {
-      toast({ variant: "destructive", title: "提示", description: "请上传图片文件" })
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: '提示', description: '请上传图片文件' })
       return
     }
 
@@ -119,14 +116,18 @@ export function BankFormDialog({
       const res = await fileApi.upload(file)
       setCoverUrl(res.url)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "上传失败", description: err?.message || "封面上传失败" })
+      toast({
+        variant: 'destructive',
+        title: '上传失败',
+        description: err?.message || '封面上传失败',
+      })
     }
   }
 
   const removeCover = () => {
-    setCoverUrl("")
+    setCoverUrl('')
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = ''
     }
   }
 
@@ -134,17 +135,15 @@ export function BankFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{bank ? "编辑题库" : "新建题库"}</DialogTitle>
+          <DialogTitle>{bank ? '编辑题库' : '新建题库'}</DialogTitle>
           <DialogDescription>
-            {bank ? "修改题库的基本信息" : "创建一个新的题库来管理题目"}
+            {bank ? '修改题库的基本信息' : '创建一个新的题库来管理题目'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
             <Field>
-              <FieldLabel htmlFor="name">
-                题库名称
-              </FieldLabel>
+              <FieldLabel htmlFor="name">题库名称</FieldLabel>
               <Input
                 id="name"
                 value={name}
@@ -154,9 +153,7 @@ export function BankFormDialog({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="description">
-                题库简介
-              </FieldLabel>
+              <FieldLabel htmlFor="description">题库简介</FieldLabel>
               <Textarea
                 id="description"
                 value={description}
@@ -166,9 +163,7 @@ export function BankFormDialog({
               />
             </Field>
             <Field>
-              <FieldLabel>
-                封面
-              </FieldLabel>
+              <FieldLabel>封面</FieldLabel>
               <FieldDescription>支持上传 5MB 以内的图片文件</FieldDescription>
               <input
                 ref={fileInputRef}
@@ -179,12 +174,7 @@ export function BankFormDialog({
               />
               {coverUrl ? (
                 <div className="relative mt-2 h-32 w-full overflow-hidden rounded-lg border">
-                  <Image
-                    src={coverUrl}
-                    alt="封面预览"
-                    fill
-                    className="object-cover"
-                  />
+                  <Image src={coverUrl} alt="封面预览" fill className="object-cover" />
                   <Button
                     type="button"
                     variant="destructive"
@@ -206,9 +196,7 @@ export function BankFormDialog({
               )}
             </Field>
             <Field>
-              <FieldLabel>
-                共建人
-              </FieldLabel>
+              <FieldLabel>共建人</FieldLabel>
               <FieldDescription>选择可以共同维护此题库的用户</FieldDescription>
               <div className="mt-2">
                 <UserSelector
@@ -222,17 +210,19 @@ export function BankFormDialog({
               </div>
             </Field>
             <Field>
-              <FieldLabel>
-                所属批次
-              </FieldLabel>
-              <Select value={batchId || "none"} onValueChange={(v) => setBatchId(v === "none" ? "" : v)} disabled={loadingBatches}>
+              <FieldLabel>所属批次</FieldLabel>
+              <Select
+                value={batchId || 'none'}
+                onValueChange={(v) => setBatchId(v === 'none' ? '' : v)}
+                disabled={loadingBatches}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingBatches ? "加载批次中..." : "选择所属批次"} />
+                  <SelectValue placeholder={loadingBatches ? '加载批次中...' : '选择所属批次'} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value="none">不设置批次</SelectItem>
-                    {batches.map(batch => (
+                    {batches.map((batch) => (
                       <SelectItem key={batch.id} value={batch.id}>
                         {batch.name}
                       </SelectItem>
@@ -243,9 +233,7 @@ export function BankFormDialog({
             </Field>
             {bank && (
               <Field>
-                <FieldLabel>
-                  当前版本号
-                </FieldLabel>
+                <FieldLabel>当前版本号</FieldLabel>
                 <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm">
                   {bank.version}
                 </div>
@@ -257,12 +245,11 @@ export function BankFormDialog({
               取消
             </Button>
             <Button type="submit" disabled={!name.trim()}>
-              {bank ? "保存" : "创建"}
+              {bank ? '保存' : '创建'}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
-
     </Dialog>
   )
 }

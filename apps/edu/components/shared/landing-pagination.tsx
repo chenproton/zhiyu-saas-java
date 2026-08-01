@@ -1,22 +1,25 @@
-"use client"
+'use client'
 
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-const ACCENT_CLASSES: Record<string, {
-  active: string
-  hover: string
-}> = {
+const ACCENT_CLASSES: Record<
+  string,
+  {
+    active: string
+    hover: string
+  }
+> = {
   purple: {
-    active: "bg-purple-500 border-purple-500 text-white shadow-md shadow-purple-500/20",
-    hover: "hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50",
+    active: 'bg-purple-500 border-purple-500 text-white shadow-md shadow-purple-500/20',
+    hover: 'hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50',
   },
   emerald: {
-    active: "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20",
-    hover: "hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/50",
+    active: 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20',
+    hover: 'hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/50',
   },
   blue: {
-    active: "bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20",
-    hover: "hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50",
+    active: 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20',
+    hover: 'hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50',
   },
 }
 
@@ -24,14 +27,14 @@ interface LandingPaginationProps {
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
-  accentColor?: "purple" | "emerald" | "blue"
+  accentColor?: 'purple' | 'emerald' | 'blue'
 }
 
 export function LandingPagination({
   currentPage,
   totalPages,
   onPageChange,
-  accentColor = "blue",
+  accentColor = 'blue',
 }: LandingPaginationProps) {
   if (totalPages <= 1) return null
 
@@ -46,11 +49,11 @@ export function LandingPagination({
     for (let i = 1; i <= totalPages; i++) pages.push(i)
   } else {
     if (currentPage <= 3) {
-      pages.push(1, 2, 3, 4, "...", totalPages)
+      pages.push(1, 2, 3, 4, '...', totalPages)
     } else if (currentPage >= totalPages - 2) {
-      pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages)
+      pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages)
     } else {
-      pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages)
+      pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages)
     }
   }
 
@@ -65,17 +68,19 @@ export function LandingPagination({
       </button>
       <div className="flex items-center gap-1.5">
         {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`ellipsis-${i}`} className="px-2 text-slate-400">...</span>
+          p === '...' ? (
+            <span key={`ellipsis-${i}`} className="px-2 text-slate-400">
+              ...
+            </span>
           ) : (
             <button
               key={p}
               onClick={() => onPageChange(p as number)}
-              className={`${pageBtn} ${currentPage === p ? `${cls.active} font-semibold` : ""}`}
+              className={`${pageBtn} ${currentPage === p ? `${cls.active} font-semibold` : ''}`}
             >
               {p}
             </button>
-          )
+          ),
         )}
       </div>
       <button

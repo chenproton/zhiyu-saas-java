@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useRouter } from "next/navigation"
-import { Eye } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useRouter } from 'next/navigation'
+import { Eye } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { StatusActionBar } from "@/components/shared/status-action-bar"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/components/auth-provider"
-import type { ContentListItem, ListRenderProps } from "@/components/shared/content-list-page"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+} from '@/components/ui/table'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { StatusActionBar } from '@/components/shared/status-action-bar'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@/components/auth-provider'
+import type { ContentListItem, ListRenderProps } from '@/components/shared/content-list-page'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 interface EvalListItem extends ContentListItem {
   code: string
@@ -32,26 +32,46 @@ interface EvalListItem extends ContentListItem {
   questions?: any[]
 }
 
-
-interface EvaluationListTableProps<T extends ContentListItem = ContentListItem> extends ListRenderProps<T> {
-  type: "bank" | "exam"
-  onReview?: (id: string, status: "approved" | "rejected") => void
+interface EvaluationListTableProps<
+  T extends ContentListItem = ContentListItem,
+> extends ListRenderProps<T> {
+  type: 'bank' | 'exam'
+  onReview?: (id: string, status: 'approved' | 'rejected') => void
 }
 
-export function EvaluationListTable<T extends ContentListItem = ContentListItem>(props: EvaluationListTableProps<T>) {
-  const { items, selectedIds, onSelectId, onSelectAll, onClone, onDelete,
-    onSubmitApproval, onWithdrawApproval, onViewRejectReason, onPublish,
-    onUnpublish, onArchive, onInviteCoBuild, batchMap, type, onReview } = props
+export function EvaluationListTable<T extends ContentListItem = ContentListItem>(
+  props: EvaluationListTableProps<T>,
+) {
+  const {
+    items,
+    selectedIds,
+    onSelectId,
+    onSelectAll,
+    onClone,
+    onDelete,
+    onSubmitApproval,
+    onWithdrawApproval,
+    onViewRejectReason,
+    onPublish,
+    onUnpublish,
+    onArchive,
+    onInviteCoBuild,
+    batchMap,
+    type,
+    onReview,
+  } = props
 
   const router = useRouter()
   const { hasPermission } = useAuth()
 
   const allSelectable = items.filter((b: any) => !b.isDraftPool)
-  const allSelected = allSelectable.length > 0 && allSelectable.every((b: any) => selectedIds.includes(b.id))
+  const allSelected =
+    allSelectable.length > 0 && allSelectable.every((b: any) => selectedIds.includes(b.id))
   const someSelected = allSelectable.some((b: any) => selectedIds.includes(b.id)) && !allSelected
 
-  const isBank = type === "bank"
-  const detailHref = (id: string) => isBank ? `/evaluation/question-banks/${id}` : `/evaluation/exams/${id}`
+  const isBank = type === 'bank'
+  const detailHref = (id: string) =>
+    isBank ? `/evaluation/question-banks/${id}` : `/evaluation/exams/${id}`
 
   const handleHeaderCheckbox = (checked: boolean) => {
     if (checked) {
@@ -67,14 +87,14 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
         <TableRow>
           <TableHead className="w-[40px] text-center">
             <Checkbox
-              checked={someSelected ? "indeterminate" : allSelected}
+              checked={someSelected ? 'indeterminate' : allSelected}
               onCheckedChange={(checked) => handleHeaderCheckbox(checked === true)}
               aria-label="全选"
             />
           </TableHead>
-          <TableHead className="w-[160px]">{isBank ? "题库名称" : "试卷名称"}</TableHead>
-          <TableHead className="w-[120px]">{isBank ? "题库编码" : "试卷编码"}</TableHead>
-          <TableHead className="w-[120px]">{isBank ? "题库简介" : "试卷简介"}</TableHead>
+          <TableHead className="w-[160px]">{isBank ? '题库名称' : '试卷名称'}</TableHead>
+          <TableHead className="w-[120px]">{isBank ? '题库编码' : '试卷编码'}</TableHead>
+          <TableHead className="w-[120px]">{isBank ? '题库简介' : '试卷简介'}</TableHead>
           <TableHead className="w-[80px]">题目数量</TableHead>
           {!isBank && <TableHead className="w-[80px]">总分</TableHead>}
           <TableHead className="w-[120px]">所属批次</TableHead>
@@ -88,10 +108,10 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
       <TableBody>
         {items.map((item: any) => {
           const isSelected = selectedIds.includes(item.id)
-          const batchName = item.batchId ? (batchMap.get(item.batchId) || "-") : "-"
+          const batchName = item.batchId ? batchMap.get(item.batchId) || '-' : '-'
           const isDraftPool = item.isDraftPool === true
           return (
-            <TableRow key={item.id} className={cn("group", isSelected && "bg-primary/5")}>
+            <TableRow key={item.id} className={cn('group', isSelected && 'bg-primary/5')}>
               <TableCell className="text-center">
                 <Checkbox
                   checked={isSelected}
@@ -114,22 +134,32 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                 </button>
               </TableCell>
               <TableCell className="truncate">
-                <span className="text-sm text-muted-foreground">{item.code || item.id.slice(0, 8)}</span>
+                <span className="text-sm text-muted-foreground">
+                  {item.code || item.id.slice(0, 8)}
+                </span>
               </TableCell>
               <TableCell className="truncate max-w-[120px]">
-                <span className="text-sm text-muted-foreground truncate block">{item.description || "-"}</span>
+                <span className="text-sm text-muted-foreground truncate block">
+                  {item.description || '-'}
+                </span>
               </TableCell>
               <TableCell>{item.questionCount} 题</TableCell>
               {!isBank && <TableCell>{item.totalScore ?? 0} 分</TableCell>}
               <TableCell className="text-sm text-muted-foreground">{batchName}</TableCell>
-              <TableCell className="text-sm text-muted-foreground truncate">{item.creatorName || item.creatorId || "-"}</TableCell>
               <TableCell className="text-sm text-muted-foreground truncate">
-                {item.collaboratorNames && item.collaboratorNames.length > 0 ? item.collaboratorNames.join(", ") : "-"}
+                {item.creatorName || item.creatorId || '-'}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground truncate">
+                {item.collaboratorNames && item.collaboratorNames.length > 0
+                  ? item.collaboratorNames.join(', ')
+                  : '-'}
               </TableCell>
               <TableCell>
                 <StatusBadge status={item.status} />
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">{formatDate(item.updatedAt)}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {formatDate(item.updatedAt)}
+              </TableCell>
               <TableRowActions className="sticky right-0 bg-white">
                 {isBank && isDraftPool ? (
                   <Button
@@ -149,8 +179,8 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                     onClone={() => onClone(item)}
                     onSubmit={() => onSubmitApproval(item)}
                     onWithdraw={() => onWithdrawApproval(item)}
-                    onApprove={onReview ? () => onReview(item.id, "approved") : undefined}
-                    onReject={onReview ? () => onReview(item.id, "rejected") : undefined}
+                    onApprove={onReview ? () => onReview(item.id, 'approved') : undefined}
+                    onReject={onReview ? () => onReview(item.id, 'rejected') : undefined}
                     onPublish={() => onPublish(item)}
                     onUnpublish={() => onUnpublish(item)}
                     onArchive={() => onArchive(item)}

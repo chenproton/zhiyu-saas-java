@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { CourseAdminPage } from "../_components/courses/course-admin-page"
+import { CourseAdminPage } from '../_components/courses/course-admin-page'
 
 export default function HybridCoursePage() {
   return (

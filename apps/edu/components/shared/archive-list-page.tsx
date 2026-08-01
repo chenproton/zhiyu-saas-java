@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useState, type ReactNode } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, type ReactNode } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
-import { Search, GraduationCap, Eye, RotateCcw, Trash2 } from "lucide-react"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+} from '@/components/ui/table'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
+import { Search, GraduationCap, Eye, RotateCcw, Trash2 } from 'lucide-react'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 
 export interface ArchiveColumn<T> {
   header: string
@@ -26,9 +26,7 @@ export interface ArchiveColumn<T> {
   cell: (item: T) => ReactNode
 }
 
-export interface ArchiveListPageProps<
-  T extends { id: string; name: string; status: string }
-> {
+export interface ArchiveListPageProps<T extends { id: string; name: string; status: string }> {
   entityLabel: string
   pageTitle: string
   pageDescription: string
@@ -58,9 +56,7 @@ export interface ArchiveListPageProps<
   emptyMessage?: string
 }
 
-export function ArchiveListPage<
-  T extends { id: string; name: string; status: string }
->({
+export function ArchiveListPage<T extends { id: string; name: string; status: string }>({
   entityLabel,
   pageTitle,
   pageDescription,
@@ -89,11 +85,7 @@ export function ArchiveListPage<
 
   const handleSelect = (id: string, checked: boolean) => {
     setSelectedIds((prev) =>
-      checked
-        ? prev.includes(id)
-          ? prev
-          : [...prev, id]
-        : prev.filter((item) => item !== id)
+      checked ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((item) => item !== id),
     )
   }
 
@@ -101,10 +93,8 @@ export function ArchiveListPage<
     setSelectedIds(checked ? items.map((p) => p.id) : [])
   }
 
-  const allSelected =
-    items.length > 0 && items.every((p) => selectedIds.includes(p.id))
-  const someSelected =
-    items.some((p) => selectedIds.includes(p.id)) && !allSelected
+  const allSelected = items.length > 0 && items.every((p) => selectedIds.includes(p.id))
+  const someSelected = items.some((p) => selectedIds.includes(p.id)) && !allSelected
 
   const handleBatchRestore = async () => {
     if (!onBatchRestore || selectedIds.length === 0) return
@@ -154,10 +144,10 @@ export function ArchiveListPage<
               <button
                 onClick={() => onSidebarSelect(null)}
                 className={cn(
-                  "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors",
+                  'w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors',
                   sidebarSelectedId === null
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted"
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted',
                 )}
               >
                 全部专业
@@ -167,10 +157,10 @@ export function ArchiveListPage<
                   key={item.id}
                   onClick={() => onSidebarSelect(item.id)}
                   className={cn(
-                    "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors",
+                    'w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors',
                     sidebarSelectedId === item.id
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted"
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted',
                   )}
                 >
                   {item.name}
@@ -196,11 +186,8 @@ export function ArchiveListPage<
           {hasBatchOps && selectedIds.length > 0 && (
             <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-white shadow-sm p-3">
               <span className="text-sm text-muted-foreground">
-                已选择{" "}
-                <span className="font-medium text-foreground">
-                  {selectedIds.length}
-                </span>{" "}
-                个{entityLabel}
+                已选择 <span className="font-medium text-foreground">{selectedIds.length}</span> 个
+                {entityLabel}
               </span>
               <div className="flex items-center gap-2">
                 {onBatchRestore && (
@@ -237,12 +224,8 @@ export function ArchiveListPage<
                     {hasBatchOps && (
                       <TableHead className="w-10 px-3">
                         <Checkbox
-                          checked={
-                            someSelected ? "indeterminate" : allSelected
-                          }
-                          onCheckedChange={(checked) =>
-                            handleSelectAll(checked === true)
-                          }
+                          checked={someSelected ? 'indeterminate' : allSelected}
+                          onCheckedChange={(checked) => handleSelectAll(checked === true)}
                           aria-label="全选"
                         />
                       </TableHead>
@@ -282,7 +265,7 @@ export function ArchiveListPage<
                         <TableRow
                           key={item.id}
                           className="group"
-                          data-state={isSelected ? "selected" : undefined}
+                          data-state={isSelected ? 'selected' : undefined}
                         >
                           {hasBatchOps && (
                             <TableCell className="px-3">
@@ -308,12 +291,7 @@ export function ArchiveListPage<
                             )}
                           </TableCell>
                           <TableRowActions className="px-3">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              asChild
-                            >
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                               <Link href={detailHref(item)}>
                                 <Eye className="mr-1 h-3 w-3" />
                                 查看
@@ -353,9 +331,11 @@ export function ArchiveListPage<
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
         title="确认删除"
-        description={deleteTarget ? `确定永久删除 "${deleteTarget.name}" 吗？此操作不可恢复。` : ""}
+        description={deleteTarget ? `确定永久删除 "${deleteTarget.name}" 吗？此操作不可恢复。` : ''}
         variant="destructive"
         onConfirm={confirmDelete}
       />

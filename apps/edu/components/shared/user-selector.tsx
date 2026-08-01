@@ -1,27 +1,41 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
-  ChevronDown, ChevronRight, Users as UsersIcon, Building,
-  Search, X, Check, Loader2
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
+  ChevronDown,
+  ChevronRight,
+  Users as UsersIcon,
+  Building,
+  Search,
+  X,
+  Check,
+  Loader2,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
-import {
-  orgApi, orgTypeApi, userManagementApi, portalUserManagementApi,
-} from "@/lib/api"
-import type { User } from "@/lib/api"
-import type { Organization, OrgType } from "@/lib/types/backend"
-import { typeMetaFor } from "@/lib/org-type-icons"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { cn } from '@/lib/utils'
+import { orgApi, orgTypeApi, userManagementApi, portalUserManagementApi } from '@/lib/api'
+import type { User } from '@/lib/api'
+import type { Organization, OrgType } from '@/lib/types/backend'
+import { typeMetaFor } from '@/lib/org-type-icons'
 
 interface UserSelectorProps {
   value: string[]
@@ -36,7 +50,13 @@ interface UserSelectorProps {
 }
 
 function OrgTreeRow({
-  node, level, orgTypeMap, selectedId, onSelect, collapsedIds, onToggle,
+  node,
+  level,
+  orgTypeMap,
+  selectedId,
+  onSelect,
+  collapsedIds,
+  onToggle,
 }: {
   node: Organization & { children?: Organization[] }
   level: number
@@ -59,28 +79,54 @@ function OrgTreeRow({
         tabIndex={0}
         onClick={() => onSelect(node.id)}
         className={cn(
-          "flex items-center gap-1.5 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors",
-          selectedId === node.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
+          'flex items-center gap-1.5 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors',
+          selectedId === node.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
         )}
         style={{ marginLeft: level * 16 }}
       >
         <button
-          onClick={(e) => { e.stopPropagation(); if (hasChildren) onToggle(node.id) }}
-          className="w-4 h-4 flex items-center justify-center shrink-0" tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (hasChildren) onToggle(node.id)
+          }}
+          className="w-4 h-4 flex items-center justify-center shrink-0"
+          tabIndex={-1}
         >
-          {hasChildren ? (expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />) : <span className="w-3.5" />}
+          {hasChildren ? (
+            expanded ? (
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            )
+          ) : (
+            <span className="w-3.5" />
+          )}
         </button>
-        <Icon className={cn("w-4 h-4 shrink-0", meta.color)} />
+        <Icon className={cn('w-4 h-4 shrink-0', meta.color)} />
         <span className="truncate">{node.name}</span>
       </div>
-      {hasChildren && expanded && children.map((child: Organization & { children?: Organization[] }) => (
-        <OrgTreeRow key={child.id} node={child} level={level + 1} orgTypeMap={orgTypeMap} selectedId={selectedId} onSelect={onSelect} collapsedIds={collapsedIds} onToggle={onToggle} />
-      ))}
+      {hasChildren &&
+        expanded &&
+        children.map((child: Organization & { children?: Organization[] }) => (
+          <OrgTreeRow
+            key={child.id}
+            node={child}
+            level={level + 1}
+            orgTypeMap={orgTypeMap}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            collapsedIds={collapsedIds}
+            onToggle={onToggle}
+          />
+        ))}
     </div>
   )
 }
 
-function collectSubtreeIds(orgMap: Map<string, Organization & { children?: Organization[] }>, rootId: string): Set<string> {
+function collectSubtreeIds(
+  orgMap: Map<string, Organization & { children?: Organization[] }>,
+  rootId: string,
+): Set<string> {
   const ids = new Set<string>()
   const collect = (node?: Organization & { children?: Organization[] }) => {
     if (!node || ids.has(node.id)) return
@@ -92,9 +138,15 @@ function collectSubtreeIds(orgMap: Map<string, Organization & { children?: Organ
 }
 
 export function UserSelector({
-  value, onChange, multiple = true, excludeStudent = true,
+  value,
+  onChange,
+  multiple = true,
+  excludeStudent = true,
   excludeUserIds = [],
-  placeholder = "选择用户", disabled = false, tenantId, usePortalApi = true,
+  placeholder = '选择用户',
+  disabled = false,
+  tenantId,
+  usePortalApi = true,
 }: UserSelectorProps) {
   const [open, setOpen] = useState(false)
   const [orgs, setOrgs] = useState<(Organization & { children?: Organization[] })[]>([])
@@ -105,7 +157,7 @@ export function UserSelector({
   const [users, setUsers] = useState<User[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState<string | null>(null)
-  const [userSearch, setUserSearch] = useState("")
+  const [userSearch, setUserSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>(value)
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const fetchedIdsRef = useRef<Set<string>>(new Set())
@@ -122,9 +174,12 @@ export function UserSelector({
   }, [orgTypes])
 
   const orgMap = useMemo(() => {
-    const map = new Map<string, (Organization & { children?: Organization[] })>()
+    const map = new Map<string, Organization & { children?: Organization[] }>()
     const flatten = (nodes: (Organization & { children?: Organization[] })[]) => {
-      nodes.forEach((n) => { map.set(n.id, n); if (n.children) flatten(n.children) })
+      nodes.forEach((n) => {
+        map.set(n.id, n)
+        if (n.children) flatten(n.children)
+      })
     }
     flatten(orgs)
     return map
@@ -134,7 +189,9 @@ export function UserSelector({
     if (items.length === 0) return
     setUserCache((prev) => {
       const next = { ...prev }
-      items.forEach((u) => { next[u.id] = u })
+      items.forEach((u) => {
+        next[u.id] = u
+      })
       return next
     })
   }, [])
@@ -148,8 +205,11 @@ export function UserSelector({
       ])
       setOrgs(treeRes.items)
       setOrgTypes(typesRes.items)
-    } catch { /* ignore */ }
-    finally { setOrgLoading(false) }
+    } catch {
+      /* ignore */
+    } finally {
+      setOrgLoading(false)
+    }
   }, [tenantId])
 
   const loadUsers = useCallback(async () => {
@@ -166,7 +226,7 @@ export function UserSelector({
       const res = await api.list(params)
       let filtered = res.items
       if (excludeStudent) {
-        filtered = filtered.filter((u) => !(u.roleCodes || []).includes("student"))
+        filtered = filtered.filter((u) => !(u.roleCodes || []).includes('student'))
       }
       if (excludeUserIdsRef.current.length > 0) {
         const excludeSet = new Set(excludeUserIdsRef.current)
@@ -175,7 +235,7 @@ export function UserSelector({
       setUsers(filtered)
       mergeUserCache(res.items)
     } catch (err) {
-      setUsersError(err instanceof Error ? err.message : "加载用户失败")
+      setUsersError(err instanceof Error ? err.message : '加载用户失败')
     } finally {
       setUsersLoading(false)
     }
@@ -186,7 +246,9 @@ export function UserSelector({
     ;(async () => {
       await loadOrgTree()
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [loadOrgTree])
 
   useEffect(() => {
@@ -194,14 +256,16 @@ export function UserSelector({
     ;(async () => {
       if (open) await loadUsers()
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [open, loadUsers])
 
   // Resolve names for selected ids that are not in cache yet (e.g. echo on edit),
   // so the trigger shows user names instead of raw ids.
   // Use a stable key derived from the content of value to avoid re-running the
   // effect when only the array reference changes but the IDs are the same.
-  const valueKey = useMemo(() => [...value].sort().join(","), [value])
+  const valueKey = useMemo(() => [...value].sort().join(','), [value])
   useEffect(() => {
     const missing = value.filter((id) => !userCache[id] && !fetchedIdsRef.current.has(id))
     if (missing.length === 0) return
@@ -210,12 +274,15 @@ export function UserSelector({
     let cancelled = false
     Promise.allSettled(missing.map((id) => api.get(id))).then((results) => {
       if (cancelled) return
-      const fetched = results
-        .filter((r): r is PromiseFulfilledResult<User> => r.status === "fulfilled" && !!r.value)
+      const fetched = results.filter(
+        (r): r is PromiseFulfilledResult<User> => r.status === 'fulfilled' && !!r.value,
+      )
       if (fetched.length === 0) return
       mergeUserCache(fetched.map((r) => r.value))
     })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
     // valueKey 已稳定化 value 内容，避免数组引用变化导致重复请求
   }, [valueKey, value, userCache, usePortalApi, mergeUserCache])
 
@@ -247,22 +314,28 @@ export function UserSelector({
     setOpen(false)
   }
 
-  const roleLabel = (u: User) => (u.roleNames || []).join("、")
+  const roleLabel = (u: User) => (u.roleNames || []).join('、')
   const orgName = (userId?: string) => {
-    if (!userId) return ""
+    if (!userId) return ''
     const u = users.find((x) => x.id === userId)
-    if (!u?.orgNodeId) return ""
+    if (!u?.orgNodeId) return ''
     return orgMap.get(u.orgNodeId)?.name || u.orgNodeId
   }
 
-  const displayName = useCallback((id: string) => {
-    const u = userCache[id] || users.find((x) => x.id === id)
-    return u?.name || u?.username || id
-  }, [userCache, users])
+  const displayName = useCallback(
+    (id: string) => {
+      const u = userCache[id] || users.find((x) => x.id === id)
+      return u?.name || u?.username || id
+    },
+    [userCache, users],
+  )
 
-  const triggerText = value.length === 0 ? placeholder
-    : value.length <= 3 ? value.map((id) => displayName(id)).join("、")
-    : `已选 ${value.length} 人`
+  const triggerText =
+    value.length === 0
+      ? placeholder
+      : value.length <= 3
+        ? value.map((id) => displayName(id)).join('、')
+        : `已选 ${value.length} 人`
 
   return (
     <>
@@ -270,12 +343,13 @@ export function UserSelector({
         type="button"
         variant="outline"
         disabled={disabled}
-        className={cn("w-full justify-start text-left font-normal", value.length === 0 && "text-muted-foreground")}
+        className={cn(
+          'w-full justify-start text-left font-normal',
+          value.length === 0 && 'text-muted-foreground',
+        )}
         onClick={() => setOpen(true)}
       >
-        {value.length > 0 && (
-          <UsersIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
+        {value.length > 0 && <UsersIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />}
         <span className="truncate">{triggerText}</span>
       </Button>
 
@@ -290,7 +364,9 @@ export function UserSelector({
             {/* Left: Org Tree */}
             <div className="w-60 border-r shrink-0 overflow-y-auto px-3 py-2">
               {orgLoading ? (
-                <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
               ) : (
                 <>
                   <div
@@ -298,8 +374,8 @@ export function UserSelector({
                     tabIndex={0}
                     onClick={() => setSelectedOrgId(null)}
                     className={cn(
-                      "flex items-center gap-2 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors mb-1",
-                      !selectedOrgId ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
+                      'flex items-center gap-2 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors mb-1',
+                      !selectedOrgId ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
                     )}
                   >
                     <Building className="w-4 h-4 text-slate-600" />
@@ -307,9 +383,13 @@ export function UserSelector({
                   </div>
                   {orgs.map((node) => (
                     <OrgTreeRow
-                      key={node.id} node={node} level={0}
-                      orgTypeMap={orgTypeMap} selectedId={selectedOrgId}
-                      onSelect={setSelectedOrgId} collapsedIds={collapsedIds}
+                      key={node.id}
+                      node={node}
+                      level={0}
+                      orgTypeMap={orgTypeMap}
+                      selectedId={selectedOrgId}
+                      onSelect={setSelectedOrgId}
+                      collapsedIds={collapsedIds}
                       onToggle={toggleOrg}
                     />
                   ))}
@@ -333,7 +413,9 @@ export function UserSelector({
 
               <div className="flex-1 overflow-y-auto min-h-0">
                 {usersLoading ? (
-                  <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
                 ) : usersError ? (
                   <div className="flex flex-col items-center justify-center py-12 text-red-500">
                     <p className="text-sm">{usersError}</p>
@@ -348,7 +430,7 @@ export function UserSelector({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-10">{multiple ? "" : ""}</TableHead>
+                        <TableHead className="w-10">{multiple ? '' : ''}</TableHead>
                         <TableHead className="text-xs">账号</TableHead>
                         <TableHead className="text-xs">姓名</TableHead>
                         <TableHead className="text-xs">所属组织</TableHead>
@@ -359,7 +441,10 @@ export function UserSelector({
                       {users.map((u) => (
                         <TableRow
                           key={u.id}
-                          className={cn("cursor-pointer", selectedIds.includes(u.id) && "bg-primary/5")}
+                          className={cn(
+                            'cursor-pointer',
+                            selectedIds.includes(u.id) && 'bg-primary/5',
+                          )}
                           onClick={() => toggleUser(u.id)}
                         >
                           <TableCell>
@@ -367,8 +452,12 @@ export function UserSelector({
                           </TableCell>
                           <TableCell className="text-sm font-medium">{u.username}</TableCell>
                           <TableCell className="text-sm">{u.name}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{orgMap.get(u.orgNodeId || "")?.name || "-"}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{roleLabel(u)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {orgMap.get(u.orgNodeId || '')?.name || '-'}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {roleLabel(u)}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -383,7 +472,11 @@ export function UserSelector({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <span className="text-sm text-muted-foreground shrink-0">
-                  {multiple ? `已选 ${selectedIds.length} 人` : selectedIds.length > 0 ? "已选" : "未选择"}
+                  {multiple
+                    ? `已选 ${selectedIds.length} 人`
+                    : selectedIds.length > 0
+                      ? '已选'
+                      : '未选择'}
                 </span>
                 <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
                   {selectedIds.map((id) => {
@@ -391,7 +484,10 @@ export function UserSelector({
                       <Badge key={id} variant="secondary" className="gap-1 pl-2">
                         <span className="max-w-[120px] truncate">{displayName(id)}</span>
                         <button
-                          onClick={(e) => { e.stopPropagation(); removeSelected(id) }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeSelected(id)
+                          }}
                           className="ml-0.5 rounded-full hover:bg-muted p-0.5"
                         >
                           <X className="h-3 w-3" />
@@ -402,9 +498,12 @@ export function UserSelector({
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-4">
-                <Button variant="outline" size="sm" onClick={() => setOpen(false)}>取消</Button>
+                <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+                  取消
+                </Button>
                 <Button size="sm" onClick={handleConfirm}>
-                  <Check className="mr-1 h-4 w-4" />确认
+                  <Check className="mr-1 h-4 w-4" />
+                  确认
                 </Button>
               </div>
             </div>

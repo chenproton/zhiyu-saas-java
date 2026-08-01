@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Plus, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from 'react'
+import { Plus, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -10,16 +10,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import {
   GranularLessonSelectDialog,
   type GranularLessonOption,
-} from "./granular-lesson-select-dialog"
+} from './granular-lesson-select-dialog'
 
 export interface KnowledgePointFormValues {
   name: string
@@ -31,7 +31,7 @@ export interface KnowledgePointFormValues {
 interface KnowledgePointFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  mode: "add" | "edit" | "clone"
+  mode: 'add' | 'edit' | 'clone'
   initialValues?: Partial<KnowledgePointFormValues>
   granularCourses: GranularLessonOption[]
   onSave: (values: KnowledgePointFormValues) => void
@@ -51,31 +51,30 @@ export function KnowledgePointFormDialog({
   onSave,
   onCreateGranularLesson,
 }: KnowledgePointFormDialogProps) {
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [code, setCode] = useState("")
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [code, setCode] = useState('')
   const [granularLessonIds, setGranularLessonIds] = useState<string[]>([])
   const [glSelectOpen, setGlSelectOpen] = useState(false)
 
   useEffect(() => {
     ;(async () => {
       if (open) {
-        setName(initialValues?.name ?? "")
-        setDescription(initialValues?.description ?? "")
-        setCode(initialValues?.code ?? (mode === "edit" ? "" : generateKpCode()))
+        setName(initialValues?.name ?? '')
+        setDescription(initialValues?.description ?? '')
+        setCode(initialValues?.code ?? (mode === 'edit' ? '' : generateKpCode()))
         setGranularLessonIds(initialValues?.granularLessonIds ?? [])
       }
     })()
   }, [open, initialValues, mode])
 
-  const title =
-    mode === "add" ? "新增知识点" : mode === "clone" ? "克隆知识点" : "编辑知识点"
+  const title = mode === 'add' ? '新增知识点' : mode === 'clone' ? '克隆知识点' : '编辑知识点'
   const desc =
-    mode === "add"
-      ? "创建一个新的知识点"
-      : mode === "clone"
-      ? `基于「${initialValues?.name ?? ""}」创建副本`
-      : "修改知识点信息"
+    mode === 'add'
+      ? '创建一个新的知识点'
+      : mode === 'clone'
+        ? `基于「${initialValues?.name ?? ''}」创建副本`
+        : '修改知识点信息'
 
   const handleSave = () => {
     if (!name.trim()) return
@@ -87,9 +86,7 @@ export function KnowledgePointFormDialog({
     })
   }
 
-  const selectedGranularLessons = granularCourses.filter((g) =>
-    granularLessonIds.includes(g.id)
-  )
+  const selectedGranularLessons = granularCourses.filter((g) => granularLessonIds.includes(g.id))
 
   return (
     <>
@@ -123,14 +120,12 @@ export function KnowledgePointFormDialog({
               <Label>编码</Label>
               <Input
                 value={code}
-                disabled={mode !== "edit"}
+                disabled={mode !== 'edit'}
                 onChange={(e) => setCode(e.target.value)}
-                className={cn("mt-1.5", mode !== "edit" && "bg-gray-50")}
+                className={cn('mt-1.5', mode !== 'edit' && 'bg-gray-50')}
               />
               <p className="text-xs text-gray-400 mt-1">
-                {mode === "edit"
-                  ? "可修改编码"
-                  : "系统自动生成，不可修改"}
+                {mode === 'edit' ? '可修改编码' : '系统自动生成，不可修改'}
               </p>
             </div>
             <div>
@@ -139,18 +134,12 @@ export function KnowledgePointFormDialog({
                 {selectedGranularLessons.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {selectedGranularLessons.map((gl) => (
-                      <Badge
-                        key={gl.id}
-                        variant="secondary"
-                        className="text-xs gap-1"
-                      >
+                      <Badge key={gl.id} variant="secondary" className="text-xs gap-1">
                         {gl.name}
                         <X
                           className="h-3 w-3 cursor-pointer"
                           onClick={() =>
-                            setGranularLessonIds((prev) =>
-                              prev.filter((x) => x !== gl.id)
-                            )
+                            setGranularLessonIds((prev) => prev.filter((x) => x !== gl.id))
                           }
                         />
                       </Badge>
@@ -176,7 +165,7 @@ export function KnowledgePointFormDialog({
                         const newId = await onCreateGranularLesson()
                         if (newId) {
                           setGranularLessonIds((prev) =>
-                            prev.includes(newId) ? prev : [...prev, newId]
+                            prev.includes(newId) ? prev : [...prev, newId],
                           )
                         }
                       }}
@@ -194,11 +183,7 @@ export function KnowledgePointFormDialog({
               取消
             </Button>
             <Button onClick={handleSave} disabled={!name.trim()}>
-              {mode === "add"
-                ? "新增并选中"
-                : mode === "clone"
-                ? "克隆并选中"
-                : "保存修改"}
+              {mode === 'add' ? '新增并选中' : mode === 'clone' ? '克隆并选中' : '保存修改'}
             </Button>
           </DialogFooter>
         </DialogContent>

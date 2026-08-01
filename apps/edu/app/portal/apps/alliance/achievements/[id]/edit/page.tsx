@@ -1,25 +1,45 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { MultiSelect } from "@/components/ui/multi-select"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import type { AllianceAchievement, AllianceEnterprise, AllianceProject, AllianceListResponse } from "@/lib/types"
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { MultiSelect } from '@/components/ui/multi-select'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalRequest } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import type {
+  AllianceAchievement,
+  AllianceEnterprise,
+  AllianceProject,
+  AllianceListResponse,
+} from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
-  "智能制造学院", "信息技术学院", "经济管理学院", "艺术设计学院",
-  "新能源工程学院", "生物医药学院", "现代服务学院", "国际教育学院",
-  "创新创业学院", "继续教育学院", "基础教育学院", "马克思主义学院",
+  '智能制造学院',
+  '信息技术学院',
+  '经济管理学院',
+  '艺术设计学院',
+  '新能源工程学院',
+  '生物医药学院',
+  '现代服务学院',
+  '国际教育学院',
+  '创新创业学院',
+  '继续教育学院',
+  '基础教育学院',
+  '马克思主义学院',
 ]
 
 export default function AllianceAchievementEditPage() {
@@ -37,15 +57,15 @@ export default function AllianceAchievementEditPage() {
     if (!tenantId || !id) return
     Promise.all([
       portalRequest<AllianceAchievement>(`/alliance/achievements/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterprise>>("/alliance/enterprises?limit=1000"),
-      portalRequest<AllianceListResponse<AllianceProject>>("/alliance/projects?limit=1000"),
+      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
+      portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
     ])
       .then(([a, ents, projs]) => {
         setItem(a)
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
         setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
       })
-      .catch((e) => toast({ title: "加载失败", description: e.message, variant: "destructive" }))
+      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
   }, [tenantId, id, toast])
 
@@ -53,11 +73,14 @@ export default function AllianceAchievementEditPage() {
     if (!item) return
     setSaving(true)
     try {
-      await portalRequest(`/alliance/achievements/${id}`, { method: "PUT", body: JSON.stringify(item) })
-      toast({ title: "成果已更新" })
+      await portalRequest(`/alliance/achievements/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(item),
+      })
+      toast({ title: '成果已更新' })
       router.push(`/portal/apps/alliance/achievements/${id}`)
     } catch (e: any) {
-      toast({ title: "保存失败", description: e.message, variant: "destructive" })
+      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -66,7 +89,8 @@ export default function AllianceAchievementEditPage() {
   if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
   if (!item) return <div className="text-center py-12 text-muted-foreground">成果不存在</div>
 
-  const setField = (field: string, value: any) => setItem({ ...item, [field]: value } as AllianceAchievement)
+  const setField = (field: string, value: any) =>
+    setItem({ ...item, [field]: value } as AllianceAchievement)
   const enterpriseIds: string[] = (item as any).enterpriseIds || []
   const projectIds: string[] = (item as any).projectIds || []
   const secondaryColleges: string[] = (item as any).secondaryColleges || []
@@ -75,7 +99,8 @@ export default function AllianceAchievementEditPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" />返回
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          返回
         </Button>
         <h1 className="text-xl font-bold">编辑合作成果</h1>
       </div>
@@ -83,16 +108,20 @@ export default function AllianceAchievementEditPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
-            <CardHeader><CardTitle>基本信息</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>基本信息</CardTitle>
+            </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>成果名称 *</Label>
-                <Input value={item.title} onChange={(e) => setField("title", e.target.value)} />
+                <Input value={item.title} onChange={(e) => setField('title', e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label>成果类型</Label>
-                <Select value={item.type} onValueChange={(v) => setField("type", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={item.type} onValueChange={(v) => setField('type', v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="job">岗位</SelectItem>
                     <SelectItem value="scene">场景</SelectItem>
@@ -103,29 +132,48 @@ export default function AllianceAchievementEditPage() {
               </div>
               <div className="grid gap-2">
                 <Label>成果日期</Label>
-                <Input value={item.achievementDate || ""} onChange={(e) => setField("achievementDate", e.target.value)} type="date" />
+                <Input
+                  value={item.achievementDate || ''}
+                  onChange={(e) => setField('achievementDate', e.target.value)}
+                  type="date"
+                />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>成果描述</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>成果描述</CardTitle>
+            </CardHeader>
             <CardContent>
-              <Textarea value={item.description || ""} onChange={(e) => setField("description", e.target.value)} rows={5} />
+              <Textarea
+                value={item.description || ''}
+                onChange={(e) => setField('description', e.target.value)}
+                rows={5}
+              />
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>归属项目</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>归属项目</CardTitle>
+            </CardHeader>
             <CardContent>
-              <Select value={projectIds?.[0] || "__none"} onValueChange={(v) => setField("projectIds", v === "__none" ? [] : [v])}>
-                <SelectTrigger><SelectValue placeholder="选择归属项目（可选）" /></SelectTrigger>
+              <Select
+                value={projectIds?.[0] || '__none'}
+                onValueChange={(v) => setField('projectIds', v === '__none' ? [] : [v])}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="选择归属项目（可选）" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">不关联项目</SelectItem>
                   {projects.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -133,35 +181,44 @@ export default function AllianceAchievementEditPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>合作企业</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>合作企业</CardTitle>
+            </CardHeader>
             <CardContent>
               <MultiSelect
                 options={enterprises}
                 value={enterpriseIds}
-                onChange={(v) => setField("enterpriseIds", v)}
+                onChange={(v) => setField('enterpriseIds', v)}
                 placeholder="选择合作企业"
               />
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>二级学院</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>二级学院</CardTitle>
+            </CardHeader>
             <CardContent>
               <MultiSelect
                 options={SECONDARY_COLLEGES}
                 value={secondaryColleges}
-                onChange={(v) => setField("secondaryColleges", v)}
+                onChange={(v) => setField('secondaryColleges', v)}
                 placeholder="选择归属学院"
               />
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>设置</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>设置</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label>公开显示</Label>
-                <Switch checked={item.isPublic || false} onCheckedChange={(v) => setField("isPublic", v)} />
+                <Switch
+                  checked={item.isPublic || false}
+                  onCheckedChange={(v) => setField('isPublic', v)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -171,7 +228,9 @@ export default function AllianceAchievementEditPage() {
               <Button className="w-full" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}保存
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>取消</Button>
+              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+                取消
+              </Button>
             </CardContent>
           </Card>
         </div>

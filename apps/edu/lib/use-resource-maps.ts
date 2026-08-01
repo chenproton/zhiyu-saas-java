@@ -17,7 +17,7 @@ export function useIndustryMap() {
         })
         setMap(nameMap)
       })
-      .catch((err) => reportError(err, { source: "加载行业字典" }))
+      .catch((err) => reportError(err, { source: '加载行业字典' }))
   }, [])
 
   return map
@@ -36,7 +36,7 @@ export function useMajorMap() {
         })
         setMap(nameMap)
       })
-      .catch((err) => reportError(err, { source: "加载专业字典" }))
+      .catch((err) => reportError(err, { source: '加载专业字典' }))
   }, [])
 
   return map

@@ -103,7 +103,13 @@ export interface TaskEvaluationConfig {
     quiz?: TaskEvalPoint[]
   }
   reviewSteps?: TaskReviewStep[]
-  randomDrawQuestions?: { id: string; name: string; description: string; answer: string; major: string }[]
+  randomDrawQuestions?: {
+    id: string
+    name: string
+    description: string
+    answer: string
+    major: string
+  }[]
   paperConfig?: TaskPaperConfig
   questionBankConfig?: TaskQuestionBankConfig
   quizConfig?: TaskQuizConfig

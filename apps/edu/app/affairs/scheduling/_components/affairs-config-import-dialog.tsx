@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useToast } from "@zhiyu/ui"
-import { importExportApi, downloadBlob } from "@zhiyu/api-client"
-import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
+import { useToast } from '@zhiyu/ui'
+import { importExportApi, downloadBlob } from '@zhiyu/api-client'
+import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 
 interface AffairsConfigImportDialogProps {
   open: boolean
@@ -10,26 +10,34 @@ interface AffairsConfigImportDialogProps {
   onImported: () => void
 }
 
-export function AffairsConfigImportDialog({ open, onOpenChange, onImported }: AffairsConfigImportDialogProps) {
+export function AffairsConfigImportDialog({
+  open,
+  onOpenChange,
+  onImported,
+}: AffairsConfigImportDialogProps) {
   const { toast } = useToast()
 
   const handleDownload = async () => {
-    const res = await importExportApi.downloadTemplate("affairs-config" as any)
-    downloadBlob(await res.blob(), "教务配置批量导入模板.xlsx")
+    const res = await importExportApi.downloadTemplate('affairs-config' as any)
+    downloadBlob(await res.blob(), '教务配置批量导入模板.xlsx')
   }
 
   const handleImport = async (files: File[]) => {
     if (files.length === 0) return false
     try {
-      const data = await importExportApi.importExcel("affairs-config" as any, files[0])
+      const data = await importExportApi.importExcel('affairs-config' as any, files[0])
       toast({
-        title: "导入完成",
-        description: `学期 ${(data as any).termsCreated || 0}${(data as any).termsSkipped ? `（跳过${(data as any).termsSkipped}）` : ""} · 场地 ${(data as any).venuesCreated || 0}${(data as any).venuesSkipped ? `（跳过${(data as any).venuesSkipped}）` : ""} · 节次 ${(data as any).periodSlotsCreated || 0}${(data as any).periodSlotsSkipped ? `（跳过${(data as any).periodSlotsSkipped}）` : ""}`,
+        title: '导入完成',
+        description: `学期 ${(data as any).termsCreated || 0}${(data as any).termsSkipped ? `（跳过${(data as any).termsSkipped}）` : ''} · 场地 ${(data as any).venuesCreated || 0}${(data as any).venuesSkipped ? `（跳过${(data as any).venuesSkipped}）` : ''} · 节次 ${(data as any).periodSlotsCreated || 0}${(data as any).periodSlotsSkipped ? `（跳过${(data as any).periodSlotsSkipped}）` : ''}`,
       })
       onImported()
       return true
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "请检查文件格式" })
+      toast({
+        variant: 'destructive',
+        title: '导入失败',
+        description: err.message || '请检查文件格式',
+      })
       return false
     }
   }
@@ -47,7 +55,7 @@ export function AffairsConfigImportDialog({ open, onOpenChange, onImported }: Af
       downloadLabel="下载教务配置批量导入模板"
       onDownload={handleDownload}
       uploadHint="点击选择已填写的 Excel 文件"
-      importLabel={() => "开始导入"}
+      importLabel={() => '开始导入'}
       onImport={handleImport}
     />
   )

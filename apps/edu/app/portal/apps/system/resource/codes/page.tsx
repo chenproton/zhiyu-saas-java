@@ -1,20 +1,27 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Search, Lock, Info, Loader2 } from "lucide-react"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest, buildQuery, type ListResponse } from "@/lib/api"
-import type { ResourceCode } from "@/lib/types/backend"
+import { useEffect, useMemo, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Search, Lock, Info, Loader2 } from 'lucide-react'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalRequest, buildQuery, type ListResponse } from '@/lib/api'
+import type { ResourceCode } from '@/lib/types/backend'
 
 export default function ResourceCodesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const [codes, setCodes] = useState<ResourceCode[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     if (authLoading || !tenantId) return
@@ -24,13 +31,15 @@ export default function ResourceCodesPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await portalRequest<ListResponse<ResourceCode>>(`/resource-codes${buildQuery({ tenantId, limit: 1000 })}`)
+        const res = await portalRequest<ListResponse<ResourceCode>>(
+          `/resource-codes${buildQuery({ tenantId, limit: 1000 })}`,
+        )
         if (!cancelled) {
           setCodes(res.items)
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "加载资源编码失败")
+          setError(err instanceof Error ? err.message : '加载资源编码失败')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -43,18 +52,14 @@ export default function ResourceCodesPage() {
   }, [tenantId, authLoading])
 
   const filteredCodes = useMemo(
-    () =>
-      codes.filter(
-        (code) =>
-          code.name.includes(searchTerm) || code.code.includes(searchTerm)
-      ),
-    [codes, searchTerm]
+    () => codes.filter((code) => code.name.includes(searchTerm) || code.code.includes(searchTerm)),
+    [codes, searchTerm],
   )
 
   const typeLabel = (type?: string) => {
-    if (type === "public") return "公共编码"
-    if (type === "custom") return "自定义编码"
-    return type || "公共编码"
+    if (type === 'public') return '公共编码'
+    if (type === 'custom') return '自定义编码'
+    return type || '公共编码'
   }
 
   return (
@@ -68,13 +73,20 @@ export default function ResourceCodesPage() {
 
       <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-100 flex items-center gap-2">
         <Info className="w-4 h-4 text-blue-500 shrink-0" />
-        <span className="text-sm text-blue-700">仅可通过租户 License 导入资源编码，不支持手动新增、编辑或删除</span>
+        <span className="text-sm text-blue-700">
+          仅可通过租户 License 导入资源编码，不支持手动新增、编辑或删除
+        </span>
       </div>
 
       <div className="mb-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="搜索编码名称或代码..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+          <Input
+            placeholder="搜索编码名称或代码..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
         </div>
       </div>
 
@@ -107,7 +119,7 @@ export default function ResourceCodesPage() {
                 <TableRow key={code.id} className="border-border">
                   <TableCell className="font-mono text-sm">{code.code}</TableCell>
                   <TableCell className="font-medium">{code.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{code.description || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{code.description || '-'}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">
                       <Lock className="w-3 h-3 mr-1" />

@@ -93,7 +93,7 @@ export function convertJobBatchToBatch(jb: JobBatch): Batch {
 
 export function convertApiApprovalToLocal(
   ar: ApiApprovalRecord,
-  positionMap: Map<string, CareerPosition>
+  positionMap: Map<string, CareerPosition>,
 ): ApprovalRecord {
   const position = positionMap.get(ar.targetId)
   const history = (ar.history || []).map((h, idx) => ({
@@ -121,7 +121,9 @@ export function convertApiApprovalToLocal(
   }
 }
 
-export function convertApiRecommendationToLocal(rec: ApiPositionRecommendation): PositionRecommendation {
+export function convertApiRecommendationToLocal(
+  rec: ApiPositionRecommendation,
+): PositionRecommendation {
   return {
     id: rec.id,
     major: rec.majorName || '',
@@ -148,7 +150,9 @@ export function convertApiAbilityToLocal(a: AbilityPoint): Ability {
   }
 }
 
-export function positionToCreateRequest(data: Omit<Position, 'id' | 'createdAt' | 'updatedAt'>): Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'> {
+export function positionToCreateRequest(
+  data: Omit<Position, 'id' | 'createdAt' | 'updatedAt'>,
+): Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'> {
   return {
     batchId: data.batchId || undefined,
     name: data.name,
@@ -169,7 +173,9 @@ export function positionToCreateRequest(data: Omit<Position, 'id' | 'createdAt' 
   }
 }
 
-export function positionToUpdateRequest(data: Partial<Position>): Partial<Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'>> {
+export function positionToUpdateRequest(
+  data: Partial<Position>,
+): Partial<Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'>> {
   const req: Partial<Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'>> = {}
   if (data.batchId !== undefined) req.batchId = data.batchId || undefined
   if (data.name !== undefined) req.name = data.name
@@ -192,7 +198,9 @@ export function positionToUpdateRequest(data: Partial<Position>): Partial<Omit<C
   return req
 }
 
-export function convertApiResponsibilityToLocal(r: ApiPositionResponsibility): PositionResponsibility {
+export function convertApiResponsibilityToLocal(
+  r: ApiPositionResponsibility,
+): PositionResponsibility {
   return {
     id: r.id,
     name: r.name,
@@ -200,7 +208,9 @@ export function convertApiResponsibilityToLocal(r: ApiPositionResponsibility): P
   }
 }
 
-export function convertLocalResponsibilityToApi(r: PositionResponsibility): Omit<ApiPositionResponsibility, 'id'> {
+export function convertLocalResponsibilityToApi(
+  r: PositionResponsibility,
+): Omit<ApiPositionResponsibility, 'id'> {
   return {
     careerPositionId: '', // filled by caller
     name: r.name,
@@ -220,7 +230,9 @@ export function convertApiCertificateToLocal(c: ApiPositionCertificate): Positio
   }
 }
 
-export function convertLocalCertificateToApi(c: PositionCertificate): Omit<ApiPositionCertificate, 'id'> {
+export function convertLocalCertificateToApi(
+  c: PositionCertificate,
+): Omit<ApiPositionCertificate, 'id'> {
   return {
     careerPositionId: '', // filled by caller
     certificateLibraryId: c.libraryId || '',
@@ -231,7 +243,9 @@ export function convertLocalCertificateToApi(c: PositionCertificate): Omit<ApiPo
   }
 }
 
-export function convertApiAbilityBindingToLocal(b: ApiPositionAbilityBinding): PositionAbilityBinding {
+export function convertApiAbilityBindingToLocal(
+  b: ApiPositionAbilityBinding,
+): PositionAbilityBinding {
   return {
     id: b.id,
     responsibilityId: b.responsibilityId,
@@ -248,7 +262,9 @@ export function convertApiAbilityBindingToLocal(b: ApiPositionAbilityBinding): P
   }
 }
 
-export function convertLocalAbilityBindingToApi(b: PositionAbilityBinding): Omit<ApiPositionAbilityBinding, 'id'> {
+export function convertLocalAbilityBindingToApi(
+  b: PositionAbilityBinding,
+): Omit<ApiPositionAbilityBinding, 'id'> {
   return {
     careerPositionId: '', // filled by caller
     responsibilityId: b.responsibilityId,

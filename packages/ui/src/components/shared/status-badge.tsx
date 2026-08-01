@@ -1,13 +1,21 @@
-"use client"
+'use client'
 
-import { Loader2 } from "lucide-react"
-import { getStatusConfig } from "@zhiyu/shared-types"
+import { Loader2 } from 'lucide-react'
+import { getStatusConfig } from '@zhiyu/shared-types'
 
-export function StatusBadge({ status, label, className }: { status: string; label?: string; className?: string }) {
+export function StatusBadge({
+  status,
+  label,
+  className,
+}: {
+  status: string
+  label?: string
+  className?: string
+}) {
   const config = getStatusConfig(status)
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${className || ""}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${className || ''}`}
       style={{ background: config.bg, color: config.color }}
     >
       {label ?? config.label}
@@ -15,7 +23,7 @@ export function StatusBadge({ status, label, className }: { status: string; labe
   )
 }
 
-export function EmptyState({ icon, text = "暂无数据" }: { icon?: React.ReactNode; text?: string }) {
+export function EmptyState({ icon, text = '暂无数据' }: { icon?: React.ReactNode; text?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center text-sm text-gray-400">
       {icon || (

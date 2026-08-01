@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { useState, useRef, useCallback, useEffect } from "react"
-import { useAuth } from "@/components/auth-provider"
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { useAuth } from '@/components/auth-provider'
 import {
   knowledgeApi,
   abilityApi,
@@ -12,11 +12,11 @@ import {
   scenarioApi,
   taskApi,
   courseApi,
-} from "@/lib/api"
-import type { KnowledgePointItem, Course } from "@/lib/types/lesson"
-import type { ResourceItem } from "@/components/shared/resource-selector"
-import type { RubricScheme } from "@/components/evaluation-rules/types"
-import { setLoadedExams, type LoadedExam } from "../shared-defs"
+} from '@/lib/api'
+import type { KnowledgePointItem, Course } from '@/lib/types/lesson'
+import type { ResourceItem } from '@/components/shared/resource-selector'
+import type { RubricScheme } from '@/components/evaluation-rules/types'
+import { setLoadedExams, type LoadedExam } from '../shared-defs'
 
 export type { RubricScheme }
 
@@ -151,10 +151,10 @@ export function useTaskDatasets(scenarioId: string): UseTaskDatasetsResult {
 
       const jobs = pending.map(async (key) => {
         try {
-          if (key === "knowledge") {
+          if (key === 'knowledge') {
             const [kpRes, glRes] = await Promise.all([
               knowledgeApi.list({ limit: 1000 }),
-              courseApi.list({ type: "granular", limit: 1000 }),
+              courseApi.list({ type: 'granular', limit: 1000 }),
             ])
             const nextKp: TaskKnowledgePointItem[] = []
             const creatorCustomIds = new Set<string>()
@@ -175,10 +175,11 @@ export function useTaskDatasets(scenarioId: string): UseTaskDatasetsResult {
               return next
             })
             setGranularLessons((glRes.items || []) as Course[])
-          } else if (key === "ability") {
+          } else if (key === 'ability') {
             const apRes = await abilityApi.list({ limit: 1000 })
             setAbilityPoints(apRes.items || [])
-            const scenarioData = scenarioDataRef?.current as { careerPositionId?: string } | undefined
+            const scenarioData = scenarioDataRef?.current as
+              { careerPositionId?: string } | undefined
             const positionId = scenarioData?.careerPositionId
             if (positionId) {
               try {
@@ -188,42 +189,51 @@ export function useTaskDatasets(scenarioId: string): UseTaskDatasetsResult {
                 setPositionAbilityBindings([])
               }
             }
-          } else if (key === "resources") {
+          } else if (key === 'resources') {
             const resRes = await resourceLibraryApi.list({ limit: 1000 })
             setLearningResources(
               (resRes.items || []).map((res: unknown) => {
-                const item = res as TaskResourceItem & { resourceType?: string; fileSize?: number | string; type?: string }
+                const item = res as TaskResourceItem & {
+                  resourceType?: string
+                  fileSize?: number | string
+                  type?: string
+                }
                 return {
                   ...item,
                   type: item.resourceType || item.type,
                   size: item.fileSize !== undefined ? String(item.fileSize) : item.size,
                 }
-              })
+              }),
             )
-          } else if (key === "evaluation") {
+          } else if (key === 'evaluation') {
             const [examRes, rubricRes] = await Promise.all([
               examApi.list({ limit: 1000 }),
-              taskEvaluationApi.listTemplates({ limit: 200 }).catch(() => ({ items: [] as unknown[], total: 0 })),
+              taskEvaluationApi
+                .listTemplates({ limit: 200 })
+                .catch(() => ({ items: [] as unknown[], total: 0 })),
             ])
             setLoadedExams((examRes.items || []) as LoadedExam[])
             const mapTemplate = (rt: unknown): RubricScheme => {
               const item = rt as {
                 id: string
                 name: string
-                types?: RubricScheme["types"]
+                types?: RubricScheme['types']
                 description?: string
                 mode?: string
-                data?: { points?: RubricScheme["points"]; scoreRuleItems?: RubricScheme["scoreRuleItems"] }
+                data?: {
+                  points?: RubricScheme['points']
+                  scoreRuleItems?: RubricScheme['scoreRuleItems']
+                }
                 isDeleted?: boolean
               }
               return {
                 id: item.id,
                 name: item.name,
                 types: item.types || [],
-                desc: item.description || "",
-                points: item.mode === "rubric" ? (item.data?.points || []) : [],
-                mode: (item.mode || "rubric") as RubricScheme["mode"],
-                scoreRuleItems: item.mode === "score_rule" ? item.data?.scoreRuleItems : undefined,
+                desc: item.description || '',
+                points: item.mode === 'rubric' ? item.data?.points || [] : [],
+                mode: (item.mode || 'rubric') as RubricScheme['mode'],
+                scoreRuleItems: item.mode === 'score_rule' ? item.data?.scoreRuleItems : undefined,
                 isDeleted: item.isDeleted || false,
               }
             }
@@ -237,48 +247,72 @@ export function useTaskDatasets(scenarioId: string): UseTaskDatasetsResult {
               if (ts.outcomeRubricId) referencedTemplateIds.add(ts.outcomeRubricId)
               if (ts.homeworkRubricId) referencedTemplateIds.add(ts.homeworkRubricId)
             })
-            const existingIds = new Set((rubricRes.items || []).map((rt: unknown) => (rt as { id: string }).id))
-            const missingIds = Array.from(referencedTemplateIds).filter((id) => id && !existingIds.has(id))
+            const existingIds = new Set(
+              (rubricRes.items || []).map((rt: unknown) => (rt as { id: string }).id),
+            )
+            const missingIds = Array.from(referencedTemplateIds).filter(
+              (id) => id && !existingIds.has(id),
+            )
             if (missingIds.length > 0) {
-              const fetched = await Promise.all(missingIds.map((id) => taskEvaluationApi.getTemplate(id).catch(() => null)))
+              const fetched = await Promise.all(
+                missingIds.map((id) => taskEvaluationApi.getTemplate(id).catch(() => null)),
+              )
               const newTemplates = fetched.filter(Boolean).map(mapTemplate)
               if (newTemplates.length > 0) {
                 setRubricLibrary((prev) => [...prev, ...newTemplates])
               }
             }
-          } else if (key === "users") {
+          } else if (key === 'users') {
             const userRes = await userManagementApi.list({ limit: 1000 })
             setUsers(userRes.items || [])
             // 补齐头部共建人姓名（初始挂载时以 id 占位）
             if (setExistingScenario) {
-              const nameMap = new Map((userRes.items || []).map((u: unknown) => [(u as { id: string }).id, (u as { name: string }).name]))
+              const nameMap = new Map(
+                (userRes.items || []).map((u: unknown) => [
+                  (u as { id: string }).id,
+                  (u as { name: string }).name,
+                ]),
+              )
               setExistingScenario((prev: unknown) =>
                 prev
                   ? {
                       ...(prev as Record<string, unknown>),
-                      coBuilders: (((prev as { coBuilders?: { id: string; name: string }[] }).coBuilders) || []).map((cb) => ({
+                      coBuilders: (
+                        (prev as { coBuilders?: { id: string; name: string }[] }).coBuilders || []
+                      ).map((cb) => ({
                         ...cb,
                         name: nameMap.get(cb.id) || cb.id,
                       })),
                     }
-                  : prev
+                  : prev,
               )
             }
-          } else if (key === "clone") {
+          } else if (key === 'clone') {
             // 克隆对话框候选：全部场景及其任务
             try {
               const allScenariosRes = await scenarioApi.list({ limit: 1000 })
               const allTasksRes = await taskApi.list({ limit: 1000 })
               const scenarioNameMap = new Map<string, string>()
-              const scenarioMetaMap = new Map<string, { creatorId: string; coBuilderIds: string[]; status: string }>()
+              const scenarioMetaMap = new Map<
+                string,
+                { creatorId: string; coBuilderIds: string[]; status: string }
+              >()
               for (const s of allScenariosRes.items) {
                 scenarioNameMap.set(s.id, s.name)
-                scenarioMetaMap.set(s.id, { creatorId: s.creatorId, coBuilderIds: s.coBuilderIds || [], status: s.status })
+                scenarioMetaMap.set(s.id, {
+                  creatorId: s.creatorId,
+                  coBuilderIds: s.coBuilderIds || [],
+                  status: s.status,
+                })
               }
               const tasksByScenarioId = new Map<string, unknown[]>()
               for (const t of allTasksRes.items) {
-                const sName = scenarioNameMap.get(t.scenarioId) || "未知场景"
-                const sMeta = scenarioMetaMap.get(t.scenarioId) || { creatorId: "", coBuilderIds: [], status: "" }
+                const sName = scenarioNameMap.get(t.scenarioId) || '未知场景'
+                const sMeta = scenarioMetaMap.get(t.scenarioId) || {
+                  creatorId: '',
+                  coBuilderIds: [],
+                  status: '',
+                }
                 const enhanced = {
                   ...t,
                   scenarioName: sName,
@@ -310,7 +344,7 @@ export function useTaskDatasets(scenarioId: string): UseTaskDatasetsResult {
       })
       await Promise.all(jobs)
     },
-    [userId]
+    [userId],
   )
 
   return {

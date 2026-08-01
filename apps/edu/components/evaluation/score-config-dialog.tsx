@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -8,12 +8,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { QUESTION_TYPE_LABELS } from "@/lib/types"
-import type { ExamQuestion, QuestionType } from "@/lib/types"
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Field, FieldLabel } from '@/components/ui/field'
+import { QUESTION_TYPE_LABELS } from '@/lib/types'
+import type { ExamQuestion, QuestionType } from '@/lib/types'
 
 interface ScoreConfigDialogProps {
   open: boolean
@@ -46,7 +46,7 @@ export function ScoreConfigDialog({
       if (open && types.length > 0) {
         const init: Record<string, string> = {}
         types.forEach((t) => {
-          init[t] = "0"
+          init[t] = '0'
         })
         setTypeScores(init)
       }
@@ -97,10 +97,8 @@ export function ScoreConfigDialog({
                   min={0}
                   max={100}
                   step={1}
-                  value={typeScores[t] ?? "0"}
-                  onChange={(e) =>
-                    setTypeScores((prev) => ({ ...prev, [t]: e.target.value }))
-                  }
+                  value={typeScores[t] ?? '0'}
+                  onChange={(e) => setTypeScores((prev) => ({ ...prev, [t]: e.target.value }))}
                   className="w-24"
                 />
                 <span className="text-sm text-muted-foreground">分</span>
@@ -108,7 +106,7 @@ export function ScoreConfigDialog({
             </Field>
           ))}
           <div className="text-right text-sm">
-            <span className={totalInput === 100 ? "text-green-600 font-medium" : "text-red-500"}>
+            <span className={totalInput === 100 ? 'text-green-600 font-medium' : 'text-red-500'}>
               合计：{totalInput} 分
             </span>
             {totalInput !== 100 && (

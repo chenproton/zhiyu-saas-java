@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useRef } from "react"
-import { ImageIcon, Loader2, Upload } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { useRef } from 'react'
+import { ImageIcon, Loader2, Upload } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 
 interface CoverImageUploadProps {
   imageUrl: string
@@ -43,17 +43,13 @@ export function CoverImageUpload({
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file) onUpload(file)
-            e.target.value = ""
+            e.target.value = ''
           }}
         />
         {imageUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageUrl}
-              alt={alt}
-              className="object-cover w-full h-full absolute inset-0"
-            />
+            <img src={imageUrl} alt={alt} className="object-cover w-full h-full absolute inset-0" />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <Button
                 variant="outline"
@@ -65,7 +61,7 @@ export function CoverImageUpload({
                 }}
                 disabled={uploading}
               >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "更换封面"}
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : '更换封面'}
               </Button>
               <Button
                 variant="outline"
@@ -89,7 +85,7 @@ export function CoverImageUpload({
               <Upload className="h-8 w-8 text-gray-400 mb-2" />
             )}
             <span className="text-sm text-gray-500">
-              {uploading ? "上传中..." : `点击上传${label.replace("封面", "")}封面`}
+              {uploading ? '上传中...' : `点击上传${label.replace('封面', '')}封面`}
             </span>
           </div>
         )}

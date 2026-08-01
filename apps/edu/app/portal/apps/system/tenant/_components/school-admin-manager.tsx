@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/shared/status-badge"
+import { useCallback, useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@/components/shared/status-badge'
 import {
   Table,
   TableBody,
@@ -10,7 +10,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -18,11 +18,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Plus, Pencil, Trash2, Loader2, Eye } from "lucide-react"
-import { useToast } from "@zhiyu/ui"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Plus, Pencil, Trash2, Loader2, Eye } from 'lucide-react'
+import { useToast } from '@zhiyu/ui'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 
 interface TenantAdmin {
   id: string
@@ -54,17 +54,19 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
   const [deleteTarget, setDeleteTarget] = useState<TenantAdmin | null>(null)
   const [inline, setInline] = useState<{ id?: string; username: string; name: string } | null>(null)
   const [inlineSubmitting, setInlineSubmitting] = useState(false)
-  const [viewPassword, setViewPassword] = useState<{ admin: TenantAdmin; password: string } | null>(null)
+  const [viewPassword, setViewPassword] = useState<{ admin: TenantAdmin; password: string } | null>(
+    null,
+  )
   const { toast } = useToast()
 
   const fetchAdmins = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetcher<ListResponse<TenantAdmin>>("/admins")
+      const res = await fetcher<ListResponse<TenantAdmin>>('/admins')
       setAdmins(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载管理员列表失败")
+      setError(err instanceof Error ? err.message : '加载管理员列表失败')
     } finally {
       setLoading(false)
     }
@@ -81,7 +83,7 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
   }, [fetchAdmins])
 
   const startAdd = () => {
-    setInline({ username: "", name: "" })
+    setInline({ username: '', name: '' })
     setError(null)
   }
 
@@ -98,7 +100,7 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
   const submitInline = async () => {
     if (!inline) return
     if (!inline.username || !inline.name) {
-      setError("账号和姓名不能为空")
+      setError('账号和姓名不能为空')
       return
     }
 
@@ -107,21 +109,21 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
     try {
       if (inline.id) {
         await fetcher(`/admins/${inline.id}`, {
-          method: "PUT",
+          method: 'PUT',
           body: JSON.stringify({ username: inline.username, name: inline.name }),
         })
-        toast({ title: "保存成功" })
+        toast({ title: '保存成功' })
       } else {
-        const created = await fetcher<TenantAdmin>("/admins", {
-          method: "POST",
+        const created = await fetcher<TenantAdmin>('/admins', {
+          method: 'POST',
           body: JSON.stringify({ username: inline.username, name: inline.name }),
         })
-        toast({ title: "创建成功", description: `初始密码：${created.plainPassword}` })
+        toast({ title: '创建成功', description: `初始密码：${created.plainPassword}` })
       }
       setInline(null)
       await fetchAdmins()
     } catch (err) {
-      setError(err instanceof Error ? err.message : (inline.id ? "保存失败" : "创建失败"))
+      setError(err instanceof Error ? err.message : inline.id ? '保存失败' : '创建失败')
     } finally {
       setInlineSubmitting(false)
     }
@@ -130,11 +132,15 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      await fetcher(`/admins/${deleteTarget.id}`, { method: "DELETE" })
-      toast({ title: "删除成功" })
+      await fetcher(`/admins/${deleteTarget.id}`, { method: 'DELETE' })
+      toast({ title: '删除成功' })
       await fetchAdmins()
     } catch (err) {
-      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setDeleteTarget(null)
     }
@@ -142,12 +148,19 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
 
   const handleViewPassword = async (a: TenantAdmin) => {
     try {
-      const res = await fetcher<{ id: string; newPassword: string }>(`/admins/${a.id}/preview-password`, {
-        method: "POST",
-      })
+      const res = await fetcher<{ id: string; newPassword: string }>(
+        `/admins/${a.id}/preview-password`,
+        {
+          method: 'POST',
+        },
+      )
       setViewPassword({ admin: a, password: res.newPassword })
     } catch (err) {
-      toast({ variant: "destructive", title: "获取密码失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '获取密码失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     }
   }
 
@@ -187,7 +200,7 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
                   <Input
                     placeholder="登录账号"
                     value={inline.username}
-                    onChange={(e) => setInline((p) => p ? { ...p, username: e.target.value } : p)}
+                    onChange={(e) => setInline((p) => (p ? { ...p, username: e.target.value } : p))}
                     disabled={inlineSubmitting}
                   />
                 </TableCell>
@@ -195,17 +208,28 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
                   <Input
                     placeholder="姓名"
                     value={inline.name}
-                    onChange={(e) => setInline((p) => p ? { ...p, name: e.target.value } : p)}
+                    onChange={(e) => setInline((p) => (p ? { ...p, name: e.target.value } : p))}
                     disabled={inlineSubmitting}
                   />
                 </TableCell>
                 <TableCell>-</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <Button size="sm" className="h-7 px-2 text-xs" onClick={submitInline} disabled={inlineSubmitting}>
-                      {inlineSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : "保存"}
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={submitInline}
+                      disabled={inlineSubmitting}
+                    >
+                      {inlineSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : '保存'}
                     </Button>
-                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={cancelInline} disabled={inlineSubmitting}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={cancelInline}
+                      disabled={inlineSubmitting}
+                    >
                       取消
                     </Button>
                   </div>
@@ -228,26 +252,48 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
                         <TableCell>
                           <Input
                             value={inline.username}
-                            onChange={(e) => setInline((p) => p ? { ...p, username: e.target.value } : p)}
+                            onChange={(e) =>
+                              setInline((p) => (p ? { ...p, username: e.target.value } : p))
+                            }
                             disabled={inlineSubmitting}
                           />
                         </TableCell>
                         <TableCell>
                           <Input
                             value={inline.name}
-                            onChange={(e) => setInline((p) => p ? { ...p, name: e.target.value } : p)}
+                            onChange={(e) =>
+                              setInline((p) => (p ? { ...p, name: e.target.value } : p))
+                            }
                             disabled={inlineSubmitting}
                           />
                         </TableCell>
                         <TableCell>
-                          <StatusBadge status={a.status} label={a.status === "active" ? "启用" : "停用"} />
+                          <StatusBadge
+                            status={a.status}
+                            label={a.status === 'active' ? '启用' : '停用'}
+                          />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button size="sm" className="h-7 px-2 text-xs" onClick={submitInline} disabled={inlineSubmitting}>
-                              {inlineSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : "保存"}
+                            <Button
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={submitInline}
+                              disabled={inlineSubmitting}
+                            >
+                              {inlineSubmitting ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                '保存'
+                              )}
                             </Button>
-                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={cancelInline} disabled={inlineSubmitting}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={cancelInline}
+                              disabled={inlineSubmitting}
+                            >
                               取消
                             </Button>
                           </div>
@@ -258,19 +304,37 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
                         <TableCell className="font-mono text-sm">{a.username}</TableCell>
                         <TableCell>{a.name}</TableCell>
                         <TableCell>
-                          <StatusBadge status={a.status} label={a.status === "active" ? "启用" : "停用"} />
+                          <StatusBadge
+                            status={a.status}
+                            label={a.status === 'active' ? '启用' : '停用'}
+                          />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleViewPassword(a)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => handleViewPassword(a)}
+                            >
                               <Eye className="mr-1 h-3 w-3" />
                               查看密码
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => startEdit(a)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => startEdit(a)}
+                            >
                               <Pencil className="mr-1 h-3 w-3" />
                               编辑
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => setDeleteTarget(a)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                              onClick={() => setDeleteTarget(a)}
+                            >
                               <Trash2 className="mr-1 h-3 w-3" />
                               删除
                             </Button>
@@ -282,7 +346,10 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
                 ))}
                 {admins.length === 0 && !loading && !inline && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-sm text-muted-foreground py-8"
+                    >
                       暂无学校管理员
                     </TableCell>
                   </TableRow>
@@ -293,16 +360,27 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
         </Table>
       </div>
 
-      <Dialog open={viewPassword !== null} onOpenChange={(open) => { if (!open) setViewPassword(null) }}>
+      <Dialog
+        open={viewPassword !== null}
+        onOpenChange={(open) => {
+          if (!open) setViewPassword(null)
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>查看密码</DialogTitle>
             <DialogDescription>
-              {viewPassword ? `${viewPassword.admin.name}（${viewPassword.admin.username}）的登录密码` : ""}
+              {viewPassword
+                ? `${viewPassword.admin.name}（${viewPassword.admin.username}）的登录密码`
+                : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Input readOnly value={viewPassword?.password || ""} onFocus={(e) => e.target.select()} />
+            <Input
+              readOnly
+              value={viewPassword?.password || ''}
+              onFocus={(e) => e.target.select()}
+            />
           </div>
           <DialogFooter>
             <Button onClick={() => setViewPassword(null)}>关闭</Button>
@@ -312,9 +390,15 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
         title="确认删除"
-        description={deleteTarget ? `确定删除管理员「${deleteTarget.name}（${deleteTarget.username}）」吗？此操作不可撤销。` : ""}
+        description={
+          deleteTarget
+            ? `确定删除管理员「${deleteTarget.name}（${deleteTarget.username}）」吗？此操作不可撤销。`
+            : ''
+        }
         confirmText="删除"
         variant="destructive"
         onConfirm={handleDelete}

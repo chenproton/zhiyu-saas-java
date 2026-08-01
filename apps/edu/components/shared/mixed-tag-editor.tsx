@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
-export { MixedTagEditor } from "@zhiyu/ui"
-export type { MixedTagEditorProps } from "@zhiyu/ui"
+export { MixedTagEditor } from '@zhiyu/ui'
+export type { MixedTagEditorProps } from '@zhiyu/ui'

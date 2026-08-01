@@ -1,16 +1,16 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -18,10 +18,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { questionApi } from "@/lib/api"
-import type { NodeQuiz, QuizQuestion } from "@/lib/types/lesson-source"
-import { X, Check } from "lucide-react"
+} from '@/components/ui/table'
+import { questionApi } from '@/lib/api'
+import type { NodeQuiz, QuizQuestion } from '@/lib/types/lesson-source'
+import { X, Check } from 'lucide-react'
 
 function generateQuizId() {
   return `quiz-${Date.now()}`
@@ -33,34 +33,42 @@ interface QuizConfigModalProps {
   onConfirm: (quiz: NodeQuiz) => void
 }
 
-export default function QuizConfigModal({
-  open,
-  onOpenChange,
-  onConfirm,
-}: QuizConfigModalProps) {
+export default function QuizConfigModal({ open, onOpenChange, onConfirm }: QuizConfigModalProps) {
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set())
-  const [qbKeyword, setQbKeyword] = useState("")
-  const [quizTitle, setQuizTitle] = useState("")
+  const [qbKeyword, setQbKeyword] = useState('')
+  const [quizTitle, setQuizTitle] = useState('')
   const [timeLimit, setTimeLimit] = useState(120)
   const [questionBank, setQuestionBank] = useState<QuizQuestion[]>([])
 
   useEffect(() => {
-    questionApi.list({ limit: 200 }).then((res) => {
-      setQuestionBank((res.items || []).map((q) => ({
-        id: q.id,
-        type: q.type === "short_answer" ? "essay" : q.type === "fill" ? "essay" : q.type as QuizQuestion["type"],
-        question: q.content,
-        options: q.options ? q.options.map((text, i) => ({ key: String.fromCharCode(65 + i), text })) : undefined,
-        answer: Array.isArray(q.answer) ? q.answer.join(",") : q.answer,
-        score: q.score,
-      })))
-    }).catch(() => setQuestionBank([]))
+    questionApi
+      .list({ limit: 200 })
+      .then((res) => {
+        setQuestionBank(
+          (res.items || []).map((q) => ({
+            id: q.id,
+            type:
+              q.type === 'short_answer'
+                ? 'essay'
+                : q.type === 'fill'
+                  ? 'essay'
+                  : (q.type as QuizQuestion['type']),
+            question: q.content,
+            options: q.options
+              ? q.options.map((text, i) => ({ key: String.fromCharCode(65 + i), text }))
+              : undefined,
+            answer: Array.isArray(q.answer) ? q.answer.join(',') : q.answer,
+            score: q.score,
+          })),
+        )
+      })
+      .catch(() => setQuestionBank([]))
   }, [])
 
   const filteredQuestions = useMemo(() => {
     if (!qbKeyword.trim()) return questionBank
     return questionBank.filter((q) =>
-      q.question.toLowerCase().includes(qbKeyword.trim().toLowerCase())
+      q.question.toLowerCase().includes(qbKeyword.trim().toLowerCase()),
     )
   }, [qbKeyword, questionBank])
 
@@ -80,8 +88,8 @@ export default function QuizConfigModal({
     if (questions.length === 0) return
     onConfirm({
       id: generateQuizId(),
-      title: quizTitle || "随堂测验",
-      type: "question_bank",
+      title: quizTitle || '随堂测验',
+      type: 'question_bank',
       questions,
       timeLimit,
     })
@@ -91,8 +99,8 @@ export default function QuizConfigModal({
 
   const reset = () => {
     setSelectedQuestions(new Set())
-    setQbKeyword("")
-    setQuizTitle("")
+    setQbKeyword('')
+    setQuizTitle('')
     setTimeLimit(120)
   }
 
@@ -164,9 +172,7 @@ export default function QuizConfigModal({
                           <TableCell>
                             <div
                               className={`w-4 h-4 rounded border flex items-center justify-center ${
-                                checked
-                                  ? "bg-blue-600 border-blue-600"
-                                  : "border-gray-300"
+                                checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
                               }`}
                             >
                               {checked && <Check className="w-3 h-3 text-white" />}
@@ -175,13 +181,13 @@ export default function QuizConfigModal({
                           <TableCell>{q.question}</TableCell>
                           <TableCell>
                             <span className="px-1.5 py-0.5 text-[10px] bg-gray-100 rounded">
-                              {q.type === "single"
-                                ? "单选"
-                                : q.type === "multiple"
-                                ? "多选"
-                                : q.type === "judge"
-                                ? "判断"
-                                : "简答"}
+                              {q.type === 'single'
+                                ? '单选'
+                                : q.type === 'multiple'
+                                  ? '多选'
+                                  : q.type === 'judge'
+                                    ? '判断'
+                                    : '简答'}
                             </span>
                           </TableCell>
                           <TableCell>{q.score}分</TableCell>
@@ -199,31 +205,25 @@ export default function QuizConfigModal({
               </div>
               <div className="flex-1 overflow-auto space-y-2">
                 {selectedList.length === 0 && (
-                  <div className="text-center py-8 text-gray-400 text-sm">
-                    暂未选择题目
-                  </div>
+                  <div className="text-center py-8 text-gray-400 text-sm">暂未选择题目</div>
                 )}
                 {selectedList.map((q) => (
                   <div
                     key={q.id}
                     className="bg-blue-50 border border-blue-100 rounded-lg p-3 relative"
                   >
-                    <div className="text-sm text-blue-700 font-medium pr-5">
-                      {q.question}
-                    </div>
+                    <div className="text-sm text-blue-700 font-medium pr-5">{q.question}</div>
                     <div className="flex gap-1.5 text-xs text-blue-500 mt-1">
                       <span className="bg-blue-50/50 px-2 py-0.5 rounded">
-                        {q.type === "single"
-                          ? "单选"
-                          : q.type === "multiple"
-                          ? "多选"
-                          : q.type === "judge"
-                          ? "判断"
-                          : "简答"}
+                        {q.type === 'single'
+                          ? '单选'
+                          : q.type === 'multiple'
+                            ? '多选'
+                            : q.type === 'judge'
+                              ? '判断'
+                              : '简答'}
                       </span>
-                      <span className="bg-blue-50/50 px-2 py-0.5 rounded">
-                        {q.score}分
-                      </span>
+                      <span className="bg-blue-50/50 px-2 py-0.5 rounded">{q.score}分</span>
                     </div>
                     <button
                       className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/5 text-gray-500 flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
@@ -242,10 +242,7 @@ export default function QuizConfigModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={selectedQuestions.size === 0}
-          >
+          <Button onClick={handleConfirm} disabled={selectedQuestions.size === 0}>
             确认选择
           </Button>
         </DialogFooter>

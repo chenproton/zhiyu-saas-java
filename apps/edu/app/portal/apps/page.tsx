@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useRef, useMemo } from "react"
-import Link from "next/link"
+import { useState, useEffect, useRef, useMemo } from 'react'
+import Link from 'next/link'
 import {
   Settings,
   Users,
@@ -17,32 +17,32 @@ import {
   GraduationCap,
   ChevronRight,
   ExternalLink,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { getPlatformCardModules } from "@/lib/navigation-config"
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { getPlatformCardModules } from '@/lib/navigation-config'
 
 const menuItems = [
-  { id: "system", label: "系统管理", icon: Settings },
-  { id: "career", label: "职业岗位学习平台", icon: Briefcase },
-  { id: "scene", label: "实践场景学习平台", icon: Layers },
-  { id: "course", label: "数字课程服务平台", icon: BookOpen },
-  { id: "ability", label: "能力评价与测评资源管理平台", icon: CheckCircle },
-  { id: "resource", label: "教学资源共享服务平台", icon: Share2 },
-  { id: "alliance", label: "产教协同与人才品牌运营平台", icon: Users },
-  { id: "affairs", label: "教务服务平台", icon: Calendar },
-  { id: "ai", label: "AI 智能服务平台", icon: Sparkles },
-  { id: "opc", label: "OPC专区", icon: Rocket },
-  { id: "decision", label: "敏捷决策中心", icon: BarChart3 },
-  { id: "research", label: "教科研服务中心", icon: GraduationCap },
+  { id: 'system', label: '系统管理', icon: Settings },
+  { id: 'career', label: '职业岗位学习平台', icon: Briefcase },
+  { id: 'scene', label: '实践场景学习平台', icon: Layers },
+  { id: 'course', label: '数字课程服务平台', icon: BookOpen },
+  { id: 'ability', label: '能力评价与测评资源管理平台', icon: CheckCircle },
+  { id: 'resource', label: '教学资源共享服务平台', icon: Share2 },
+  { id: 'alliance', label: '产教协同与人才品牌运营平台', icon: Users },
+  { id: 'affairs', label: '教务服务平台', icon: Calendar },
+  { id: 'ai', label: 'AI 智能服务平台', icon: Sparkles },
+  { id: 'opc', label: 'OPC专区', icon: Rocket },
+  { id: 'decision', label: '敏捷决策中心', icon: BarChart3 },
+  { id: 'research', label: '教科研服务中心', icon: GraduationCap },
 ]
 
 const quickAccess = [
-  { icon: Settings, label: "组织权限", href: "/portal/apps/system/org-user/roles" },
-  { icon: Briefcase, label: "岗位资源管理", href: "/job/positions" },
-  { icon: Layers, label: "场景资源管理", href: "/scene" },
-  { icon: BarChart3, label: "日志管理", href: "/portal/apps/system/logs/login" },
+  { icon: Settings, label: '组织权限', href: '/portal/apps/system/org-user/roles' },
+  { icon: Briefcase, label: '岗位资源管理', href: '/job/positions' },
+  { icon: Layers, label: '场景资源管理', href: '/scene' },
+  { icon: BarChart3, label: '日志管理', href: '/portal/apps/system/logs/login' },
 ]
 
 interface PlatformStyle {
@@ -51,18 +51,18 @@ interface PlatformStyle {
 }
 
 const platformStyles: Record<string, PlatformStyle> = {
-  system: { iconColor: "text-blue-600", iconBg: "bg-blue-50" },
-  alliance: { iconColor: "text-rose-600", iconBg: "bg-rose-50" },
-  career: { iconColor: "text-purple-600", iconBg: "bg-purple-50" },
-  course: { iconColor: "text-amber-600", iconBg: "bg-amber-50" },
-  scene: { iconColor: "text-cyan-600", iconBg: "bg-cyan-50" },
-  ability: { iconColor: "text-emerald-600", iconBg: "bg-emerald-50" },
-  affairs: { iconColor: "text-teal-600", iconBg: "bg-teal-50" },
-  ai: { iconColor: "text-indigo-600", iconBg: "bg-indigo-50" },
-  resource: { iconColor: "text-blue-600", iconBg: "bg-blue-50" },
-  opc: { iconColor: "text-orange-600", iconBg: "bg-orange-50" },
-  decision: { iconColor: "text-sky-600", iconBg: "bg-sky-50" },
-  research: { iconColor: "text-violet-600", iconBg: "bg-violet-50" },
+  system: { iconColor: 'text-blue-600', iconBg: 'bg-blue-50' },
+  alliance: { iconColor: 'text-rose-600', iconBg: 'bg-rose-50' },
+  career: { iconColor: 'text-purple-600', iconBg: 'bg-purple-50' },
+  course: { iconColor: 'text-amber-600', iconBg: 'bg-amber-50' },
+  scene: { iconColor: 'text-cyan-600', iconBg: 'bg-cyan-50' },
+  ability: { iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50' },
+  affairs: { iconColor: 'text-teal-600', iconBg: 'bg-teal-50' },
+  ai: { iconColor: 'text-indigo-600', iconBg: 'bg-indigo-50' },
+  resource: { iconColor: 'text-blue-600', iconBg: 'bg-blue-50' },
+  opc: { iconColor: 'text-orange-600', iconBg: 'bg-orange-50' },
+  decision: { iconColor: 'text-sky-600', iconBg: 'bg-sky-50' },
+  research: { iconColor: 'text-violet-600', iconBg: 'bg-violet-50' },
 }
 
 interface ModuleItem {
@@ -82,14 +82,16 @@ interface ModuleSection {
 }
 
 function ModuleCard({ module }: { module: ModuleItem }) {
-  const isExternal = module.href.startsWith("http")
+  const isExternal = module.href.startsWith('http')
   const href = module.href
 
   const cardContent = (
     <>
       <h3 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors mb-2 pr-2 leading-tight flex items-center gap-1">
         {module.title}
-        {isExternal && <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary/70" />}
+        {isExternal && (
+          <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary/70" />
+        )}
       </h3>
       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{module.desc}</p>
       <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -99,17 +101,23 @@ function ModuleCard({ module }: { module: ModuleItem }) {
   )
 
   const className =
-    "bg-card rounded-xl p-5 hover:shadow-lg hover:shadow-border/50 transition-all group relative border border-border hover:border-primary/20 block"
+    'bg-card rounded-xl p-5 hover:shadow-lg hover:shadow-border/50 transition-all group relative border border-border hover:border-primary/20 block'
 
   if (isExternal) {
     return (
-      <a key={module.id} href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a
+        key={module.id}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
         {cardContent}
       </a>
     )
   }
 
-  if (href === "#") {
+  if (href === '#') {
     return (
       <div key={module.id} className={`${className} cursor-default opacity-60`}>
         {cardContent}
@@ -171,8 +179,8 @@ export default function AppsPage() {
 
     const contentEl = contentRef.current
     if (contentEl) {
-      contentEl.addEventListener("scroll", handleScroll)
-      return () => contentEl.removeEventListener("scroll", handleScroll)
+      contentEl.addEventListener('scroll', handleScroll)
+      return () => contentEl.removeEventListener('scroll', handleScroll)
     }
   }, [allModules])
 
@@ -180,7 +188,7 @@ export default function AppsPage() {
     const el = sectionRefs.current[sectionId]
     if (el && contentRef.current) {
       const offsetTop = el.offsetTop - 20
-      contentRef.current.scrollTo({ top: offsetTop, behavior: "smooth" })
+      contentRef.current.scrollTo({ top: offsetTop, behavior: 'smooth' })
     }
     setActiveMenu(sectionId)
   }
@@ -203,7 +211,9 @@ export default function AppsPage() {
                   className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg hover:bg-primary/5 hover:text-primary transition-all shrink-0 group border border-border"
                 >
                   <item.icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="text-sm text-muted-foreground group-hover:text-primary transition-colors">{item.label}</span>
+                  <span className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
+                    {item.label}
+                  </span>
                 </Link>
               ))}
             </div>
@@ -216,10 +226,10 @@ export default function AppsPage() {
                 key={section.id}
                 onClick={() => scrollToSection(section.id)}
                 className={cn(
-                  "shrink-0 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors border",
+                  'shrink-0 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors border',
                   activeMenu === section.id
-                    ? "bg-primary text-white border-primary"
-                    : "bg-muted text-muted-foreground border-border hover:text-foreground"
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-muted text-muted-foreground border-border hover:text-foreground',
                 )}
               >
                 {section.label}
@@ -232,43 +242,52 @@ export default function AppsPage() {
           {/* Left Sidebar */}
           <aside className="hidden md:block w-56 bg-background shrink-0 min-h-[calc(100vh-3.5rem-40px)] sticky top-[96px] self-start border-r border-border shadow-sm">
             <nav className="p-2 space-y-2">
-              {menuItems.filter((m) => allModules.some((s) => s.id === m.id)).map((item) => {
-                const Icon = item.icon
-                const isActive = activeMenu === item.id
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => scrollToSection(item.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all text-left group",
-                      isActive
-                        ? "bg-primary text-white shadow-md shadow-primary/20"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <Icon
+              {menuItems
+                .filter((m) => allModules.some((s) => s.id === m.id))
+                .map((item) => {
+                  const Icon = item.icon
+                  const isActive = activeMenu === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => scrollToSection(item.id)}
                       className={cn(
-                        "w-4 h-4 shrink-0 transition-colors",
-                        isActive ? "text-white" : "text-muted-foreground group-hover:text-muted-foreground"
+                        'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all text-left group',
+                        isActive
+                          ? 'bg-primary text-white shadow-md shadow-primary/20'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
-                    />
-                    <span className="truncate">{item.label}</span>
-                    {isActive && <ChevronRight className="w-4 h-4 ml-auto text-white/70" />}
-                  </button>
-                )
-              })}
+                    >
+                      <Icon
+                        className={cn(
+                          'w-4 h-4 shrink-0 transition-colors',
+                          isActive
+                            ? 'text-white'
+                            : 'text-muted-foreground group-hover:text-muted-foreground',
+                        )}
+                      />
+                      <span className="truncate">{item.label}</span>
+                      {isActive && <ChevronRight className="w-4 h-4 ml-auto text-white/70" />}
+                    </button>
+                  )
+                })}
             </nav>
           </aside>
 
           {/* Main Content */}
-          <main ref={contentRef} className="flex-1 px-4 pb-4 pt-4 overflow-y-auto max-h-[calc(100vh-3.5rem-40px)] relative">
+          <main
+            ref={contentRef}
+            className="flex-1 px-4 pb-4 pt-4 overflow-y-auto max-h-[calc(100vh-3.5rem-40px)] relative"
+          >
             {subscriptionLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-sm text-muted-foreground">加载中...</div>
               </div>
             ) : allModules.length === 0 ? (
               <div className="flex items-center justify-center h-64">
-                <div className="text-sm text-muted-foreground">暂无可用应用，请联系管理员开通套餐</div>
+                <div className="text-sm text-muted-foreground">
+                  暂无可用应用，请联系管理员开通套餐
+                </div>
               </div>
             ) : (
               allModules.map((section) => {
@@ -283,8 +302,13 @@ export default function AppsPage() {
                   >
                     {/* Section Title */}
                     <div className="flex items-center gap-3 mb-3">
-                      <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", section.iconBg)}>
-                        <SectionIcon className={cn("w-5 h-5", section.iconColor)} />
+                      <div
+                        className={cn(
+                          'w-9 h-9 rounded-lg flex items-center justify-center',
+                          section.iconBg,
+                        )}
+                      >
+                        <SectionIcon className={cn('w-5 h-5', section.iconColor)} />
                       </div>
                       <h2 className="text-base font-semibold text-foreground">{section.label}</h2>
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">

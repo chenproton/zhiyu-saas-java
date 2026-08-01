@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { orgApi, orgTypeApi } from "@/lib/api"
-import type { Organization, OrgType } from "@/lib/types/backend"
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { orgApi, orgTypeApi } from '@/lib/api'
+import type { Organization, OrgType } from '@/lib/types/backend'
 
 export interface OrgTreeNode extends Organization {
   children?: OrgTreeNode[]
@@ -61,7 +61,7 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
         setOrgTypes(typesRes.items)
       } catch (err) {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : "加载组织架构失败")
+        setError(err instanceof Error ? err.message : '加载组织架构失败')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -100,7 +100,7 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
 export function findOrgAncestor(
   orgMap: Map<string, Organization>,
   nodeId: string | undefined,
-  predicate: (org: Organization) => boolean
+  predicate: (org: Organization) => boolean,
 ): Organization | undefined {
   if (!nodeId) return undefined
   let current = orgMap.get(nodeId)

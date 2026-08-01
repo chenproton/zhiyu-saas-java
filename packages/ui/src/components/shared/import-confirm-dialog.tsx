@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import {
   Dialog,
@@ -7,9 +7,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface ImportPreviewRow {
   rowNum?: number
@@ -32,7 +32,7 @@ export interface ImportConfirmDialogProps {
 export function ImportConfirmDialog({
   open,
   onOpenChange,
-  entityLabel = "数据",
+  entityLabel = '数据',
   created,
   duplicates,
   failed,
@@ -47,7 +47,9 @@ export function ImportConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>检测到 {duplicates} 条已存在{entityLabel}</DialogTitle>
+          <DialogTitle>
+            检测到 {duplicates} 条已存在{entityLabel}
+          </DialogTitle>
           <DialogDescription>
             请确认处理方式：仅导入新数据不会覆盖已有记录；覆盖并继续会用文件内容替换已有记录。
           </DialogDescription>

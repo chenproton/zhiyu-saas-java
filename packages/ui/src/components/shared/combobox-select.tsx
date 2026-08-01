@@ -1,11 +1,18 @@
-"use client"
+'use client'
 
-import { useState, useMemo } from "react"
-import { Check, ChevronsUpDown, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { cn } from "@/lib/utils"
+import { useState, useMemo } from 'react'
+import { Check, ChevronsUpDown, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { cn } from '@/lib/utils'
 
 interface ComboboxSelectOption {
   value: string
@@ -45,7 +52,16 @@ type ComboboxSelectProps = SingleComboboxSelectProps | MultipleComboboxSelectPro
  * 用于替换散落在各页面中的 inline 搜索 + Select/Popover 实现。
  */
 export function ComboboxSelect(props: ComboboxSelectProps) {
-  const { options, placeholder = "选择...", searchPlaceholder = "搜索...", emptyText = "无结果", className, disabled, loading, renderOption } = props
+  const {
+    options,
+    placeholder = '选择...',
+    searchPlaceholder = '搜索...',
+    emptyText = '无结果',
+    className,
+    disabled,
+    loading,
+    renderOption,
+  } = props
   const isMultiple = props.multiple === true
   const [open, setOpen] = useState(false)
 
@@ -57,7 +73,8 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
   const displayLabel = useMemo(() => {
     if (isMultiple) {
       if (props.value.length === 0) return placeholder
-      if (props.value.length === 1) return options.find((o) => o.value === props.value[0])?.label || props.value[0]
+      if (props.value.length === 1)
+        return options.find((o) => o.value === props.value[0])?.label || props.value[0]
       return `已选 ${props.value.length} 项`
     }
     if (!props.value) return placeholder
@@ -79,7 +96,7 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
   const clearValue = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isMultiple) props.onChange([])
-    else props.onChange("")
+    else props.onChange('')
   }
 
   return (
@@ -90,16 +107,19 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
           role="combobox"
           aria-expanded={open}
           disabled={disabled || loading}
-          className={cn("h-8 justify-between font-normal", !props.value && "text-muted-foreground", className)}
+          className={cn(
+            'h-8 justify-between font-normal',
+            !props.value && 'text-muted-foreground',
+            className,
+          )}
         >
           <span className="truncate">{displayLabel}</span>
           <div className="flex items-center shrink-0 ml-2">
-            {((isMultiple && (props.value as string[]).length > 0) || (!isMultiple && props.value)) && !disabled && (
-              <X
-                className="h-3.5 w-3.5 opacity-50 hover:opacity-100 mr-1"
-                onClick={clearValue}
-              />
-            )}
+            {((isMultiple && (props.value as string[]).length > 0) ||
+              (!isMultiple && props.value)) &&
+              !disabled && (
+                <X className="h-3.5 w-3.5 opacity-50 hover:opacity-100 mr-1" onClick={clearValue} />
+              )}
             <ChevronsUpDown className="h-4 w-4 opacity-50" />
           </div>
         </Button>
@@ -119,9 +139,13 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
                     disabled={o.disabled}
                     onSelect={() => toggleValue(o.value)}
                   >
-                    {renderOption ? renderOption(o, selected) : (
+                    {renderOption ? (
+                      renderOption(o, selected)
+                    ) : (
                       <>
-                        <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
+                        <Check
+                          className={cn('mr-2 h-4 w-4', selected ? 'opacity-100' : 'opacity-0')}
+                        />
                         {o.label}
                       </>
                     )}

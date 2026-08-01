@@ -49,10 +49,9 @@ import {
   convertApiRecommendationToLocal,
 } from '@/lib/converters/job-converters'
 import type { PositionRecommendation as ApiPositionRecommendation } from '@/lib/types/job'
-import { useToast } from "@zhiyu/ui"
-import { ConfirmDialog } from "@zhiyu/ui"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
-
+import { useToast } from '@zhiyu/ui'
+import { ConfirmDialog } from '@zhiyu/ui'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 export default function PostRecommendPage() {
   const { toast } = useToast()
@@ -80,7 +79,11 @@ export default function PostRecommendPage() {
       setBatches(batchRes.items.map(convertJobBatchToBatch))
       setRecommendations(recRes.items.map(convertApiRecommendationToLocal))
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载失败', description: err?.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err?.message || '请稍后重试',
+      })
     } finally {
       setLoading(false)
     }
@@ -93,22 +96,16 @@ export default function PostRecommendPage() {
   }, [loadData])
 
   const allRecommendations = useMemo(() => {
-    return recommendations
-      .filter((rec) => rec.isEnabled)
-      .sort((a, b) => a.order - b.order)
+    return recommendations.filter((rec) => rec.isEnabled).sort((a, b) => a.order - b.order)
   }, [recommendations])
 
   const recommendedPositionIds = useMemo(
     () => new Set(allRecommendations.map((rec) => rec.positionId)),
-    [allRecommendations]
+    [allRecommendations],
   )
 
   const availablePositions = useMemo(() => {
-    return positions.filter(
-      (p) =>
-        p.status === 'published' &&
-        !recommendedPositionIds.has(p.id)
-    )
+    return positions.filter((p) => p.status === 'published' && !recommendedPositionIds.has(p.id))
   }, [positions, recommendedPositionIds])
 
   const handleMove = async (index: number, direction: -1 | 1) => {
@@ -132,11 +129,15 @@ export default function PostRecommendPage() {
             isEnabled: rec.isEnabled,
             createdBy: rec.createdBy,
           } as ApiPositionRecommendation)
-        })
+        }),
       )
       await loadData()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '排序失败', description: err?.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: '排序失败',
+        description: err?.message || '请稍后重试',
+      })
     }
   }
 
@@ -145,7 +146,11 @@ export default function PostRecommendPage() {
       await recommendApi.delete(id)
       await loadData()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err?.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err?.message || '请稍后重试',
+      })
     } finally {
       setDeleteTargetId(null)
     }
@@ -167,7 +172,11 @@ export default function PostRecommendPage() {
       setSelectedPositionId('')
       setIsAddOpen(false)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '添加失败', description: err?.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: '添加失败',
+        description: err?.message || '请稍后重试',
+      })
     }
   }
 
@@ -202,7 +211,8 @@ export default function PostRecommendPage() {
       <Card>
         <CardContent className="p-4">
           <p className="text-sm text-muted-foreground">
-            已配置 <span className="font-medium text-foreground">{allRecommendations.length}</span> 个推荐岗位
+            已配置 <span className="font-medium text-foreground">{allRecommendations.length}</span>{' '}
+            个推荐岗位
           </p>
         </CardContent>
       </Card>
@@ -212,9 +222,7 @@ export default function PostRecommendPage() {
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>推荐岗位列表</CardTitle>
-              <CardDescription>
-                前台推荐顺序，数字越小越靠前
-              </CardDescription>
+              <CardDescription>前台推荐顺序，数字越小越靠前</CardDescription>
             </div>
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
               <DialogTrigger asChild>
@@ -226,9 +234,7 @@ export default function PostRecommendPage() {
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>添加岗位目标推荐</DialogTitle>
-                  <DialogDescription>
-                    选择一个岗位加入前台推荐列表
-                  </DialogDescription>
+                  <DialogDescription>选择一个岗位加入前台推荐列表</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
@@ -236,8 +242,13 @@ export default function PostRecommendPage() {
                     <ComboboxSelect
                       value={selectedPositionId}
                       onChange={setSelectedPositionId}
-                      options={availablePositions.map((p) => ({ value: p.id, label: `${p.name}（${p.shortName}）` }))}
-                      placeholder={availablePositions.length === 0 ? '暂无可添加的岗位' : '搜索或选择岗位'}
+                      options={availablePositions.map((p) => ({
+                        value: p.id,
+                        label: `${p.name}（${p.shortName}）`,
+                      }))}
+                      placeholder={
+                        availablePositions.length === 0 ? '暂无可添加的岗位' : '搜索或选择岗位'
+                      }
                       searchPlaceholder="搜索岗位名称、简称、行业..."
                       emptyText="未找到匹配岗位"
                       disabled={availablePositions.length === 0}
@@ -272,11 +283,12 @@ export default function PostRecommendPage() {
                         </Link>
                       </div>
                       <div className="text-muted-foreground">
-                        行业：{getIndustryName(selectedPosition.industry)} · 能力点：{selectedPosition.abilityModel?.nodes.length || 0} 个 · 上架时间：{formatDate(selectedPosition.createdAt)}
+                        行业：{getIndustryName(selectedPosition.industry)} · 能力点：
+                        {selectedPosition.abilityModel?.nodes.length || 0} 个 · 上架时间：
+                        {formatDate(selectedPosition.createdAt)}
                       </div>
                     </div>
                   )}
-
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddOpen(false)}>
@@ -333,7 +345,7 @@ export default function PostRecommendPage() {
                             className={cn(
                               rec.positionType === 'teaching'
                                 ? 'bg-amber-50 text-amber-600 hover:bg-amber-50'
-                                : 'bg-blue-50 text-blue-600 hover:bg-blue-50'
+                                : 'bg-blue-50 text-blue-600 hover:bg-blue-50',
                             )}
                           >
                             {POSITION_TYPE_LABELS[rec.positionType]}
@@ -383,11 +395,15 @@ export default function PostRecommendPage() {
       </div>
       <ConfirmDialog
         open={deleteTargetId !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null)
+        }}
         title="确认删除"
         description="确定要删除该推荐吗？此操作不可撤销。"
         variant="destructive"
-        onConfirm={() => { if (deleteTargetId) handleDelete(deleteTargetId) }}
+        onConfirm={() => {
+          if (deleteTargetId) handleDelete(deleteTargetId)
+        }}
       />
     </div>
   )

@@ -1,6 +1,6 @@
-export { PlatformSideNav } from "./PlatformSideNav"
+export { PlatformSideNav } from './PlatformSideNav'
 
-export { platformIconMap, resolvePlatformIcon } from "./icons"
+export { platformIconMap, resolvePlatformIcon } from './icons'
 
 export type {
   PlatformCatalogItem,
@@ -9,6 +9,6 @@ export type {
   SideNavItem,
   TopNavItem,
   UserMenuItem,
-} from "./config"
+} from './config'
 
-export type { PlatformIcon, PlatformIconKey } from "./icons"
+export type { PlatformIcon, PlatformIconKey } from './icons'

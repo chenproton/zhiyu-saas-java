@@ -1,23 +1,23 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { portalRequest } from "@/lib/api"
-import { allianceLabel } from "@zhiyu/shared-types"
-import type { AllianceAchievement } from "@/lib/types"
-import { reportError } from "@/lib/error-handling"
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { portalRequest } from '@/lib/api'
+import { allianceLabel } from '@zhiyu/shared-types'
+import type { AllianceAchievement } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 
 export default function AlliancePublicAchievementsPage() {
   const [items, setItems] = useState<AllianceAchievement[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    portalRequest<{ items: AllianceAchievement[] }>("/alliance/public/achievements")
+    portalRequest<{ items: AllianceAchievement[] }>('/alliance/public/achievements')
       .then((data) => setItems(data.items || []))
       .catch((err) => {
-        reportError(err, { source: "加载成果列表" })
+        reportError(err, { source: '加载成果列表' })
       })
       .finally(() => setLoading(false))
   }, [])
@@ -38,9 +38,11 @@ export default function AlliancePublicAchievementsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{item.title}</CardTitle>
-                    <Badge variant="outline">{allianceLabel("achievementType", item.type)}</Badge>
+                    <Badge variant="outline">{allianceLabel('achievementType', item.type)}</Badge>
                   </div>
-                  {item.achievementDate && <CardDescription>{item.achievementDate}</CardDescription>}
+                  {item.achievementDate && (
+                    <CardDescription>{item.achievementDate}</CardDescription>
+                  )}
                 </CardHeader>
                 {item.description && (
                   <CardContent>

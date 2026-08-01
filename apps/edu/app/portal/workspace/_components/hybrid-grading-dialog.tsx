@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from 'react'
 import {
   BookOpen,
   CheckCircle2,
@@ -13,23 +13,23 @@ import {
   PenLine,
   Search,
   Users,
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@zhiyu/ui"
-import { Card, CardContent } from "@/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@zhiyu/ui'
+import { Card, CardContent } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-import { portalApi } from "@/lib/api"
-import type { WorkspaceClassPlan, WorkspaceClassSession } from "@/lib/types"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { portalApi } from '@/lib/api'
+import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
 
 interface HybridGradingDialogProps {
   open: boolean
@@ -38,15 +38,13 @@ interface HybridGradingDialogProps {
   className?: string
 }
 
-
-
 interface CourseStudent {
   studentId: string
   studentName: string
   studentNumber: string
   className: string
   enrollmentYear: number
-  status: "pending" | "graded"
+  status: 'pending' | 'graded'
   submittedAt: string
 }
 
@@ -69,10 +67,15 @@ interface CourseGroup {
   gradedCount: number
 }
 
-function buildCourseGroups(classPlans: WorkspaceClassPlan[], classSessions: WorkspaceClassSession[]): CourseGroup[] {
-  return classPlans.map(plan => {
-    const sessions = classSessions.filter(s => s.courseId === plan.id).sort((a, b) => a.week - b.week)
-    const sessionGroups: SessionGroup[] = sessions.map(sess => ({
+function buildCourseGroups(
+  classPlans: WorkspaceClassPlan[],
+  classSessions: WorkspaceClassSession[],
+): CourseGroup[] {
+  return classPlans.map((plan) => {
+    const sessions = classSessions
+      .filter((s) => s.courseId === plan.id)
+      .sort((a, b) => a.week - b.week)
+    const sessionGroups: SessionGroup[] = sessions.map((sess) => ({
       sessionId: sess.id,
       sessionLabel: `第 ${sess.week} 周 · ${sess.weekday} ${sess.period}`,
       venue: sess.venue,
@@ -92,39 +95,48 @@ function buildCourseGroups(classPlans: WorkspaceClassPlan[], classSessions: Work
   })
 }
 
-export function HybridGradingDialog({ open, onOpenChange, sessionTitle, className }: HybridGradingDialogProps) {
-  const [searchQuery, setSearchQuery] = useState("")
+export function HybridGradingDialog({
+  open,
+  onOpenChange,
+  sessionTitle,
+  className,
+}: HybridGradingDialogProps) {
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
   const [classPlans, setClassPlans] = useState<WorkspaceClassPlan[]>([])
   const [classSessions, setClassSessions] = useState<WorkspaceClassSession[]>([])
 
   useEffect(() => {
-    portalApi.workspaceDashboard({ role: "teacher" })
-      .then(res => {
+    portalApi
+      .workspaceDashboard({ role: 'teacher' })
+      .then((res) => {
         setClassPlans(res.classPlans || [])
         setClassSessions(res.classSessions || [])
       })
       .catch(() => {})
   }, [])
 
-  const courseGroups = useMemo(() => buildCourseGroups(classPlans, classSessions), [classPlans, classSessions])
+  const courseGroups = useMemo(
+    () => buildCourseGroups(classPlans, classSessions),
+    [classPlans, classSessions],
+  )
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return courseGroups
     const q = searchQuery.trim().toLowerCase()
     return courseGroups.filter(
-      g => g.courseName.toLowerCase().includes(q) || g.className.toLowerCase().includes(q)
+      (g) => g.courseName.toLowerCase().includes(q) || g.className.toLowerCase().includes(q),
     )
   }, [courseGroups, searchQuery])
 
   const selectedCourse = useMemo(
-    () => courseGroups.find(g => g.planId === selectedPlanId),
-    [courseGroups, selectedPlanId]
+    () => courseGroups.find((g) => g.planId === selectedPlanId),
+    [courseGroups, selectedPlanId],
   )
 
   const toggleSession = (sessionId: string) => {
-    setExpandedSessions(prev => {
+    setExpandedSessions((prev) => {
       const next = new Set(prev)
       if (next.has(sessionId)) next.delete(sessionId)
       else next.add(sessionId)
@@ -149,7 +161,7 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
             混合课程评分
           </DialogTitle>
           <DialogDescription>
-            {sessionTitle} · {className || "全部学生"}
+            {sessionTitle} · {className || '全部学生'}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -175,19 +187,31 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
                     setExpandedSessions(new Set())
                   }}
                   className={cn(
-                    "w-full text-left rounded-lg p-2.5 transition-all border",
+                    'w-full text-left rounded-lg p-2.5 transition-all border',
                     selectedPlanId === group.planId
-                      ? "bg-amber-50 border-amber-300 shadow-sm"
-                      : "bg-white border-transparent hover:bg-gray-50 hover:border-gray-200"
+                      ? 'bg-amber-50 border-amber-300 shadow-sm'
+                      : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200',
                   )}
                 >
                   <div className="flex items-start gap-2">
-                    <BookOpen className={cn("h-4 w-4 mt-0.5 shrink-0", selectedPlanId === group.planId ? "text-amber-600" : "text-gray-400")} />
+                    <BookOpen
+                      className={cn(
+                        'h-4 w-4 mt-0.5 shrink-0',
+                        selectedPlanId === group.planId ? 'text-amber-600' : 'text-gray-400',
+                      )}
+                    />
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm font-medium truncate", selectedPlanId === group.planId ? "text-amber-700" : "text-gray-700")}>
+                      <p
+                        className={cn(
+                          'text-sm font-medium truncate',
+                          selectedPlanId === group.planId ? 'text-amber-700' : 'text-gray-700',
+                        )}
+                      >
                         {group.courseName}
                       </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">{group.className} · {group.studentCount}人</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {group.className} · {group.studentCount}人
+                      </p>
                       <div className="flex items-center gap-2 mt-1.5">
                         {group.pendingCount > 0 && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
@@ -212,10 +236,16 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
             {selectedCourse ? (
               <div className="p-6 space-y-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-800">{selectedCourse.courseName}</h2>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    {selectedCourse.courseName}
+                  </h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs font-normal text-gray-500">{selectedCourse.className}</Badge>
-                    <Badge variant="secondary" className="text-xs font-normal">{selectedCourse.studentCount}人</Badge>
+                    <Badge variant="outline" className="text-xs font-normal text-gray-500">
+                      {selectedCourse.className}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs font-normal">
+                      {selectedCourse.studentCount}人
+                    </Badge>
                   </div>
                 </div>
 
@@ -230,14 +260,20 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
                   <div className="space-y-3">
                     {selectedCourse.sessions.map((session) => {
                       const isExpanded = expandedSessions.has(session.sessionId)
-                      const groupedByClass = session.students.reduce<Record<string, CourseStudent[]>>((acc, s) => {
+                      const groupedByClass = session.students.reduce<
+                        Record<string, CourseStudent[]>
+                      >((acc, s) => {
                         if (!acc[s.className]) acc[s.className] = []
                         acc[s.className].push(s)
                         return acc
                       }, {})
 
                       return (
-                        <Collapsible key={session.sessionId} open={isExpanded} onOpenChange={() => toggleSession(session.sessionId)}>
+                        <Collapsible
+                          key={session.sessionId}
+                          open={isExpanded}
+                          onOpenChange={() => toggleSession(session.sessionId)}
+                        >
                           <Card className="overflow-hidden">
                             <CollapsibleTrigger asChild>
                               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50/50 transition-colors">
@@ -246,15 +282,23 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
                                     <FileText className="h-4 w-4 text-amber-600" />
                                   </div>
                                   <div>
-                                    <p className="text-sm font-semibold text-gray-800">{session.sessionLabel}</p>
+                                    <p className="text-sm font-semibold text-gray-800">
+                                      {session.sessionLabel}
+                                    </p>
                                     <div className="flex items-center gap-3 mt-1">
                                       <span className="text-xs text-gray-500">{session.venue}</span>
-                                      <span className="text-xs text-gray-400">{session.students.length} 位学生</span>
+                                      <span className="text-xs text-gray-400">
+                                        {session.students.length} 位学生
+                                      </span>
                                       {session.pendingCount > 0 && (
-                                        <span className="text-xs text-amber-600 font-medium">待评分 {session.pendingCount}</span>
+                                        <span className="text-xs text-amber-600 font-medium">
+                                          待评分 {session.pendingCount}
+                                        </span>
                                       )}
                                       {session.gradedCount > 0 && (
-                                        <span className="text-xs text-green-600 font-medium">已评分 {session.gradedCount}</span>
+                                        <span className="text-xs text-green-600 font-medium">
+                                          已评分 {session.gradedCount}
+                                        </span>
                                       )}
                                     </div>
                                   </div>
@@ -276,7 +320,9 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
                                       <div className="flex items-center gap-1.5 mb-1.5 px-1">
                                         <Users className="h-3 w-3 text-gray-400" />
                                         <span className="text-xs text-gray-500">{cls}</span>
-                                        <span className="text-[10px] text-gray-400">({students.length}人)</span>
+                                        <span className="text-[10px] text-gray-400">
+                                          ({students.length}人)
+                                        </span>
                                       </div>
                                       <div className="rounded-lg border border-slate-200 divide-y divide-slate-100">
                                         {students.map((item) => (
@@ -290,11 +336,23 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
                                               </div>
                                               <div>
                                                 <div className="flex items-center gap-2">
-                                                  <span className="font-medium text-gray-800 text-sm">{item.studentName}</span>
-                                                  <span className="text-xs text-gray-400">{item.studentNumber}</span>
+                                                  <span className="font-medium text-gray-800 text-sm">
+                                                    {item.studentName}
+                                                  </span>
+                                                  <span className="text-xs text-gray-400">
+                                                    {item.studentNumber}
+                                                  </span>
                                                   <StatusBadge
-                                                    status={item.status === "pending" ? "pending" : "graded"}
-                                                    label={item.status === "pending" ? "待评分" : "已评分"}
+                                                    status={
+                                                      item.status === 'pending'
+                                                        ? 'pending'
+                                                        : 'graded'
+                                                    }
+                                                    label={
+                                                      item.status === 'pending'
+                                                        ? '待评分'
+                                                        : '已评分'
+                                                    }
                                                     className="text-[10px] border"
                                                   />
                                                 </div>
@@ -305,16 +363,28 @@ export function HybridGradingDialog({ open, onOpenChange, sessionTitle, classNam
                                               </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                              <Button variant="outline" size="sm" className="h-7 text-xs">
-                                                <Eye className="mr-1 h-3 w-3" />查看
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 text-xs"
+                                              >
+                                                <Eye className="mr-1 h-3 w-3" />
+                                                查看
                                               </Button>
-                                              {item.status === "pending" ? (
+                                              {item.status === 'pending' ? (
                                                 <Button size="sm" className="h-7 text-xs">
-                                                  <PenLine className="mr-1 h-3 w-3" />评分
+                                                  <PenLine className="mr-1 h-3 w-3" />
+                                                  评分
                                                 </Button>
                                               ) : (
-                                                <Button variant="ghost" size="sm" className="h-7 text-xs text-green-600" disabled>
-                                                  <CheckCircle2 className="mr-1 h-3 w-3" />已评分
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-7 text-xs text-green-600"
+                                                  disabled
+                                                >
+                                                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                                                  已评分
                                                 </Button>
                                               )}
                                             </div>

@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState } from "react"
+import { useState } from 'react'
 import {
   LineChart,
   Line,
@@ -11,26 +11,23 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { Award, FileText, GraduationCap, TrendingUp } from "lucide-react"
+} from 'recharts'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { Award, FileText, GraduationCap, TrendingUp } from 'lucide-react'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import {
-  mockGradeRecords,
-  mockGradeTrend,
-  mockCompareData,
-} from "../_data/mock-student-data"
+import { mockGradeRecords, mockGradeTrend, mockCompareData } from '../_data/mock-student-data'
 
 export function GradesContent() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const passedCount = mockGradeRecords.filter((g) => g.total >= 60).length
-  const avgScore = mockGradeRecords.length > 0
-    ? Math.round(mockGradeRecords.reduce((s, g) => s + g.total, 0) / mockGradeRecords.length)
-    : 0
+  const avgScore =
+    mockGradeRecords.length > 0
+      ? Math.round(mockGradeRecords.reduce((s, g) => s + g.total, 0) / mockGradeRecords.length)
+      : 0
 
   return (
     <div className="space-y-5">
@@ -98,7 +95,10 @@ export function GradesContent() {
         {mockGradeRecords.map((g) => {
           const isExpanded = expandedId === g.courseId
           return (
-            <Card key={g.courseId} className="bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <Card
+              key={g.courseId}
+              className="bg-white border border-gray-100 shadow-sm overflow-hidden"
+            >
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -122,7 +122,7 @@ export function GradesContent() {
                       className="text-gray-400 hover:text-blue-600"
                       onClick={() => setExpandedId(isExpanded ? null : g.courseId)}
                     >
-                      {isExpanded ? "收起" : "展开"}
+                      {isExpanded ? '收起' : '展开'}
                     </Button>
                   </div>
                 </div>
@@ -168,8 +168,20 @@ export function GradesContent() {
                               <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                               <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
                               <Tooltip />
-                              <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2} name="总评" />
-                              <Line type="monotone" dataKey="usual" stroke="#10b981" strokeWidth={2} name="平时" />
+                              <Line
+                                type="monotone"
+                                dataKey="total"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                name="总评"
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="usual"
+                                stroke="#10b981"
+                                strokeWidth={2}
+                                name="平时"
+                              />
                             </LineChart>
                           </ResponsiveContainer>
                         </CardContent>
@@ -185,8 +197,18 @@ export function GradesContent() {
                               <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                               <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
                               <Tooltip />
-                              <Bar dataKey="self" fill="#3b82f6" name="个人" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey="avg" fill="#94a3b8" name="班级平均" radius={[4, 4, 0, 0]} />
+                              <Bar
+                                dataKey="self"
+                                fill="#3b82f6"
+                                name="个人"
+                                radius={[4, 4, 0, 0]}
+                              />
+                              <Bar
+                                dataKey="avg"
+                                fill="#94a3b8"
+                                name="班级平均"
+                                radius={[4, 4, 0, 0]}
+                              />
                             </BarChart>
                           </ResponsiveContainer>
                         </CardContent>

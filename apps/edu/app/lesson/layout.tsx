@@ -1,23 +1,19 @@
-"use client"
+'use client'
 
-import { useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
-import { useAuth } from "@/components/auth-provider"
+import { useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { useAuth } from '@/components/auth-provider'
 
-export default function LessonLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function LessonLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, loading } = useAuth()
-  const isLanding = pathname.startsWith("/lesson/landing")
+  const isLanding = pathname.startsWith('/lesson/landing')
 
   useEffect(() => {
     if (!loading && !user && !isLanding) {
-      router.replace("/portal/login")
+      router.replace('/portal/login')
     }
   }, [loading, user, isLanding, router])
 

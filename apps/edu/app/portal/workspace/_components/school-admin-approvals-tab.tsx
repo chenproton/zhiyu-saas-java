@@ -1,37 +1,40 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { CheckSquare, ChevronRight, ClipboardList } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { SectionCard } from "./section-card"
-import { portalApi } from "@/lib/api"
-import type { WorkspaceDashboard, WorkspaceTodo } from "@/lib/types"
+import { useEffect, useState } from 'react'
+import { CheckSquare, ChevronRight, ClipboardList } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { SectionCard } from './section-card'
+import { portalApi } from '@/lib/api'
+import type { WorkspaceDashboard, WorkspaceTodo } from '@/lib/types'
 
 const approvalHrefMap: Record<string, string> = {
-  "pending-course": "/lesson/admin/approvals",
-  "pending-scenario": "/scene/approvals",
-  "pending-career_position": "/job/approvals",
-  "pending-question_bank": "/evaluation/approvals",
-  "pending-exam": "/evaluation/approvals",
-  "pending-training_program": "/affairs/approvals",
+  'pending-course': '/lesson/admin/approvals',
+  'pending-scenario': '/scene/approvals',
+  'pending-career_position': '/job/approvals',
+  'pending-question_bank': '/evaluation/approvals',
+  'pending-exam': '/evaluation/approvals',
+  'pending-training_program': '/affairs/approvals',
 }
 
 const typeHrefMap: Record<string, string> = {
-  course: "/lesson/admin/approvals",
-  scenario: "/scene/approvals",
-  career_position: "/job/approvals",
-  question_bank: "/evaluation/approvals",
-  exam: "/evaluation/approvals",
-  training_program: "/affairs/approvals",
+  course: '/lesson/admin/approvals',
+  scenario: '/scene/approvals',
+  career_position: '/job/approvals',
+  question_bank: '/evaluation/approvals',
+  exam: '/evaluation/approvals',
+  training_program: '/affairs/approvals',
 }
 
 export function SchoolAdminApprovalsTab() {
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
-    portalApi.workspaceDashboard({ role: "school_admin" }).then(setDashboard).catch(() => setDashboard(null))
+    portalApi
+      .workspaceDashboard({ role: 'school_admin' })
+      .then(setDashboard)
+      .catch(() => setDashboard(null))
   }, [])
 
   const todos = dashboard?.todos || []
@@ -52,9 +55,12 @@ export function SchoolAdminApprovalsTab() {
           </CardContent>
         </Card>
         {todos.slice(0, 3).map((item) => (
-          <Card key={item.id} className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50/50">
+          <Card
+            key={item.id}
+            className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50/50"
+          >
             <CardContent className="p-4">
-              <p className="text-xs text-gray-500">{item.title.replace("待审批", "")}</p>
+              <p className="text-xs text-gray-500">{item.title.replace('待审批', '')}</p>
               <p className="text-xl font-bold text-gray-900">{item.count}</p>
             </CardContent>
           </Card>
@@ -63,11 +69,13 @@ export function SchoolAdminApprovalsTab() {
 
       <SectionCard title="待审批事项清单" icon={CheckSquare} iconColor="rose">
         <div className="space-y-2">
-          {todos.length === 0 && <div className="py-12 text-center text-sm text-gray-400">暂无待审批事项</div>}
+          {todos.length === 0 && (
+            <div className="py-12 text-center text-sm text-gray-400">暂无待审批事项</div>
+          )}
           {todos.map((item) => (
             <a
               key={item.id}
-              href={approvalHrefMap[item.id] || typeHrefMap[item.id.replace("pending-", "")] || "#"}
+              href={approvalHrefMap[item.id] || typeHrefMap[item.id.replace('pending-', '')] || '#'}
               className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all group"
             >
               <div className="flex items-center gap-4">
@@ -80,7 +88,9 @@ export function SchoolAdminApprovalsTab() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant="destructive" className="text-xs">{item.count}</Badge>
+                <Badge variant="destructive" className="text-xs">
+                  {item.count}
+                </Badge>
                 <Button
                   variant="ghost"
                   size="icon"

@@ -5,8 +5,8 @@ export interface User {
   institutionId?: string
   orgNodeId?: string
   majorId?: string
-  role: "school" | "enterprise" | "operator"
-  platform: "saas" | "portal"
+  role: 'school' | 'enterprise' | 'operator'
+  platform: 'saas' | 'portal'
   roleIds?: string[]
   roleCodes?: string[]
   roleNames?: string[]

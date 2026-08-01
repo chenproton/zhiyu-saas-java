@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { MALL_URL } from "@/lib/external-links"
+import { MALL_URL } from '@/lib/external-links'
 
 export function Footer() {
   return (
@@ -10,12 +10,8 @@ export function Footer() {
       <div className="max-w-6xl mx-auto px-10 pt-12 pb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="space-y-3">
-            <h3 className="text-[15px] font-semibold text-white">
-              场景化数智教学服务平台
-            </h3>
-            <p className="text-[13px] text-[#a8b3cf] leading-relaxed">
-              专注职业教育数字化
-            </p>
+            <h3 className="text-[15px] font-semibold text-white">场景化数智教学服务平台</h3>
+            <p className="text-[13px] text-[#a8b3cf] leading-relaxed">专注职业教育数字化</p>
             <div className="text-[12px] text-[#6b7a99]">版本：V3.2.1</div>
             <a
               href="#"
@@ -26,9 +22,7 @@ export function Footer() {
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-[15px] font-semibold text-white">
-              教学资源
-            </h3>
+            <h3 className="text-[15px] font-semibold text-white">教学资源</h3>
             <p className="text-[13px] text-[#a8b3cf] leading-relaxed">
               岗位标准、实践场景、企业导师
             </p>
@@ -43,25 +37,25 @@ export function Footer() {
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-[15px] font-semibold text-white">
-              技术支持
-            </h3>
+            <h3 className="text-[15px] font-semibold text-white">技术支持</h3>
             <ul className="space-y-2 text-[13px] text-[#a8b3cf]">
               <li>服务热线：400-888-8888</li>
               <li>邮箱：support@example.com</li>
               <li>
-                <a href="#" className="text-cyan-400 hover:text-cyan-300 transition-colors">使用手册</a>
+                <a href="#" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                  使用手册
+                </a>
               </li>
               <li>
-                <a href="#" className="text-cyan-400 hover:text-cyan-300 transition-colors">常见问题</a>
+                <a href="#" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                  常见问题
+                </a>
               </li>
             </ul>
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-[15px] font-semibold text-white">
-              校内支持
-            </h3>
+            <h3 className="text-[15px] font-semibold text-white">校内支持</h3>
             <ul className="space-y-2 text-[13px] text-[#a8b3cf]">
               <li>授权院校：XX职业技术学院</li>
               <li>校内管理员：张老师</li>
@@ -73,12 +67,17 @@ export function Footer() {
         <div className="mt-10 pt-6 border-t border-[#29324a]">
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-[12px] text-[#6b7a99]">
             <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-[#a8b3cf] transition-colors">隐私政策</a>
+              <a href="#" className="hover:text-[#a8b3cf] transition-colors">
+                隐私政策
+              </a>
               <span className="text-[#29324a]">|</span>
-              <a href="#" className="hover:text-[#a8b3cf] transition-colors">用户协议</a>
+              <a href="#" className="hover:text-[#a8b3cf] transition-colors">
+                用户协议
+              </a>
             </div>
             <div className="text-center md:text-right leading-relaxed">
-              版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1
+              版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜
+              京ICP备2025105397号-1
             </div>
           </div>
         </div>

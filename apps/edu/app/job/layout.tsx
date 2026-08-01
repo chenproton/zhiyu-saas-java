@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { jobNavigationConfig } from "@/lib/navigation-config"
-import { PlatformLayout } from "@/components/shared/platform-layout"
+import { jobNavigationConfig } from '@/lib/navigation-config'
+import { PlatformLayout } from '@/components/shared/platform-layout'
 
 export default function JobLayout({ children }: { children: React.ReactNode }) {
   return (

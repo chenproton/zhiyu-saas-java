@@ -1,23 +1,23 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { portalRequest } from "@/lib/api"
-import { allianceLabel } from "@zhiyu/shared-types"
-import type { AllianceEnterprise } from "@/lib/types"
-import { reportError } from "@/lib/error-handling"
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { portalRequest } from '@/lib/api'
+import { allianceLabel } from '@zhiyu/shared-types'
+import type { AllianceEnterprise } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 
 export default function AlliancePublicEnterprisesPage() {
   const [items, setItems] = useState<AllianceEnterprise[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    portalRequest<{ items: AllianceEnterprise[] }>("/alliance/public/enterprises")
+    portalRequest<{ items: AllianceEnterprise[] }>('/alliance/public/enterprises')
       .then((data) => setItems(data.items || []))
       .catch((err) => {
-        reportError(err, { source: "加载合作企业列表" })
+        reportError(err, { source: '加载合作企业列表' })
       })
       .finally(() => setLoading(false))
   }, [])
@@ -38,9 +38,16 @@ export default function AlliancePublicEnterprisesPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <Badge variant="outline">{allianceLabel("enterpriseStatus", item.status)}</Badge>
+                    <Badge variant="outline">
+                      {allianceLabel('enterpriseStatus', item.status)}
+                    </Badge>
                   </div>
-                  {item.industry && <CardDescription>{item.industry}{item.region ? ` · ${item.region}` : ""}</CardDescription>}
+                  {item.industry && (
+                    <CardDescription>
+                      {item.industry}
+                      {item.region ? ` · ${item.region}` : ''}
+                    </CardDescription>
+                  )}
                 </CardHeader>
                 {item.description && (
                   <CardContent>

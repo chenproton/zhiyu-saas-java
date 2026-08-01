@@ -1,4 +1,4 @@
-import type { PlatformNavigationConfig } from "@/components/platform-shell"
+import type { PlatformNavigationConfig } from '@/components/platform-shell'
 import {
   jobNavigationConfig,
   unifiedNavigationConfig,
@@ -7,7 +7,7 @@ import {
   libraryNavigationConfig,
   affairsNavigationConfig,
   allianceNavigationConfig,
-} from "@/lib/navigation-config"
+} from '@/lib/navigation-config'
 
 export interface MenuTreeItem {
   id: string
@@ -38,42 +38,90 @@ function platformGroup(id: string, label: string, config: PlatformNavigationConf
 }
 
 export function buildMenuTree(): MenuTreeItem[] {
-  const career = platformGroup("career", "职业岗位学习平台", jobNavigationConfig)
-  career.children?.push({ id: "career-landing", label: "前台落地页", href: "/job/student" })
-  const course = platformGroup("course", "数字课程服务平台", unifiedNavigationConfig)
-  course.children?.push({ id: "course-landing", label: "前台落地页", href: "/lesson/landing" })
-  const scene = platformGroup("scene", "实践场景学习平台", sceneNavigationConfig)
-  scene.children?.push({ id: "scene-landing", label: "前台落地页", href: "/scene/landing" })
-  const ability = platformGroup("ability", "能力评价与测评资源管理平台", evaluationNavigationConfig)
-  ability.children?.push({ id: "ability-landing", label: "前台落地页", href: "/evaluation/landing" })
-  const resource = platformGroup("resource", "教学资源共享服务平台", libraryNavigationConfig)
-  resource.children?.push({ id: "resource-landing", label: "前台落地页", href: "/library/landing" })
-  const affairs = platformGroup("affairs", "教务管理服务平台", affairsNavigationConfig)
-  const alliance = platformGroup("alliance", "产教融合与就业服务平台", allianceNavigationConfig)
+  const career = platformGroup('career', '职业岗位学习平台', jobNavigationConfig)
+  career.children?.push({ id: 'career-landing', label: '前台落地页', href: '/job/student' })
+  const course = platformGroup('course', '数字课程服务平台', unifiedNavigationConfig)
+  course.children?.push({ id: 'course-landing', label: '前台落地页', href: '/lesson/landing' })
+  const scene = platformGroup('scene', '实践场景学习平台', sceneNavigationConfig)
+  scene.children?.push({ id: 'scene-landing', label: '前台落地页', href: '/scene/landing' })
+  const ability = platformGroup('ability', '能力评价与测评资源管理平台', evaluationNavigationConfig)
+  ability.children?.push({
+    id: 'ability-landing',
+    label: '前台落地页',
+    href: '/evaluation/landing',
+  })
+  const resource = platformGroup('resource', '教学资源共享服务平台', libraryNavigationConfig)
+  resource.children?.push({ id: 'resource-landing', label: '前台落地页', href: '/library/landing' })
+  const affairs = platformGroup('affairs', '教务管理服务平台', affairsNavigationConfig)
+  const alliance = platformGroup('alliance', '产教融合与就业服务平台', allianceNavigationConfig)
 
   return [
     {
-      id: "system-entry",
-      label: "系统设置",
+      id: 'system-entry',
+      label: '系统设置',
       children: [
-        { id: "system-entry-main", label: "系统管理入口", href: "/portal/apps/system" },
-        { id: "tenant-config", label: "租户信息管理", href: "/portal/apps/system/tenant" },
-        { id: "resource-package", label: "套餐情况查看", href: "/portal/apps/system/resource/package" },
-        { id: "resource-codes", label: "资源编码管理", href: "/portal/apps/system/resource/codes" },
-        { id: "resource-industries", label: "行业管理", href: "/portal/apps/system/resource/industries" },
-        { id: "resource-majors", label: "专业管理", href: "/portal/apps/system/resource/majors" },
-        { id: "org-user-teachers", label: "教职工管理", href: "/portal/apps/system/org-user/teachers" },
-        { id: "org-user-students", label: "学生管理", href: "/portal/apps/system/org-user/students" },
-        { id: "org-user-graduates", label: "毕业学生管理", href: "/portal/apps/system/org-user/graduates" },
-        { id: "org-user-accounts", label: "账户列表", href: "/portal/apps/system/org-user/accounts" },
-        { id: "org-user-roles", label: "角色权限管理", href: "/portal/apps/system/org-user/roles" },
-        { id: "org-user-positions", label: "职位管理", href: "/portal/apps/system/org-user/positions" },
-        { id: "org-user-org-types", label: "组织类型管理", href: "/portal/apps/system/org-user/org-types" },
-        { id: "org-user-org-structure", label: "组织架构管理", href: "/portal/apps/system/org-user/org-structure" },
-        { id: "org-user-fields", label: "用户字段扩展", href: "/portal/apps/system/org-user/fields" },
-        { id: "org-user-relations", label: "关系类型管理", href: "/portal/apps/system/org-user/relations" },
-        { id: "logs-login", label: "登录日志查看", href: "/portal/apps/system/logs/login" },
-        { id: "logs-operation", label: "操作日志查看", href: "/portal/apps/system/logs/operation" },
+        { id: 'system-entry-main', label: '系统管理入口', href: '/portal/apps/system' },
+        { id: 'tenant-config', label: '租户信息管理', href: '/portal/apps/system/tenant' },
+        {
+          id: 'resource-package',
+          label: '套餐情况查看',
+          href: '/portal/apps/system/resource/package',
+        },
+        { id: 'resource-codes', label: '资源编码管理', href: '/portal/apps/system/resource/codes' },
+        {
+          id: 'resource-industries',
+          label: '行业管理',
+          href: '/portal/apps/system/resource/industries',
+        },
+        { id: 'resource-majors', label: '专业管理', href: '/portal/apps/system/resource/majors' },
+        {
+          id: 'org-user-teachers',
+          label: '教职工管理',
+          href: '/portal/apps/system/org-user/teachers',
+        },
+        {
+          id: 'org-user-students',
+          label: '学生管理',
+          href: '/portal/apps/system/org-user/students',
+        },
+        {
+          id: 'org-user-graduates',
+          label: '毕业学生管理',
+          href: '/portal/apps/system/org-user/graduates',
+        },
+        {
+          id: 'org-user-accounts',
+          label: '账户列表',
+          href: '/portal/apps/system/org-user/accounts',
+        },
+        { id: 'org-user-roles', label: '角色权限管理', href: '/portal/apps/system/org-user/roles' },
+        {
+          id: 'org-user-positions',
+          label: '职位管理',
+          href: '/portal/apps/system/org-user/positions',
+        },
+        {
+          id: 'org-user-org-types',
+          label: '组织类型管理',
+          href: '/portal/apps/system/org-user/org-types',
+        },
+        {
+          id: 'org-user-org-structure',
+          label: '组织架构管理',
+          href: '/portal/apps/system/org-user/org-structure',
+        },
+        {
+          id: 'org-user-fields',
+          label: '用户字段扩展',
+          href: '/portal/apps/system/org-user/fields',
+        },
+        {
+          id: 'org-user-relations',
+          label: '关系类型管理',
+          href: '/portal/apps/system/org-user/relations',
+        },
+        { id: 'logs-login', label: '登录日志查看', href: '/portal/apps/system/logs/login' },
+        { id: 'logs-operation', label: '操作日志查看', href: '/portal/apps/system/logs/operation' },
       ],
     },
     career,
@@ -89,7 +137,7 @@ export function buildMenuTree(): MenuTreeItem[] {
 export function normalizeMenuPath(path: string): string {
   if (!path) return path
   const clean = path.split(/[?#]/)[0]
-  if (clean.length > 1 && clean.endsWith("/")) return clean.slice(0, -1)
+  if (clean.length > 1 && clean.endsWith('/')) return clean.slice(0, -1)
   return clean
 }
 
@@ -109,20 +157,20 @@ export function getKnownMenuPaths(): ReadonlySet<string> {
 }
 
 const PLATFORM_PATH_PREFIXES = [
-  { prefix: "/portal/apps/system", platform: "system" },
-  { prefix: "/portal/apps/alliance", platform: "alliance" },
-  { prefix: "/job", platform: "career" },
-  { prefix: "/lesson", platform: "course" },
-  { prefix: "/scene", platform: "scene" },
-  { prefix: "/evaluation", platform: "ability" },
-  { prefix: "/library", platform: "resource" },
-  { prefix: "/affairs", platform: "affairs" },
+  { prefix: '/portal/apps/system', platform: 'system' },
+  { prefix: '/portal/apps/alliance', platform: 'alliance' },
+  { prefix: '/job', platform: 'career' },
+  { prefix: '/lesson', platform: 'course' },
+  { prefix: '/scene', platform: 'scene' },
+  { prefix: '/evaluation', platform: 'ability' },
+  { prefix: '/library', platform: 'resource' },
+  { prefix: '/affairs', platform: 'affairs' },
 ]
 
 function getPathPlatformId(path: string): string | null {
   const normalized = normalizeMenuPath(path)
   for (const { prefix, platform } of PLATFORM_PATH_PREFIXES) {
-    if (normalized === prefix || normalized.startsWith(prefix + "/")) {
+    if (normalized === prefix || normalized.startsWith(prefix + '/')) {
       return platform
     }
   }
@@ -148,7 +196,7 @@ export function checkMenuPermission(
     return false
   }
 
-  if (!menus || typeof menus !== "object") return true
+  if (!menus || typeof menus !== 'object') return true
 
   const granted = new Set<string>()
   for (const [key, value] of Object.entries(menus as Record<string, unknown>)) {
@@ -157,10 +205,10 @@ export function checkMenuPermission(
 
   const known = getKnownMenuPaths()
   let current = normalizeMenuPath(path)
-  while (current && current !== "/") {
+  while (current && current !== '/') {
     if (granted.has(current)) return true
     if (known.has(current)) return false
-    const idx = current.lastIndexOf("/")
+    const idx = current.lastIndexOf('/')
     if (idx <= 0) break
     current = current.slice(0, idx)
   }
@@ -186,77 +234,77 @@ export interface PermissionModule {
 
 export const permissionModuleConfig: PermissionModule[] = [
   {
-    module: "scene",
-    label: "场景学习平台",
+    module: 'scene',
+    label: '场景学习平台',
     pages: [
       {
-        page: "scenarios",
-        label: "场景管理",
+        page: 'scenarios',
+        label: '场景管理',
         actions: [
-          { action: "submit_approval", label: "提交审批" },
-          { action: "withdraw_approval", label: "撤回审批" },
-          { action: "publish", label: "发布" },
-          { action: "unpublish", label: "取消发布" },
-          { action: "delete", label: "删除" },
-          { action: "review", label: "审核" },
-          { action: "reject", label: "驳回" },
+          { action: 'submit_approval', label: '提交审批' },
+          { action: 'withdraw_approval', label: '撤回审批' },
+          { action: 'publish', label: '发布' },
+          { action: 'unpublish', label: '取消发布' },
+          { action: 'delete', label: '删除' },
+          { action: 'review', label: '审核' },
+          { action: 'reject', label: '驳回' },
         ],
       },
     ],
   },
   {
-    module: "job",
-    label: "产业岗位学习平台",
+    module: 'job',
+    label: '产业岗位学习平台',
     pages: [
       {
-        page: "positions",
-        label: "岗位管理",
+        page: 'positions',
+        label: '岗位管理',
         actions: [
-          { action: "submit_approval", label: "提交审批" },
-          { action: "withdraw_approval", label: "撤回审批" },
-          { action: "publish", label: "发布" },
-          { action: "unpublish", label: "取消发布" },
-          { action: "delete", label: "删除" },
-          { action: "review", label: "审核" },
-          { action: "reject", label: "驳回" },
+          { action: 'submit_approval', label: '提交审批' },
+          { action: 'withdraw_approval', label: '撤回审批' },
+          { action: 'publish', label: '发布' },
+          { action: 'unpublish', label: '取消发布' },
+          { action: 'delete', label: '删除' },
+          { action: 'review', label: '审核' },
+          { action: 'reject', label: '驳回' },
         ],
       },
     ],
   },
   {
-    module: "lesson",
-    label: "数字课程服务平台",
+    module: 'lesson',
+    label: '数字课程服务平台',
     pages: [
       {
-        page: "courses",
-        label: "课程管理",
+        page: 'courses',
+        label: '课程管理',
         actions: [
-          { action: "submit_approval", label: "提交审批" },
-          { action: "withdraw_approval", label: "撤回审批" },
-          { action: "publish", label: "发布" },
-          { action: "unpublish", label: "取消发布" },
-          { action: "delete", label: "删除" },
-          { action: "review", label: "审核" },
-          { action: "reject", label: "驳回" },
+          { action: 'submit_approval', label: '提交审批' },
+          { action: 'withdraw_approval', label: '撤回审批' },
+          { action: 'publish', label: '发布' },
+          { action: 'unpublish', label: '取消发布' },
+          { action: 'delete', label: '删除' },
+          { action: 'review', label: '审核' },
+          { action: 'reject', label: '驳回' },
         ],
       },
     ],
   },
   {
-    module: "evaluation",
-    label: "能力评价与测评管理平台",
+    module: 'evaluation',
+    label: '能力评价与测评管理平台',
     pages: [
       {
-        page: "exams",
-        label: "试卷管理",
+        page: 'exams',
+        label: '试卷管理',
         actions: [
-          { action: "submit_approval", label: "提交审批" },
-          { action: "withdraw_approval", label: "撤回审批" },
-          { action: "publish", label: "发布" },
-          { action: "unpublish", label: "取消发布" },
-          { action: "delete", label: "删除" },
-          { action: "review", label: "审核" },
-          { action: "reject", label: "驳回" },
+          { action: 'submit_approval', label: '提交审批' },
+          { action: 'withdraw_approval', label: '撤回审批' },
+          { action: 'publish', label: '发布' },
+          { action: 'unpublish', label: '取消发布' },
+          { action: 'delete', label: '删除' },
+          { action: 'review', label: '审核' },
+          { action: 'reject', label: '驳回' },
         ],
       },
     ],

@@ -1,12 +1,12 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalUserManagementApi, roleApi, type User } from "@/lib/api"
-import type { Role } from "@/lib/types/backend"
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalUserManagementApi, roleApi, type User } from '@/lib/api'
+import type { Role } from '@/lib/types/backend'
 
 export interface UsePortalUsersOptions {
-  roleCode?: "teacher" | "student"
+  roleCode?: 'teacher' | 'student'
   search?: string
   status?: string
   page?: number
@@ -71,7 +71,7 @@ export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUs
         setTotal(usersRes.total)
       } catch (err) {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : "加载失败")
+        setError(err instanceof Error ? err.message : '加载失败')
       } finally {
         if (!cancelled) setLoading(false)
       }

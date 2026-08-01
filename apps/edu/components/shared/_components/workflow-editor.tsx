@@ -1,20 +1,26 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Plus, Trash2, Users } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MultiSelectSearch } from "@/components/ui/multi-select-search"
-import { UserSelector } from "@/components/shared/user-selector"
+import { useState, useEffect } from 'react'
+import { Plus, Trash2, Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { MultiSelectSearch } from '@/components/ui/multi-select-search'
+import { UserSelector } from '@/components/shared/user-selector'
 
 export interface WorkflowStepEditor {
   name: string
   approverIds: string[]
-  approvalMode: "any" | "all"
+  approvalMode: 'any' | 'all'
 }
 
 export function buildWorkflowSteps(steps: WorkflowStepEditor[]) {
@@ -56,17 +62,19 @@ export function WorkflowEditor({
   tenantId,
 }: WorkflowEditorProps) {
   const handleAddStep = () => {
-    onStepsChange([...steps, { name: "", approverIds: [], approvalMode: "any" }])
+    onStepsChange([...steps, { name: '', approverIds: [], approvalMode: 'any' }])
   }
 
   const handleRemoveStep = (index: number) => {
     onStepsChange(steps.filter((_, i) => i !== index))
   }
 
-  const handleStepChange = (index: number, field: keyof WorkflowStepEditor, value: string | "any" | "all" | string[]) => {
-    onStepsChange(
-      steps.map((s, i) => (i === index ? { ...s, [field]: value } : s))
-    )
+  const handleStepChange = (
+    index: number,
+    field: keyof WorkflowStepEditor,
+    value: string | 'any' | 'all' | string[],
+  ) => {
+    onStepsChange(steps.map((s, i) => (i === index ? { ...s, [field]: value } : s)))
   }
 
   return (
@@ -112,14 +120,17 @@ export function WorkflowEditor({
           {steps.map((step, index) => (
             <div key={index} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="w-6 h-6 p-0 flex items-center justify-center shrink-0">
+                <Badge
+                  variant="secondary"
+                  className="w-6 h-6 p-0 flex items-center justify-center shrink-0"
+                >
                   {index + 1}
                 </Badge>
                 <Input
                   placeholder="步骤名称（如：教研组长审批）"
                   className="flex-1"
                   value={step.name}
-                  onChange={(e) => handleStepChange(index, "name", e.target.value)}
+                  onChange={(e) => handleStepChange(index, 'name', e.target.value)}
                 />
                 {steps.length > 1 && (
                   <Button
@@ -136,7 +147,7 @@ export function WorkflowEditor({
                 <div className="flex-1 min-w-0">
                   <UserSelector
                     value={step.approverIds}
-                    onChange={(ids) => handleStepChange(index, "approverIds", ids as any)}
+                    onChange={(ids) => handleStepChange(index, 'approverIds', ids as any)}
                     multiple
                     placeholder="选择审批人"
                     excludeStudent
@@ -146,7 +157,7 @@ export function WorkflowEditor({
                 </div>
                 <Select
                   value={step.approvalMode}
-                  onValueChange={(v) => handleStepChange(index, "approvalMode", v)}
+                  onValueChange={(v) => handleStepChange(index, 'approvalMode', v)}
                 >
                   <SelectTrigger className="w-28 text-xs">
                     <SelectValue />

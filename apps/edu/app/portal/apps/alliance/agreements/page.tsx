@@ -1,21 +1,32 @@
-"use client"
+'use client'
 
-import { useEffect, useState, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { TableCell, TableHead } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Trash2, ExternalLink } from "lucide-react"
-import Link from "next/link"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import { allianceLabel } from "@zhiyu/shared-types"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { PortalCrudPage } from "@/components/shared/portal-crud-page"
-import type { AllianceAgreement, AllianceEnterprise, AllianceProject, AllianceListResponse } from "@/lib/types"
+import { useEffect, useState, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
+import { TableCell, TableHead } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Pencil, Trash2, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalRequest } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import { allianceLabel } from '@zhiyu/shared-types'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import type {
+  AllianceAgreement,
+  AllianceEnterprise,
+  AllianceProject,
+  AllianceListResponse,
+} from '@/lib/types'
 
 export default function AllianceAgreementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -32,15 +43,15 @@ export default function AllianceAgreementsPage() {
     setError(null)
     try {
       const [data, ents, projs] = await Promise.all([
-        portalRequest<AllianceListResponse<AllianceAgreement>>("/alliance/agreements"),
-        portalRequest<AllianceListResponse<AllianceEnterprise>>("/alliance/enterprises?limit=1000"),
-        portalRequest<AllianceListResponse<AllianceProject>>("/alliance/projects?limit=1000"),
+        portalRequest<AllianceListResponse<AllianceAgreement>>('/alliance/agreements'),
+        portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
+        portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
       ])
       setItems(data.items || [])
       setEnterprises(ents.items || [])
       setProjects(projs.items || [])
     } catch (e: any) {
-      setError(e.message || "加载失败")
+      setError(e.message || '加载失败')
     } finally {
       setLoading(false)
     }
@@ -66,12 +77,13 @@ export default function AllianceAgreementsPage() {
       error={error}
       onRetry={fetchItems}
       filterItems={(filtered, search) =>
-        filtered.filter((a) =>
-          !search ||
-          a.name.toLowerCase().includes(search.toLowerCase())
-        )
+        filtered.filter((a) => !search || a.name.toLowerCase().includes(search.toLowerCase()))
       }
-      importConfig={{ importType: "alliance-agreements", entityLabel: "合作协议", templateFileName: "合作协议批量导入模板.xlsx" }}
+      importConfig={{
+        importType: 'alliance-agreements',
+        entityLabel: '合作协议',
+        templateFileName: '合作协议批量导入模板.xlsx',
+      }}
       createHref="/portal/apps/alliance/agreements/new"
       colSpan={8}
       renderTableHeader={() => (
@@ -88,62 +100,101 @@ export default function AllianceAgreementsPage() {
       )}
       renderTableRow={(item: any, actions: any) => {
         const entIds: string[] = (item.enterpriseIds || []).map(String)
-        const expiring = item.endDate && (() => {
-          const days = (new Date(item.endDate).getTime() - Date.now()) / 86400000
-          return days >= 0 && days <= 90
-        })()
+        const expiring =
+          item.endDate &&
+          (() => {
+            const days = (new Date(item.endDate).getTime() - Date.now()) / 86400000
+            return days >= 0 && days <= 90
+          })()
         return (
-        <>
-          <TableCell className="font-medium">
-            <Link href={`/portal/apps/alliance/agreements/${item.id}`} className="hover:underline">{item.name}</Link>
-          </TableCell>
-          <TableCell className="max-w-[160px]">{entIds.length > 0 ? entIds.map((eid) => enterprises.find((e) => e.id === eid)?.name || eid).join("、") : "-"}</TableCell>
-          <TableCell>{(item.projectIds || []).length > 0 ? projects.find((p) => p.id === (item.projectIds || [])[0])?.name || "-" : "-"}</TableCell>
-          <TableCell>{item.type || "-"}</TableCell>
-          <TableCell>{item.startDate ? new Date(item.startDate).toLocaleDateString("zh-CN") : "-"}</TableCell>
-          <TableCell className={expiring ? "text-amber-600 font-medium" : ""}>
-            {item.endDate ? new Date(item.endDate).toLocaleDateString("zh-CN") : "-"}
-            {expiring && <span className="ml-1 text-xs">（即将到期）</span>}
-          </TableCell>
-          <TableCell>{allianceLabel("agreementStatus", item.status)}</TableCell>
-          <TableRowActions>
-            <Link href={`/portal/apps/alliance/agreements/${item.id}`}>
-              <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
-            </Link>
-            <Link href={`/portal/apps/alliance/agreements/${item.id}/edit`}>
-              <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
-            </Link>
-            <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
-          </TableRowActions>
-        </>
+          <>
+            <TableCell className="font-medium">
+              <Link
+                href={`/portal/apps/alliance/agreements/${item.id}`}
+                className="hover:underline"
+              >
+                {item.name}
+              </Link>
+            </TableCell>
+            <TableCell className="max-w-[160px]">
+              {entIds.length > 0
+                ? entIds.map((eid) => enterprises.find((e) => e.id === eid)?.name || eid).join('、')
+                : '-'}
+            </TableCell>
+            <TableCell>
+              {(item.projectIds || []).length > 0
+                ? projects.find((p) => p.id === (item.projectIds || [])[0])?.name || '-'
+                : '-'}
+            </TableCell>
+            <TableCell>{item.type || '-'}</TableCell>
+            <TableCell>
+              {item.startDate ? new Date(item.startDate).toLocaleDateString('zh-CN') : '-'}
+            </TableCell>
+            <TableCell className={expiring ? 'text-amber-600 font-medium' : ''}>
+              {item.endDate ? new Date(item.endDate).toLocaleDateString('zh-CN') : '-'}
+              {expiring && <span className="ml-1 text-xs">（即将到期）</span>}
+            </TableCell>
+            <TableCell>{allianceLabel('agreementStatus', item.status)}</TableCell>
+            <TableRowActions>
+              <Link href={`/portal/apps/alliance/agreements/${item.id}`}>
+                <Button variant="ghost" size="sm">
+                  <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                  查看
+                </Button>
+              </Link>
+              <Link href={`/portal/apps/alliance/agreements/${item.id}/edit`}>
+                <Button variant="ghost" size="sm">
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  编辑
+                </Button>
+              </Link>
+              <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                删除
+              </Button>
+            </TableRowActions>
+          </>
         )
       }}
-      createDefault={() => ({
-        id: "",
-        name: "",
-        type: "",
-        status: "draft",
-        startDate: "",
-        endDate: "",
-        content: "",
-        enabled: true as any,
-        createdAt: "",
-        updatedAt: "",
-      } as AllianceAgreement & { enabled?: boolean })}
+      createDefault={() =>
+        ({
+          id: '',
+          name: '',
+          type: '',
+          status: 'draft',
+          startDate: '',
+          endDate: '',
+          content: '',
+          enabled: true as any,
+          createdAt: '',
+          updatedAt: '',
+        }) as AllianceAgreement & { enabled?: boolean }
+      }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
           <div className="grid gap-2">
             <Label>协议名称 *</Label>
-            <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />
+            <Input
+              value={item.name || ''}
+              onChange={(e: any) => setItem({ ...item, name: e.target.value })}
+            />
           </div>
           <div className="grid gap-2">
             <Label>协议类型</Label>
-            <Input value={item.type || ""} onChange={(e: any) => setItem({ ...item, type: e.target.value })} />
+            <Input
+              value={item.type || ''}
+              onChange={(e: any) => setItem({ ...item, type: e.target.value })}
+            />
           </div>
           <div className="grid gap-2">
             <Label>状态</Label>
-            <Select value={item.status || "draft"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={item.status || 'draft'}
+              onValueChange={(v: any) => setItem({ ...item, status: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="draft">草稿</SelectItem>
                 <SelectItem value="active">生效中</SelectItem>
@@ -156,32 +207,50 @@ export default function AllianceAgreementsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>开始日期</Label>
-              <Input type="date" value={item.startDate || ""} onChange={(e: any) => setItem({ ...item, startDate: e.target.value })} />
+              <Input
+                type="date"
+                value={item.startDate || ''}
+                onChange={(e: any) => setItem({ ...item, startDate: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>结束日期</Label>
-              <Input type="date" value={item.endDate || ""} onChange={(e: any) => setItem({ ...item, endDate: e.target.value })} />
+              <Input
+                type="date"
+                value={item.endDate || ''}
+                onChange={(e: any) => setItem({ ...item, endDate: e.target.value })}
+              />
             </div>
           </div>
           <div className="grid gap-2">
             <Label>协议内容</Label>
-            <Textarea value={item.content || ""} onChange={(e: any) => setItem({ ...item, content: e.target.value })} rows={4} />
+            <Textarea
+              value={item.content || ''}
+              onChange={(e: any) => setItem({ ...item, content: e.target.value })}
+              rows={4}
+            />
           </div>
         </div>
       )}
-      getDeleteDescription={(item: any) => (<>确定要删除协议「{item.name}」吗？</>)}
+      getDeleteDescription={(item: any) => <>确定要删除协议「{item.name}」吗？</>}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) {
-          await portalRequest(`/alliance/agreements/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
+          await portalRequest(`/alliance/agreements/${item.id}`, {
+            method: 'PUT',
+            body: JSON.stringify(item),
+          })
         } else {
-          await portalRequest("/alliance/agreements", { method: "POST", body: JSON.stringify(item) })
+          await portalRequest('/alliance/agreements', {
+            method: 'POST',
+            body: JSON.stringify(item),
+          })
         }
-        toast({ title: `协议已${isEdit ? "更新" : "创建"}` })
+        toast({ title: `协议已${isEdit ? '更新' : '创建'}` })
         await fetchItems()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/agreements/${item.id}`, { method: "DELETE" })
-        toast({ title: "协议已删除" })
+        await portalRequest(`/alliance/agreements/${item.id}`, { method: 'DELETE' })
+        toast({ title: '协议已删除' })
         await fetchItems()
       }}
       onToggleEnabled={async () => {}}

@@ -38,7 +38,7 @@ export interface Scenario {
   batchName?: string
   difficulty: 1 | 2 | 3 | 4 | 5
   version: string
-  status: "draft" | "pending" | "approved" | "rejected" | "published"
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published'
   background: string
   deliveryGoal: string
   creatorId: string
@@ -59,7 +59,7 @@ export interface TaskEvalPoint {
   desc: string
   weight: number
   maxScore: number
-  scoringMethod?: "score" | "level" | "rubric"
+  scoringMethod?: 'score' | 'level' | 'rubric'
   gradeMapping?: GradeMapping[]
   subType?: string
   types?: string[]
@@ -84,7 +84,7 @@ export interface Task {
   detailedDescription?: string
   descriptionPdf?: string
   estimatedHours: number
-  taskType: "assessment" | "training"
+  taskType: 'assessment' | 'training'
   difficulty: 1 | 2 | 3 | 4 | 5
   background: string
   dependencies: string[]
@@ -111,7 +111,7 @@ export interface Task {
 
 export interface TaskDeliverable {
   id: string
-  type: "exercise" | "onsite_evaluation" | "result_file"
+  type: 'exercise' | 'onsite_evaluation' | 'result_file'
   name: string
   description: string
   evaluationPoints?: EvaluationPoint[]
@@ -127,7 +127,7 @@ export interface EvaluationPoint {
 export interface Resource {
   id: string
   name: string
-  type: "document" | "video" | "link" | "file"
+  type: 'document' | 'video' | 'link' | 'file'
   url: string
   size?: string
 }
@@ -135,13 +135,13 @@ export interface Resource {
 export interface DeliverableType {
   id: string
   name: string
-  type: "report" | "code" | "video" | "presentation" | "document" | "other"
+  type: 'report' | 'code' | 'video' | 'presentation' | 'document' | 'other'
   required: boolean
   description: string
 }
 
 export interface Assessment {
-  type: "objective" | "subjective" | "mixed"
+  type: 'objective' | 'subjective' | 'mixed'
   objectiveConfig?: ObjectiveConfig
   subjectiveConfig?: SubjectiveConfig
   mixedWeights?: { objective: number; subjective: number }
@@ -159,7 +159,7 @@ export interface ObjectiveConfig {
 
 export interface QuestionItem {
   id: string
-  type: "single" | "multiple" | "judgment"
+  type: 'single' | 'multiple' | 'judgment'
   content: string
   options?: string[]
   answer: string | string[]
@@ -169,7 +169,7 @@ export interface QuestionItem {
 export interface SubjectiveConfig {
   totalScore: number
   rubricPoints: RubricPoint[]
-  synthesisRule: "sum" | "weighted"
+  synthesisRule: 'sum' | 'weighted'
 }
 
 export interface RubricPoint {
@@ -215,7 +215,7 @@ export interface PositionAbility {
 export interface ObjectiveSubmissionAnswer {
   questionId: string
   questionName?: string
-  questionType: "single" | "multiple" | "judgment" | "text"
+  questionType: 'single' | 'multiple' | 'judgment' | 'text'
   questionContent: string
   options?: string[]
   correctAnswer: string | string[]
@@ -228,7 +228,7 @@ export interface ObjectiveSubmissionAnswer {
 export interface SubmissionAttachment {
   id: string
   name: string
-  type: "document" | "code" | "video" | "image" | "other"
+  type: 'document' | 'code' | 'video' | 'image' | 'other'
   url: string
   content?: string // 预览内容（Mock 数据使用）
 }

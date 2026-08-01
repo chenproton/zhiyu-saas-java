@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   BookOpen,
   CheckCircle2,
@@ -15,16 +15,22 @@ import {
   PenLine,
   Search,
   Users,
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@zhiyu/ui"
-import { Card, CardContent } from "@/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-import { scenarioApi, evaluationResultApi, userManagementApi, positionApi, taskApi } from "@/lib/api"
-import type { SceneEvaluationResult } from "@/lib/types"
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@zhiyu/ui'
+import { Card, CardContent } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import {
+  scenarioApi,
+  evaluationResultApi,
+  userManagementApi,
+  positionApi,
+  taskApi,
+} from '@/lib/api'
+import type { SceneEvaluationResult } from '@/lib/types'
 
 interface TaskStudent {
   studentId: string
@@ -62,18 +68,25 @@ interface ScenarioGroup {
   }[]
 }
 
-type ActivationMode = "manual" | "scheduled"
+type ActivationMode = 'manual' | 'scheduled'
 
 const evalMethodLabels: Record<string, string> = {
-  random_draw: "现场问答", review: "现场评审", paper: "试卷",
-  question_bank: "题库", outcome: "成果评价", homework: "作业", quiz: "随堂测",
+  random_draw: '现场问答',
+  review: '现场评审',
+  paper: '试卷',
+  question_bank: '题库',
+  outcome: '成果评价',
+  homework: '作业',
+  quiz: '随堂测',
 }
 
 export default function GradingPage() {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
-  const [taskActivation, setTaskActivation] = useState<Record<string, { mode: ActivationMode; enabled: boolean }>>({})
+  const [taskActivation, setTaskActivation] = useState<
+    Record<string, { mode: ActivationMode; enabled: boolean }>
+  >({})
 
   const [scenarios, setScenarios] = useState<any[]>([])
   const [results, setResults] = useState<SceneEvaluationResult[]>([])
@@ -97,10 +110,10 @@ export default function GradingPage() {
         setPositionMap(pMap)
 
         const loadedScenarios = (scRes.items || [])
-          .filter((s: any) => s.status === "published")
+          .filter((s: any) => s.status === 'published')
           .map((s: any) => ({
             ...s,
-            positionName: pMap.get(s.careerPositionId) || "未分类",
+            positionName: pMap.get(s.careerPositionId) || '未分类',
           }))
         setScenarios(loadedScenarios)
         if (!selectedScenarioId && loadedScenarios.length > 0) {
@@ -114,7 +127,9 @@ export default function GradingPage() {
         const tMap = new Map<string, any>()
         ;(taskRes.items || []).forEach((t: any) => tMap.set(t.id, t))
         setTaskNameMap(tMap)
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       setLoading(false)
     }
     load()
@@ -122,7 +137,8 @@ export default function GradingPage() {
 
   useEffect(() => {
     if (!selectedScenarioId) return
-    evaluationResultApi.list({ sceneId: selectedScenarioId, limit: 500 })
+    evaluationResultApi
+      .list({ sceneId: selectedScenarioId, limit: 500 })
       .then((res) => setResults(res.items || []))
       .catch(() => setResults([]))
   }, [selectedScenarioId])
@@ -131,8 +147,8 @@ export default function GradingPage() {
     const map = new Map<string, ScenarioGroup>()
     for (const scenario of scenarios) {
       const subs = results.filter((s) => s.taskId)
-      const pending = subs.filter((s) => s.status === "pending").length
-      const graded = subs.filter((s) => s.status === "evaluated").length
+      const pending = subs.filter((s) => s.status === 'pending').length
+      const graded = subs.filter((s) => s.status === 'evaluated').length
 
       const item = {
         scenarioId: scenario.id,
@@ -144,7 +160,7 @@ export default function GradingPage() {
         studentCount: new Set(subs.map((s) => s.evaluateeId)).size,
       }
 
-      const pos = scenario.positionName || "未分类"
+      const pos = scenario.positionName || '未分类'
       if (!map.has(pos)) {
         map.set(pos, { positionName: pos, scenarios: [] })
       }
@@ -160,7 +176,8 @@ export default function GradingPage() {
       .map((g) => ({
         ...g,
         scenarios: g.scenarios.filter(
-          (s) => s.scenarioName.toLowerCase().includes(q) || s.scenarioCode.toLowerCase().includes(q)
+          (s) =>
+            s.scenarioName.toLowerCase().includes(q) || s.scenarioCode.toLowerCase().includes(q),
         ),
       }))
       .filter((g) => g.scenarios.length > 0)
@@ -168,7 +185,7 @@ export default function GradingPage() {
 
   const selectedScenario = useMemo(
     () => scenarios.find((s) => s.id === selectedScenarioId),
-    [selectedScenarioId, scenarios]
+    [selectedScenarioId, scenarios],
   )
 
   const taskGroups = useMemo<TaskGroup[]>(() => {
@@ -176,9 +193,13 @@ export default function GradingPage() {
     const scenarioSubs = results
     const taskMap = new Map<string, TaskGroup>()
 
-    const getMethodWeight = (taskInfo: any, methodKey: string, knownMethodCount: number): number => {
+    const getMethodWeight = (
+      taskInfo: any,
+      methodKey: string,
+      knownMethodCount: number,
+    ): number => {
       const configured = taskInfo?.evalData?.methodWeights?.[methodKey]
-      if (typeof configured === "number") return configured
+      if (typeof configured === 'number') return configured
       return knownMethodCount > 0 ? 100 / knownMethodCount : 100
     }
 
@@ -186,9 +207,9 @@ export default function GradingPage() {
       const user = userMap.get(sub.evaluateeId)
       const taskStudent: TaskStudent = {
         studentId: sub.evaluateeId,
-        studentName: user?.name || "未知",
-        studentNumber: user?.studentNo || "-",
-        className: user?.className || "-",
+        studentName: user?.name || '未知',
+        studentNumber: user?.studentNo || '-',
+        className: user?.className || '-',
         enrollmentYear: user?.enrollmentYear || 0,
         result: sub,
       }
@@ -200,15 +221,15 @@ export default function GradingPage() {
         const method = existing.methods.find((f) => f.methodKey === sub.methodKey)
         if (method) {
           method.students.push(taskStudent)
-          method.pendingCount += sub.status === "pending" ? 1 : 0
-          method.gradedCount += sub.status === "evaluated" ? 1 : 0
+          method.pendingCount += sub.status === 'pending' ? 1 : 0
+          method.gradedCount += sub.status === 'evaluated' ? 1 : 0
         } else {
           const knownCount = evalMethods.length || existing.methods.length + 1
           existing.methods.push({
             methodKey: sub.methodKey,
             students: [taskStudent],
-            pendingCount: sub.status === "pending" ? 1 : 0,
-            gradedCount: sub.status === "evaluated" ? 1 : 0,
+            pendingCount: sub.status === 'pending' ? 1 : 0,
+            gradedCount: sub.status === 'evaluated' ? 1 : 0,
             weight: getMethodWeight(taskInfo, sub.methodKey, knownCount),
           })
         }
@@ -217,13 +238,15 @@ export default function GradingPage() {
         taskMap.set(sub.taskId, {
           taskId: sub.taskId,
           taskName: taskInfo?.name || sub.taskId,
-          methods: [{
-            methodKey: sub.methodKey,
-            students: [taskStudent],
-            pendingCount: sub.status === "pending" ? 1 : 0,
-            gradedCount: sub.status === "evaluated" ? 1 : 0,
-            weight: getMethodWeight(taskInfo, sub.methodKey, knownCount),
-          }],
+          methods: [
+            {
+              methodKey: sub.methodKey,
+              students: [taskStudent],
+              pendingCount: sub.status === 'pending' ? 1 : 0,
+              gradedCount: sub.status === 'evaluated' ? 1 : 0,
+              weight: getMethodWeight(taskInfo, sub.methodKey, knownCount),
+            },
+          ],
         })
       }
     }
@@ -254,7 +277,7 @@ export default function GradingPage() {
       for (const [className, classStudents] of classMap) {
         classes.push({ className, students: classStudents })
       }
-      classes.sort((a, b) => a.className.localeCompare(b.className, "zh-CN"))
+      classes.sort((a, b) => a.className.localeCompare(b.className, 'zh-CN'))
       groups.push({ year, classes })
     }
     groups.sort((a, b) => b.year - a.year)
@@ -265,7 +288,7 @@ export default function GradingPage() {
   const collapseAll = () => setExpandedTasks(new Set())
 
   function TaskMethodTabs({ task }: { task: TaskGroup }) {
-    const [activeMethod, setActiveMethod] = useState(task.methods[0]?.methodKey || "")
+    const [activeMethod, setActiveMethod] = useState(task.methods[0]?.methodKey || '')
     const activeMethodData = task.methods.find((f) => f.methodKey === activeMethod)
     const yearGroups = activeMethodData ? groupStudents(activeMethodData.students) : []
 
@@ -278,10 +301,10 @@ export default function GradingPage() {
                 key={m.methodKey}
                 onClick={() => setActiveMethod(m.methodKey)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0",
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0',
                   activeMethod === m.methodKey
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50',
                 )}
               >
                 {evalMethodLabels[m.methodKey] || m.methodKey}
@@ -321,8 +344,12 @@ export default function GradingPage() {
                     <div key={classGroup.className}>
                       <div className="flex items-center gap-1.5 mb-2">
                         <Users className="h-3 w-3 text-gray-400" />
-                        <span className="text-xs font-medium text-gray-600">{classGroup.className}</span>
-                        <span className="text-[10px] text-gray-400">{classGroup.students.length} 人</span>
+                        <span className="text-xs font-medium text-gray-600">
+                          {classGroup.className}
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          {classGroup.students.length} 人
+                        </span>
                       </div>
                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
                         {classGroup.students.map((item) => (
@@ -336,13 +363,17 @@ export default function GradingPage() {
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-medium text-gray-800 text-sm truncate">{item.studentName}</span>
-                                  <span className="text-[10px] text-gray-400">{item.studentNumber}</span>
+                                  <span className="font-medium text-gray-800 text-sm truncate">
+                                    {item.studentName}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400">
+                                    {item.studentNumber}
+                                  </span>
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <StatusBadge
-                                    status={item.result.status === "pending" ? "pending" : "graded"}
-                                    label={item.result.status === "pending" ? "待评分" : "已评分"}
+                                    status={item.result.status === 'pending' ? 'pending' : 'graded'}
+                                    label={item.result.status === 'pending' ? '待评分' : '已评分'}
                                     className="text-[10px] h-5 px-1 border"
                                   />
                                   {item.result.totalScore != null && (
@@ -354,20 +385,33 @@ export default function GradingPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <Button variant="outline" size="sm" className="h-7 text-xs px-2" asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs px-2"
+                                asChild
+                              >
                                 <Link href={`/evaluation/scene-results/${item.result.id}`}>
-                                  <Eye className="mr-1 h-3 w-3" />查看
+                                  <Eye className="mr-1 h-3 w-3" />
+                                  查看
                                 </Link>
                               </Button>
-                              {item.result.status === "pending" ? (
+                              {item.result.status === 'pending' ? (
                                 <Button size="sm" className="h-7 text-xs px-2" asChild>
                                   <Link href={`/evaluation/scene-results/${item.result.id}`}>
-                                    <PenLine className="mr-1 h-3 w-3" />评分
+                                    <PenLine className="mr-1 h-3 w-3" />
+                                    评分
                                   </Link>
                                 </Button>
                               ) : (
-                                <Button variant="ghost" size="sm" className="h-7 text-xs text-green-600 px-2" disabled>
-                                  <CheckCircle2 className="mr-1 h-3 w-3" />已评分
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs text-green-600 px-2"
+                                  disabled
+                                >
+                                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                                  已评分
                                 </Button>
                               )}
                             </div>
@@ -385,7 +429,8 @@ export default function GradingPage() {
     )
   }
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
+  if (loading)
+    return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -401,7 +446,12 @@ export default function GradingPage() {
           <div className="p-4 border-b border-gray-100">
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-              <Input placeholder="搜索场景..." className="pl-9 text-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <Input
+                placeholder="搜索场景..."
+                className="pl-9 text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-5">
@@ -409,7 +459,9 @@ export default function GradingPage() {
               <div key={group.positionName}>
                 <div className="flex items-center gap-1.5 px-2 mb-2">
                   <Layers className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{group.positionName}</span>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {group.positionName}
+                  </span>
                 </div>
                 <div className="space-y-1.5">
                   {group.scenarios.map((sc) => (
@@ -417,23 +469,36 @@ export default function GradingPage() {
                       key={sc.scenarioId}
                       onClick={() => setSelectedScenarioId(sc.scenarioId)}
                       className={cn(
-                        "w-full text-left rounded-xl p-3 transition-all border",
+                        'w-full text-left rounded-xl p-3 transition-all border',
                         selectedScenarioId === sc.scenarioId
-                          ? "bg-primary/[0.06] border-primary/30 shadow-sm ring-1 ring-primary/10"
-                          : "bg-white border-gray-100 hover:border-gray-300 hover:shadow-sm"
+                          ? 'bg-primary/[0.06] border-primary/30 shadow-sm ring-1 ring-primary/10'
+                          : 'bg-white border-gray-100 hover:border-gray-300 hover:shadow-sm',
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className={cn("text-sm font-semibold truncate", selectedScenarioId === sc.scenarioId ? "text-primary" : "text-gray-800")}>{sc.scenarioName}</p>
+                          <p
+                            className={cn(
+                              'text-sm font-semibold truncate',
+                              selectedScenarioId === sc.scenarioId
+                                ? 'text-primary'
+                                : 'text-gray-800',
+                            )}
+                          >
+                            {sc.scenarioName}
+                          </p>
                           <p className="text-[11px] text-gray-400 mt-0.5">{sc.scenarioCode}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           {sc.pendingCount > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium border border-amber-100">{sc.pendingCount}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium border border-amber-100">
+                              {sc.pendingCount}
+                            </span>
                           )}
                           {sc.gradedCount > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 font-medium border border-green-100">{sc.gradedCount}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 font-medium border border-green-100">
+                              {sc.gradedCount}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -452,7 +517,9 @@ export default function GradingPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-gray-800">{selectedScenario.name}</h2>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <Badge variant="outline" className="text-xs font-normal text-gray-500">{selectedScenario.code}</Badge>
+                    <Badge variant="outline" className="text-xs font-normal text-gray-500">
+                      {selectedScenario.code}
+                    </Badge>
                     <span className="text-xs text-gray-400">{results.length} 条提交记录</span>
                   </div>
                 </div>
@@ -461,7 +528,12 @@ export default function GradingPage() {
                     <Button variant="outline" size="sm" className="h-8 text-xs" onClick={expandAll}>
                       全部展开
                     </Button>
-                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={collapseAll}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={collapseAll}
+                    >
                       全部收起
                     </Button>
                   </div>
@@ -485,14 +557,23 @@ export default function GradingPage() {
                     const totalGraded = task.methods.reduce((s, f) => s + f.gradedCount, 0)
 
                     const taskScore = task.methods.reduce((sum, m) => {
-                      const graded = m.students.filter((s) => s.result.status === "evaluated")
+                      const graded = m.students.filter((s) => s.result.status === 'evaluated')
                       if (graded.length === 0) return sum
-                      const methodScore = graded.reduce((acc, s) => acc + ((s.result.totalScore ?? 0) / (s.result.maxScore || 1)) * 100, 0) / graded.length
-                      return sum + methodScore * (m.weight || 0) / 100
+                      const methodScore =
+                        graded.reduce(
+                          (acc, s) =>
+                            acc + ((s.result.totalScore ?? 0) / (s.result.maxScore || 1)) * 100,
+                          0,
+                        ) / graded.length
+                      return sum + (methodScore * (m.weight || 0)) / 100
                     }, 0)
 
                     return (
-                      <Collapsible key={task.taskId} open={isExpanded} onOpenChange={() => toggleTask(task.taskId)}>
+                      <Collapsible
+                        key={task.taskId}
+                        open={isExpanded}
+                        onOpenChange={() => toggleTask(task.taskId)}
+                      >
                         <Card className="overflow-hidden border-gray-200 shadow-sm">
                           <CollapsibleTrigger asChild>
                             <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50/60 transition-colors">
@@ -502,16 +583,25 @@ export default function GradingPage() {
                                 </div>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-sm font-bold text-gray-800 truncate">{task.taskName}</p>
+                                    <p className="text-sm font-bold text-gray-800 truncate">
+                                      {task.taskName}
+                                    </p>
                                     {totalGraded > 0 && (
-                                      <Badge variant="outline" className="text-[10px] font-normal bg-primary/5 text-primary border-primary/20">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] font-normal bg-primary/5 text-primary border-primary/20"
+                                      >
                                         均分 {taskScore.toFixed(1)}
                                       </Badge>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                     {task.methods.map((m) => (
-                                      <Badge key={m.methodKey} variant="outline" className="text-[10px] font-normal bg-gray-50 text-gray-600 border-gray-200">
+                                      <Badge
+                                        key={m.methodKey}
+                                        variant="outline"
+                                        className="text-[10px] font-normal bg-gray-50 text-gray-600 border-gray-200"
+                                      >
                                         {evalMethodLabels[m.methodKey] || m.methodKey}
                                       </Badge>
                                     ))}
@@ -526,7 +616,14 @@ export default function GradingPage() {
                                   </div>
                                   <div className="w-px h-6 bg-gray-200" />
                                   <div className="text-center min-w-[48px]">
-                                    <p className={cn("font-semibold", totalPending > 0 ? "text-amber-600" : "text-gray-800")}>{totalPending}</p>
+                                    <p
+                                      className={cn(
+                                        'font-semibold',
+                                        totalPending > 0 ? 'text-amber-600' : 'text-gray-800',
+                                      )}
+                                    >
+                                      {totalPending}
+                                    </p>
                                     <p className="text-[10px] text-gray-400">待评</p>
                                   </div>
                                   <div className="text-center min-w-[48px]">
@@ -535,7 +632,11 @@ export default function GradingPage() {
                                   </div>
                                 </div>
                                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50">
-                                  {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-4 w-4 text-gray-500" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                  )}
                                 </div>
                               </div>
                             </div>

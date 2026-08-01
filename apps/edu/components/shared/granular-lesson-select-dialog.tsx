@@ -1,18 +1,18 @@
-"use client"
+'use client'
 
-import { useState, useMemo } from "react"
-import { Search, X, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useMemo } from 'react'
+import { Search, X, Check } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 export interface GranularLessonOption {
   id: string
@@ -33,35 +33,31 @@ interface GranularLessonSelectDialogProps {
 export function GranularLessonSelectDialog({
   open,
   onOpenChange,
-  title = "选择颗粒课",
+  title = '选择颗粒课',
   granularCourses,
   selectedIds,
   onChange,
 }: GranularLessonSelectDialogProps) {
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState('')
 
   const filtered = useMemo(
     () =>
       granularCourses.filter(
-        (g) =>
-          !search ||
-          g.name.includes(search) ||
-          (g.code && g.code.includes(search))
+        (g) => !search || g.name.includes(search) || (g.code && g.code.includes(search)),
       ),
-    [granularCourses, search]
+    [granularCourses, search],
   )
 
   const toggle = (id: string) => {
-    onChange(
-      selectedIds.includes(id)
-        ? selectedIds.filter((x) => x !== id)
-        : [...selectedIds, id]
-    )
+    onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id])
   }
 
   const selectedCourses = useMemo(
-    () => selectedIds.map((id) => granularCourses.find((g) => g.id === id)).filter(Boolean) as GranularLessonOption[],
-    [selectedIds, granularCourses]
+    () =>
+      selectedIds
+        .map((id) => granularCourses.find((g) => g.id === id))
+        .filter(Boolean) as GranularLessonOption[],
+    [selectedIds, granularCourses],
   )
 
   return (
@@ -88,27 +84,23 @@ export function GranularLessonSelectDialog({
                   <div
                     key={gl.id}
                     className={cn(
-                      "p-3 rounded-lg border cursor-pointer transition-all",
+                      'p-3 rounded-lg border cursor-pointer transition-all',
                       isSelected
-                        ? "border-primary bg-primary/5"
-                        : "border-gray-200 hover:border-gray-300"
+                        ? 'border-primary bg-primary/5'
+                        : 'border-gray-200 hover:border-gray-300',
                     )}
                     onClick={() => toggle(gl.id)}
                   >
                     <div className="flex items-center gap-2">
                       <div
                         className={cn(
-                          "w-4 h-4 rounded border flex items-center justify-center",
-                          isSelected
-                            ? "bg-primary border-primary"
-                            : "border-gray-300"
+                          'w-4 h-4 rounded border flex items-center justify-center',
+                          isSelected ? 'bg-primary border-primary' : 'border-gray-300',
                         )}
                       >
                         {isSelected && <Check className="h-3 w-3 text-white" />}
                       </div>
-                      <span className="text-sm font-medium flex-1">
-                        {gl.name}
-                      </span>
+                      <span className="text-sm font-medium flex-1">{gl.name}</span>
                       {gl.code && (
                         <Badge variant="outline" className="text-[10px]">
                           {gl.code}
@@ -116,9 +108,7 @@ export function GranularLessonSelectDialog({
                       )}
                     </div>
                     {gl.description ? (
-                      <p className="text-xs text-gray-500 mt-1 ml-6">
-                        {gl.description}
-                      </p>
+                      <p className="text-xs text-gray-500 mt-1 ml-6">{gl.description}</p>
                     ) : null}
                   </div>
                 )
@@ -132,9 +122,7 @@ export function GranularLessonSelectDialog({
           </div>
 
           <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-            <p className="text-sm font-medium mb-3 text-gray-700">
-              已选择 ({selectedIds.length})
-            </p>
+            <p className="text-sm font-medium mb-3 text-gray-700">已选择 ({selectedIds.length})</p>
             <div className="flex-1 overflow-y-auto space-y-2">
               {selectedCourses.length === 0 ? (
                 <div className="text-center text-gray-400 py-8">

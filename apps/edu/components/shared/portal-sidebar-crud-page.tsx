@@ -1,28 +1,59 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useMemo, type ReactNode } from "react"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { cn } from "@/lib/utils"
-import { OrgFilterTree, collectOrgSubtreeIds } from "@/components/shared/_components/org-filter-tree"
-import { OrgNodePicker } from "@/components/shared/org-node-picker"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
-import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
-import { useToast } from "@zhiyu/ui"
-import { useImportFlow, type UseImportFlowOptions } from "@/hooks/use-import-flow"
-import type { Organization, OrgType } from "@/lib/types/backend"
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
 import {
-  Search, Upload, Download,
-  FolderTree, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, ChevronDown,
-} from "lucide-react"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
+import {
+  OrgFilterTree,
+  collectOrgSubtreeIds,
+} from '@/components/shared/_components/org-filter-tree'
+import { OrgNodePicker } from '@/components/shared/org-node-picker'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ResetPasswordDialog } from '@/components/shared/reset-password-dialog'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
+import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
+import { useToast } from '@zhiyu/ui'
+import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
+import type { Organization, OrgType } from '@/lib/types/backend'
+import {
+  Search,
+  Upload,
+  Download,
+  FolderTree,
+  Loader2,
+  AlertCircle,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+} from 'lucide-react'
 
 export interface PortalSidebarCrudPageConfig<T extends { id: string; orgNodeId?: string }> {
   title: string
@@ -53,12 +84,18 @@ export interface PortalSidebarCrudPageConfig<T extends { id: string; orgNodeId?:
   filterItems: (items: T[], search: string, status: string) => T[]
   getItemOrgNodeId: (item: T) => string | undefined
 
-  importConfig: Omit<UseImportFlowOptions, "onSuccess">
+  importConfig: Omit<UseImportFlowOptions, 'onSuccess'>
   colSpan: number
   renderTableHeader: () => ReactNode
   renderTableRow: (
     item: T,
-    actions: { isChecked: boolean; onToggleCheck: () => void; edit: () => void; onDelete: () => void; onResetPwd: () => void }
+    actions: {
+      isChecked: boolean
+      onToggleCheck: () => void
+      edit: () => void
+      onDelete: () => void
+      onResetPwd: () => void
+    },
   ) => ReactNode
 
   headerActions?: (selectedIds: string[], openJoinDialog: () => void) => ReactNode
@@ -132,7 +169,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   orgNodePickerProps,
 }: PortalSidebarCrudPageConfig<T>) {
   const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState('')
 
   const [selectedOrgNodeId, setSelectedOrgNodeId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -141,7 +178,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
 
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false)
-  const [joinTargetNodeId, setJoinTargetNodeId] = useState<string>("")
+  const [joinTargetNodeId, setJoinTargetNodeId] = useState<string>('')
   const [joinLoading, setJoinLoading] = useState(false)
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
@@ -168,7 +205,9 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
 
   useEffect(() => {
     if (importPreview) {
-      (async () => { setIsImportConfirmOpen(true) })()
+      ;(async () => {
+        setIsImportConfirmOpen(true)
+      })()
     }
   }, [importPreview])
 
@@ -203,7 +242,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   const handleBatchJoin = async () => {
     if (selectedIds.length === 0) return
     if (!joinTargetNodeId) {
-      toast({ variant: "destructive", title: `请选择目标${joinEntityLabel}` })
+      toast({ variant: 'destructive', title: `请选择目标${joinEntityLabel}` })
       return
     }
     setJoinLoading(true)
@@ -211,14 +250,14 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
       await onBatchJoin(joinTargetNodeId, selectedIds)
       toast({ title: `已将 ${selectedIds.length} 名${entityLabel}加入${joinEntityLabel}` })
       setIsJoinDialogOpen(false)
-      setJoinTargetNodeId("")
+      setJoinTargetNodeId('')
       setSelectedIds([])
       await refetch()
     } catch (err) {
       toast({
-        variant: "destructive",
+        variant: 'destructive',
         title: `批量加入${joinEntityLabel}失败`,
-        description: err instanceof Error ? err.message : "未知错误",
+        description: err instanceof Error ? err.message : '未知错误',
       })
     } finally {
       setJoinLoading(false)
@@ -231,9 +270,9 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
       await onDelete(deleteTarget)
     } catch (err) {
       toast({
-        variant: "destructive",
-        title: "删除失败",
-        description: err instanceof Error ? err.message : "未知错误",
+        variant: 'destructive',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
       })
     } finally {
       setDeleteTarget(null)
@@ -254,7 +293,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
     try {
       await onExport(selectedIds.length > 0 ? selectedIds : [])
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
+      toast({ variant: 'destructive', title: '导出失败', description: err.message || '导出失败' })
     }
   }
 
@@ -266,13 +305,17 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {headerActions?.(selectedIds, () => { setJoinTargetNodeId(""); setIsJoinDialogOpen(true) })}
+          {headerActions?.(selectedIds, () => {
+            setJoinTargetNodeId('')
+            setIsJoinDialogOpen(true)
+          })}
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" />导入
+            <Upload className="h-4 w-4 mr-1" />
+            导入
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1" />
-            导出{selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+            导出{selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
           </Button>
           <Button size="sm" onClick={onOpenCreate}>
             <span className="h-4 w-4 mr-1">+</span>
@@ -289,7 +332,8 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
             <p className="text-sm opacity-90">{error}</p>
           </div>
           <Button variant="outline" size="sm" onClick={refetch}>
-            <RotateCcw className="h-4 w-4 mr-1" />重试
+            <RotateCcw className="h-4 w-4 mr-1" />
+            重试
           </Button>
         </div>
       )}
@@ -303,25 +347,30 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         >
           <FolderTree className="h-4 w-4 text-primary" />
           组织架构筛选
-          <ChevronDown className={cn("h-4 w-4 ml-auto transition-transform", orgTreeOpen && "rotate-180")} />
+          <ChevronDown
+            className={cn('h-4 w-4 ml-auto transition-transform', orgTreeOpen && 'rotate-180')}
+          />
         </button>
 
         <div
           className={cn(
-            "w-full md:w-64 md:block shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4",
-            orgTreeOpen ? "block" : "hidden"
+            'w-full md:w-64 md:block shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4',
+            orgTreeOpen ? 'block' : 'hidden',
           )}
         >
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-            <FolderTree className="h-4 w-4 text-primary" />组织架构
+            <FolderTree className="h-4 w-4 text-primary" />
+            组织架构
           </h3>
           <ScrollArea className="h-[300px] md:h-[500px]">
             <div className="space-y-1">
               <button
                 onClick={() => setSelectedOrgNodeId(null)}
                 className={cn(
-                  "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors",
-                  selectedOrgNodeId === null ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                  'w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors',
+                  selectedOrgNodeId === null
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted',
                 )}
               >
                 {sidebarAllLabel}
@@ -375,7 +424,9 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                 <TableRow className="border-border">
                   <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedIds.length === filteredItems.length && filteredItems.length > 0}
+                      checked={
+                        selectedIds.length === filteredItems.length && filteredItems.length > 0
+                      }
                       onCheckedChange={toggleSelectAll}
                     />
                   </TableHead>
@@ -393,7 +444,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                 ) : (
                   <>
                     {filteredItems.map((item) => (
-                      <TableRow key={item.id} className={cn("border-border", "group")}>
+                      <TableRow key={item.id} className={cn('border-border', 'group')}>
                         <TableCell>
                           <Checkbox
                             checked={selectedIds.includes(item.id)}
@@ -405,13 +456,17 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                           onToggleCheck: () => toggleSelectItem(item.id),
                           edit: () => onOpenEdit(item),
                           onDelete: () => setDeleteTarget(item.id),
-                          onResetPwd: () => setResetTarget({ id: item.id, name: (item as any).name }),
+                          onResetPwd: () =>
+                            setResetTarget({ id: item.id, name: (item as any).name }),
                         })}
                       </TableRow>
                     ))}
                     {filteredItems.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={colSpan + 1} className="text-center text-muted-foreground py-8">
+                        <TableCell
+                          colSpan={colSpan + 1}
+                          className="text-center text-muted-foreground py-8"
+                        >
                           {searchTerm ? `未找到匹配的${entityLabel}` : `暂无${entityLabel}数据`}
                         </TableCell>
                       </TableRow>
@@ -424,7 +479,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
             <span>
-              共 {total} 条记录{selectedIds.length > 0 ? `，已选择 ${selectedIds.length} 条` : ""}
+              共 {total} 条记录{selectedIds.length > 0 ? `，已选择 ${selectedIds.length} 条` : ''}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -458,9 +513,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
             <DialogTitle>{editDialogTitle}</DialogTitle>
             <DialogDescription>{editDialogDescription}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {renderForm()}
-          </div>
+          <div className="grid gap-4 py-4">{renderForm()}</div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={saving}>
               取消
@@ -489,7 +542,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         downloadLabel={`下载${entityLabel}批量导入模板`}
         onDownload={handleDownloadTemplate}
         uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-        importLabel={() => "开始导入"}
+        importLabel={() => '开始导入'}
         onImport={handleImport}
         files={importFiles}
         onAddFiles={handleAddFiles}
@@ -528,7 +581,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
               </Label>
               <OrgNodePicker
                 value={joinTargetNodeId}
-                onChange={(value) => setJoinTargetNodeId(value || "")}
+                onChange={(value) => setJoinTargetNodeId(value || '')}
                 placeholder={orgNodePickerProps?.placeholder || `选择${joinEntityLabel}`}
                 title={orgNodePickerProps?.title || `选择${joinEntityLabel}`}
                 selectableTypes={orgNodePickerProps?.selectableTypes}
@@ -536,7 +589,11 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)} disabled={joinLoading}>
+            <Button
+              variant="outline"
+              onClick={() => setIsJoinDialogOpen(false)}
+              disabled={joinLoading}
+            >
               取消
             </Button>
             <Button onClick={handleBatchJoin} disabled={joinLoading || !joinTargetNodeId}>
@@ -567,7 +624,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         userId={resetTarget?.id}
         userName={resetTarget?.name}
         onSuccess={async () => {
-          toast({ title: "密码重置成功" })
+          toast({ title: '密码重置成功' })
           await refetch()
         }}
       />

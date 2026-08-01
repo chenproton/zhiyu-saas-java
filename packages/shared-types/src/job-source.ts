@@ -40,7 +40,7 @@ export interface WorkflowStep {
   name: string
   order: number
   approverIds: string[]
-  approvalMode: "any" | "all"
+  approvalMode: 'any' | 'all'
 }
 
 export interface Workflow {
@@ -56,7 +56,8 @@ export interface Workflow {
 export type PositionType = 'enterprise' | 'teaching'
 
 // 岗位状态
-export type PositionStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
+export type PositionStatus =
+  'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
 
 // 职业发展路径
 export type CareerPath = string
@@ -64,7 +65,7 @@ export type CareerPath = string
 // 岗位证书
 export interface PositionCertificate {
   id: string
-  libraryId?: string       // certificate_library id (set when loaded from API)
+  libraryId?: string // certificate_library id (set when loaded from API)
   name: string
   url?: string
   description?: string
@@ -100,17 +101,17 @@ export interface PositionResponsibility {
 // 岗位能力绑定（职责 -> 能力点）
 export interface PositionAbilityBinding {
   id: string
-  responsibilityId: string      // 对应职责ID
-  source: 'public' | 'custom'   // 来源：公共池引用 / 自建
-  publicAbilityId?: string       // 公共池能力ID（source=public时）
-  abilityPointId?: string        // 后端能力点ID（source=custom时由保存创建）
-  name: string                   // 能力名称
-  category: string               // 能力分类
+  responsibilityId: string // 对应职责ID
+  source: 'public' | 'custom' // 来源：公共池引用 / 自建
+  publicAbilityId?: string // 公共池能力ID（source=public时）
+  abilityPointId?: string // 后端能力点ID（source=custom时由保存创建）
+  name: string // 能力名称
+  category: string // 能力分类
   level: CompetencyLevel
-  rubricDescription: string      // 量规表现描述
-  description?: string           // 能力描述
-  attributes?: string[]          // 保存时传给后端创建ability_point
-  domain?: string                // 保存时传给后端创建ability_point
+  rubricDescription: string // 量规表现描述
+  description?: string // 能力描述
+  attributes?: string[] // 保存时传给后端创建ability_point
+  domain?: string // 保存时传给后端创建ability_point
 }
 
 // 能力领域
@@ -118,7 +119,7 @@ export interface AbilityDomain {
   id: string
   name: string
   description?: string
-  bindingIds: string[]           // 包含的 PositionAbilityBinding id
+  bindingIds: string[] // 包含的 PositionAbilityBinding id
 }
 
 // 图谱节点位置
@@ -173,7 +174,7 @@ export interface Position {
   batchId: string
   version: string
   status: PositionStatus
-  
+
   // 基础信息
   name: string
   shortName: string
@@ -183,31 +184,31 @@ export interface Position {
   salaryRange: [number, number]
   coverImage?: string
   certificates: PositionCertificate[]
-  
+
   // 详细描述
   description: string
   responsibilities: PositionResponsibility[]
   requirements: string[]
   careerPath: CareerPath
-  
+
   // 能力模型（保留兼容）
   abilityModel: AbilityModel
-  
+
   // Step2: 职责-能力绑定
   abilityBindings: PositionAbilityBinding[]
-  
+
   // Step3: 能力领域归类
   abilityDomains: AbilityDomain[]
-  
+
   // 胜任力配置（保留兼容）
   competencyConfig: CompetencyItem[]
-  
+
   // 元数据
   createdBy: string
   collaborators: string[]
   createdAt: string
   updatedAt: string
-  
+
   // 收藏数
   favoriteCount: number
 }
@@ -306,14 +307,14 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 // 岗位推荐配置（按专业配置前台推荐岗位及顺序）
 export interface PositionRecommendation {
   id: string
-  majorId?: string          // 专业ID (UUID FK)
-  major: string             // 专业名称（显示用）
-  positionId: string        // 岗位ID
+  majorId?: string // 专业ID (UUID FK)
+  major: string // 专业名称（显示用）
+  positionId: string // 岗位ID
   positionType: PositionType
-  reason?: string           // 推荐原因
-  order: number             // 展示顺序，越小越靠前
-  isEnabled: boolean        // 是否在前台展示
-  createdBy: string         // 配置人（老师）ID
+  reason?: string // 推荐原因
+  order: number // 展示顺序，越小越靠前
+  isEnabled: boolean // 是否在前台展示
+  createdBy: string // 配置人（老师）ID
   createdAt: string
   updatedAt: string
 }

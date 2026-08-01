@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import { useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { ContentListPage } from "@/components/shared/content-list-page"
-import { EvaluationListTable } from "@/components/evaluation/evaluation-list-table"
-import { BankFormDialog } from "@/components/evaluation/bank-form-dialog"
-import { questionBankApi, evaluationBatchApi, approvalApi, importExportApi } from "@/lib/api"
-import type { ContentBatch } from "@/components/shared/content-list-page"
-import type { QuestionBankFormData } from "@/lib/types"
-import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@zhiyu/ui"
+import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { ContentListPage } from '@/components/shared/content-list-page'
+import { EvaluationListTable } from '@/components/evaluation/evaluation-list-table'
+import { BankFormDialog } from '@/components/evaluation/bank-form-dialog'
+import { questionBankApi, evaluationBatchApi, approvalApi, importExportApi } from '@/lib/api'
+import type { ContentBatch } from '@/components/shared/content-list-page'
+import type { QuestionBankFormData } from '@/lib/types'
+import { useAuth } from '@/components/auth-provider'
+import { useToast } from '@zhiyu/ui'
 
 interface BankItem {
   id: string
@@ -37,11 +37,11 @@ function mapBankItem(backend: any, _currentUserId: string): BankItem {
     creatorId: backend.creatorId ?? undefined,
     coCreatorIds: backend.collaboratorIds || [],
     rejectReason: (backend as any).rejectReason ?? undefined,
-    code: backend.code || "",
-    description: backend.description || "",
+    code: backend.code || '',
+    description: backend.description || '',
     questionCount: backend.questionCount || 0,
     collaboratorNames: backend.collaboratorNames || [],
-    creatorName: backend.creatorName || backend.creatorId || "",
+    creatorName: backend.creatorName || backend.creatorId || '',
     isDraftPool: backend.isDraftPool,
     updatedAt: backend.updatedAt,
   }
@@ -53,31 +53,34 @@ function mapBatch(backend: any): ContentBatch {
 
 export default function QuestionBanksPage() {
   const { user } = useAuth()
-  const currentUserId = user?.id ?? ""
+  const currentUserId = user?.id ?? ''
   const router = useRouter()
   const { toast } = useToast()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const handleCreate = useCallback(async (data: QuestionBankFormData) => {
-    try {
-      const newItem = await questionBankApi.create({
-        name: data.name,
-        description: data.description,
-        coverImage: data.coverImage || "",
-        collaboratorIds: data.collaboratorIds || [],
-        collaboratorDeptIds: [],
-        batchId: data.batchId || "",
-        status: "draft",
-        ownerType: "mine",
-        version: "v1.0",
-      })
-      setRefreshKey((k) => k + 1)
-      router.push(`/evaluation/question-banks/${newItem.id}?new=true`)
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "创建失败", description: err.message || "创建失败" })
-    }
-  }, [router, toast])
+  const handleCreate = useCallback(
+    async (data: QuestionBankFormData) => {
+      try {
+        const newItem = await questionBankApi.create({
+          name: data.name,
+          description: data.description,
+          coverImage: data.coverImage || '',
+          collaboratorIds: data.collaboratorIds || [],
+          collaboratorDeptIds: [],
+          batchId: data.batchId || '',
+          status: 'draft',
+          ownerType: 'mine',
+          version: 'v1.0',
+        })
+        setRefreshKey((k) => k + 1)
+        router.push(`/evaluation/question-banks/${newItem.id}?new=true`)
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: '创建失败', description: err.message || '创建失败' })
+      }
+    },
+    [router, toast],
+  )
 
   return (
     <>
@@ -99,16 +102,23 @@ export default function QuestionBanksPage() {
         importExcelEntity="question-banks"
         coBuilderField="collaboratorIds"
         statusFilterOptions={[
-          { value: "draft", label: "草稿" },
-          { value: "pending", label: "审批中" },
-          { value: "approved", label: "已通过" },
-          { value: "rejected", label: "已驳回" },
-          { value: "published", label: "已发布" },
-          { value: "archived", label: "已归档" },
+          { value: 'draft', label: '草稿' },
+          { value: 'pending', label: '审批中' },
+          { value: 'approved', label: '已通过' },
+          { value: 'rejected', label: '已驳回' },
+          { value: 'published', label: '已发布' },
+          { value: 'archived', label: '已归档' },
         ]}
         mapItem={(b) => mapBankItem(b, currentUserId)}
         mapBatch={mapBatch}
-        createPayload={() => ({ name: "", description: "", coverImage: "", collaboratorIds: [], collaboratorDeptIds: [], batchId: "" })}
+        createPayload={() => ({
+          name: '',
+          description: '',
+          coverImage: '',
+          collaboratorIds: [],
+          collaboratorDeptIds: [],
+          batchId: '',
+        })}
         createRedirectUrl={(id) => `/evaluation/question-banks/${id}?new=true`}
         onCreate={() => setCreateDialogOpen(true)}
         renderList={(props) => <EvaluationListTable {...(props as any)} type="bank" />}

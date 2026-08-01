@@ -1,24 +1,35 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { MultiSelect } from "@/components/ui/multi-select"
-import { ImageListUpload } from "@/components/shared/image-list-upload"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import type { AllianceEnterprise, AllianceProject, AllianceListResponse } from "@/lib/types"
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { MultiSelect } from '@/components/ui/multi-select'
+import { ImageListUpload } from '@/components/shared/image-list-upload'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalRequest } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import type { AllianceEnterprise, AllianceProject, AllianceListResponse } from '@/lib/types'
 
 const AGREEMENT_TYPES = [
-  "战略合作协议", "产学研合作协议", "实习实训协议", "人才培养协议",
-  "就业合作协议", "课程共建协议", "技术服务协议",
+  '战略合作协议',
+  '产学研合作协议',
+  '实习实训协议',
+  '人才培养协议',
+  '就业合作协议',
+  '课程共建协议',
+  '技术服务协议',
 ]
 
 export default function AllianceAgreementEditPage() {
@@ -31,12 +42,12 @@ export default function AllianceAgreementEditPage() {
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
   const [item, setItem] = useState({
-    name: "",
-    type: "战略合作协议",
-    status: "draft",
-    startDate: "",
-    endDate: "",
-    content: "",
+    name: '',
+    type: '战略合作协议',
+    status: 'draft',
+    startDate: '',
+    endDate: '',
+    content: '',
     enterpriseIds: [] as string[],
     projectIds: [] as string[],
     attachments: [] as string[],
@@ -46,17 +57,17 @@ export default function AllianceAgreementEditPage() {
     if (!id) return
     Promise.all([
       portalRequest<any>(`/alliance/agreements/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterprise>>("/alliance/enterprises?limit=1000"),
-      portalRequest<AllianceListResponse<AllianceProject>>("/alliance/projects?limit=1000"),
+      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
+      portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
     ])
       .then(([a, ents, projs]) => {
         setItem({
-          name: a.name || "",
-          type: a.type || "战略合作协议",
-          status: a.status || "draft",
-          startDate: a.startDate || "",
-          endDate: a.endDate || "",
-          content: a.content || "",
+          name: a.name || '',
+          type: a.type || '战略合作协议',
+          status: a.status || 'draft',
+          startDate: a.startDate || '',
+          endDate: a.endDate || '',
+          content: a.content || '',
           enterpriseIds: a.enterpriseIds || [],
           projectIds: a.projectIds || [],
           attachments: a.attachments || [],
@@ -64,7 +75,7 @@ export default function AllianceAgreementEditPage() {
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
         setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
       })
-      .catch((e) => toast({ title: "加载失败", description: e.message, variant: "destructive" }))
+      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
   }, [id, toast])
 
@@ -72,19 +83,19 @@ export default function AllianceAgreementEditPage() {
 
   const handleSave = async () => {
     if (!item.name) {
-      toast({ title: "请填写协议名称", variant: "destructive" })
+      toast({ title: '请填写协议名称', variant: 'destructive' })
       return
     }
     setSaving(true)
     try {
       await portalRequest(`/alliance/agreements/${id}`, {
-        method: "PUT",
+        method: 'PUT',
         body: JSON.stringify(item),
       })
-      toast({ title: "协议已更新" })
+      toast({ title: '协议已更新' })
       router.push(`/portal/apps/alliance/agreements/${id}`)
     } catch (e: any) {
-      toast({ title: "保存失败", description: e.message, variant: "destructive" })
+      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -96,7 +107,8 @@ export default function AllianceAgreementEditPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" />返回
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          返回
         </Button>
         <h1 className="text-xl font-bold">编辑合作协议</h1>
       </div>
@@ -104,25 +116,39 @@ export default function AllianceAgreementEditPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
-            <CardHeader><CardTitle>基本信息</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>基本信息</CardTitle>
+            </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>协议名称 *</Label>
-                <Input value={item.name} onChange={(e) => setField("name", e.target.value)} placeholder="请输入协议名称" />
+                <Input
+                  value={item.name}
+                  onChange={(e) => setField('name', e.target.value)}
+                  placeholder="请输入协议名称"
+                />
               </div>
               <div className="grid gap-2">
                 <Label>协议类型</Label>
-                <Select value={item.type} onValueChange={(v) => setField("type", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={item.type} onValueChange={(v) => setField('type', v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {AGREEMENT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {AGREEMENT_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label>协议状态</Label>
-                <Select value={item.status} onValueChange={(v) => setField("status", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={item.status} onValueChange={(v) => setField('status', v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">草稿</SelectItem>
                     <SelectItem value="active">生效中</SelectItem>
@@ -134,42 +160,78 @@ export default function AllianceAgreementEditPage() {
               </div>
               <div className="grid gap-2">
                 <Label>生效日期 *</Label>
-                <Input type="date" value={item.startDate} onChange={(e) => setField("startDate", e.target.value)} />
+                <Input
+                  type="date"
+                  value={item.startDate}
+                  onChange={(e) => setField('startDate', e.target.value)}
+                />
               </div>
               <div className="grid gap-2">
                 <Label>到期日期 *</Label>
-                <Input type="date" value={item.endDate} onChange={(e) => setField("endDate", e.target.value)} />
+                <Input
+                  type="date"
+                  value={item.endDate}
+                  onChange={(e) => setField('endDate', e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>协议概要</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>协议概要</CardTitle>
+            </CardHeader>
             <CardContent>
-              <Textarea value={item.content} onChange={(e) => setField("content", e.target.value)} rows={4} />
+              <Textarea
+                value={item.content}
+                onChange={(e) => setField('content', e.target.value)}
+                rows={4}
+              />
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>协议附件</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>协议附件</CardTitle>
+            </CardHeader>
             <CardContent>
-              <ImageListUpload label="附件" value={item.attachments} onChange={(v) => setField("attachments", v)} multiple placeholder="上传附件或输入 URL" />
+              <ImageListUpload
+                label="附件"
+                value={item.attachments}
+                onChange={(v) => setField('attachments', v)}
+                multiple
+                placeholder="上传附件或输入 URL"
+              />
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>合作企业</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>合作企业</CardTitle>
+            </CardHeader>
             <CardContent>
-              <MultiSelect options={enterprises} value={item.enterpriseIds} onChange={(v) => setField("enterpriseIds", v)} placeholder="选择合作企业" />
+              <MultiSelect
+                options={enterprises}
+                value={item.enterpriseIds}
+                onChange={(v) => setField('enterpriseIds', v)}
+                placeholder="选择合作企业"
+              />
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>关联项目</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>关联项目</CardTitle>
+            </CardHeader>
             <CardContent>
-              <MultiSelect options={projects} value={item.projectIds} onChange={(v) => setField("projectIds", v)} placeholder="选择关联项目（可选）" />
+              <MultiSelect
+                options={projects}
+                value={item.projectIds}
+                onChange={(v) => setField('projectIds', v)}
+                placeholder="选择关联项目（可选）"
+              />
             </CardContent>
           </Card>
 
@@ -178,7 +240,9 @@ export default function AllianceAgreementEditPage() {
               <Button className="w-full" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}保存
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>取消</Button>
+              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+                取消
+              </Button>
             </CardContent>
           </Card>
         </div>

@@ -1,21 +1,22 @@
-"use client"
+'use client'
 
-import { useState } from "react"
+import { useState } from 'react'
+import { BarChart3, GraduationCap, TrendingUp, Users, AlertCircle, Filter } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  BarChart3, GraduationCap, TrendingUp, Users, AlertCircle, Filter,
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table"
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts"
-import { SectionCard } from "./section-card"
-import { StatCard } from "./stat-card"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { SectionCard } from './section-card'
+import { StatCard } from './stat-card'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import {
   mockSemesterSummary,
@@ -23,21 +24,21 @@ import {
   mockCompositeDistribution,
   mockSessionSummary,
   mockStudentRanking,
-} from "../_data/mock-teacher-data"
+} from '../_data/mock-teacher-data'
 
 const gradeColorMap: Record<string, string> = {
-  A: "bg-emerald-100 text-emerald-700",
-  B: "bg-blue-100 text-blue-700",
-  C: "bg-amber-100 text-amber-700",
-  D: "bg-red-100 text-red-700",
-  E: "bg-gray-100 text-gray-700",
+  A: 'bg-emerald-100 text-emerald-700',
+  B: 'bg-blue-100 text-blue-700',
+  C: 'bg-amber-100 text-amber-700',
+  D: 'bg-red-100 text-red-700',
+  E: 'bg-gray-100 text-gray-700',
 }
 
 export function TeacherFinalTab() {
-  const [dimensionFilter, setDimensionFilter] = useState("全部")
+  const [dimensionFilter, setDimensionFilter] = useState('全部')
 
   const filteredDimensions = mockAssessmentDimensions.filter((d) => {
-    if (dimensionFilter === "全部") return true
+    if (dimensionFilter === '全部') return true
     return d.category === dimensionFilter
   })
 
@@ -45,12 +46,42 @@ export function TeacherFinalTab() {
     <div className="space-y-5">
       {/* 学期概览 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard title="课程节次总数" value={mockSemesterSummary.totalSessions} icon={BarChart3} color="blue" />
-        <StatCard title="平均出勤率" value={`${mockSemesterSummary.avgAttendance}%`} icon={Users} color="green" />
-        <StatCard title="综合评测均分" value={mockSemesterSummary.compositeAvgScore} icon={TrendingUp} color="purple" />
-        <StatCard title="总学生数" value={mockSemesterSummary.totalStudents} icon={Users} color="amber" />
-        <StatCard title="数据采集率" value={`${mockSemesterSummary.dataCollectionRate}%`} icon={GraduationCap} color="cyan" />
-        <StatCard title="需关注学生" value={mockSemesterSummary.needAttention} icon={AlertCircle} color="rose" />
+        <StatCard
+          title="课程节次总数"
+          value={mockSemesterSummary.totalSessions}
+          icon={BarChart3}
+          color="blue"
+        />
+        <StatCard
+          title="平均出勤率"
+          value={`${mockSemesterSummary.avgAttendance}%`}
+          icon={Users}
+          color="green"
+        />
+        <StatCard
+          title="综合评测均分"
+          value={mockSemesterSummary.compositeAvgScore}
+          icon={TrendingUp}
+          color="purple"
+        />
+        <StatCard
+          title="总学生数"
+          value={mockSemesterSummary.totalStudents}
+          icon={Users}
+          color="amber"
+        />
+        <StatCard
+          title="数据采集率"
+          value={`${mockSemesterSummary.dataCollectionRate}%`}
+          icon={GraduationCap}
+          color="cyan"
+        />
+        <StatCard
+          title="需关注学生"
+          value={mockSemesterSummary.needAttention}
+          icon={AlertCircle}
+          color="rose"
+        />
       </div>
 
       {/* 过程性考核维度 */}
@@ -59,28 +90,53 @@ export function TeacherFinalTab() {
           <Filter className="w-4 h-4 text-gray-500" />
           <Tabs value={dimensionFilter} onValueChange={setDimensionFilter}>
             <TabsList className="h-8 bg-gray-100">
-              <TabsTrigger value="全部" className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">全部</TabsTrigger>
-              <TabsTrigger value="课中" className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">课中</TabsTrigger>
-              <TabsTrigger value="课后" className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">课后</TabsTrigger>
+              <TabsTrigger
+                value="全部"
+                className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              >
+                全部
+              </TabsTrigger>
+              <TabsTrigger
+                value="课中"
+                className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              >
+                课中
+              </TabsTrigger>
+              <TabsTrigger
+                value="课后"
+                className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              >
+                课后
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {filteredDimensions.length === 0 && (
-            <div className="col-span-full py-6 text-center text-xs text-gray-400">暂无考核维度数据</div>
+            <div className="col-span-full py-6 text-center text-xs text-gray-400">
+              暂无考核维度数据
+            </div>
           )}
           {filteredDimensions.map((dim) => (
-            <div key={dim.id} className="p-4 rounded-xl border border-gray-100 bg-white hover:shadow-sm transition-shadow">
+            <div
+              key={dim.id}
+              className="p-4 rounded-xl border border-gray-100 bg-white hover:shadow-sm transition-shadow"
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-gray-900">{dim.name}</span>
-                <Badge variant="outline" className={`text-[10px] ${dim.category === "课中" ? "border-blue-200 text-blue-600" : "border-amber-200 text-amber-600"}`}>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] ${dim.category === '课中' ? 'border-blue-200 text-blue-600' : 'border-amber-200 text-amber-600'}`}
+                >
                   {dim.category}
                 </Badge>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span>权重 {dim.weight}%</span>
-                  <span className="font-semibold text-gray-900">{dim.avgScore > 0 ? dim.avgScore : "-"}</span>
+                  <span className="font-semibold text-gray-900">
+                    {dim.avgScore > 0 ? dim.avgScore : '-'}
+                  </span>
                 </div>
                 <Progress value={dim.avgScore} className="h-1.5" />
                 <div className="flex items-center justify-between text-[10px] text-gray-400">
@@ -131,7 +187,9 @@ export function TeacherFinalTab() {
                 )}
                 {mockSessionSummary.map((session, i) => (
                   <TableRow key={i}>
-                    <TableCell className="text-xs text-gray-500">第{session.week}周 {session.day}</TableCell>
+                    <TableCell className="text-xs text-gray-500">
+                      第{session.week}周 {session.day}
+                    </TableCell>
                     <TableCell className="text-xs font-medium">{session.topic}</TableCell>
                     <TableCell className="text-xs">{session.attendance}%</TableCell>
                     <TableCell className="text-xs">{session.quizAvg}</TableCell>
@@ -171,13 +229,23 @@ export function TeacherFinalTab() {
                 </TableRow>
               )}
               {mockStudentRanking.map((student) => (
-                <TableRow key={student.rank} className={student.rank <= 3 ? "bg-blue-50/30" : ""}>
+                <TableRow key={student.rank} className={student.rank <= 3 ? 'bg-blue-50/30' : ''}>
                   <TableCell className="text-sm font-bold text-center">
                     {student.rank <= 3 ? (
-                      <span className={student.rank === 1 ? "text-amber-500" : student.rank === 2 ? "text-gray-500" : "text-orange-500"}>
+                      <span
+                        className={
+                          student.rank === 1
+                            ? 'text-amber-500'
+                            : student.rank === 2
+                              ? 'text-gray-500'
+                              : 'text-orange-500'
+                        }
+                      >
                         {student.rank}
                       </span>
-                    ) : student.rank}
+                    ) : (
+                      student.rank
+                    )}
                   </TableCell>
                   <TableCell className="text-sm font-medium">{student.name}</TableCell>
                   <TableCell className="text-sm">{student.attendance}%</TableCell>
@@ -187,7 +255,9 @@ export function TeacherFinalTab() {
                   <TableCell className="text-sm">{student.report}</TableCell>
                   <TableCell className="text-sm font-bold text-blue-600">{student.total}</TableCell>
                   <TableCell>
-                    <Badge className={`text-xs font-bold ${gradeColorMap[student.grade] || "bg-gray-100 text-gray-700"}`}>
+                    <Badge
+                      className={`text-xs font-bold ${gradeColorMap[student.grade] || 'bg-gray-100 text-gray-700'}`}
+                    >
                       {student.grade}
                     </Badge>
                   </TableCell>

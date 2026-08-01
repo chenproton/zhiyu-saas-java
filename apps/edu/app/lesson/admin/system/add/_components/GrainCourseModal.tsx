@@ -1,16 +1,16 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -18,17 +18,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Search } from "lucide-react"
-import { courseApi } from "@/lib/api"
-import type { Course } from "@/lib/types/lesson"
-import { StatusBadge } from "@zhiyu/ui"
+} from '@/components/ui/table'
+import { Search } from 'lucide-react'
+import { courseApi } from '@/lib/api'
+import type { Course } from '@/lib/types/lesson'
+import { StatusBadge } from '@zhiyu/ui'
 
 interface GrainCourseModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  mode: "clone" | "quote"
-  onSelect: (course: Course, mode: "clone" | "quote") => void
+  mode: 'clone' | 'quote'
+  onSelect: (course: Course, mode: 'clone' | 'quote') => void
 }
 
 export default function GrainCourseModal({
@@ -37,35 +37,36 @@ export default function GrainCourseModal({
   mode,
   onSelect,
 }: GrainCourseModalProps) {
-  const [searchName, setSearchName] = useState("")
-  const [searchCode, setSearchCode] = useState("")
-  const [searchCreator, setSearchCreator] = useState("")
+  const [searchName, setSearchName] = useState('')
+  const [searchCode, setSearchCode] = useState('')
+  const [searchCreator, setSearchCreator] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [courses, setCourses] = useState<Course[]>([])
   const pageSize = 5
 
   useEffect(() => {
-    courseApi.list({ type: "granular" }).then((res) => {
-      setCourses(res.items || [])
-    }).catch(() => setCourses([]))
+    courseApi
+      .list({ type: 'granular' })
+      .then((res) => {
+        setCourses(res.items || [])
+      })
+      .catch(() => setCourses([]))
   }, [])
 
   const filtered = useMemo(() => {
     let result = [...courses]
     if (searchName.trim()) {
-      result = result.filter((c) =>
-        c.name.toLowerCase().includes(searchName.trim().toLowerCase())
-      )
+      result = result.filter((c) => c.name.toLowerCase().includes(searchName.trim().toLowerCase()))
     }
     if (searchCode.trim()) {
       result = result.filter((c) =>
-        (c.code || "").toLowerCase().includes(searchCode.trim().toLowerCase())
+        (c.code || '').toLowerCase().includes(searchCode.trim().toLowerCase()),
       )
     }
     if (searchCreator.trim()) {
       result = result.filter((c) =>
-        (c.teacherId || "").toLowerCase().includes(searchCreator.trim().toLowerCase())
+        (c.teacherId || '').toLowerCase().includes(searchCreator.trim().toLowerCase()),
       )
     }
     return result
@@ -88,9 +89,7 @@ export default function GrainCourseModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "clone" ? "克隆（可编辑）" : "引用（只读）"}
-          </DialogTitle>
+          <DialogTitle>{mode === 'clone' ? '克隆（可编辑）' : '引用（只读）'}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-4 mb-4">
@@ -147,9 +146,7 @@ export default function GrainCourseModal({
                 pageData.map((course) => (
                   <TableRow
                     key={course.id}
-                    className={`cursor-pointer ${
-                      selectedId === course.id ? "bg-blue-50" : ""
-                    }`}
+                    className={`cursor-pointer ${selectedId === course.id ? 'bg-blue-50' : ''}`}
                     onClick={() => setSelectedId(course.id)}
                   >
                     <TableCell>
@@ -161,9 +158,7 @@ export default function GrainCourseModal({
                       />
                     </TableCell>
                     <TableCell className="font-medium">{course.name}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {course.code}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{course.code}</TableCell>
                     <TableCell>{course.teacherId}</TableCell>
                     <TableCell>
                       <StatusBadge status={course.status} />

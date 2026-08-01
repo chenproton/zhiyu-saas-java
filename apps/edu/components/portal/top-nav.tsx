@@ -1,10 +1,21 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Home, Briefcase, LayoutGrid, ChevronDown, User, Settings, LogOut, LogIn, Check, UserCog } from "lucide-react"
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import {
+  Home,
+  Briefcase,
+  LayoutGrid,
+  ChevronDown,
+  User,
+  Settings,
+  LogOut,
+  LogIn,
+  Check,
+  UserCog,
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,21 +23,21 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/components/auth-provider"
+} from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
+import { useAuth } from '@/components/auth-provider'
 
 const navItems = [
-  { href: "/portal", label: "门户首页", icon: Home },
-  { href: "/portal/workspace", label: "我的服务台", icon: Briefcase },
-  { href: "/portal/apps", label: "应用服务中心", icon: LayoutGrid },
+  { href: '/portal', label: '门户首页', icon: Home },
+  { href: '/portal/workspace', label: '我的服务台', icon: Briefcase },
+  { href: '/portal/apps', label: '应用服务中心', icon: LayoutGrid },
 ]
 
 export function TopNav() {
   const pathname = usePathname()
   const { user, institution, roles, activeRole, setActiveRole, loading, logout } = useAuth()
   const isLoggedIn = !!user
-  const [currentTime, setCurrentTime] = useState("")
+  const [currentTime, setCurrentTime] = useState('')
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -34,14 +45,14 @@ export function TopNav() {
     setMounted(true)
     const updateTime = () => {
       const now = new Date()
-      const weekDays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
+      const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
       const year = now.getFullYear()
-      const month = String(now.getMonth() + 1).padStart(2, "0")
-      const day = String(now.getDate()).padStart(2, "0")
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
       const weekDay = weekDays[now.getDay()]
-      const hours = String(now.getHours()).padStart(2, "0")
-      const minutes = String(now.getMinutes()).padStart(2, "0")
-      const seconds = String(now.getSeconds()).padStart(2, "0")
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      const seconds = String(now.getSeconds()).padStart(2, '0')
       setCurrentTime(`${year}年${month}月${day}日 ${weekDay} ${hours}:${minutes}:${seconds}`)
     }
     updateTime()
@@ -50,8 +61,8 @@ export function TopNav() {
   }, [])
 
   const isActive = (href: string) => {
-    if (href === "/portal") {
-      return pathname === "/portal"
+    if (href === '/portal') {
+      return pathname === '/portal'
     }
     return pathname.startsWith(href)
   }
@@ -65,8 +76,16 @@ export function TopNav() {
       <header className="h-14 bg-white/70 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-3 md:px-6 shrink-0 fixed top-0 left-0 right-0 z-50 shadow-sm">
         <div className="flex items-center gap-4 md:gap-8">
           <Link href="/portal" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="知育" width={369} height={139} className="h-8 w-auto object-contain" />
-            <span className="hidden sm:inline font-semibold text-foreground text-base whitespace-nowrap">场景化数智教学服务平台</span>
+            <Image
+              src="/logo.png"
+              alt="知育"
+              width={369}
+              height={139}
+              className="h-8 w-auto object-contain"
+            />
+            <span className="hidden sm:inline font-semibold text-foreground text-base whitespace-nowrap">
+              场景化数智教学服务平台
+            </span>
           </Link>
 
           {isLoggedIn && (
@@ -81,8 +100,8 @@ export function TopNav() {
                     title={item.label}
                     className={`flex items-center gap-1.5 px-3 md:px-4 py-2 text-sm rounded-md transition-colors relative whitespace-nowrap ${
                       active
-                        ? "text-primary font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        ? 'text-primary font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
                   >
                     <Icon className="w-5 h-5 md:w-4 md:h-4" />
@@ -103,17 +122,22 @@ export function TopNav() {
               {currentTime}
             </div>
           )}
-          
+
           {isLoggedIn && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 px-2 h-auto py-1.5 hover:bg-muted">
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 px-2 h-auto py-1.5 hover:bg-muted"
+                >
                   <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">
-                    {user.name?.charAt(0).toUpperCase() || "U"}
+                    {user.name?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <div className="hidden sm:block text-left">
                     <div className="text-sm text-foreground whitespace-nowrap">{user.name}</div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">{activeRole?.name || "用户"} · {institution?.name || "组织"}</div>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">
+                      {activeRole?.name || '用户'} · {institution?.name || '组织'}
+                    </div>
                   </div>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </Button>

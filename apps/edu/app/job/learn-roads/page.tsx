@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import Image from "next/image"
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,12 +44,15 @@ import {
 import { cn } from '@/lib/utils'
 import { positionApi, batchApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
 
-import { convertCareerPositionToPosition, convertJobBatchToBatch } from '@/lib/converters/job-converters'
-import { useToast } from "@zhiyu/ui"
+import {
+  convertCareerPositionToPosition,
+  convertJobBatchToBatch,
+} from '@/lib/converters/job-converters'
+import { useToast } from '@zhiyu/ui'
 import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
 import type { LearnRoad, LearnRoadStep } from '@/lib/types/job'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
-import { TableRowActions } from "@/components/shared/table-row-actions"
+import { TableRowActions } from '@/components/shared/table-row-actions'
 
 interface Task {
   id: string
@@ -97,7 +100,7 @@ function scenarioToScene(scenario: Scenario, allTasks: ScenarioTask[]): Scene {
 function stepsToScenes(
   steps: LearnRoadStep[],
   scenarios: Scenario[],
-  allTasks: ScenarioTask[]
+  allTasks: ScenarioTask[],
 ): Scene[] {
   const scenarioMap = new Map(scenarios.map((s) => [s.id, s]))
   const result: Scene[] = []
@@ -153,7 +156,7 @@ function countScenesAndTasks(road?: LearnRoad): { sceneCount: number; taskCount:
     sceneCount: steps.length,
     taskCount: steps.reduce(
       (sum, step) => sum + (Array.isArray(step.tasks) ? step.tasks.length : 0),
-      0
+      0,
     ),
   }
 }
@@ -256,7 +259,9 @@ function EditView({
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               已加载 {positionScenarios.length} 个场景，{positionTasks.length} 个任务
-              {scenes.length === 0 && positionScenarios.length > 0 && ' · 点击下方“保存顺序”生成学习路径'}
+              {scenes.length === 0 &&
+                positionScenarios.length > 0 &&
+                ' · 点击下方“保存顺序”生成学习路径'}
             </p>
           </div>
         </div>
@@ -293,10 +298,7 @@ function EditView({
             >
               <ChevronRight className="h-5 w-5" />
             </button>
-            <div
-              ref={timelineRef}
-              className="overflow-x-auto pb-4 px-8"
-            >
+            <div ref={timelineRef} className="overflow-x-auto pb-4 px-8">
               <div className="relative flex items-start justify-between min-w-max">
                 <div className="absolute top-14 left-0 right-0 h-1.5 rounded-full bg-gradient-to-r from-blue-400 via-green-400 via-amber-400 via-pink-400 via-purple-500 to-rose-500" />
                 {scenes.map((scene, idx) => {
@@ -316,7 +318,7 @@ function EditView({
                         <div
                           className={cn(
                             'relative mt-2 flex h-14 w-14 items-center justify-center rounded-full overflow-hidden shadow-lg transition-transform bg-white',
-                            isSelected && 'ring-4 ring-white scale-110'
+                            isSelected && 'ring-4 ring-white scale-110',
                           )}
                         >
                           <Image
@@ -331,7 +333,7 @@ function EditView({
                           className={cn(
                             'mt-2 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform',
                             color.bg,
-                            isSelected && 'ring-4 ring-white scale-110'
+                            isSelected && 'ring-4 ring-white scale-110',
                           )}
                         >
                           <Icon className="h-6 w-6" />
@@ -340,7 +342,7 @@ function EditView({
                       <div
                         className={cn(
                           'mt-3 text-sm font-bold text-center max-w-[140px]',
-                          isSelected ? 'text-blue-600' : 'text-slate-800'
+                          isSelected ? 'text-blue-600' : 'text-slate-800',
                         )}
                       >
                         {scene.name}
@@ -386,7 +388,9 @@ function EditView({
                       ? 'border-blue-500 bg-blue-50 shadow-sm'
                       : 'border-slate-200 bg-white hover:bg-slate-50',
                     draggingIndex === index && 'opacity-40',
-                    dragOverIndex === index && dragOverIndex !== draggingIndex && 'border-blue-400 bg-blue-50/60'
+                    dragOverIndex === index &&
+                      dragOverIndex !== draggingIndex &&
+                      'border-blue-400 bg-blue-50/60',
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -410,7 +414,7 @@ function EditView({
                           'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors',
                           isSelected
                             ? 'bg-blue-500 text-white'
-                            : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
+                            : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200',
                         )}
                       >
                         {index + 1}
@@ -420,7 +424,7 @@ function EditView({
                       <div
                         className={cn(
                           'font-medium transition-colors',
-                          isSelected ? 'text-blue-700' : 'text-slate-900'
+                          isSelected ? 'text-blue-700' : 'text-slate-900',
                         )}
                       >
                         {scene.name}
@@ -508,14 +512,18 @@ export default function LearnRoadsPage() {
       setPositions(posRes.items.map(convertCareerPositionToPosition))
       setBatches(batchRes.items.map(convertJobBatchToBatch))
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载失败', description: err?.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err?.message || '请稍后重试',
+      })
     } finally {
       setDataLoading(false)
     }
   }, [toast])
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       await loadJobData()
     })()
   }, [loadJobData])
@@ -550,9 +558,7 @@ export default function LearnRoadsPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.shortName.toLowerCase().includes(q)
+        (p) => p.name.toLowerCase().includes(q) || p.shortName.toLowerCase().includes(q),
       )
     }
     if (filterStatus !== 'all') {
@@ -561,34 +567,35 @@ export default function LearnRoadsPage() {
     return result
   }, [positions, searchQuery, filterStatus])
 
-  const loadPositionScenes = useCallback(async (positionId: string) => {
-    try {
-      const scenarioRes = await scenarioApi.list({
-        careerPositionId: positionId,
-        limit: 1000,
-      })
-      const scens = (scenarioRes.items || []).filter(
-        (s) => s.status && s.status !== 'archived'
-      )
-      const taskResults = scens.length
-        ? await Promise.all(scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
-        : []
-      const allTasks = taskResults.flatMap((r) => r.items || [])
-      setPositionScenarios(scens)
-      setPositionTasks(allTasks)
-      return { scenarios: scens, tasks: allTasks }
-    } catch (err) {
-      console.error('[learn-roads] load scenes failed', err)
-      toast({
-        title: '加载场景失败',
-        description: err instanceof Error ? err.message : '请稍后重试',
-        variant: 'destructive',
-      })
-      setPositionScenarios([])
-      setPositionTasks([])
-      return { scenarios: [] as Scenario[], tasks: [] as ScenarioTask[] }
-    }
-  }, [toast])
+  const loadPositionScenes = useCallback(
+    async (positionId: string) => {
+      try {
+        const scenarioRes = await scenarioApi.list({
+          careerPositionId: positionId,
+          limit: 1000,
+        })
+        const scens = (scenarioRes.items || []).filter((s) => s.status && s.status !== 'archived')
+        const taskResults = scens.length
+          ? await Promise.all(scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
+          : []
+        const allTasks = taskResults.flatMap((r) => r.items || [])
+        setPositionScenarios(scens)
+        setPositionTasks(allTasks)
+        return { scenarios: scens, tasks: allTasks }
+      } catch (err) {
+        console.error('[learn-roads] load scenes failed', err)
+        toast({
+          title: '加载场景失败',
+          description: err instanceof Error ? err.message : '请稍后重试',
+          variant: 'destructive',
+        })
+        setPositionScenarios([])
+        setPositionTasks([])
+        return { scenarios: [] as Scenario[], tasks: [] as ScenarioTask[] }
+      }
+    },
+    [toast],
+  )
 
   const handleEdit = useCallback(
     async (position: Position) => {
@@ -646,7 +653,7 @@ export default function LearnRoadsPage() {
         setEditLoading(false)
       }
     },
-    [loadPositionScenes, toast]
+    [loadPositionScenes, toast],
   )
 
   const handleBack = () => {
@@ -679,9 +686,7 @@ export default function LearnRoadsPage() {
         positionIds: [editingPosition.id],
         steps: scenesToSteps(scenes),
       })
-      setLearnRoads((prev) =>
-        prev.map((r) => (r.id === updated.id ? updated : r))
-      )
+      setLearnRoads((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
       toast({ title: '保存成功', description: '学习路径顺序已更新' })
@@ -768,7 +773,7 @@ export default function LearnRoadsPage() {
               ) : (
                 filteredPositions.map((position) => {
                   const { sceneCount, taskCount } = countScenesAndTasks(
-                    getRoadForPosition(position.id)
+                    getRoadForPosition(position.id),
                   )
 
                   return (
@@ -778,27 +783,33 @@ export default function LearnRoadsPage() {
                         <p className="text-xs text-muted-foreground mt-0.5">{position.shortName}</p>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-50">
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-50 text-blue-600 hover:bg-blue-50"
+                        >
                           {sceneCount}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="bg-purple-50 text-purple-600 hover:bg-purple-50">
+                        <Badge
+                          variant="secondary"
+                          className="bg-purple-50 text-purple-600 hover:bg-purple-50"
+                        >
                           {taskCount}
                         </Badge>
                       </TableCell>
                       <TableRowActions>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => handleEdit(position)}
-                            disabled={editLoading}
-                          >
-                            <Pencil className="mr-1 h-3 w-3" />
-                            编辑学习路径
-                          </Button>
-                        </TableRowActions>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleEdit(position)}
+                          disabled={editLoading}
+                        >
+                          <Pencil className="mr-1 h-3 w-3" />
+                          编辑学习路径
+                        </Button>
+                      </TableRowActions>
                     </TableRow>
                   )
                 })
@@ -812,7 +823,9 @@ export default function LearnRoadsPage() {
 
   return (
     <div className="space-y-6">
-      {view === 'list' ? ListView() : editingPosition ? (
+      {view === 'list' ? (
+        ListView()
+      ) : editingPosition ? (
         <EditView
           editingPosition={editingPosition}
           batches={batches}

@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useMemo, useState } from "react"
+import { useMemo, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -8,22 +8,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronsUpDown,
-  Search,
-  Loader2,
-  X,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useOrgTree } from "@/hooks/use-org-tree"
-import type { Organization, OrgType } from "@/lib/types/backend"
-import { typeMetaFor } from "@/lib/org-type-icons"
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { ChevronDown, ChevronRight, ChevronsUpDown, Search, Loader2, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useOrgTree } from '@/hooks/use-org-tree'
+import type { Organization, OrgType } from '@/lib/types/backend'
+import { typeMetaFor } from '@/lib/org-type-icons'
 
 interface OrgNodePickerProps {
   tenantId?: string
@@ -81,19 +74,19 @@ function PickerTreeRow({
           }
         }}
         onKeyDown={(e) => {
-          if ((e.key === "Enter" || e.key === " ") && selectable) {
+          if ((e.key === 'Enter' || e.key === ' ') && selectable) {
             e.preventDefault()
             onPick(node.id)
           }
         }}
         className={cn(
-          "flex items-center gap-1.5 py-1.5 px-2 text-sm rounded-md transition-colors",
-          selectable ? "cursor-pointer" : "cursor-default",
+          'flex items-center gap-1.5 py-1.5 px-2 text-sm rounded-md transition-colors',
+          selectable ? 'cursor-pointer' : 'cursor-default',
           pendingId === node.id
-            ? "bg-primary/10 text-primary font-medium"
+            ? 'bg-primary/10 text-primary font-medium'
             : selectable
-            ? "hover:bg-muted"
-            : "hover:bg-muted/50"
+              ? 'hover:bg-muted'
+              : 'hover:bg-muted/50',
         )}
         style={{ marginLeft: level * 20 }}
       >
@@ -115,8 +108,8 @@ function PickerTreeRow({
             <span className="w-3.5" />
           )}
         </button>
-        <Icon className={cn("w-4 h-4 shrink-0", meta.color)} />
-        <span className={cn("truncate", !selectable && "text-muted-foreground")}>{node.name}</span>
+        <Icon className={cn('w-4 h-4 shrink-0', meta.color)} />
+        <span className={cn('truncate', !selectable && 'text-muted-foreground')}>{node.name}</span>
         {typeName && (
           <span className="ml-auto text-xs text-muted-foreground shrink-0">{typeName}</span>
         )}
@@ -149,13 +142,13 @@ export function OrgNodePicker({
   value,
   onChange,
   selectableTypes,
-  placeholder = "选择组织节点",
+  placeholder = '选择组织节点',
   disabled,
-  title = "选择组织节点",
+  title = '选择组织节点',
 }: OrgNodePickerProps) {
   const { orgs, orgMap, orgTypeMap, loading } = useOrgTree(tenantId)
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState('')
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
 
@@ -181,7 +174,7 @@ export function OrgNodePicker({
     return visible
   }, [search, orgs])
 
-  const searching = search.trim() !== ""
+  const searching = search.trim() !== ''
 
   const toggle = (id: string) => {
     setCollapsedIds((prev) => {
@@ -197,7 +190,7 @@ export function OrgNodePicker({
 
   const openDialog = () => {
     setPendingId(value || null)
-    setSearch("")
+    setSearch('')
     setCollapsedIds(new Set())
     setOpen(true)
   }
@@ -218,7 +211,7 @@ export function OrgNodePicker({
         onClick={openDialog}
         className="w-full justify-between font-normal"
       >
-        <span className={cn("truncate", !selectedNode && "text-muted-foreground")}>
+        <span className={cn('truncate', !selectedNode && 'text-muted-foreground')}>
           {selectedNode ? selectedNode.name : placeholder}
         </span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -230,8 +223,8 @@ export function OrgNodePicker({
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
               {selectableTypes && selectableTypes.length > 0
-                ? `在组织架构树中选择${selectableTypes.join("/")}类型节点，支持按名称搜索`
-                : "在组织架构树中选择节点，支持按名称搜索"}
+                ? `在组织架构树中选择${selectableTypes.join('/')}类型节点，支持按名称搜索`
+                : '在组织架构树中选择节点，支持按名称搜索'}
             </DialogDescription>
           </DialogHeader>
           <div className="relative">
@@ -244,7 +237,7 @@ export function OrgNodePicker({
             />
             {search && (
               <button
-                onClick={() => setSearch("")}
+                onClick={() => setSearch('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
@@ -257,9 +250,13 @@ export function OrgNodePicker({
                 <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
               </div>
             ) : orgs.length === 0 ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">暂无组织架构数据</div>
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                暂无组织架构数据
+              </div>
             ) : visibleIds && visibleIds.size === 0 ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">未找到匹配的节点</div>
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                未找到匹配的节点
+              </div>
             ) : (
               orgs.map((node) => (
                 <PickerTreeRow
@@ -280,7 +277,7 @@ export function OrgNodePicker({
           </ScrollArea>
           <DialogFooter className="items-center gap-2 sm:justify-between">
             <div className="text-sm text-muted-foreground truncate">
-              {pendingNode ? `已选择：${pendingNode.name}` : "未选择节点"}
+              {pendingNode ? `已选择：${pendingNode.name}` : '未选择节点'}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setOpen(false)}>

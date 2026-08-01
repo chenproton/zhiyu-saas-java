@@ -1,55 +1,69 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { AlertCircle, GraduationCap, User, Lock, MessageCircle, QrCode, Building2 } from "lucide-react"
-import { authApi, setToken } from "@/lib/api"
-import type { TenantOption } from "@/lib/api"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { useAuth } from "@/components/auth-provider"
-import { resolveActiveRole } from "@/lib/active-role"
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
+  AlertCircle,
+  GraduationCap,
+  User,
+  Lock,
+  MessageCircle,
+  QrCode,
+  Building2,
+} from 'lucide-react'
+import { authApi, setToken } from '@/lib/api'
+import type { TenantOption } from '@/lib/api'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { useAuth } from '@/components/auth-provider'
+import { resolveActiveRole } from '@/lib/active-role'
 
 function getPostLoginPath(roleCode?: string): string {
   switch (roleCode) {
-    case "school_admin":
-      return "/portal/apps"
-    case "teacher":
-    case "student":
-      return "/portal/workspace"
+    case 'school_admin':
+      return '/portal/apps'
+    case 'teacher':
+    case 'student':
+      return '/portal/workspace'
     default:
-      return "/portal"
+      return '/portal'
   }
 }
 
-type LoginMethod = "password" | "sms" | "wechat"
+type LoginMethod = 'password' | 'sms' | 'wechat'
 
 const methodTabs: { key: LoginMethod; label: string; icon: typeof MessageCircle }[] = [
-  { key: "password", label: "账号密码", icon: Lock },
-  { key: "sms", label: "短信登录", icon: MessageCircle },
-  { key: "wechat", label: "微信扫码", icon: QrCode },
+  { key: 'password', label: '账号密码', icon: Lock },
+  { key: 'sms', label: '短信登录', icon: MessageCircle },
+  { key: 'wechat', label: '微信扫码', icon: QrCode },
 ]
 
 export default function PortalLoginPage() {
   const router = useRouter()
   const { refresh } = usePortalAuth()
   const { refresh: refreshRootAuth } = useAuth()
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('password')
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([])
-  const [preAuthToken, setPreAuthToken] = useState("")
+  const [preAuthToken, setPreAuthToken] = useState('')
   const [showTenantSelect, setShowTenantSelect] = useState(false)
   const [selectingTenant, setSelectingTenant] = useState(false)
 
   const doLogin = async (token: string) => {
-    setToken(token, "portal")
+    setToken(token, 'portal')
     await Promise.all([refresh(), refreshRootAuth()])
     const me = await authApi.portalMe()
     const activeRole = resolveActiveRole(me.user?.id, me.roles)
@@ -62,7 +76,7 @@ export default function PortalLoginPage() {
       const res = await authApi.selectTenant({ preAuthToken, tenantId })
       await doLogin(res.token)
     } catch (err: any) {
-      setError(err.message || "选择租户失败")
+      setError(err.message || '选择租户失败')
       setShowTenantSelect(false)
     } finally {
       setSelectingTenant(false)
@@ -71,8 +85,8 @@ export default function PortalLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (loginMethod !== "password") return
-    setError("")
+    if (loginMethod !== 'password') return
+    setError('')
     setLoading(true)
 
     try {
@@ -86,7 +100,7 @@ export default function PortalLoginPage() {
       }
       await doLogin(res.token)
     } catch (err: any) {
-      setError(err.message || "登录失败")
+      setError(err.message || '登录失败')
       setLoading(false)
     }
   }
@@ -98,10 +112,18 @@ export default function PortalLoginPage() {
         <div className="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full bg-purple-500/10 blur-3xl" />
         <div className="absolute left-1/3 top-1/2 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl" />
         <div className="absolute left-1/4 top-1/4 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl" />
-        <svg className="absolute left-1/3 top-1/3 h-96 w-96 text-indigo-500/5" viewBox="0 0 200 200" fill="none">
+        <svg
+          className="absolute left-1/3 top-1/3 h-96 w-96 text-indigo-500/5"
+          viewBox="0 0 200 200"
+          fill="none"
+        >
           <polygon points="100,0 200,100 100,200 0,100" />
         </svg>
-        <svg className="absolute bottom-1/4 right-1/4 h-48 w-48 text-purple-500/5" viewBox="0 0 200 200" fill="none">
+        <svg
+          className="absolute bottom-1/4 right-1/4 h-48 w-48 text-purple-500/5"
+          viewBox="0 0 200 200"
+          fill="none"
+        >
           <polygon points="100,20 180,100 100,180 20,100" />
         </svg>
       </div>
@@ -122,13 +144,13 @@ export default function PortalLoginPage() {
                 <button
                   key={key}
                   type="button"
-                  disabled={key !== "password"}
+                  disabled={key !== 'password'}
                   onClick={() => setLoginMethod(key)}
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-all ${
                     loginMethod === key
-                      ? "bg-white text-indigo-700 shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  } ${key !== "password" ? "cursor-not-allowed opacity-60" : ""}`}
+                      ? 'bg-white text-indigo-700 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  } ${key !== 'password' ? 'cursor-not-allowed opacity-60' : ''}`}
                 >
                   <Icon className="h-4 w-4" />
                   {label}
@@ -136,10 +158,12 @@ export default function PortalLoginPage() {
               ))}
             </div>
 
-            {loginMethod === "password" ? (
+            {loginMethod === 'password' ? (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username" className="text-sm font-medium text-slate-700">账号</Label>
+                  <Label htmlFor="username" className="text-sm font-medium text-slate-700">
+                    账号
+                  </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
@@ -153,7 +177,9 @@ export default function PortalLoginPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-slate-700">密码</Label>
+                  <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                    密码
+                  </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
@@ -181,10 +207,10 @@ export default function PortalLoginPage() {
                   disabled={loading}
                   size="lg"
                 >
-                  {loading ? "登录中..." : "登 录"}
+                  {loading ? '登录中...' : '登 录'}
                 </Button>
               </form>
-            ) : loginMethod === "sms" ? (
+            ) : loginMethod === 'sms' ? (
               <div className="py-8 text-center text-sm text-slate-400">
                 <MessageCircle className="mx-auto mb-3 h-10 w-10 text-slate-300" />
                 <p>短信登录功能开发中</p>
@@ -216,9 +242,7 @@ export default function PortalLoginPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>选择租户</DialogTitle>
-            <DialogDescription>
-              您的账号关联了多个学校，请选择要登录的学校
-            </DialogDescription>
+            <DialogDescription>您的账号关联了多个学校，请选择要登录的学校</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 py-4">
             {tenantOptions.map((t) => (

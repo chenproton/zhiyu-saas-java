@@ -1,3 +1,3 @@
-"use client"
+'use client'
 
-export { TableRowActions } from "@zhiyu/ui"
+export { TableRowActions } from '@zhiyu/ui'

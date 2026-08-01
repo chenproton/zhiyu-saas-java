@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
-import { ChevronDown, ChevronLeft, ChevronRight, Menu } from "lucide-react"
-import type { PlatformNavigationConfig, SideNavItem } from "./config"
-import { resolvePlatformIcon } from "./icons"
-import { cn } from "@/lib/utils"
-import { matchesPath } from "./utils"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
+import type { PlatformNavigationConfig, SideNavItem } from './config'
+import { resolvePlatformIcon } from './icons'
+import { cn } from '@/lib/utils'
+import { matchesPath } from './utils'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 
 function isSideItemActive(pathname: string, item: SideNavItem) {
   if (item.children?.length) {
@@ -17,7 +17,10 @@ function isSideItemActive(pathname: string, item: SideNavItem) {
   return matchesPath(pathname, item.href, item.matchers)
 }
 
-function getVisibleSideNavItems(items: SideNavItem[], hasMenuPerm: (path: string) => boolean): SideNavItem[] {
+function getVisibleSideNavItems(
+  items: SideNavItem[],
+  hasMenuPerm: (path: string) => boolean,
+): SideNavItem[] {
   return items
     .map((item) => {
       if (item.hidden) return null
@@ -25,7 +28,11 @@ function getVisibleSideNavItems(items: SideNavItem[], hasMenuPerm: (path: string
         if (child.hidden) return false
         return hasMenuPerm(child.href)
       })
-      if (item.children && item.children.length > 0 && (!visibleChildren || visibleChildren.length === 0)) {
+      if (
+        item.children &&
+        item.children.length > 0 &&
+        (!visibleChildren || visibleChildren.length === 0)
+      ) {
         return null
       }
       return visibleChildren ? { ...item, children: visibleChildren } : item
@@ -43,18 +50,18 @@ export function PlatformSideNav({
   const pathname = usePathname()
   const visibleSideNavItems = useMemo(
     () => getVisibleSideNavItems(config.sideNavItems, hasMenuPermission),
-    [config.sideNavItems, hasMenuPermission]
+    [config.sideNavItems, hasMenuPermission],
   )
   const defaultExpanded = useMemo(
     () =>
       config.defaultExpandedSideNavIds?.length
         ? config.defaultExpandedSideNavIds
         : visibleSideNavItems.filter((item) => item.children?.length).map((item) => item.id),
-    [config.defaultExpandedSideNavIds, visibleSideNavItems]
+    [config.defaultExpandedSideNavIds, visibleSideNavItems],
   )
   const [expandedItems, setExpandedItems] = useState<string[]>(defaultExpanded)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const PlatformIcon = resolvePlatformIcon(config.platformIcon || "settings")
+  const PlatformIcon = resolvePlatformIcon(config.platformIcon || 'settings')
 
   // 路由变化时收起移动端抽屉（render 期守卫式状态调整，等价于 effect 监听 pathname）
   const [prevPath, setPrevPath] = useState(pathname)
@@ -65,7 +72,9 @@ export function PlatformSideNav({
 
   useEffect(() => {
     const activeParents = visibleSideNavItems
-      .filter((item) => item.children?.some((child) => matchesPath(pathname, child.href, child.matchers)))
+      .filter((item) =>
+        item.children?.some((child) => matchesPath(pathname, child.href, child.matchers)),
+      )
       .map((item) => item.id)
 
     setExpandedItems((prev) => Array.from(new Set([...defaultExpanded, ...activeParents, ...prev])))
@@ -73,7 +82,7 @@ export function PlatformSideNav({
 
   const toggleExpand = (itemId: string) => {
     setExpandedItems((prev) =>
-      prev.includes(itemId) ? prev.filter((entry) => entry !== itemId) : [...prev, itemId]
+      prev.includes(itemId) ? prev.filter((entry) => entry !== itemId) : [...prev, itemId],
     )
   }
 
@@ -108,8 +117,10 @@ export function PlatformSideNav({
                   type="button"
                   onClick={() => toggleExpand(item.id)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors",
-                    active ? "bg-primary/5 font-medium text-primary" : "text-gray-600 hover:bg-gray-50"
+                    'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors',
+                    active
+                      ? 'bg-primary/5 font-medium text-primary'
+                      : 'text-gray-600 hover:bg-gray-50',
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -124,10 +135,10 @@ export function PlatformSideNav({
                 </button>
               ) : (
                 <Link
-                  href={item.href || "/"}
+                  href={item.href || '/'}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                    active ? "bg-primary text-white font-medium" : "text-gray-600 hover:bg-gray-50"
+                    'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors',
+                    active ? 'bg-primary text-white font-medium' : 'text-gray-600 hover:bg-gray-50',
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -142,10 +153,10 @@ export function PlatformSideNav({
                       key={child.id}
                       href={child.href}
                       className={cn(
-                        "block rounded-lg px-3 py-2 text-sm transition-colors",
+                        'block rounded-lg px-3 py-2 text-sm transition-colors',
                         matchesPath(pathname, child.href, child.matchers)
-                          ? "bg-primary text-white font-medium"
-                          : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                          ? 'bg-primary text-white font-medium'
+                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800',
                       )}
                     >
                       {child.label}
@@ -170,10 +181,10 @@ export function PlatformSideNav({
                   key={item.id}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                    'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
                     active
-                      ? "bg-primary/5 font-medium text-primary"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                      ? 'bg-primary/5 font-medium text-primary'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800',
                   )}
                 >
                   <Icon className="h-4 w-4" />

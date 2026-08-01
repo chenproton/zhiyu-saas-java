@@ -1,17 +1,17 @@
-"use client"
+'use client'
 
-import { useMemo } from "react"
-import Link from "next/link"
-import { MapPin, User, Pencil } from "lucide-react"
-import { cn } from "@/lib/utils"
-import type { PeriodSlot, ScheduleEntry } from "@/lib/types"
+import { useMemo } from 'react'
+import Link from 'next/link'
+import { MapPin, User, Pencil } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { PeriodSlot, ScheduleEntry } from '@/lib/types'
 
-const DAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 const WEEK_PATTERN_SUFFIX: Record<string, string> = {
-  all: "",
-  odd: "（单周）",
-  even: "（双周）",
+  all: '',
+  odd: '（单周）',
+  even: '（双周）',
 }
 
 /** 按周次过滤：startWeek <= week <= endWeek 且周次模式匹配 */
@@ -19,8 +19,8 @@ export function filterEntriesByWeek(entries: ScheduleEntry[], week?: number): Sc
   if (!week) return entries
   return entries.filter((e) => {
     if (e.startWeek > week || e.endWeek < week) return false
-    if (e.weekPattern === "odd") return week % 2 === 1
-    if (e.weekPattern === "even") return week % 2 === 0
+    if (e.weekPattern === 'odd') return week % 2 === 1
+    if (e.weekPattern === 'even') return week % 2 === 0
     return true
   })
 }
@@ -56,7 +56,7 @@ export function ScheduleGrid({
   periodSlots,
   week,
   loading,
-  emptyText = "暂无课表数据",
+  emptyText = '暂无课表数据',
   onEntryClick,
   getEntryHref,
   onCellClick,
@@ -74,7 +74,9 @@ export function ScheduleGrid({
         .map((s) => ({
           key: s.name,
           label: s.name,
-          time: s.startTime ? `${s.startTime.slice(0, 5)}${s.endTime ? `-${s.endTime.slice(0, 5)}` : ""}` : undefined,
+          time: s.startTime
+            ? `${s.startTime.slice(0, 5)}${s.endTime ? `-${s.endTime.slice(0, 5)}` : ''}`
+            : undefined,
         }))
     }
     const names = new Set<string>()
@@ -82,7 +84,7 @@ export function ScheduleGrid({
       for (const p of e.periods || []) names.add(p)
     }
     return Array.from(names)
-      .sort((a, b) => a.localeCompare(b, "zh-CN", { numeric: true }))
+      .sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true }))
       .map((name) => ({ key: name, label: name }))
   }, [periodSlots, visibleEntries])
 
@@ -100,7 +102,7 @@ export function ScheduleGrid({
   }, [visibleEntries])
 
   const renderCard = (entry: ScheduleEntry) => {
-    const isScene = entry.type === "scene"
+    const isScene = entry.type === 'scene'
     const href = getEntryHref?.(entry)
     const canEdit = !!onEntryClick
     const canMoveStart = !!onEntryMoveStart
@@ -110,8 +112,8 @@ export function ScheduleGrid({
       <div
         draggable={draggable}
         onDragStart={(e) => {
-          e.dataTransfer.setData("scheduleEntryId", entry.id)
-          e.dataTransfer.effectAllowed = "move"
+          e.dataTransfer.setData('scheduleEntryId', entry.id)
+          e.dataTransfer.effectAllowed = 'move'
         }}
         onClick={(e) => {
           e.stopPropagation()
@@ -122,11 +124,11 @@ export function ScheduleGrid({
           }
         }}
         className={cn(
-          "w-full rounded-md border p-1 text-left text-[11px] leading-tight select-none max-w-[130px]",
-          isScene ? "border-orange-200 bg-orange-50" : "border-blue-200 bg-blue-50",
-          (canEdit || canMoveStart) && "cursor-pointer transition-shadow hover:shadow-md",
-          draggable && "cursor-move",
-          isMoving && "ring-2 ring-blue-500 shadow-md"
+          'w-full rounded-md border p-1 text-left text-[11px] leading-tight select-none max-w-[130px]',
+          isScene ? 'border-orange-200 bg-orange-50' : 'border-blue-200 bg-blue-50',
+          (canEdit || canMoveStart) && 'cursor-pointer transition-shadow hover:shadow-md',
+          draggable && 'cursor-move',
+          isMoving && 'ring-2 ring-blue-500 shadow-md',
         )}
       >
         <div className="flex items-center gap-1">
@@ -140,7 +142,10 @@ export function ScheduleGrid({
             <button
               type="button"
               title="编辑排课"
-              onClick={(e) => { e.stopPropagation(); onEntryClick?.(entry) }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onEntryClick?.(entry)
+              }}
               className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground hover:bg-black/5 hover:text-foreground"
             >
               <Pencil className="h-3 w-3" />
@@ -160,7 +165,7 @@ export function ScheduleGrid({
           </div>
         )}
         <div className="mt-0.5 text-muted-foreground">
-          第{entry.startWeek}-{entry.endWeek}周{WEEK_PATTERN_SUFFIX[entry.weekPattern] || ""}
+          第{entry.startWeek}-{entry.endWeek}周{WEEK_PATTERN_SUFFIX[entry.weekPattern] || ''}
         </div>
       </div>
     )
@@ -173,7 +178,12 @@ export function ScheduleGrid({
     }
     if (onEntryClick) {
       return (
-        <button key={entry.id} type="button" className="block w-full" onClick={() => onEntryClick(entry)}>
+        <button
+          key={entry.id}
+          type="button"
+          className="block w-full"
+          onClick={() => onEntryClick(entry)}
+        >
           {card}
         </button>
       )
@@ -191,18 +201,27 @@ export function ScheduleGrid({
   }
 
   // 始终渲染时用节次数据兜底，fallback 为空数组
-  const displayRows = hasData ? rows : (periodSlots && periodSlots.length > 0
-    ? [...periodSlots].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => ({ key: s.name, label: s.name } as GridRow))
-    : [{ key: "__empty", label: "暂无节次" } as GridRow])
+  const displayRows = hasData
+    ? rows
+    : periodSlots && periodSlots.length > 0
+      ? [...periodSlots]
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((s) => ({ key: s.name, label: s.name }) as GridRow)
+      : [{ key: '__empty', label: '暂无节次' } as GridRow]
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[840px] border-collapse">
         <thead>
           <tr>
-            <th className="w-[80px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">节次</th>
+            <th className="w-[80px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
+              节次
+            </th>
             {DAY_LABELS.map((d) => (
-              <th key={d} className="w-[130px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
+              <th
+                key={d}
+                className="w-[130px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground"
+              >
                 {d}
               </th>
             ))}
@@ -222,9 +241,10 @@ export function ScheduleGrid({
                   <td
                     key={dayIdx}
                     className={cn(
-                      "border px-1 py-1 align-top",
-                      (onCellClick || canDrop) && "cursor-pointer hover:bg-blue-50/40 transition-colors",
-                      canDrop && "hover:bg-blue-50/60"
+                      'border px-1 py-1 align-top',
+                      (onCellClick || canDrop) &&
+                        'cursor-pointer hover:bg-blue-50/40 transition-colors',
+                      canDrop && 'hover:bg-blue-50/60',
                     )}
                     onClick={() => {
                       if (movingEntry && onEntryMove && dayEntries.length === 0) {
@@ -233,11 +253,16 @@ export function ScheduleGrid({
                         onCellClick(dayIdx + 1, row.key)
                       }
                     }}
-                    onDragOver={(e) => { if (canDrop) { e.preventDefault(); e.dataTransfer.dropEffect = "move" } }}
+                    onDragOver={(e) => {
+                      if (canDrop) {
+                        e.preventDefault()
+                        e.dataTransfer.dropEffect = 'move'
+                      }
+                    }}
                     onDrop={(e) => {
                       if (!canDrop || !onEntryMove) return
                       e.preventDefault()
-                      const entryId = e.dataTransfer.getData("scheduleEntryId")
+                      const entryId = e.dataTransfer.getData('scheduleEntryId')
                       const entry = visibleEntries.find((en) => en.id === entryId)
                       if (entry) onEntryMove(entry, dayIdx + 1, row.key)
                     }}

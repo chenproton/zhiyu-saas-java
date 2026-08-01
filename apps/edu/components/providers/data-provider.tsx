@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { useToast } from "@zhiyu/ui"
+import { useToast } from '@zhiyu/ui'
 import type {
   QuestionBank,
   Question,
@@ -54,7 +54,8 @@ import {
 // ==================== Date parsing helpers ====================
 
 export const parseDate = (v: string | Date | undefined): Date => (v ? new Date(v) : new Date())
-export const parseOptDate = (v: string | Date | undefined): Date | undefined => (v ? new Date(v) : undefined)
+export const parseOptDate = (v: string | Date | undefined): Date | undefined =>
+  v ? new Date(v) : undefined
 
 export const parseQuestionBank = (bank: QuestionBank): QuestionBank => ({
   ...bank,
@@ -219,8 +220,14 @@ export interface DataContextValue {
   archiveVersions: StudentAbilityArchive[]
 
   // 毕业设计管理操作
-  updateGraduationProjectArchive: (id: string, data: Partial<GraduationProjectArchive>) => Promise<void>
-  updateGraduationProjectEvaluation: (id: string, data: Partial<GraduationProjectEvaluation>) => Promise<void>
+  updateGraduationProjectArchive: (
+    id: string,
+    data: Partial<GraduationProjectArchive>,
+  ) => Promise<void>
+  updateGraduationProjectEvaluation: (
+    id: string,
+    data: Partial<GraduationProjectEvaluation>,
+  ) => Promise<void>
 
   // 学生能力画像管理操作
   createStudentAbilityArchive: (data: Record<string, unknown>) => Promise<StudentAbilityArchive>
@@ -230,8 +237,12 @@ export interface DataContextValue {
 
   // 微证书管理
   certIssuanceRecords: CertIssuanceRecord[]
-  issueCert: (data: Omit<CertIssuanceRecord, 'id' | 'certNumber' | 'status'>) => Promise<CertIssuanceRecord>
-  issueBatchCerts: (records: Omit<CertIssuanceRecord, 'id' | 'certNumber' | 'status'>[]) => Promise<CertIssuanceRecord[]>
+  issueCert: (
+    data: Omit<CertIssuanceRecord, 'id' | 'certNumber' | 'status'>,
+  ) => Promise<CertIssuanceRecord>
+  issueBatchCerts: (
+    records: Omit<CertIssuanceRecord, 'id' | 'certNumber' | 'status'>[],
+  ) => Promise<CertIssuanceRecord[]>
   revokeCert: (id: string, reason: string) => Promise<void>
 }
 
@@ -255,9 +266,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>([])
 
   // 毕业设计管理状态
-  const [graduationProjectTopics, setGraduationProjectTopics] = useState<GraduationProjectTopic[]>([])
-  const [graduationProjectArchives, setGraduationProjectArchives] = useState<GraduationProjectArchive[]>([])
-  const [graduationProjectEvaluations, setGraduationProjectEvaluations] = useState<GraduationProjectEvaluation[]>([])
+  const [graduationProjectTopics, setGraduationProjectTopics] = useState<GraduationProjectTopic[]>(
+    [],
+  )
+  const [graduationProjectArchives, setGraduationProjectArchives] = useState<
+    GraduationProjectArchive[]
+  >([])
+  const [graduationProjectEvaluations, setGraduationProjectEvaluations] = useState<
+    GraduationProjectEvaluation[]
+  >([])
   const [graduationQueryResults, setGraduationQueryResults] = useState<GraduationQueryResult[]>([])
   const [processEvaluations, setProcessEvaluations] = useState<ProcessEvaluation[]>([])
   const [rectificationDetails, setRectificationDetails] = useState<RectificationDetail[]>([])
@@ -266,7 +283,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // 学生能力画像管理状态
   const [studentAbilityArchives, setStudentAbilityArchives] = useState<StudentAbilityArchive[]>([])
-  const [studentAbilityPortraits, setStudentAbilityPortraits] = useState<StudentAbilityPortrait[]>([])
+  const [studentAbilityPortraits, setStudentAbilityPortraits] = useState<StudentAbilityPortrait[]>(
+    [],
+  )
   const [creditConversionRules, setCreditConversionRules] = useState<CreditConversionRule[]>([])
   const [archiveVersions, setArchiveVersions] = useState<StudentAbilityArchive[]>([])
 
@@ -308,10 +327,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadSceneTasks = useCallback(async () => {
-    const [tasksRes, scenariosRes] = await Promise.all([
-      taskApi.list(),
-      scenarioApi.list(),
-    ])
+    const [tasksRes, scenariosRes] = await Promise.all([taskApi.list(), scenarioApi.list()])
     const scenarioMap = new Map(scenariosRes.items.map((s) => [s.id, s.name]))
     setSceneTasks(
       tasksRes.items.map((t) => ({
@@ -319,7 +335,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         name: t.name,
         sceneName: scenarioMap.get(t.scenarioId) || t.scenarioId,
         methodIds: [],
-      }))
+      })),
     )
   }, [])
 
@@ -329,7 +345,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       res.items.map((r) => ({
         ...r,
         evaluationTime: parseDate(r.evaluationTime),
-      }))
+      })),
     )
   }, [])
 
@@ -384,7 +400,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const shouldLoadEvaluation = pathname.startsWith('/evaluation')
   const shouldLoadScene = pathname.startsWith('/scene')
   const shouldLoadGraduation = pathname.startsWith('/graduation')
-  const shouldLoadPortrait = pathname.startsWith('/portrait') || pathname.startsWith('/student-ability')
+  const shouldLoadPortrait =
+    pathname.startsWith('/portrait') || pathname.startsWith('/student-ability')
 
   useEffect(() => {
     if (isPortal) return
@@ -398,7 +415,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         loadSceneTasks,
         loadSceneResults,
         loadJobAbilityResults,
-        loadApprovalItems
+        loadApprovalItems,
       )
     }
     if (shouldLoadGraduation) {
@@ -406,14 +423,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         loadGraduationTopics,
         loadGraduationArchives,
         loadGraduationEvaluations,
-        loadGraduationQueryResults
+        loadGraduationQueryResults,
       )
     }
     if (shouldLoadPortrait) {
-      tasks.push(
-        loadStudentAbilityArchives,
-        loadStudentAbilityPortraits
-      )
+      tasks.push(loadStudentAbilityArchives, loadStudentAbilityPortraits)
     }
     if (tasks.length === 0) return
 
@@ -431,7 +445,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     }
     loadAll()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [
     isPortal,
     shouldLoadEvaluation,
@@ -455,260 +471,344 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   ])
 
   // ==================== Approval actions ====================
-  const approveItem = useCallback(async (id: string, remark?: string) => {
-    await approvalApi.review(id, { status: 'approved', comment: remark })
-    await loadApprovalItems()
-  }, [loadApprovalItems])
+  const approveItem = useCallback(
+    async (id: string, remark?: string) => {
+      await approvalApi.review(id, { status: 'approved', comment: remark })
+      await loadApprovalItems()
+    },
+    [loadApprovalItems],
+  )
 
-  const rejectItem = useCallback(async (id: string, remark?: string) => {
-    await approvalApi.review(id, { status: 'rejected', comment: remark })
-    await loadApprovalItems()
-  }, [loadApprovalItems])
+  const rejectItem = useCallback(
+    async (id: string, remark?: string) => {
+      await approvalApi.review(id, { status: 'rejected', comment: remark })
+      await loadApprovalItems()
+    },
+    [loadApprovalItems],
+  )
 
   // ==================== Question bank actions ====================
   const getQuestionBank = useCallback(
     (id: string) => questionBanks.find((bank) => bank.id === id),
-    [questionBanks]
+    [questionBanks],
   )
 
-  const createQuestionBank = useCallback(async (data: QuestionBankFormData): Promise<QuestionBank> => {
-    const created = await questionBankApi.create({
-      ...data,
-      status: 'draft',
-      version: 'v0.1.0',
-      ownerType: 'mine',
-    } as Omit<QuestionBank, 'id' | 'questionCount' | 'createdAt' | 'updatedAt'>)
-    await loadQuestionBanks()
-    return parseQuestionBank(created)
-  }, [loadQuestionBanks])
+  const createQuestionBank = useCallback(
+    async (data: QuestionBankFormData): Promise<QuestionBank> => {
+      const created = await questionBankApi.create({
+        ...data,
+        status: 'draft',
+        version: 'v0.1.0',
+        ownerType: 'mine',
+      } as Omit<QuestionBank, 'id' | 'questionCount' | 'createdAt' | 'updatedAt'>)
+      await loadQuestionBanks()
+      return parseQuestionBank(created)
+    },
+    [loadQuestionBanks],
+  )
 
-  const updateQuestionBank = useCallback(async (id: string, data: QuestionBankFormData) => {
-    await questionBankApi.update(id, data)
-    await loadQuestionBanks()
-  }, [loadQuestionBanks])
+  const updateQuestionBank = useCallback(
+    async (id: string, data: QuestionBankFormData) => {
+      await questionBankApi.update(id, data)
+      await loadQuestionBanks()
+    },
+    [loadQuestionBanks],
+  )
 
-  const deleteQuestionBank = useCallback(async (id: string) => {
-    const bank = questionBanks.find((b) => b.id === id)
-    if (bank?.isDraftPool) return
-    await questionBankApi.delete(id)
-    await loadQuestionBanks()
-  }, [questionBanks, loadQuestionBanks])
+  const deleteQuestionBank = useCallback(
+    async (id: string) => {
+      const bank = questionBanks.find((b) => b.id === id)
+      if (bank?.isDraftPool) return
+      await questionBankApi.delete(id)
+      await loadQuestionBanks()
+    },
+    [questionBanks, loadQuestionBanks],
+  )
 
-  const updateQuestionBankStatus = useCallback(async (id: string, action: StatusAction) => {
-    const bank = questionBanks.find((b) => b.id === id)
-    switch (action) {
-      case 'save_draft':
-        await questionBankApi.saveDraft(id)
-        break
-      case 'submit': {
-        if (!bank?.batchId) {
-          toast({ variant: 'destructive', title: '无法提交', description: '该题库未关联批次，无法提交审批' })
-          return
+  const updateQuestionBankStatus = useCallback(
+    async (id: string, action: StatusAction) => {
+      const bank = questionBanks.find((b) => b.id === id)
+      switch (action) {
+        case 'save_draft':
+          await questionBankApi.saveDraft(id)
+          break
+        case 'submit': {
+          if (!bank?.batchId) {
+            toast({
+              variant: 'destructive',
+              title: '无法提交',
+              description: '该题库未关联批次，无法提交审批',
+            })
+            return
+          }
+          const batch = await evaluationBatchApi.get(bank.batchId)
+          await questionBankApi.submit(id)
+          await approvalApi.create({
+            targetType: 'question_bank',
+            targetId: id,
+            workflowId: batch.workflowId,
+          })
+          break
         }
-        const batch = await evaluationBatchApi.get(bank.batchId)
-        await questionBankApi.submit(id)
-        await approvalApi.create({ targetType: 'question_bank', targetId: id, workflowId: batch.workflowId })
-        break
-      }
-      case 'withdraw':
-        await questionBankApi.withdraw(id)
-        break
-      case 'approve':
-      case 'reject': {
-        const records = await approvalApi.list({ targetType: 'question_bank', targetId: id, status: 'pending', limit: 1 })
-        if (records.items.length > 0) {
-          await approvalApi.review(records.items[0].id, { status: action === 'approve' ? 'approved' : 'rejected' })
+        case 'withdraw':
+          await questionBankApi.withdraw(id)
+          break
+        case 'approve':
+        case 'reject': {
+          const records = await approvalApi.list({
+            targetType: 'question_bank',
+            targetId: id,
+            status: 'pending',
+            limit: 1,
+          })
+          if (records.items.length > 0) {
+            await approvalApi.review(records.items[0].id, {
+              status: action === 'approve' ? 'approved' : 'rejected',
+            })
+          }
+          break
         }
-        break
+        case 'publish':
+          await questionBankApi.publish(id)
+          break
+        case 'unpublish':
+          await questionBankApi.unpublish(id)
+          break
       }
-      case 'publish':
-        await questionBankApi.publish(id)
-        break
-      case 'unpublish':
-        await questionBankApi.unpublish(id)
-        break
-    }
-    await loadQuestionBanks()
-  }, [loadQuestionBanks, questionBanks, toast])
+      await loadQuestionBanks()
+    },
+    [loadQuestionBanks, questionBanks, toast],
+  )
 
   // ==================== Question actions ====================
   const getQuestionsByBank = useCallback(
     (bankId: string) => questions.filter((q) => q.bankId === bankId),
-    [questions]
+    [questions],
   )
 
-  const getQuestion = useCallback(
-    (id: string) => questions.find((q) => q.id === id),
-    [questions]
+  const getQuestion = useCallback((id: string) => questions.find((q) => q.id === id), [questions])
+
+  const createQuestion = useCallback(
+    async (bankId: string, data: QuestionFormData): Promise<Question> => {
+      const created = await questionApi.create({
+        ...data,
+        bankId,
+        status: 'draft',
+      } as Omit<Question, 'id' | 'createdAt'>)
+      await Promise.all([loadBankQuestions(bankId), loadQuestionBanks()])
+      return parseQuestion(created)
+    },
+    [loadBankQuestions, loadQuestionBanks],
   )
 
-  const createQuestion = useCallback(async (bankId: string, data: QuestionFormData): Promise<Question> => {
-    const created = await questionApi.create({
-      ...data,
-      bankId,
-      status: 'draft',
-    } as Omit<Question, 'id' | 'createdAt'>)
-    await Promise.all([loadBankQuestions(bankId), loadQuestionBanks()])
-    return parseQuestion(created)
-  }, [loadBankQuestions, loadQuestionBanks])
+  const updateQuestion = useCallback(
+    async (id: string, data: QuestionFormData) => {
+      await questionApi.update(id, data)
+      const q = getQuestion(id)
+      if (q) await loadBankQuestions(q.bankId)
+    },
+    [getQuestion, loadBankQuestions],
+  )
 
-  const updateQuestion = useCallback(async (id: string, data: QuestionFormData) => {
-    await questionApi.update(id, data)
-    const q = getQuestion(id)
-    if (q) await loadBankQuestions(q.bankId)
-  }, [getQuestion, loadBankQuestions])
+  const updateQuestionStatus = useCallback(
+    async (id: string, action: StatusAction) => {
+      if (!canPerformAction(getQuestion(id)?.status || 'draft', action)) return
+      await questionApi.update(id, { status: getNextStatus(action) })
+      const q = getQuestion(id)
+      if (q) await loadBankQuestions(q.bankId)
+    },
+    [getQuestion, loadBankQuestions],
+  )
 
-  const updateQuestionStatus = useCallback(async (id: string, action: StatusAction) => {
-    if (!canPerformAction(getQuestion(id)?.status || 'draft', action)) return
-    await questionApi.update(id, { status: getNextStatus(action) })
-    const q = getQuestion(id)
-    if (q) await loadBankQuestions(q.bankId)
-  }, [getQuestion, loadBankQuestions])
+  const deleteQuestion = useCallback(
+    async (id: string) => {
+      const q = getQuestion(id)
+      if (!q) return
+      await questionApi.delete(id)
+      await Promise.all([loadBankQuestions(q.bankId), loadQuestionBanks()])
+    },
+    [getQuestion, loadBankQuestions, loadQuestionBanks],
+  )
 
-  const deleteQuestion = useCallback(async (id: string) => {
-    const q = getQuestion(id)
-    if (!q) return
-    await questionApi.delete(id)
-    await Promise.all([loadBankQuestions(q.bankId), loadQuestionBanks()])
-  }, [getQuestion, loadBankQuestions, loadQuestionBanks])
-
-  const moveQuestions = useCallback(async (questionIds: string[], targetBankId: string) => {
-    const targetBank = questionBanks.find((b) => b.id === targetBankId)
-    if (!targetBank) return
-    const sourceBankIds = new Set<string>()
-    await Promise.all(
-      questionIds.map((qid) => {
-        const q = getQuestion(qid)
-        if (!q) return Promise.resolve()
-        sourceBankIds.add(q.bankId)
-        return questionApi.update(qid, {
-          type: q.type,
-          content: q.content,
-          options: q.options,
-          answer: q.answer,
-          analysis: q.analysis,
-          score: q.score,
-          difficulty: q.difficulty,
-          knowledgePoints: q.knowledgePoints,
-          bankId: targetBankId,
-        })
-      })
-    )
-    const reloads = [loadBankQuestions(targetBankId)]
-    for (const bankId of sourceBankIds) {
-      if (bankId !== targetBankId) reloads.push(loadBankQuestions(bankId))
-    }
-    await Promise.all([...reloads, loadQuestionBanks()])
-  }, [questionBanks, getQuestion, loadBankQuestions, loadQuestionBanks])
+  const moveQuestions = useCallback(
+    async (questionIds: string[], targetBankId: string) => {
+      const targetBank = questionBanks.find((b) => b.id === targetBankId)
+      if (!targetBank) return
+      const sourceBankIds = new Set<string>()
+      await Promise.all(
+        questionIds.map((qid) => {
+          const q = getQuestion(qid)
+          if (!q) return Promise.resolve()
+          sourceBankIds.add(q.bankId)
+          return questionApi.update(qid, {
+            type: q.type,
+            content: q.content,
+            options: q.options,
+            answer: q.answer,
+            analysis: q.analysis,
+            score: q.score,
+            difficulty: q.difficulty,
+            knowledgePoints: q.knowledgePoints,
+            bankId: targetBankId,
+          })
+        }),
+      )
+      const reloads = [loadBankQuestions(targetBankId)]
+      for (const bankId of sourceBankIds) {
+        if (bankId !== targetBankId) reloads.push(loadBankQuestions(bankId))
+      }
+      await Promise.all([...reloads, loadQuestionBanks()])
+    },
+    [questionBanks, getQuestion, loadBankQuestions, loadQuestionBanks],
+  )
 
   // ==================== Exam actions ====================
-  const getExam = useCallback(
-    (id: string) => exams.find((exam) => exam.id === id),
-    [exams]
+  const getExam = useCallback((id: string) => exams.find((exam) => exam.id === id), [exams])
+
+  const createExam = useCallback(
+    async (data: ExamFormData): Promise<Exam> => {
+      const created = await examApi.create({
+        ...data,
+        status: 'draft',
+        version: 'v0.1.0',
+        ownerType: 'mine',
+        questions: [],
+      } as Omit<Exam, 'id' | 'totalScore' | 'createdAt' | 'updatedAt'>)
+      await loadExams()
+      return parseExam(created)
+    },
+    [loadExams],
   )
 
-  const createExam = useCallback(async (data: ExamFormData): Promise<Exam> => {
-    const created = await examApi.create({
-      ...data,
-      status: 'draft',
-      version: 'v0.1.0',
-      ownerType: 'mine',
-      questions: [],
-    } as Omit<Exam, 'id' | 'totalScore' | 'createdAt' | 'updatedAt'>)
-    await loadExams()
-    return parseExam(created)
-  }, [loadExams])
+  const updateExam = useCallback(
+    async (id: string, data: Partial<Exam>) => {
+      await examApi.update(id, data)
+      await loadExams()
+    },
+    [loadExams],
+  )
 
-  const updateExam = useCallback(async (id: string, data: Partial<Exam>) => {
-    await examApi.update(id, data)
-    await loadExams()
-  }, [loadExams])
+  const deleteExam = useCallback(
+    async (id: string) => {
+      await examApi.delete(id)
+      await loadExams()
+    },
+    [loadExams],
+  )
 
-  const deleteExam = useCallback(async (id: string) => {
-    await examApi.delete(id)
-    await loadExams()
-  }, [loadExams])
-
-  const updateExamStatus = useCallback(async (id: string, action: StatusAction) => {
-    const exam = exams.find((e) => e.id === id)
-    switch (action) {
-      case 'save_draft':
-        await examApi.saveDraft(id)
-        break
-      case 'submit': {
-        if (!exam?.batchId) {
-          toast({ variant: 'destructive', title: '无法提交', description: '该试卷未关联批次，无法提交审批' })
-          return
+  const updateExamStatus = useCallback(
+    async (id: string, action: StatusAction) => {
+      const exam = exams.find((e) => e.id === id)
+      switch (action) {
+        case 'save_draft':
+          await examApi.saveDraft(id)
+          break
+        case 'submit': {
+          if (!exam?.batchId) {
+            toast({
+              variant: 'destructive',
+              title: '无法提交',
+              description: '该试卷未关联批次，无法提交审批',
+            })
+            return
+          }
+          const batch = await evaluationBatchApi.get(exam.batchId)
+          await examApi.submit(id)
+          await approvalApi.create({
+            targetType: 'exam',
+            targetId: id,
+            workflowId: batch.workflowId,
+          })
+          break
         }
-        const batch = await evaluationBatchApi.get(exam.batchId)
-        await examApi.submit(id)
-        await approvalApi.create({ targetType: 'exam', targetId: id, workflowId: batch.workflowId })
-        break
-      }
-      case 'withdraw':
-        await examApi.withdraw(id)
-        break
-      case 'approve':
-      case 'reject': {
-        const records = await approvalApi.list({ targetType: 'exam', targetId: id, status: 'pending', limit: 1 })
-        if (records.items.length > 0) {
-          await approvalApi.review(records.items[0].id, { status: action === 'approve' ? 'approved' : 'rejected' })
+        case 'withdraw':
+          await examApi.withdraw(id)
+          break
+        case 'approve':
+        case 'reject': {
+          const records = await approvalApi.list({
+            targetType: 'exam',
+            targetId: id,
+            status: 'pending',
+            limit: 1,
+          })
+          if (records.items.length > 0) {
+            await approvalApi.review(records.items[0].id, {
+              status: action === 'approve' ? 'approved' : 'rejected',
+            })
+          }
+          break
         }
-        break
+        case 'publish':
+          await examApi.publish(id)
+          break
+        case 'unpublish':
+          await examApi.unpublish(id)
+          break
       }
-      case 'publish':
-        await examApi.publish(id)
-        break
-      case 'unpublish':
-        await examApi.unpublish(id)
-        break
-    }
-    await loadExams()
-  }, [exams, loadExams, toast])
+      await loadExams()
+    },
+    [exams, loadExams, toast],
+  )
 
-  const addQuestionToExam = useCallback(async (examId: string, question: Question, score?: number) => {
-    const exam = exams.find((e) => e.id === examId)
-    if (!exam || exam.questions.some((q) => q.questionId === question.id)) return
-    await examApi.addQuestion(examId, question.id, score ?? question.score)
-    await loadExams()
-  }, [exams, loadExams])
+  const addQuestionToExam = useCallback(
+    async (examId: string, question: Question, score?: number) => {
+      const exam = exams.find((e) => e.id === examId)
+      if (!exam || exam.questions.some((q) => q.questionId === question.id)) return
+      await examApi.addQuestion(examId, question.id, score ?? question.score)
+      await loadExams()
+    },
+    [exams, loadExams],
+  )
 
-  const removeQuestionFromExam = useCallback(async (examId: string, examQuestionId: string) => {
-    const exam = exams.find((e) => e.id === examId)
-    if (!exam) return
-    const eq = exam.questions.find((q) => q.id === examQuestionId)
-    if (!eq) return
-    await examApi.removeQuestion(examId, eq.questionId)
-    await loadExams()
-  }, [exams, loadExams])
+  const removeQuestionFromExam = useCallback(
+    async (examId: string, examQuestionId: string) => {
+      const exam = exams.find((e) => e.id === examId)
+      if (!exam) return
+      const eq = exam.questions.find((q) => q.id === examQuestionId)
+      if (!eq) return
+      await examApi.removeQuestion(examId, eq.questionId)
+      await loadExams()
+    },
+    [exams, loadExams],
+  )
 
-  const updateExamQuestionScore = useCallback(async (examId: string, examQuestionId: string, score: number) => {
-    const exam = exams.find((e) => e.id === examId)
-    if (!exam) return
-    const eq = exam.questions.find((q) => q.id === examQuestionId)
-    if (!eq) return
-    await examApi.updateQuestionScore(examId, eq.questionId, score)
-    await loadExams()
-  }, [exams, loadExams])
+  const updateExamQuestionScore = useCallback(
+    async (examId: string, examQuestionId: string, score: number) => {
+      const exam = exams.find((e) => e.id === examId)
+      if (!exam) return
+      const eq = exam.questions.find((q) => q.id === examQuestionId)
+      if (!eq) return
+      await examApi.updateQuestionScore(examId, eq.questionId, score)
+      await loadExams()
+    },
+    [exams, loadExams],
+  )
 
-  const updateExamQuestionScores = useCallback(async (examId: string, scores: Record<string, number>) => {
-    await examApi.updateQuestionScores(examId, scores)
-    await loadExams()
-  }, [loadExams])
+  const updateExamQuestionScores = useCallback(
+    async (examId: string, scores: Record<string, number>) => {
+      await examApi.updateQuestionScores(examId, scores)
+      await loadExams()
+    },
+    [loadExams],
+  )
 
-  const reorderExamQuestions = useCallback(async (examId: string, questions: ExamQuestion[]) => {
-    const exam = exams.find((e) => e.id === examId)
-    if (!exam) return
-    const ordered = questions.map((q, index) => ({ ...q, order: index + 1 }))
-    await examApi.update(examId, {
-      name: exam.name,
-      description: exam.description,
-      duration: exam.duration,
-      coverImage: exam.coverImage,
-      questions: ordered,
-    })
-    await loadExams()
-  }, [exams, loadExams])
+  const reorderExamQuestions = useCallback(
+    async (examId: string, questions: ExamQuestion[]) => {
+      const exam = exams.find((e) => e.id === examId)
+      if (!exam) return
+      const ordered = questions.map((q, index) => ({ ...q, order: index + 1 }))
+      await examApi.update(examId, {
+        name: exam.name,
+        description: exam.description,
+        duration: exam.duration,
+        coverImage: exam.coverImage,
+        questions: ordered,
+      })
+      await loadExams()
+    },
+    [exams, loadExams],
+  )
 
   const value: DataContextValue = {
     evaluationLoading,
@@ -789,9 +889,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return newRect
     },
     updateRectificationDetail: (id: string, data: Partial<RectificationDetail>) => {
-      setRectificationDetails((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...data } : r))
-      )
+      setRectificationDetails((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)))
     },
     createAppealRecord: (data: Record<string, unknown>) => {
       const newAppeal: AppealRecord = {
@@ -807,14 +905,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return newAppeal
     },
     updateAppealRecord: (id: string, data: Partial<AppealRecord>) => {
-      setAppealRecords((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, ...data } : a))
-      )
+      setAppealRecords((prev) => prev.map((a) => (a.id === id ? { ...a, ...data } : a)))
     },
     updateEvaluationStandard: (id: string, data: Partial<EvaluationStandard>) => {
-      setEvaluationStandards((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, ...data } : s))
-      )
+      setEvaluationStandards((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)))
     },
     creditConversionRules,
     archiveVersions,
@@ -825,12 +919,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await graduationApi.upsertArchive(data)
       await loadGraduationArchives()
     },
-    updateGraduationProjectEvaluation: async (id: string, data: Partial<GraduationProjectEvaluation>) => {
+    updateGraduationProjectEvaluation: async (
+      id: string,
+      data: Partial<GraduationProjectEvaluation>,
+    ) => {
       await graduationApi.upsertEvaluation({ ...data, status: 'completed' })
       await loadGraduationEvaluations()
     },
 
-    createStudentAbilityArchive: async (data: Record<string, unknown>): Promise<StudentAbilityArchive> => {
+    createStudentAbilityArchive: async (
+      data: Record<string, unknown>,
+    ): Promise<StudentAbilityArchive> => {
       const created = await portraitApi.upsertArchive({
         studentName: data.studentName as string,
         studentId: data.studentId as string,
@@ -864,7 +963,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await microCertApi.issue(data.templateId, [data.studentId])
       const records = await loadCertIssuanceRecords()
       const record = records.find(
-        (r) => r.templateId === data.templateId && r.studentId === data.studentId
+        (r) => r.templateId === data.templateId && r.studentId === data.studentId,
       )
       if (!record) {
         throw new Error('证书签发成功，但未能在签发记录中找到对应记录')
@@ -880,12 +979,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       })
       await Promise.all(
         Array.from(groups.entries()).map(([templateId, userIds]) =>
-          microCertApi.issue(templateId, userIds)
-        )
+          microCertApi.issue(templateId, userIds),
+        ),
       )
       const allRecords = await loadCertIssuanceRecords()
       return allRecords.filter((r) =>
-        records.some((req) => req.templateId === r.templateId && req.studentId === r.studentId)
+        records.some((req) => req.templateId === r.templateId && req.studentId === r.studentId),
       )
     },
     revokeCert: async (id: string, reason: string) => {
@@ -893,8 +992,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         prev.map((r) =>
           r.id === id
             ? { ...r, status: 'revoked' as const, revokedAt: new Date(), revokeReason: reason }
-            : r
-        )
+            : r,
+        ),
       )
     },
   }

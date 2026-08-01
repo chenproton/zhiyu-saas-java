@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import { ArrowLeft, ChevronDown, ChevronRight, Save, SlidersHorizontal } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { ArrowLeft, ChevronDown, ChevronRight, Save, SlidersHorizontal } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -13,14 +13,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { LoadingView, useToast } from "@zhiyu/ui"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { certApi, positionApi } from "@/lib/api"
-import type { CertificationModelPoint, CertificationPositionModel } from "@/lib/types"
-import { COMPETENCY_LEVEL_LABELS } from "@/lib/types/job-source"
-import { cn } from "@/lib/utils"
-import { WeightConfigDialog } from "./weight-config-dialog"
+} from '@/components/ui/table'
+import { LoadingView, useToast } from '@zhiyu/ui'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { certApi, positionApi } from '@/lib/api'
+import type { CertificationModelPoint, CertificationPositionModel } from '@/lib/types'
+import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
+import { cn } from '@/lib/utils'
+import { WeightConfigDialog } from './weight-config-dialog'
 
 function taskKey(abilityPointId: string, taskId: string): string {
   return `${abilityPointId}:${taskId}`
@@ -40,7 +40,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [positionName, setPositionName] = useState("")
+  const [positionName, setPositionName] = useState('')
   const [model, setModel] = useState<CertificationPositionModel | null>(null)
   const [pointWeights, setPointWeights] = useState<Record<string, number>>({})
   const [taskWeights, setTaskWeights] = useState<Record<string, number>>({})
@@ -73,9 +73,9 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
       .catch((err) => {
         if (cancelled) return
         toast({
-          title: "加载失败",
-          description: err instanceof Error ? err.message : "获取岗位能力模型失败",
-          variant: "destructive",
+          title: '加载失败',
+          description: err instanceof Error ? err.message : '获取岗位能力模型失败',
+          variant: 'destructive',
         })
       })
       .finally(() => {
@@ -123,7 +123,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
       }
     }
     if (errors.length > 0) {
-      toast({ title: "权重校验未通过", description: errors.join("；"), variant: "destructive" })
+      toast({ title: '权重校验未通过', description: errors.join('；'), variant: 'destructive' })
       return
     }
 
@@ -142,14 +142,14 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
           })),
         ),
       })
-      toast({ title: "保存成功", description: "权重配置已保存" })
+      toast({ title: '保存成功', description: '权重配置已保存' })
       setLoading(true)
       setReloadKey((k) => k + 1)
     } catch (err) {
       toast({
-        title: "保存失败",
-        description: err instanceof Error ? err.message : "保存权重配置失败",
-        variant: "destructive",
+        title: '保存失败',
+        description: err instanceof Error ? err.message : '保存权重配置失败',
+        variant: 'destructive',
       })
     } finally {
       setSaving(false)
@@ -170,8 +170,8 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
           </Button>
         </Link>
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">{positionName || "岗位"}</h1>
-          <StatusBadge status={model?.rule?.status ?? "none"} />
+          <h1 className="text-xl font-semibold text-slate-900">{positionName || '岗位'}</h1>
+          <StatusBadge status={model?.rule?.status ?? 'none'} />
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Button
@@ -191,7 +191,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
             disabled={saving || allPoints.length === 0}
           >
             <Save className="size-4" />
-            {saving ? "保存中..." : "保存权重"}
+            {saving ? '保存中...' : '保存权重'}
           </Button>
         </div>
       </div>
@@ -273,9 +273,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
         onOpenChange={(open) => {
           if (!open) setTaskDialogPoint(null)
         }}
-        title={
-          taskDialogPoint ? `任务权重配置 · ${taskDialogPoint.name}` : "任务权重配置"
-        }
+        title={taskDialogPoint ? `任务权重配置 · ${taskDialogPoint.name}` : '任务权重配置'}
         description="配置各任务得分占该能力点得分的权重，合计必须为 100%"
         items={(taskDialogPoint?.tasks ?? []).map((t) => ({
           id: t.taskId,
@@ -342,7 +340,7 @@ function PointRows({
             className="line-clamp-1 text-sm text-muted-foreground"
             title={point.rubricDescription}
           >
-            {point.rubricDescription || point.description || "-"}
+            {point.rubricDescription || point.description || '-'}
           </span>
         </TableCell>
         <TableCell>
@@ -387,13 +385,12 @@ function PointRows({
                         <TableCell>
                           <span
                             className={cn(
-                              "text-sm",
+                              'text-sm',
                               taskWeights[taskKey(point.abilityPointId, task.taskId)] !==
-                                undefined && "font-medium",
+                                undefined && 'font-medium',
                             )}
                           >
-                            {taskWeights[taskKey(point.abilityPointId, task.taskId)] ??
-                              task.weight}
+                            {taskWeights[taskKey(point.abilityPointId, task.taskId)] ?? task.weight}
                             %
                           </span>
                         </TableCell>

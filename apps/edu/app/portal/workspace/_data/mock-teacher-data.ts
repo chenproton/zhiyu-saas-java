@@ -22,14 +22,14 @@ export interface TeacherAnnouncement {
   id: string
   title: string
   date: string
-  type: "重要" | "通知" | "公告" | "教务"
+  type: '重要' | '通知' | '公告' | '教务'
   isNew: boolean
 }
 
 export interface TeacherTodoItem {
   id: string
   title: string
-  type: "grade" | "approve" | "homework" | "review"
+  type: 'grade' | 'approve' | 'homework' | 'review'
   count: number
   urgent: boolean
   color: string
@@ -42,7 +42,7 @@ export interface TeacherCalendarEvent {
   time: string
   date: number
   color: string
-  type: "course" | "meeting" | "exam" | "training"
+  type: 'course' | 'meeting' | 'exam' | 'training'
 }
 
 export interface TeacherCourse {
@@ -56,7 +56,7 @@ export interface TeacherCourse {
   hours: number
   progress: number
   cover: string
-  status: "进行中" | "未开始" | "已结课"
+  status: '进行中' | '未开始' | '已结课'
   nextTask?: string
   nextDeadline?: string
 }
@@ -66,19 +66,19 @@ export interface GradeSubmitItem {
   courseName: string
   className: string
   students: number
-  status: "已提交" | "待提交" | "录入中"
+  status: '已提交' | '待提交' | '录入中'
   deadline?: string
 }
 
 // ==================== 教师基本信息 ====================
 
 export const mockTeacherInfo: TeacherInfo = {
-  id: "",
-  name: "老师",
-  avatar: "?",
-  department: "",
-  title: "",
-  teacherNo: "",
+  id: '',
+  name: '老师',
+  avatar: '?',
+  department: '',
+  title: '',
+  teacherNo: '',
   courses: 0,
   students: 0,
 }
@@ -101,9 +101,7 @@ export const mockTeacherCourses: TeacherCourse[] = []
 
 // ==================== 开课计划-课程节次 ====================
 
-
-
-export type TeacherScheduleEventType = "course" | "scene" | "meeting" | "training" | "exam" | "todo"
+export type TeacherScheduleEventType = 'course' | 'scene' | 'meeting' | 'training' | 'exam' | 'todo'
 
 export interface TeacherScheduleEvent {
   id: string
@@ -118,17 +116,17 @@ export interface TeacherScheduleEvent {
 }
 
 export const teacherPeriods = [
-  "上午 1",
-  "上午 2",
-  "上午 3",
-  "上午 4",
-  "下午 1",
-  "下午 2",
-  "下午 3",
-  "下午 4",
+  '上午 1',
+  '上午 2',
+  '上午 3',
+  '上午 4',
+  '下午 1',
+  '下午 2',
+  '下午 3',
+  '下午 4',
 ] as const
 
-export const weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+export const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 // ==================== 备课关联数据 ====================
 
@@ -164,19 +162,46 @@ export const mockSignInData = {
 
 export const mockSignInDaily: { date: string; present: number; late: number; absent: number }[] = []
 
-export const mockQuizResults: { id: string; name: string; avgScore: number; passRate: number; count: number; maxScore: number }[] = []
+export const mockQuizResults: {
+  id: string
+  name: string
+  avgScore: number
+  passRate: number
+  count: number
+  maxScore: number
+}[] = []
 
-export const mockRushAnswerRanking: { rank: number; name: string; correctCount: number; avgTime: string; badge: string }[] = []
+export const mockRushAnswerRanking: {
+  rank: number
+  name: string
+  correctCount: number
+  avgTime: string
+  badge: string
+}[] = []
 
 export const mockClassInteraction: { name: string; active: number; total: number }[] = []
 
 export const mockAttendanceRateData: { name: string; rate: number }[] = []
 
-export const mockStudentDetails: { name: string; attendance: number; quizAvg: number; interaction: number; praise: number; grade: string }[] = []
+export const mockStudentDetails: {
+  name: string
+  attendance: number
+  quizAvg: number
+  interaction: number
+  praise: number
+  grade: string
+}[] = []
 
 // ==================== 测评管理数据 ====================
 
-export const mockHomeworkSubmissions: { id: string; name: string; deadline: string; submitRate: number; avgScore: number; total: number }[] = []
+export const mockHomeworkSubmissions: {
+  id: string
+  name: string
+  deadline: string
+  submitRate: number
+  avgScore: number
+  total: number
+}[] = []
 
 export const mockHomeworkTrend: { week: string; rate: number }[] = []
 
@@ -187,7 +212,14 @@ export const mockPeerReviewStats = {
   steps: [] as { name: string; weight: number; avgScore: number }[],
 }
 
-export const mockTrainingReports: { name: string; submitted: number; total: number; rate: number; avgScore: number; rating: string }[] = []
+export const mockTrainingReports: {
+  name: string
+  submitted: number
+  total: number
+  rate: number
+  avgScore: number
+  rating: string
+}[] = []
 
 // ==================== 期末总评数据 ====================
 
@@ -200,13 +232,39 @@ export const mockSemesterSummary = {
   needAttention: 0,
 }
 
-export const mockAssessmentDimensions: { id: string; name: string; category: string; weight: number; avgScore: number; status: string; sessions: number }[] = []
+export const mockAssessmentDimensions: {
+  id: string
+  name: string
+  category: string
+  weight: number
+  avgScore: number
+  status: string
+  sessions: number
+}[] = []
 
 export const mockCompositeDistribution: { range: string; count: number }[] = []
 
-export const mockSessionSummary: { week: number; day: string; topic: string; attendance: number; quizAvg: number; homeworkRate: number; homeworkAvg: number }[] = []
+export const mockSessionSummary: {
+  week: number
+  day: string
+  topic: string
+  attendance: number
+  quizAvg: number
+  homeworkRate: number
+  homeworkAvg: number
+}[] = []
 
-export const mockStudentRanking: { rank: number; name: string; attendance: number; inClassQuiz: number; homework: number; peerReview: number; report: number; total: number; grade: string }[] = []
+export const mockStudentRanking: {
+  rank: number
+  name: string
+  attendance: number
+  inClassQuiz: number
+  homework: number
+  peerReview: number
+  report: number
+  total: number
+  grade: string
+}[] = []
 
 // ==================== 学生画像数据 ====================
 
@@ -225,4 +283,9 @@ export const mockStudentPortraits: {
 
 // ==================== 教师个人中心 ====================
 
-export const teacherSecurityItems: { label: string; status: string; statusText: string; action: string }[] = []
+export const teacherSecurityItems: {
+  label: string
+  status: string
+  statusText: string
+  action: string
+}[] = []

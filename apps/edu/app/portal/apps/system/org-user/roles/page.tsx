@@ -1,47 +1,73 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { Spinner } from "@/components/ui/spinner"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Plus, Pencil, Trash2, Search, Upload, Download, Eye, Settings, Users, AlertCircle, LayoutDashboard } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { roleApi, portalUserManagementApi, type User } from "@/lib/api"
-import type { Role } from "@/lib/types/backend"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { useToast } from "@zhiyu/ui"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from "@/lib/menu-permissions"
-import type { MenuTreeItem, PermissionModule } from "@/lib/menu-permissions"
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Spinner } from '@/components/ui/spinner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  Upload,
+  Download,
+  Eye,
+  Settings,
+  Users,
+  AlertCircle,
+  LayoutDashboard,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { roleApi, portalUserManagementApi, type User } from '@/lib/api'
+import type { Role } from '@/lib/types/backend'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { useToast } from '@zhiyu/ui'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from '@/lib/menu-permissions'
+import type { MenuTreeItem, PermissionModule } from '@/lib/menu-permissions'
 
 const MENU_TREE_PLATFORM_MAP: Record<string, string> = {
-  "system-entry": "system",
-  career: "career",
-  course: "course",
-  scene: "scene",
-  ability: "ability",
-  resource: "resource",
-  alliance: "alliance",
+  'system-entry': 'system',
+  career: 'career',
+  course: 'course',
+  scene: 'scene',
+  ability: 'ability',
+  resource: 'resource',
+  alliance: 'alliance',
 }
 
 const ACTION_MODULE_PLATFORM_MAP: Record<string, string> = {
-  scene: "scene",
-  job: "career",
-  lesson: "course",
-  evaluation: "ability",
-  alliance: "alliance",
+  scene: 'scene',
+  job: 'career',
+  lesson: 'course',
+  evaluation: 'ability',
+  alliance: 'alliance',
 }
 
 function filterMenuTreeBySubscription(
@@ -55,7 +81,15 @@ function filterMenuTreeBySubscription(
   })
 }
 
-function SystemCard({ node, checked, onCheck }: { node: MenuTreeItem; checked: Set<string>; onCheck: (id: string) => void }) {
+function SystemCard({
+  node,
+  checked,
+  onCheck,
+}: {
+  node: MenuTreeItem
+  checked: Set<string>
+  onCheck: (id: string) => void
+}) {
   const childPages = useMemo(() => {
     const pages: MenuTreeItem[] = []
     const walk = (items: MenuTreeItem[]) => {
@@ -68,13 +102,13 @@ function SystemCard({ node, checked, onCheck }: { node: MenuTreeItem; checked: S
     return pages
   }, [node])
 
-  const checkedCount = childPages.filter(p => checked.has(p.id)).length
+  const checkedCount = childPages.filter((p) => checked.has(p.id)).length
   const allChecked = checkedCount === childPages.length && childPages.length > 0
   const someChecked = checkedCount > 0 && !allChecked
 
   const handleSystemToggle = () => {
     const shouldCheck = !allChecked
-    childPages.forEach(p => {
+    childPages.forEach((p) => {
       if (shouldCheck && !checked.has(p.id)) onCheck(p.id)
       else if (!shouldCheck && checked.has(p.id)) onCheck(p.id)
     })
@@ -86,15 +120,17 @@ function SystemCard({ node, checked, onCheck }: { node: MenuTreeItem; checked: S
     <div className="rounded-lg border border-border p-4">
       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
         <Checkbox
-          checked={allChecked ? true : someChecked ? "indeterminate" : false}
+          checked={allChecked ? true : someChecked ? 'indeterminate' : false}
           onCheckedChange={handleSystemToggle}
         />
         <LayoutDashboard className="w-4 h-4 text-primary" />
         <span className="text-sm font-medium">{node.label}</span>
-        <span className="text-xs text-muted-foreground">（{checkedCount}/{childPages.length}）</span>
+        <span className="text-xs text-muted-foreground">
+          （{checkedCount}/{childPages.length}）
+        </span>
       </div>
       <div className="grid grid-cols-6 gap-1.5">
-        {childPages.map(page => (
+        {childPages.map((page) => (
           <label
             key={page.id}
             className="flex items-center gap-1.5 p-1.5 rounded hover:bg-accent cursor-pointer text-sm"
@@ -117,10 +153,10 @@ export default function RolesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isPermDialogOpen, setIsPermDialogOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<Role | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState('')
   const [checkedMenus, setCheckedMenus] = useState<Set<string>>(new Set())
   const [checkedActions, setCheckedActions] = useState<Set<string>>(new Set())
-  const [editName, setEditName] = useState("")
+  const [editName, setEditName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
   const menuTree = useMemo(() => {
@@ -129,14 +165,17 @@ export default function RolesPage() {
   }, [subscriptionModules])
 
   const visibleActionModules = useMemo(
-    () => permissionModuleConfig.filter((mod) => (subscriptionModules || {})[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true),
-    [subscriptionModules]
+    () =>
+      permissionModuleConfig.filter(
+        (mod) => (subscriptionModules || {})[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true,
+      ),
+    [subscriptionModules],
   )
 
   const fetchData = useCallback(async () => {
     if (!tenantId) {
       setIsLoading(false)
-      setError("未获取到租户信息，请重新登录")
+      setError('未获取到租户信息，请重新登录')
       return
     }
     setIsLoading(true)
@@ -145,7 +184,7 @@ export default function RolesPage() {
       const res = await roleApi.list({ tenantId, search: searchTerm || undefined, limit: 1000 })
       setRoles(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载角色失败")
+      setError(err instanceof Error ? err.message : '加载角色失败')
     } finally {
       setIsLoading(false)
     }
@@ -159,7 +198,7 @@ export default function RolesPage() {
 
   const filteredRoles = useMemo(
     () => roles.filter((role) => role.name.includes(searchTerm) || role.code.includes(searchTerm)),
-    [roles, searchTerm]
+    [roles, searchTerm],
   )
 
   const generateRoleCode = () => {
@@ -167,7 +206,7 @@ export default function RolesPage() {
       const match = r.code.match(/^ROLE(\d+)$/)
       return match ? Math.max(max, parseInt(match[1], 10)) : max
     }, 0)
-    return `ROLE${String(maxSuffix + 1).padStart(3, "0")}`
+    return `ROLE${String(maxSuffix + 1).padStart(3, '0')}`
   }
 
   const toggleMenu = (id: string) => {
@@ -189,9 +228,9 @@ export default function RolesPage() {
     })
   }
 
-  const roleStatus = (role: Role): "active" | "inactive" => {
-    if (role.status === "active") return "active"
-    return "inactive"
+  const roleStatus = (role: Role): 'active' | 'inactive' => {
+    if (role.status === 'active') return 'active'
+    return 'inactive'
   }
 
   const openPermDialog = (role: Role) => {
@@ -205,7 +244,7 @@ export default function RolesPage() {
         if (n.children) walkAllIds(n.children)
       }
     }
-    if (perms.menus && typeof perms.menus === "object") {
+    if (perms.menus && typeof perms.menus === 'object') {
       menuSet.clear()
       const granted = new Set<string>()
       for (const [key, value] of Object.entries(perms.menus as Record<string, unknown>)) {
@@ -226,17 +265,21 @@ export default function RolesPage() {
     setCheckedMenus(menuSet)
 
     const actionSet = new Set<string>()
-    if (perms && typeof perms === "object") {
+    if (perms && typeof perms === 'object') {
       for (const mod of permissionModuleConfig) {
         const modPerms = (perms as Record<string, unknown>)[mod.module]
-        if (modPerms && typeof modPerms === "object") {
+        if (modPerms && typeof modPerms === 'object') {
           for (const page of mod.pages) {
             const pagePerms = (modPerms as Record<string, unknown>)[page.page]
             if (Array.isArray(pagePerms)) {
               for (const a of pagePerms) {
-                if (typeof a === "string") actionSet.add(`${mod.module}:${page.page}:${a}`)
+                if (typeof a === 'string') actionSet.add(`${mod.module}:${page.page}:${a}`)
               }
-            } else if (pagePerms && typeof pagePerms === "object" && Array.isArray((pagePerms as Record<string, unknown>).buttons)) {
+            } else if (
+              pagePerms &&
+              typeof pagePerms === 'object' &&
+              Array.isArray((pagePerms as Record<string, unknown>).buttons)
+            ) {
               for (const a of (pagePerms as Record<string, unknown>).buttons as string[]) {
                 actionSet.add(`${mod.module}:${page.page}:${a}`)
               }
@@ -270,7 +313,7 @@ export default function RolesPage() {
       // 保留已有的非 menus 结构权限（如 scene/job/lesson/evaluation），并根据 checkedActions 更新
       // 同时受租户套餐控制：未订阅平台的操作权限不保留
       for (const mod of permissionModuleConfig.filter(
-        (mod) => subscriptionModules?.[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true
+        (mod) => subscriptionModules?.[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true,
       )) {
         const modPerms: Record<string, string[]> = {}
         for (const page of mod.pages) {
@@ -295,7 +338,11 @@ export default function RolesPage() {
       await fetchData()
       setIsPermDialogOpen(false)
     } catch (err) {
-      toast({ variant: "destructive", title: "保存失败", description: err instanceof Error ? err.message : "保存权限失败" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err instanceof Error ? err.message : '保存权限失败',
+      })
     } finally {
       setIsSaving(false)
     }
@@ -303,7 +350,11 @@ export default function RolesPage() {
 
   const saveRole = async () => {
     if (!tenantId) {
-      toast({ variant: "destructive", title: "保存失败", description: "未获取到租户信息，请重新登录" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: '未获取到租户信息，请重新登录',
+      })
       return
     }
     setIsSaving(true)
@@ -315,15 +366,19 @@ export default function RolesPage() {
           tenantId,
           code: generateRoleCode(),
           name: editName,
-          description: "",
+          description: '',
           permissions: {},
-          status: "active",
+          status: 'active',
         })
       }
       await fetchData()
       setIsDialogOpen(false)
     } catch (err) {
-      toast({ variant: "destructive", title: selectedRole ? "保存失败" : "创建失败", description: err instanceof Error ? err.message : "保存角色失败" })
+      toast({
+        variant: 'destructive',
+        title: selectedRole ? '保存失败' : '创建失败',
+        description: err instanceof Error ? err.message : '保存角色失败',
+      })
     } finally {
       setIsSaving(false)
     }
@@ -342,7 +397,7 @@ export default function RolesPage() {
       const res = await portalUserManagementApi.list({ tenantId, roleId: role.id, limit: 1000 })
       setRoleUsers(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载角色用户失败")
+      setError(err instanceof Error ? err.message : '加载角色用户失败')
     } finally {
       setUsersLoading(false)
     }
@@ -359,7 +414,7 @@ export default function RolesPage() {
       setDeleteRoleTarget(null)
       await fetchData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "删除角色失败")
+      setError(err instanceof Error ? err.message : '删除角色失败')
     }
   }
 
@@ -379,7 +434,14 @@ export default function RolesPage() {
             <Download className="h-4 w-4 mr-1" />
             导出
           </Button>
-          <Button size="sm" onClick={() => { setSelectedRole(null); setEditName(""); setIsDialogOpen(true) }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setSelectedRole(null)
+              setEditName('')
+              setIsDialogOpen(true)
+            }}
+          >
             <Plus className="h-4 w-4 mr-1" />
             新增角色
           </Button>
@@ -389,7 +451,12 @@ export default function RolesPage() {
       <div className="mb-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="搜索角色名称或编码..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+          <Input
+            placeholder="搜索角色名称或编码..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
         </div>
       </div>
 
@@ -428,7 +495,7 @@ export default function RolesPage() {
                         <EmptyHeader>
                           <EmptyTitle>暂无角色</EmptyTitle>
                           <EmptyDescription>
-                            {searchTerm ? "未找到匹配的角色" : "当前租户下尚未创建角色"}
+                            {searchTerm ? '未找到匹配的角色' : '当前租户下尚未创建角色'}
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>
@@ -439,53 +506,62 @@ export default function RolesPage() {
                     const status = roleStatus(role)
                     return (
                       <TableRow key={role.id} className="border-border group">
-                        <TableCell className="font-mono text-sm text-muted-foreground">{role.code}</TableCell>
+                        <TableCell className="font-mono text-sm text-muted-foreground">
+                          {role.code}
+                        </TableCell>
                         <TableCell className="font-medium">{role.name}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">{role.userCount} 人</Badge>
                         </TableCell>
                         <TableCell>
-                          <StatusBadge status={status} label={status === "active" ? "启用" : "停用"} />
+                          <StatusBadge
+                            status={status}
+                            label={status === 'active' ? '启用' : '停用'}
+                          />
                         </TableCell>
                         <TableCell className="text-muted-foreground">{role.createdAt}</TableCell>
-                          <TableRowActions>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => { setSelectedRole(role); setEditName(role.name); setIsDialogOpen(true) }}
-                            >
-                              <Pencil className="mr-1 h-3 w-3" />
-                              编辑
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => openPermDialog(role)}
-                            >
-                              <Settings className="mr-1 h-3 w-3" />
-                              权限配置
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => openUsersDialog(role)}
-                            >
-                              <Users className="mr-1 h-3 w-3" />
-                              查看用户
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                              onClick={() => deleteRole(role)}
-                            >
-                              <Trash2 className="mr-1 h-3 w-3" />
-                              删除
-                            </Button>
-                          </TableRowActions>
+                        <TableRowActions>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => {
+                              setSelectedRole(role)
+                              setEditName(role.name)
+                              setIsDialogOpen(true)
+                            }}
+                          >
+                            <Pencil className="mr-1 h-3 w-3" />
+                            编辑
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => openPermDialog(role)}
+                          >
+                            <Settings className="mr-1 h-3 w-3" />
+                            权限配置
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => openUsersDialog(role)}
+                          >
+                            <Users className="mr-1 h-3 w-3" />
+                            查看用户
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                            onClick={() => deleteRole(role)}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            删除
+                          </Button>
+                        </TableRowActions>
                       </TableRow>
                     )
                   })
@@ -502,35 +578,50 @@ export default function RolesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedRole ? "编辑角色" : "新增角色"}</DialogTitle>
+            <DialogTitle>{selectedRole ? '编辑角色' : '新增角色'}</DialogTitle>
             <DialogDescription>角色编码由系统自动生成</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>角色编码</Label>
-              <Input value={selectedRole?.code || generateRoleCode()} disabled className="bg-muted font-mono" />
+              <Input
+                value={selectedRole?.code || generateRoleCode()}
+                disabled
+                className="bg-muted font-mono"
+              />
             </div>
             <div className="grid gap-2">
               <Label>角色名称</Label>
-              <Input placeholder="如：学校管理员" value={editName} onChange={(e) => setEditName(e.target.value)} />
+              <Input
+                placeholder="如：学校管理员"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              取消
+            </Button>
             <Button onClick={saveRole} disabled={!editName.trim() || isSaving}>
-              {isSaving ? "保存中..." : "保存"}
+              {isSaving ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* 角色绑定用户列表 */}
-      <Dialog open={!!usersRole} onOpenChange={(open) => { if (!open) setUsersRole(null) }}>
+      <Dialog
+        open={!!usersRole}
+        onOpenChange={(open) => {
+          if (!open) setUsersRole(null)
+        }}
+      >
         <DialogContent className="!max-h-[80vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>绑定用户 - {usersRole?.name}</DialogTitle>
             <DialogDescription>
-              {usersLoading ? "加载中..." : `共 ${roleUsers.length} 个用户绑定了该角色`}
+              {usersLoading ? '加载中...' : `共 ${roleUsers.length} 个用户绑定了该角色`}
             </DialogDescription>
           </DialogHeader>
           {usersLoading ? (
@@ -542,7 +633,9 @@ export default function RolesPage() {
             <Empty className="h-40">
               <EmptyHeader>
                 <EmptyTitle>暂无用户</EmptyTitle>
-                <EmptyDescription>还没有用户绑定该角色，可在「账户列表」中为用户绑定角色</EmptyDescription>
+                <EmptyDescription>
+                  还没有用户绑定该角色，可在「账户列表」中为用户绑定角色
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
@@ -559,18 +652,28 @@ export default function RolesPage() {
                 {roleUsers.map((u) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.name}</TableCell>
-                     <TableCell className="text-muted-foreground">{u.username || u.loginName}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {u.username || u.loginName}
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {(u.roleNames ?? []).map((rn) => (
-                          <Badge key={rn} variant="secondary">{rn}</Badge>
+                          <Badge key={rn} variant="secondary">
+                            {rn}
+                          </Badge>
                         ))}
                       </div>
                     </TableCell>
                     <TableCell>
                       <StatusBadge
                         status={u.status}
-                        label={u.status === "active" ? "正常" : u.status === "graduated" ? "已毕业" : "禁用"}
+                        label={
+                          u.status === 'active'
+                            ? '正常'
+                            : u.status === 'graduated'
+                              ? '已毕业'
+                              : '禁用'
+                        }
                       />
                     </TableCell>
                   </TableRow>
@@ -600,7 +703,12 @@ export default function RolesPage() {
               <ScrollArea className="border border-border rounded-lg p-4">
                 <div className="space-y-4">
                   {menuTree.map((node) => (
-                    <SystemCard key={node.id} node={node} checked={checkedMenus} onCheck={toggleMenu} />
+                    <SystemCard
+                      key={node.id}
+                      node={node}
+                      checked={checkedMenus}
+                      onCheck={toggleMenu}
+                    />
                   ))}
                 </div>
               </ScrollArea>
@@ -619,7 +727,9 @@ export default function RolesPage() {
                       </div>
                       {mod.pages.map((page) => (
                         <div key={page.page} className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">{page.label}</span>
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {page.label}
+                          </span>
                           <div className="flex flex-wrap gap-3">
                             {page.actions.map((a) => (
                               <label
@@ -627,8 +737,12 @@ export default function RolesPage() {
                                 className="flex items-center gap-1.5 p-1.5 rounded hover:bg-accent cursor-pointer text-sm"
                               >
                                 <Checkbox
-                                  checked={checkedActions.has(`${mod.module}:${page.page}:${a.action}`)}
-                                  onCheckedChange={() => toggleAction(mod.module, page.page, a.action)}
+                                  checked={checkedActions.has(
+                                    `${mod.module}:${page.page}:${a.action}`,
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleAction(mod.module, page.page, a.action)
+                                  }
                                 />
                                 <span>{a.label}</span>
                               </label>
@@ -639,16 +753,20 @@ export default function RolesPage() {
                     </div>
                   ))}
                   {visibleActionModules.length === 0 && (
-                    <div className="text-sm text-muted-foreground text-center py-8">暂无可配置的操作权限</div>
+                    <div className="text-sm text-muted-foreground text-center py-8">
+                      暂无可配置的操作权限
+                    </div>
                   )}
                 </div>
               </ScrollArea>
             </TabsContent>
           </Tabs>
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsPermDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setIsPermDialogOpen(false)}>
+              取消
+            </Button>
             <Button onClick={savePermissions} disabled={isSaving}>
-              {isSaving ? "保存中..." : "保存配置"}
+              {isSaving ? '保存中...' : '保存配置'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -656,9 +774,11 @@ export default function RolesPage() {
 
       <ConfirmDialog
         open={deleteRoleTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteRoleTarget(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteRoleTarget(null)
+        }}
         title="删除角色"
-        description={deleteRoleTarget ? `确定要删除角色「${deleteRoleTarget.name}」吗？` : ""}
+        description={deleteRoleTarget ? `确定要删除角色「${deleteRoleTarget.name}」吗？` : ''}
         variant="destructive"
         onConfirm={executeDeleteRole}
       />

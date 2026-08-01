@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { createContext, useContext, type ReactNode } from "react"
-import { useAuth as useSaasAuth } from "@/components/auth-provider"
-import type { UserRole } from "@/components/auth-provider"
+import { createContext, useContext, type ReactNode } from 'react'
+import { useAuth as useSaasAuth } from '@/components/auth-provider'
+import type { UserRole } from '@/components/auth-provider'
 
 interface UserRoleInfo {
   id: string
@@ -39,12 +39,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 function roleToInfo(role?: UserRole): UserRoleInfo {
   const map: Record<string, { id: string; name: string; label: string }> = {
-    operator: { id: "admin", name: "admin", label: "系统管理员" },
-    school: { id: "teacher", name: "teacher", label: "教职工" },
-    enterprise: { id: "enterprise", name: "enterprise", label: "企业人员" },
+    operator: { id: 'admin', name: 'admin', label: '系统管理员' },
+    school: { id: 'teacher', name: 'teacher', label: '教职工' },
+    enterprise: { id: 'enterprise', name: 'enterprise', label: '企业人员' },
   }
-  const fallback = { id: "student", name: "student", label: "学生" }
-  return map[role ?? "student"] ?? fallback
+  const fallback = { id: 'student', name: 'student', label: '学生' }
+  return map[role ?? 'student'] ?? fallback
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -55,16 +55,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ? {
         id: saasAuth.user.id,
         name: saasAuth.user.name,
-        avatar: saasAuth.user.name?.charAt(0).toUpperCase() || "U",
+        avatar: saasAuth.user.name?.charAt(0).toUpperCase() || 'U',
         roles: [currentRole],
         currentRole,
         tenant: saasAuth.tenantId
-          ? { id: saasAuth.tenantId, name: saasAuth.activeRole?.name || "", code: "" }
-          : { id: "", name: "", code: "" },
+          ? { id: saasAuth.tenantId, name: saasAuth.activeRole?.name || '', code: '' }
+          : { id: '', name: '', code: '' },
       }
     : null
 
-  const login = async (_username: string, _password: string, _tenantId: string): Promise<boolean> => {
+  const login = async (
+    _username: string,
+    _password: string,
+    _tenantId: string,
+  ): Promise<boolean> => {
     // Portal pages should rely on the global login flow; this is a compatibility shim.
     return false
   }
@@ -97,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
 }

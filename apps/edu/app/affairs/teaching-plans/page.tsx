@@ -1,17 +1,17 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { CalendarPlus, Search, ClipboardList, FileEdit, CheckCircle2, Eye } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { CalendarPlus, Search, ClipboardList, FileEdit, CheckCircle2, Eye } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -19,18 +19,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { useToast } from "@zhiyu/ui"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { teachingPlanApi } from "@/lib/api"
-import type { TeachingPlan } from "@/lib/types"
-import { GeneratePlanDialog } from "./_components/generate-plan-dialog"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+} from '@/components/ui/table'
+import { useToast } from '@zhiyu/ui'
+import { PageHeaderCard } from '@/components/shared/page-header-card'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { teachingPlanApi } from '@/lib/api'
+import type { TeachingPlan } from '@/lib/types'
+import { GeneratePlanDialog } from './_components/generate-plan-dialog'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
-type FilterStatus = "all" | "draft" | "confirmed"
-
+type FilterStatus = 'all' | 'draft' | 'confirmed'
 
 export default function TeachingPlansPage() {
   const router = useRouter()
@@ -38,8 +37,8 @@ export default function TeachingPlansPage() {
 
   const [items, setItems] = useState<TeachingPlan[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>("all")
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [generateOpen, setGenerateOpen] = useState(false)
 
   const loadItems = useCallback(async () => {
@@ -47,7 +46,11 @@ export default function TeachingPlansPage() {
       const res = await teachingPlanApi.list({ limit: 500 })
       setItems(res.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "查询教学计划列表失败" })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '查询教学计划列表失败',
+      })
     } finally {
       setLoading(false)
     }
@@ -64,10 +67,10 @@ export default function TeachingPlansPage() {
     return items.filter((p) => {
       const matchSearch =
         !search ||
-        (p.programName || "").toLowerCase().includes(search.toLowerCase()) ||
-        (p.termName || "").toLowerCase().includes(search.toLowerCase()) ||
-        (p.majorName || "").toLowerCase().includes(search.toLowerCase())
-      const matchStatus = statusFilter === "all" || p.status === statusFilter
+        (p.programName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.termName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.majorName || '').toLowerCase().includes(search.toLowerCase())
+      const matchStatus = statusFilter === 'all' || p.status === statusFilter
       return matchSearch && matchStatus
     })
   }, [items, search, statusFilter])
@@ -75,18 +78,22 @@ export default function TeachingPlansPage() {
   const stats = useMemo(() => {
     return {
       total: items.length,
-      draft: items.filter((p) => p.status === "draft").length,
-      confirmed: items.filter((p) => p.status === "confirmed").length,
+      draft: items.filter((p) => p.status === 'draft').length,
+      confirmed: items.filter((p) => p.status === 'confirmed').length,
     }
   }, [items])
 
   const handleConfirm = async (p: TeachingPlan) => {
     try {
       await teachingPlanApi.confirm(p.id)
-      toast({ title: "教学计划已确认" })
+      toast({ title: '教学计划已确认' })
       await loadItems()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "确认失败", description: err.message || "确认教学计划失败" })
+      toast({
+        variant: 'destructive',
+        title: '确认失败',
+        description: err.message || '确认教学计划失败',
+      })
     }
   }
 
@@ -103,22 +110,22 @@ export default function TeachingPlansPage() {
         }
         stats={[
           {
-            label: "计划总数",
+            label: '计划总数',
             value: stats.total,
             icon: <ClipboardList className="size-4 text-blue-500" />,
-            iconClassName: "bg-blue-50",
+            iconClassName: 'bg-blue-50',
           },
           {
-            label: "草稿",
+            label: '草稿',
             value: stats.draft,
             icon: <FileEdit className="size-4 text-gray-500" />,
-            iconClassName: "bg-gray-50",
+            iconClassName: 'bg-gray-50',
           },
           {
-            label: "已确认",
+            label: '已确认',
             value: stats.confirmed,
             icon: <CheckCircle2 className="size-4 text-green-500" />,
-            iconClassName: "bg-green-50",
+            iconClassName: 'bg-green-50',
           },
         ]}
       />
@@ -178,12 +185,12 @@ export default function TeachingPlansPage() {
               ) : (
                 filteredItems.map((p) => (
                   <TableRow key={p.id} className="group">
-                    <TableCell className="font-medium">{p.programName || "-"}</TableCell>
+                    <TableCell className="font-medium">{p.programName || '-'}</TableCell>
                     <TableCell>
-                      <span className="text-sm">{p.termName || "-"}</span>
+                      <span className="text-sm">{p.termName || '-'}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{p.majorName || "-"}</span>
+                      <span className="text-sm">{p.majorName || '-'}</span>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">{p.entryYear} 级</span>
@@ -195,7 +202,9 @@ export default function TeachingPlansPage() {
                       <StatusBadge status={p.status} />
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground">{formatDateTime(p.generatedAt)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(p.generatedAt)}
+                      </span>
                     </TableCell>
                     <TableRowActions className="sticky right-0 bg-white">
                       <Button
@@ -207,7 +216,7 @@ export default function TeachingPlansPage() {
                         <Eye className="mr-1 h-3 w-3" />
                         详情
                       </Button>
-                      {p.status === "draft" && (
+                      {p.status === 'draft' && (
                         <Button
                           variant="ghost"
                           size="sm"

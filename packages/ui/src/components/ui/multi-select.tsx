@@ -17,7 +17,12 @@ interface MultiSelectProps {
   placeholder?: string
 }
 
-export function MultiSelect({ options, value, onChange, placeholder = '请选择' }: MultiSelectProps) {
+export function MultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = '请选择',
+}: MultiSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -34,7 +39,7 @@ export function MultiSelect({ options, value, onChange, placeholder = '请选择
 
   const normalizedOptions = useMemo<MultiSelectOption[]>(() => {
     return options.map((option) =>
-      typeof option === 'string' ? { label: option, value: option } : option
+      typeof option === 'string' ? { label: option, value: option } : option,
     )
   }, [options])
 
@@ -70,7 +75,7 @@ export function MultiSelect({ options, value, onChange, placeholder = '请选择
         onClick={() => setOpen(!open)}
         className={cn(
           'flex min-h-[36px] w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm transition-colors',
-          open && 'border-ring ring-ring/50 ring-1'
+          open && 'border-ring ring-ring/50 ring-1',
         )}
       >
         {value.length === 0 ? (
@@ -122,10 +127,13 @@ export function MultiSelect({ options, value, onChange, placeholder = '请选择
                   onClick={() => toggleOption(option.value)}
                   className={cn(
                     'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent',
-                    value.includes(option.value) && 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                    value.includes(option.value) && 'bg-blue-50 text-blue-600 hover:bg-blue-100',
                   )}
                 >
-                  <Checkbox checked={value.includes(option.value)} className="pointer-events-none" />
+                  <Checkbox
+                    checked={value.includes(option.value)}
+                    className="pointer-events-none"
+                  />
                   <span>{option.label}</span>
                 </div>
               ))

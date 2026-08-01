@@ -1,20 +1,33 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalUserExtensionFieldApi, roleApi } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { Pencil, AlertCircle, Loader2, RotateCcw } from "lucide-react"
-import type { Role, UserExtensionField } from "@/lib/types/backend"
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalUserExtensionFieldApi, roleApi } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { Pencil, AlertCircle, Loader2, RotateCcw } from 'lucide-react'
+import type { Role, UserExtensionField } from '@/lib/types/backend'
 
 interface ExtendField {
   id: string
@@ -34,7 +47,7 @@ export default function UserFieldsPage() {
   const [error, setError] = useState<string>()
   const [showDialog, setShowDialog] = useState(false)
   const [editingField, setEditingField] = useState<ExtendField | null>(null)
-  const [editName, setEditName] = useState("")
+  const [editName, setEditName] = useState('')
   const [editRoleCodes, setEditRoleCodes] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
@@ -62,10 +75,10 @@ export default function UserFieldsPage() {
           name: f.fieldName,
           enabled: f.isEnabled,
           roleCodes: f.applicableRoleCodes || [],
-        }))
+        })),
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载失败")
+      setError(err instanceof Error ? err.message : '加载失败')
     } finally {
       setLoading(false)
     }
@@ -86,10 +99,14 @@ export default function UserFieldsPage() {
     if (!original) return
     try {
       await portalUserExtensionFieldApi.update(field.id, { isEnabled: !field.enabled })
-      toast({ title: "状态已更新" })
+      toast({ title: '状态已更新' })
       await fetchData()
     } catch (err) {
-      toast({ variant: "destructive", title: "操作失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '操作失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     }
   }
 
@@ -108,11 +125,15 @@ export default function UserFieldsPage() {
         fieldName: editName.trim(),
         applicableRoleCodes: editRoleCodes,
       })
-      toast({ title: "保存成功" })
+      toast({ title: '保存成功' })
       setShowDialog(false)
       await fetchData()
     } catch (err) {
-      toast({ variant: "destructive", title: "保存失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setSaving(false)
     }
@@ -120,7 +141,7 @@ export default function UserFieldsPage() {
 
   const toggleRoleCode = (code: string) => {
     setEditRoleCodes((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
     )
   }
 
@@ -144,7 +165,8 @@ export default function UserFieldsPage() {
           <AlertDescription className="flex items-center gap-4">
             <span className="flex-1">{error}</span>
             <Button variant="outline" size="sm" onClick={fetchData}>
-              <RotateCcw className="h-4 w-4 mr-1" />重试
+              <RotateCcw className="h-4 w-4 mr-1" />
+              重试
             </Button>
           </AlertDescription>
         </Alert>
@@ -196,17 +218,17 @@ export default function UserFieldsPage() {
                   <TableCell className="text-center">
                     <Switch checked={field.enabled} onCheckedChange={() => handleToggle(field)} />
                   </TableCell>
-                    <TableRowActions>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => handleEdit(field)}
-                      >
-                        <Pencil className="mr-1 h-3 w-3" />
-                        编辑
-                      </Button>
-                    </TableRowActions>
+                  <TableRowActions>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => handleEdit(field)}
+                    >
+                      <Pencil className="mr-1 h-3 w-3" />
+                      编辑
+                    </Button>
+                  </TableRowActions>
                 </TableRow>
               ))
             )}
@@ -226,7 +248,11 @@ export default function UserFieldsPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>字段名称</Label>
-              <Input placeholder="请输入字段名称" value={editName} onChange={(e) => setEditName(e.target.value)} />
+              <Input
+                placeholder="请输入字段名称"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>适用角色（可多选）</Label>
@@ -238,8 +264,8 @@ export default function UserFieldsPage() {
                     onClick={() => toggleRoleCode(r.code)}
                     className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm border transition-colors ${
                       editRoleCodes.includes(r.code)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-muted border-border"
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background hover:bg-muted border-border'
                     }`}
                   >
                     {r.name}
@@ -252,7 +278,9 @@ export default function UserFieldsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)} disabled={saving}>取消</Button>
+            <Button variant="outline" onClick={() => setShowDialog(false)} disabled={saving}>
+              取消
+            </Button>
             <Button onClick={handleSave} disabled={saving || !editName.trim()}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               确定

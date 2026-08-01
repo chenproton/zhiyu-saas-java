@@ -23,14 +23,14 @@ export interface Announcement {
   id: string
   title: string
   date: string
-  type: "重要" | "通知" | "公告"
+  type: '重要' | '通知' | '公告'
   isNew: boolean
 }
 
 export interface TodoItem {
   id: string
   title: string
-  type: "course" | "scene" | "exam" | "report"
+  type: 'course' | 'scene' | 'exam' | 'report'
   count: number
   urgent: boolean
   color: string
@@ -43,20 +43,20 @@ export interface CalendarEvent {
   time: string
   date: number
   color: string
-  type: "course" | "scene" | "exam"
+  type: 'course' | 'scene' | 'exam'
 }
 
 export interface Course {
   id: string
   name: string
   code: string
-  type: "公共基础课" | "专业基础课" | "专业核心课" | "素质拓展课"
+  type: '公共基础课' | '专业基础课' | '专业核心课' | '素质拓展课'
   teacher: string
   credit: number
   hours: number
   progress: number
   cover: string
-  status: "进行中" | "未开始" | "已完成"
+  status: '进行中' | '未开始' | '已完成'
   nextTask?: string
   nextDeadline?: string
 }
@@ -67,11 +67,11 @@ export interface SceneTask {
   taskName: string
   position: string
   abilityTags: string[]
-  status: "未开始" | "进行中" | "待提交" | "已批改" | "已完成"
+  status: '未开始' | '进行中' | '待提交' | '已批改' | '已完成'
   deadline: string
   score?: number
   totalScore: number
-  difficulty: "简单" | "中等" | "困难"
+  difficulty: '简单' | '中等' | '困难'
 }
 
 export interface Position {
@@ -91,8 +91,8 @@ export interface Position {
 export interface Exam {
   id: string
   name: string
-  type: "随堂测" | "单元测试" | "在线测评" | "岗位能力认定"
-  status: "待考" | "进行中" | "已完成"
+  type: '随堂测' | '单元测试' | '在线测评' | '岗位能力认定'
+  status: '待考' | '进行中' | '已完成'
   startTime: string
   endTime: string
   duration: number
@@ -116,7 +116,7 @@ export interface AbilityGap {
 export interface ArchiveItem {
   id: string
   title: string
-  type: "award" | "certificate" | "project" | "practice" | "competition"
+  type: 'award' | 'certificate' | 'project' | 'practice' | 'competition'
   date: string
   level: string
   description: string
@@ -136,16 +136,16 @@ export interface Topic {
 }
 
 export const mockStudentInfo: StudentInfo = {
-  id: "",
-  name: "同学",
-  avatar: "?",
-  major: "",
-  grade: "",
-  className: "",
-  studentNo: "",
+  id: '',
+  name: '同学',
+  avatar: '?',
+  major: '',
+  grade: '',
+  className: '',
+  studentNo: '',
   credits: 0,
   totalCredits: 0,
-  gpa: "-",
+  gpa: '-',
 }
 
 export const mockAnnouncements: Announcement[] = []
@@ -170,24 +170,29 @@ export const mockTopics: Topic[] = []
 
 export const mockCertifications: { id: string; name: string; date: string; status: string }[] = []
 
-export const mockLearningPath: { id: string; title: string; resources: string; duration: string }[] = []
+export const mockLearningPath: {
+  id: string
+  title: string
+  resources: string
+  duration: string
+}[] = []
 
 // ==================== 学生课程表数据（参考 zhiyu-registrar 数据结构）====================
 
 export const allPeriods = [
-  "早自习 1",
-  "上午 1",
-  "上午 2",
-  "上午 3",
-  "上午 4",
-  "下午 1",
-  "下午 2",
-  "下午 3",
-  "下午 4",
-  "晚自习 1",
+  '早自习 1',
+  '上午 1',
+  '上午 2',
+  '上午 3',
+  '上午 4',
+  '下午 1',
+  '下午 2',
+  '下午 3',
+  '下午 4',
+  '晚自习 1',
 ] as const
 
-export type ScheduleEventType = "course" | "scene" | "exam" | "todo"
+export type ScheduleEventType = 'course' | 'scene' | 'exam' | 'todo'
 
 export interface ScheduleEvent {
   id: string
@@ -204,7 +209,7 @@ export interface ScheduleEvent {
 
 export const mockScheduleEvents: ScheduleEvent[] = []
 
-export const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+export const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 // ==================== 成绩查看 Mock 数据 ====================
 
@@ -217,7 +222,7 @@ export interface GradeRecord {
   final: number
   practice: number
   total: number
-  status: "已发布" | "录入中" | "已暂存" | "待发布"
+  status: '已发布' | '录入中' | '已暂存' | '待发布'
 }
 
 export interface GradeTrendItem {
@@ -254,7 +259,7 @@ export interface ActivityItem {
 }
 
 export interface EvaluationItem {
-  type: "system" | "teacher"
+  type: 'system' | 'teacher'
   typeLabel: string
   content: string
   color: string
@@ -305,7 +310,7 @@ export interface PortraitRadarData {
 export interface PortraitScoreOverviewItem {
   label: string
   value: string
-  color: "green" | "purple" | "blue" | "amber"
+  color: 'green' | 'purple' | 'blue' | 'amber'
 }
 
 export interface AbilityRow {
@@ -348,19 +353,19 @@ export interface GraduationDesignItem {
 }
 
 export const mockPortraitStudentInfo: PortraitStudentInfo = {
-  name: "同学",
-  avatar: "?",
-  studentNo: "",
-  gender: "",
-  college: "",
-  major: "",
-  className: "",
-  grade: "",
+  name: '同学',
+  avatar: '?',
+  studentNo: '',
+  gender: '',
+  college: '',
+  major: '',
+  className: '',
+  grade: '',
   rank: 0,
   totalStudents: 0,
-  violation: "无",
-  physicalTest: "",
-  partyStatus: "",
+  violation: '无',
+  physicalTest: '',
+  partyStatus: '',
 }
 
 export const mockPortraitHonors: HonorItem[] = []
@@ -373,7 +378,12 @@ export const mockPortraitJobTabs: Record<string, PortraitJobTab> = {}
 
 export const mockPortraitRecommendedJobs: RecommendedJob[] = []
 
-export const mockPortraitRecommendedCompanies: { name: string; match: number; matchColor?: string; positions: string[] }[] = []
+export const mockPortraitRecommendedCompanies: {
+  name: string
+  match: number
+  matchColor?: string
+  positions: string[]
+}[] = []
 
 export const mockPortraitCourseScores: CourseScoreItem[] = []
 

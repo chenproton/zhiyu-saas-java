@@ -46,7 +46,7 @@ interface StepBasicInfoProps {
 }
 
 interface Certificate {
-  id: string        // certificate_library id
+  id: string // certificate_library id
   name: string
   url: string
   description: string
@@ -59,7 +59,12 @@ function isValidImageUrl(url?: string): boolean {
   return !!url && !url.startsWith('blob:')
 }
 
-export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'default' }: StepBasicInfoProps) {
+export function StepBasicInfo({
+  position,
+  onUpdate,
+  aiMode = false,
+  variant = 'default',
+}: StepBasicInfoProps) {
   const isCreate = variant === 'create'
   const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
   const [majors, setMajors] = useState<{ id: string; name: string }[]>([])
@@ -70,8 +75,6 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   // 证书库相关状态
   const [certificateLibrary, setCertificateLibrary] = useState<Certificate[]>([])
   const [libraryLoading, setLibraryLoading] = useState(false)
-
-
 
   // 加载真实行业/专业数据
   useEffect(() => {
@@ -84,8 +87,12 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
           majorApi.list({ limit: 1000 }),
         ])
         if (cancelled) return
-        setIndustries((indRes.items || []).filter((i) => i.enabled).map((i) => ({ id: i.id, name: i.name })))
-        setMajors((majorRes.items || []).filter((m) => m.enabled).map((m) => ({ id: m.id, name: m.name })))
+        setIndustries(
+          (indRes.items || []).filter((i) => i.enabled).map((i) => ({ id: i.id, name: i.name })),
+        )
+        setMajors(
+          (majorRes.items || []).filter((m) => m.enabled).map((m) => ({ id: m.id, name: m.name })),
+        )
       } catch {
         if (cancelled) return
         setIndustries([])
@@ -113,20 +120,24 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
       try {
         const res = await certificateLibraryApi.list({ limit: 1000 })
         if (cancelled) return
-        setCertificateLibrary(res.items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          url: item.url ?? '',
-          description: item.description ?? '',
-          image: item.imageUrl ?? '',
-        })))
+        setCertificateLibrary(
+          res.items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            url: item.url ?? '',
+            description: item.description ?? '',
+            image: item.imageUrl ?? '',
+          })),
+        )
       } catch {
         if (!cancelled) setCertificateLibrary([])
       } finally {
         if (!cancelled) setLibraryLoading(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // 同步已选证书状态，防止异步加载/重新进入编辑页后选择框与保存数据不一致
@@ -189,7 +200,8 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
     if (!certSearchQuery.trim()) return certificateLibrary
     const q = certSearchQuery.trim().toLowerCase()
     return certificateLibrary.filter(
-      (c) => c.name.toLowerCase().includes(q) || (c.description?.toLowerCase().includes(q) ?? false)
+      (c) =>
+        c.name.toLowerCase().includes(q) || (c.description?.toLowerCase().includes(q) ?? false),
     )
   }, [certSearchQuery, certificateLibrary])
 
@@ -370,7 +382,9 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                   placeholder="最低"
                   className={`${isCreate ? 'w-40' : 'w-32'} pr-8`}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">¥</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  ¥
+                </span>
               </div>
               <span className="text-muted-foreground">-</span>
               <div className="relative">
@@ -385,7 +399,9 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                   placeholder="最高"
                   className={`${isCreate ? 'w-40' : 'w-32'} pr-8`}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">¥</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  ¥
+                </span>
               </div>
             </div>
           </div>
@@ -433,7 +449,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                   value={item.name}
                   onChange={(e) => {
                     const next = position.responsibilities.map((r, i) =>
-                      i === index ? { ...r, name: e.target.value } : r
+                      i === index ? { ...r, name: e.target.value } : r,
                     )
                     onUpdate({ responsibilities: next })
                   }}
@@ -451,11 +467,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             ))}
             <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
               {!isCreate && <span />}
-              <Button
-                variant="outline"
-                className="h-8 border-dashed"
-                onClick={addResponsibility}
-              >
+              <Button variant="outline" className="h-8 border-dashed" onClick={addResponsibility}>
                 <Plus className="h-4 w-4 mr-2" />
                 添加工作职责
               </Button>
@@ -484,7 +496,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                   value={item}
                   onChange={(e) => {
                     const next = position.requirements.map((r, i) =>
-                      i === index ? e.target.value : r
+                      i === index ? e.target.value : r,
                     )
                     onUpdate({ requirements: next })
                   }}
@@ -502,11 +514,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             ))}
             <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
               {!isCreate && <span />}
-              <Button
-                variant="outline"
-                className="h-8 border-dashed"
-                onClick={addRequirement}
-              >
+              <Button variant="outline" className="h-8 border-dashed" onClick={addRequirement}>
                 <Plus className="h-4 w-4 mr-2" />
                 添加任职要求
               </Button>
@@ -555,7 +563,10 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-stretch">
               {position.certificates.map((cert) => (
-                <div key={cert.id} className="relative rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm flex flex-col">
+                <div
+                  key={cert.id}
+                  className="relative rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm flex flex-col"
+                >
                   <Button
                     variant="ghost"
                     size="icon"
@@ -566,7 +577,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                   </Button>
                   {isValidImageUrl(cert.image) ? (
                     <div className="relative aspect-video w-full overflow-hidden bg-gray-50">
-                      <Image src={cert.image || ""} alt={cert.name} fill className="object-cover" />
+                      <Image src={cert.image || ''} alt={cert.name} fill className="object-cover" />
                     </div>
                   ) : (
                     <div className="aspect-video w-full bg-primary/10 flex items-center justify-center">
@@ -595,7 +606,9 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                     {cert.description && (
                       <div className="flex items-start gap-1">
                         <span className="text-xs text-muted-foreground shrink-0">证书介绍：</span>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{cert.description}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {cert.description}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -644,21 +657,36 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                         />
                         {isValidImageUrl(cert.image) ? (
                           <div className="relative aspect-video w-full overflow-hidden bg-gray-50">
-                            <Image src={cert.image || ""} alt={cert.name} fill className="object-cover" />
+                            <Image
+                              src={cert.image || ''}
+                              alt={cert.name}
+                              fill
+                              className="object-cover"
+                            />
                           </div>
                         ) : (
-                          <div className={`aspect-video w-full flex items-center justify-center ${isSelected ? 'bg-primary/10' : 'bg-gray-100'}`}>
-                            <Award className={`h-12 w-12 ${isSelected ? 'text-primary/50' : 'text-gray-300'}`} />
+                          <div
+                            className={`aspect-video w-full flex items-center justify-center ${isSelected ? 'bg-primary/10' : 'bg-gray-100'}`}
+                          >
+                            <Award
+                              className={`h-12 w-12 ${isSelected ? 'text-primary/50' : 'text-gray-300'}`}
+                            />
                           </div>
                         )}
                         <div className="p-3 space-y-1.5">
                           <div className="flex items-start gap-1">
-                            <span className="text-[11px] text-muted-foreground shrink-0">证书名称：</span>
-                            <span className="text-sm font-semibold text-gray-900 break-words">{cert.name}</span>
+                            <span className="text-[11px] text-muted-foreground shrink-0">
+                              证书名称：
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900 break-words">
+                              {cert.name}
+                            </span>
                           </div>
                           {cert.url && (
                             <div className="flex items-start gap-1">
-                              <span className="text-[11px] text-muted-foreground shrink-0">相关网站：</span>
+                              <span className="text-[11px] text-muted-foreground shrink-0">
+                                相关网站：
+                              </span>
                               <a
                                 href={cert.url}
                                 target="_blank"
@@ -673,8 +701,12 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                           )}
                           {cert.description && (
                             <div className="flex items-start gap-1">
-                              <span className="text-[11px] text-muted-foreground shrink-0">证书介绍：</span>
-                              <p className="text-xs text-muted-foreground line-clamp-1">{cert.description}</p>
+                              <span className="text-[11px] text-muted-foreground shrink-0">
+                                证书介绍：
+                              </span>
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                {cert.description}
+                              </p>
                             </div>
                           )}
                         </div>

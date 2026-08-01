@@ -1,26 +1,50 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { Spinner } from "@/components/ui/spinner"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Plus, Pencil, Trash2, Search, Upload, Download, AlertCircle } from "lucide-react"
-import { orgTypeApi } from "@/lib/api"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import type { OrgType } from "@/lib/types/backend"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { useToast } from "@zhiyu/ui"
+import { useCallback, useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Spinner } from '@/components/ui/spinner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Plus, Pencil, Trash2, Search, Upload, Download, AlertCircle } from 'lucide-react'
+import { orgTypeApi } from '@/lib/api'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import type { OrgType } from '@/lib/types/backend'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { useToast } from '@zhiyu/ui'
 
-const categoryLabels = { internal: "内部组织", business: "业务组织", external: "外部协作组织" }
-const categoryColors = { internal: "bg-blue-100 text-blue-700", business: "bg-green-100 text-green-700", external: "bg-orange-100 text-orange-700" }
+const categoryLabels = { internal: '内部组织', business: '业务组织', external: '外部协作组织' }
+const categoryColors = {
+  internal: 'bg-blue-100 text-blue-700',
+  business: 'bg-green-100 text-green-700',
+  external: 'bg-orange-100 text-orange-700',
+}
 
 export default function OrgTypesPage() {
   const { tenantId } = usePortalAuth()
@@ -30,16 +54,16 @@ export default function OrgTypesPage() {
   const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedType, setSelectedType] = useState<OrgType | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [formName, setFormName] = useState("")
-  const [formCategory, setFormCategory] = useState<string>("internal")
+  const [searchTerm, setSearchTerm] = useState('')
+  const [formName, setFormName] = useState('')
+  const [formCategory, setFormCategory] = useState<string>('internal')
   const [isSaving, setIsSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<OrgType | null>(null)
 
   const fetchData = useCallback(async () => {
     if (!tenantId) {
       setIsLoading(false)
-      setError("未获取到租户信息，请重新登录")
+      setError('未获取到租户信息，请重新登录')
       return
     }
     setIsLoading(true)
@@ -48,7 +72,7 @@ export default function OrgTypesPage() {
       const res = await orgTypeApi.list({ tenantId, search: searchTerm || undefined, limit: 1000 })
       setOrgTypes(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载组织类型失败")
+      setError(err instanceof Error ? err.message : '加载组织类型失败')
     } finally {
       setIsLoading(false)
     }
@@ -73,7 +97,11 @@ export default function OrgTypesPage() {
       setOrgTypes((prev) => prev.filter((t) => t.id !== deleteTarget.id))
       setDeleteTarget(null)
     } catch (err) {
-      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "删除组织类型失败" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '删除组织类型失败',
+      })
     }
   }
 
@@ -93,7 +121,15 @@ export default function OrgTypesPage() {
             <Download className="h-4 w-4 mr-1" />
             批量导出
           </Button>
-          <Button size="sm" onClick={() => { setSelectedType(null); setFormName(""); setFormCategory("internal"); setIsDialogOpen(true) }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setSelectedType(null)
+              setFormName('')
+              setFormCategory('internal')
+              setIsDialogOpen(true)
+            }}
+          >
             <Plus className="h-4 w-4 mr-1" />
             新增类型
           </Button>
@@ -103,7 +139,12 @@ export default function OrgTypesPage() {
       <div className="mb-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="搜索类型名称..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+          <Input
+            placeholder="搜索类型名称..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
         </div>
       </div>
 
@@ -140,7 +181,7 @@ export default function OrgTypesPage() {
                         <EmptyHeader>
                           <EmptyTitle>暂无组织类型</EmptyTitle>
                           <EmptyDescription>
-                            {searchTerm ? "未找到匹配的组织类型" : "当前租户下尚未创建组织类型"}
+                            {searchTerm ? '未找到匹配的组织类型' : '当前租户下尚未创建组织类型'}
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>
@@ -153,46 +194,50 @@ export default function OrgTypesPage() {
                         <div className="flex items-center gap-2">
                           {type.name}
                           {type.isDefault && (
-                            <Badge variant="outline" className="text-xs">系统默认</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              系统默认
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={categoryColors[type.category]}>{categoryLabels[type.category]}</Badge>
+                        <Badge className={categoryColors[type.category]}>
+                          {categoryLabels[type.category]}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{type.createdAt}</TableCell>
-                        <TableRowActions>
+                      <TableRowActions>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            setSelectedType(type)
+                            setFormName(type.name)
+                            setFormCategory(type.category)
+                            setIsDialogOpen(true)
+                          }}
+                        >
+                          <Pencil className="mr-1 h-3 w-3" />
+                          编辑
+                        </Button>
+                        {!type.isDefault ? (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => { setSelectedType(type); setFormName(type.name); setFormCategory(type.category); setIsDialogOpen(true) }}
+                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                            onClick={() => setDeleteTarget(type)}
                           >
-                            <Pencil className="mr-1 h-3 w-3" />
-                            编辑
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            删除
                           </Button>
-                          {!type.isDefault ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                              onClick={() => setDeleteTarget(type)}
-                            >
-                              <Trash2 className="mr-1 h-3 w-3" />
-                              删除
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              disabled
-                            >
-                              <Trash2 className="mr-1 h-3 w-3" />
-                              系统默认类型不可删除
-                            </Button>
-                          )}
-                        </TableRowActions>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled>
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            系统默认类型不可删除
+                          </Button>
+                        )}
+                      </TableRowActions>
                     </TableRow>
                   ))
                 )}
@@ -207,18 +252,24 @@ export default function OrgTypesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedType ? "编辑类型" : "新增类型"}</DialogTitle>
+            <DialogTitle>{selectedType ? '编辑类型' : '新增类型'}</DialogTitle>
             <DialogDescription>组织类型用于组织架构节点分类</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>类型名称</Label>
-              <Input placeholder="如：二级学院" value={formName} onChange={(e) => setFormName(e.target.value)} />
+              <Input
+                placeholder="如：二级学院"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+              />
             </div>
             <div className="grid gap-2">
               <Label>类型分类</Label>
               <Select value={formCategory} onValueChange={setFormCategory}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="internal">内部组织</SelectItem>
                   <SelectItem value="business">业务组织</SelectItem>
@@ -228,24 +279,43 @@ export default function OrgTypesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>取消</Button>
-            <Button disabled={isSaving || !formName.trim()} onClick={async () => {
-              setIsSaving(true)
-              try {
-                if (selectedType) {
-                  const updated = await orgTypeApi.update(selectedType.id, { name: formName.trim(), category: formCategory as OrgType["category"], tenantId: tenantId! })
-                  setOrgTypes((prev) => prev.map((t) => t.id === updated.id ? updated : t))
-                } else {
-                  const created = await orgTypeApi.create({ name: formName.trim(), category: formCategory as OrgType["category"], tenantId: tenantId! })
-                  setOrgTypes((prev) => [...prev, created])
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>
+              取消
+            </Button>
+            <Button
+              disabled={isSaving || !formName.trim()}
+              onClick={async () => {
+                setIsSaving(true)
+                try {
+                  if (selectedType) {
+                    const updated = await orgTypeApi.update(selectedType.id, {
+                      name: formName.trim(),
+                      category: formCategory as OrgType['category'],
+                      tenantId: tenantId!,
+                    })
+                    setOrgTypes((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+                  } else {
+                    const created = await orgTypeApi.create({
+                      name: formName.trim(),
+                      category: formCategory as OrgType['category'],
+                      tenantId: tenantId!,
+                    })
+                    setOrgTypes((prev) => [...prev, created])
+                  }
+                  setIsDialogOpen(false)
+                } catch (err) {
+                  toast({
+                    variant: 'destructive',
+                    title: selectedType ? '保存失败' : '创建失败',
+                    description: err instanceof Error ? err.message : '保存组织类型失败',
+                  })
+                } finally {
+                  setIsSaving(false)
                 }
-                setIsDialogOpen(false)
-              } catch (err) {
-                toast({ variant: "destructive", title: selectedType ? "保存失败" : "创建失败", description: err instanceof Error ? err.message : "保存组织类型失败" })
-              } finally {
-                setIsSaving(false)
-              }
-            }}>{isSaving ? "保存中..." : "保存"}</Button>
+              }}
+            >
+              {isSaving ? '保存中...' : '保存'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

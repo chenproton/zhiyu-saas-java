@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { TopNav } from "@/components/portal/top-nav"
+import { TopNav } from '@/components/portal/top-nav'
 
 export default function JobStudentLayout({
   children,
@@ -8,7 +8,10 @@ export default function JobStudentLayout({
   children: React.ReactNode
 }>) {
   return (
-    <div className="pt-14 min-h-screen bg-[#F1FAFF] text-[#1f2937]" style={{ fontFamily: '"Microsoft YaHei", Arial, sans-serif' }}>
+    <div
+      className="pt-14 min-h-screen bg-[#F1FAFF] text-[#1f2937]"
+      style={{ fontFamily: '"Microsoft YaHei", Arial, sans-serif' }}
+    >
       <TopNav />
       {children}
     </div>

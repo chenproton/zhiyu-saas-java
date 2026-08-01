@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { GitBranch } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { StatusActionBar } from "@/components/shared/status-action-bar"
-import type { Position } from "@/lib/types/job-source"
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { GitBranch } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { StatusActionBar } from '@/components/shared/status-action-bar'
+import type { Position } from '@/lib/types/job-source'
 
 interface PositionListProps {
   positions: Position[]
@@ -47,8 +47,8 @@ export function PositionList({
   onArchive,
   onInviteCoBuild,
   className,
-  basePath = "/job/positions",
-  configureStepParam = "1",
+  basePath = '/job/positions',
+  configureStepParam = '1',
   industryMap,
   majorMap,
   batchMap,
@@ -68,12 +68,12 @@ export function PositionList({
   const someSelected = positions.some((p) => selectedIds.includes(p.id)) && !allSelected
 
   return (
-    <div className={cn("rounded-lg border border-slate-200 bg-white overflow-hidden", className)}>
+    <div className={cn('rounded-lg border border-slate-200 bg-white overflow-hidden', className)}>
       {/* Header */}
       <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-50 text-xs font-medium text-slate-500 border-b border-slate-100 items-center">
         <div className="col-span-1 flex justify-center">
           <Checkbox
-            checked={someSelected ? "indeterminate" : allSelected}
+            checked={someSelected ? 'indeterminate' : allSelected}
             onCheckedChange={(checked) => onSelectAll?.(checked === true)}
             aria-label="全选"
           />
@@ -99,8 +99,8 @@ export function PositionList({
             <div
               key={position.id}
               className={cn(
-                "grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-50 transition-colors group relative",
-                isSelected && "bg-primary/5"
+                'grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-50 transition-colors group relative',
+                isSelected && 'bg-primary/5',
               )}
             >
               <div className="col-span-1 flex justify-center">
@@ -112,21 +112,29 @@ export function PositionList({
               </div>
               <div className="col-span-2">
                 <Link href={`${basePath}/${position.id}/edit`} className="block">
-                  <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">{position.name}</p>
+                  <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">
+                    {position.name}
+                  </p>
                 </Link>
                 <div className="flex items-center gap-1.5 mt-1">
                   <StatusBadge status={position.status} />
                   <span className="text-xs text-slate-400">v{position.version}</span>
                 </div>
               </div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">{position.code || position.id.slice(0, 8)}</div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">{getIndustryName(position.industry)}</div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">
+                {position.code || position.id.slice(0, 8)}
+              </div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">
+                {getIndustryName(position.industry)}
+              </div>
               <div className="col-span-1 text-sm text-slate-600 truncate">
                 {getMajorNames(position.majors)}
               </div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">{batchMap?.get(position.batchId) || position.batchId || "-"}</div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">
+                {batchMap?.get(position.batchId) || position.batchId || '-'}
+              </div>
               <div className="col-span-1 text-xs text-slate-500 truncate">
-                {position.collaborators.length > 0 ? `${position.collaborators.length}人` : "-"}
+                {position.collaborators.length > 0 ? `${position.collaborators.length}人` : '-'}
               </div>
               <div className="col-span-1 text-center">
                 <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600">
@@ -138,7 +146,9 @@ export function PositionList({
                   {position.abilityBindings.length}
                 </span>
               </div>
-              <div className="col-span-1 text-center text-xs text-slate-500">{position.favoriteCount}</div>
+              <div className="col-span-1 text-center text-xs text-slate-500">
+                {position.favoriteCount}
+              </div>
               <div className="col-span-1 text-right relative">
                 <StatusActionBar
                   status={position.status}
@@ -152,7 +162,9 @@ export function PositionList({
                   onArchive={onArchive ? () => onArchive(position) : undefined}
                   onDelete={onDelete ? () => onDelete(position) : undefined}
                   onInvite={onInviteCoBuild ? () => onInviteCoBuild(position) : undefined}
-                  onViewRejectReason={onViewRejectReason ? () => onViewRejectReason(position) : undefined}
+                  onViewRejectReason={
+                    onViewRejectReason ? () => onViewRejectReason(position) : undefined
+                  }
                   extraActions={
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                       <Link href={`${basePath}/${position.id}/edit?step=${configureStepParam}`}>

@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import { useMemo } from "react"
-import type { Scenario, ScenarioTask, KnowledgePoint } from "@/lib/types"
-import type { GraphNode, GraphEdge } from "@/components/knowledge-graph/types"
-import { KnowledgeGraphShell } from "@/components/knowledge-graph/knowledge-graph-shell"
+import { useMemo } from 'react'
+import type { Scenario, ScenarioTask, KnowledgePoint } from '@/lib/types'
+import type { GraphNode, GraphEdge } from '@/components/knowledge-graph/types'
+import { KnowledgeGraphShell } from '@/components/knowledge-graph/knowledge-graph-shell'
 
 const NODE_LABELS = {
-  position: "场景",
-  domain: "任务",
-  knowledge: "知识点",
-  course: "教材课件",
+  position: '场景',
+  domain: '任务',
+  knowledge: '知识点',
+  course: '教材课件',
 } as const
 
 interface SceneKnowledgeGraphProps {
@@ -34,15 +34,15 @@ export function SceneKnowledgeGraph({ scenario, tasks, knowledgeMap }: SceneKnow
 
     graphNodes.push({
       id: scenario.id,
-      label: scenario.name || "场景",
-      type: "position",
+      label: scenario.name || '场景',
+      type: 'position',
     })
 
     tasks.forEach((task) => {
       graphNodes.push({
         id: task.id,
-        label: task.name || task.code || "任务",
-        type: "domain",
+        label: task.name || task.code || '任务',
+        type: 'domain',
       })
       graphEdges.push({ source: scenario.id, target: task.id })
 
@@ -51,8 +51,8 @@ export function SceneKnowledgeGraph({ scenario, tasks, knowledgeMap }: SceneKnow
         if (!kp) return
         graphNodes.push({
           id: kp.id,
-          label: kp.name || kp.code || "知识点",
-          type: "knowledge",
+          label: kp.name || kp.code || '知识点',
+          type: 'knowledge',
         })
         graphEdges.push({ source: task.id, target: kp.id })
       })

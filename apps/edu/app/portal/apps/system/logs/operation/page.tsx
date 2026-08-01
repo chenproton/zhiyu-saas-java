@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { Input } from "@/components/ui/input"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Search, Download, RefreshCw, AlertCircle } from "lucide-react"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalLogApi } from "@/lib/api"
-import type { OperationLog } from "@/lib/types/backend"
-import { LogTableShell, type LogColumn } from "@/components/shared/log-table-shell"
+import { useCallback, useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { Input } from '@/components/ui/input'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Search, Download, RefreshCw, AlertCircle } from 'lucide-react'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalLogApi } from '@/lib/api'
+import type { OperationLog } from '@/lib/types/backend'
+import { LogTableShell, type LogColumn } from '@/components/shared/log-table-shell'
 
 const PAGE_SIZE = 20
 
@@ -20,27 +20,30 @@ export default function OperationLogsPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState('')
   const [page, setPage] = useState(1)
 
-  const loadLogs = useCallback(async (targetPage = page) => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await portalLogApi.operationLogs({
-        tenantId,
-        limit: PAGE_SIZE,
-        offset: (targetPage - 1) * PAGE_SIZE,
-      })
-      setLogs(res.items)
-      setTotal(res.total)
-    } catch (err: any) {
-      setError(err?.message || "加载操作日志失败")
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId, page])
+  const loadLogs = useCallback(
+    async (targetPage = page) => {
+      if (!tenantId) return
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await portalLogApi.operationLogs({
+          tenantId,
+          limit: PAGE_SIZE,
+          offset: (targetPage - 1) * PAGE_SIZE,
+        })
+        setLogs(res.items)
+        setTotal(res.total)
+      } catch (err: any) {
+        setError(err?.message || '加载操作日志失败')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [tenantId, page],
+  )
 
   useEffect(() => {
     ;(async () => {
@@ -55,45 +58,61 @@ export default function OperationLogsPage() {
     setPage(newPage)
   }
 
-  const filteredLogs = logs.filter((log) =>
-    (log.userName || "").includes(searchTerm) ||
-    (log.userId || "").includes(searchTerm) ||
-    (log.module || "").includes(searchTerm) ||
-    log.action.includes(searchTerm)
+  const filteredLogs = logs.filter(
+    (log) =>
+      (log.userName || '').includes(searchTerm) ||
+      (log.userId || '').includes(searchTerm) ||
+      (log.module || '').includes(searchTerm) ||
+      log.action.includes(searchTerm),
   )
 
   const formatTarget = (log: OperationLog) => {
     if (log.detail) return log.detail
     const parts = [log.targetType, log.targetId].filter(Boolean)
-    return parts.length ? parts.join(": ") : "-"
+    return parts.length ? parts.join(': ') : '-'
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const columns: LogColumn<OperationLog>[] = [
     {
-      header: "用户",
+      header: '用户',
       cell: (log) => (
         <>
-          <div className="font-medium">{log.userName || "-"}</div>
-          <div className="font-mono text-xs text-muted-foreground">{log.userId || "-"}</div>
+          <div className="font-medium">{log.userName || '-'}</div>
+          <div className="font-mono text-xs text-muted-foreground">{log.userId || '-'}</div>
         </>
       ),
     },
-    { header: "模块", cell: (log) => log.module || "-" },
-    { header: "操作", cell: (log) => log.action },
-    { header: "操作对象", cell: (log) => <span className="text-muted-foreground max-w-xs truncate" title={formatTarget(log)}>{formatTarget(log)}</span> },
-    { header: "IP地址", cell: (log) => <span className="font-mono text-sm text-muted-foreground">{log.ip || "-"}</span> },
+    { header: '模块', cell: (log) => log.module || '-' },
+    { header: '操作', cell: (log) => log.action },
     {
-      header: "状态",
+      header: '操作对象',
+      cell: (log) => (
+        <span className="text-muted-foreground max-w-xs truncate" title={formatTarget(log)}>
+          {formatTarget(log)}
+        </span>
+      ),
+    },
+    {
+      header: 'IP地址',
+      cell: (log) => (
+        <span className="font-mono text-sm text-muted-foreground">{log.ip || '-'}</span>
+      ),
+    },
+    {
+      header: '状态',
       cell: (log) => (
         <StatusBadge
-          status={log.status === "success" ? "success" : log.status || "failed"}
-          label={log.status === "success" ? "成功" : log.status || "失败"}
+          status={log.status === 'success' ? 'success' : log.status || 'failed'}
+          label={log.status === 'success' ? '成功' : log.status || '失败'}
         />
       ),
     },
-    { header: "操作时间", cell: (log) => <span className="text-muted-foreground">{log.createdAt}</span> },
+    {
+      header: '操作时间',
+      cell: (log) => <span className="text-muted-foreground">{log.createdAt}</span>,
+    },
   ]
 
   return (
@@ -105,7 +124,7 @@ export default function OperationLogsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
             刷新
           </Button>
           <Button variant="outline" size="sm" disabled title="即将上线">
@@ -133,7 +152,9 @@ export default function OperationLogsPage() {
           <AlertTitle>加载失败</AlertTitle>
           <AlertDescription className="flex items-center gap-4">
             {error}
-            <Button variant="outline" size="sm" onClick={handleRefresh}>重试</Button>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              重试
+            </Button>
           </AlertDescription>
         </Alert>
       )}

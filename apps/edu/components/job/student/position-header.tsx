@@ -1,14 +1,25 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Heart, ArrowLeft, Share2, User, Users, Calendar, Edit3, PlayCircle, Briefcase, GraduationCap } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@zhiyu/ui"
-import { positionApi } from "@/lib/api"
-import type { CareerPosition } from "@/lib/types"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  Heart,
+  ArrowLeft,
+  Share2,
+  User,
+  Users,
+  Calendar,
+  Edit3,
+  PlayCircle,
+  Briefcase,
+  GraduationCap,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useAuth } from '@/components/auth-provider'
+import { useToast } from '@zhiyu/ui'
+import { positionApi } from '@/lib/api'
+import type { CareerPosition } from '@/lib/types'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 interface PositionHeaderProps {
   position: CareerPosition
@@ -22,9 +33,8 @@ function formatSalary(min?: number | null, max?: number | null) {
   }
   if ((min ?? 0) > 0) return `${Math.floor(min! / 1000)}K起`
   if ((max ?? 0) > 0) return `${Math.floor(max! / 1000)}K以内`
-  return "面议"
+  return '面议'
 }
-
 
 export function PositionHeader({ position, industryName, onStartLearning }: PositionHeaderProps) {
   const { user } = useAuth()
@@ -57,7 +67,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
 
   const toggleHeart = async () => {
     if (!user) {
-      toast({ title: "提示", description: "请先登录后再收藏岗位" })
+      toast({ title: '提示', description: '请先登录后再收藏岗位' })
       return
     }
     if (loading) return
@@ -67,16 +77,16 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
       setIsHeart(res.isFavorite)
       setFavoriteCount(res.favoriteCount)
     } catch {
-      toast({ variant: "destructive", title: "操作失败", description: "操作失败，请稍后再试" })
+      toast({ variant: 'destructive', title: '操作失败', description: '操作失败，请稍后再试' })
     } finally {
       setLoading(false)
     }
   }
 
   const displayTitle = position.shortName || position.name
-  const majorsText = position.majorNames?.filter(Boolean).join("、") || "未分类"
-  const creatorName = position.createdByName || position.createdBy || "-"
-  const coBuilderNames = position.collaboratorNames?.filter(Boolean).join(", ") || "-"
+  const majorsText = position.majorNames?.filter(Boolean).join('、') || '未分类'
+  const creatorName = position.createdByName || position.createdBy || '-'
+  const coBuilderNames = position.collaboratorNames?.filter(Boolean).join(', ') || '-'
 
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
@@ -86,7 +96,12 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
     <div className="bg-white border-b border-[#e7e5e4]">
       <div className="max-w-[1400px] mx-auto px-8 py-6">
         <div className="flex items-center gap-2 mb-5">
-          <Button variant="ghost" size="sm" className="text-[#64748b] hover:text-blue-600 pl-0" onClick={() => router.back()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[#64748b] hover:text-blue-600 pl-0"
+            onClick={() => router.back()}
+          >
             <ArrowLeft className="w-4 h-4 mr-1" /> 返回上一页
           </Button>
         </div>
@@ -117,7 +132,9 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h1 className="text-2xl font-bold text-[#0f172a]">{position.name}</h1>
-                    <span className="text-2xl font-bold text-blue-600 leading-none">{formatSalary(position.salaryMin, position.salaryMax)}</span>
+                    <span className="text-2xl font-bold text-blue-600 leading-none">
+                      {formatSalary(position.salaryMin, position.salaryMax)}
+                    </span>
                   </div>
                   {position.shortName && position.shortName !== position.name && (
                     <p className="text-sm text-[#64748b] mb-3">别名：{position.shortName}</p>
@@ -125,7 +142,8 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
 
                   <div className="flex flex-wrap gap-2 mb-3">
                     <span className="px-3 py-1 rounded-md text-xs border bg-[#fff7ed] border-[#ffedd5] text-[#c2410c] flex items-center gap-1">
-                      <Briefcase className="w-3 h-3" /> 面向行业：{industryName || (position.positionType === "enterprise" ? "企业" : "教学")}
+                      <Briefcase className="w-3 h-3" /> 面向行业：
+                      {industryName || (position.positionType === 'enterprise' ? '企业' : '教学')}
                     </span>
                     <span className="px-3 py-1 rounded-md text-xs border bg-[#dcfce7] border-[#bbf7d0] text-[#15803d] flex items-center gap-1">
                       <GraduationCap className="w-3 h-3" /> 适用专业：{majorsText}
@@ -136,12 +154,22 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
 
               <div className="flex flex-col gap-2.5 mb-4">
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#64748b]">
-                  <span className="flex items-center gap-2"><User className="w-4 h-4 text-[#94a3b8]" /> 创建人：{creatorName}</span>
-                  <span className="flex items-center gap-2"><Users className="w-4 h-4 text-[#94a3b8]" /> 共建人：{coBuilderNames}</span>
+                  <span className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-[#94a3b8]" /> 创建人：{creatorName}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[#94a3b8]" /> 共建人：{coBuilderNames}
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#64748b]">
-                  <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#94a3b8]" /> 创建时间：{formatDate(position.createdAt)}</span>
-                  <span className="flex items-center gap-2"><Edit3 className="w-4 h-4 text-[#94a3b8]" /> 更新时间：{formatDate(position.updatedAt)}</span>
+                  <span className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#94a3b8]" /> 创建时间：
+                    {formatDate(position.createdAt)}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-[#94a3b8]" /> 更新时间：
+                    {formatDate(position.updatedAt)}
+                  </span>
                 </div>
               </div>
 
@@ -157,14 +185,20 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
                 <Button
                   variant="outline"
                   disabled={loading}
-                  className={`rounded-md px-5 h-10 transition-all ${isHeart ? "border-rose-500 text-rose-600 bg-rose-50 hover:bg-rose-100" : "text-[#475569] hover:border-rose-300 hover:text-rose-500"}`}
+                  className={`rounded-md px-5 h-10 transition-all ${isHeart ? 'border-rose-500 text-rose-600 bg-rose-50 hover:bg-rose-100' : 'text-[#475569] hover:border-rose-300 hover:text-rose-500'}`}
                   onClick={toggleHeart}
                 >
-                  <Heart className={`w-4 h-4 mr-1.5 ${isHeart ? "fill-current" : ""}`} />
-                  {isHeart ? "已设为心仪岗位" : "设为心仪岗位"}
-                  {favoriteCount > 0 && <span className="ml-1.5 text-xs opacity-80">({favoriteCount})</span>}
+                  <Heart className={`w-4 h-4 mr-1.5 ${isHeart ? 'fill-current' : ''}`} />
+                  {isHeart ? '已设为心仪岗位' : '设为心仪岗位'}
+                  {favoriteCount > 0 && (
+                    <span className="ml-1.5 text-xs opacity-80">({favoriteCount})</span>
+                  )}
                 </Button>
-                <Button variant="outline" size="icon" className="rounded-md h-10 w-10 text-[#475569]">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-md h-10 w-10 text-[#475569]"
+                >
                   <Share2 className="w-4 h-4" />
                 </Button>
               </div>

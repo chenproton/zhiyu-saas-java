@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import type { LucideIcon } from "lucide-react"
+import { useEffect, useState } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import {
   Building2,
   ChevronRight,
@@ -11,33 +11,61 @@ import {
   UserCog,
   UserPlus,
   UsersRound,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { SectionCard } from "./section-card"
-import { portalApi } from "@/lib/api"
-import type { WorkspaceDashboard, WorkspacePersonnelStat } from "@/lib/types"
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { SectionCard } from './section-card'
+import { portalApi } from '@/lib/api'
+import type { WorkspaceDashboard, WorkspacePersonnelStat } from '@/lib/types'
 
 const iconMap: Record<string, LucideIcon> = {
-  "学生": GraduationCap,
-  "教职工": Users,
-  "企业导师": UsersRound,
-  "学校管理员": UserCog,
+  学生: GraduationCap,
+  教职工: Users,
+  企业导师: UsersRound,
+  学校管理员: UserCog,
 }
 
 const quickLinks = [
-  { label: "学生管理", desc: "查看、编辑、批量导入学生", href: "/portal/apps/system/org-user/students", icon: GraduationCap },
-  { label: "教职工管理", desc: "管理教师账号与角色", href: "/portal/apps/system/org-user/teachers", icon: Users },
-  { label: "账户列表", desc: "全部账户启停与密码重置", href: "/portal/apps/system/org-user/accounts", icon: UserPlus },
-  { label: "角色权限", desc: "自定义角色与菜单授权", href: "/portal/apps/system/org-user/roles", icon: KeyRound },
-  { label: "组织架构", desc: "学院、专业、班级维护", href: "/portal/apps/system/org-user/org-structure", icon: Building2 },
+  {
+    label: '学生管理',
+    desc: '查看、编辑、批量导入学生',
+    href: '/portal/apps/system/org-user/students',
+    icon: GraduationCap,
+  },
+  {
+    label: '教职工管理',
+    desc: '管理教师账号与角色',
+    href: '/portal/apps/system/org-user/teachers',
+    icon: Users,
+  },
+  {
+    label: '账户列表',
+    desc: '全部账户启停与密码重置',
+    href: '/portal/apps/system/org-user/accounts',
+    icon: UserPlus,
+  },
+  {
+    label: '角色权限',
+    desc: '自定义角色与菜单授权',
+    href: '/portal/apps/system/org-user/roles',
+    icon: KeyRound,
+  },
+  {
+    label: '组织架构',
+    desc: '学院、专业、班级维护',
+    href: '/portal/apps/system/org-user/org-structure',
+    icon: Building2,
+  },
 ]
 
 export function SchoolAdminPersonnelTab() {
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
-    portalApi.workspaceDashboard({ role: "school_admin" }).then(setDashboard).catch(() => setDashboard(null))
+    portalApi
+      .workspaceDashboard({ role: 'school_admin' })
+      .then(setDashboard)
+      .catch(() => setDashboard(null))
   }, [])
 
   const personnelStats = dashboard?.personnelStats || []
@@ -48,7 +76,10 @@ export function SchoolAdminPersonnelTab() {
         {personnelStats.map((item) => {
           const Icon = iconMap[item.label] || Users
           return (
-            <Card key={item.label} className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+            <Card
+              key={item.label}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0"
+            >
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm">{item.label}</p>

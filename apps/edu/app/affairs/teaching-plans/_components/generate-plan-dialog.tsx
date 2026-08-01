@@ -1,19 +1,26 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useCallback } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { useToast } from "@zhiyu/ui"
-import { programApi, termApi, teachingPlanApi } from "@/lib/api"
-import type { AffairsTerm, TeachingPlanDetail, TrainingProgram } from "@/lib/types"
+} from '@/components/ui/select'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { useToast } from '@zhiyu/ui'
+import { programApi, termApi, teachingPlanApi } from '@/lib/api'
+import type { AffairsTerm, TeachingPlanDetail, TrainingProgram } from '@/lib/types'
 
 interface GeneratePlanDialogProps {
   open: boolean
@@ -25,8 +32,8 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
   const { toast } = useToast()
   const [programs, setPrograms] = useState<TrainingProgram[]>([])
   const [terms, setTerms] = useState<AffairsTerm[]>([])
-  const [programId, setProgramId] = useState("")
-  const [termId, setTermId] = useState("")
+  const [programId, setProgramId] = useState('')
+  const [termId, setTermId] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   // 弹窗重新打开时在渲染期间重置选项（React 推荐的 adjust-state-during-render 模式）
@@ -34,21 +41,25 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
   if (open !== prevOpen) {
     setPrevOpen(open)
     if (open) {
-      setProgramId("")
-      setTermId("")
+      setProgramId('')
+      setTermId('')
     }
   }
 
   const loadOptions = useCallback(async () => {
     try {
       const [programRes, termRes] = await Promise.all([
-        programApi.list({ status: "published", limit: 200 }),
+        programApi.list({ status: 'published', limit: 200 }),
         termApi.list({ limit: 100 }),
       ])
       setPrograms(programRes.items)
       setTerms(termRes.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "加载方案或学期失败" })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '加载方案或学期失败',
+      })
     }
   }, [toast])
 
@@ -65,12 +76,16 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
     setSubmitting(true)
     try {
       const plan = await teachingPlanApi.generate({ programId, termId })
-      toast({ title: "教学计划已生成", description: `共 ${plan.entries.length} 个教学条目` })
+      toast({ title: '教学计划已生成', description: `共 ${plan.entries.length} 个教学条目` })
       onOpenChange(false)
       onGenerated(plan)
     } catch (err: any) {
       // 后端 409：该方案在此学期已生成教学计划
-      toast({ variant: "destructive", title: "生成失败", description: err.message || "生成教学计划失败" })
+      toast({
+        variant: 'destructive',
+        title: '生成失败',
+        description: err.message || '生成教学计划失败',
+      })
     } finally {
       setSubmitting(false)
     }
@@ -81,7 +96,9 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
       <DialogContent>
         <DialogHeader>
           <DialogTitle>从人培方案生成教学计划</DialogTitle>
-          <DialogDescription>选择已发布的人培方案与目标学期，系统将按方案课程自动生成教学条目</DialogDescription>
+          <DialogDescription>
+            选择已发布的人培方案与目标学期，系统将按方案课程自动生成教学条目
+          </DialogDescription>
         </DialogHeader>
         <FieldGroup className="py-4">
           <Field>
@@ -120,7 +137,7 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
                   terms.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
-                      {t.isCurrent ? "（当前学期）" : ""}
+                      {t.isCurrent ? '（当前学期）' : ''}
                     </SelectItem>
                   ))
                 )}
@@ -133,7 +150,7 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
             取消
           </Button>
           <Button onClick={handleGenerate} disabled={!programId || !termId || submitting}>
-            {submitting ? "生成中..." : "生成教学计划"}
+            {submitting ? '生成中...' : '生成教学计划'}
           </Button>
         </DialogFooter>
       </DialogContent>

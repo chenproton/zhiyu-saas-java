@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { userManagementApi } from "@/lib/api"
-import type { User } from "@/lib/api"
+import { useEffect, useState } from 'react'
+import { userManagementApi } from '@/lib/api'
+import type { User } from '@/lib/api'
 
 export function useSubmitterNames() {
   const [userMap, setUserMap] = useState<Map<string, User>>(new Map())
@@ -20,7 +20,7 @@ export function useSubmitterNames() {
           setUserMap(new Map(res.items.map((u) => [u.id, u])))
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "获取用户列表失败")
+        if (!cancelled) setError(e instanceof Error ? e.message : '获取用户列表失败')
       } finally {
         if (!cancelled) setLoading(false)
       }

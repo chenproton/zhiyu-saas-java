@@ -1,13 +1,31 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useEffect, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown, FileDown, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
+import {
+  ArrowLeft,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Eye,
+  Upload,
+  Copy,
+  Users,
+  Building2,
+  ImageIcon,
+  List,
+  LayoutGrid,
+  FolderInput,
+  ChevronDown,
+  FileDown,
+  Loader2,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -15,7 +33,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -23,13 +41,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
-import type { ImportPreviewResult } from "@/lib/api"
+} from '@/components/ui/table'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
+import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
+import type { ImportPreviewResult } from '@/lib/api'
 import {
   Dialog,
   DialogContent,
@@ -37,33 +55,33 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BankFormDialog } from "@/components/evaluation/bank-form-dialog"
-import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog"
-import { QuestionPreview } from "@/components/evaluation/question-preview"
-import { useData } from "@/components/providers/data-provider"
-import { importExportApi, downloadBlob } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from "@/lib/types"
-import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from "@/lib/types"
+} from '@/components/ui/dropdown-menu'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BankFormDialog } from '@/components/evaluation/bank-form-dialog'
+import { QuestionFormDialog } from '@/components/evaluation/question-form-dialog'
+import { QuestionPreview } from '@/components/evaluation/question-preview'
+import { useData } from '@/components/providers/data-provider'
+import { importExportApi, downloadBlob } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from '@/lib/types'
+import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 
 const TYPE_COLORS: Record<QuestionType, string> = {
-  single: "bg-blue-500",
-  multiple: "bg-indigo-500",
-  judge: "bg-amber-500",
-  fill: "bg-purple-500",
-  essay: "bg-rose-500",
-  short_answer: "bg-teal-500",
+  single: 'bg-blue-500',
+  multiple: 'bg-indigo-500',
+  judge: 'bg-amber-500',
+  fill: 'bg-purple-500',
+  essay: 'bg-rose-500',
+  short_answer: 'bg-teal-500',
 }
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 export default function QuestionBankDetailPage() {
   const params = useParams()
@@ -106,20 +124,20 @@ export default function QuestionBankDetailPage() {
 
   const questions = getQuestionsByBank(bankId)
 
-  const [search, setSearch] = useState("")
-  const [typeFilter, setTypeFilter] = useState<QuestionType | "all">("all")
-  const [creatorFilter, setCreatorFilter] = useState<string>("all")
-  
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all')
+  const [creatorFilter, setCreatorFilter] = useState<string>('all')
+
   const [bankFormOpen, setBankFormOpen] = useState(false)
   const [questionFormOpen, setQuestionFormOpen] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
-  const [defaultQuestionType, setDefaultQuestionType] = useState<QuestionType>("single")
+  const [defaultQuestionType, setDefaultQuestionType] = useState<QuestionType>('single')
   const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Question | null>(null)
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set())
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false)
   const [batchMoveOpen, setBatchMoveOpen] = useState(false)
-  const [moveSearch, setMoveSearch] = useState("")
+  const [moveSearch, setMoveSearch] = useState('')
   const [isExporting, setIsExporting] = useState(false)
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
@@ -130,7 +148,7 @@ export default function QuestionBankDetailPage() {
   const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   // 获取题目创建人列表（后端暂无用户姓名查询，直接展示 ID）
   const creators = useMemo(() => {
-    const creatorIds = new Set(questions.map(q => q.creatorId).filter(Boolean))
+    const creatorIds = new Set(questions.map((q) => q.creatorId).filter(Boolean))
     return Array.from(creatorIds).map((id) => ({ id: id as string, name: id as string }))
   }, [questions])
 
@@ -147,8 +165,8 @@ export default function QuestionBankDetailPage() {
     return questions
       .filter((q) => {
         const matchSearch = q.content.toLowerCase().includes(search.toLowerCase())
-        const matchType = typeFilter === "all" || q.type === typeFilter
-        const matchCreator = creatorFilter === "all" || q.creatorId === creatorFilter
+        const matchType = typeFilter === 'all' || q.type === typeFilter
+        const matchCreator = creatorFilter === 'all' || q.creatorId === creatorFilter
         return matchSearch && matchType && matchCreator
       })
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -180,8 +198,8 @@ export default function QuestionBankDetailPage() {
 
   const handleAddFiles = (files: FileList | null) => {
     if (!files) return
-    const existing = new Set(importFiles.map((f) => f.name + "_" + f.size))
-    const added = Array.from(files).filter((f) => !existing.has(f.name + "_" + f.size))
+    const existing = new Set(importFiles.map((f) => f.name + '_' + f.size))
+    const added = Array.from(files).filter((f) => !existing.has(f.name + '_' + f.size))
     setImportFiles((prev) => [...prev, ...added])
   }
 
@@ -200,14 +218,24 @@ export default function QuestionBankDetailPage() {
     if (!file) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel(`question-banks/${bankId}/questions`, file, overwrite)
-      const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
-      toast({ title: "导入完成", description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}` })
+      const result = await importExportApi.importExcel(
+        `question-banks/${bankId}/questions`,
+        file,
+        overwrite,
+      )
+      const errorHint =
+        result.errors && result.errors.length > 0
+          ? `，错误：${result.errors.slice(0, 3).join(';')}`
+          : ''
+      toast({
+        title: '导入完成',
+        description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`,
+      })
       resetImport()
       setIsImportDialogOpen(false)
       await loadBankQuestions?.(bankId)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
+      toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
     } finally {
       setIsImporting(false)
     }
@@ -218,7 +246,10 @@ export default function QuestionBankDetailPage() {
     if (!file) return false
     setIsImporting(true)
     try {
-      const preview = await importExportApi.importExcelPreview(`question-banks/${bankId}/questions`, file)
+      const preview = await importExportApi.importExcelPreview(
+        `question-banks/${bankId}/questions`,
+        file,
+      )
       if (preview.duplicates > 0) {
         setImportPreview(preview)
         setIsImportConfirmOpen(true)
@@ -227,7 +258,7 @@ export default function QuestionBankDetailPage() {
       }
       return await executeImport(false).then(() => true)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
+      toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
       setIsImporting(false)
       return false
     }
@@ -237,9 +268,13 @@ export default function QuestionBankDetailPage() {
     setIsDownloading(true)
     try {
       const res = await importExportApi.downloadQuestionTemplate(bankId)
-      downloadBlob(await res.blob(), "题目批量导入模板.xlsx")
+      downloadBlob(await res.blob(), '题目批量导入模板.xlsx')
     } catch (err: any) {
-      toast({ variant: "destructive", title: "下载模板失败", description: err.message || "下载模板失败" })
+      toast({
+        variant: 'destructive',
+        title: '下载模板失败',
+        description: err.message || '下载模板失败',
+      })
     } finally {
       setIsDownloading(false)
     }
@@ -251,7 +286,7 @@ export default function QuestionBankDetailPage() {
 
   const handleBankDelete = () => {
     deleteQuestionBank(bankId)
-    router.push("/evaluation/question-banks")
+    router.push('/evaluation/question-banks')
   }
 
   const handleQuestionSubmit = (data: QuestionFormData) => {
@@ -278,7 +313,7 @@ export default function QuestionBankDetailPage() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedQuestions(new Set(filteredQuestions.map(q => q.id)))
+      setSelectedQuestions(new Set(filteredQuestions.map((q) => q.id)))
     } else {
       setSelectedQuestions(new Set())
     }
@@ -295,7 +330,7 @@ export default function QuestionBankDetailPage() {
   }
 
   const handleBatchDelete = () => {
-    selectedQuestions.forEach(id => {
+    selectedQuestions.forEach((id) => {
       deleteQuestion(id)
     })
     setSelectedQuestions(new Set())
@@ -303,12 +338,12 @@ export default function QuestionBankDetailPage() {
   }
 
   const handleBatchCopy = () => {
-    selectedQuestions.forEach(id => {
-      const question = questions.find(q => q.id === id)
+    selectedQuestions.forEach((id) => {
+      const question = questions.find((q) => q.id === id)
       if (question) {
         createQuestion(bankId, {
           type: question.type,
-          content: question.content + " (复制)",
+          content: question.content + ' (复制)',
           options: question.options,
           answer: question.answer,
           analysis: question.analysis,
@@ -332,9 +367,9 @@ export default function QuestionBankDetailPage() {
       }
       const blob = await res.blob()
       downloadBlob(blob, `题目导出_${bankId}.xlsx`)
-      toast({ title: "导出成功", description: `已导出 ${selectedQuestions.size} 道题目` })
+      toast({ title: '导出成功', description: `已导出 ${selectedQuestions.size} 道题目` })
     } catch (err: any) {
-      toast({ title: "导出失败", description: err.message || "请稍后重试", variant: "destructive" })
+      toast({ title: '导出失败', description: err.message || '请稍后重试', variant: 'destructive' })
     } finally {
       setIsExporting(false)
     }
@@ -349,7 +384,7 @@ export default function QuestionBankDetailPage() {
   const handleCopyQuestion = (question: Question) => {
     createQuestion(bankId, {
       type: question.type,
-      content: question.content + " (复制)",
+      content: question.content + ' (复制)',
       options: question.options,
       answer: question.answer,
       analysis: question.analysis,
@@ -359,8 +394,8 @@ export default function QuestionBankDetailPage() {
     })
   }
 
-
-  const getCollaboratorNames = () => (bank.collaboratorNames || bank.collaboratorIds || []).filter(Boolean)
+  const getCollaboratorNames = () =>
+    (bank.collaboratorNames || bank.collaboratorIds || []).filter(Boolean)
 
   const getCollaboratorDeptNames = () => (bank.collaboratorDeptIds || []).filter(Boolean)
 
@@ -368,7 +403,7 @@ export default function QuestionBankDetailPage() {
     <div className="p-6">
       {/* 返回按钮 */}
       <div className="mb-4">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/evaluation/question-banks")}>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/evaluation/question-banks')}>
           <ArrowLeft />
           返回题库列表
         </Button>
@@ -382,12 +417,7 @@ export default function QuestionBankDetailPage() {
               {/* 封面 */}
               {bank.coverImage ? (
                 <div className="relative shrink-0 size-24 overflow-hidden rounded-lg">
-                  <Image
-                    src={bank.coverImage}
-                    alt={bank.name}
-                    fill
-                    className="object-cover"
-                  />
+                  <Image src={bank.coverImage} alt={bank.name} fill className="object-cover" />
                 </div>
               ) : (
                 <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -404,18 +434,12 @@ export default function QuestionBankDetailPage() {
                   )}
                   <Badge variant="outline">{bank.version}</Badge>
                 </div>
-                <CardDescription className="mt-2">
-                  {bank.description || "暂无描述"}
-                </CardDescription>
+                <CardDescription className="mt-2">{bank.description || '暂无描述'}</CardDescription>
               </div>
             </div>
             <div className="flex items-start gap-2">
               {!isDraftPool && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBankFormOpen(true)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setBankFormOpen(true)}>
                   <Edit className="mr-1 size-3.5" />
                   编辑信息
                 </Button>
@@ -426,20 +450,18 @@ export default function QuestionBankDetailPage() {
         <CardContent>
           <div className="flex flex-wrap gap-6 text-sm">
             <div>
-              <span className="text-muted-foreground">创建人:</span>{" "}
-              <strong>{bank.creatorName || bank.creatorId || "-"}</strong>
+              <span className="text-muted-foreground">创建人:</span>{' '}
+              <strong>{bank.creatorName || bank.creatorId || '-'}</strong>
             </div>
             <div>
-              <span className="text-muted-foreground">题目数量:</span>{" "}
+              <span className="text-muted-foreground">题目数量:</span>{' '}
               <strong>{bank.questionCount}</strong>
             </div>
             <div>
-              <span className="text-muted-foreground">创建时间:</span>{" "}
-              {formatDate(bank.createdAt)}
+              <span className="text-muted-foreground">创建时间:</span> {formatDate(bank.createdAt)}
             </div>
             <div>
-              <span className="text-muted-foreground">更新时间:</span>{" "}
-              {formatDate(bank.updatedAt)}
+              <span className="text-muted-foreground">更新时间:</span> {formatDate(bank.updatedAt)}
             </div>
           </div>
           {/* 共建人/共建部门 */}
@@ -480,9 +502,11 @@ export default function QuestionBankDetailPage() {
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold">题目列表</h2>
-          <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as QuestionType | "all")}>
+          <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as QuestionType | 'all')}>
             <TabsList className="h-8">
-              <TabsTrigger value="all" className="text-xs">全部</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs">
+                全部
+              </TabsTrigger>
               {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
                 <TabsTrigger key={type} value={type} className="text-xs">
                   {QUESTION_TYPE_LABELS[type]}
@@ -493,32 +517,32 @@ export default function QuestionBankDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
-              <Upload className="mr-1 size-3.5" />
-              导入题目
-            </Button>
+            <Upload className="mr-1 size-3.5" />
+            导入题目
+          </Button>
           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-1 size-3.5" />
-                  添加题目
-                  <ChevronDown className="ml-1 size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
-                  <DropdownMenuItem
-                    key={type}
-                    onClick={() => {
-                      setEditingQuestion(null)
-                      setDefaultQuestionType(type)
-                      setQuestionFormOpen(true)
-                    }}
-                  >
-                    {QUESTION_TYPE_LABELS[type]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm">
+                <Plus className="mr-1 size-3.5" />
+                添加题目
+                <ChevronDown className="ml-1 size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+                <DropdownMenuItem
+                  key={type}
+                  onClick={() => {
+                    setEditingQuestion(null)
+                    setDefaultQuestionType(type)
+                    setQuestionFormOpen(true)
+                  }}
+                >
+                  {QUESTION_TYPE_LABELS[type]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -553,15 +577,30 @@ export default function QuestionBankDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleBatchExport} disabled={selectedQuestions.size === 0 || isExporting}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBatchExport}
+            disabled={selectedQuestions.size === 0 || isExporting}
+          >
             <FileDown className="mr-1 size-3" />
-            {isExporting ? "导出中..." : "批量导出"}
+            {isExporting ? '导出中...' : '批量导出'}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleBatchCopy} disabled={selectedQuestions.size === 0}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBatchCopy}
+            disabled={selectedQuestions.size === 0}
+          >
             <Copy className="mr-1 size-3" />
             批量复制
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setBatchMoveOpen(true)} disabled={selectedQuestions.size === 0}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setBatchMoveOpen(true)}
+            disabled={selectedQuestions.size === 0}
+          >
             <FolderInput className="mr-1 size-3" />
             批量移动
           </Button>
@@ -586,34 +625,30 @@ export default function QuestionBankDetailPage() {
               {canEdit && (
                 <TableHead className="w-[50px]">
                   <Checkbox
-                    checked={filteredQuestions.length > 0 && selectedQuestions.size === filteredQuestions.length}
+                    checked={
+                      filteredQuestions.length > 0 &&
+                      selectedQuestions.size === filteredQuestions.length
+                    }
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
               )}
-              <TableHead className="w-[40%]">
-                题目内容
-              </TableHead>
-              <TableHead className="w-[100px]">
-                题型
-              </TableHead>
-              <TableHead className="w-[80px]">
-                难度
-              </TableHead>
-              <TableHead className="w-[100px]">
-                添加来源
-              </TableHead>
+              <TableHead className="w-[40%]">题目内容</TableHead>
+              <TableHead className="w-[100px]">题型</TableHead>
+              <TableHead className="w-[80px]">难度</TableHead>
+              <TableHead className="w-[100px]">添加来源</TableHead>
               <TableHead className="w-[120px]">创建时间</TableHead>
-              <TableHead className="w-[120px] text-right">
-                操作
-              </TableHead>
+              <TableHead className="w-[120px] text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredQuestions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canEdit ? 7 : 6} className="h-24 text-center text-muted-foreground">
-                  {questions.length === 0 ? "暂无题目，点击上方按钮添加" : "没有找到匹配的题目"}
+                <TableCell
+                  colSpan={canEdit ? 7 : 6}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  {questions.length === 0 ? '暂无题目，点击上方按钮添加' : '没有找到匹配的题目'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -631,15 +666,15 @@ export default function QuestionBankDetailPage() {
                     <p className="line-clamp-2">{question.content}</p>
                   </TableCell>
                   <TableCell>
-                    <Badge className={`text-xs text-white hover:opacity-90 ${TYPE_COLORS[question.type]}`}>
+                    <Badge
+                      className={`text-xs text-white hover:opacity-90 ${TYPE_COLORS[question.type]}`}
+                    >
                       {QUESTION_TYPE_LABELS[question.type]}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {question.difficulty && (
-                      <Badge variant="outline">
-                        {DIFFICULTY_LABELS[question.difficulty]}
-                      </Badge>
+                      <Badge variant="outline">{DIFFICULTY_LABELS[question.difficulty]}</Badge>
                     )}
                   </TableCell>
                   <TableCell>
@@ -649,47 +684,47 @@ export default function QuestionBankDetailPage() {
                     {formatDate(question.createdAt)}
                   </TableCell>
                   <TableRowActions>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => setPreviewQuestion(question)}
-                      >
-                        <Eye className="mr-1 h-3 w-3" />
-                        预览
-                      </Button>
-                      {canEdit && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => handleCopyQuestion(question)}
-                          >
-                            <Copy className="mr-1 h-3 w-3" />
-                            复制
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => handleQuestionEdit(question)}
-                          >
-                            <Edit className="mr-1 h-3 w-3" />
-                            编辑
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                            onClick={() => setDeleteConfirm(question)}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" />
-                            删除
-                          </Button>
-                        </>
-                      )}
-                    </TableRowActions>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setPreviewQuestion(question)}
+                    >
+                      <Eye className="mr-1 h-3 w-3" />
+                      预览
+                    </Button>
+                    {canEdit && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleCopyQuestion(question)}
+                        >
+                          <Copy className="mr-1 h-3 w-3" />
+                          复制
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleQuestionEdit(question)}
+                        >
+                          <Edit className="mr-1 h-3 w-3" />
+                          编辑
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                          onClick={() => setDeleteConfirm(question)}
+                        >
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          删除
+                        </Button>
+                      </>
+                    )}
+                  </TableRowActions>
                 </TableRow>
               ))
             )}
@@ -735,7 +770,7 @@ export default function QuestionBankDetailPage() {
         downloadLabel="下载题目批量导入模板"
         onDownload={handleDownloadTemplate}
         uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-        importLabel={() => "开始导入"}
+        importLabel={() => '开始导入'}
         onImport={handleImport}
         files={importFiles}
         onAddFiles={handleAddFiles}
@@ -781,7 +816,9 @@ export default function QuestionBankDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg border bg-white p-6 shadow-lg">
             <h3 className="text-lg font-semibold">批量移动题目</h3>
-            <p className="mt-1 text-sm text-muted-foreground">选择目标题库，将选中的 {selectedQuestions.size} 道题目移动过去</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              选择目标题库，将选中的 {selectedQuestions.size} 道题目移动过去
+            </p>
             <div className="relative mt-4">
               <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -793,8 +830,10 @@ export default function QuestionBankDetailPage() {
             </div>
             <div className="mt-3 max-h-60 overflow-auto">
               {questionBanks
-                .filter(b => b.id !== bankId && b.name.toLowerCase().includes(moveSearch.toLowerCase()))
-                .map(bank => (
+                .filter(
+                  (b) => b.id !== bankId && b.name.toLowerCase().includes(moveSearch.toLowerCase()),
+                )
+                .map((bank) => (
                   <button
                     key={bank.id}
                     className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
@@ -805,13 +844,24 @@ export default function QuestionBankDetailPage() {
                     </div>
                     <div>
                       <div className="font-medium">{bank.name}</div>
-                      <div className="text-xs text-muted-foreground">{questionCountByBank.get(bank.id) || 0} 题</div>
+                      <div className="text-xs text-muted-foreground">
+                        {questionCountByBank.get(bank.id) || 0} 题
+                      </div>
                     </div>
                   </button>
                 ))}
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setBatchMoveOpen(false); setMoveSearch("") }}>取消</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setBatchMoveOpen(false)
+                  setMoveSearch('')
+                }}
+              >
+                取消
+              </Button>
             </div>
           </div>
         </div>

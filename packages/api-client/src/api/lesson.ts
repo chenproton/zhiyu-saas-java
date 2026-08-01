@@ -8,15 +8,19 @@ import type {
   LessonBatch,
   LessonBehaviorRecord,
   LessonBehaviorAggregate,
-} from "../types/lesson"
-import type { SystemCourseNode } from "../types/lesson-source"
-import { request, buildQuery, ListResponse } from "../api-helpers"
-import { createCrudApi, createContentApi } from "../api-factory"
+} from '../types/lesson'
+import type { SystemCourseNode } from '../types/lesson-source'
+import { request, buildQuery, ListResponse } from '../api-helpers'
+import { createCrudApi, createContentApi } from '../api-factory'
 
 export const courseApi = {
-  ...createContentApi<Course, Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">, Partial<Omit<Course, "id" | "createdAt" | "updatedAt">>>("/lesson/courses"),
+  ...createContentApi<
+    Course,
+    Omit<Course, 'id' | 'nodeCount' | 'resourceCount' | 'studyCount' | 'createdAt' | 'updatedAt'>,
+    Partial<Omit<Course, 'id' | 'createdAt' | 'updatedAt'>>
+  >('/lesson/courses'),
   clone: (id: string, body: { name: string }) =>
-    request<Course>(`/lesson/courses/${id}/clone`, { method: "POST", body: JSON.stringify(body) }),
+    request<Course>(`/lesson/courses/${id}/clone`, { method: 'POST', body: JSON.stringify(body) }),
 }
 
 export interface CourseAssessmentExam {
@@ -29,7 +33,7 @@ export interface CourseAssessmentExam {
   endTime?: string
   duration?: number
   status: string
-  type: "exam"
+  type: 'exam'
 }
 
 export interface CourseAssessmentHomework {
@@ -39,7 +43,7 @@ export interface CourseAssessmentHomework {
   needAttachment: boolean
   deadline?: string
   status: string
-  type: "homework"
+  type: 'homework'
 }
 
 export interface CourseAssessmentsResponse {
@@ -48,7 +52,8 @@ export interface CourseAssessmentsResponse {
 }
 
 export const courseAssessmentsApi = {
-  get: (courseId: string) => request<CourseAssessmentsResponse>(`/lesson/courses/${courseId}/assessments`),
+  get: (courseId: string) =>
+    request<CourseAssessmentsResponse>(`/lesson/courses/${courseId}/assessments`),
 }
 
 export interface CourseHomeworkSubmission {
@@ -57,7 +62,7 @@ export interface CourseHomeworkSubmission {
   studentName: string
   content?: string
   attachmentUrls?: string[]
-  status: "submitted" | "graded"
+  status: 'submitted' | 'graded'
   score?: number
   totalScore?: number
   comment?: string
@@ -66,71 +71,122 @@ export interface CourseHomeworkSubmission {
 }
 
 export const courseHomeworkApi = {
-  submit: (courseId: string, homeworkId: string, req: { content?: string; attachmentUrls?: string[] }) =>
-    request<{ id: string; status: string }>(`/lesson/courses/${courseId}/homeworks/${homeworkId}/submit`, { method: "POST", body: JSON.stringify(req) }),
+  submit: (
+    courseId: string,
+    homeworkId: string,
+    req: { content?: string; attachmentUrls?: string[] },
+  ) =>
+    request<{ id: string; status: string }>(
+      `/lesson/courses/${courseId}/homeworks/${homeworkId}/submit`,
+      { method: 'POST', body: JSON.stringify(req) },
+    ),
   listSubmissions: (courseId: string, homeworkId: string) =>
-    request<{ items: CourseHomeworkSubmission[] }>(`/lesson/courses/${courseId}/homeworks/${homeworkId}/submissions`),
-  grade: (courseId: string, homeworkId: string, submissionId: string, req: { score: number; comment?: string }) =>
-    request<{ id: string; status: string }>(`/lesson/courses/${courseId}/homeworks/${homeworkId}/submissions/${submissionId}/grade`, { method: "POST", body: JSON.stringify(req) }),
+    request<{ items: CourseHomeworkSubmission[] }>(
+      `/lesson/courses/${courseId}/homeworks/${homeworkId}/submissions`,
+    ),
+  grade: (
+    courseId: string,
+    homeworkId: string,
+    submissionId: string,
+    req: { score: number; comment?: string },
+  ) =>
+    request<{ id: string; status: string }>(
+      `/lesson/courses/${courseId}/homeworks/${homeworkId}/submissions/${submissionId}/grade`,
+      { method: 'POST', body: JSON.stringify(req) },
+    ),
 }
 
-export const knowledgeApi = createCrudApi<KnowledgePoint, Omit<KnowledgePoint, "id" | "createdAt" | "updatedAt">, Partial<Omit<KnowledgePoint, "id" | "createdAt" | "updatedAt">>>("/lesson/knowledge-points")
+export const knowledgeApi = createCrudApi<
+  KnowledgePoint,
+  Omit<KnowledgePoint, 'id' | 'createdAt' | 'updatedAt'>,
+  Partial<Omit<KnowledgePoint, 'id' | 'createdAt' | 'updatedAt'>>
+>('/lesson/knowledge-points')
 
 export const courseNodeApi = {
   list: (params?: Record<string, string | number | boolean | undefined>) =>
     request<ListResponse<SystemCourseNode>>(`/lesson/nodes${buildQuery(params || {})}`),
-  get: (id: string) =>
-    request<SystemCourseNode>(`/lesson/nodes/${id}`),
-  create: (req: Omit<BackendSystemCourseNode, "id" | "createdAt" | "updatedAt">) =>
-    request<SystemCourseNode>("/lesson/nodes", { method: "POST", body: JSON.stringify(req) }),
-  update: (id: string, req: Partial<Omit<BackendSystemCourseNode, "id" | "createdAt" | "updatedAt">>) =>
-    request<SystemCourseNode>(`/lesson/nodes/${id}`, { method: "PUT", body: JSON.stringify(req) }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/lesson/nodes/${id}`, { method: "DELETE" }),
+  get: (id: string) => request<SystemCourseNode>(`/lesson/nodes/${id}`),
+  create: (req: Omit<BackendSystemCourseNode, 'id' | 'createdAt' | 'updatedAt'>) =>
+    request<SystemCourseNode>('/lesson/nodes', { method: 'POST', body: JSON.stringify(req) }),
+  update: (
+    id: string,
+    req: Partial<Omit<BackendSystemCourseNode, 'id' | 'createdAt' | 'updatedAt'>>,
+  ) =>
+    request<SystemCourseNode>(`/lesson/nodes/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/lesson/nodes/${id}`, { method: 'DELETE' }),
   reorder: (courseId: string, nodeIds: string[]) =>
-    request<{ ok: boolean }>("/lesson/nodes/reorder", { method: "POST", body: JSON.stringify({ courseId, nodeIds }) }),
+    request<{ ok: boolean }>('/lesson/nodes/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ courseId, nodeIds }),
+    }),
 }
 
 export const nodeResourceApi = {
-  list: (params?: { courseId?: string; nodeId?: string; search?: string; limit?: number; offset?: number }) =>
-    request<ListResponse<NodeResource>>(`/lesson/node-resources${buildQuery(params || {})}`),
-  create: (req: Omit<NodeResource, "id" | "uploadedAt">) =>
-    request<NodeResource>("/lesson/node-resources/create", { method: "POST", body: JSON.stringify(req) }),
+  list: (params?: {
+    courseId?: string
+    nodeId?: string
+    search?: string
+    limit?: number
+    offset?: number
+  }) => request<ListResponse<NodeResource>>(`/lesson/node-resources${buildQuery(params || {})}`),
+  create: (req: Omit<NodeResource, 'id' | 'uploadedAt'>) =>
+    request<NodeResource>('/lesson/node-resources/create', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
   bind: (data: { nodeId: string; resourceId: string }) =>
-    request<{ id: string }>("/lesson/node-resources", { method: "POST", body: JSON.stringify(data) }),
+    request<{ id: string }>('/lesson/node-resources', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   unbind: (id: string) =>
-    request<{ id: string }>(`/lesson/node-resources/${id}`, { method: "DELETE" }),
+    request<{ id: string }>(`/lesson/node-resources/${id}`, { method: 'DELETE' }),
 }
 
 export const courseResourceApi = {
   list: (params?: { courseId?: string; search?: string; limit?: number; offset?: number }) =>
     request<ListResponse<NodeResource>>(`/lesson/course-resources${buildQuery(params || {})}`),
-  create: (req: Omit<NodeResource, "id" | "uploadedAt" | "nodeId"> & { courseId: string }) =>
-    request<NodeResource>("/lesson/course-resources/create", { method: "POST", body: JSON.stringify(req) }),
+  create: (req: Omit<NodeResource, 'id' | 'uploadedAt' | 'nodeId'> & { courseId: string }) =>
+    request<NodeResource>('/lesson/course-resources/create', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
   bind: (data: { courseId: string; resourceId: string }) =>
-    request<{ id: string }>("/lesson/course-resources", { method: "POST", body: JSON.stringify(data) }),
+    request<{ id: string }>('/lesson/course-resources', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   unbind: (id: string) =>
-    request<{ id: string }>(`/lesson/course-resources/${id}`, { method: "DELETE" }),
+    request<{ id: string }>(`/lesson/course-resources/${id}`, { method: 'DELETE' }),
 }
 
 export const lessonBatchApi = {
-  ...createCrudApi<LessonBatch, Omit<LessonBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<LessonBatch, "id" | "createdAt" | "updatedAt">>>("/lesson/batches"),
+  ...createCrudApi<
+    LessonBatch,
+    Omit<LessonBatch, 'id' | 'createdAt' | 'updatedAt'>,
+    Partial<Omit<LessonBatch, 'id' | 'createdAt' | 'updatedAt'>>
+  >('/lesson/batches'),
   updateStatus: (id: string, status: string) =>
-    request<LessonBatch>(`/lesson/batches/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
+    request<LessonBatch>(`/lesson/batches/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    }),
 }
 
 export const lessonBehaviorApi = {
   aggregate: (params: { courseId: string; startDate?: string; endDate?: string }) =>
     request<LessonBehaviorAggregate>(`/lesson/behavior-collection/aggregate${buildQuery(params)}`),
-  create: (req: Omit<LessonBehaviorRecord, "id" | "createdAt" | "updatedAt">) =>
-    request<LessonBehaviorRecord>("/lesson/behavior-collection/records", { method: "POST", body: JSON.stringify(req) }),
+  create: (req: Omit<LessonBehaviorRecord, 'id' | 'createdAt' | 'updatedAt'>) =>
+    request<LessonBehaviorRecord>('/lesson/behavior-collection/records', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
 }
 
 export const nodeQuizApi = {
-  create: (req: Omit<NodeQuiz, "id">) =>
-    request<NodeQuiz>("/lesson/quizzes", { method: "POST", body: JSON.stringify(req) }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/lesson/quizzes/${id}`, { method: "DELETE" }),
+  create: (req: Omit<NodeQuiz, 'id'>) =>
+    request<NodeQuiz>('/lesson/quizzes', { method: 'POST', body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/lesson/quizzes/${id}`, { method: 'DELETE' }),
 }
 
 export interface NodeHomeworkSubmission {
@@ -139,7 +195,7 @@ export interface NodeHomeworkSubmission {
   studentName: string
   content?: string
   attachmentUrls?: string[]
-  status: "submitted" | "graded"
+  status: 'submitted' | 'graded'
   score?: number
   totalScore?: number
   comment?: string
@@ -148,16 +204,32 @@ export interface NodeHomeworkSubmission {
 }
 
 export const nodeHomeworkApi = {
-  create: (req: Omit<NodeHomework, "id">) =>
-    request<NodeHomework>("/lesson/homeworks", { method: "POST", body: JSON.stringify(req) }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/lesson/homeworks/${id}`, { method: "DELETE" }),
-  submit: (nodeId: string, homeworkId: string, req: { content?: string; attachmentUrls?: string[] }) =>
-    request<{ id: string; status: string }>(`/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submit`, { method: "POST", body: JSON.stringify(req) }),
+  create: (req: Omit<NodeHomework, 'id'>) =>
+    request<NodeHomework>('/lesson/homeworks', { method: 'POST', body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/lesson/homeworks/${id}`, { method: 'DELETE' }),
+  submit: (
+    nodeId: string,
+    homeworkId: string,
+    req: { content?: string; attachmentUrls?: string[] },
+  ) =>
+    request<{ id: string; status: string }>(
+      `/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submit`,
+      { method: 'POST', body: JSON.stringify(req) },
+    ),
   listSubmissions: (nodeId: string, homeworkId: string) =>
-    request<{ items: NodeHomeworkSubmission[] }>(`/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submissions`),
-  grade: (nodeId: string, homeworkId: string, submissionId: string, req: { score: number; comment?: string }) =>
-    request<{ id: string; status: string }>(`/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submissions/${submissionId}/grade`, { method: "POST", body: JSON.stringify(req) }),
+    request<{ items: NodeHomeworkSubmission[] }>(
+      `/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submissions`,
+    ),
+  grade: (
+    nodeId: string,
+    homeworkId: string,
+    submissionId: string,
+    req: { score: number; comment?: string },
+  ) =>
+    request<{ id: string; status: string }>(
+      `/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submissions/${submissionId}/grade`,
+      { method: 'POST', body: JSON.stringify(req) },
+    ),
 }
 
 export interface NodeEvaluationResult {
@@ -167,7 +239,7 @@ export interface NodeEvaluationResult {
   evaluateeId: string
   evaluatorId?: string
   evaluatorType?: string
-  status: "pending" | "evaluated"
+  status: 'pending' | 'evaluated'
   totalScore?: number
   maxScore: number
   evalPointScores?: Record<string, any>
@@ -181,5 +253,7 @@ export interface NodeEvaluationResult {
 
 export const nodeEvaluationResultApi = {
   list: (params?: { nodeId?: string; evaluateeId?: string; limit?: number; offset?: number }) =>
-    request<{ items: NodeEvaluationResult[]; total: number }>(`/lesson/node-evaluation-results${buildQuery(params || {})}`),
+    request<{ items: NodeEvaluationResult[]; total: number }>(
+      `/lesson/node-evaluation-results${buildQuery(params || {})}`,
+    ),
 }

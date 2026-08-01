@@ -1,17 +1,17 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Award, Building2, ExternalLink, ChevronDown, ChevronUp, ZoomIn, X } from "lucide-react"
-import type { PositionCertificate } from "@/lib/types"
+import { useState } from 'react'
+import { Award, Building2, ExternalLink, ChevronDown, ChevronUp, ZoomIn, X } from 'lucide-react'
+import type { PositionCertificate } from '@/lib/types'
 
 interface CertCardsProps {
   certificates: PositionCertificate[]
 }
 
 const GRADIENTS = [
-  "linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)",
-  "linear-gradient(135deg, #52c41a 0%, #73d13d 100%)",
-  "linear-gradient(135deg, #f59e0b 0%, #ffc53d 100%)",
+  'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)',
+  'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+  'linear-gradient(135deg, #f59e0b 0%, #ffc53d 100%)',
 ]
 
 export function CertCards({ certificates }: CertCardsProps) {
@@ -36,10 +36,17 @@ export function CertCards({ certificates }: CertCardsProps) {
         {certificates.map((cert, i) => {
           const isExpanded = expanded[cert.id]
           return (
-            <div key={cert.id} className="bg-white rounded-2xl border border-[#f5f5f4] overflow-hidden transition-all hover:shadow-md hover:border-[#d9d9d9]">
+            <div
+              key={cert.id}
+              className="bg-white rounded-2xl border border-[#f5f5f4] overflow-hidden transition-all hover:shadow-md hover:border-[#d9d9d9]"
+            >
               <div
-                className={`h-40 flex items-center justify-center text-white relative bg-cover bg-center ${cert.imageUrl ? "cursor-pointer" : ""}`}
-                style={cert.imageUrl ? { backgroundImage: `url('${cert.imageUrl}')` } : { background: GRADIENTS[i % GRADIENTS.length] }}
+                className={`h-40 flex items-center justify-center text-white relative bg-cover bg-center ${cert.imageUrl ? 'cursor-pointer' : ''}`}
+                style={
+                  cert.imageUrl
+                    ? { backgroundImage: `url('${cert.imageUrl}')` }
+                    : { background: GRADIENTS[i % GRADIENTS.length] }
+                }
                 onClick={() => cert.imageUrl && setSelectedImage(cert.imageUrl)}
               >
                 {cert.imageUrl && (
@@ -53,18 +60,30 @@ export function CertCards({ certificates }: CertCardsProps) {
                 <div className="text-base font-semibold text-[#1f2937] mb-2">{cert.name}</div>
                 <div className="flex items-center gap-2 text-[13px] text-[#64748b] mb-3">
                   <Building2 className="w-4 h-4 text-[#94a3b8]" />
-                  {cert.description ? cert.description.slice(0, 20) : "官方认证"}
+                  {cert.description ? cert.description.slice(0, 20) : '官方认证'}
                 </div>
                 {cert.description && (
                   <div className="relative mb-3">
-                    <p className={`text-[13px] text-[#64748b] leading-[1.7] ${isExpanded ? "" : "line-clamp-3"}`}>
+                    <p
+                      className={`text-[13px] text-[#64748b] leading-[1.7] ${isExpanded ? '' : 'line-clamp-3'}`}
+                    >
                       {cert.description}
                     </p>
                     <button
                       className="text-xs text-blue-500 font-medium inline-flex items-center gap-1 mt-1 hover:underline"
-                      onClick={() => setExpanded((prev) => ({ ...prev, [cert.id]: !prev[cert.id] }))}
+                      onClick={() =>
+                        setExpanded((prev) => ({ ...prev, [cert.id]: !prev[cert.id] }))
+                      }
                     >
-                      {isExpanded ? <><ChevronUp className="w-3 h-3" /> 收起</> : <><ChevronDown className="w-3 h-3" /> 展示</>}
+                      {isExpanded ? (
+                        <>
+                          <ChevronUp className="w-3 h-3" /> 收起
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-3 h-3" /> 展示
+                        </>
+                      )}
                     </button>
                   </div>
                 )}

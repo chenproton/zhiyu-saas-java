@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
-import { ChevronDown, Play, Expand, Shrink, Layers, Clock, Target, BookOpen } from "lucide-react"
-import type { Scenario, ScenarioTask } from "@/lib/types"
+import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { ChevronDown, Play, Expand, Shrink, Layers, Clock, Target, BookOpen } from 'lucide-react'
+import type { Scenario, ScenarioTask } from '@/lib/types'
 
 interface SceneListProps {
   scenarios?: Scenario[]
@@ -12,12 +12,12 @@ interface SceneListProps {
 
 const SCENE_ICONS = [BookOpen, Target, Layers, Clock, Play]
 const SCENE_COLORS = [
-  "bg-blue-500",
-  "bg-green-500",
-  "bg-amber-500",
-  "bg-violet-600",
-  "bg-teal-500",
-  "bg-pink-500",
+  'bg-blue-500',
+  'bg-green-500',
+  'bg-amber-500',
+  'bg-violet-600',
+  'bg-teal-500',
+  'bg-pink-500',
 ]
 
 export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
@@ -36,7 +36,7 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
 
   const totalHours = useMemo(
     () => tasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0),
-    [tasks]
+    [tasks],
   )
 
   const toggle = (idx: number) => {
@@ -60,8 +60,8 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
       <div className="flex items-center justify-between mb-4">
         <span className="text-sm text-[#64748b]">
           共关联 <strong className="text-blue-500">{scenarios.length}</strong> 个实践场景，
-          <strong className="text-blue-500">{tasks.length}</strong> 个任务，
-          合计 <strong className="text-blue-500">{totalHours}</strong> 课时
+          <strong className="text-blue-500">{tasks.length}</strong> 个任务， 合计{' '}
+          <strong className="text-blue-500">{totalHours}</strong> 课时
         </span>
         <div className="flex gap-2">
           <button
@@ -87,13 +87,18 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
           const color = SCENE_COLORS[idx % SCENE_COLORS.length]
 
           return (
-            <div key={scene.id} className="bg-white rounded-xl border border-[#f5f5f4] overflow-hidden">
+            <div
+              key={scene.id}
+              className="bg-white rounded-xl border border-[#f5f5f4] overflow-hidden"
+            >
               <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-[#f8fafc] transition-colors"
                 onClick={() => toggle(idx)}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center text-white`}>
+                  <div
+                    className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center text-white`}
+                  >
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
@@ -110,16 +115,23 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
                   >
                     <Play className="w-3 h-3" /> 去学习
                   </button>
-                  <ChevronDown className={`w-5 h-5 text-[#94a3b8] transition-transform ${expanded[idx] ? "rotate-180" : ""}`} />
+                  <ChevronDown
+                    className={`w-5 h-5 text-[#94a3b8] transition-transform ${expanded[idx] ? 'rotate-180' : ''}`}
+                  />
                 </div>
               </div>
               {expanded[idx] && (
                 <div className="px-4 pb-4">
                   {sceneTasks.length === 0 && (
-                    <div className="text-xs text-[#94a3b8] py-3 border-t border-[#f5f5f4]">暂无任务</div>
+                    <div className="text-xs text-[#94a3b8] py-3 border-t border-[#f5f5f4]">
+                      暂无任务
+                    </div>
                   )}
                   {sceneTasks.map((task, ti) => (
-                    <div key={task.id} className="flex items-center justify-between py-3 border-t border-[#f5f5f4]">
+                    <div
+                      key={task.id}
+                      className="flex items-center justify-between py-3 border-t border-[#f5f5f4]"
+                    >
                       <div className="flex items-center gap-3">
                         <div className="w-7 h-7 rounded-full bg-[#eff6ff] text-blue-600 flex items-center justify-center text-xs font-bold">
                           {ti + 1}
@@ -128,10 +140,13 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
                           <div className="text-sm font-medium text-[#1f2937]">{task.name}</div>
                           <div className="flex flex-wrap gap-1 mt-1">
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
-                              {task.taskType === "assessment" ? "测评任务" : "训练任务"}
+                              {task.taskType === 'assessment' ? '测评任务' : '训练任务'}
                             </span>
                             {task.abilityPointIds?.map((aid) => (
-                              <span key={aid} className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                              <span
+                                key={aid}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]"
+                              >
                                 能力点
                               </span>
                             ))}

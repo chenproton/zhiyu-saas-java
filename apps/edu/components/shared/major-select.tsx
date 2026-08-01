@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback } from 'react'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { majorApi } from "@/lib/api"
-import type { Major } from "@/lib/types/backend"
+} from '@/components/ui/select'
+import { majorApi } from '@/lib/api'
+import type { Major } from '@/lib/types/backend'
 
 interface MajorSelectProps {
   tenantId?: string
@@ -24,7 +24,7 @@ export function MajorSelect({
   tenantId,
   value,
   onChange,
-  placeholder = "选择专业",
+  placeholder = '选择专业',
   disabled,
   className,
 }: MajorSelectProps) {
@@ -43,7 +43,7 @@ export function MajorSelect({
       const res = await majorApi.list(params)
       setMajors(res.items.filter((m) => m.enabled))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载专业失败")
+      setError(err instanceof Error ? err.message : '加载专业失败')
     } finally {
       setLoading(false)
     }
@@ -70,7 +70,7 @@ export function MajorSelect({
   }
 
   return (
-    <Select value={value || ""} onValueChange={handleChange} disabled={isDisabled}>
+    <Select value={value || ''} onValueChange={handleChange} disabled={isDisabled}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
@@ -78,13 +78,13 @@ export function MajorSelect({
         {majors.map((major) => (
           <SelectItem key={major.id} value={major.id}>
             {major.name}
-            {major.code ? <span className="ml-2 text-xs text-muted-foreground">({major.code})</span> : null}
+            {major.code ? (
+              <span className="ml-2 text-xs text-muted-foreground">({major.code})</span>
+            ) : null}
           </SelectItem>
         ))}
         {majors.length === 0 && (
-          <div className="px-2 py-1.5 text-sm text-muted-foreground">
-            暂无专业
-          </div>
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">暂无专业</div>
         )}
       </SelectContent>
     </Select>

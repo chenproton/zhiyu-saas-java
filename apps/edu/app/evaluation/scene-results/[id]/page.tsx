@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState } from "react"
-import { useParams } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
+import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -19,30 +19,20 @@ import {
   Trophy,
   User,
   XCircle,
-} from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { StatusBadge } from "@zhiyu/ui"
-import { HoverActionBar } from "@/components/shared/hover-action-bar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+} from 'lucide-react'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@zhiyu/ui'
+import { HoverActionBar } from '@/components/shared/hover-action-bar'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 import {
   evaluationResultApi,
   taskEvaluationApi,
@@ -52,53 +42,53 @@ import {
   examUsageApi,
   examResultApi,
   randomDrawQuestionApi,
-} from "@/lib/api"
-import type { SceneEvaluationResult, TaskEvaluationMethod, TaskEvalPoint } from "@/lib/types"
+} from '@/lib/api'
+import type { SceneEvaluationResult, TaskEvaluationMethod, TaskEvalPoint } from '@/lib/types'
 
 const evalMethodLabels: Record<string, string> = {
-  random_draw: "现场问答",
-  review: "现场评审",
-  paper: "试卷",
-  question_bank: "题库",
-  outcome: "成果评价",
-  homework: "作业",
-  quiz: "随堂测",
+  random_draw: '现场问答',
+  review: '现场评审',
+  paper: '试卷',
+  question_bank: '题库',
+  outcome: '成果评价',
+  homework: '作业',
+  quiz: '随堂测',
 }
 
 const evalMethodColors: Record<string, string> = {
-  random_draw: "bg-purple-50 text-purple-600 border-purple-200",
-  review: "bg-amber-50 text-amber-600 border-amber-200",
-  paper: "bg-blue-50 text-blue-600 border-blue-200",
-  question_bank: "bg-indigo-50 text-indigo-600 border-indigo-200",
-  outcome: "bg-emerald-50 text-emerald-600 border-emerald-200",
-  homework: "bg-cyan-50 text-cyan-600 border-cyan-200",
-  quiz: "bg-rose-50 text-rose-600 border-rose-200",
+  random_draw: 'bg-purple-50 text-purple-600 border-purple-200',
+  review: 'bg-amber-50 text-amber-600 border-amber-200',
+  paper: 'bg-blue-50 text-blue-600 border-blue-200',
+  question_bank: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+  outcome: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+  homework: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+  quiz: 'bg-rose-50 text-rose-600 border-rose-200',
 }
 
 const questionTypeLabels: Record<string, string> = {
-  single: "单选",
-  multiple: "多选",
-  judge: "判断",
-  judgment: "判断",
-  fill: "填空",
-  essay: "问答",
-  short_answer: "简答",
+  single: '单选',
+  multiple: '多选',
+  judge: '判断',
+  judgment: '判断',
+  fill: '填空',
+  essay: '问答',
+  short_answer: '简答',
 }
 
 function toStringArray(v: any): string[] {
   if (Array.isArray(v)) return v.map((x) => String(x).toLowerCase())
-  if (typeof v === "string") return [v.toLowerCase()]
+  if (typeof v === 'string') return [v.toLowerCase()]
   return []
 }
 
 function isAnswerCorrect(q: any, ans: any): boolean {
   const correct = toStringArray(q.answer)
   const type = q.type
-  if (type === "single") {
-    const s = typeof ans === "string" ? ans.toLowerCase() : ""
+  if (type === 'single') {
+    const s = typeof ans === 'string' ? ans.toLowerCase() : ''
     return correct.length > 0 && s === correct[0]
   }
-  if (type === "multiple") {
+  if (type === 'multiple') {
     const given = toStringArray(ans)
     if (given.length !== correct.length) return false
     const m = new Map<string, number>()
@@ -110,35 +100,35 @@ function isAnswerCorrect(q: any, ans: any): boolean {
     }
     return true
   }
-  if (type === "judge" || type === "judgment") {
-    const s = typeof ans === "string" ? ans.toLowerCase().trim() : ""
+  if (type === 'judge' || type === 'judgment') {
+    const s = typeof ans === 'string' ? ans.toLowerCase().trim() : ''
     if (correct.length === 0) return false
     const c = correct[0]
-    return s === c || (s === "正确" && c === "true") || (s === "错误" && c === "false")
+    return s === c || (s === '正确' && c === 'true') || (s === '错误' && c === 'false')
   }
   return false
 }
 
 function getAutoScore(q: any, ans: any): number {
   const type = q.type
-  if (type === "single" || type === "multiple") return isAnswerCorrect(q, ans) ? q.score || 0 : 0
-  if (type === "judge" || type === "judgment") return isAnswerCorrect(q, ans) ? q.score || 0 : 0
+  if (type === 'single' || type === 'multiple') return isAnswerCorrect(q, ans) ? q.score || 0 : 0
+  if (type === 'judge' || type === 'judgment') return isAnswerCorrect(q, ans) ? q.score || 0 : 0
   return 0
 }
 
 function isAutoQuestion(q: any): boolean {
   const type = q.type
-  return type === "single" || type === "multiple" || type === "judge" || type === "judgment"
+  return type === 'single' || type === 'multiple' || type === 'judge' || type === 'judgment'
 }
 
 function getAnswerLabel(ans: any): string {
-  if (Array.isArray(ans)) return ans.join("、")
-  if (typeof ans === "string") return ans
-  return "未作答"
+  if (Array.isArray(ans)) return ans.join('、')
+  if (typeof ans === 'string') return ans
+  return '未作答'
 }
 
 function getInitials(name: string): string {
-  if (!name || name === "未知") return "?"
+  if (!name || name === '未知') return '?'
   return name.slice(0, 2).toUpperCase()
 }
 
@@ -165,7 +155,7 @@ function ScoreInput({
 }) {
   return (
     <TooltipProvider delayDuration={200}>
-      <div className={cn("flex items-center gap-1.5", className)}>
+      <div className={cn('flex items-center gap-1.5', className)}>
         <Input
           type="number"
           min={0}
@@ -226,14 +216,19 @@ function StudentInfoCard({
   maxScore: number
   saved: boolean
 }) {
-  const studentName = user?.name || result.evaluateeId || "未知"
-  const classInfo = [user?.grade, user?.className].filter(Boolean).join(" · ")
+  const studentName = user?.name || result.evaluateeId || '未知'
+  const classInfo = [user?.grade, user?.className].filter(Boolean).join(' · ')
 
   return (
     <div className="bg-white border-b px-4 py-3 shrink-0">
       <div className="flex items-center gap-4">
         <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
-          <AvatarFallback className={cn("text-sm font-medium", saved ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700")}>
+          <AvatarFallback
+            className={cn(
+              'text-sm font-medium',
+              saved ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700',
+            )}
+          >
             {getInitials(studentName)}
           </AvatarFallback>
         </Avatar>
@@ -249,16 +244,25 @@ function StudentInfoCard({
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className="text-sm text-gray-600 truncate max-w-[260px]">{task?.name}</span>
-            <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5", evalMethodColors[methodKey] || "")}>
+            <Badge
+              variant="outline"
+              className={cn('text-[10px] h-5 px-1.5', evalMethodColors[methodKey] || '')}
+            >
               {methodName}
             </Badge>
             {saved ? (
-              <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-green-50 text-green-600 border-green-200 gap-1">
+              <Badge
+                variant="outline"
+                className="text-[10px] h-5 px-1.5 bg-green-50 text-green-600 border-green-200 gap-1"
+              >
                 <CheckCircle2 className="h-3 w-3" />
                 已评分
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-amber-50 text-amber-600 border-amber-200 gap-1">
+              <Badge
+                variant="outline"
+                className="text-[10px] h-5 px-1.5 bg-amber-50 text-amber-600 border-amber-200 gap-1"
+              >
                 <Star className="h-3 w-3" />
                 待评分
               </Badge>
@@ -268,8 +272,13 @@ function StudentInfoCard({
         <div className="text-right shrink-0">
           <div className="text-xs text-gray-500 mb-0.5">当前总分</div>
           <div className="flex items-baseline justify-end gap-1">
-            <span className={cn("text-2xl font-bold", saved || computedTotal > 0 ? "text-green-600" : "text-gray-400")}>
-              {saved || computedTotal > 0 ? computedTotal : "-"}
+            <span
+              className={cn(
+                'text-2xl font-bold',
+                saved || computedTotal > 0 ? 'text-green-600' : 'text-gray-400',
+              )}
+            >
+              {saved || computedTotal > 0 ? computedTotal : '-'}
             </span>
             <span className="text-sm text-gray-400">/ {maxScore}</span>
           </div>
@@ -327,19 +336,27 @@ function QuestionGradingCard({
   const autoScore = auto ? getAutoScore(question, answer) : 0
 
   return (
-    <Card className={cn("border-slate-200 overflow-hidden transition-shadow", !auto && "border-amber-200")}>
+    <Card
+      className={cn(
+        'border-slate-200 overflow-hidden transition-shadow',
+        !auto && 'border-amber-200',
+      )}
+    >
       <CardContent className="p-0">
         <div
           className={cn(
-            "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
-            !auto ? "bg-amber-50/50 hover:bg-amber-50/70" : "bg-white hover:bg-gray-50/60"
+            'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors',
+            !auto ? 'bg-amber-50/50 hover:bg-amber-50/70' : 'bg-white hover:bg-gray-50/60',
           )}
           onClick={() => setExpanded(!expanded)}
         >
           <div className="flex items-center gap-2 shrink-0">
             <Badge
               variant="outline"
-              className={cn("text-[10px] h-5 px-1.5 shrink-0", !auto && "border-amber-300 text-amber-700")}
+              className={cn(
+                'text-[10px] h-5 px-1.5 shrink-0',
+                !auto && 'border-amber-300 text-amber-700',
+              )}
             >
               {questionTypeLabels[question.type] || question.type}
             </Badge>
@@ -406,9 +423,7 @@ function QuestionGradingCard({
               <div className="space-y-2">
                 {question.options.map((opt: string, idx: number) => {
                   const optLabel = String.fromCharCode(65 + idx)
-                  const isSelected = Array.isArray(answer)
-                    ? answer.includes(opt)
-                    : answer === opt
+                  const isSelected = Array.isArray(answer) ? answer.includes(opt) : answer === opt
                   const isCorrect = Array.isArray(question.answer)
                     ? question.answer.includes(opt)
                     : question.answer === opt
@@ -416,22 +431,22 @@ function QuestionGradingCard({
                     <div
                       key={idx}
                       className={cn(
-                        "flex items-center gap-3 text-sm px-3 py-2.5 rounded-lg border transition-colors",
+                        'flex items-center gap-3 text-sm px-3 py-2.5 rounded-lg border transition-colors',
                         isCorrect
-                          ? "bg-green-50 text-green-700 border-green-200"
+                          ? 'bg-green-50 text-green-700 border-green-200'
                           : isSelected && !isCorrect
-                            ? "bg-red-50 text-red-700 border-red-200"
-                            : "bg-gray-50/50 text-gray-600 border-gray-100"
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : 'bg-gray-50/50 text-gray-600 border-gray-100',
                       )}
                     >
                       <span
                         className={cn(
-                          "w-6 h-6 flex items-center justify-center rounded-md text-xs font-semibold",
+                          'w-6 h-6 flex items-center justify-center rounded-md text-xs font-semibold',
                           isCorrect
-                            ? "bg-green-500 text-white"
+                            ? 'bg-green-500 text-white'
                             : isSelected && !isCorrect
-                              ? "bg-red-500 text-white"
-                              : "bg-white text-gray-500 border border-gray-200"
+                              ? 'bg-red-500 text-white'
+                              : 'bg-white text-gray-500 border border-gray-200',
                         )}
                       >
                         {optLabel}
@@ -475,13 +490,17 @@ function QuestionGradingCard({
               <div className="flex flex-wrap items-center gap-4 bg-gray-50 rounded-lg px-3 py-2.5">
                 <div className="text-sm">
                   <span className="text-gray-500">学生答案：</span>
-                  <span className={correct ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                  <span
+                    className={correct ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}
+                  >
                     {getAnswerLabel(answer)}
                   </span>
                 </div>
                 <div className="text-sm">
                   <span className="text-gray-500">正确答案：</span>
-                  <span className="text-green-600 font-medium">{getAnswerLabel(question.answer)}</span>
+                  <span className="text-green-600 font-medium">
+                    {getAnswerLabel(question.answer)}
+                  </span>
                 </div>
               </div>
             )}
@@ -597,22 +616,25 @@ function DrawnQuestionCard({
   const [value, setValue] = useState(oralAnswer)
 
   const isSimpleQuestion = !question.content && !!question.name
-  const questionContent = question.content || question.name || ""
-  const questionType = question.type || "short_answer"
+  const questionContent = question.content || question.name || ''
+  const questionType = question.type || 'short_answer'
 
   const getAnswerLabel = () => {
-    if (question.type === "judge" || question.type === "judgment") {
-      return question.answer === "true" ? "正确" : "错误"
+    if (question.type === 'judge' || question.type === 'judgment') {
+      return question.answer === 'true' ? '正确' : '错误'
     }
-    if (Array.isArray(question.answer)) return question.answer.join("、")
-    return question.answer || "-"
+    if (Array.isArray(question.answer)) return question.answer.join('、')
+    return question.answer || '-'
   }
 
   return (
     <Card className="border-slate-200">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-slate-50 text-slate-600 border-slate-200">
+          <Badge
+            variant="outline"
+            className="text-[10px] h-5 px-1.5 bg-slate-50 text-slate-600 border-slate-200"
+          >
             第 {index + 1} 题
           </Badge>
           {!isSimpleQuestion && (
@@ -635,16 +657,18 @@ function DrawnQuestionCard({
                 <div
                   key={idx}
                   className={cn(
-                    "flex items-center gap-3 text-sm px-3 py-2 rounded-lg border",
+                    'flex items-center gap-3 text-sm px-3 py-2 rounded-lg border',
                     isCorrect
-                      ? "bg-green-50 border-green-200 text-green-700"
-                      : "bg-gray-50/50 border-gray-100 text-gray-600"
+                      ? 'bg-green-50 border-green-200 text-green-700'
+                      : 'bg-gray-50/50 border-gray-100 text-gray-600',
                   )}
                 >
                   <span
                     className={cn(
-                      "text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-md shrink-0",
-                      isCorrect ? "bg-green-500 text-white" : "bg-white text-gray-500 border border-gray-200"
+                      'text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-md shrink-0',
+                      isCorrect
+                        ? 'bg-green-500 text-white'
+                        : 'bg-white text-gray-500 border border-gray-200',
                     )}
                   >
                     {String.fromCharCode(65 + idx)}
@@ -695,12 +719,20 @@ function AttachmentPreview({
           <DialogTitle className="text-sm font-medium">{attachment.name}</DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-auto p-4 bg-gray-50 min-h-[300px] max-h-[calc(90vh-120px)]">
-          {attachment.type?.startsWith("image") ? (
+          {attachment.type?.startsWith('image') ? (
             // 附件弹窗中的图片需要展示原始尺寸，无法预先确定宽高，故保留 img
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={attachment.url} alt={attachment.name} className="max-w-full max-h-[70vh] rounded-lg shadow-sm border" />
-          ) : attachment.type?.startsWith("video") ? (
-            <video src={attachment.url} controls className="max-w-full max-h-[70vh] rounded-lg shadow-sm border" />
+            <img
+              src={attachment.url}
+              alt={attachment.name}
+              className="max-w-full max-h-[70vh] rounded-lg shadow-sm border"
+            />
+          ) : attachment.type?.startsWith('video') ? (
+            <video
+              src={attachment.url}
+              controls
+              className="max-w-full max-h-[70vh] rounded-lg shadow-sm border"
+            />
           ) : (
             <div className="text-center py-12 text-gray-400">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -732,15 +764,19 @@ export default function GradingDetailPage() {
   const [examResult, setExamResult] = useState<any>(null)
   const [rdQuestions, setRdQuestions] = useState<any[]>([])
   const [rdQuestionPool, setRdQuestionPool] = useState<any[]>([])
-  const [questionFilter, setQuestionFilter] = useState<"all" | "pending">("all")
+  const [questionFilter, setQuestionFilter] = useState<'all' | 'pending'>('all')
   const [allExpanded, setAllExpanded] = useState(false)
-  const [previewAttachment, setPreviewAttachment] = useState<{ name: string; url: string; type?: string } | null>(null)
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    name: string
+    url: string
+    type?: string
+  } | null>(null)
 
   const [pointScores, setPointScores] = useState<Record<string, number>>({})
   const [pointComments, setPointComments] = useState<Record<string, string>>({})
   const [oralAnswers, setOralAnswers] = useState<Record<string, string>>({})
   const [selectedReviewSteps, setSelectedReviewSteps] = useState<Record<string, boolean>>({})
-  const [comment, setComment] = useState("")
+  const [comment, setComment] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -748,17 +784,17 @@ export default function GradingDetailPage() {
       try {
         const res = await evaluationResultApi.get(id)
         setResult(res)
-        setComment(res.comment || "")
+        setComment(res.comment || '')
 
         const eps = (res.evalPointScores as Record<string, any>) || {}
         const scores: Record<string, number> = {}
         const comments: Record<string, string> = {}
         Object.entries(eps).forEach(([k, v]) => {
-          if (typeof v === "number") {
+          if (typeof v === 'number') {
             scores[k] = v
-          } else if (v && typeof v === "object") {
-            scores[k] = typeof v.score === "number" ? v.score : 0
-            comments[k] = v.comment || ""
+          } else if (v && typeof v === 'object') {
+            scores[k] = typeof v.score === 'number' ? v.score : 0
+            comments[k] = v.comment || ''
           }
         })
         setPointScores(scores)
@@ -767,26 +803,29 @@ export default function GradingDetailPage() {
         const dq = (res.drawnQuestions as Record<string, any>) || {}
         const oral: Record<string, string> = {}
         Object.entries(dq).forEach(([k, v]) => {
-          oral[k] = typeof v === "string" ? v : v?.oralAnswer || ""
+          oral[k] = typeof v === 'string' ? v : v?.oralAnswer || ''
         })
         setOralAnswers(oral)
 
         const completedSteps = (res.subjectiveContent as Record<string, any>)?.reviewSteps || []
         const stepSelected: Record<string, boolean> = {}
-        completedSteps.forEach((s: any) => { if (s.stepId) stepSelected[s.stepId] = true })
+        completedSteps.forEach((s: any) => {
+          if (s.stepId) stepSelected[s.stepId] = true
+        })
         setSelectedReviewSteps(stepSelected)
 
-        if (res.status === "evaluated") setSaved(true)
+        if (res.status === 'evaluated') setSaved(true)
 
         const [taskData, mRes] = await Promise.all([
           taskApi.get(res.taskId).catch(() => null),
           taskEvaluationApi.listMethods(res.taskId).catch(() => ({ methods: [] })),
         ])
         setTask(taskData)
-        const cfg = mRes.methods.find((m: TaskEvaluationMethod) => m.methodKey === res.methodKey) || null
+        const cfg =
+          mRes.methods.find((m: TaskEvaluationMethod) => m.methodKey === res.methodKey) || null
         setMethodConfig(cfg)
 
-        if (cfg && ["paper", "question_bank", "quiz"].includes(res.methodKey)) {
+        if (cfg && ['paper', 'question_bank', 'quiz'].includes(res.methodKey)) {
           const examId = cfg.resourceConfig?.paperId || cfg.resourceConfig?.examId
           const usageId = cfg.resourceConfig?.usageId
           if (examId) {
@@ -809,59 +848,74 @@ export default function GradingDetailPage() {
                 const found = (erRes.items || []).find((r: any) => r.userId === res.evaluateeId)
                 if (found) setExamResult(found)
               }
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           }
         }
 
-        if (res.methodKey === "random_draw") {
+        if (res.methodKey === 'random_draw') {
           try {
             const rdRes = await randomDrawQuestionApi.list({ limit: 9999 })
             const all = rdRes.items || []
             setRdQuestionPool(all)
             const drawnMap = (res.drawnQuestions || {}) as Record<string, any>
-            const drawnIds = Object.keys(drawnMap).filter((k) => drawnMap[k] && typeof drawnMap[k] === "object")
-            const selectedIds = drawnIds.length > 0
-              ? drawnIds
-              : cfg?.resourceConfig?.selectedQuestionIds || []
-            const selected = (selectedIds.length > 0
-              ? selectedIds.map((sid: string) => all.find((q: any) => q.id === sid))
-              : all
+            const drawnIds = Object.keys(drawnMap).filter(
+              (k) => drawnMap[k] && typeof drawnMap[k] === 'object',
+            )
+            const selectedIds =
+              drawnIds.length > 0 ? drawnIds : cfg?.resourceConfig?.selectedQuestionIds || []
+            const selected = (
+              selectedIds.length > 0
+                ? selectedIds.map((sid: string) => all.find((q: any) => q.id === sid))
+                : all
             ).filter(Boolean) as any[]
             setRdQuestions(selected)
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
 
         const u = await userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] }))
         const found = (u.items || []).find((x: any) => x.id === res.evaluateeId)
         setUser(found || null)
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
       setLoading(false)
     }
     load()
   }, [id])
 
-
-
-  const methodKey = result?.methodKey || ""
+  const methodKey = result?.methodKey || ''
   const methodName = evalMethodLabels[methodKey] || methodKey
-  const isExamMethod = ["paper", "question_bank", "quiz"].includes(methodKey)
-  const isRandomDraw = methodKey === "random_draw"
-  const isReview = methodKey === "review"
-  const isOutcome = methodKey === "outcome"
-  const isHomework = methodKey === "homework"
+  const isExamMethod = ['paper', 'question_bank', 'quiz'].includes(methodKey)
+  const isRandomDraw = methodKey === 'random_draw'
+  const isReview = methodKey === 'review'
+  const isOutcome = methodKey === 'outcome'
+  const isHomework = methodKey === 'homework'
   const isMaterialMethod = isReview || isOutcome || isHomework
 
   const evalPoints = useMemo(() => methodConfig?.evalPoints || [], [methodConfig])
   const reviewSteps = useMemo(() => methodConfig?.reviewSteps || [], [methodConfig])
-  const subjectiveContent = useMemo(() => (result?.subjectiveContent || {}) as Record<string, any>, [result])
-  const objectiveAnswers = useMemo(() => (result?.objectiveAnswers || {}) as Record<string, any>, [result])
+  const subjectiveContent = useMemo(
+    () => (result?.subjectiveContent || {}) as Record<string, any>,
+    [result],
+  )
+  const objectiveAnswers = useMemo(
+    () => (result?.objectiveAnswers || {}) as Record<string, any>,
+    [result],
+  )
   const examQuestions = useMemo(() => exam?.questions || [], [exam])
 
   const examAutoTotal = useMemo(() => {
-    if (examResult && typeof examResult.score === "number") {
+    if (examResult && typeof examResult.score === 'number') {
       return examResult.score
     }
-    return examQuestions.reduce((sum: number, q: any) => sum + getAutoScore(q, objectiveAnswers[q.id]), 0)
+    return examQuestions.reduce(
+      (sum: number, q: any) => sum + getAutoScore(q, objectiveAnswers[q.id]),
+      0,
+    )
   }, [examQuestions, objectiveAnswers, examResult])
 
   const examSubjectiveTotal = useMemo(() => {
@@ -872,7 +926,10 @@ export default function GradingDetailPage() {
   }, [examQuestions, pointScores])
 
   const examTotal = examAutoTotal + examSubjectiveTotal
-  const examMaxScore = examResult?.totalScore ?? exam?.totalScore ?? examQuestions.reduce((sum: number, q: any) => sum + (q.score || 0), 0)
+  const examMaxScore =
+    examResult?.totalScore ??
+    exam?.totalScore ??
+    examQuestions.reduce((sum: number, q: any) => sum + (q.score || 0), 0)
 
   const evalPointTotal = useMemo(() => {
     return evalPoints.reduce((sum, ep) => sum + (pointScores[ep.id] ?? 0), 0)
@@ -886,18 +943,22 @@ export default function GradingDetailPage() {
   const maxScore = (isExamMethod ? examMaxScore : evalPointMaxTotal) || result?.maxScore || 100
 
   const allScored = isExamMethod
-    ? examQuestions.filter((q: any) => !isAutoQuestion(q)).every((q: any) => (pointScores[q.id] ?? 0) > 0 || q.score === 0)
+    ? examQuestions
+        .filter((q: any) => !isAutoQuestion(q))
+        .every((q: any) => (pointScores[q.id] ?? 0) > 0 || q.score === 0)
     : isReview
-      ? (evalPoints.length === 0 || evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)) &&
+      ? (evalPoints.length === 0 ||
+          evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)) &&
         (reviewSteps.length === 0 || Object.values(selectedReviewSteps).some(Boolean))
-      : evalPoints.length === 0 || evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)
+      : evalPoints.length === 0 ||
+        evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)
 
   const pendingQuestions = useMemo(() => {
     return examQuestions.filter((q: any) => !isAutoQuestion(q) && (pointScores[q.id] ?? 0) === 0)
   }, [examQuestions, pointScores])
 
   const displayedQuestions = useMemo(() => {
-    return questionFilter === "all" ? examQuestions : pendingQuestions
+    return questionFilter === 'all' ? examQuestions : pendingQuestions
   }, [questionFilter, examQuestions, pendingQuestions])
 
   const handleScoreChange = (id: string, score: number) => {
@@ -930,30 +991,40 @@ export default function GradingDetailPage() {
       if (isRandomDraw) {
         const drawnQuestions: Record<string, any> = {}
         rdQuestions.forEach((q) => {
-          drawnQuestions[q.id] = { oralAnswer: oralAnswers[q.id] || "" }
+          drawnQuestions[q.id] = { oralAnswer: oralAnswers[q.id] || '' }
         })
         payload.drawnQuestions = drawnQuestions
       }
 
       if (isReview) {
-        const existingSteps = ((result.subjectiveContent as Record<string, any>)?.reviewSteps || []) as any[]
+        const existingSteps = ((result.subjectiveContent as Record<string, any>)?.reviewSteps ||
+          []) as any[]
         const newSteps = reviewSteps
-          .filter((s) => s.enabled && selectedReviewSteps[s.id] && !existingSteps.some((es: any) => es.stepId === s.id))
+          .filter(
+            (s) =>
+              s.enabled &&
+              selectedReviewSteps[s.id] &&
+              !existingSteps.some((es: any) => es.stepId === s.id),
+          )
           .map((s) => ({ stepId: s.id, completedAt: new Date().toISOString() }))
         payload.subjectiveContent = {
-          ...(result.subjectiveContent as Record<string, any> || {}),
+          ...((result.subjectiveContent as Record<string, any>) || {}),
           reviewSteps: [...existingSteps, ...newSteps],
         }
       }
 
       await evaluationResultApi.grade(result.id, payload)
       setSaved(true)
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
     setSaving(false)
   }
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
-  if (!result) return <div className="h-screen flex items-center justify-center text-gray-400">记录不存在</div>
+  if (loading)
+    return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
+  if (!result)
+    return <div className="h-screen flex items-center justify-center text-gray-400">记录不存在</div>
 
   const renderLeftPanel = () => {
     if (isExamMethod) return null
@@ -976,7 +1047,13 @@ export default function GradingDetailPage() {
                   variant="outline"
                   onClick={() => {
                     const poolIds = methodConfig?.resourceConfig?.selectedQuestionIds || []
-                    const drawCount = Math.max(1, Math.min(poolIds.length, methodConfig?.resourceConfig?.drawCount || poolIds.length || 1))
+                    const drawCount = Math.max(
+                      1,
+                      Math.min(
+                        poolIds.length,
+                        methodConfig?.resourceConfig?.drawCount || poolIds.length || 1,
+                      ),
+                    )
                     const shuffled = [...poolIds].sort(() => Math.random() - 0.5)
                     const selectedIds = shuffled.slice(0, drawCount)
                     const selected = selectedIds
@@ -1000,10 +1077,10 @@ export default function GradingDetailPage() {
             )}
             {rdQuestions.map((q, idx) => (
               <DrawnQuestionCard
-                key={`${q.id}-${oralAnswers[q.id] || ""}`}
+                key={`${q.id}-${oralAnswers[q.id] || ''}`}
                 question={q}
                 index={idx}
-                oralAnswer={oralAnswers[q.id] || ""}
+                oralAnswer={oralAnswers[q.id] || ''}
                 isGraded={saved}
                 onOralAnswerChange={handleOralAnswerChange}
               />
@@ -1019,36 +1096,44 @@ export default function GradingDetailPage() {
           <div className="px-4 py-3 border-b flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
             <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
               <Package className="h-4 w-4 text-amber-500" />
-              {isReview ? "现场评审材料" : isOutcome ? "成果材料" : "作业材料"}
+              {isReview ? '现场评审材料' : isOutcome ? '成果材料' : '作业材料'}
             </h2>
           </div>
           <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
             {isReview && reviewSteps.length > 0 && (
               <Card className="border-slate-200">
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-xs font-medium text-gray-500">评审步骤（选择本次评价的步骤）</CardTitle>
+                  <CardTitle className="text-xs font-medium text-gray-500">
+                    评审步骤（选择本次评价的步骤）
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 pt-0 space-y-2">
                   {reviewSteps
                     .filter((s) => s.enabled)
                     .map((step, idx) => {
-                      const completed = (subjectiveContent.reviewSteps || []).some((s: any) => s.stepId === step.id)
+                      const completed = (subjectiveContent.reviewSteps || []).some(
+                        (s: any) => s.stepId === step.id,
+                      )
                       const selected = !!selectedReviewSteps[step.id] || completed
                       return (
                         <label
                           key={step.id}
                           className={cn(
-                            "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                            'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
                             selected
-                              ? "bg-green-50 border-green-200"
-                              : "bg-white border-gray-200 hover:border-primary/30"
+                              ? 'bg-green-50 border-green-200'
+                              : 'bg-white border-gray-200 hover:border-primary/30',
                           )}
                         >
                           <div className="shrink-0 mt-0.5">
-                            <div className={cn(
-                              "w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold",
-                              selected ? "bg-green-500 text-white" : "bg-gray-100 text-gray-500 border border-gray-200"
-                            )}>
+                            <div
+                              className={cn(
+                                'w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold',
+                                selected
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-gray-100 text-gray-500 border border-gray-200',
+                              )}
+                            >
                               {idx + 1}
                             </div>
                           </div>
@@ -1057,14 +1142,26 @@ export default function GradingDetailPage() {
                             className="sr-only"
                             checked={selected}
                             disabled={saved || completed}
-                            onChange={(e) => setSelectedReviewSteps((prev) => ({ ...prev, [step.id]: e.target.checked }))}
+                            onChange={(e) =>
+                              setSelectedReviewSteps((prev) => ({
+                                ...prev,
+                                [step.id]: e.target.checked,
+                              }))
+                            }
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-800">{step.label}</p>
-                            {step.description && <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{step.description}</p>}
+                            {step.description && (
+                              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                                {step.description}
+                              </p>
+                            )}
                           </div>
                           {completed && (
-                            <StatusBadge status="已完成" className="text-[10px] h-5 px-1.5 border shrink-0" />
+                            <StatusBadge
+                              status="已完成"
+                              className="text-[10px] h-5 px-1.5 border shrink-0"
+                            />
                           )}
                         </label>
                       )
@@ -1073,28 +1170,39 @@ export default function GradingDetailPage() {
               </Card>
             )}
 
-            {subjectiveContent.pointSelfEval && Object.keys(subjectiveContent.pointSelfEval).length > 0 && evalPoints.length > 0 && (
-              <Card className="border-slate-200">
-                <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-xs font-medium text-gray-500">学生按评价点自评</CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4 pt-0 space-y-2">
-                  {evalPoints.map((ep) => {
-                    const selfEval = subjectiveContent.pointSelfEval?.[ep.id]
-                    if (!selfEval) return null
-                    return (
-                      <div key={ep.id} className="bg-slate-50 rounded-lg border border-slate-100 p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-800">{ep.name}</span>
-                          <Badge variant="outline" className="text-[10px] h-5 px-1.5">{ep.weight || 0} 分</Badge>
+            {subjectiveContent.pointSelfEval &&
+              Object.keys(subjectiveContent.pointSelfEval).length > 0 &&
+              evalPoints.length > 0 && (
+                <Card className="border-slate-200">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-xs font-medium text-gray-500">
+                      学生按评价点自评
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0 space-y-2">
+                    {evalPoints.map((ep) => {
+                      const selfEval = subjectiveContent.pointSelfEval?.[ep.id]
+                      if (!selfEval) return null
+                      return (
+                        <div
+                          key={ep.id}
+                          className="bg-slate-50 rounded-lg border border-slate-100 p-3"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-800">{ep.name}</span>
+                            <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                              {ep.weight || 0} 分
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                            {selfEval}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{selfEval}</p>
-                      </div>
-                    )
-                  })}
-                </CardContent>
-              </Card>
-            )}
+                      )
+                    })}
+                  </CardContent>
+                </Card>
+              )}
 
             {subjectiveContent.text && (
               <Card className="border-slate-200">
@@ -1108,55 +1216,60 @@ export default function GradingDetailPage() {
                 </CardContent>
               </Card>
             )}
-            {subjectiveContent.files && Array.isArray(subjectiveContent.files) && subjectiveContent.files.length > 0 && (
-              <Card className="border-slate-200">
-                <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-xs font-medium text-gray-500">附件</CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4 pt-0 space-y-2">
-                  {subjectiveContent.files.map((f: any, i: number) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm group hover:border-primary/30 transition-colors relative"
-                    >
-                      <Package className="h-4 w-4 text-gray-400 shrink-0" />
-                      <span className="text-gray-700 flex-1 min-w-0 truncate">{f.name}</span>
-                      <HoverActionBar>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => setPreviewAttachment({ name: f.name, url: f.url, type: f.type })}
-                        >
-                          <Eye className="h-3.5 w-3.5 mr-1" />
-                          预览
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => {
-                            const a = document.createElement("a")
-                            a.href = f.url
-                            a.download = f.name
-                            a.click()
-                          }}
-                        >
-                          <Download className="h-3.5 w-3.5 mr-1" />
-                          下载
-                        </Button>
-                      </HoverActionBar>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-            {!subjectiveContent.text && (!subjectiveContent.files || subjectiveContent.files.length === 0) && (
-              <div className="text-center py-12 text-gray-400 text-sm bg-gray-50/50 rounded-lg border border-dashed">
-                <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                学生未提交在线材料
-              </div>
-            )}
+            {subjectiveContent.files &&
+              Array.isArray(subjectiveContent.files) &&
+              subjectiveContent.files.length > 0 && (
+                <Card className="border-slate-200">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-xs font-medium text-gray-500">附件</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0 space-y-2">
+                    {subjectiveContent.files.map((f: any, i: number) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm group hover:border-primary/30 transition-colors relative"
+                      >
+                        <Package className="h-4 w-4 text-gray-400 shrink-0" />
+                        <span className="text-gray-700 flex-1 min-w-0 truncate">{f.name}</span>
+                        <HoverActionBar>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() =>
+                              setPreviewAttachment({ name: f.name, url: f.url, type: f.type })
+                            }
+                          >
+                            <Eye className="h-3.5 w-3.5 mr-1" />
+                            预览
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => {
+                              const a = document.createElement('a')
+                              a.href = f.url
+                              a.download = f.name
+                              a.click()
+                            }}
+                          >
+                            <Download className="h-3.5 w-3.5 mr-1" />
+                            下载
+                          </Button>
+                        </HoverActionBar>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            {!subjectiveContent.text &&
+              (!subjectiveContent.files || subjectiveContent.files.length === 0) && (
+                <div className="text-center py-12 text-gray-400 text-sm bg-gray-50/50 rounded-lg border border-dashed">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  学生未提交在线材料
+                </div>
+              )}
           </div>
         </div>
       )
@@ -1173,7 +1286,7 @@ export default function GradingDetailPage() {
         <div className="px-4 py-3 bg-white border-b flex items-center justify-between shrink-0 sticky top-0 z-10">
           <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             <Star className="h-4 w-4 text-amber-500" />
-            {isRandomDraw || isReview ? "评价点评分" : isHomework ? "评价标准" : "评价点评分"}
+            {isRandomDraw || isReview ? '评价点评分' : isHomework ? '评价标准' : '评价点评分'}
           </h2>
           <div className="text-sm text-gray-600">
             已评分：
@@ -1189,7 +1302,7 @@ export default function GradingDetailPage() {
                 key={`${ep.id}-${pointScores[ep.id] ?? 0}`}
                 evalPoint={ep}
                 score={pointScores[ep.id] ?? 0}
-                comment={pointComments[ep.id] ?? ""}
+                comment={pointComments[ep.id] ?? ''}
                 isGraded={saved}
                 onChange={handleEvalPointChange}
               />
@@ -1208,187 +1321,223 @@ export default function GradingDetailPage() {
   return (
     <>
       <div className="h-[calc(100vh-3.5rem-3rem)] flex flex-col bg-gray-50">
-      {/* 顶部导航 */}
-      <div className="bg-white border-b px-4 py-2 flex items-center gap-3 shrink-0">
-        <Button variant="ghost" size="sm" asChild className="h-8">
-          <Link href="/evaluation/scene-results">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            返回
-          </Link>
-        </Button>
-        <Separator orientation="vertical" className="h-4" />
-        <span className="text-sm text-gray-500 truncate">评分详情</span>
-      </div>
-
-      <StudentInfoCard
-        user={user}
-        result={result}
-        task={task}
-        methodName={methodName}
-        methodKey={methodKey}
-        computedTotal={computedTotal}
-        maxScore={maxScore}
-        saved={saved}
-      />
-
-      {/* 主内容 */}
-      <div className="flex-1 overflow-hidden">
-        {isExamMethod ? (
-          <div className="h-full flex flex-col">
-            {/* 顶部得分汇总 */}
-            <div className="px-4 py-3 bg-white border-b shrink-0">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-semibold text-gray-800">{methodName}评分</h2>
-                    <p className="text-xs text-gray-500">
-                      共 {examQuestions.length} 题（客观 {examQuestions.filter((q: any) => isAutoQuestion(q)).length} / 主观{" "}
-                      {examQuestions.filter((q: any) => !isAutoQuestion(q)).length}）
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
-                  <span className="text-sm text-gray-500">最终总分</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={maxScore}
-                    value={computedTotal}
-                    disabled
-                    className="w-20 text-right h-9 text-lg font-bold text-blue-600 border-transparent bg-transparent focus-visible:ring-0 px-0"
-                  />
-                  <span className="text-lg text-gray-400 font-medium">/ {maxScore}</span>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-4 text-xs">
-                <div className="flex items-center gap-1.5 bg-green-50 rounded-md px-2.5 py-1 border border-green-100">
-                  <span className="text-gray-600">客观题自动得分</span>
-                  <span className="font-semibold text-green-700">
-                    {examAutoTotal} / {examQuestions.reduce((s: number, q: any) => s + (isAutoQuestion(q) ? q.score || 0 : 0), 0)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-amber-50 rounded-md px-2.5 py-1 border border-amber-100">
-                  <span className="text-gray-600">主观题得分</span>
-                  <span className={cn("font-semibold", examSubjectiveTotal > 0 ? "text-amber-700" : "text-amber-600")}>
-                    {examSubjectiveTotal} / {examQuestions.reduce((s: number, q: any) => s + (!isAutoQuestion(q) ? q.score || 0 : 0), 0)}
-                  </span>
-                  {examSubjectiveTotal === 0 && !saved && (
-                    <Badge variant="outline" className="text-[10px] h-4 px-1 text-amber-600 border-amber-200 bg-white">
-                      待评分
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 pb-24">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                      questionFilter === "all"
-                        ? "bg-primary text-white"
-                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                    )}
-                    onClick={() => setQuestionFilter("all")}
-                  >
-                    全部题目 ({examQuestions.length})
-                  </button>
-                  <button
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                      questionFilter === "pending"
-                        ? "bg-amber-500 text-white"
-                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                    )}
-                    onClick={() => setQuestionFilter("pending")}
-                  >
-                    待评分题目 ({pendingQuestions.length})
-                  </button>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs text-gray-500 hover:text-gray-700"
-                  onClick={() => setAllExpanded((prev) => !prev)}
-                >
-                  {allExpanded ? "全部收起" : "全部展开"}
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {displayedQuestions.map((q: any, idx: number) => (
-                  <QuestionGradingCard
-                    key={`${q.id}-${pointScores[q.id] ?? 0}`}
-                    question={q}
-                    index={questionFilter === "all" ? idx : examQuestions.indexOf(q)}
-                    answer={objectiveAnswers[q.id]}
-                    score={pointScores[q.id] ?? 0}
-                    isGraded={saved}
-                    onScoreChange={handleScoreChange}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="h-full flex">
-            {renderLeftPanel()}
-            {renderRightPanel()}
-          </div>
-        )}
-      </div>
-
-      {previewAttachment && <AttachmentPreview attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} />}
-    </div>
-
-    {/* 底部操作栏 - 始终固定在视口底部 */}
-    <div className="fixed bottom-0 left-56 right-0 bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-3 z-50">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
-          <span className="text-sm text-gray-500">最终得分</span>
-          <span className={cn("text-3xl font-bold", saved || computedTotal > 0 ? "text-green-600" : "text-gray-300")}>
-            {saved || computedTotal > 0 ? computedTotal : "-"}
-          </span>
-          <span className="text-sm text-gray-400">/ {maxScore}</span>
+        {/* 顶部导航 */}
+        <div className="bg-white border-b px-4 py-2 flex items-center gap-3 shrink-0">
+          <Button variant="ghost" size="sm" asChild className="h-8">
+            <Link href="/evaluation/scene-results">
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              返回
+            </Link>
+          </Button>
+          <Separator orientation="vertical" className="h-4" />
+          <span className="text-sm text-gray-500 truncate">评分详情</span>
         </div>
-        <Separator orientation="vertical" className="h-8" />
-        <div className="flex-1 min-w-0">
-          <Textarea
-            placeholder="教师评语..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            disabled={saved}
-            rows={1}
-            className="resize-none text-sm min-h-[40px] py-2.5 border-slate-300 focus-visible:ring-primary"
+
+        <StudentInfoCard
+          user={user}
+          result={result}
+          task={task}
+          methodName={methodName}
+          methodKey={methodKey}
+          computedTotal={computedTotal}
+          maxScore={maxScore}
+          saved={saved}
+        />
+
+        {/* 主内容 */}
+        <div className="flex-1 overflow-hidden">
+          {isExamMethod ? (
+            <div className="h-full flex flex-col">
+              {/* 顶部得分汇总 */}
+              <div className="px-4 py-3 bg-white border-b shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-semibold text-gray-800">{methodName}评分</h2>
+                      <p className="text-xs text-gray-500">
+                        共 {examQuestions.length} 题（客观{' '}
+                        {examQuestions.filter((q: any) => isAutoQuestion(q)).length} / 主观{' '}
+                        {examQuestions.filter((q: any) => !isAutoQuestion(q)).length}）
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
+                    <span className="text-sm text-gray-500">最终总分</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={maxScore}
+                      value={computedTotal}
+                      disabled
+                      className="w-20 text-right h-9 text-lg font-bold text-blue-600 border-transparent bg-transparent focus-visible:ring-0 px-0"
+                    />
+                    <span className="text-lg text-gray-400 font-medium">/ {maxScore}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-xs">
+                  <div className="flex items-center gap-1.5 bg-green-50 rounded-md px-2.5 py-1 border border-green-100">
+                    <span className="text-gray-600">客观题自动得分</span>
+                    <span className="font-semibold text-green-700">
+                      {examAutoTotal} /{' '}
+                      {examQuestions.reduce(
+                        (s: number, q: any) => s + (isAutoQuestion(q) ? q.score || 0 : 0),
+                        0,
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-amber-50 rounded-md px-2.5 py-1 border border-amber-100">
+                    <span className="text-gray-600">主观题得分</span>
+                    <span
+                      className={cn(
+                        'font-semibold',
+                        examSubjectiveTotal > 0 ? 'text-amber-700' : 'text-amber-600',
+                      )}
+                    >
+                      {examSubjectiveTotal} /{' '}
+                      {examQuestions.reduce(
+                        (s: number, q: any) => s + (!isAutoQuestion(q) ? q.score || 0 : 0),
+                        0,
+                      )}
+                    </span>
+                    {examSubjectiveTotal === 0 && !saved && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] h-4 px-1 text-amber-600 border-amber-200 bg-white"
+                      >
+                        待评分
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 pb-24">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
+                        questionFilter === 'all'
+                          ? 'bg-primary text-white'
+                          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50',
+                      )}
+                      onClick={() => setQuestionFilter('all')}
+                    >
+                      全部题目 ({examQuestions.length})
+                    </button>
+                    <button
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
+                        questionFilter === 'pending'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50',
+                      )}
+                      onClick={() => setQuestionFilter('pending')}
+                    >
+                      待评分题目 ({pendingQuestions.length})
+                    </button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs text-gray-500 hover:text-gray-700"
+                    onClick={() => setAllExpanded((prev) => !prev)}
+                  >
+                    {allExpanded ? '全部收起' : '全部展开'}
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {displayedQuestions.map((q: any, idx: number) => (
+                    <QuestionGradingCard
+                      key={`${q.id}-${pointScores[q.id] ?? 0}`}
+                      question={q}
+                      index={questionFilter === 'all' ? idx : examQuestions.indexOf(q)}
+                      answer={objectiveAnswers[q.id]}
+                      score={pointScores[q.id] ?? 0}
+                      isGraded={saved}
+                      onScoreChange={handleScoreChange}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex">
+              {renderLeftPanel()}
+              {renderRightPanel()}
+            </div>
+          )}
+        </div>
+
+        {previewAttachment && (
+          <AttachmentPreview
+            attachment={previewAttachment}
+            onClose={() => setPreviewAttachment(null)}
           />
-        </div>
-        {saved && result.gradedAt && (
-          <div className="text-xs text-gray-400 shrink-0 text-right">
-            <div>评分时间</div>
-            <div>{new Date(result.gradedAt).toLocaleString("zh-CN")}</div>
-          </div>
-        )}
-        <Button variant="outline" size="sm" asChild className="shrink-0 h-9">
-          <Link href="/evaluation/scene-results">取消</Link>
-        </Button>
-        {!saved && (
-          <Button size="sm" onClick={handleSave} disabled={saving || !allScored} className="shrink-0 h-9 gap-1 px-4">
-            <Save className="h-3.5 w-3.5" />
-            {saving ? "保存中..." : "提交评分"}
-          </Button>
-        )}
-        {saved && (
-          <Button size="sm" disabled className="bg-green-600 hover:bg-green-600 shrink-0 h-9 gap-1 px-4">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            已提交
-          </Button>
         )}
       </div>
-    </div>
-  </>
-)
+
+      {/* 底部操作栏 - 始终固定在视口底部 */}
+      <div className="fixed bottom-0 left-56 right-0 bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-3 z-50">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
+            <span className="text-sm text-gray-500">最终得分</span>
+            <span
+              className={cn(
+                'text-3xl font-bold',
+                saved || computedTotal > 0 ? 'text-green-600' : 'text-gray-300',
+              )}
+            >
+              {saved || computedTotal > 0 ? computedTotal : '-'}
+            </span>
+            <span className="text-sm text-gray-400">/ {maxScore}</span>
+          </div>
+          <Separator orientation="vertical" className="h-8" />
+          <div className="flex-1 min-w-0">
+            <Textarea
+              placeholder="教师评语..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              disabled={saved}
+              rows={1}
+              className="resize-none text-sm min-h-[40px] py-2.5 border-slate-300 focus-visible:ring-primary"
+            />
+          </div>
+          {saved && result.gradedAt && (
+            <div className="text-xs text-gray-400 shrink-0 text-right">
+              <div>评分时间</div>
+              <div>{new Date(result.gradedAt).toLocaleString('zh-CN')}</div>
+            </div>
+          )}
+          <Button variant="outline" size="sm" asChild className="shrink-0 h-9">
+            <Link href="/evaluation/scene-results">取消</Link>
+          </Button>
+          {!saved && (
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving || !allScored}
+              className="shrink-0 h-9 gap-1 px-4"
+            >
+              <Save className="h-3.5 w-3.5" />
+              {saving ? '保存中...' : '提交评分'}
+            </Button>
+          )}
+          {saved && (
+            <Button
+              size="sm"
+              disabled
+              className="bg-green-600 hover:bg-green-600 shrink-0 h-9 gap-1 px-4"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              已提交
+            </Button>
+          )}
+        </div>
+      </div>
+    </>
+  )
 }

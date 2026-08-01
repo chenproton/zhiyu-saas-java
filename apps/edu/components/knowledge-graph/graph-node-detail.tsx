@@ -1,31 +1,34 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { Briefcase, FileWarning, Target, Lightbulb, BookOpen, X } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { useGraphData } from "./graph-data-context"
-import type { GraphNode } from "./types"
-import { cn } from "@/lib/utils"
-import type { PositionAbilityBinding, AbilityDomain } from "@zhiyu/shared-types"
+import { useEffect, useState } from 'react'
+import { Briefcase, FileWarning, Target, Lightbulb, BookOpen, X } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { useGraphData } from './graph-data-context'
+import type { GraphNode } from './types'
+import { cn } from '@/lib/utils'
+import type { PositionAbilityBinding, AbilityDomain } from '@zhiyu/shared-types'
 
-export type NodeLite = { id: string; type: GraphNode["type"]; label: string }
+export type NodeLite = { id: string; type: GraphNode['type']; label: string }
 
 const COURSE_TYPE_LABEL: Record<string, string> = {
-  course: "视频课程",
-  material: "课件",
-  quiz: "测验",
+  course: '视频课程',
+  material: '课件',
+  quiz: '测验',
 }
 
-export const GRAPH_TYPE_META: Record<GraphNode["type"], { label: string; color: string; icon: React.ReactNode }> = {
-  position: { label: "岗位", color: "#6366f1", icon: <Briefcase className="size-4" /> },
-  domain: { label: "能力领域", color: "#f43f5e", icon: <FileWarning className="size-4" /> },
-  unit: { label: "能力单元", color: "#10b981", icon: <Target className="size-4" /> },
-  knowledge: { label: "知识点", color: "#f59e0b", icon: <Lightbulb className="size-4" /> },
-  course: { label: "教材课件", color: "#06b6d4", icon: <BookOpen className="size-4" /> },
+export const GRAPH_TYPE_META: Record<
+  GraphNode['type'],
+  { label: string; color: string; icon: React.ReactNode }
+> = {
+  position: { label: '岗位', color: '#6366f1', icon: <Briefcase className="size-4" /> },
+  domain: { label: '能力领域', color: '#f43f5e', icon: <FileWarning className="size-4" /> },
+  unit: { label: '能力单元', color: '#10b981', icon: <Target className="size-4" /> },
+  knowledge: { label: '知识点', color: '#f59e0b', icon: <Lightbulb className="size-4" /> },
+  course: { label: '教材课件', color: '#06b6d4', icon: <BookOpen className="size-4" /> },
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  if (value === undefined || value === null || value === "") return null
+  if (value === undefined || value === null || value === '') return null
   return (
     <div className="flex gap-3 py-2 text-sm">
       <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
@@ -34,7 +37,15 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function Section({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
+function Section({
+  title,
+  count,
+  children,
+}: {
+  title: string
+  count?: number
+  children: React.ReactNode
+}) {
   return (
     <div>
       <div className="mb-2 flex items-center gap-2 text-sm font-bold">
@@ -70,8 +81,8 @@ function Chips({
             disabled={!onNavigate}
             onClick={() => onNavigate?.(it)}
             className={cn(
-              "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              onNavigate ? "cursor-pointer hover:brightness-95" : "cursor-default"
+              'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+              onNavigate ? 'cursor-pointer hover:brightness-95' : 'cursor-default',
             )}
             style={{ backgroundColor: `${color}1a`, color }}
           >
@@ -86,20 +97,24 @@ function Chips({
 
 function bindingBelongsToDomain(b: PositionAbilityBinding, d: AbilityDomain): boolean {
   if (d.bindingIds && d.bindingIds.length > 0) return d.bindingIds.includes(b.id)
-  return (b.domain || "综合能力") === d.name
+  return (b.domain || '综合能力') === d.name
 }
 
 export function GraphNodeDetail({
   node,
   onNavigate,
 }: {
-  node: Pick<GraphNode, "id" | "type" | "label">
+  node: Pick<GraphNode, 'id' | 'type' | 'label'>
   onNavigate?: (node: NodeLite) => void
 }) {
   const { position, domains, units, bindings } = useGraphData()
 
-  if (node.type === "position") {
-    const relatedDomainItems: NodeLite[] = (domains ?? []).map((d) => ({ id: d.id, type: "domain", label: d.name }))
+  if (node.type === 'position') {
+    const relatedDomainItems: NodeLite[] = (domains ?? []).map((d) => ({
+      id: d.id,
+      type: 'domain',
+      label: d.name,
+    }))
 
     const unitIdSet = new Set<string>()
     const relatedUnitItems: NodeLite[] = []
@@ -109,8 +124,8 @@ export function GraphNodeDetail({
       const abilityPoint = units?.find((u) => u.id === b.abilityPointId)
       relatedUnitItems.push({
         id: b.abilityPointId,
-        type: "unit",
-        label: abilityPoint?.name || b.domain || "未命名能力",
+        type: 'unit',
+        label: abilityPoint?.name || b.domain || '未命名能力',
       })
     })
 
@@ -129,7 +144,7 @@ export function GraphNodeDetail({
     )
   }
 
-  if (node.type === "domain") {
+  if (node.type === 'domain') {
     const dom = domains?.find((d) => d.id === node.id)
     const unitIdSet = new Set<string>()
     const relatedUnitItems: NodeLite[] = []
@@ -140,8 +155,8 @@ export function GraphNodeDetail({
       const abilityPoint = units?.find((u) => u.id === b.abilityPointId)
       relatedUnitItems.push({
         id: b.abilityPointId,
-        type: "unit",
-        label: abilityPoint?.name || b.domain || "未命名能力",
+        type: 'unit',
+        label: abilityPoint?.name || b.domain || '未命名能力',
       })
     })
     return (
@@ -162,15 +177,17 @@ export function GraphNodeDetail({
     )
   }
 
-  if (node.type === "unit") {
+  if (node.type === 'unit') {
     const unit = units?.find((u) => u.id === node.id)
     const relatedDomainItems: NodeLite[] = []
     const domainIdSet = new Set<string>()
     domains?.forEach((d) => {
-      const belongs = bindings?.some((b) => b.abilityPointId === node.id && bindingBelongsToDomain(b, d))
+      const belongs = bindings?.some(
+        (b) => b.abilityPointId === node.id && bindingBelongsToDomain(b, d),
+      )
       if (belongs && !domainIdSet.has(d.id)) {
         domainIdSet.add(d.id)
-        relatedDomainItems.push({ id: d.id, type: "domain", label: d.name })
+        relatedDomainItems.push({ id: d.id, type: 'domain', label: d.name })
       }
     })
     return (
@@ -197,7 +214,7 @@ export function GraphNodeDetail({
     )
   }
 
-  if (node.type === "knowledge") {
+  if (node.type === 'knowledge') {
     return (
       <div className="space-y-4">
         <Section title="关联能力单元" count={0}>
@@ -210,7 +227,7 @@ export function GraphNodeDetail({
     )
   }
 
-  if (node.type === "course") {
+  if (node.type === 'course') {
     return (
       <div className="space-y-4">
         <div className="divide-y">

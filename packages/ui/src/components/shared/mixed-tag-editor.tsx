@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useRef, useEffect, useLayoutEffect, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { createTagElement } from "@/lib/dom-utils"
+import { useRef, useEffect, useLayoutEffect, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
+import { createTagElement } from '@/lib/dom-utils'
 
 export interface MixedTagEditorProps {
   text: string
@@ -10,7 +10,11 @@ export interface MixedTagEditorProps {
   abilityPointIds: string[]
   knowledgePoints: { id: string; name: string }[]
   abilityPoints: { id: string; name: string }[]
-  onChange: (updates: { name?: string; knowledgePointIds?: string[]; abilityPointIds?: string[] }) => void
+  onChange: (updates: {
+    name?: string
+    knowledgePointIds?: string[]
+    abilityPointIds?: string[]
+  }) => void
   onOpenKpDialog: () => void
   onOpenAbDialog: () => void
   placeholder?: string
@@ -33,7 +37,7 @@ export function MixedTagEditor({
   onChange,
   onOpenKpDialog,
   onOpenAbDialog,
-  placeholder = "输入评价维度",
+  placeholder = '输入评价维度',
   compact = false,
 }: MixedTagEditorProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -80,33 +84,54 @@ export function MixedTagEditor({
     cursorOffsetRef.current = offset
   }
 
-  const createTagSpan = useCallback((type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
-    if (type === 'kp') {
-      const kp = knowledgePoints.find(k => k.id === id)
-      if (!kp) return null
-      const name = compact && kp.name.length > 5 ? kp.name.slice(0, 5) : kp.name
-      const span = createTagElement('kp', id, name, () => {
-        onChangeRef.current({ knowledgePointIds: kpIdsRef.current.filter(i => i !== id) })
-      }, compact ? {
-        className: 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default h-4',
-        btnClassName: 'ml-0.5 text-blue-400 hover:text-red-500 leading-none text-[9px]',
-      } : undefined)
-      if (span) span.title = kp.name
-      return span
-    } else {
-      const ab = abilityPoints.find(a => a.id === id)
-      if (!ab) return null
-      const name = compact && ab.name.length > 5 ? ab.name.slice(0, 5) : ab.name
-      const span = createTagElement('ab', id, name, () => {
-        onChangeRef.current({ abilityPointIds: abIdsRef.current.filter(i => i !== id) })
-      }, compact ? {
-        className: 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default h-4',
-        btnClassName: 'ml-0.5 text-amber-400 hover:text-red-500 leading-none text-[9px]',
-      } : undefined)
-      if (span) span.title = ab.name
-      return span
-    }
-  }, [knowledgePoints, abilityPoints, compact])
+  const createTagSpan = useCallback(
+    (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
+      if (type === 'kp') {
+        const kp = knowledgePoints.find((k) => k.id === id)
+        if (!kp) return null
+        const name = compact && kp.name.length > 5 ? kp.name.slice(0, 5) : kp.name
+        const span = createTagElement(
+          'kp',
+          id,
+          name,
+          () => {
+            onChangeRef.current({ knowledgePointIds: kpIdsRef.current.filter((i) => i !== id) })
+          },
+          compact
+            ? {
+                className:
+                  'inline-flex items-center px-1 rounded text-[9px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default h-4',
+                btnClassName: 'ml-0.5 text-blue-400 hover:text-red-500 leading-none text-[9px]',
+              }
+            : undefined,
+        )
+        if (span) span.title = kp.name
+        return span
+      } else {
+        const ab = abilityPoints.find((a) => a.id === id)
+        if (!ab) return null
+        const name = compact && ab.name.length > 5 ? ab.name.slice(0, 5) : ab.name
+        const span = createTagElement(
+          'ab',
+          id,
+          name,
+          () => {
+            onChangeRef.current({ abilityPointIds: abIdsRef.current.filter((i) => i !== id) })
+          },
+          compact
+            ? {
+                className:
+                  'inline-flex items-center px-1 rounded text-[9px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default h-4',
+                btnClassName: 'ml-0.5 text-amber-400 hover:text-red-500 leading-none text-[9px]',
+              }
+            : undefined,
+        )
+        if (span) span.title = ab.name
+        return span
+      }
+    },
+    [knowledgePoints, abilityPoints, compact],
+  )
 
   // 初始化/重置时全量渲染
   useLayoutEffect(() => {
@@ -114,11 +139,11 @@ export function MixedTagEditor({
     if (!el) return
     if (text) el.textContent = text
     else el.innerHTML = ''
-    knowledgePointIds.forEach(kpid => {
+    knowledgePointIds.forEach((kpid) => {
       const span = createTagSpan('kp', kpid)
       if (span) el.appendChild(span)
     })
-    abilityPointIds.forEach(abId => {
+    abilityPointIds.forEach((abId) => {
       const span = createTagSpan('ab', abId)
       if (span) el.appendChild(span)
     })
@@ -134,20 +159,20 @@ export function MixedTagEditor({
     const kpChanged = JSON.stringify(prevTags.current.kp) !== JSON.stringify(knowledgePointIds)
     const abChanged = JSON.stringify(prevTags.current.ab) !== JSON.stringify(abilityPointIds)
     const domText = Array.from(el.childNodes)
-      .filter(n => n.nodeType === Node.TEXT_NODE)
-      .map(n => n.textContent)
+      .filter((n) => n.nodeType === Node.TEXT_NODE)
+      .map((n) => n.textContent)
       .join('')
     const textChanged = domText !== (text || '')
     if (!kpChanged && !abChanged && !textChanged) return
 
     if (el !== document.activeElement) {
-      const newKpIds = knowledgePointIds.filter(id => !prevTags.current.kp.includes(id))
-      const newAbIds = abilityPointIds.filter(id => !prevTags.current.ab.includes(id))
-      const existingKpIds = knowledgePointIds.filter(id => prevTags.current.kp.includes(id))
-      const existingAbIds = abilityPointIds.filter(id => prevTags.current.ab.includes(id))
+      const newKpIds = knowledgePointIds.filter((id) => !prevTags.current.kp.includes(id))
+      const newAbIds = abilityPointIds.filter((id) => !prevTags.current.ab.includes(id))
+      const existingKpIds = knowledgePointIds.filter((id) => prevTags.current.kp.includes(id))
+      const existingAbIds = abilityPointIds.filter((id) => prevTags.current.ab.includes(id))
 
       // 移除已不存在的标签
-      Array.from(el.children).forEach(child => {
+      Array.from(el.children).forEach((child) => {
         const dataset = (child as HTMLElement).dataset
         if (!dataset.tag) return
         const id = dataset.id
@@ -159,11 +184,11 @@ export function MixedTagEditor({
       })
 
       // 追加新增标签
-      newKpIds.forEach(id => {
+      newKpIds.forEach((id) => {
         const span = createTagSpan('kp', id)
         if (span) el.appendChild(span)
       })
-      newAbIds.forEach(id => {
+      newAbIds.forEach((id) => {
         const span = createTagSpan('ab', id)
         if (span) el.appendChild(span)
       })
@@ -173,15 +198,15 @@ export function MixedTagEditor({
     }
 
     // 聚焦时保留光标位置，仅追加到末尾（外部新增标签场景）
-    const newKpIds = knowledgePointIds.filter(id => !prevTags.current.kp.includes(id))
-    const newAbIds = abilityPointIds.filter(id => !prevTags.current.ab.includes(id))
+    const newKpIds = knowledgePointIds.filter((id) => !prevTags.current.kp.includes(id))
+    const newAbIds = abilityPointIds.filter((id) => !prevTags.current.ab.includes(id))
     if (newKpIds.length === 0 && newAbIds.length === 0) return
 
-    newKpIds.forEach(id => {
+    newKpIds.forEach((id) => {
       const span = createTagSpan('kp', id)
       if (span) el.appendChild(span)
     })
-    newAbIds.forEach(id => {
+    newAbIds.forEach((id) => {
       const span = createTagSpan('ab', id)
       if (span) el.appendChild(span)
     })
@@ -195,7 +220,7 @@ export function MixedTagEditor({
     let newText = ''
     const newKpIds: string[] = []
     const newAbIds: string[] = []
-    el.childNodes.forEach(node => {
+    el.childNodes.forEach((node) => {
       if (node.nodeType === Node.TEXT_NODE) newText += node.textContent || ''
       else if (node.nodeType === Node.ELEMENT_NODE) {
         const dataset = (node as HTMLElement).dataset
@@ -220,12 +245,34 @@ export function MixedTagEditor({
         onInput={updateCursorOffset}
         onKeyUp={updateCursorOffset}
         onMouseUp={updateCursorOffset}
-        onCompositionStart={() => { isComposing.current = true }}
-        onCompositionEnd={() => { isComposing.current = false }}
-        onPaste={(e) => { e.preventDefault(); const pasted = e.clipboardData.getData('text/plain'); document.execCommand('insertText', false, pasted); }}
+        onCompositionStart={() => {
+          isComposing.current = true
+        }}
+        onCompositionEnd={() => {
+          isComposing.current = false
+        }}
+        onPaste={(e) => {
+          e.preventDefault()
+          const pasted = e.clipboardData.getData('text/plain')
+          document.execCommand('insertText', false, pasted)
+        }}
       />
-      <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onClick={onOpenKpDialog}>关联考查知识点</Button>
-      <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onClick={onOpenAbDialog}>关联考查能力点</Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0"
+        onClick={onOpenKpDialog}
+      >
+        关联考查知识点
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0"
+        onClick={onOpenAbDialog}
+      >
+        关联考查能力点
+      </Button>
     </div>
   )
 }

@@ -1,9 +1,25 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useState } from "react"
-import { BookOpen, Lightbulb, Award, MessageSquare, FileText, Table, Image, Link, Music, Video, Archive, Building, Wrench, AppWindow, HelpCircle } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useCallback, useEffect, useState } from 'react'
+import {
+  BookOpen,
+  Lightbulb,
+  Award,
+  MessageSquare,
+  FileText,
+  Table,
+  Image,
+  Link,
+  Music,
+  Video,
+  Archive,
+  Building,
+  Wrench,
+  AppWindow,
+  HelpCircle,
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table as ShadcnTable,
   TableBody,
@@ -11,14 +27,38 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { knowledgeApi, abilityApi, certificateLibraryApi, onSiteQuestionLibraryApi, resourceLibraryApi } from "@/lib/api"
-import type { KnowledgePoint, AbilityPoint, CertificateLibraryItem, ResourceLibraryItem, OnSiteQuestionLibraryItem } from "@/lib/types"
-import { RESOURCE_TYPE_LABELS, type ResourceKind } from "@/lib/types/library"
-import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@zhiyu/ui"
+} from '@/components/ui/table'
+import {
+  knowledgeApi,
+  abilityApi,
+  certificateLibraryApi,
+  onSiteQuestionLibraryApi,
+  resourceLibraryApi,
+} from '@/lib/api'
+import type {
+  KnowledgePoint,
+  AbilityPoint,
+  CertificateLibraryItem,
+  ResourceLibraryItem,
+  OnSiteQuestionLibraryItem,
+} from '@/lib/types'
+import { RESOURCE_TYPE_LABELS, type ResourceKind } from '@/lib/types/library'
+import { useAuth } from '@/components/auth-provider'
+import { useToast } from '@zhiyu/ui'
 
-const RESOURCE_KINDS: ResourceKind[] = ["document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
+const RESOURCE_KINDS: ResourceKind[] = [
+  'document',
+  'spreadsheet',
+  'image',
+  'link',
+  'audio',
+  'video',
+  'archive',
+  'venue',
+  'facility',
+  'software',
+  'other',
+]
 
 const RESOURCE_ICONS: Record<ResourceKind, React.ReactNode> = {
   document: <FileText className="size-4" />,
@@ -34,7 +74,7 @@ const RESOURCE_ICONS: Record<ResourceKind, React.ReactNode> = {
   other: <HelpCircle className="size-4" />,
 }
 
-type TabKey = "knowledge" | "ability" | "certificates" | "questions" | `resource:${ResourceKind}`
+type TabKey = 'knowledge' | 'ability' | 'certificates' | 'questions' | `resource:${ResourceKind}`
 
 interface TabDef {
   key: TabKey
@@ -44,9 +84,9 @@ interface TabDef {
 
 function buildTabs(): TabDef[] {
   const tabs: TabDef[] = [
-    { key: "knowledge", label: "知识点库", icon: <BookOpen className="size-4" /> },
-    { key: "ability", label: "能力点库", icon: <Lightbulb className="size-4" /> },
-    { key: "certificates", label: "证书库", icon: <Award className="size-4" /> },
+    { key: 'knowledge', label: '知识点库', icon: <BookOpen className="size-4" /> },
+    { key: 'ability', label: '能力点库', icon: <Lightbulb className="size-4" /> },
+    { key: 'certificates', label: '证书库', icon: <Award className="size-4" /> },
   ]
   for (const kind of RESOURCE_KINDS) {
     tabs.push({
@@ -55,9 +95,7 @@ function buildTabs(): TabDef[] {
       icon: RESOURCE_ICONS[kind],
     })
   }
-  tabs.push(
-    { key: "questions", label: "现场问答题库", icon: <MessageSquare className="size-4" /> },
-  )
+  tabs.push({ key: 'questions', label: '现场问答题库', icon: <MessageSquare className="size-4" /> })
   return tabs
 }
 
@@ -66,13 +104,15 @@ const TABS = buildTabs()
 export default function MyResourcesPage() {
   const { toast } = useToast()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<TabKey>("knowledge")
+  const [activeTab, setActiveTab] = useState<TabKey>('knowledge')
 
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgePoint[]>([])
   const [abilityItems, setAbilityItems] = useState<AbilityPoint[]>([])
   const [certificateItems, setCertificateItems] = useState<CertificateLibraryItem[]>([])
   const [questionItems, setQuestionItems] = useState<OnSiteQuestionLibraryItem[]>([])
-  const [resourceItemsMap, setResourceItemsMap] = useState<Record<ResourceKind, ResourceLibraryItem[]>>(() => {
+  const [resourceItemsMap, setResourceItemsMap] = useState<
+    Record<ResourceKind, ResourceLibraryItem[]>
+  >(() => {
     const m = {} as Record<ResourceKind, ResourceLibraryItem[]>
     for (const k of RESOURCE_KINDS) m[k] = []
     return m
@@ -92,8 +132,10 @@ export default function MyResourcesPage() {
       const res = await knowledgeApi.list({ creatorId: userId!, limit: 500 })
       setKnowledgeItems(res.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载知识点失败", description: err.message })
-    } finally { setLoadingKnowledge(false) }
+      toast({ variant: 'destructive', title: '加载知识点失败', description: err.message })
+    } finally {
+      setLoadingKnowledge(false)
+    }
   }, [userId, toast])
 
   const loadAbilities = useCallback(async () => {
@@ -102,8 +144,10 @@ export default function MyResourcesPage() {
       const res = await abilityApi.list({ creatorId: userId!, limit: 500 })
       setAbilityItems(res.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载能力点失败", description: err.message })
-    } finally { setLoadingAbility(false) }
+      toast({ variant: 'destructive', title: '加载能力点失败', description: err.message })
+    } finally {
+      setLoadingAbility(false)
+    }
   }, [userId, toast])
 
   const loadCertificates = useCallback(async () => {
@@ -112,8 +156,10 @@ export default function MyResourcesPage() {
       const res = await certificateLibraryApi.list({ creatorId: userId!, limit: 500 })
       setCertificateItems(res.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载证书失败", description: err.message })
-    } finally { setLoadingCertificates(false) }
+      toast({ variant: 'destructive', title: '加载证书失败', description: err.message })
+    } finally {
+      setLoadingCertificates(false)
+    }
   }, [userId, toast])
 
   const loadQuestions = useCallback(async () => {
@@ -122,49 +168,73 @@ export default function MyResourcesPage() {
       const res = await onSiteQuestionLibraryApi.list({ creatorId: userId!, limit: 500 })
       setQuestionItems(res.items)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载问答题失败", description: err.message })
-    } finally { setLoadingQuestions(false) }
+      toast({ variant: 'destructive', title: '加载问答题失败', description: err.message })
+    } finally {
+      setLoadingQuestions(false)
+    }
   }, [userId, toast])
 
-  const loadResourceKind = useCallback(async (kind: ResourceKind) => {
-    setLoadingResourceKind(kind)
-    try {
-      const res = await resourceLibraryApi.list({ uploadedBy: userId!, resourceType: kind, limit: 500 })
-      setResourceItemsMap(prev => ({ ...prev, [kind]: res.items }))
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "加载资源失败", description: err.message })
-    } finally { setLoadingResourceKind(null) }
-  }, [userId, toast])
+  const loadResourceKind = useCallback(
+    async (kind: ResourceKind) => {
+      setLoadingResourceKind(kind)
+      try {
+        const res = await resourceLibraryApi.list({
+          uploadedBy: userId!,
+          resourceType: kind,
+          limit: 500,
+        })
+        setResourceItemsMap((prev) => ({ ...prev, [kind]: res.items }))
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: '加载资源失败', description: err.message })
+      } finally {
+        setLoadingResourceKind(null)
+      }
+    },
+    [userId, toast],
+  )
 
   useEffect(() => {
     if (!userId) return
 
     // 将 tab 切换视为外部事件：在微任务回调中分发加载，避免在 effect 体内同步 setState
     Promise.resolve().then(() => {
-      if (activeTab === "knowledge" && knowledgeItems.length === 0) {
+      if (activeTab === 'knowledge' && knowledgeItems.length === 0) {
         loadKnowledge()
-      } else if (activeTab === "ability" && abilityItems.length === 0) {
+      } else if (activeTab === 'ability' && abilityItems.length === 0) {
         loadAbilities()
-      } else if (activeTab === "certificates" && certificateItems.length === 0) {
+      } else if (activeTab === 'certificates' && certificateItems.length === 0) {
         loadCertificates()
-      } else if (activeTab === "questions" && questionItems.length === 0) {
+      } else if (activeTab === 'questions' && questionItems.length === 0) {
         loadQuestions()
-      } else if (activeTab.startsWith("resource:")) {
-        const kind = activeTab.replace("resource:", "") as ResourceKind
+      } else if (activeTab.startsWith('resource:')) {
+        const kind = activeTab.replace('resource:', '') as ResourceKind
         if (resourceItemsMap[kind].length === 0) {
           loadResourceKind(kind)
         }
       }
     })
-  }, [activeTab, userId, knowledgeItems.length, abilityItems.length, certificateItems.length, questionItems.length, resourceItemsMap, loadKnowledge, loadAbilities, loadCertificates, loadQuestions, loadResourceKind])
+  }, [
+    activeTab,
+    userId,
+    knowledgeItems.length,
+    abilityItems.length,
+    certificateItems.length,
+    questionItems.length,
+    resourceItemsMap,
+    loadKnowledge,
+    loadAbilities,
+    loadCertificates,
+    loadQuestions,
+    loadResourceKind,
+  ])
 
   const countForTab = (tab: TabKey) => {
-    if (tab === "knowledge") return knowledgeItems.length
-    if (tab === "ability") return abilityItems.length
-    if (tab === "certificates") return certificateItems.length
-    if (tab === "questions") return questionItems.length
-    if (tab.startsWith("resource:")) {
-      const kind = tab.replace("resource:", "") as ResourceKind
+    if (tab === 'knowledge') return knowledgeItems.length
+    if (tab === 'ability') return abilityItems.length
+    if (tab === 'certificates') return certificateItems.length
+    if (tab === 'questions') return questionItems.length
+    if (tab.startsWith('resource:')) {
+      const kind = tab.replace('resource:', '') as ResourceKind
       return resourceItemsMap[kind].length
     }
     return 0
@@ -178,11 +248,9 @@ export default function MyResourcesPage() {
             <FileText className="size-5 text-violet-600" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-violet-700">
-              {countForTab(activeTab)}
-            </div>
+            <div className="text-2xl font-bold text-violet-700">{countForTab(activeTab)}</div>
             <div className="text-xs text-violet-500">
-              {TABS.find(t => t.key === activeTab)?.label} · 共 {countForTab(activeTab)} 项
+              {TABS.find((t) => t.key === activeTab)?.label} · 共 {countForTab(activeTab)} 项
             </div>
           </div>
         </CardContent>
@@ -195,11 +263,13 @@ export default function MyResourcesPage() {
         <CardContent>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
             <TabsList className="mb-4 flex-wrap h-auto gap-1">
-              {TABS.map(tab => (
+              {TABS.map((tab) => (
                 <TabsTrigger key={tab.key} value={tab.key} className="gap-1.5">
                   {tab.icon}
                   {tab.label}
-                  <span className="text-xs text-muted-foreground ml-0.5">{countForTab(tab.key)}</span>
+                  <span className="text-xs text-muted-foreground ml-0.5">
+                    {countForTab(tab.key)}
+                  </span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -208,12 +278,19 @@ export default function MyResourcesPage() {
               {renderTable(
                 loadingKnowledge,
                 knowledgeItems,
-                ["名称", "编码", "描述"],
+                ['名称', '编码', '描述'],
                 (item: KnowledgePoint) => (
                   <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <TableCell className="p-3"><div className="flex items-center gap-2"><BookOpen className="size-4 text-blue-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
-                    <TableCell className="p-3 text-sm text-slate-400">{item.code || "-"}</TableCell>
-                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</TableCell>
+                    <TableCell className="p-3">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="size-4 text-blue-500" />
+                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400">{item.code || '-'}</TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">
+                      {item.description || '-'}
+                    </TableCell>
                   </TableRow>
                 ),
               )}
@@ -223,12 +300,27 @@ export default function MyResourcesPage() {
               {renderTable(
                 loadingAbility,
                 abilityItems,
-                ["名称", "分类", "描述"],
+                ['名称', '分类', '描述'],
                 (item: AbilityPoint) => (
                   <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <TableCell className="p-3"><div className="flex items-center gap-2"><Lightbulb className="size-4 text-amber-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
-                    <TableCell className="p-3 text-sm text-slate-400"><span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{item.category === "knowledge" ? "知识" : item.category === "skill" ? "技能" : "素养"}</span></TableCell>
-                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</TableCell>
+                    <TableCell className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Lightbulb className="size-4 text-amber-500" />
+                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400">
+                      <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        {item.category === 'knowledge'
+                          ? '知识'
+                          : item.category === 'skill'
+                            ? '技能'
+                            : '素养'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">
+                      {item.description || '-'}
+                    </TableCell>
                   </TableRow>
                 ),
               )}
@@ -238,27 +330,43 @@ export default function MyResourcesPage() {
               {renderTable(
                 loadingCertificates,
                 certificateItems,
-                ["名称", "描述", "链接"],
+                ['名称', '描述', '链接'],
                 (item: CertificateLibraryItem) => (
                   <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <TableCell className="p-3"><div className="flex items-center gap-2"><Award className="size-4 text-emerald-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
-                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</TableCell>
-                    <TableCell className="p-3 text-sm text-slate-400 max-w-[200px] truncate">{item.url || "-"}</TableCell>
+                    <TableCell className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Award className="size-4 text-emerald-500" />
+                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">
+                      {item.description || '-'}
+                    </TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 max-w-[200px] truncate">
+                      {item.url || '-'}
+                    </TableCell>
                   </TableRow>
                 ),
               )}
             </TabsContent>
 
-            {RESOURCE_KINDS.map(kind => (
+            {RESOURCE_KINDS.map((kind) => (
               <TabsContent key={kind} value={`resource:${kind}`}>
                 {renderTable(
                   loadingResourceKind === kind,
                   resourceItemsMap[kind],
-                  ["名称", "描述"],
+                  ['名称', '描述'],
                   (item: ResourceLibraryItem) => (
                     <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                      <TableCell className="p-3"><div className="flex items-center gap-2">{RESOURCE_ICONS[kind]}<span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
-                      <TableCell className="p-3 text-sm text-slate-400 max-w-[400px] truncate">{item.description || "-"}</TableCell>
+                      <TableCell className="p-3">
+                        <div className="flex items-center gap-2">
+                          {RESOURCE_ICONS[kind]}
+                          <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="p-3 text-sm text-slate-400 max-w-[400px] truncate">
+                        {item.description || '-'}
+                      </TableCell>
                     </TableRow>
                   ),
                 )}
@@ -269,11 +377,22 @@ export default function MyResourcesPage() {
               {renderTable(
                 loadingQuestions,
                 questionItems,
-                ["题目", "题型", "分值"],
+                ['题目', '题型', '分值'],
                 (item: OnSiteQuestionLibraryItem) => (
                   <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <TableCell className="p-3"><div className="flex items-center gap-2"><MessageSquare className="size-4 text-rose-500" /><span className="text-sm font-medium text-slate-700">{item.questionText}</span></div></TableCell>
-                    <TableCell className="p-3 text-sm text-slate-400"><span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{item.questionType}</span></TableCell>
+                    <TableCell className="p-3">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="size-4 text-rose-500" />
+                        <span className="text-sm font-medium text-slate-700">
+                          {item.questionText}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400">
+                      <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        {item.questionType}
+                      </span>
+                    </TableCell>
                     <TableCell className="p-3 text-sm text-slate-400">{item.score}</TableCell>
                   </TableRow>
                 ),
@@ -298,7 +417,10 @@ function renderTable<T>(
         <TableHeader>
           <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
             {headerLabels.map((label) => (
-              <TableHead key={label} className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <TableHead
+                key={label}
+                className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+              >
                 {label}
               </TableHead>
             ))}
@@ -307,14 +429,20 @@ function renderTable<T>(
         <TableBody>
           {loading && (
             <TableRow>
-              <TableCell colSpan={headerLabels.length} className="p-12 text-center text-muted-foreground">
+              <TableCell
+                colSpan={headerLabels.length}
+                className="p-12 text-center text-muted-foreground"
+              >
                 加载中...
               </TableCell>
             </TableRow>
           )}
           {!loading && items.length === 0 && (
             <TableRow>
-              <TableCell colSpan={headerLabels.length} className="p-12 text-center text-muted-foreground">
+              <TableCell
+                colSpan={headerLabels.length}
+                className="p-12 text-center text-muted-foreground"
+              >
                 暂无数据
               </TableCell>
             </TableRow>

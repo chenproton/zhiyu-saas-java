@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo } from 'react'
 import {
   Search,
   Users,
@@ -20,12 +20,12 @@ import {
   MapPin,
   Building2,
   Globe,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -33,16 +33,16 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { cn } from "@/lib/utils"
-import type { ResourceItem } from "./atomic-modules"
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
+import type { ResourceItem } from './atomic-modules'
 
 // ==================== Types ====================
 
@@ -59,7 +59,18 @@ interface LearningResource {
   thumbnail?: string
 }
 
-type ResourceType = "document" | "spreadsheet" | "image" | "link" | "audio" | "video" | "archive" | "venue" | "facility" | "software" | "other"
+type ResourceType =
+  | 'document'
+  | 'spreadsheet'
+  | 'image'
+  | 'link'
+  | 'audio'
+  | 'video'
+  | 'archive'
+  | 'venue'
+  | 'facility'
+  | 'software'
+  | 'other'
 
 // ==================== Constants ====================
 
@@ -78,57 +89,65 @@ const resourceTypeIcons: Record<string, React.ReactNode> = {
 }
 
 const resourceTypeLabels: Record<string, string> = {
-  all: "全部",
-  document: "文档资源",
-  spreadsheet: "表格资源",
-  image: "图片资源",
-  link: "链接资源",
-  audio: "音频资源",
-  video: "视频资源",
-  archive: "压缩包资源",
-  venue: "场地资源",
-  facility: "设施设备资源",
-  software: "软件资源",
-  other: "其他资源",
+  all: '全部',
+  document: '文档资源',
+  spreadsheet: '表格资源',
+  image: '图片资源',
+  link: '链接资源',
+  audio: '音频资源',
+  video: '视频资源',
+  archive: '压缩包资源',
+  venue: '场地资源',
+  facility: '设施设备资源',
+  software: '软件资源',
+  other: '其他资源',
 }
 
 const resourceTypeColors: Record<string, string> = {
-  document: "bg-blue-50 text-blue-600 border-blue-200",
-  spreadsheet: "bg-teal-50 text-teal-600 border-teal-200",
-  image: "bg-green-50 text-green-600 border-green-200",
-  link: "bg-cyan-50 text-cyan-600 border-cyan-200",
-  audio: "bg-violet-50 text-violet-600 border-violet-200",
-  video: "bg-red-50 text-red-600 border-red-200",
-  archive: "bg-amber-50 text-amber-600 border-amber-200",
-  venue: "bg-orange-50 text-orange-600 border-orange-200",
-  facility: "bg-rose-50 text-rose-600 border-rose-200",
-  software: "bg-purple-50 text-purple-600 border-purple-200",
-  other: "bg-gray-50 text-gray-600 border-gray-200",
+  document: 'bg-blue-50 text-blue-600 border-blue-200',
+  spreadsheet: 'bg-teal-50 text-teal-600 border-teal-200',
+  image: 'bg-green-50 text-green-600 border-green-200',
+  link: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+  audio: 'bg-violet-50 text-violet-600 border-violet-200',
+  video: 'bg-red-50 text-red-600 border-red-200',
+  archive: 'bg-amber-50 text-amber-600 border-amber-200',
+  venue: 'bg-orange-50 text-orange-600 border-orange-200',
+  facility: 'bg-rose-50 text-rose-600 border-rose-200',
+  software: 'bg-purple-50 text-purple-600 border-purple-200',
+  other: 'bg-gray-50 text-gray-600 border-gray-200',
 }
 
 const resourceTypes: ResourceType[] = [
-  "document", "spreadsheet", "image", "link", "audio", "video",
-  "archive", "venue", "facility", "software", "other",
+  'document',
+  'spreadsheet',
+  'image',
+  'link',
+  'audio',
+  'video',
+  'archive',
+  'venue',
+  'facility',
+  'software',
+  'other',
 ]
 
-const allFilterTypes = ["all", ...resourceTypes]
+const allFilterTypes = ['all', ...resourceTypes]
 
-const typeToItemType: Partial<Record<ResourceType, ResourceItem["type"]>> = {
-  document: "material",
-  spreadsheet: "material",
-  image: "material",
-  link: "system",
-  audio: "granular",
-  video: "granular",
-  archive: "material",
-  venue: "simulation",
-  facility: "simulation",
-  software: "system",
-  other: "custom",
+const typeToItemType: Partial<Record<ResourceType, ResourceItem['type']>> = {
+  document: 'material',
+  spreadsheet: 'material',
+  image: 'material',
+  link: 'system',
+  audio: 'granular',
+  video: 'granular',
+  archive: 'material',
+  venue: 'simulation',
+  facility: 'simulation',
+  software: 'system',
+  other: 'custom',
 }
 
-const getItemType = (t: ResourceType): ResourceItem["type"] =>
-  typeToItemType[t] || "custom"
+const getItemType = (t: ResourceType): ResourceItem['type'] => typeToItemType[t] || 'custom'
 
 // 教学资源数据待接入资源中心，默认空状态
 const INITIAL_LEARNING_RESOURCES: LearningResource[] = []
@@ -142,33 +161,35 @@ interface TeachingResourceSelectorProps {
 
 export function TeachingResourceSelector({ items, onChange }: TeachingResourceSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [resType, setResType] = useState("all")
-  const [resSearchName, setResSearchName] = useState("")
-  const [resSearchProvider, setResSearchProvider] = useState("")
+  const [resType, setResType] = useState('all')
+  const [resSearchName, setResSearchName] = useState('')
+  const [resSearchProvider, setResSearchProvider] = useState('')
 
-  const [learningResources, setLearningResources] = useState(INITIAL_LEARNING_RESOURCES.map(r => ({ ...r })))
+  const [learningResources, setLearningResources] = useState(
+    INITIAL_LEARNING_RESOURCES.map((r) => ({ ...r })),
+  )
 
   const [selectedResIds, setSelectedResIds] = useState<string[]>([])
 
   const [showUploadTypePicker, setShowUploadTypePicker] = useState(false)
   const [showUploadRes, setShowUploadRes] = useState(false)
-  const [newResName, setNewResName] = useState("")
-  const [newResType, setNewResType] = useState<ResourceType>("document")
-  const [newResUrl, setNewResUrl] = useState("")
-  const [newResDescription, setNewResDescription] = useState("")
-  const [newResAddress, setNewResAddress] = useState("")
-  const [newResOpenTime, setNewResOpenTime] = useState("")
-  const [newResCapacity, setNewResCapacity] = useState("")
-  const [newResContact, setNewResContact] = useState("")
-  const [newResLocation, setNewResLocation] = useState("")
-  const [newResQuantity, setNewResQuantity] = useState("")
-  const [newResVersion, setNewResVersion] = useState("")
-  const [newResLicense, setNewResLicense] = useState("")
+  const [newResName, setNewResName] = useState('')
+  const [newResType, setNewResType] = useState<ResourceType>('document')
+  const [newResUrl, setNewResUrl] = useState('')
+  const [newResDescription, setNewResDescription] = useState('')
+  const [newResAddress, setNewResAddress] = useState('')
+  const [newResOpenTime, setNewResOpenTime] = useState('')
+  const [newResCapacity, setNewResCapacity] = useState('')
+  const [newResContact, setNewResContact] = useState('')
+  const [newResLocation, setNewResLocation] = useState('')
+  const [newResQuantity, setNewResQuantity] = useState('')
+  const [newResVersion, setNewResVersion] = useState('')
+  const [newResLicense, setNewResLicense] = useState('')
 
   const filteredRes = useMemo(
     () =>
       learningResources.filter((r) => {
-        const matchType = resType === "all" || r.type === resType
+        const matchType = resType === 'all' || r.type === resType
         const matchName = !resSearchName || r.name.includes(resSearchName)
         const matchProvider = !resSearchProvider || r.uploadedBy.includes(resSearchProvider)
         return matchType && matchName && matchProvider
@@ -182,9 +203,9 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
   }
 
   const resetFilters = () => {
-    setResType("all")
-    setResSearchName("")
-    setResSearchProvider("")
+    setResType('all')
+    setResSearchName('')
+    setResSearchProvider('')
   }
 
   const toggleResource = (rid: string) => {
@@ -215,17 +236,32 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
     const newId = `lr-upload-${Date.now()}`
     let extraData: Record<string, unknown> = {}
     switch (newResType) {
-      case "link":
+      case 'link':
         extraData = { url: newResUrl.trim(), description: newResDescription.trim() }
         break
-      case "venue":
-        extraData = { address: newResAddress.trim(), openTime: newResOpenTime.trim(), capacity: newResCapacity.trim(), contact: newResContact.trim(), description: newResDescription.trim() }
+      case 'venue':
+        extraData = {
+          address: newResAddress.trim(),
+          openTime: newResOpenTime.trim(),
+          capacity: newResCapacity.trim(),
+          contact: newResContact.trim(),
+          description: newResDescription.trim(),
+        }
         break
-      case "facility":
-        extraData = { location: newResLocation.trim(), quantity: newResQuantity.trim(), description: newResDescription.trim() }
+      case 'facility':
+        extraData = {
+          location: newResLocation.trim(),
+          quantity: newResQuantity.trim(),
+          description: newResDescription.trim(),
+        }
         break
-      case "software":
-        extraData = { version: newResVersion.trim(), url: newResUrl.trim(), license: newResLicense.trim(), description: newResDescription.trim() }
+      case 'software':
+        extraData = {
+          version: newResVersion.trim(),
+          url: newResUrl.trim(),
+          license: newResLicense.trim(),
+          description: newResDescription.trim(),
+        }
         break
       default:
         extraData = { description: newResDescription.trim() }
@@ -235,33 +271,33 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
       id: newId,
       name: newResName.trim(),
       type: newResType,
-      url: newResUrl.trim() || "",
+      url: newResUrl.trim() || '',
       description: newResDescription.trim(),
       knowledgePoints: [],
       uploadedAt: new Date().toISOString().slice(0, 10),
-      uploadedBy: "当前用户",
-      thumbnail: "/placeholder.svg",
+      uploadedBy: '当前用户',
+      thumbnail: '/placeholder.svg',
       ...extraData,
     } as LearningResource
     setLearningResources((prev) => [...prev, newRes])
     setSelectedResIds((prev) => [...prev, newId])
-    setNewResName("")
-    setNewResType("document")
-    setNewResUrl("")
-    setNewResDescription("")
-    setNewResAddress("")
-    setNewResOpenTime("")
-    setNewResCapacity("")
-    setNewResContact("")
-    setNewResLocation("")
-    setNewResQuantity("")
-    setNewResVersion("")
-    setNewResLicense("")
+    setNewResName('')
+    setNewResType('document')
+    setNewResUrl('')
+    setNewResDescription('')
+    setNewResAddress('')
+    setNewResOpenTime('')
+    setNewResCapacity('')
+    setNewResContact('')
+    setNewResLocation('')
+    setNewResQuantity('')
+    setNewResVersion('')
+    setNewResLicense('')
     setShowUploadRes(false)
   }
 
   const openUploadFromAll = () => {
-    if (resType === "all") {
+    if (resType === 'all') {
       setShowUploadTypePicker(true)
     } else {
       setNewResType(resType as ResourceType)
@@ -276,10 +312,20 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
           {items.map((item) => {
             const lr = learningResources.find((r) => r.id === item.id)
             return (
-              <div key={item.id} className="flex items-center justify-between border rounded-lg p-3">
+              <div
+                key={item.id}
+                className="flex items-center justify-between border rounded-lg p-3"
+              >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className={cn("w-8 h-8 rounded-lg border flex items-center justify-center shrink-0", resourceTypeColors[lr?.type || "other"] || "bg-gray-50")}>
-                    {resourceTypeIcons[lr?.type || "other"] || <Package className="h-4 w-4 text-gray-400" />}
+                  <div
+                    className={cn(
+                      'w-8 h-8 rounded-lg border flex items-center justify-center shrink-0',
+                      resourceTypeColors[lr?.type || 'other'] || 'bg-gray-50',
+                    )}
+                  >
+                    {resourceTypeIcons[lr?.type || 'other'] || (
+                      <Package className="h-4 w-4 text-gray-400" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{item.name}</p>
@@ -309,7 +355,9 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
         <DialogContent className="sm:max-w-[95vw] max-h-[95vh] h-[95vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="p-1.5 bg-primary/10 rounded"><Link2 className="h-4 w-4" /></div>
+              <div className="p-1.5 bg-primary/10 rounded">
+                <Link2 className="h-4 w-4" />
+              </div>
               配置教学资源
             </DialogTitle>
             <DialogDescription>选择或上传教学资源</DialogDescription>
@@ -322,12 +370,14 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                 {allFilterTypes.map((t) => (
                   <Button
                     key={t}
-                    variant={resType === t ? "default" : "outline"}
+                    variant={resType === t ? 'default' : 'outline'}
                     size="sm"
-                    className={cn("text-xs h-7", resType === t ? "" : "bg-white")}
+                    className={cn('text-xs h-7', resType === t ? '' : 'bg-white')}
                     onClick={() => setResType(t)}
                   >
-                    {t !== "all" && resourceTypeIcons[t] && <span className="mr-1.5">{resourceTypeIcons[t]}</span>}
+                    {t !== 'all' && resourceTypeIcons[t] && (
+                      <span className="mr-1.5">{resourceTypeIcons[t]}</span>
+                    )}
                     {resourceTypeLabels[t] || t}
                   </Button>
                 ))}
@@ -352,10 +402,12 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                   />
                 </div>
                 <Button variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />重置
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  重置
                 </Button>
                 <Button size="sm" className="h-9 text-xs" onClick={openUploadFromAll}>
-                  <Upload className="h-3.5 w-3.5 mr-1" />上传资源
+                  <Upload className="h-3.5 w-3.5 mr-1" />
+                  上传资源
                 </Button>
               </div>
             </div>
@@ -365,7 +417,8 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
               <div className="flex-1 flex flex-col min-h-0 border rounded-xl p-4 overflow-hidden">
                 <div className="flex items-center justify-between mb-3 shrink-0">
                   <p className="text-sm font-medium text-gray-700">
-                    资源列表 <span className="text-gray-400 font-normal">({filteredRes.length})</span>
+                    资源列表{' '}
+                    <span className="text-gray-400 font-normal">({filteredRes.length})</span>
                   </p>
                 </div>
                 <div className="flex-1 overflow-y-auto pr-1">
@@ -383,16 +436,23 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                           <div
                             key={r.id}
                             className={cn(
-                              "relative rounded-lg border overflow-hidden transition-all cursor-pointer group",
+                              'relative rounded-lg border overflow-hidden transition-all cursor-pointer group',
                               selected
-                                ? "border-primary shadow-sm ring-1 ring-primary/10"
-                                : "border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white",
+                                ? 'border-primary shadow-sm ring-1 ring-primary/10'
+                                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white',
                             )}
                           >
                             <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
                               <div className="w-full h-full flex items-center justify-center">
-                                <div className={cn("p-2 rounded-lg border", resourceTypeColors[r.type] || "bg-gray-50 border-gray-200")}>
-                                  {resourceTypeIcons[r.type] || <Package className="h-5 w-5 text-gray-400" />}
+                                <div
+                                  className={cn(
+                                    'p-2 rounded-lg border',
+                                    resourceTypeColors[r.type] || 'bg-gray-50 border-gray-200',
+                                  )}
+                                >
+                                  {resourceTypeIcons[r.type] || (
+                                    <Package className="h-5 w-5 text-gray-400" />
+                                  )}
                                 </div>
                               </div>
                               {selected && (
@@ -401,16 +461,24 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                                 </div>
                               )}
                               <div className="absolute bottom-1.5 left-1.5">
-                                <Badge className={cn("text-[9px] border", resourceTypeColors[r.type] || "")}>
+                                <Badge
+                                  className={cn(
+                                    'text-[9px] border',
+                                    resourceTypeColors[r.type] || '',
+                                  )}
+                                >
                                   {resourceTypeLabels[r.type] || r.type}
                                 </Badge>
                               </div>
                             </div>
                             <div className="p-2" onClick={() => toggleResource(r.id)}>
-                              <p className="text-xs font-medium text-gray-800 truncate mb-1">{r.name}</p>
+                              <p className="text-xs font-medium text-gray-800 truncate mb-1">
+                                {r.name}
+                              </p>
                               <div className="flex items-center justify-between text-[11px] text-gray-500">
                                 <span className="flex items-center gap-1 truncate max-w-[80px]">
-                                  <Users className="h-3 w-3 shrink-0" />{r.uploadedBy}
+                                  <Users className="h-3 w-3 shrink-0" />
+                                  {r.uploadedBy}
                                 </span>
                                 <span className="shrink-0">{r.uploadedAt}</span>
                               </div>
@@ -420,17 +488,24 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                                 variant="ghost"
                                 size="sm"
                                 className="h-6 text-[10px] px-1.5 flex-1 text-gray-500 hover:text-primary"
-                                onClick={(e) => { e.stopPropagation(); window.open(r.url || "#", "_blank") }}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  window.open(r.url || '#', '_blank')
+                                }}
                               >
-                                <Eye className="h-3 w-3 mr-0.5" />预览
+                                <Eye className="h-3 w-3 mr-0.5" />
+                                预览
                               </Button>
                               <Button
-                                variant={selected ? "outline" : "default"}
+                                variant={selected ? 'outline' : 'default'}
                                 size="sm"
                                 className="h-6 text-[10px] px-1.5 flex-1"
-                                onClick={(e) => { e.stopPropagation(); toggleResource(r.id) }}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleResource(r.id)
+                                }}
                               >
-                                {selected ? "取消" : "选择"}
+                                {selected ? '取消' : '选择'}
                               </Button>
                             </div>
                           </div>
@@ -445,7 +520,9 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
               <div className="w-72 shrink-0 flex flex-col min-h-0 border rounded-xl p-4 bg-gray-50/50 overflow-hidden">
                 <div className="flex items-center justify-between mb-3 shrink-0">
                   <p className="text-sm font-semibold text-gray-700">已选资源</p>
-                  <Badge variant="secondary" className="text-[10px]">{selectedResIds.length}</Badge>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {selectedResIds.length}
+                  </Badge>
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
                   {selectedResIds.length === 0 ? (
@@ -458,15 +535,32 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                       const r = learningResources.find((res) => res.id === rid)
                       if (!r) return null
                       return (
-                        <div key={rid} className="flex items-center gap-2.5 p-2.5 rounded-lg border border-primary/20 bg-white shadow-sm">
-                          <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center shrink-0", resourceTypeColors[r.type] || "bg-gray-50")}>
-                            {resourceTypeIcons[r.type] || <Package className="h-4 w-4 text-gray-400" />}
+                        <div
+                          key={rid}
+                          className="flex items-center gap-2.5 p-2.5 rounded-lg border border-primary/20 bg-white shadow-sm"
+                        >
+                          <div
+                            className={cn(
+                              'w-9 h-9 rounded-lg border flex items-center justify-center shrink-0',
+                              resourceTypeColors[r.type] || 'bg-gray-50',
+                            )}
+                          >
+                            {resourceTypeIcons[r.type] || (
+                              <Package className="h-4 w-4 text-gray-400" />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate text-gray-800">{r.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{r.uploadedBy} · {r.uploadedAt}</p>
+                            <p className="text-[10px] text-gray-400 truncate">
+                              {r.uploadedBy} · {r.uploadedAt}
+                            </p>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0" onClick={() => toggleResource(rid)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0"
+                            onClick={() => toggleResource(rid)}
+                          >
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
@@ -495,10 +589,17 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                       }}
                       className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-center"
                     >
-                      <div className={cn("p-2 rounded-lg border", resourceTypeColors[t] || "bg-gray-50 border-gray-200")}>
+                      <div
+                        className={cn(
+                          'p-2 rounded-lg border',
+                          resourceTypeColors[t] || 'bg-gray-50 border-gray-200',
+                        )}
+                      >
                         {resourceTypeIcons[t] || <Package className="h-5 w-5 text-gray-400" />}
                       </div>
-                      <span className="text-xs font-medium text-gray-700">{resourceTypeLabels[t] || t}</span>
+                      <span className="text-xs font-medium text-gray-700">
+                        {resourceTypeLabels[t] || t}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -526,65 +627,115 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                   </div>
 
                   {/* Link type: URL */}
-                  {newResType === "link" && (
+                  {newResType === 'link' && (
                     <div>
                       <Label>URL 地址</Label>
-                      <Input value={newResUrl} onChange={(e) => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+                      <Input
+                        value={newResUrl}
+                        onChange={(e) => setNewResUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="mt-1.5"
+                      />
                     </div>
                   )}
 
                   {/* Venue type */}
-                  {newResType === "venue" && (
+                  {newResType === 'venue' && (
                     <>
                       <div>
                         <Label>场地地址</Label>
-                        <Input value={newResAddress} onChange={(e) => setNewResAddress(e.target.value)} placeholder="输入场地详细地址" className="mt-1.5" />
+                        <Input
+                          value={newResAddress}
+                          onChange={(e) => setNewResAddress(e.target.value)}
+                          placeholder="输入场地详细地址"
+                          className="mt-1.5"
+                        />
                       </div>
                       <div>
                         <Label>开放时间</Label>
-                        <Input value={newResOpenTime} onChange={(e) => setNewResOpenTime(e.target.value)} placeholder="例如：周一至周五 09:00-18:00" className="mt-1.5" />
+                        <Input
+                          value={newResOpenTime}
+                          onChange={(e) => setNewResOpenTime(e.target.value)}
+                          placeholder="例如：周一至周五 09:00-18:00"
+                          className="mt-1.5"
+                        />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label>容纳人数</Label>
-                          <Input value={newResCapacity} onChange={(e) => setNewResCapacity(e.target.value)} placeholder="例如：50人" className="mt-1.5" />
+                          <Input
+                            value={newResCapacity}
+                            onChange={(e) => setNewResCapacity(e.target.value)}
+                            placeholder="例如：50人"
+                            className="mt-1.5"
+                          />
                         </div>
                         <div>
                           <Label>联系人/电话</Label>
-                          <Input value={newResContact} onChange={(e) => setNewResContact(e.target.value)} placeholder="输入联系人或电话" className="mt-1.5" />
+                          <Input
+                            value={newResContact}
+                            onChange={(e) => setNewResContact(e.target.value)}
+                            placeholder="输入联系人或电话"
+                            className="mt-1.5"
+                          />
                         </div>
                       </div>
                     </>
                   )}
 
                   {/* Facility type */}
-                  {newResType === "facility" && (
+                  {newResType === 'facility' && (
                     <>
                       <div>
                         <Label>所在位置</Label>
-                        <Input value={newResLocation} onChange={(e) => setNewResLocation(e.target.value)} placeholder="输入设施所在位置" className="mt-1.5" />
+                        <Input
+                          value={newResLocation}
+                          onChange={(e) => setNewResLocation(e.target.value)}
+                          placeholder="输入设施所在位置"
+                          className="mt-1.5"
+                        />
                       </div>
                       <div>
                         <Label>数量</Label>
-                        <Input value={newResQuantity} onChange={(e) => setNewResQuantity(e.target.value)} placeholder="输入设施数量" className="mt-1.5" />
+                        <Input
+                          value={newResQuantity}
+                          onChange={(e) => setNewResQuantity(e.target.value)}
+                          placeholder="输入设施数量"
+                          className="mt-1.5"
+                        />
                       </div>
                     </>
                   )}
 
                   {/* Software type */}
-                  {newResType === "software" && (
+                  {newResType === 'software' && (
                     <>
                       <div>
                         <Label>版本号</Label>
-                        <Input value={newResVersion} onChange={(e) => setNewResVersion(e.target.value)} placeholder="例如：v2.1.0" className="mt-1.5" />
+                        <Input
+                          value={newResVersion}
+                          onChange={(e) => setNewResVersion(e.target.value)}
+                          placeholder="例如：v2.1.0"
+                          className="mt-1.5"
+                        />
                       </div>
                       <div>
                         <Label>下载链接</Label>
-                        <Input value={newResUrl} onChange={(e) => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+                        <Input
+                          value={newResUrl}
+                          onChange={(e) => setNewResUrl(e.target.value)}
+                          placeholder="https://..."
+                          className="mt-1.5"
+                        />
                       </div>
                       <div>
                         <Label>授权信息</Label>
-                        <Input value={newResLicense} onChange={(e) => setNewResLicense(e.target.value)} placeholder="例如：MIT / 商业授权 / 校内授权" className="mt-1.5" />
+                        <Input
+                          value={newResLicense}
+                          onChange={(e) => setNewResLicense(e.target.value)}
+                          placeholder="例如：MIT / 商业授权 / 校内授权"
+                          className="mt-1.5"
+                        />
                       </div>
                     </>
                   )}
@@ -602,7 +753,15 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                   </div>
 
                   {/* File upload */}
-                  {["document", "spreadsheet", "image", "audio", "video", "archive", "other"].includes(newResType) && (
+                  {[
+                    'document',
+                    'spreadsheet',
+                    'image',
+                    'audio',
+                    'video',
+                    'archive',
+                    'other',
+                  ].includes(newResType) && (
                     <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center space-y-3">
                       <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
                         <Upload className="h-6 w-6 text-gray-400" />
@@ -615,10 +774,12 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                   )}
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowUploadRes(false)}>取消</Button>
+                  <Button variant="outline" onClick={() => setShowUploadRes(false)}>
+                    取消
+                  </Button>
                   <Button
                     onClick={handleUploadResource}
-                    disabled={!newResName.trim() || (newResType === "link" && !newResUrl.trim())}
+                    disabled={!newResName.trim() || (newResType === 'link' && !newResUrl.trim())}
                   >
                     上传并选中
                   </Button>
@@ -628,7 +789,9 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              取消
+            </Button>
             <Button onClick={handleSave}>保存</Button>
           </DialogFooter>
         </DialogContent>

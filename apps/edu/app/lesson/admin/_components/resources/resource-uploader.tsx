@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { FileText, Link2, Plus, Trash2, Upload, Video } from "lucide-react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { FileText, Link2, Plus, Trash2, Upload, Video } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -11,18 +11,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { Resource } from "@/lib/types/lesson"
-import { formatFileSize } from "@/lib/utils"
+} from '@/components/ui/select'
+import type { Resource } from '@/lib/types/lesson'
+import { formatFileSize } from '@/lib/utils'
 
 interface ResourceUploaderProps {
   resources: Resource[]
@@ -31,18 +31,22 @@ interface ResourceUploaderProps {
 }
 
 const resourceTypeConfig = {
-  document: { icon: FileText, label: "文档", color: "text-blue-500 bg-blue-50" },
-  video: { icon: Video, label: "视频", color: "text-purple-500 bg-purple-50" },
-  link: { icon: Link2, label: "链接", color: "text-green-500 bg-green-50" },
-  file: { icon: Upload, label: "文件", color: "text-orange-500 bg-orange-50" },
+  document: { icon: FileText, label: '文档', color: 'text-blue-500 bg-blue-50' },
+  video: { icon: Video, label: '视频', color: 'text-purple-500 bg-purple-50' },
+  link: { icon: Link2, label: '链接', color: 'text-green-500 bg-green-50' },
+  file: { icon: Upload, label: '文件', color: 'text-orange-500 bg-orange-50' },
 }
 
-export function ResourceUploader({ resources, onResourceAdd, onResourceDelete }: ResourceUploaderProps) {
+export function ResourceUploader({
+  resources,
+  onResourceAdd,
+  onResourceDelete,
+}: ResourceUploaderProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newResource, setNewResource] = useState<Partial<Resource>>({
-    type: "document",
-    name: "",
-    url: "",
+    type: 'document',
+    name: '',
+    url: '',
   })
 
   const handleAdd = () => {
@@ -50,10 +54,10 @@ export function ResourceUploader({ resources, onResourceAdd, onResourceDelete }:
       onResourceAdd?.({
         id: `res-${Date.now()}`,
         name: newResource.name,
-        type: newResource.type as Resource["type"],
+        type: newResource.type as Resource['type'],
         url: newResource.url,
       })
-      setNewResource({ type: "document", name: "", url: "" })
+      setNewResource({ type: 'document', name: '', url: '' })
       setIsDialogOpen(false)
     }
   }
@@ -72,7 +76,9 @@ export function ResourceUploader({ resources, onResourceAdd, onResourceDelete }:
                 key={resource.id}
                 className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50 group hover:bg-white hover:border-gray-200 transition-colors"
               >
-                <div className={`flex items-center justify-center w-9 h-9 rounded-lg ${config.color}`}>
+                <div
+                  className={`flex items-center justify-center w-9 h-9 rounded-lg ${config.color}`}
+                >
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -112,16 +118,16 @@ export function ResourceUploader({ resources, onResourceAdd, onResourceDelete }:
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>添加支撑资源</DialogTitle>
-            <DialogDescription>
-              添加学习资料、参考文档或外部链接
-            </DialogDescription>
+            <DialogDescription>添加学习资料、参考文档或外部链接</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>资源类型</Label>
               <Select
                 value={newResource.type}
-                onValueChange={(value) => setNewResource({ ...newResource, type: value as Resource["type"] })}
+                onValueChange={(value) =>
+                  setNewResource({ ...newResource, type: value as Resource['type'] })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -152,7 +158,9 @@ export function ResourceUploader({ resources, onResourceAdd, onResourceDelete }:
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              取消
+            </Button>
             <Button onClick={handleAdd} disabled={!newResource.name || !newResource.url}>
               添加
             </Button>

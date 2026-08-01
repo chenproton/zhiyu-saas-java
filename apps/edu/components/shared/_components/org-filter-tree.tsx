@@ -1,13 +1,10 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import {
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import type { Organization, OrgType } from "@/lib/types/backend"
-import { typeMetaFor } from "@/lib/org-type-icons"
+import { useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { Organization, OrgType } from '@/lib/types/backend'
+import { typeMetaFor } from '@/lib/org-type-icons'
 
 interface OrgFilterTreeProps {
   nodes: Organization[]
@@ -46,14 +43,14 @@ function TreeRow({
         tabIndex={0}
         onClick={() => onSelect(node.id)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
             onSelect(node.id)
           }
         }}
         className={cn(
-          "flex items-center gap-1.5 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors",
-          selectedId === node.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
+          'flex items-center gap-1.5 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors',
+          selectedId === node.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
         )}
         style={{ marginLeft: level * 16 }}
       >
@@ -75,7 +72,7 @@ function TreeRow({
             <span className="w-3.5" />
           )}
         </button>
-        <Icon className={cn("w-4 h-4 shrink-0", meta.color)} />
+        <Icon className={cn('w-4 h-4 shrink-0', meta.color)} />
         <span className="truncate">{node.name}</span>
       </div>
       {hasChildren && expanded && (
@@ -131,7 +128,10 @@ export function OrgFilterTree({ nodes, orgTypeMap, selectedId, onSelect }: OrgFi
   )
 }
 
-export function collectOrgSubtreeIds(orgMap: Map<string, Organization>, rootId: string): Set<string> {
+export function collectOrgSubtreeIds(
+  orgMap: Map<string, Organization>,
+  rootId: string,
+): Set<string> {
   const ids = new Set<string>()
   const collect = (node?: Organization) => {
     if (!node || ids.has(node.id)) return

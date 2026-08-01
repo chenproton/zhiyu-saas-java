@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Check,
   ChevronDown,
@@ -24,16 +24,12 @@ import {
   ArrowDownFromLine,
   ArrowUpFromLine,
   Archive,
-} from "lucide-react"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from 'lucide-react'
+import { PageHeaderCard } from '@/components/shared/page-header-card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
   DialogContent,
@@ -41,29 +37,29 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@zhiyu/ui"
-import { UserSelector } from "@/components/shared/user-selector"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
-import { useImportFlow } from "@/hooks/use-import-flow"
-import { majorApi, workflowApi, downloadBlob } from "@/lib/api"
-import type { Major, Workflow } from "@/lib/types/backend"
-import type { ImportPreviewResult, ListResponse } from "@/lib/api"
+} from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@/components/auth-provider'
+import { useToast } from '@zhiyu/ui'
+import { UserSelector } from '@/components/shared/user-selector'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
+import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
+import { useImportFlow } from '@/hooks/use-import-flow'
+import { majorApi, workflowApi, downloadBlob } from '@/lib/api'
+import type { Major, Workflow } from '@/lib/types/backend'
+import type { ImportPreviewResult, ListResponse } from '@/lib/api'
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -109,16 +105,33 @@ export interface ContentApprovalRecord {
 export interface ContentApprovalApi<T extends ContentApprovalRecord = ContentApprovalRecord> {
   list: (params?: Record<string, any>) => Promise<ListResponse<T>>
   create: (req: { targetType: string; targetId: string; workflowId?: string }) => Promise<unknown>
-  review: (id: string, req: { status: "approved" | "rejected"; comment?: string; stepIdx?: number }) => Promise<unknown>
+  review: (
+    id: string,
+    req: { status: 'approved' | 'rejected'; comment?: string; stepIdx?: number },
+  ) => Promise<unknown>
 }
 
 export interface ContentImportExportApi {
-  import: (entity: string, file: File, overwrite?: boolean) => Promise<{ created: number; failed: number; skipped?: number; errors?: string[] }>
+  import: (
+    entity: string,
+    file: File,
+    overwrite?: boolean,
+  ) => Promise<{ created: number; failed: number; skipped?: number; errors?: string[] }>
   importPreview?: (entity: string, file: File) => Promise<ImportPreviewResult>
   export: (entity: string) => Promise<Response>
-  importExcel?: (entity: string, file: File, overwrite?: boolean) => Promise<{ created: number; failed: number; skipped?: number; entity: string; errors?: string[] }>
+  importExcel?: (
+    entity: string,
+    file: File,
+    overwrite?: boolean,
+  ) => Promise<{
+    created: number
+    failed: number
+    skipped?: number
+    entity: string
+    errors?: string[]
+  }>
   importExcelPreview?: (entity: string, file: File) => Promise<ImportPreviewResult>
-  downloadTemplate?: (entity: "positions" | "scenarios" | "courses") => Promise<Response>
+  downloadTemplate?: (entity: 'positions' | 'scenarios' | 'courses') => Promise<Response>
   exportScenariosExcel?: (ids: string[]) => Promise<Response>
   exportPositionsExcel?: (ids: string[]) => Promise<Response>
   exportCoursesExcel?: (ids: string[]) => Promise<Response>
@@ -186,25 +199,45 @@ export interface ListRenderProps<T extends ContentListItem> {
   extraProps?: Record<string, any>
 }
 
-type TabType = "my" | "collab" | "public"
-type ViewMode = "list" | "group"
+type TabType = 'my' | 'collab' | 'public'
+type ViewMode = 'list' | 'group'
 
 // ─── Component ──────────────────────────────────────────────────────────
 
 export function ContentListPage<T extends ContentListItem>(config: ContentListPageConfig<T>) {
   const {
-    title, subtitle, entityLabel, addHref,
-    permissionModule, permissionResource,
-    itemApi, batchApi, approvalApi, importExportApi,
-    approvalTargetType, importEntityName, exportEntityName,
-    statusFilterOptions, mapItem, mapBatch, createPayload, createRedirectUrl, listParams,
-    renderList, extraHeaderActions, listExtraProps, children, afterLoad,
-    coBuilderField = "coCreatorIds", importExcelEntity, importTemplateUrl,
+    title,
+    subtitle,
+    entityLabel,
+    addHref,
+    permissionModule,
+    permissionResource,
+    itemApi,
+    batchApi,
+    approvalApi,
+    importExportApi,
+    approvalTargetType,
+    importEntityName,
+    exportEntityName,
+    statusFilterOptions,
+    mapItem,
+    mapBatch,
+    createPayload,
+    createRedirectUrl,
+    listParams,
+    renderList,
+    extraHeaderActions,
+    listExtraProps,
+    children,
+    afterLoad,
+    coBuilderField = 'coCreatorIds',
+    importExcelEntity,
+    importTemplateUrl,
   } = config
 
   const router = useRouter()
   const { hasPermission, user, tenantId } = useAuth()
-  const currentUserId = user?.id ?? ""
+  const currentUserId = user?.id ?? ''
   const { toast } = useToast()
 
   const [items, setItems] = useState<any[]>([])
@@ -216,9 +249,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [loadError, setLoadError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
-  const [activeTab, setActiveTab] = useState<TabType>("my")
-  const [viewMode, setViewMode] = useState<ViewMode>("list")
-  const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState<TabType>('my')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -228,17 +261,17 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
-  const [moveTargetBatchId, setMoveTargetBatchId] = useState("")
-  const [moveSelectedMajorId, setMoveSelectedMajorId] = useState("all")
-  const [batchMoveMode, setBatchMoveMode] = useState<"move" | "bindThenSubmit">("move")
+  const [moveTargetBatchId, setMoveTargetBatchId] = useState('')
+  const [moveSelectedMajorId, setMoveSelectedMajorId] = useState('all')
+  const [batchMoveMode, setBatchMoveMode] = useState<'move' | 'bindThenSubmit'>('move')
   const [batchSubmitEligibleIds, setBatchSubmitEligibleIds] = useState<string[]>([])
   const [isSubmitBatchDialogOpen, setIsSubmitBatchDialogOpen] = useState(false)
   const [submitBatchTarget, setSubmitBatchTarget] = useState<T | null>(null)
-  const [submitSelectedBatchId, setSubmitSelectedBatchId] = useState("")
-  const [submitSelectedMajorId, setSubmitSelectedMajorId] = useState("all")
+  const [submitSelectedBatchId, setSubmitSelectedBatchId] = useState('')
+  const [submitSelectedMajorId, setSubmitSelectedMajorId] = useState('all')
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
-  const [cloneRenameValue, setCloneRenameValue] = useState("")
-  const cloneRenameValueRef = useRef("")
+  const [cloneRenameValue, setCloneRenameValue] = useState('')
+  const cloneRenameValueRef = useRef('')
   const [cloneTarget, setCloneTarget] = useState<T | null>(null)
   const cloneTargetRef = useRef<T | null>(null)
   const [isRejectReasonDialogOpen, setIsRejectReasonDialogOpen] = useState(false)
@@ -246,11 +279,14 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   const [inviteTarget, setInviteTarget] = useState<T | null>(null)
   const [inviteSelectedIds, setInviteSelectedIds] = useState<string[]>([])
-  const [confirmAction, setConfirmAction] = useState<{ type: "archive" | "delete"; item: T } | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'archive' | 'delete'
+    item: T
+  } | null>(null)
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
 
-  const hasExcel = !!(importExcelEntity)
+  const hasExcel = !!importExcelEntity
 
   // 回调/mapItem 等由调用方内联传入，引用每次渲染都会变化；
   // 用 ref 持有最新值，避免 loadData 因引用变化被重复触发
@@ -290,7 +326,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     executeImport,
     handleDownloadTemplate,
   } = useImportFlow({
-    importType: (importExcelEntity || "positions") as "positions" | "scenarios" | "courses",
+    importType: (importExcelEntity || 'positions') as 'positions' | 'scenarios' | 'courses',
     entityLabel,
     templateFileName: `${entityLabel}批量导入模板.xlsx`,
     onSuccess: async () => {
@@ -302,7 +338,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   useEffect(() => {
     if (importPreview && hasExcel) {
-      (async () => { setIsImportConfirmOpen(true) })()
+      ;(async () => {
+        setIsImportConfirmOpen(true)
+      })()
     }
   }, [importPreview, hasExcel])
 
@@ -334,12 +372,12 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       let front = itemsResp.items.map((i: any) => mapItemRef.current(i, currentUserId))
       if (afterLoadRef.current) front = await afterLoadRef.current(front, mappedBatches)
 
-      const rejectedItems = front.filter((item) => item.status === "rejected")
+      const rejectedItems = front.filter((item) => item.status === 'rejected')
       if (rejectedItems.length > 0) {
         try {
           const approvalsResp = await approvalApi.list({
             targetType: approvalTargetType,
-            status: "rejected",
+            status: 'rejected',
             limit: 1000,
           })
           const reasonMap = new Map<string, string>()
@@ -350,14 +388,14 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               const h = history[i]
               const action = h.action || h.status
               const remark = h.remark || h.comment
-              if (action === "rejected" && remark) {
+              if (action === 'rejected' && remark) {
                 reasonMap.set(record.targetId, remark)
                 break
               }
             }
           }
           front = front.map((item) => {
-            if (item.status === "rejected" && reasonMap.has(item.id)) {
+            if (item.status === 'rejected' && reasonMap.has(item.id)) {
               return { ...item, rejectReason: reasonMap.get(item.id) }
             }
             return item
@@ -376,26 +414,34 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     }
   }, [tenantId, currentUserId, approvalTargetType, approvalApi, batchApi, itemApi, entityLabel])
 
-  useEffect(() => { (async () => { await loadData() })() }, [loadData, reloadKey])
+  useEffect(() => {
+    ;(async () => {
+      await loadData()
+    })()
+  }, [loadData, reloadKey])
 
   // 通过 bump reloadKey 间接触发重新加载，避免事件回调闭包直接引用 loadData
   // （loadData 内部读取 latest-ref，直接引用会形成渲染期 ref 引用链）
-  const refresh = async () => { setReloadKey((k) => k + 1) }
+  const refresh = async () => {
+    setReloadKey((k) => k + 1)
+  }
 
   const toggleBatch = (batchId: string) => {
     setExpandedBatches((prev) =>
-      prev.includes(batchId) ? prev.filter((id) => id !== batchId) : [...prev, batchId]
+      prev.includes(batchId) ? prev.filter((id) => id !== batchId) : [...prev, batchId],
     )
   }
 
   const tabFiltered = useMemo(() => {
     switch (activeTab) {
-      case "my":
+      case 'my':
         return frontItems.filter((i) => i.creatorId === currentUserId)
-      case "collab":
-        return frontItems.filter((i) => i.creatorId !== currentUserId && i.coCreatorIds?.includes(currentUserId))
+      case 'collab':
+        return frontItems.filter(
+          (i) => i.creatorId !== currentUserId && i.coCreatorIds?.includes(currentUserId),
+        )
       default:
-        return frontItems.filter((i) => i.status === "published")
+        return frontItems.filter((i) => i.status === 'published')
     }
   }, [frontItems, activeTab, currentUserId])
 
@@ -411,22 +457,22 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     if (selectedStatus) {
       result = result.filter((i) => i.status === selectedStatus)
     } else {
-      result = result.filter((i) => i.status !== "archived")
+      result = result.filter((i) => i.status !== 'archived')
     }
     return result
   }, [tabFiltered, searchQuery, selectedBatchId, selectedStatus])
 
   const stats = useMemo(() => {
     const total = filtered.length
-    const draft = filtered.filter((i) => i.status === "draft").length
-    const pending = filtered.filter((i) => i.status === "pending").length
-    const rejected = filtered.filter((i) => i.status === "rejected").length
-    const published = filtered.filter((i) => i.status === "published").length
+    const draft = filtered.filter((i) => i.status === 'draft').length
+    const pending = filtered.filter((i) => i.status === 'pending').length
+    const rejected = filtered.filter((i) => i.status === 'rejected').length
+    const published = filtered.filter((i) => i.status === 'published').length
     return { total, draft, pending, rejected, published }
   }, [filtered])
 
   const itemsByBatch = useMemo(() => {
-    if (viewMode !== "group") return null
+    if (viewMode !== 'group') return null
     const groups: Record<string, T[]> = {}
     filtered.forEach((item) => {
       if (!item.batchId) return
@@ -437,8 +483,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }, [filtered, viewMode])
 
   const uncategorized = useMemo(
-    () => filtered.filter((i) => !i.batchId && i.status === "draft"),
-    [filtered]
+    () => filtered.filter((i) => !i.batchId && i.status === 'draft'),
+    [filtered],
   )
 
   const batchMap = useMemo(() => {
@@ -448,7 +494,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }, [batches])
 
   const moveFilteredBatches = useMemo(() => {
-    if (moveSelectedMajorId === "all") return batches
+    if (moveSelectedMajorId === 'all') return batches
     return batches.filter((b) => {
       const wf = workflows.find((w) => w.id === b.workflowId)
       return wf && (wf.majorIds || []).includes(moveSelectedMajorId)
@@ -456,7 +502,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }, [batches, workflows, moveSelectedMajorId])
 
   const submitFilteredBatches = useMemo(() => {
-    if (submitSelectedMajorId === "all") return batches
+    if (submitSelectedMajorId === 'all') return batches
     return batches.filter((b) => {
       const wf = workflows.find((w) => w.id === b.workflowId)
       return wf && (wf.majorIds || []).includes(submitSelectedMajorId)
@@ -475,12 +521,16 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const selectedFront = frontItems.filter((i) => selectedIds.includes(i.id))
   const hasSelected = selectedIds.length > 0
 
-  const canBatchSubmit = selectedFront.some((i) => i.status === "draft" || i.status === "rejected")
-  const canBatchWithdraw = selectedFront.some((i) => i.status === "pending")
-  const canBatchUnpublish = selectedFront.some((i) => i.status === "published")
-  const canBatchPublish = selectedFront.some((i) => i.status === "approved")
-  const canBatchDelete = selectedFront.some((i) => i.status === "draft" || i.status === "rejected" || i.status === "archived")
-  const canBatchArchive = selectedFront.some((i) => ["draft", "rejected", "approved", "published"].includes(i.status))
+  const canBatchSubmit = selectedFront.some((i) => i.status === 'draft' || i.status === 'rejected')
+  const canBatchWithdraw = selectedFront.some((i) => i.status === 'pending')
+  const canBatchUnpublish = selectedFront.some((i) => i.status === 'published')
+  const canBatchPublish = selectedFront.some((i) => i.status === 'approved')
+  const canBatchDelete = selectedFront.some(
+    (i) => i.status === 'draft' || i.status === 'rejected' || i.status === 'archived',
+  )
+  const canBatchArchive = selectedFront.some((i) =>
+    ['draft', 'rejected', 'approved', 'published'].includes(i.status),
+  )
 
   // ─── Handlers ──────────────────────────────────────────────────────────
 
@@ -502,9 +552,17 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         }
         try {
           await itemApi.submit(id)
-          await approvalApi.create({ targetType: approvalTargetType, targetId: id, workflowId: batch.workflowId })
+          await approvalApi.create({
+            targetType: approvalTargetType,
+            targetId: id,
+            workflowId: batch.workflowId,
+          })
         } catch (err: any) {
-          toast({ variant: "destructive", title: "提交审批失败", description: err.message || "请稍后重试" })
+          toast({
+            variant: 'destructive',
+            title: '提交审批失败',
+            description: err.message || '请稍后重试',
+          })
         }
       }
     } finally {
@@ -516,15 +574,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     const eligibleItems = selectedIds
       .map((id) => {
         const item = frontItems.find((i) => i.id === id)
-        return item && (item.status === "draft" || item.status === "rejected") ? item : null
+        return item && (item.status === 'draft' || item.status === 'rejected') ? item : null
       })
       .filter(Boolean) as T[]
     const hasUnbound = eligibleItems.some((item) => !item.batchId)
     if (hasUnbound) {
-      setBatchMoveMode("bindThenSubmit")
+      setBatchMoveMode('bindThenSubmit')
       setBatchSubmitEligibleIds(eligibleItems.map((item) => item.id))
-      setMoveSelectedMajorId("all")
-      setMoveTargetBatchId("")
+      setMoveSelectedMajorId('all')
+      setMoveTargetBatchId('')
       setIsBatchMoveDialogOpen(true)
       return
     }
@@ -536,8 +594,16 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const handleBatchWithdrawApproval = async () => {
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
-      if (item && item.status === "pending") {
-        try { await itemApi.withdraw(id) } catch (err: any) { toast({ variant: "destructive", title: "撤回审批失败", description: err.message || "请稍后重试" }) }
+      if (item && item.status === 'pending') {
+        try {
+          await itemApi.withdraw(id)
+        } catch (err: any) {
+          toast({
+            variant: 'destructive',
+            title: '撤回审批失败',
+            description: err.message || '请稍后重试',
+          })
+        }
       }
     }
     setSelectedIds([])
@@ -547,8 +613,16 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const handleBatchUnpublish = async () => {
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
-      if (item && item.status === "published") {
-        try { await itemApi.unpublish(id) } catch (err: any) { toast({ variant: "destructive", title: "取消发布失败", description: err.message || "请稍后重试" }) }
+      if (item && item.status === 'published') {
+        try {
+          await itemApi.unpublish(id)
+        } catch (err: any) {
+          toast({
+            variant: 'destructive',
+            title: '取消发布失败',
+            description: err.message || '请稍后重试',
+          })
+        }
       }
     }
     setSelectedIds([])
@@ -558,8 +632,16 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const handleBatchPublish = async () => {
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
-      if (item && item.status === "approved") {
-        try { await itemApi.publish(id) } catch (err: any) { toast({ variant: "destructive", title: "发布失败", description: err.message || "请稍后重试" }) }
+      if (item && item.status === 'approved') {
+        try {
+          await itemApi.publish(id)
+        } catch (err: any) {
+          toast({
+            variant: 'destructive',
+            title: '发布失败',
+            description: err.message || '请稍后重试',
+          })
+        }
       }
     }
     setSelectedIds([])
@@ -568,28 +650,40 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   const handleBatchDelete = async () => {
     for (const id of selectedIds) {
-      try { await itemApi.delete(id) } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message || "请稍后重试" }) }
+      try {
+        await itemApi.delete(id)
+      } catch (err: any) {
+        toast({
+          variant: 'destructive',
+          title: '删除失败',
+          description: err.message || '请稍后重试',
+        })
+      }
     }
     setSelectedIds([])
     await refresh()
   }
 
   const handleArchive = async (item: T) => {
-    setConfirmAction({ type: "archive", item })
+    setConfirmAction({ type: 'archive', item })
   }
 
   const handleConfirmAction = async () => {
     if (!confirmAction) return
     const { type, item } = confirmAction
     try {
-      if (type === "archive") {
+      if (type === 'archive') {
         await itemApi.archive(item.id)
       } else {
         await itemApi.delete(item.id)
       }
       await refresh()
     } catch (err: any) {
-      toast({ variant: "destructive", title: type === "archive" ? "归档失败" : "删除失败", description: err.message || "请稍后重试" })
+      toast({
+        variant: 'destructive',
+        title: type === 'archive' ? '归档失败' : '删除失败',
+        description: err.message || '请稍后重试',
+      })
     } finally {
       setConfirmAction(null)
     }
@@ -598,8 +692,16 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const handleBatchArchive = async () => {
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
-      if (item && ["draft", "rejected", "approved", "published"].includes(item.status)) {
-        try { await itemApi.archive(item.id) } catch (err: any) { toast({ variant: "destructive", title: "归档失败", description: err.message || "请稍后重试" }) }
+      if (item && ['draft', 'rejected', 'approved', 'published'].includes(item.status)) {
+        try {
+          await itemApi.archive(item.id)
+        } catch (err: any) {
+          toast({
+            variant: 'destructive',
+            title: '归档失败',
+            description: err.message || '请稍后重试',
+          })
+        }
       }
     }
     setSelectedIds([])
@@ -627,7 +729,11 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       }
     }
     if (failed > 0) {
-      toast({ variant: "destructive", title: "批量克隆失败", description: `${failed} 项克隆失败，请稍后重试` })
+      toast({
+        variant: 'destructive',
+        title: '批量克隆失败',
+        description: `${failed} 项克隆失败，请稍后重试`,
+      })
     }
     setSelectedIds([])
     await refresh()
@@ -637,52 +743,75 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     try {
       const res = await importExportApi.export(exportEntityName)
       const blob = await res.blob()
-      const disposition = res.headers.get("content-disposition")
-      downloadBlob(blob, disposition?.match(/filename="?([^";]+)"?/)?.[1] || `${exportEntityName}-export.csv`)
+      const disposition = res.headers.get('content-disposition')
+      downloadBlob(
+        blob,
+        disposition?.match(/filename="?([^";]+)"?/)?.[1] || `${exportEntityName}-export.csv`,
+      )
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
+      toast({ variant: 'destructive', title: '导出失败', description: err.message || '导出失败' })
     }
     setIsExportDialogOpen(false)
     setSelectedIds([])
   }
 
   const handleBatchMove = () => {
-    setBatchMoveMode("move")
+    setBatchMoveMode('move')
     setBatchSubmitEligibleIds([])
-    setMoveSelectedMajorId("all")
-    setMoveTargetBatchId("")
+    setMoveSelectedMajorId('all')
+    setMoveTargetBatchId('')
     setIsBatchMoveDialogOpen(true)
   }
 
   const handleConfirmMove = async () => {
     if (!moveTargetBatchId) return
-    if (batchMoveMode === "bindThenSubmit") {
-      const submitItems = batchSubmitEligibleIds.map((id) => {
-        const item = frontItems.find((i) => i.id === id)
-        return { id, batchId: item?.batchId || moveTargetBatchId }
-      }).filter((it) => it.batchId)
-      const unboundIds = submitItems.filter((it) => {
-        const item = frontItems.find((i) => i.id === it.id)
-        return item && !item.batchId
-      }).map((it) => it.id)
+    if (batchMoveMode === 'bindThenSubmit') {
+      const submitItems = batchSubmitEligibleIds
+        .map((id) => {
+          const item = frontItems.find((i) => i.id === id)
+          return { id, batchId: item?.batchId || moveTargetBatchId }
+        })
+        .filter((it) => it.batchId)
+      const unboundIds = submitItems
+        .filter((it) => {
+          const item = frontItems.find((i) => i.id === it.id)
+          return item && !item.batchId
+        })
+        .map((it) => it.id)
       for (const id of unboundIds) {
-        try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (err: any) { toast({ variant: "destructive", title: "绑定批次失败", description: err.message || "请稍后重试" }) }
+        try {
+          await itemApi.update(id, { batchId: moveTargetBatchId })
+        } catch (err: any) {
+          toast({
+            variant: 'destructive',
+            title: '绑定批次失败',
+            description: err.message || '请稍后重试',
+          })
+        }
       }
       await doBatchSubmit(submitItems)
       setBatchSubmitEligibleIds([])
-      setBatchMoveMode("move")
+      setBatchMoveMode('move')
       setIsBatchMoveDialogOpen(false)
-      setMoveTargetBatchId("")
+      setMoveTargetBatchId('')
       setSelectedIds([])
       await refresh()
       return
     }
     for (const id of selectedIds) {
-      try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (err: any) { toast({ variant: "destructive", title: "调整批次失败", description: err.message || "请稍后重试" }) }
+      try {
+        await itemApi.update(id, { batchId: moveTargetBatchId })
+      } catch (err: any) {
+        toast({
+          variant: 'destructive',
+          title: '调整批次失败',
+          description: err.message || '请稍后重试',
+        })
+      }
     }
     setSelectedIds([])
     setIsBatchMoveDialogOpen(false)
-    setMoveTargetBatchId("")
+    setMoveTargetBatchId('')
     await refresh()
   }
 
@@ -700,7 +829,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     if (!target) return
     const name = cloneRenameValueRef.current?.trim()
     if (!name) {
-      toast({ variant: "destructive", title: "克隆失败", description: "请输入克隆名称" })
+      toast({ variant: 'destructive', title: '克隆失败', description: '请输入克隆名称' })
       return
     }
     try {
@@ -716,37 +845,49 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setIsCloneRenameDialogOpen(false)
       cloneTargetRef.current = null
       setCloneTarget(null)
-      cloneRenameValueRef.current = ""
-      setCloneRenameValue("")
+      cloneRenameValueRef.current = ''
+      setCloneRenameValue('')
       await refresh()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "克隆失败", description: err.message || "请稍后重试" })
+      toast({ variant: 'destructive', title: '克隆失败', description: err.message || '请稍后重试' })
     }
   }
 
   const handleDelete = async (item: T) => {
-    setConfirmAction({ type: "delete", item })
+    setConfirmAction({ type: 'delete', item })
   }
 
   const handleSubmitApproval = async (item: T) => {
     if (!item.batchId) {
       setSubmitBatchTarget(item)
-      setSubmitSelectedMajorId("all")
-      setSubmitSelectedBatchId("")
+      setSubmitSelectedMajorId('all')
+      setSubmitSelectedBatchId('')
       setIsSubmitBatchDialogOpen(true)
       return
     }
     const batch = batches.find((b) => b.id === item.batchId)
     if (!batch) {
-      toast({ variant: "destructive", title: "提示", description: `该${entityLabel}未关联批次，无法提交审批` })
+      toast({
+        variant: 'destructive',
+        title: '提示',
+        description: `该${entityLabel}未关联批次，无法提交审批`,
+      })
       return
     }
     try {
       await itemApi.submit(item.id)
-      await approvalApi.create({ targetType: approvalTargetType, targetId: item.id, workflowId: batch.workflowId })
+      await approvalApi.create({
+        targetType: approvalTargetType,
+        targetId: item.id,
+        workflowId: batch.workflowId,
+      })
       await refresh()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "提交失败", description: err.message || "提交审批失败，请稍后重试" })
+      toast({
+        variant: 'destructive',
+        title: '提交失败',
+        description: err.message || '提交审批失败，请稍后重试',
+      })
     }
   }
 
@@ -757,27 +898,58 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     try {
       await itemApi.update(submitBatchTarget.id, { batchId: submitSelectedBatchId })
       await itemApi.submit(submitBatchTarget.id)
-      await approvalApi.create({ targetType: approvalTargetType, targetId: submitBatchTarget.id, workflowId: batch.workflowId })
+      await approvalApi.create({
+        targetType: approvalTargetType,
+        targetId: submitBatchTarget.id,
+        workflowId: batch.workflowId,
+      })
       setIsSubmitBatchDialogOpen(false)
       setSubmitBatchTarget(null)
-      setSubmitSelectedBatchId("")
-      setSubmitSelectedMajorId("all")
+      setSubmitSelectedBatchId('')
+      setSubmitSelectedMajorId('all')
       await refresh()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "提交失败", description: err.message || "提交审批失败，请稍后重试" })
+      toast({
+        variant: 'destructive',
+        title: '提交失败',
+        description: err.message || '提交审批失败，请稍后重试',
+      })
     }
   }
 
   const handleWithdrawApproval = async (item: T) => {
-    try { await itemApi.withdraw(item.id); await refresh() } catch (err: any) { toast({ variant: "destructive", title: "撤回审批失败", description: err.message || "请稍后重试" }) }
+    try {
+      await itemApi.withdraw(item.id)
+      await refresh()
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: '撤回审批失败',
+        description: err.message || '请稍后重试',
+      })
+    }
   }
 
   const handlePublish = async (item: T) => {
-    try { await itemApi.publish(item.id); await refresh() } catch (err: any) { toast({ variant: "destructive", title: "发布失败", description: err.message || "请稍后重试" }) }
+    try {
+      await itemApi.publish(item.id)
+      await refresh()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '发布失败', description: err.message || '请稍后重试' })
+    }
   }
 
   const handleUnpublish = async (item: T) => {
-    try { await itemApi.unpublish(item.id); await refresh() } catch (err: any) { toast({ variant: "destructive", title: "取消发布失败", description: err.message || "请稍后重试" }) }
+    try {
+      await itemApi.unpublish(item.id)
+      await refresh()
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: '取消发布失败',
+        description: err.message || '请稍后重试',
+      })
+    }
   }
 
   const handleInviteCoBuild = (item: T) => {
@@ -794,7 +966,11 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setInviteTarget(null)
       await refresh()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "调整共建人失败，请稍后重试" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err.message || '调整共建人失败，请稍后重试',
+      })
     }
   }
 
@@ -804,7 +980,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleResetFilters = () => {
-    setSearchQuery("")
+    setSearchQuery('')
     setSelectedBatchId(null)
     setSelectedStatus(null)
   }
@@ -828,7 +1004,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       }
       await doCsvImport(false)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
+      toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
       setCsvImporting(false)
     }
   }
@@ -838,15 +1014,18 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     setCsvImporting(true)
     try {
       const result = await importExportApi.import(importEntityName, importFiles[0], overwrite)
-      const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ""
-      toast({ title: "导入完成", description: `成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}` })
+      const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ''
+      toast({
+        title: '导入完成',
+        description: `成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}`,
+      })
       setImportFiles([])
       setImportPreview(null)
       setIsImportDialogOpen(false)
       setIsImportConfirmOpen(false)
       await refresh()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
+      toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
     } finally {
       setCsvImporting(false)
     }
@@ -873,7 +1052,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         : `${addHref}?id=${newItem.id}&new=true`
       router.push(url)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "创建失败", description: err.message || "创建失败" })
+      toast({ variant: 'destructive', title: '创建失败', description: err.message || '创建失败' })
     }
   }
 
@@ -900,7 +1079,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     onMajorChange: (value: string) => void,
     selectedBatchId: string,
     onBatchChange: (id: string) => void,
-    filteredBatches: ContentBatch[]
+    filteredBatches: ContentBatch[],
   ) => (
     <div className="space-y-4">
       {majors.length > 0 && (
@@ -917,9 +1096,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       )}
       <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
         {filteredBatches.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-gray-500 text-center">
-            暂无批次分组
-          </div>
+          <div className="px-4 py-6 text-sm text-gray-500 text-center">暂无批次分组</div>
         ) : (
           filteredBatches.map((batch) => {
             const selected = selectedBatchId === batch.id
@@ -928,17 +1105,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                 key={batch.id}
                 onClick={() => onBatchChange(batch.id)}
                 className={cn(
-                  "px-4 py-3 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-center justify-between gap-3",
-                  selected && "bg-primary/5"
+                  'px-4 py-3 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-center justify-between gap-3',
+                  selected && 'bg-primary/5',
                 )}
               >
                 <div className="min-w-0">
-                  <div className={cn("font-medium text-sm", selected && "text-primary")}>
+                  <div className={cn('font-medium text-sm', selected && 'text-primary')}>
                     {batch.name}
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    ID: {batch.id.slice(0, 8)}
-                  </div>
+                  <div className="text-xs text-gray-400 mt-1">ID: {batch.id.slice(0, 8)}</div>
                 </div>
                 {selected && <Check className="h-4 w-4 text-primary shrink-0" />}
               </div>
@@ -970,37 +1145,37 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           </>
         }
         stats={
-          activeTab !== "public"
+          activeTab !== 'public'
             ? [
                 {
                   label: `${entityLabel}总数`,
                   value: stats.total,
                   icon: <SlidersHorizontal className="h-3 w-3 text-blue-500" />,
-                  iconClassName: "bg-blue-50",
+                  iconClassName: 'bg-blue-50',
                 },
                 {
-                  label: "未提交",
+                  label: '未提交',
                   value: stats.draft,
                   icon: <RotateCcw className="h-3 w-3 text-gray-500" />,
-                  iconClassName: "bg-gray-50",
+                  iconClassName: 'bg-gray-50',
                 },
                 {
-                  label: "审批中",
+                  label: '审批中',
                   value: stats.pending,
                   icon: <GitBranch className="h-3 w-3 text-yellow-500" />,
-                  iconClassName: "bg-yellow-50",
+                  iconClassName: 'bg-yellow-50',
                 },
                 {
-                  label: "已驳回",
+                  label: '已驳回',
                   value: stats.rejected,
                   icon: <X className="h-3 w-3 text-red-500" />,
-                  iconClassName: "bg-red-50",
+                  iconClassName: 'bg-red-50',
                 },
                 {
-                  label: "已发布",
+                  label: '已发布',
                   value: stats.published,
                   icon: <ArrowUpFromLine className="h-3 w-3 text-green-500" />,
-                  iconClassName: "bg-green-50",
+                  iconClassName: 'bg-green-50',
                 },
               ]
             : undefined
@@ -1008,15 +1183,32 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       />
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as TabType); setSelectedIds([]); setSelectedBatchId(null) }}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => {
+            setActiveTab(v as TabType)
+            setSelectedIds([])
+            setSelectedBatchId(null)
+          }}
+        >
           <TabsList className="grid w-full max-w-md grid-cols-3">
-            <TabsTrigger value="my" className="w-full">我的{entityLabel}</TabsTrigger>
-            <TabsTrigger value="collab" className="w-full">共建{entityLabel}</TabsTrigger>
-            <TabsTrigger value="public" className="w-full">公共{entityLabel}</TabsTrigger>
+            <TabsTrigger value="my" className="w-full">
+              我的{entityLabel}
+            </TabsTrigger>
+            <TabsTrigger value="collab" className="w-full">
+              共建{entityLabel}
+            </TabsTrigger>
+            <TabsTrigger value="public" className="w-full">
+              公共{entityLabel}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as ViewMode)}>
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(v) => v && setViewMode(v as ViewMode)}
+        >
           <ToggleGroupItem value="list" aria-label="资源列表">
             <List className="h-4 w-4" />
             <span className="ml-1.5">资源列表</span>
@@ -1043,7 +1235,10 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={selectedBatchId || "__all__"} onValueChange={(v) => setSelectedBatchId(v === "__all__" ? null : v)}>
+              <Select
+                value={selectedBatchId || '__all__'}
+                onValueChange={(v) => setSelectedBatchId(v === '__all__' ? null : v)}
+              >
                 <SelectTrigger className="h-9 text-sm w-44">
                   <SelectValue placeholder="按批次筛选" />
                 </SelectTrigger>
@@ -1059,14 +1254,19 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={selectedStatus || "__all__"} onValueChange={(v) => setSelectedStatus(v === "__all__" ? null : v)}>
+              <Select
+                value={selectedStatus || '__all__'}
+                onValueChange={(v) => setSelectedStatus(v === '__all__' ? null : v)}
+              >
                 <SelectTrigger className="h-9 text-sm w-36">
                   <SelectValue placeholder="按状态筛选" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">全部状态</SelectItem>
                   {statusFilterOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1078,83 +1278,147 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           </div>
 
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-            <span className={cn("text-xs mr-1", hasSelected ? "text-slate-700 font-medium" : "text-slate-400")}>
+            <span
+              className={cn(
+                'text-xs mr-1',
+                hasSelected ? 'text-slate-700 font-medium' : 'text-slate-400',
+              )}
+            >
               {hasSelected ? `已选择 ${selectedIds.length} 项：` : `请选择${entityLabel}：`}
             </span>
-            {hasPermission(permissionModule, permissionResource, "submit_approval") && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected || !canBatchSubmit} onClick={handleBatchSubmitApproval}>
+            {hasPermission(permissionModule, permissionResource, 'submit_approval') && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!hasSelected || !canBatchSubmit}
+                onClick={handleBatchSubmitApproval}
+              >
                 <Send className="mr-1 h-3 w-3" />
                 提交审批
               </Button>
             )}
-            {hasPermission(permissionModule, permissionResource, "withdraw_approval") && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected || !canBatchWithdraw} onClick={handleBatchWithdrawApproval}>
+            {hasPermission(permissionModule, permissionResource, 'withdraw_approval') && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!hasSelected || !canBatchWithdraw}
+                onClick={handleBatchWithdrawApproval}
+              >
                 <Undo2 className="mr-1 h-3 w-3" />
                 撤回审批
               </Button>
             )}
-            {hasPermission(permissionModule, permissionResource, "publish") && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected || !canBatchPublish} onClick={handleBatchPublish}>
+            {hasPermission(permissionModule, permissionResource, 'publish') && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!hasSelected || !canBatchPublish}
+                onClick={handleBatchPublish}
+              >
                 <ArrowUpFromLine className="mr-1 h-3 w-3" />
                 发布
               </Button>
             )}
-            {hasPermission(permissionModule, permissionResource, "unpublish") && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected || !canBatchUnpublish} onClick={handleBatchUnpublish}>
+            {hasPermission(permissionModule, permissionResource, 'unpublish') && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!hasSelected || !canBatchUnpublish}
+                onClick={handleBatchUnpublish}
+              >
                 <ArrowDownFromLine className="mr-1 h-3 w-3" />
                 取消发布
               </Button>
             )}
-            <Button variant="outline" size="sm" className="h-8 text-xs text-purple-600 hover:text-purple-700" disabled={!hasSelected || !canBatchArchive} onClick={handleBatchArchive}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs text-purple-600 hover:text-purple-700"
+              disabled={!hasSelected || !canBatchArchive}
+              onClick={handleBatchArchive}
+            >
               <Archive className="mr-1 h-3 w-3" />
               归档
             </Button>
-            {hasPermission(permissionModule, permissionResource, "delete") && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected || !canBatchDelete} onClick={handleBatchDelete}>
+            {hasPermission(permissionModule, permissionResource, 'delete') && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!hasSelected || !canBatchDelete}
+                onClick={handleBatchDelete}
+              >
                 <Trash2 className="mr-1 h-3 w-3" />
                 删除
               </Button>
             )}
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={handleBatchClone}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={!hasSelected}
+              onClick={handleBatchClone}
+            >
               <Copy className="mr-1 h-3 w-3" />
               克隆
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={handleBatchMove}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={!hasSelected}
+              onClick={handleBatchMove}
+            >
               <FolderKanban className="mr-1 h-3 w-3" />
               调整批次分组
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={async () => {
-              const exportFn = importExcelEntity === "scenarios"
-                ? importExportApi.exportScenariosExcel
-                : importExcelEntity === "positions"
-                ? importExportApi.exportPositionsExcel
-                : importExcelEntity === "courses"
-                ? importExportApi.exportCoursesExcel
-                : importExcelEntity === "granular-courses"
-                ? importExportApi.exportGranularCoursesExcel
-                : importExcelEntity === "question-banks"
-                ? importExportApi.exportQuestionBanksExcel
-                : importExcelEntity === "exams"
-                ? importExportApi.exportExamsExcel
-                : null
-              if (exportFn) {
-                try {
-                  const res = await exportFn(selectedIds)
-                  downloadBlob(await res.blob(), `${entityLabel}导出.xlsx`)
-                } catch (err: any) {
-                  toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={!hasSelected}
+              onClick={async () => {
+                const exportFn =
+                  importExcelEntity === 'scenarios'
+                    ? importExportApi.exportScenariosExcel
+                    : importExcelEntity === 'positions'
+                      ? importExportApi.exportPositionsExcel
+                      : importExcelEntity === 'courses'
+                        ? importExportApi.exportCoursesExcel
+                        : importExcelEntity === 'granular-courses'
+                          ? importExportApi.exportGranularCoursesExcel
+                          : importExcelEntity === 'question-banks'
+                            ? importExportApi.exportQuestionBanksExcel
+                            : importExcelEntity === 'exams'
+                              ? importExportApi.exportExamsExcel
+                              : null
+                if (exportFn) {
+                  try {
+                    const res = await exportFn(selectedIds)
+                    downloadBlob(await res.blob(), `${entityLabel}导出.xlsx`)
+                  } catch (err: any) {
+                    toast({
+                      variant: 'destructive',
+                      title: '导出失败',
+                      description: err.message || '导出失败',
+                    })
+                  }
+                } else {
+                  handleBatchExport()
                 }
-              } else {
-                handleBatchExport()
-              }
-            }}>
+              }}
+            >
               <Download className="mr-1 h-3 w-3" />
               导出
             </Button>
           </div>
         </CardContent>
 
-        {!isLoading && filtered.length > 0 && viewMode !== "group" && (
+        {!isLoading && filtered.length > 0 && viewMode !== 'group' && (
           <CardContent className="pt-0">
             {/* eslint-disable-next-line react-hooks/refs */}
             {renderList(listProps)}
@@ -1163,7 +1427,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       </Card>
 
       {/* eslint-disable react-hooks/refs */}
-      {!isLoading && filtered.length > 0 && viewMode === "group" && itemsByBatch && (
+      {!isLoading && filtered.length > 0 && viewMode === 'group' && itemsByBatch && (
         <div className="space-y-4">
           {Object.entries(itemsByBatch).map(([batchId, batchItems]) => {
             const batch = batches.find((b) => b.id === batchId)
@@ -1171,7 +1435,11 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             const isExpanded = expandedBatches.includes(batchId)
 
             return (
-              <Collapsible key={batchId} open={isExpanded} onOpenChange={() => toggleBatch(batchId)}>
+              <Collapsible
+                key={batchId}
+                open={isExpanded}
+                onOpenChange={() => toggleBatch(batchId)}
+              >
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                   <CollapsibleTrigger asChild>
                     <div className="flex cursor-pointer items-center justify-between px-4 py-3 transition-colors hover:bg-slate-50">
@@ -1207,9 +1475,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                   </Badge>
                 </div>
               </div>
-              <div className="p-4 pt-0">
-                {renderList({ ...listProps, items: uncategorized })}
-              </div>
+              <div className="p-4 pt-0">{renderList({ ...listProps, items: uncategorized })}</div>
             </div>
           )}
         </div>
@@ -1275,7 +1541,13 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           downloading={isDownloading}
         />
       ) : (
-        <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) setImportFiles([]) }}>
+        <Dialog
+          open={isImportDialogOpen}
+          onOpenChange={(open) => {
+            setIsImportDialogOpen(open)
+            if (!open) setImportFiles([])
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>导入{entityLabel}</DialogTitle>
@@ -1288,7 +1560,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  {importFiles.length > 0 ? importFiles[0].name : "点击选择 CSV 文件"}
+                  {importFiles.length > 0 ? importFiles[0].name : '点击选择 CSV 文件'}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -1300,9 +1572,20 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportFiles([]) }}>取消</Button>
-              <Button onClick={handleCsvImportClick} disabled={importFiles.length === 0 || csvImporting}>
-                {csvImporting ? "导入中..." : "开始导入"}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsImportDialogOpen(false)
+                  setImportFiles([])
+                }}
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleCsvImportClick}
+                disabled={importFiles.length === 0 || csvImporting}
+              >
+                {csvImporting ? '导入中...' : '开始导入'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1329,13 +1612,13 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         <ConfirmDialog
           open={!!confirmAction}
           onOpenChange={(open) => !open && setConfirmAction(null)}
-          title={confirmAction.type === "archive" ? "确认归档" : "确认删除"}
+          title={confirmAction.type === 'archive' ? '确认归档' : '确认删除'}
           description={
-            confirmAction.type === "archive"
+            confirmAction.type === 'archive'
               ? `确定要归档${entityLabel}「${confirmAction.item.name}」吗？`
               : `确定要删除${entityLabel}「${confirmAction.item.name}」吗？`
           }
-          variant={confirmAction.type === "delete" ? "destructive" : "default"}
+          variant={confirmAction.type === 'delete' ? 'destructive' : 'default'}
           onConfirm={handleConfirmAction}
         />
       )}
@@ -1345,14 +1628,16 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>
-              {batchMoveMode === "bindThenSubmit" ? "选择批次并提交审批" : "调整批次分组"}
+              {batchMoveMode === 'bindThenSubmit' ? '选择批次并提交审批' : '调整批次分组'}
             </DialogTitle>
             <DialogDescription>
-              {batchMoveMode === "bindThenSubmit"
-                ? `已选中 ${batchSubmitEligibleIds.length} 个可提交的${entityLabel}，其中 ${batchSubmitEligibleIds.filter((id) => {
-                    const item = frontItems.find((i) => i.id === id)
-                    return item && !item.batchId
-                  }).length} 个未关联批次，请选择批次分组后自动提交审批`
+              {batchMoveMode === 'bindThenSubmit'
+                ? `已选中 ${batchSubmitEligibleIds.length} 个可提交的${entityLabel}，其中 ${
+                    batchSubmitEligibleIds.filter((id) => {
+                      const item = frontItems.find((i) => i.id === id)
+                      return item && !item.batchId
+                    }).length
+                  } 个未关联批次，请选择批次分组后自动提交审批`
                 : `将选中的 ${selectedIds.length} 个${entityLabel}移动到指定批次`}
             </DialogDescription>
           </DialogHeader>
@@ -1362,13 +1647,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               setMoveSelectedMajorId,
               moveTargetBatchId,
               setMoveTargetBatchId,
-              moveFilteredBatches
+              moveFilteredBatches,
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>
+              取消
+            </Button>
             <Button onClick={handleConfirmMove} disabled={!moveTargetBatchId}>
-              {batchMoveMode === "bindThenSubmit" ? "确认并提交审批" : "确认移动"}
+              {batchMoveMode === 'bindThenSubmit' ? '确认并提交审批' : '确认移动'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1389,12 +1676,16 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               setSubmitSelectedMajorId,
               submitSelectedBatchId,
               setSubmitSelectedBatchId,
-              submitFilteredBatches
+              submitFilteredBatches,
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSubmitBatchDialogOpen(false)}>取消</Button>
-            <Button onClick={handleConfirmSubmitBatch} disabled={!submitSelectedBatchId}>确认并提交审批</Button>
+            <Button variant="outline" onClick={() => setIsSubmitBatchDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleConfirmSubmitBatch} disabled={!submitSelectedBatchId}>
+              确认并提交审批
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1409,12 +1700,17 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           <div className="py-4">
             <Input
               value={cloneRenameValue}
-              onChange={(e) => { setCloneRenameValue(e.target.value); cloneRenameValueRef.current = e.target.value }}
+              onChange={(e) => {
+                setCloneRenameValue(e.target.value)
+                cloneRenameValueRef.current = e.target.value
+              }}
               placeholder="输入新名称"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>
+              取消
+            </Button>
             <Button onClick={handleConfirmClone}>确认克隆</Button>
           </DialogFooter>
         </DialogContent>
@@ -1431,11 +1727,14 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           </DialogHeader>
           <div className="py-4">
             <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 whitespace-pre-wrap">
-              {rejectReasonItem?.rejectReason || `审批人已驳回此${entityLabel}的提交申请，请根据审批意见修改后重新提交。`}
+              {rejectReasonItem?.rejectReason ||
+                `审批人已驳回此${entityLabel}的提交申请，请根据审批意见修改后重新提交。`}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRejectReasonDialogOpen(false)}>关闭</Button>
+            <Button variant="outline" onClick={() => setIsRejectReasonDialogOpen(false)}>
+              关闭
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1445,9 +1744,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>调整共建人</DialogTitle>
-            <DialogDescription>
-              选择参与共建「{inviteTarget?.name}」的用户
-            </DialogDescription>
+            <DialogDescription>选择参与共建「{inviteTarget?.name}」的用户</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <UserSelector
@@ -1460,7 +1757,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
+              取消
+            </Button>
             <Button onClick={handleInviteConfirm}>保存</Button>
           </DialogFooter>
         </DialogContent>

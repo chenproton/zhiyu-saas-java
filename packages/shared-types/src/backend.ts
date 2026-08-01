@@ -20,7 +20,7 @@ export interface Tenant {
   educationLevel?: string
   educationNature?: string
   adminIds: string[]
-  status: "active" | "inactive"
+  status: 'active' | 'inactive'
   createdAt: string
   updatedAt: string
 }
@@ -42,7 +42,7 @@ export interface OrgType {
   id: string
   tenantId: string
   name: string
-  category: "internal" | "business" | "external"
+  category: 'internal' | 'business' | 'external'
   description?: string
   isDefault?: boolean
   createdAt: string
@@ -53,7 +53,7 @@ export interface UserExtensionField {
   tenantId: string
   fieldKey: string
   fieldName: string
-  fieldType: "text" | "number" | "date" | "select"
+  fieldType: 'text' | 'number' | 'date' | 'select'
   isEnabled: boolean
   isRequired: boolean
   applicableRoleCodes: string[]
@@ -158,7 +158,7 @@ export interface ResourceCode {
   code: string
   name: string
   description?: string
-  type: "public" | "custom"
+  type: 'public' | 'custom'
   createdAt: string
 }
 
@@ -177,7 +177,7 @@ export interface WorkflowStep {
   name: string
   order: number
   approverIds: string[]
-  approvalMode: "any" | "all"
+  approvalMode: 'any' | 'all'
 }
 
 export interface Workflow {
@@ -189,7 +189,7 @@ export interface Workflow {
   steps: WorkflowStep[]
   majorIds: string[]
   usageCount: number
-  status: "active" | "inactive"
+  status: 'active' | 'inactive'
   createdAt: string
 }
 
@@ -210,7 +210,7 @@ export interface ApprovalRecord {
   targetId: string
   workflowId?: string
   currentStepIdx: number
-  status: "pending" | "approved" | "rejected"
+  status: 'pending' | 'approved' | 'rejected'
   submitterId: string
   history: ApprovalHistoryItem[]
   createdAt: string

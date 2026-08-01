@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import { useMemo, useState } from "react"
-import Link from "next/link"
-import { Trophy, ChevronLeft, ChevronRight, Heart } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import type { CareerPosition } from "@/lib/types"
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { Trophy, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import type { CareerPosition } from '@/lib/types'
 
 interface RankingListProps {
   positions?: CareerPosition[]
@@ -13,19 +13,23 @@ interface RankingListProps {
 
 const ROWS_PER_PAGE = 5
 
-const cardPalette = { bg: "bg-blue-50/70", hover: "hover:bg-blue-100/60", border: "border-blue-100" }
+const cardPalette = {
+  bg: 'bg-blue-50/70',
+  hover: 'hover:bg-blue-100/60',
+  border: 'border-blue-100',
+}
 
 export function RankingList({ positions = [], industryMap }: RankingListProps) {
   const [page, setPage] = useState(0)
 
   const ranked = useMemo(() => {
     return [...positions]
-      .filter((p) => p.status === "published")
+      .filter((p) => p.status === 'published')
       .sort((a, b) => {
         const countA = a.favoriteCount ?? 0
         const countB = b.favoriteCount ?? 0
         if (countB !== countA) return countB - countA
-        return a.name.localeCompare(b.name, "zh-CN")
+        return a.name.localeCompare(b.name, 'zh-CN')
       })
   }, [positions])
 
@@ -39,21 +43,24 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
   const col2 = pageItems.filter((_, i) => i % 2 === 1)
 
   const getRankStyle = (rank: number) => {
-    if (rank === 1) return "bg-gradient-to-br from-amber-400 to-yellow-300 text-white shadow-lg shadow-amber-400/30"
-    if (rank === 2) return "bg-gradient-to-br from-slate-400 to-slate-300 text-white shadow-lg shadow-slate-400/30"
-    if (rank === 3) return "bg-gradient-to-br from-amber-600 to-amber-500 text-white shadow-lg shadow-amber-500/30"
-    return "bg-slate-100 text-slate-400"
+    if (rank === 1)
+      return 'bg-gradient-to-br from-amber-400 to-yellow-300 text-white shadow-lg shadow-amber-400/30'
+    if (rank === 2)
+      return 'bg-gradient-to-br from-slate-400 to-slate-300 text-white shadow-lg shadow-slate-400/30'
+    if (rank === 3)
+      return 'bg-gradient-to-br from-amber-600 to-amber-500 text-white shadow-lg shadow-amber-500/30'
+    return 'bg-slate-100 text-slate-400'
   }
 
   const formatCount = (n?: number) => {
-    if (!n || n <= 0) return "0"
+    if (!n || n <= 0) return '0'
     if (n >= 10000) return `${(n / 10000).toFixed(1)}w`
     return n.toLocaleString()
   }
 
   const categoryFor = (pos: CareerPosition) => {
     if (pos.industryId && industryMap?.get(pos.industryId)) return industryMap.get(pos.industryId)!
-    return pos.positionType === "enterprise" ? "企业" : "教学"
+    return pos.positionType === 'enterprise' ? '企业' : '教学'
   }
 
   const renderItem = (pos: CareerPosition, idx: number) => {
@@ -63,7 +70,9 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
     const palette = cardPalette
     return (
       <Link key={pos.id} href={`/job/student/${pos.id}`}>
-        <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}>
+        <div
+          className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}
+        >
           <span
             className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${getRankStyle(globalRank)}`}
           >
@@ -75,7 +84,8 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
                 {display}
               </span>
               <span className="text-[11px] text-rose-500 flex items-center gap-0.5 whitespace-nowrap font-medium">
-                <Heart className={`w-3 h-3 ${count > 0 ? "fill-current" : ""}`} /> {formatCount(count)}
+                <Heart className={`w-3 h-3 ${count > 0 ? 'fill-current' : ''}`} />{' '}
+                {formatCount(count)}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] overflow-hidden">
@@ -88,7 +98,10 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
                 </span>
               ) : (
                 pos.majorNames?.filter(Boolean).map((m: string) => (
-                  <span key={m} className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0">
+                  <span
+                    key={m}
+                    className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0"
+                  >
                     {m}
                   </span>
                 ))
@@ -131,7 +144,9 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </Button>
-          <span className="text-xs text-slate-400 min-w-[40px] text-center font-medium">{page + 1} / {totalPages}</span>
+          <span className="text-xs text-slate-400 min-w-[40px] text-center font-medium">
+            {page + 1} / {totalPages}
+          </span>
           <Button
             variant="outline"
             size="icon"
@@ -145,8 +160,12 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
       </div>
 
       <div className="flex gap-4">
-        <div className="flex-1 flex flex-col gap-1">{col1.map((pos, i) => renderItem(pos, i * 2))}</div>
-        <div className="flex-1 flex flex-col gap-1">{col2.map((pos, i) => renderItem(pos, i * 2 + 1))}</div>
+        <div className="flex-1 flex flex-col gap-1">
+          {col1.map((pos, i) => renderItem(pos, i * 2))}
+        </div>
+        <div className="flex-1 flex flex-col gap-1">
+          {col2.map((pos, i) => renderItem(pos, i * 2 + 1))}
+        </div>
       </div>
     </div>
   )

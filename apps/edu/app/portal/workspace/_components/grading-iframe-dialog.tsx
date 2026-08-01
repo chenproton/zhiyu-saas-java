@@ -1,16 +1,16 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { GraduationCap } from "lucide-react"
+import { useState } from 'react'
+import { GraduationCap } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 
-import { SCENE_PLATFORM_URL } from "@/lib/external-links"
+import { SCENE_PLATFORM_URL } from '@/lib/external-links'
 
 const GRADING_URL = `${SCENE_PLATFORM_URL}/approvals/grading`
 
@@ -38,7 +38,7 @@ export function GradingIframeDialog({
             前往评分
           </DialogTitle>
           <DialogDescription>
-            {sessionTitle} · {className || "全部学生"}
+            {sessionTitle} · {className || '全部学生'}
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 min-h-0 relative">

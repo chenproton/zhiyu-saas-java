@@ -1,29 +1,29 @@
-"use client"
+'use client'
 
-import { ArrowRight, Save, X } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { ArrowRight, Save, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { MultiSelect } from "@/components/ui/multi-select"
-import { industryApi, positionApi, sceneBatchApi, scenarioApi, userManagementApi } from "@/lib/api"
-import type { Scenario } from "@/lib/types/scene"
-import type { CareerPosition } from "@/lib/types/job"
-import type { Industry } from "@/lib/types/backend"
-import type { SceneBatch } from "@/lib/types/scene"
-import type { User } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { MultiSelect } from '@/components/ui/multi-select'
+import { industryApi, positionApi, sceneBatchApi, scenarioApi, userManagementApi } from '@/lib/api'
+import type { Scenario } from '@/lib/types/scene'
+import type { CareerPosition } from '@/lib/types/job'
+import type { Industry } from '@/lib/types/backend'
+import type { SceneBatch } from '@/lib/types/scene'
+import type { User } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
 
 interface ScenarioFormProps {
   scenarioId?: string
@@ -42,17 +42,17 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
   const [batches, setBatches] = useState<SceneBatch[]>([])
   const [users, setUsers] = useState<User[]>([])
 
-  const [name, setName] = useState("")
+  const [name, setName] = useState('')
 
-  const [version, setVersion] = useState("v1.0")
+  const [version, setVersion] = useState('v1.0')
   const [difficulty, setDifficulty] = useState<number>(3)
-  const [background, setBackground] = useState("")
-  const [deliveryGoal, setDeliveryGoal] = useState("")
-  const [careerPositionId, setCareerPositionId] = useState(defaultPositionId || "")
-  const [batchId, setBatchId] = useState(defaultBatchId || "")
+  const [background, setBackground] = useState('')
+  const [deliveryGoal, setDeliveryGoal] = useState('')
+  const [careerPositionId, setCareerPositionId] = useState(defaultPositionId || '')
+  const [batchId, setBatchId] = useState(defaultBatchId || '')
   const [industryIds, setIndustryIds] = useState<string[]>([])
   const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
-  const [originalStatus, setOriginalStatus] = useState<string>("draft")
+  const [originalStatus, setOriginalStatus] = useState<string>('draft')
 
   const isEdit = Boolean(scenarioId)
 
@@ -70,7 +70,11 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
         setBatches(batchRes.items)
         setUsers(userRes.items)
       } catch (err: any) {
-        toast({ variant: "destructive", title: "加载选项失败", description: err.message || "请刷新重试" })
+        toast({
+          variant: 'destructive',
+          title: '加载选项失败',
+          description: err.message || '请刷新重试',
+        })
       }
     }
     loadOptions()
@@ -85,15 +89,19 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
         setName(s.name)
         setVersion(s.version)
         setDifficulty(s.difficulty)
-        setBackground(s.background || "")
-        setDeliveryGoal(s.deliveryGoal || "")
-        setCareerPositionId(s.careerPositionId || "")
-        setBatchId(s.batchId || "")
+        setBackground(s.background || '')
+        setDeliveryGoal(s.deliveryGoal || '')
+        setCareerPositionId(s.careerPositionId || '')
+        setBatchId(s.batchId || '')
         setIndustryIds(s.industryIds || [])
         setCoBuilderIds(s.coBuilderIds || [])
-        setOriginalStatus(s.status || "draft")
+        setOriginalStatus(s.status || 'draft')
       } catch (err: any) {
-        toast({ variant: "destructive", title: "加载场景失败", description: err.message || "请稍后重试" })
+        toast({
+          variant: 'destructive',
+          title: '加载场景失败',
+          description: err.message || '请稍后重试',
+        })
       } finally {
         setLoading(false)
       }
@@ -102,13 +110,13 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
 
   const selectedPosition = useMemo(
     () => positions.find((p) => p.id === careerPositionId),
-    [positions, careerPositionId]
+    [positions, careerPositionId],
   )
 
   const groupedPositions = useMemo(() => {
     const groups = new Map<string, CareerPosition[]>()
     positions.forEach((p) => {
-      const key = p.industryId || "未分类"
+      const key = p.industryId || '未分类'
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(p)
     })
@@ -117,7 +125,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
 
   const handleSave = async (redirectToTasks = false) => {
     if (!name.trim()) {
-      toast({ variant: "destructive", title: "请填写完整", description: "场景名称不能为空" })
+      toast({ variant: 'destructive', title: '请填写完整', description: '场景名称不能为空' })
       return
     }
     setSaving(true)
@@ -136,24 +144,24 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
       let id = scenarioId
       if (isEdit && id) {
         await scenarioApi.update(id, payload)
-        if (originalStatus !== "draft") {
+        if (originalStatus !== 'draft') {
           await scenarioApi.saveDraft(id)
-          setOriginalStatus("draft")
+          setOriginalStatus('draft')
         }
       } else {
         const created = await scenarioApi.create({
           ...payload,
-          status: "draft",
-          creatorId: "",
-        } as Omit<Scenario, "id" | "createdAt" | "updatedAt">)
+          status: 'draft',
+          creatorId: '',
+        } as Omit<Scenario, 'id' | 'createdAt' | 'updatedAt'>)
         id = created.id
       }
-      toast({ title: isEdit ? "保存成功" : "创建成功" })
+      toast({ title: isEdit ? '保存成功' : '创建成功' })
       if (redirectToTasks && id) {
         router.push(`/scene/scenarios/${id}/edit/tasks`)
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "请稍后重试" })
+      toast({ variant: 'destructive', title: '保存失败', description: err.message || '请稍后重试' })
     } finally {
       setSaving(false)
     }
@@ -161,7 +169,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
 
   const toggleCoBuilder = (userId: string) => {
     setCoBuilderIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
     )
   }
 
@@ -177,7 +185,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/scene")}>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/scene')}>
             <X className="h-4 w-4 mr-2" />
             取消
           </Button>
@@ -200,7 +208,9 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
       </div>
 
       <div>
-        <h1 className="text-2xl font-semibold text-gray-800">{isEdit ? "编辑实践场景" : "新建实践场景"}</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">
+          {isEdit ? '编辑实践场景' : '新建实践场景'}
+        </h1>
         <p className="text-sm text-gray-500 mt-1">填写场景基础信息，完成后进入任务链配置</p>
       </div>
 
@@ -208,8 +218,15 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
         <CardContent className="pt-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">场景名称 <span className="text-red-500">*</span></Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="请输入场景名称" />
+              <Label htmlFor="name">
+                场景名称 <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="请输入场景名称"
+              />
             </div>
           </div>
 
@@ -235,7 +252,10 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
             </div>
             <div className="grid gap-2">
               <Label htmlFor="batch">所属批次</Label>
-              <Select value={batchId || "__none__"} onValueChange={(v) => setBatchId(v === "__none__" ? "" : v)}>
+              <Select
+                value={batchId || '__none__'}
+                onValueChange={(v) => setBatchId(v === '__none__' ? '' : v)}
+              >
                 <SelectTrigger id="batch">
                   <SelectValue placeholder="请选择批次" />
                 </SelectTrigger>
@@ -255,7 +275,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
             <div className="grid gap-2">
               <Label htmlFor="industry">所属行业</Label>
               <MultiSelect
-                options={industries.map(ind => ({ label: ind.name, value: ind.id }))}
+                options={industries.map((ind) => ({ label: ind.name, value: ind.id }))}
                 value={industryIds}
                 onChange={setIndustryIds}
                 placeholder="请选择行业"
@@ -263,7 +283,10 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
             </div>
             <div className="grid gap-2">
               <Label htmlFor="position">目标岗位</Label>
-              <Select value={careerPositionId || "__none__"} onValueChange={(v) => setCareerPositionId(v === "__none__" ? "" : v)}>
+              <Select
+                value={careerPositionId || '__none__'}
+                onValueChange={(v) => setCareerPositionId(v === '__none__' ? '' : v)}
+              >
                 <SelectTrigger id="position">
                   <SelectValue placeholder="请选择岗位" />
                 </SelectTrigger>
@@ -315,7 +338,10 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
                 <p className="text-sm text-gray-400">暂无用户数据</p>
               ) : (
                 users.map((u) => (
-                  <label key={u.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
+                  <label
+                    key={u.id}
+                    className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded"
+                  >
                     <input
                       type="checkbox"
                       checked={coBuilderIds.includes(u.id)}

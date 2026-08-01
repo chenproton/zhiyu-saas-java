@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
+import { useEffect, useState } from 'react'
 import {
   Bell,
   Calendar,
@@ -24,97 +24,120 @@ import {
   MessageSquare,
   User,
   Loader2,
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Bar, BarChart, Pie, PieChart as RePieChart, Cell, XAxis, YAxis, CartesianGrid, Area, AreaChart } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalApi } from "@/lib/api"
-import type { WorkspaceDashboard } from "@/lib/types"
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Bar,
+  BarChart,
+  Pie,
+  PieChart as RePieChart,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Area,
+  AreaChart,
+} from 'recharts'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalApi } from '@/lib/api'
+import type { WorkspaceDashboard } from '@/lib/types'
 
-import { DashboardTab } from "./_components/dashboard-tab"
-import { LearningTab } from "./_components/learning-tab"
-import { CareerTab } from "./_components/career-tab"
-import { AssessmentTab } from "./_components/assessment-tab"
-import { PortraitTab } from "./_components/portrait-tab"
-import { CommunityTab } from "./_components/community-tab"
-import { ProfileTab } from "./_components/profile-tab"
-import { MyScheduleTab } from "./_components/my-schedule-tab"
+import { DashboardTab } from './_components/dashboard-tab'
+import { LearningTab } from './_components/learning-tab'
+import { CareerTab } from './_components/career-tab'
+import { AssessmentTab } from './_components/assessment-tab'
+import { PortraitTab } from './_components/portrait-tab'
+import { CommunityTab } from './_components/community-tab'
+import { ProfileTab } from './_components/profile-tab'
+import { MyScheduleTab } from './_components/my-schedule-tab'
 
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import type { PrepAssociationRecord } from "./_data/mock-teacher-data"
-import { TeacherDashboardTab } from "./_components/teacher-dashboard-tab"
-import { TeacherCoursesTab } from "./_components/teacher-courses-tab"
-import { TeacherPortraitsTab } from "./_components/teacher-portraits-tab"
-import { TeacherProfileTab } from "./_components/teacher-profile-tab"
-import { SchoolAdminOverviewTab } from "./_components/school-admin-overview-tab"
-import { SchoolAdminResourcesTab } from "./_components/school-admin-resources-tab"
-import { SchoolAdminApprovalsTab } from "./_components/school-admin-approvals-tab"
-import { SchoolAdminPersonnelTab } from "./_components/school-admin-personnel-tab"
+import type { PrepAssociationRecord } from './_data/mock-teacher-data'
+import { TeacherDashboardTab } from './_components/teacher-dashboard-tab'
+import { TeacherCoursesTab } from './_components/teacher-courses-tab'
+import { TeacherPortraitsTab } from './_components/teacher-portraits-tab'
+import { TeacherProfileTab } from './_components/teacher-profile-tab'
+import { SchoolAdminOverviewTab } from './_components/school-admin-overview-tab'
+import { SchoolAdminResourcesTab } from './_components/school-admin-resources-tab'
+import { SchoolAdminApprovalsTab } from './_components/school-admin-approvals-tab'
+import { SchoolAdminPersonnelTab } from './_components/school-admin-personnel-tab'
 
 // 不同身份的服务台内容（非学生角色保留原展示）
 const roleConfigs = {
   teacher: {
-    welcomeText: "欢迎回来，张老师。",
+    welcomeText: '欢迎回来，张老师。',
     announcements: [
-      { id: 1, title: "关于2026年春季学期教学安排的通知", date: "2026-04-10", isNew: true, type: "重要" },
-      { id: 2, title: "教务系统升级维护公告", date: "2026-04-08", isNew: true, type: "通知" },
-      { id: 3, title: "关于开展教学质量评估工作的通知", date: "2026-04-05", isNew: false, type: "通知" },
-      { id: 4, title: "2026年度教师培训计划发布", date: "2026-04-01", isNew: false, type: "公告" },
+      {
+        id: 1,
+        title: '关于2026年春季学期教学安排的通知',
+        date: '2026-04-10',
+        isNew: true,
+        type: '重要',
+      },
+      { id: 2, title: '教务系统升级维护公告', date: '2026-04-08', isNew: true, type: '通知' },
+      {
+        id: 3,
+        title: '关于开展教学质量评估工作的通知',
+        date: '2026-04-05',
+        isNew: false,
+        type: '通知',
+      },
+      { id: 4, title: '2026年度教师培训计划发布', date: '2026-04-01', isNew: false, type: '公告' },
     ],
     todoItems: [
-      { id: 1, title: "审批学生请假申请", count: 3, urgent: true, color: "#ef4444" },
-      { id: 2, title: "批改作业", count: 28, urgent: false, color: "#3b82f6" },
-      { id: 3, title: "课程资源审核", count: 5, urgent: false, color: "#10b981" },
-      { id: 4, title: "填写教学日志", count: 1, urgent: true, color: "#f59e0b" },
+      { id: 1, title: '审批学生请假申请', count: 3, urgent: true, color: '#ef4444' },
+      { id: 2, title: '批改作业', count: 28, urgent: false, color: '#3b82f6' },
+      { id: 3, title: '课程资源审核', count: 5, urgent: false, color: '#10b981' },
+      { id: 4, title: '填写教学日志', count: 1, urgent: true, color: '#f59e0b' },
     ],
     calendarEvents: [
-      { id: 1, title: "教研组会议", time: "09:00", date: 14, color: "bg-primary" },
-      { id: 2, title: "课程设计评审", time: "14:00", date: 14, color: "bg-amber-500" },
-      { id: 3, title: "学生答疑", time: "10:00", date: 15, color: "bg-emerald-500" },
+      { id: 1, title: '教研组会议', time: '09:00', date: 14, color: 'bg-primary' },
+      { id: 2, title: '课程设计评审', time: '14:00', date: 14, color: 'bg-amber-500' },
+      { id: 3, title: '学生答疑', time: '10:00', date: 15, color: 'bg-emerald-500' },
     ],
-    stats: { label1: "授课课程", value1: 8, label2: "学生人数", value2: 256 },
+    stats: { label1: '授课课程', value1: 8, label2: '学生人数', value2: 256 },
   },
   enterprise: {
-    welcomeText: "欢迎回来，企业用户。",
+    welcomeText: '欢迎回来，企业用户。',
     announcements: [
-      { id: 1, title: "校企合作项目申报通知", date: "2026-04-10", isNew: true, type: "重要" },
-      { id: 2, title: "实习生招聘平台上线", date: "2026-04-08", isNew: true, type: "通知" },
-      { id: 3, title: "产学研合作洽谈会", date: "2026-04-05", isNew: false, type: "公告" },
+      { id: 1, title: '校企合作项目申报通知', date: '2026-04-10', isNew: true, type: '重要' },
+      { id: 2, title: '实习生招聘平台上线', date: '2026-04-08', isNew: true, type: '通知' },
+      { id: 3, title: '产学研合作洽谈会', date: '2026-04-05', isNew: false, type: '公告' },
     ],
     todoItems: [
-      { id: 1, title: "待审核简历", count: 15, urgent: false, color: "#3b82f6" },
-      { id: 2, title: "待安排面试", count: 8, urgent: true, color: "#ef4444" },
-      { id: 3, title: "待签订协议", count: 3, urgent: false, color: "#10b981" },
+      { id: 1, title: '待审核简历', count: 15, urgent: false, color: '#3b82f6' },
+      { id: 2, title: '待安排面试', count: 8, urgent: true, color: '#ef4444' },
+      { id: 3, title: '待签订协议', count: 3, urgent: false, color: '#10b981' },
     ],
     calendarEvents: [
-      { id: 1, title: "宣讲会", time: "14:00", date: 14, color: "bg-primary" },
-      { id: 2, title: "面试安排", time: "09:00", date: 16, color: "bg-amber-500" },
+      { id: 1, title: '宣讲会', time: '14:00', date: 14, color: 'bg-primary' },
+      { id: 2, title: '面试安排', time: '09:00', date: 16, color: 'bg-amber-500' },
     ],
-    stats: { label1: "合作项目", value1: 5, label2: "实习学生", value2: 23 },
+    stats: { label1: '合作项目', value1: 5, label2: '实习学生', value2: 23 },
   },
   admin: {
-    welcomeText: "欢迎回来，管理员。",
+    welcomeText: '欢迎回来，管理员。',
     announcements: [
-      { id: 1, title: "系统安全检查通知", date: "2026-04-10", isNew: true, type: "重要" },
-      { id: 2, title: "数据备份完成通知", date: "2026-04-08", isNew: true, type: "通知" },
-      { id: 3, title: "权限审计报告", date: "2026-04-05", isNew: false, type: "报告" },
+      { id: 1, title: '系统安全检查通知', date: '2026-04-10', isNew: true, type: '重要' },
+      { id: 2, title: '数据备份完成通知', date: '2026-04-08', isNew: true, type: '通知' },
+      { id: 3, title: '权限审计报告', date: '2026-04-05', isNew: false, type: '报告' },
     ],
     todoItems: [
-      { id: 1, title: "待审批账号", count: 12, urgent: true, color: "#ef4444" },
-      { id: 2, title: "待处理工单", count: 8, urgent: false, color: "#3b82f6" },
-      { id: 3, title: "待审核权限", count: 5, urgent: false, color: "#10b981" },
-      { id: 4, title: "系统告警", count: 2, urgent: true, color: "#f59e0b" },
+      { id: 1, title: '待审批账号', count: 12, urgent: true, color: '#ef4444' },
+      { id: 2, title: '待处理工单', count: 8, urgent: false, color: '#3b82f6' },
+      { id: 3, title: '待审核权限', count: 5, urgent: false, color: '#10b981' },
+      { id: 4, title: '系统告警', count: 2, urgent: true, color: '#f59e0b' },
     ],
     calendarEvents: [
-      { id: 1, title: "系统维护", time: "22:00", date: 14, color: "bg-primary" },
-      { id: 2, title: "安全审计", time: "10:00", date: 18, color: "bg-amber-500" },
+      { id: 1, title: '系统维护', time: '22:00', date: 14, color: 'bg-primary' },
+      { id: 2, title: '安全审计', time: '10:00', date: 18, color: 'bg-amber-500' },
     ],
-    stats: { label1: "在线用户", value1: 1256, label2: "总用户数", value2: 8500 },
+    stats: { label1: '在线用户', value1: 1256, label2: '总用户数', value2: 8500 },
   },
 }
 
@@ -149,54 +172,54 @@ const roleIcons = {
 
 // 教师工作台 Tab 配置
 const teacherTabs = [
-  { id: "dashboard", label: "工作台首页", icon: LayoutDashboard },
-  { id: "courses", label: "我的场景/课程", icon: BookOpen },
-  { id: "schedule", label: "我的课表", icon: CalendarDays },
-  { id: "portraits", label: "我的学生", icon: BarChart3 },
-  { id: "profile", label: "个人中心", icon: User },
+  { id: 'dashboard', label: '工作台首页', icon: LayoutDashboard },
+  { id: 'courses', label: '我的场景/课程', icon: BookOpen },
+  { id: 'schedule', label: '我的课表', icon: CalendarDays },
+  { id: 'portraits', label: '我的学生', icon: BarChart3 },
+  { id: 'profile', label: '个人中心', icon: User },
 ]
 
 // 学生工作台 Tab 配置
 const studentTabs = [
-  { id: "dashboard", label: "工作台首页", icon: LayoutDashboard },
-  { id: "learning", label: "我的学习", icon: Layers },
-  { id: "schedule", label: "我的课表", icon: CalendarDays },
-  { id: "career", label: "我的收藏", icon: Compass },
-  { id: "assessment", label: "测评认证", icon: Award },
-  { id: "portrait", label: "学生画像", icon: BarChart3 },
-  { id: "community", label: "学习社区", icon: MessageSquare },
-  { id: "profile", label: "个人中心", icon: User },
+  { id: 'dashboard', label: '工作台首页', icon: LayoutDashboard },
+  { id: 'learning', label: '我的学习', icon: Layers },
+  { id: 'schedule', label: '我的课表', icon: CalendarDays },
+  { id: 'career', label: '我的收藏', icon: Compass },
+  { id: 'assessment', label: '测评认证', icon: Award },
+  { id: 'portrait', label: '学生画像', icon: BarChart3 },
+  { id: 'community', label: '学习社区', icon: MessageSquare },
+  { id: 'profile', label: '个人中心', icon: User },
 ]
 
 // 学校管理员工作台 Tab 配置
 const schoolAdminTabs = [
-  { id: "dashboard", label: "工作台首页", icon: LayoutDashboard },
-  { id: "resources", label: "资源运营", icon: BookOpen },
-  { id: "approvals", label: "审批中心", icon: CheckSquare },
-  { id: "personnel", label: "教师学生情况", icon: Users },
-  { id: "profile", label: "个人中心", icon: User },
+  { id: 'dashboard', label: '工作台首页', icon: LayoutDashboard },
+  { id: 'resources', label: '资源运营', icon: BookOpen },
+  { id: 'approvals', label: '审批中心', icon: CheckSquare },
+  { id: 'personnel', label: '教师学生情况', icon: Users },
+  { id: 'profile', label: '个人中心', icon: User },
 ]
 
 function StudentWorkspace({ userId }: { userId?: string }) {
-  const [activeTab, setActiveTab] = useState("dashboard")
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "dashboard":
+      case 'dashboard':
         return <DashboardTab onTabChange={setActiveTab} />
-      case "learning":
+      case 'learning':
         return <LearningTab />
-      case "schedule":
+      case 'schedule':
         return <MyScheduleTab role="student" />
-      case "career":
+      case 'career':
         return <CareerTab />
-      case "assessment":
+      case 'assessment':
         return <AssessmentTab />
-      case "portrait":
+      case 'portrait':
         return <PortraitTab userId={userId} />
-      case "community":
+      case 'community':
         return <CommunityTab />
-      case "profile":
+      case 'profile':
         return <ProfileTab />
       default:
         return <DashboardTab onTabChange={setActiveTab} />
@@ -217,8 +240,8 @@ function StudentWorkspace({ userId }: { userId?: string }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -238,23 +261,42 @@ function StudentWorkspace({ userId }: { userId?: string }) {
 }
 
 function TeacherWorkspace() {
-  const [activeTab, setActiveTab] = useState("dashboard")
-  const [prepAssociations, setPrepAssociations] = useState<Record<string, PrepAssociationRecord>>({})
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [prepAssociations, setPrepAssociations] = useState<Record<string, PrepAssociationRecord>>(
+    {},
+  )
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "dashboard":
-        return <TeacherDashboardTab onTabChange={setActiveTab} prepAssociations={prepAssociations} onAssociate={setPrepAssociations} />
-      case "courses":
-        return <TeacherCoursesTab prepAssociations={prepAssociations} onAssociate={setPrepAssociations} />
-      case "schedule":
+      case 'dashboard':
+        return (
+          <TeacherDashboardTab
+            onTabChange={setActiveTab}
+            prepAssociations={prepAssociations}
+            onAssociate={setPrepAssociations}
+          />
+        )
+      case 'courses':
+        return (
+          <TeacherCoursesTab
+            prepAssociations={prepAssociations}
+            onAssociate={setPrepAssociations}
+          />
+        )
+      case 'schedule':
         return <MyScheduleTab role="teacher" />
-      case "portraits":
+      case 'portraits':
         return <TeacherPortraitsTab />
-      case "profile":
+      case 'profile':
         return <TeacherProfileTab />
       default:
-        return <TeacherDashboardTab onTabChange={setActiveTab} prepAssociations={prepAssociations} onAssociate={setPrepAssociations} />
+        return (
+          <TeacherDashboardTab
+            onTabChange={setActiveTab}
+            prepAssociations={prepAssociations}
+            onAssociate={setPrepAssociations}
+          />
+        )
     }
   }
 
@@ -272,8 +314,8 @@ function TeacherWorkspace() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -293,19 +335,19 @@ function TeacherWorkspace() {
 }
 
 function SchoolAdminWorkspace() {
-  const [activeTab, setActiveTab] = useState("dashboard")
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "dashboard":
+      case 'dashboard':
         return <SchoolAdminOverviewTab onTabChange={setActiveTab} />
-      case "resources":
+      case 'resources':
         return <SchoolAdminResourcesTab />
-      case "approvals":
+      case 'approvals':
         return <SchoolAdminApprovalsTab />
-      case "personnel":
+      case 'personnel':
         return <SchoolAdminPersonnelTab />
-      case "profile":
+      case 'profile':
         return <ProfileTab />
       default:
         return <SchoolAdminOverviewTab onTabChange={setActiveTab} />
@@ -326,8 +368,8 @@ function SchoolAdminWorkspace() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -352,7 +394,10 @@ export default function WorkspacePage() {
 
   useEffect(() => {
     if (!activeRole?.code) return
-    portalApi.workspaceDashboard({ role: activeRole.code }).then(setDashboard).catch(() => setDashboard(null))
+    portalApi
+      .workspaceDashboard({ role: activeRole.code })
+      .then(setDashboard)
+      .catch(() => setDashboard(null))
   }, [activeRole?.code])
 
   if (isLoading) {
@@ -367,19 +412,21 @@ export default function WorkspacePage() {
     return (
       <div className="flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4 text-sm text-muted-foreground">
         <p>请先登录后查看服务台</p>
-        <a href="/portal/login" className="text-primary hover:underline">去登录</a>
+        <a href="/portal/login" className="text-primary hover:underline">
+          去登录
+        </a>
       </div>
     )
   }
 
-  const currentRole = activeRole?.code || "teacher"
+  const currentRole = activeRole?.code || 'teacher'
 
   // 学生角色展示全新的学生工作台
-  if (currentRole === "student") {
+  if (currentRole === 'student') {
     return (
-    <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-        <div>
+      <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div>
             <h1 className="text-2xl font-bold text-gray-900">学生工作台</h1>
             <p className="text-sm text-gray-500 mt-1">
               欢迎回来，同学。今天是2026年4月14日，星期二。管理你的学习、岗位、测评与成长。
@@ -387,7 +434,9 @@ export default function WorkspacePage() {
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
             <BookOpen className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-gray-700">当前角色：{activeRole?.name || "学生"}</span>
+            <span className="text-sm font-medium text-gray-700">
+              当前角色：{activeRole?.name || '学生'}
+            </span>
           </div>
         </div>
         <StudentWorkspace userId={user?.id} />
@@ -396,7 +445,7 @@ export default function WorkspacePage() {
   }
 
   // 教职工角色展示教师工作台
-  if (currentRole === "teacher") {
+  if (currentRole === 'teacher') {
     return (
       <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -408,7 +457,9 @@ export default function WorkspacePage() {
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
             <GraduationCap className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-gray-700">当前角色：{activeRole?.name || "教职工"}</span>
+            <span className="text-sm font-medium text-gray-700">
+              当前角色：{activeRole?.name || '教职工'}
+            </span>
           </div>
         </div>
         <TeacherWorkspace />
@@ -417,7 +468,7 @@ export default function WorkspacePage() {
   }
 
   // 学校管理员角色展示资源运营管理驾驶舱
-  if (currentRole === "school_admin") {
+  if (currentRole === 'school_admin') {
     return (
       <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -429,7 +480,9 @@ export default function WorkspacePage() {
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
             <Building2 className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-gray-700">当前角色：{activeRole?.name || "学校管理员"}</span>
+            <span className="text-sm font-medium text-gray-700">
+              当前角色：{activeRole?.name || '学校管理员'}
+            </span>
           </div>
         </div>
         <SchoolAdminWorkspace />
@@ -439,15 +492,18 @@ export default function WorkspacePage() {
 
   // 非学生角色保持原有通用工作台（企业用户等共用 enterprise/admin 配置）
   const roleConfigKey: keyof typeof roleConfigs =
-    currentRole === "student" ? "teacher" : currentRole === "teacher" ? "teacher" : "admin"
+    currentRole === 'student' ? 'teacher' : currentRole === 'teacher' ? 'teacher' : 'admin'
   const config = roleConfigs[roleConfigKey] || roleConfigs.teacher
 
   // 从后端仪表盘接口取真实数据，原静态假数据仅作为兜底空值
   const announcements = dashboard?.announcements || []
   const todos = dashboard?.todos || []
   const stats = dashboard?.stats || config.stats
-  const todoColors = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]
-  const todosWithColor = todos.map((item, idx) => ({ ...item, color: todoColors[idx % todoColors.length] }))
+  const todoColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
+  const todosWithColor = todos.map((item, idx) => ({
+    ...item,
+    color: todoColors[idx % todoColors.length],
+  }))
   const todoPieData = todosWithColor.map((item) => ({
     name: item.title,
     value: item.count,
@@ -456,27 +512,32 @@ export default function WorkspacePage() {
   const totalTodo = todosWithColor.reduce((acc, item) => acc + item.count, 0)
 
   const today = new Date()
-  const todayLabel = today.toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "long",
+  const todayLabel = today.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
   })
   const calendarDays = generateCalendarDays(today.getFullYear(), today.getMonth())
-  const weekDays = ["日", "一", "二", "三", "四", "五", "六"]
-  const calendarEvents: { id: number; title: string; time: string; date: number; color: string }[] = []
+  const weekDays = ['日', '一', '二', '三', '四', '五', '六']
+  const calendarEvents: { id: number; title: string; time: string; date: number; color: string }[] =
+    []
   const RoleIcon = roleIcons[roleConfigKey] || GraduationCap
 
   return (
-      <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+    <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">我的服务台</h1>
-          <p className="text-sm text-gray-500 mt-1">{config.welcomeText}今天是{todayLabel}。</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {config.welcomeText}今天是{todayLabel}。
+          </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
           <RoleIcon className="w-5 h-5 text-blue-600" />
-          <span className="text-sm font-medium text-gray-700">当前角色：{activeRole?.name || "教职工"}</span>
+          <span className="text-sm font-medium text-gray-700">
+            当前角色：{activeRole?.name || '教职工'}
+          </span>
         </div>
       </div>
 
@@ -539,7 +600,11 @@ export default function WorkspacePage() {
                 </div>
                 通知公告
               </CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs text-primary h-auto p-0 hover:bg-transparent">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-primary h-auto p-0 hover:bg-transparent"
+              >
                 查看全部
                 <ChevronRight className="w-3 h-3 ml-1" />
               </Button>
@@ -549,9 +614,12 @@ export default function WorkspacePage() {
             <ScrollArea className="h-[200px]">
               <div className="space-y-3">
                 {announcements.map((item) => (
-                  <div key={item.id} className="flex items-start gap-2 group cursor-pointer p-2 -mx-2 rounded-lg hover:bg-slate-50 transition-colors">
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-2 group cursor-pointer p-2 -mx-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
                     <Badge
-                      variant={item.type === "重要" ? "destructive" : "secondary"}
+                      variant={item.type === '重要' ? 'destructive' : 'secondary'}
                       className="shrink-0 text-xs px-1.5 py-0"
                     >
                       {item.type}
@@ -562,7 +630,9 @@ export default function WorkspacePage() {
                       </p>
                       <p className="text-xs text-muted-foreground">{item.date}</p>
                     </div>
-                    {item.isNew && <span className="w-2 h-2 rounded-full bg-destructive shrink-0 mt-1.5" />}
+                    {item.isNew && (
+                      <span className="w-2 h-2 rounded-full bg-destructive shrink-0 mt-1.5" />
+                    )}
                   </div>
                 ))}
               </div>
@@ -594,7 +664,9 @@ export default function WorkspacePage() {
           <CardContent className="pt-2">
             <div className="grid grid-cols-7 gap-1 mb-3">
               {weekDays.map((day) => (
-                <div key={day} className="text-center text-xs text-muted-foreground py-1">{day}</div>
+                <div key={day} className="text-center text-xs text-muted-foreground py-1">
+                  {day}
+                </div>
               ))}
               {calendarDays.map((day, index) => {
                 const hasEvent = day && calendarEvents.some((e) => e.date === day)
@@ -603,8 +675,8 @@ export default function WorkspacePage() {
                   <div
                     key={index}
                     className={`text-center text-xs py-1.5 rounded-md cursor-pointer transition-colors relative
-                      ${day ? "hover:bg-primary/10" : ""}
-                      ${isToday ? "bg-primary text-white font-medium" : "text-muted-foreground"}
+                      ${day ? 'hover:bg-primary/10' : ''}
+                      ${isToday ? 'bg-primary text-white font-medium' : 'text-muted-foreground'}
                     `}
                   >
                     {day}
@@ -618,13 +690,15 @@ export default function WorkspacePage() {
             <div className="border-t border-border pt-2">
               <div className="text-xs text-muted-foreground mb-2">今日日程</div>
               <div className="space-y-1.5">
-                {calendarEvents.filter((e) => e.date === today.getDate()).map((event) => (
-                  <div key={event.id} className="flex items-center gap-2 text-xs">
-                    <span className={`w-1.5 h-1.5 rounded-full ${event.color}`} />
-                    <span className="text-muted-foreground">{event.time}</span>
-                    <span className="text-foreground">{event.title}</span>
-                  </div>
-                ))}
+                {calendarEvents
+                  .filter((e) => e.date === today.getDate())
+                  .map((event) => (
+                    <div key={event.id} className="flex items-center gap-2 text-xs">
+                      <span className={`w-1.5 h-1.5 rounded-full ${event.color}`} />
+                      <span className="text-muted-foreground">{event.time}</span>
+                      <span className="text-foreground">{event.title}</span>
+                    </div>
+                  ))}
               </div>
             </div>
           </CardContent>
@@ -641,7 +715,11 @@ export default function WorkspacePage() {
                 待办事项
                 <Badge className="ml-1 text-xs px-1.5 py-0 bg-rose-500">{totalTodo}</Badge>
               </CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs text-primary h-auto p-0 hover:bg-transparent">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-primary h-auto p-0 hover:bg-transparent"
+              >
                 查看全部
                 <ChevronRight className="w-3 h-3 ml-1" />
               </Button>
@@ -678,10 +756,15 @@ export default function WorkspacePage() {
                 {todosWithColor.map((item) => (
                   <div key={item.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
                       <span className="text-muted-foreground text-xs">{item.title}</span>
                     </div>
-                    <Badge variant="secondary" className="text-xs h-5">{item.count}</Badge>
+                    <Badge variant="secondary" className="text-xs h-5">
+                      {item.count}
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -699,7 +782,11 @@ export default function WorkspacePage() {
                 </div>
                 账号安全中心
               </CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs text-primary h-auto p-0 hover:bg-transparent">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-primary h-auto p-0 hover:bg-transparent"
+              >
                 安全设置
                 <ChevronRight className="w-3 h-3 ml-1" />
               </Button>
@@ -713,9 +800,11 @@ export default function WorkspacePage() {
                   <div className="flex items-center gap-3">
                     <span
                       className={`text-sm ${
-                        item.status === "strong" || item.status === "bound" || item.status === "normal"
-                          ? "text-emerald-500"
-                          : "text-muted-foreground"
+                        item.status === 'strong' ||
+                        item.status === 'bound' ||
+                        item.status === 'normal'
+                          ? 'text-emerald-500'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {item.statusText}
@@ -740,7 +829,9 @@ export default function WorkspacePage() {
                 </div>
                 本周活跃度
               </CardTitle>
-              <Badge variant="secondary" className="text-xs">+12.5%</Badge>
+              <Badge variant="secondary" className="text-xs">
+                +12.5%
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -756,7 +847,13 @@ export default function WorkspacePage() {
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} fill="url(#colorValue)" />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  fill="url(#colorValue)"
+                />
               </AreaChart>
             </ChartContainer>
           </CardContent>
@@ -824,7 +921,10 @@ export default function WorkspacePage() {
                 {resourceUsage.map((item) => (
                   <div key={item.name} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
                       <span className="text-muted-foreground">{item.name}</span>
                     </div>
                     <span className="text-foreground font-medium">{item.value}%</span>
@@ -845,7 +945,11 @@ export default function WorkspacePage() {
                 </div>
                 校园通讯录
               </CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs text-primary h-auto p-0 hover:bg-transparent">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-primary h-auto p-0 hover:bg-transparent"
+              >
                 查看全部
                 <ChevronRight className="w-3 h-3 ml-1" />
               </Button>
@@ -854,7 +958,10 @@ export default function WorkspacePage() {
           <CardContent>
             <div className="space-y-3">
               {contacts.map((contact) => (
-                <div key={contact.id} className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
+                <div
+                  key={contact.id}
+                  className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                >
                   <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center text-primary text-sm font-medium">
                     {contact.avatar}
                   </div>

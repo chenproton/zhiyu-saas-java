@@ -1,13 +1,13 @@
-"use client"
+'use client'
 
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
-import { StatusBadge } from "@zhiyu/ui"
-import { StatusActionBar } from "@/components/shared/status-action-bar"
-import type { Course, CourseType } from "@/lib/types/lesson-source"
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
+import { StatusBadge } from '@zhiyu/ui'
+import { StatusActionBar } from '@/components/shared/status-action-bar'
+import type { Course, CourseType } from '@/lib/types/lesson-source'
 
 interface CourseListProps {
   courses: Course[]
@@ -52,19 +52,20 @@ export function CourseList({
   const allSelected = courses.length > 0 && courses.every((c) => selectedIds.includes(c.id))
   const someSelected = courses.some((c) => selectedIds.includes(c.id)) && !allSelected
 
-  const editPath = (courseId: string) => courseType === "system"
-    ? `/lesson/admin/system/add?id=${courseId}`
-    : courseType === "granular"
-      ? `/lesson/admin/granular/add?id=${courseId}`
-      : `/lesson/admin/hybrid/add?id=${courseId}`
+  const editPath = (courseId: string) =>
+    courseType === 'system'
+      ? `/lesson/admin/system/add?id=${courseId}`
+      : courseType === 'granular'
+        ? `/lesson/admin/granular/add?id=${courseId}`
+        : `/lesson/admin/hybrid/add?id=${courseId}`
 
   return (
-    <div className={cn("rounded-lg border border-slate-200 bg-white overflow-hidden", className)}>
+    <div className={cn('rounded-lg border border-slate-200 bg-white overflow-hidden', className)}>
       {/* Header */}
       <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-50 text-xs font-medium text-slate-500 border-b border-slate-100 items-center">
         <div className="col-span-1 flex justify-center">
           <Checkbox
-            checked={someSelected ? "indeterminate" : allSelected}
+            checked={someSelected ? 'indeterminate' : allSelected}
             onCheckedChange={(checked) => onSelectAll?.(checked === true)}
             aria-label="全选"
           />
@@ -89,8 +90,8 @@ export function CourseList({
             <div
               key={course.id}
               className={cn(
-                "grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-50 transition-colors group relative",
-                isSelected && "bg-primary/5"
+                'grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-50 transition-colors group relative',
+                isSelected && 'bg-primary/5',
               )}
             >
               <div className="col-span-1 flex justify-center">
@@ -102,16 +103,26 @@ export function CourseList({
               </div>
               <div className="col-span-2">
                 <Link href={editPath(course.id)} className="block">
-                  <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">{course.name}</p>
+                  <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">
+                    {course.name}
+                  </p>
                 </Link>
                 <StatusBadge status={course.status} />
               </div>
               <div className="col-span-1 text-sm text-slate-600 truncate">{course.code}</div>
               <div className="col-span-1 text-center text-sm text-slate-600">{course.version}</div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">{course.industry || "-"}</div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">{course.major || "-"}</div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">{course.batchName || "-"}</div>
-              <div className="col-span-1 text-xs text-slate-500 truncate">{course.creator || "-"}</div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">
+                {course.industry || '-'}
+              </div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">
+                {course.major || '-'}
+              </div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">
+                {course.batchName || '-'}
+              </div>
+              <div className="col-span-1 text-xs text-slate-500 truncate">
+                {course.creator || '-'}
+              </div>
               <div className="col-span-1 text-center">
                 <StatusBadge status={course.status} />
               </div>
@@ -128,7 +139,9 @@ export function CourseList({
                   onArchive={onArchive ? () => onArchive(course) : undefined}
                   onDelete={onDelete ? () => onDelete(course) : undefined}
                   onInvite={onInviteCoBuild ? () => onInviteCoBuild(course) : undefined}
-                  onViewRejectReason={onViewRejectReason ? () => onViewRejectReason(course) : undefined}
+                  onViewRejectReason={
+                    onViewRejectReason ? () => onViewRejectReason(course) : undefined
+                  }
                 />
               </div>
             </div>

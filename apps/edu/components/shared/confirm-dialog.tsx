@@ -1,3 +1,3 @@
-"use client"
+'use client'
 
-export { ConfirmDialog } from "@zhiyu/ui"
+export { ConfirmDialog } from '@zhiyu/ui'

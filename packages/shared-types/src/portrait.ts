@@ -1,8 +1,9 @@
-import type { EvaluationGrade } from "./graduation"
+import type { EvaluationGrade } from './graduation'
 
 // ==================== 学生能力画像管理相关 ====================
 
-export type ArchiveMaterialType = 'certificate' | 'competition' | 'activity' | 'internship' | 'skill'
+export type ArchiveMaterialType =
+  'certificate' | 'competition' | 'activity' | 'internship' | 'skill'
 export type ArchiveAuditStatus = 'pending' | 'approved' | 'rejected'
 export type ArchiveDirection = 'positive' | 'negative'
 

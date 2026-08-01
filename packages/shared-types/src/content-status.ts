@@ -13,17 +13,17 @@ export const STATUS_LABELS: Record<Status, string> = {
 
 // 状态流转操作
 export type StatusAction =
-  | 'save_draft'      // 保存草稿
-  | 'submit'          // 提交审批
-  | 'withdraw'        // 撤回
-  | 'approve'         // 通过
-  | 'reject'          // 驳回
-  | 'publish'         // 发布
-  | 'unpublish'       // 取消发布
-  | 'archive'         // 归档
+  | 'save_draft' // 保存草稿
+  | 'submit' // 提交审批
+  | 'withdraw' // 撤回
+  | 'approve' // 通过
+  | 'reject' // 驳回
+  | 'publish' // 发布
+  | 'unpublish' // 取消发布
+  | 'archive' // 归档
 
 // 状态流转规则：与后端状态机保持一致
-export const STATUS_TRANSITIONS: Record<StatusAction, { from: Status[], to: Status }> = {
+export const STATUS_TRANSITIONS: Record<StatusAction, { from: Status[]; to: Status }> = {
   save_draft: { from: ['draft', 'rejected', 'approved', 'published', 'archived'], to: 'draft' },
   submit: { from: ['draft', 'rejected'], to: 'pending' },
   withdraw: { from: ['pending'], to: 'draft' },

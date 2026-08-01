@@ -1,25 +1,61 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from 'next/link'
+import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const brandCards = [
-  { type: "talent", label: "人才品牌", desc: "展示学生能力画像与典型就业案例", icon: GraduationCap, color: "text-blue-600 bg-blue-50" },
-  { type: "employer", label: "雇主品牌", desc: "展示合作企业/机构的品牌形象", icon: Building, color: "text-green-600 bg-green-50" },
-  { type: "job", label: "岗位品牌", desc: "展示优质岗位的品牌级运营", icon: Briefcase, color: "text-orange-600 bg-orange-50" },
-  { type: "major", label: "专业品牌", desc: "展示专业建设水平与培养特色", icon: BookOpen, color: "text-purple-600 bg-purple-50" },
-  { type: "teacher", label: "师资品牌", desc: "展示校本师资与产业导师", icon: Users, color: "text-red-600 bg-red-50" },
-  { type: "culture", label: "文化思政品牌", desc: "展示典型案例、思政资源与文化活动", icon: Palette, color: "text-cyan-600 bg-cyan-50" },
+  {
+    type: 'talent',
+    label: '人才品牌',
+    desc: '展示学生能力画像与典型就业案例',
+    icon: GraduationCap,
+    color: 'text-blue-600 bg-blue-50',
+  },
+  {
+    type: 'employer',
+    label: '雇主品牌',
+    desc: '展示合作企业/机构的品牌形象',
+    icon: Building,
+    color: 'text-green-600 bg-green-50',
+  },
+  {
+    type: 'job',
+    label: '岗位品牌',
+    desc: '展示优质岗位的品牌级运营',
+    icon: Briefcase,
+    color: 'text-orange-600 bg-orange-50',
+  },
+  {
+    type: 'major',
+    label: '专业品牌',
+    desc: '展示专业建设水平与培养特色',
+    icon: BookOpen,
+    color: 'text-purple-600 bg-purple-50',
+  },
+  {
+    type: 'teacher',
+    label: '师资品牌',
+    desc: '展示校本师资与产业导师',
+    icon: Users,
+    color: 'text-red-600 bg-red-50',
+  },
+  {
+    type: 'culture',
+    label: '文化思政品牌',
+    desc: '展示典型案例、思政资源与文化活动',
+    icon: Palette,
+    color: 'text-cyan-600 bg-cyan-50',
+  },
 ]
 
 const pageMap: Record<string, string> = {
-  talent: "/portal/alliance/brands/talent",
-  employer: "/portal/alliance/brands/employer",
-  job: "/portal/alliance/brands/job",
-  major: "/portal/alliance/brands/major",
-  teacher: "/portal/alliance/brands/teacher",
-  culture: "/portal/alliance/brands/culture",
+  talent: '/portal/alliance/brands/talent',
+  employer: '/portal/alliance/brands/employer',
+  job: '/portal/alliance/brands/job',
+  major: '/portal/alliance/brands/major',
+  teacher: '/portal/alliance/brands/teacher',
+  culture: '/portal/alliance/brands/culture',
 }
 
 export default function AlliancePublicBrandsPage() {

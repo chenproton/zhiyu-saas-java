@@ -69,7 +69,7 @@ export function getLoadedExams(): readonly LoadedExam[] {
 }
 
 export function getLoadedExam(id: string): LoadedExam | undefined {
-  return _loadedExams.find(e => e.id === id)
+  return _loadedExams.find((e) => e.id === id)
 }
 
 export function setLoadedExams(exams: LoadedExam[]): void {
@@ -82,11 +82,11 @@ export function addLoadedExam(exam: LoadedExam): void {
 }
 
 export function upsertLoadedExam(id: string, patch: Partial<LoadedExam>): void {
-  const idx = _loadedExams.findIndex(e => e.id === id)
+  const idx = _loadedExams.findIndex((e) => e.id === id)
   if (idx >= 0) {
     _loadedExams[idx] = { ..._loadedExams[idx], ...patch, id }
   } else {
-    _loadedExams.push({ ...patch, id, name: patch.name ?? "" })
+    _loadedExams.push({ ...patch, id, name: patch.name ?? '' })
   }
 }
 
@@ -101,37 +101,37 @@ export function clearAllCaches(): void {
 }
 
 export const typeColorMap: Record<string, string> = {
-  single: "bg-blue-500",
-  multiple: "bg-indigo-500",
-  judgment: "bg-amber-500",
-  judge: "bg-amber-500",
-  fill_blank: "bg-purple-500",
-  fill: "bg-purple-500",
-  essay: "bg-rose-500",
-  short_answer: "bg-teal-500",
+  single: 'bg-blue-500',
+  multiple: 'bg-indigo-500',
+  judgment: 'bg-amber-500',
+  judge: 'bg-amber-500',
+  fill_blank: 'bg-purple-500',
+  fill: 'bg-purple-500',
+  essay: 'bg-rose-500',
+  short_answer: 'bg-teal-500',
 }
 
 export const questionTypeLabels: Record<string, string> = {
-  single: "单选",
-  multiple: "多选",
-  judgment: "判断",
-  judge: "判断",
-  short_answer: "简答",
-  essay: "论述",
-  fill_blank: "填空",
-  fill: "填空",
+  single: '单选',
+  multiple: '多选',
+  judgment: '判断',
+  judge: '判断',
+  short_answer: '简答',
+  essay: '论述',
+  fill_blank: '填空',
+  fill: '填空',
 }
 
 export const difficultyLabels: Record<string, string> = {
-  easy: "简单",
-  medium: "中等",
-  hard: "困难",
+  easy: '简单',
+  medium: '中等',
+  hard: '困难',
 }
 
 export const questionBankLabels: Record<string, string> = {
-  frontend: "前端开发题库",
-  backend: "后端开发题库",
-  draft: "草稿库",
-  public: "公共基础题库",
-  professional: "专业技能题库",
+  frontend: '前端开发题库',
+  backend: '后端开发题库',
+  draft: '草稿库',
+  public: '公共基础题库',
+  professional: '专业技能题库',
 }

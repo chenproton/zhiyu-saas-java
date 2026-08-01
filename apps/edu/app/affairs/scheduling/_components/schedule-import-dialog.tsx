@@ -1,11 +1,18 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { Download, Upload, FileSpreadsheet } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { useImportFlow } from "@/hooks/use-import-flow"
+import { useEffect, useState } from 'react'
+import { Download, Upload, FileSpreadsheet } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
+import { useImportFlow } from '@/hooks/use-import-flow'
 
 interface ScheduleImportDialogProps {
   open: boolean
@@ -15,7 +22,12 @@ interface ScheduleImportDialogProps {
 }
 
 /** 排课 Excel 导入：下载当前数据（可编辑） → 上传 → 预览 → 确认导入（复用 useImportFlow 模式） */
-export function ScheduleImportDialog({ open, onOpenChange, termId, onImported }: ScheduleImportDialogProps) {
+export function ScheduleImportDialog({
+  open,
+  onOpenChange,
+  termId,
+  onImported,
+}: ScheduleImportDialogProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const {
@@ -30,9 +42,9 @@ export function ScheduleImportDialog({ open, onOpenChange, termId, onImported }:
     handleImport,
     executeImport,
   } = useImportFlow({
-    importType: "schedules",
-    entityLabel: "排课",
-    templateFileName: "排课批量导入模板.xlsx",
+    importType: 'schedules',
+    entityLabel: '排课',
+    templateFileName: '排课批量导入模板.xlsx',
     onSuccess: async () => {
       onOpenChange(false)
       onImported()
@@ -41,15 +53,17 @@ export function ScheduleImportDialog({ open, onOpenChange, termId, onImported }:
 
   useEffect(() => {
     if (importPreview) {
-      (async () => { setConfirmOpen(true) })()
+      ;(async () => {
+        setConfirmOpen(true)
+      })()
     }
   }, [importPreview])
 
   // 下载当前教学计划数据（含参考表），编辑后回传导入
   const handleDownloadCurrent = async () => {
-    const { authedFetch, downloadBlob } = await import("@zhiyu/api-client")
+    const { authedFetch, downloadBlob } = await import('@zhiyu/api-client')
     const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
-    downloadBlob(await res.blob(), "排课导入_当前数据.xlsx")
+    downloadBlob(await res.blob(), '排课导入_当前数据.xlsx')
   }
 
   // 弹窗重新打开时在渲染期间重置已选文件（adjust-state-during-render 模式）
@@ -81,11 +95,19 @@ export function ScheduleImportDialog({ open, onOpenChange, termId, onImported }:
             <div className="flex items-center justify-between rounded-md border border-dashed p-3">
               <div className="text-sm">
                 <div className="font-medium">第一步：下载当前数据</div>
-                <div className="text-xs text-muted-foreground">下载该学期教学计划课程列表及教师/场地/班级/节次参考表，填好 星期/节次/教师/场地/班级 后回传</div>
+                <div className="text-xs text-muted-foreground">
+                  下载该学期教学计划课程列表及教师/场地/班级/节次参考表，填好
+                  星期/节次/教师/场地/班级 后回传
+                </div>
               </div>
-              <Button variant="outline" size="sm" onClick={handleDownloadCurrent} disabled={isDownloading}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadCurrent}
+                disabled={isDownloading}
+              >
                 <Download className="mr-1 size-4" />
-                {isDownloading ? "下载中..." : "下载当前数据"}
+                {isDownloading ? '下载中...' : '下载当前数据'}
               </Button>
             </div>
             <div className="flex items-center justify-between rounded-md border border-dashed p-3">
@@ -95,14 +117,21 @@ export function ScheduleImportDialog({ open, onOpenChange, termId, onImported }:
                   {importFiles.length > 0 ? (
                     <>
                       <FileSpreadsheet className="size-3.5 text-green-600" />
-                      <span className="text-foreground">{importFiles.map(f => f.name).join(", ")}</span>
+                      <span className="text-foreground">
+                        {importFiles.map((f) => f.name).join(', ')}
+                      </span>
                     </>
                   ) : (
-                    "支持 .xlsx 文件"
+                    '支持 .xlsx 文件'
                   )}
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+              >
                 <Upload className="mr-1 size-4" />
                 选择文件
               </Button>
@@ -121,7 +150,7 @@ export function ScheduleImportDialog({ open, onOpenChange, termId, onImported }:
               取消
             </Button>
             <Button onClick={handleImport} disabled={importFiles.length === 0 || isImporting}>
-              {isImporting ? "导入中..." : "预览并导入"}
+              {isImporting ? '导入中...' : '预览并导入'}
             </Button>
           </DialogFooter>
         </DialogContent>

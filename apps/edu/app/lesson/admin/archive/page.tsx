@@ -1,38 +1,35 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { courseApi, lessonBatchApi } from "@/lib/api"
-import type { Course, LessonBatch } from "@/lib/types/lesson"
+import { courseApi, lessonBatchApi } from '@/lib/api'
+import type { Course, LessonBatch } from '@/lib/types/lesson'
 
-import { useToast, StatusBadge } from "@zhiyu/ui"
-import {
-  ArchiveListPage,
-  type ArchiveColumn,
-} from "@/components/shared/archive-list-page"
+import { useToast, StatusBadge } from '@zhiyu/ui'
+import { ArchiveListPage, type ArchiveColumn } from '@/components/shared/archive-list-page'
 
 export default function LessonArchivePage() {
   const { toast } = useToast()
   const [courses, setCourses] = useState<Course[]>([])
   const [batches, setBatches] = useState<LessonBatch[]>([])
   const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState('')
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [courseRes, batchRes] = await Promise.all([
-        courseApi.list({ status: "archived", limit: 1000 }),
+        courseApi.list({ status: 'archived', limit: 1000 }),
         lessonBatchApi.list({ limit: 1000 }),
       ])
       setCourses(courseRes.items)
       setBatches(batchRes.items)
     } catch (err: any) {
       toast({
-        variant: "destructive",
-        title: "加载失败",
-        description: err.message || "无法获取归档数据",
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '无法获取归档数据',
       })
     } finally {
       setLoading(false)
@@ -63,93 +60,78 @@ export default function LessonArchivePage() {
       result = result.filter(
         (c) =>
           c.name.toLowerCase().includes(q) ||
-          (c.code || "").toLowerCase().includes(q) ||
-          (c.majorName || "").toLowerCase().includes(q) ||
-          (c.category || "").toLowerCase().includes(q)
+          (c.code || '').toLowerCase().includes(q) ||
+          (c.majorName || '').toLowerCase().includes(q) ||
+          (c.category || '').toLowerCase().includes(q),
       )
     }
     return result
   }, [courses, selectedMajor, search])
 
-  const batchMap = useMemo(
-    () => new Map(batches.map((b) => [b.id, b])),
-    [batches]
-  )
+  const batchMap = useMemo(() => new Map(batches.map((b) => [b.id, b])), [batches])
 
   const handleRestore = async (course: Course) => {
     try {
       await courseApi.saveDraft(course.id)
       await loadData()
-      toast({ title: "已恢复" })
+      toast({ title: '已恢复' })
     } catch (err: any) {
       toast({
-        variant: "destructive",
-        title: "恢复失败",
-        description: err.message || "请稍后重试",
+        variant: 'destructive',
+        title: '恢复失败',
+        description: err.message || '请稍后重试',
       })
     }
   }
 
-  const editHref = (type: Course["type"], id: string) => {
-    if (type === "system") return `/lesson/admin/system/add?id=${id}`
-    if (type === "granular") return `/lesson/admin/granular/add?id=${id}`
+  const editHref = (type: Course['type'], id: string) => {
+    if (type === 'system') return `/lesson/admin/system/add?id=${id}`
+    if (type === 'granular') return `/lesson/admin/granular/add?id=${id}`
     return `/lesson/admin/hybrid/add?id=${id}`
   }
 
   const columns: ArchiveColumn<Course>[] = [
     {
-      header: "课程名称",
+      header: '课程名称',
       cell: (course) => (
         <div>
           <span className="font-medium">{course.name}</span>
           <p className="text-xs text-muted-foreground">
-            {course.category || "-"} · {course.majorName || "-"}
+            {course.category || '-'} · {course.majorName || '-'}
           </p>
         </div>
       ),
     },
     {
-      header: "课程编码",
-      cell: (course) => (
-        <span className="text-sm text-muted-foreground">{course.code}</span>
-      ),
+      header: '课程编码',
+      cell: (course) => <span className="text-sm text-muted-foreground">{course.code}</span>,
     },
     {
-      header: "课程类型",
+      header: '课程类型',
       cell: (course) => (
         <span className="text-sm">
-          {course.type === "system"
-            ? "体系课"
-            : course.type === "granular"
-              ? "颗粒课"
-              : "混合课"}
+          {course.type === 'system' ? '体系课' : course.type === 'granular' ? '颗粒课' : '混合课'}
         </span>
       ),
     },
     {
-      header: "版本",
-      cell: (course) => (
-        <span className="text-sm">{course.version || "-"}</span>
-      ),
+      header: '版本',
+      cell: (course) => <span className="text-sm">{course.version || '-'}</span>,
     },
     {
-      header: "适用专业",
-      cell: (course) => (
-        <span className="text-sm">{course.majorName || "-"}</span>
-      ),
+      header: '适用专业',
+      cell: (course) => <span className="text-sm">{course.majorName || '-'}</span>,
     },
     {
-      header: "所属批次分组",
+      header: '所属批次分组',
       cell: (course) => (
         <span className="text-sm">
-          {course.batchId
-            ? batchMap.get(course.batchId)?.name || course.batchId
-            : "-"}
+          {course.batchId ? batchMap.get(course.batchId)?.name || course.batchId : '-'}
         </span>
       ),
     },
     {
-      header: "归档时间",
+      header: '归档时间',
       cell: (course) => (
         <span className="text-sm text-muted-foreground">
           {new Date(course.updatedAt).toLocaleDateString()}

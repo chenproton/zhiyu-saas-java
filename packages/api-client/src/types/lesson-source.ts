@@ -1,1 +1,1 @@
-export type { SystemCourseNode } from "../../../shared-types/src/lesson-source"
+export type { SystemCourseNode } from '../../../shared-types/src/lesson-source'

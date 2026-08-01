@@ -1,12 +1,12 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { useToast } from "@zhiyu/ui"
-import { authedFetch, downloadBlob } from "@zhiyu/api-client"
-import type { ImportPreviewResult } from "@zhiyu/api-client"
-import { importExportApi } from "@zhiyu/api-client"
-import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
-import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
+import { useState } from 'react'
+import { useToast } from '@zhiyu/ui'
+import { authedFetch, downloadBlob } from '@zhiyu/api-client'
+import type { ImportPreviewResult } from '@zhiyu/api-client'
+import { importExportApi } from '@zhiyu/api-client'
+import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 
 interface ProgramCourseImportDialogProps {
   open: boolean
@@ -15,29 +15,44 @@ interface ProgramCourseImportDialogProps {
   onImported: () => void
 }
 
-export function ProgramCourseImportDialog({ open, onOpenChange, programId, onImported }: ProgramCourseImportDialogProps) {
+export function ProgramCourseImportDialog({
+  open,
+  onOpenChange,
+  programId,
+  onImported,
+}: ProgramCourseImportDialogProps) {
   const { toast } = useToast()
   const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
   const handleDownload = async () => {
-    const res = await importExportApi.downloadTemplate("program-courses")
-    downloadBlob(await res.blob(), "方案课程批量导入模板.xlsx")
+    const res = await importExportApi.downloadTemplate('program-courses')
+    downloadBlob(await res.blob(), '方案课程批量导入模板.xlsx')
   }
 
   const doImport = async (files: File[], overwrite = false) => {
     const form = new FormData()
-    files.forEach((f) => form.append("file", f))
-    form.append("programId", programId)
-    const res = await authedFetch(`/import/program-courses/excel?programId=${encodeURIComponent(programId)}&overwrite=${overwrite}`, { method: "POST", body: form })
+    files.forEach((f) => form.append('file', f))
+    form.append('programId', programId)
+    const res = await authedFetch(
+      `/import/program-courses/excel?programId=${encodeURIComponent(programId)}&overwrite=${overwrite}`,
+      { method: 'POST', body: form },
+    )
     const data = await res.json()
     if (res.ok) {
-      toast({ title: "导入成功", description: `共导入 ${data.created || 0} 门课程${data.failed ? "，" + data.failed + " 条失败" : ""}` })
+      toast({
+        title: '导入成功',
+        description: `共导入 ${data.created || 0} 门课程${data.failed ? '，' + data.failed + ' 条失败' : ''}`,
+      })
       onImported()
       return true
     } else {
-      toast({ variant: "destructive", title: "导入失败", description: data.error || "请检查文件格式" })
+      toast({
+        variant: 'destructive',
+        title: '导入失败',
+        description: data.error || '请检查文件格式',
+      })
       return false
     }
   }
@@ -46,9 +61,12 @@ export function ProgramCourseImportDialog({ open, onOpenChange, programId, onImp
     if (files.length === 0) return false
     try {
       const form = new FormData()
-      files.forEach((f) => form.append("file", f))
-      form.append("programId", programId)
-      const previewRes = await authedFetch(`/import/program-courses/preview?programId=${encodeURIComponent(programId)}`, { method: "POST", body: form })
+      files.forEach((f) => form.append('file', f))
+      form.append('programId', programId)
+      const previewRes = await authedFetch(
+        `/import/program-courses/preview?programId=${encodeURIComponent(programId)}`,
+        { method: 'POST', body: form },
+      )
       const preview = await previewRes.json()
       if (preview.duplicates > 0) {
         setPendingFiles(files)

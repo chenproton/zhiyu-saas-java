@@ -1,4 +1,4 @@
-import { PositionWeightConfig } from "./_components/position-weight-config"
+import { PositionWeightConfig } from './_components/position-weight-config'
 
 interface PageProps {
   params: Promise<{ id: string }>

@@ -1,33 +1,49 @@
-"use client"
+'use client'
 
-import {
-  Bell, Lock, Mail, Phone, Shield, Smartphone, User, Award,
-} from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SectionCard } from "./section-card"
+import { Bell, Lock, Mail, Phone, Shield, Smartphone, User, Award } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SectionCard } from './section-card'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import { mockStudentInfo } from "../_data/mock-student-data"
+import { mockStudentInfo } from '../_data/mock-student-data'
 
 export function ProfileTab() {
   const formData = {
     name: mockStudentInfo.name,
     studentNo: mockStudentInfo.studentNo,
-    phone: "138****8888",
-    email: "liming@example.edu.cn",
+    phone: '138****8888',
+    email: 'liming@example.edu.cn',
     major: mockStudentInfo.major,
     className: mockStudentInfo.className,
   }
 
   const honors = [
-    { id: "1", name: "国家励志奖学金", issuer: "教育部", date: "2025-11", fileName: "" },
-    { id: "2", name: "三好学生", issuer: "学校教务处", date: "2025-09", fileName: "" },
-    { id: "3", name: "全国职业技能大赛省赛二等奖", issuer: "省教育厅", date: "2026-03", fileName: "award_cert.pdf" },
-    { id: "4", name: "华为HCIA-Datacom认证", issuer: "华为技术有限公司", date: "2025-12", fileName: "hcia_cert.pdf" },
-    { id: "5", name: "大学英语四级证书", issuer: "教育部考试中心", date: "2025-06", fileName: "cet4.pdf" },
+    { id: '1', name: '国家励志奖学金', issuer: '教育部', date: '2025-11', fileName: '' },
+    { id: '2', name: '三好学生', issuer: '学校教务处', date: '2025-09', fileName: '' },
+    {
+      id: '3',
+      name: '全国职业技能大赛省赛二等奖',
+      issuer: '省教育厅',
+      date: '2026-03',
+      fileName: 'award_cert.pdf',
+    },
+    {
+      id: '4',
+      name: '华为HCIA-Datacom认证',
+      issuer: '华为技术有限公司',
+      date: '2025-12',
+      fileName: 'hcia_cert.pdf',
+    },
+    {
+      id: '5',
+      name: '大学英语四级证书',
+      issuer: '教育部考试中心',
+      date: '2025-06',
+      fileName: 'cet4.pdf',
+    },
   ]
 
   const notifications = {
@@ -41,25 +57,43 @@ export function ProfileTab() {
   }
 
   const securityItems = [
-    { label: "手机绑定", status: "bound", statusText: "138****8888", action: "更换", icon: Smartphone },
-    { label: "邮箱绑定", status: "bound", statusText: "已绑定", action: "更换", icon: Mail },
-    { label: "微信绑定", status: "unbound", statusText: "未绑定", action: "绑定", icon: Phone },
+    {
+      label: '手机绑定',
+      status: 'bound',
+      statusText: '138****8888',
+      action: '更换',
+      icon: Smartphone,
+    },
+    { label: '邮箱绑定', status: 'bound', statusText: '已绑定', action: '更换', icon: Mail },
+    { label: '微信绑定', status: 'unbound', statusText: '未绑定', action: '绑定', icon: Phone },
   ]
 
   return (
     <div className="space-y-5">
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="h-9 bg-white border border-gray-100 shadow-sm mb-4 p-1">
-          <TabsTrigger value="profile" className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+          <TabsTrigger
+            value="profile"
+            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+          >
             个人资料
           </TabsTrigger>
-          <TabsTrigger value="archive" className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+          <TabsTrigger
+            value="archive"
+            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+          >
             我的荣誉奖励
           </TabsTrigger>
-          <TabsTrigger value="security" className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+          <TabsTrigger
+            value="security"
+            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+          >
             账号安全
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+          <TabsTrigger
+            value="notifications"
+            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+          >
             通知偏好
           </TabsTrigger>
         </TabsList>
@@ -82,28 +116,70 @@ export function ProfileTab() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-700">姓名</Label>
-                <Input id="name" value={formData.name} disabled className="bg-gray-50 border-gray-100" />
+                <Label htmlFor="name" className="text-gray-700">
+                  姓名
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  disabled
+                  className="bg-gray-50 border-gray-100"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="studentNo" className="text-gray-700">学号</Label>
-                <Input id="studentNo" value={formData.studentNo} disabled className="bg-gray-50 border-gray-100" />
+                <Label htmlFor="studentNo" className="text-gray-700">
+                  学号
+                </Label>
+                <Input
+                  id="studentNo"
+                  value={formData.studentNo}
+                  disabled
+                  className="bg-gray-50 border-gray-100"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-gray-700">手机号</Label>
-                <Input id="phone" value={formData.phone} disabled className="bg-gray-50 border-gray-100" />
+                <Label htmlFor="phone" className="text-gray-700">
+                  手机号
+                </Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  disabled
+                  className="bg-gray-50 border-gray-100"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700">邮箱</Label>
-                <Input id="email" value={formData.email} disabled className="bg-gray-50 border-gray-100" />
+                <Label htmlFor="email" className="text-gray-700">
+                  邮箱
+                </Label>
+                <Input
+                  id="email"
+                  value={formData.email}
+                  disabled
+                  className="bg-gray-50 border-gray-100"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="major" className="text-gray-700">专业</Label>
-                <Input id="major" value={formData.major} disabled className="bg-gray-50 border-gray-100" />
+                <Label htmlFor="major" className="text-gray-700">
+                  专业
+                </Label>
+                <Input
+                  id="major"
+                  value={formData.major}
+                  disabled
+                  className="bg-gray-50 border-gray-100"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="className" className="text-gray-700">班级</Label>
-                <Input id="className" value={formData.className} disabled className="bg-gray-50 border-gray-100" />
+                <Label htmlFor="className" className="text-gray-700">
+                  班级
+                </Label>
+                <Input
+                  id="className"
+                  value={formData.className}
+                  disabled
+                  className="bg-gray-50 border-gray-100"
+                />
               </div>
             </div>
           </SectionCard>
@@ -115,13 +191,19 @@ export function ProfileTab() {
               <p className="text-xs text-gray-500">共 {honors.length} 项荣誉与证书</p>
               <div className="space-y-2">
                 {honors.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white">
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
+                  >
                     <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
                       <Award className="w-4 h-4 text-amber-500" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{item.issuer} · {item.date}{item.fileName ? ` · 附件：${item.fileName}` : ""}</p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {item.issuer} · {item.date}
+                        {item.fileName ? ` · 附件：${item.fileName}` : ''}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -151,9 +233,9 @@ export function ProfileTab() {
                         <p className="text-sm font-medium text-gray-900">{item.label}</p>
                         <p
                           className={`text-xs ${
-                            item.status === "strong" || item.status === "bound"
-                              ? "text-emerald-600"
-                              : "text-gray-400"
+                            item.status === 'strong' || item.status === 'bound'
+                              ? 'text-emerald-600'
+                              : 'text-gray-400'
                           }`}
                         >
                           {item.statusText}
@@ -184,12 +266,31 @@ export function ProfileTab() {
                 <h4 className="text-sm font-semibold text-gray-900 mb-3">学习通知</h4>
                 <div className="space-y-3">
                   {[
-                    { key: "course", label: "课程任务提醒", desc: "当有新的课程任务或作业截止时通知我" },
-                    { key: "exam", label: "考试测评提醒", desc: "当有新的考试安排或成绩发布时通知我" },
-                    { key: "scene", label: "场景任务提醒", desc: "当有新的场景任务或评分反馈时通知我" },
-                    { key: "position", label: "岗位推荐通知", desc: "当有匹配岗位或招聘活动上线时通知我" },
+                    {
+                      key: 'course',
+                      label: '课程任务提醒',
+                      desc: '当有新的课程任务或作业截止时通知我',
+                    },
+                    {
+                      key: 'exam',
+                      label: '考试测评提醒',
+                      desc: '当有新的考试安排或成绩发布时通知我',
+                    },
+                    {
+                      key: 'scene',
+                      label: '场景任务提醒',
+                      desc: '当有新的场景任务或评分反馈时通知我',
+                    },
+                    {
+                      key: 'position',
+                      label: '岗位推荐通知',
+                      desc: '当有匹配岗位或招聘活动上线时通知我',
+                    },
                   ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                    <div
+                      key={item.key}
+                      className="flex items-center justify-between p-3 rounded-xl bg-gray-50"
+                    >
                       <div>
                         <p className="text-sm text-gray-900 font-medium">{item.label}</p>
                         <p className="text-xs text-gray-500">{item.desc}</p>
@@ -207,11 +308,14 @@ export function ProfileTab() {
                 <h4 className="text-sm font-semibold text-gray-900 mb-3">通知渠道</h4>
                 <div className="space-y-3">
                   {[
-                    { key: "system", label: "站内消息", desc: "在工作台消息中心接收通知" },
-                    { key: "email", label: "邮件通知", desc: "发送通知到绑定邮箱" },
-                    { key: "sms", label: "短信通知", desc: "发送通知到绑定手机" },
+                    { key: 'system', label: '站内消息', desc: '在工作台消息中心接收通知' },
+                    { key: 'email', label: '邮件通知', desc: '发送通知到绑定邮箱' },
+                    { key: 'sms', label: '短信通知', desc: '发送通知到绑定手机' },
                   ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                    <div
+                      key={item.key}
+                      className="flex items-center justify-between p-3 rounded-xl bg-gray-50"
+                    >
                       <div>
                         <p className="text-sm text-gray-900 font-medium">{item.label}</p>
                         <p className="text-xs text-gray-500">{item.desc}</p>

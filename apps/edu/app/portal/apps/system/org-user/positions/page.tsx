@@ -1,20 +1,47 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { portalStaffTitleApi, portalUserManagementApi, type User } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { Plus, Pencil, Power, Trash2, Search, Upload, Download, Eye, AlertCircle, Loader2, RotateCcw, Users } from "lucide-react"
-import type { StaffTitle } from "@/lib/types/backend"
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { portalStaffTitleApi, portalUserManagementApi, type User } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import {
+  Plus,
+  Pencil,
+  Power,
+  Trash2,
+  Search,
+  Upload,
+  Download,
+  Eye,
+  AlertCircle,
+  Loader2,
+  RotateCcw,
+  Users,
+} from 'lucide-react'
+import type { StaffTitle } from '@/lib/types/backend'
 
 export default function PositionsPage() {
   const { tenantId } = usePortalAuth()
@@ -25,9 +52,9 @@ export default function PositionsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false)
   const [selectedPosition, setSelectedPosition] = useState<StaffTitle | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [dialogName, setDialogName] = useState("")
-  const [dialogDescription, setDialogDescription] = useState("")
+  const [searchTerm, setSearchTerm] = useState('')
+  const [dialogName, setDialogName] = useState('')
+  const [dialogDescription, setDialogDescription] = useState('')
   const [saving, setSaving] = useState(false)
   const [titleUsers, setTitleUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
@@ -40,7 +67,7 @@ export default function PositionsPage() {
       const res = await portalStaffTitleApi.list({ tenantId, limit: 1000 })
       setPositions(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载失败")
+      setError(err instanceof Error ? err.message : '加载失败')
     } finally {
       setLoading(false)
     }
@@ -56,61 +83,88 @@ export default function PositionsPage() {
     }
   }, [fetchPositions])
 
-  const filteredPositions = useMemo(() =>
-    positions.filter((pos) => pos.name.includes(searchTerm) || (pos.description && pos.description.includes(searchTerm))),
-    [positions, searchTerm]
+  const filteredPositions = useMemo(
+    () =>
+      positions.filter(
+        (pos) =>
+          pos.name.includes(searchTerm) ||
+          (pos.description && pos.description.includes(searchTerm)),
+      ),
+    [positions, searchTerm],
   )
 
   const openDialog = (position: StaffTitle | null) => {
     setSelectedPosition(position)
-    setDialogName(position?.name || "")
-    setDialogDescription(position?.description || "")
+    setDialogName(position?.name || '')
+    setDialogDescription(position?.description || '')
     setIsDialogOpen(true)
   }
 
   const handleSave = async () => {
     if (!tenantId) {
-      toast({ variant: "destructive", title: "保存失败", description: "未获取到租户信息，请重新登录" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: '未获取到租户信息，请重新登录',
+      })
       return
     }
     if (!dialogName.trim()) return
     setSaving(true)
     try {
-      const payload = { tenantId, name: dialogName.trim(), description: dialogDescription.trim() || undefined }
+      const payload = {
+        tenantId,
+        name: dialogName.trim(),
+        description: dialogDescription.trim() || undefined,
+      }
       if (selectedPosition) {
         await portalStaffTitleApi.update(selectedPosition.id, payload)
-        toast({ title: "保存成功", description: "职位信息已更新" })
+        toast({ title: '保存成功', description: '职位信息已更新' })
       } else {
-        await portalStaffTitleApi.create(payload as Omit<StaffTitle, "id" | "userCount" | "createdAt">)
-        toast({ title: "创建成功", description: "新职位已添加" })
+        await portalStaffTitleApi.create(
+          payload as Omit<StaffTitle, 'id' | 'userCount' | 'createdAt'>,
+        )
+        toast({ title: '创建成功', description: '新职位已添加' })
       }
       setIsDialogOpen(false)
       await fetchPositions()
     } catch (err) {
-      toast({ variant: "destructive", title: "保存失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setSaving(false)
     }
   }
 
   const toggleStatus = async (position: StaffTitle) => {
-    const nextStatus = position.status === "active" ? "inactive" : "active"
+    const nextStatus = position.status === 'active' ? 'inactive' : 'active'
     try {
       await portalStaffTitleApi.toggleStatus(position.id, nextStatus)
-      toast({ title: "状态已更新" })
+      toast({ title: '状态已更新' })
       await fetchPositions()
     } catch (err) {
-      toast({ variant: "destructive", title: "操作失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '操作失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     }
   }
 
   const deletePosition = async (id: string) => {
     try {
       await portalStaffTitleApi.delete(id)
-      toast({ title: "删除成功" })
+      toast({ title: '删除成功' })
       await fetchPositions()
     } catch (err) {
-      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     }
   }
 
@@ -124,7 +178,11 @@ export default function PositionsPage() {
       const filtered = res.items.filter((u) => u.titleIds?.includes(position.id))
       setTitleUsers(filtered)
     } catch (err) {
-      toast({ variant: "destructive", title: "加载用户失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '加载用户失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setLoadingUsers(false)
     }
@@ -160,7 +218,8 @@ export default function PositionsPage() {
           <AlertDescription className="flex items-center gap-4">
             <span className="flex-1">{error}</span>
             <Button variant="outline" size="sm" onClick={fetchPositions}>
-              <RotateCcw className="h-4 w-4 mr-1" />重试
+              <RotateCcw className="h-4 w-4 mr-1" />
+              重试
             </Button>
           </AlertDescription>
         </Alert>
@@ -169,7 +228,12 @@ export default function PositionsPage() {
       <div className="mb-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="搜索职位名称..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+          <Input
+            placeholder="搜索职位名称..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
         </div>
       </div>
 
@@ -195,7 +259,7 @@ export default function PositionsPage() {
             ) : filteredPositions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  {searchTerm ? "未找到匹配的职位" : "暂无职位数据"}
+                  {searchTerm ? '未找到匹配的职位' : '暂无职位数据'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -206,47 +270,52 @@ export default function PositionsPage() {
                     <Badge variant="secondary">{position.userCount} 人</Badge>
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={position.status} label={position.status === "active" ? "启用" : "停用"} />
+                    <StatusBadge
+                      status={position.status}
+                      label={position.status === 'active' ? '启用' : '停用'}
+                    />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{new Date(position.createdAt).toLocaleString("zh-CN")}</TableCell>
-                    <TableRowActions>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => openDialog(position)}
-                      >
-                        <Pencil className="mr-1 h-3 w-3" />
-                        编辑
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => openUsersDialog(position)}
-                      >
-                        <Users className="mr-1 h-3 w-3" />
-                        查看用户
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => toggleStatus(position)}
-                      >
-                        <Power className="mr-1 h-3 w-3" />
-                        {position.status === "active" ? "停用" : "启用"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => deletePosition(position.id)}
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        删除
-                      </Button>
-                    </TableRowActions>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(position.createdAt).toLocaleString('zh-CN')}
+                  </TableCell>
+                  <TableRowActions>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => openDialog(position)}
+                    >
+                      <Pencil className="mr-1 h-3 w-3" />
+                      编辑
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => openUsersDialog(position)}
+                    >
+                      <Users className="mr-1 h-3 w-3" />
+                      查看用户
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => toggleStatus(position)}
+                    >
+                      <Power className="mr-1 h-3 w-3" />
+                      {position.status === 'active' ? '停用' : '启用'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={() => deletePosition(position.id)}
+                    >
+                      <Trash2 className="mr-1 h-3 w-3" />
+                      删除
+                    </Button>
+                  </TableRowActions>
                 </TableRow>
               ))
             )}
@@ -260,21 +329,33 @@ export default function PositionsPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedPosition ? "编辑职位" : "新增职位"}</DialogTitle>
+            <DialogTitle>{selectedPosition ? '编辑职位' : '新增职位'}</DialogTitle>
             <DialogDescription>职位用于用户身份标识</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>职位名称 <span className="text-destructive">*</span></Label>
-              <Input placeholder="如：教授" value={dialogName} onChange={(e) => setDialogName(e.target.value)} />
+              <Label>
+                职位名称 <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                placeholder="如：教授"
+                value={dialogName}
+                onChange={(e) => setDialogName(e.target.value)}
+              />
             </div>
             <div className="grid gap-2">
               <Label>描述</Label>
-              <Input placeholder="可选描述" value={dialogDescription} onChange={(e) => setDialogDescription(e.target.value)} />
+              <Input
+                placeholder="可选描述"
+                value={dialogDescription}
+                onChange={(e) => setDialogDescription(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>取消</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
+              取消
+            </Button>
             <Button onClick={handleSave} disabled={saving || !dialogName.trim()}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               保存
@@ -301,7 +382,10 @@ export default function PositionsPage() {
             ) : (
               <div className="space-y-2">
                 {titleUsers.slice(0, 5).map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-2 bg-muted rounded-lg"
+                  >
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
                         {user.name[0]}
@@ -312,13 +396,17 @@ export default function PositionsPage() {
                   </div>
                 ))}
                 {titleUsers.length > 5 && (
-                  <p className="text-center text-sm text-muted-foreground">... 还有 {titleUsers.length - 5} 名用户</p>
+                  <p className="text-center text-sm text-muted-foreground">
+                    ... 还有 {titleUsers.length - 5} 名用户
+                  </p>
                 )}
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsUsersDialogOpen(false)}>关闭</Button>
+            <Button variant="outline" onClick={() => setIsUsersDialogOpen(false)}>
+              关闭
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

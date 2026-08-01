@@ -1,30 +1,26 @@
-"use client"
+'use client'
 
-import { useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
-import { PlatformShell } from "@/components/platform-shell"
-import { adminNavigationConfig } from "@/lib/navigation-config"
-import { useAuth } from "@/components/auth-provider"
-import type { PlatformNavigationConfig } from "@/components/platform-shell"
+import { useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { PlatformShell } from '@/components/platform-shell'
+import { adminNavigationConfig } from '@/lib/navigation-config'
+import { useAuth } from '@/components/auth-provider'
+import type { PlatformNavigationConfig } from '@/components/platform-shell'
 
 const config: PlatformNavigationConfig = {
   ...adminNavigationConfig,
-  sideBackHref: "/portal/apps",
+  sideBackHref: '/portal/apps',
 }
 
-export default function LessonAdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function LessonAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, hasMenuPermission } = useAuth()
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace("/portal/login")
+      router.replace('/portal/login')
     }
   }, [loading, user, router])
 

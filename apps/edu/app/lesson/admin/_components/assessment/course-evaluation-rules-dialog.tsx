@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { Award } from "lucide-react"
-import { useCallback, useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { Award } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -10,18 +10,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { useToast } from "@zhiyu/ui"
-import type { KnowledgePointItem } from "@/lib/types/lesson"
-import type { EvalRuleConfig, EvalRuleMethodKey } from "@/lib/types/evaluation"
-import { makeDefaultEvalRuleConfig } from "@/lib/types/evaluation"
-import {
-  EvaluationRulesEditor,
-  type AbilityPointItem,
-} from "@/components/evaluation-rules"
+} from '@/components/ui/dialog'
+import { useToast } from '@zhiyu/ui'
+import type { KnowledgePointItem } from '@/lib/types/lesson'
+import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
+import { makeDefaultEvalRuleConfig } from '@/lib/types/evaluation'
+import { EvaluationRulesEditor, type AbilityPointItem } from '@/components/evaluation-rules'
 
 export type { EvalRuleConfig as CourseEvalRulesConfig, EvalRuleMethodKey }
-export type { EvalRulePoint as EvalPoint } from "@/lib/types/evaluation"
+export type { EvalRulePoint as EvalPoint } from '@/lib/types/evaluation'
 export type { AbilityPointItem }
 
 interface CourseEvaluationRulesDialogProps {
@@ -43,7 +40,7 @@ export function CourseEvaluationRulesDialog({
   evaluationMethods,
   initialConfig,
   onChange,
-  title = "配置课程评价规则",
+  title = '配置课程评价规则',
   knowledgePoints,
   abilityPoints,
 }: CourseEvaluationRulesDialogProps) {
@@ -52,7 +49,7 @@ export function CourseEvaluationRulesDialog({
 
   const config = useMemo<EvalRuleConfig>(() => {
     const methods = (evaluationMethods || []).map(
-      m => (m === "exam" ? "homework" : m) as EvalRuleMethodKey
+      (m) => (m === 'exam' ? 'homework' : m) as EvalRuleMethodKey,
     )
     const base = makeDefaultEvalRuleConfig(methods)
     return initialConfig ? { ...base, ...initialConfig, evaluationMethods: methods } : base
@@ -63,14 +60,14 @@ export function CourseEvaluationRulesDialog({
       setLiveConfig(next)
       onChange?.(next)
     },
-    [onChange]
+    [onChange],
   )
 
   const methodWeightTotal = useMemo(() => {
     const source = liveConfig || config
     return source.evaluationMethods.reduce((sum, m) => {
       // The store internally maps "exam" to "homework"; methodWeights keys follow the internal key.
-      const weightKey = (m as string) === "exam" ? "homework" : m
+      const weightKey = (m as string) === 'exam' ? 'homework' : m
       return sum + (source.methodWeights[weightKey] || 0)
     }, 0)
   }, [liveConfig, config])
@@ -99,7 +96,9 @@ export function CourseEvaluationRulesDialog({
             </div>
             {title}
           </DialogTitle>
-          <DialogDescription>配置各评价方式的测评对象、评价主体、测评资源与评价标准</DialogDescription>
+          <DialogDescription>
+            配置各评价方式的测评对象、评价主体、测评资源与评价标准
+          </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-hidden py-4">
           <EvaluationRulesEditor
@@ -119,8 +118,8 @@ export function CourseEvaluationRulesDialog({
             onClick={() => {
               if (methodWeightTotal !== 100) {
                 toast({
-                  variant: "destructive",
-                  title: "权重校验失败",
+                  variant: 'destructive',
+                  title: '权重校验失败',
                   description: `评价方式权重合计需等于 100%，当前为 ${methodWeightTotal}%`,
                 })
                 return

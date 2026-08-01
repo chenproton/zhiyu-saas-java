@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from 'lucide-react'
 import {
   Archive,
   Award,
@@ -24,7 +24,7 @@ import {
   Star,
   User,
   Users,
-} from "lucide-react"
+} from 'lucide-react'
 
 export const platformIconMap = {
   archive: Archive,
@@ -59,7 +59,7 @@ export type PlatformIconKey = keyof typeof platformIconMap
 export type PlatformIcon = LucideIcon | PlatformIconKey
 
 export function resolvePlatformIcon(icon: PlatformIcon): LucideIcon {
-  if (typeof icon === "string") {
+  if (typeof icon === 'string') {
     return platformIconMap[icon] || Settings
   }
   return icon

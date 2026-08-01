@@ -1,14 +1,19 @@
-"use client"
+'use client'
 
-import { useMemo, useState } from "react"
-import { Layers, Sparkles, Target, X } from "lucide-react"
-import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint, AbilityDomain } from "@/lib/types/job"
-import { AbilityPointCard } from "./ability-point-card"
+import { useMemo, useState } from 'react'
+import { Layers, Sparkles, Target, X } from 'lucide-react'
+import type {
+  PositionResponsibility,
+  PositionAbilityBinding,
+  AbilityPoint,
+  AbilityDomain,
+} from '@/lib/types/job'
+import { AbilityPointCard } from './ability-point-card'
 
 const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
-  "知识": ["#3b82f6", "#60a5fa"],
-  "素养": ["#f59e0b", "#fbbf24"],
-  "技能": ["#10b981", "#34d399"],
+  知识: ['#3b82f6', '#60a5fa'],
+  素养: ['#f59e0b', '#fbbf24'],
+  技能: ['#10b981', '#34d399'],
 }
 
 interface AbilityTreeProps {
@@ -18,12 +23,22 @@ interface AbilityTreeProps {
   abilityDomains?: AbilityDomain[]
 }
 
-export function AbilityTree({ responsibilities, bindings, abilityPoints, abilityDomains }: AbilityTreeProps) {
-  const [selectedAbility, setSelectedAbility] = useState<{ binding: PositionAbilityBinding; abilityPoint?: AbilityPoint } | null>(null)
+export function AbilityTree({
+  responsibilities,
+  bindings,
+  abilityPoints,
+  abilityDomains,
+}: AbilityTreeProps) {
+  const [selectedAbility, setSelectedAbility] = useState<{
+    binding: PositionAbilityBinding
+    abilityPoint?: AbilityPoint
+  } | null>(null)
 
   const abilityMap = useMemo(() => {
     const map: Record<string, AbilityPoint> = {}
-    abilityPoints.forEach((a) => { map[a.id] = a })
+    abilityPoints.forEach((a) => {
+      map[a.id] = a
+    })
     return map
   }, [abilityPoints])
 
@@ -33,14 +48,15 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
     if (abilityDomains && abilityDomains.length > 0) {
       abilityDomains.forEach((d) => groups.set(d.name, []))
       bindings.forEach((b) => {
-        const domain = abilityDomains.find((d) => d.bindingIds.includes(b.id))?.name || b.domain || "其他"
+        const domain =
+          abilityDomains.find((d) => d.bindingIds.includes(b.id))?.name || b.domain || '其他'
         const list = groups.get(domain) || []
         list.push(b)
         groups.set(domain, list)
       })
     } else {
       bindings.forEach((b) => {
-        const domain = b.domain || "综合能力"
+        const domain = b.domain || '综合能力'
         const list = groups.get(domain) || []
         list.push(b)
         groups.set(domain, list)
@@ -96,16 +112,21 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
                   >
                     <div className="flex flex-col min-w-0 gap-1">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm text-[#1f2937] truncate">{info?.name || ab.domain || "未命名能力"}</span>
+                        <span className="text-sm text-[#1f2937] truncate">
+                          {info?.name || ab.domain || '未命名能力'}
+                        </span>
                         {(info?.attributes?.length ?? 0) > 0 && (
                           <div className="flex flex-wrap gap-1 shrink-0">
                             {info.attributes.map((attr) => {
-                              const colors = ATTRIBUTE_COLORS[attr] || ["#64748b", "#94a3b8"]
+                              const colors = ATTRIBUTE_COLORS[attr] || ['#64748b', '#94a3b8']
                               return (
                                 <span
                                   key={attr}
                                   className="text-[10px] px-1.5 py-0.5 rounded border text-white"
-                                  style={{ background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`, borderColor: colors[0] }}
+                                  style={{
+                                    background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`,
+                                    borderColor: colors[0],
+                                  }}
                                 >
                                   {attr}
                                 </span>
@@ -114,7 +135,9 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
                           </div>
                         )}
                       </div>
-                      <span className="text-[10px] text-[#94a3b8] truncate font-mono">ID：{ab.abilityPointId}</span>
+                      <span className="text-[10px] text-[#94a3b8] truncate font-mono">
+                        ID：{ab.abilityPointId}
+                      </span>
                     </div>
                   </div>
                 )
@@ -125,15 +148,27 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
       </div>
 
       {selectedAbility && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedAbility(null)}>
-          <div className="bg-white rounded-2xl w-[520px] max-w-[95vw] p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setSelectedAbility(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-[520px] max-w-[95vw] p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="text-base font-semibold text-[#1f2937]">能力点详情</div>
-              <button className="text-[#94a3b8] hover:text-[#1f2937]" onClick={() => setSelectedAbility(null)}>
+              <button
+                className="text-[#94a3b8] hover:text-[#1f2937]"
+                onClick={() => setSelectedAbility(null)}
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <AbilityPointCard binding={selectedAbility.binding} abilityPoint={selectedAbility.abilityPoint} />
+            <AbilityPointCard
+              binding={selectedAbility.binding}
+              abilityPoint={selectedAbility.abilityPoint}
+            />
           </div>
         </div>
       )}

@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -11,29 +11,29 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Eye, Download, CheckCircle2, Circle } from "lucide-react"
-import { toast } from "@zhiyu/ui"
-import type { TaskResource } from "../_types/registrar-adapted"
+} from '@/components/ui/table'
+import { Eye, Download, CheckCircle2, Circle } from 'lucide-react'
+import { toast } from '@zhiyu/ui'
+import type { TaskResource } from '../_types/registrar-adapted'
 
 const resourceTypeLabel: Record<string, string> = {
-  textbook: "教材",
-  ppt: "课件",
-  video: "视频",
-  link: "链接",
-  document: "文档",
-  scene_link: "场景链接",
+  textbook: '教材',
+  ppt: '课件',
+  video: '视频',
+  link: '链接',
+  document: '文档',
+  scene_link: '场景链接',
 }
 
 export function PreClassTab() {
-  const [prepStage, setPrepStage] = useState<"pre" | "in" | "post">("pre")
+  const [prepStage, setPrepStage] = useState<'pre' | 'in' | 'post'>('pre')
   const [task] = useState({
     objectives: [] as string[],
-    syllabus: "",
+    syllabus: '',
     prepContent: {
-      pre: { objectives: "", guidePlan: "", previewQuestions: [] },
+      pre: { objectives: '', guidePlan: '', previewQuestions: [] },
       in: { coursewareResources: [] as TaskResource[], quizQuestions: [], discussionTopics: [] },
-      post: { homework: "", quizQuestions: [], extensionResources: [] },
+      post: { homework: '', quizQuestions: [], extensionResources: [] },
     },
     resources: [] as TaskResource[],
   })
@@ -43,7 +43,7 @@ export function PreClassTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button variant="outline" onClick={() => toast({ title: "备课功能开发中" })}>
+        <Button variant="outline" onClick={() => toast({ title: '备课功能开发中' })}>
           前往备课
         </Button>
       </div>
@@ -54,31 +54,31 @@ export function PreClassTab() {
             <CardTitle className="text-base">备课内容</CardTitle>
             <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-0.5">
               <button
-                onClick={() => setPrepStage("pre")}
+                onClick={() => setPrepStage('pre')}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  prepStage === "pre"
-                    ? "bg-white text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                  prepStage === 'pre'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 课前环节
               </button>
               <button
-                onClick={() => setPrepStage("in")}
+                onClick={() => setPrepStage('in')}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  prepStage === "in"
-                    ? "bg-white text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                  prepStage === 'in'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 课中环节
               </button>
               <button
-                onClick={() => setPrepStage("post")}
+                onClick={() => setPrepStage('post')}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  prepStage === "post"
-                    ? "bg-white text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                  prepStage === 'post'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 课后环节
@@ -87,7 +87,7 @@ export function PreClassTab() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {prepStage === "pre" && (
+          {prepStage === 'pre' && (
             <>
               <div className="rounded-xl border p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b">
@@ -95,7 +95,9 @@ export function PreClassTab() {
                   <h3 className="text-sm font-semibold">教学目标</h3>
                 </div>
                 {task.prepContent?.pre?.objectives ? (
-                  <div className="text-sm whitespace-pre-wrap">{task.prepContent.pre.objectives}</div>
+                  <div className="text-sm whitespace-pre-wrap">
+                    {task.prepContent.pre.objectives}
+                  </div>
                 ) : task.objectives && task.objectives.length > 0 ? (
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {task.objectives.map((obj, idx) => (
@@ -113,7 +115,9 @@ export function PreClassTab() {
                   <h3 className="text-sm font-semibold">导学教案</h3>
                 </div>
                 {task.prepContent?.pre?.guidePlan ? (
-                  <div className="text-sm whitespace-pre-wrap">{task.prepContent.pre.guidePlan}</div>
+                  <div className="text-sm whitespace-pre-wrap">
+                    {task.prepContent.pre.guidePlan}
+                  </div>
                 ) : task.syllabus ? (
                   <div className="text-sm whitespace-pre-wrap">{task.syllabus}</div>
                 ) : (
@@ -126,7 +130,8 @@ export function PreClassTab() {
                   <div className="w-1 h-4 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full" />
                   <h3 className="text-sm font-semibold">课前预习</h3>
                 </div>
-                {task.prepContent?.pre?.previewQuestions && task.prepContent.pre.previewQuestions.length > 0 ? (
+                {task.prepContent?.pre?.previewQuestions &&
+                task.prepContent.pre.previewQuestions.length > 0 ? (
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {task.prepContent.pre.previewQuestions.map((q, idx) => (
                       <li key={idx}>{q}</li>
@@ -139,23 +144,28 @@ export function PreClassTab() {
             </>
           )}
 
-          {prepStage === "in" && (
+          {prepStage === 'in' && (
             <>
               <div className="rounded-xl border p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b">
                   <div className="w-1 h-4 bg-gradient-to-b from-green-400 to-green-600 rounded-full" />
                   <h3 className="text-sm font-semibold">课件资源</h3>
                 </div>
-                {task.prepContent?.in?.coursewareResources && task.prepContent.in.coursewareResources.length > 0 ? (
+                {task.prepContent?.in?.coursewareResources &&
+                task.prepContent.in.coursewareResources.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {task.prepContent.in.coursewareResources.map((r: TaskResource) => (
-                      <Badge key={r.id} variant="secondary" className="text-xs">{r.name}</Badge>
+                      <Badge key={r.id} variant="secondary" className="text-xs">
+                        {r.name}
+                      </Badge>
                     ))}
                   </div>
                 ) : task.resources && task.resources.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {task.resources.map((r: TaskResource) => (
-                      <Badge key={r.id} variant="secondary" className="text-xs">{r.name}</Badge>
+                      <Badge key={r.id} variant="secondary" className="text-xs">
+                        {r.name}
+                      </Badge>
                     ))}
                   </div>
                 ) : (
@@ -168,7 +178,8 @@ export function PreClassTab() {
                   <div className="w-1 h-4 bg-gradient-to-b from-green-400 to-green-600 rounded-full" />
                   <h3 className="text-sm font-semibold">随堂测验</h3>
                 </div>
-                {task.prepContent?.in?.quizQuestions && task.prepContent.in.quizQuestions.length > 0 ? (
+                {task.prepContent?.in?.quizQuestions &&
+                task.prepContent.in.quizQuestions.length > 0 ? (
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {task.prepContent.in.quizQuestions.map((q, idx) => (
                       <li key={idx}>{q}</li>
@@ -184,7 +195,8 @@ export function PreClassTab() {
                   <div className="w-1 h-4 bg-gradient-to-b from-green-400 to-green-600 rounded-full" />
                   <h3 className="text-sm font-semibold">互动讨论</h3>
                 </div>
-                {task.prepContent?.in?.discussionTopics && task.prepContent.in.discussionTopics.length > 0 ? (
+                {task.prepContent?.in?.discussionTopics &&
+                task.prepContent.in.discussionTopics.length > 0 ? (
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {task.prepContent.in.discussionTopics.map((t, idx) => (
                       <li key={idx}>{t}</li>
@@ -197,7 +209,7 @@ export function PreClassTab() {
             </>
           )}
 
-          {prepStage === "post" && (
+          {prepStage === 'post' && (
             <>
               <div className="rounded-xl border p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b">
@@ -205,7 +217,9 @@ export function PreClassTab() {
                   <h3 className="text-sm font-semibold">课后作业</h3>
                 </div>
                 {task.prepContent?.post?.homework ? (
-                  <div className="text-sm whitespace-pre-wrap">{task.prepContent.post.homework}</div>
+                  <div className="text-sm whitespace-pre-wrap">
+                    {task.prepContent.post.homework}
+                  </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">暂无课后作业</div>
                 )}
@@ -216,7 +230,8 @@ export function PreClassTab() {
                   <div className="w-1 h-4 bg-gradient-to-b from-purple-400 to-purple-600 rounded-full" />
                   <h3 className="text-sm font-semibold">课后测验</h3>
                 </div>
-                {task.prepContent?.post?.quizQuestions && task.prepContent.post.quizQuestions.length > 0 ? (
+                {task.prepContent?.post?.quizQuestions &&
+                task.prepContent.post.quizQuestions.length > 0 ? (
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {task.prepContent.post.quizQuestions.map((q, idx) => (
                       <li key={idx}>{q}</li>
@@ -232,7 +247,8 @@ export function PreClassTab() {
                   <div className="w-1 h-4 bg-gradient-to-b from-purple-400 to-purple-600 rounded-full" />
                   <h3 className="text-sm font-semibold">课后拓展</h3>
                 </div>
-                {task.prepContent?.post?.extensionResources && task.prepContent.post.extensionResources.length > 0 ? (
+                {task.prepContent?.post?.extensionResources &&
+                task.prepContent.post.extensionResources.length > 0 ? (
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {task.prepContent.post.extensionResources.map((r, idx) => (
                       <li key={idx}>{r}</li>
@@ -286,10 +302,10 @@ export function PreClassTab() {
                           variant="outline"
                           size="sm"
                           disabled={!r.url}
-                          onClick={() => r.url && window.open(r.url, "_blank")}
+                          onClick={() => r.url && window.open(r.url, '_blank')}
                         >
                           <Eye className="h-3 w-3 mr-1" />
-                          {r.url ? "查看" : "无链接"}
+                          {r.url ? '查看' : '无链接'}
                         </Button>
                       </div>
                     </TableCell>

@@ -1,4 +1,4 @@
-import type { Status } from "./content-status"
+import type { Status } from './content-status'
 
 // 难度等级
 export type Difficulty = 'easy' | 'medium' | 'hard'
@@ -151,9 +151,9 @@ export interface ExamUsage {
   startTime?: string
   endTime?: string
   duration?: number
-  targetType?: "class" | "major" | "department" | "public"
+  targetType?: 'class' | 'major' | 'department' | 'public'
   targetIds: string[]
-  status: "draft" | "pending" | "in_progress" | "finished"
+  status: 'draft' | 'pending' | 'in_progress' | 'finished'
   creatorId?: string
   createdAt: string
   updatedAt: string
@@ -183,7 +183,7 @@ export interface EvaluationBatch {
   orgNodeId?: string
   majorId?: string
   workflowId?: string
-  status: "open" | "closed"
+  status: 'open' | 'closed'
   createdAt: string
   updatedAt: string
 }

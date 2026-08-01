@@ -1,8 +1,8 @@
-import { useRef } from "react"
-import { Upload, File, Loader2, X, ExternalLink } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { resourceTypeAccept } from "@/lib/resource-type-constants"
+import { useRef } from 'react'
+import { Upload, File, Loader2, X, ExternalLink } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { resourceTypeAccept } from '@/lib/resource-type-constants'
 
 interface ResourceUploadZoneProps {
   resourceType: string
@@ -26,10 +26,10 @@ export function ResourceUploadZone({
   return (
     <div
       className={cn(
-        "border-2 border-dashed rounded-xl p-6 text-center space-y-3 transition-colors",
+        'border-2 border-dashed rounded-xl p-6 text-center space-y-3 transition-colors',
         uploading
-          ? "border-primary/30 bg-gray-50/50"
-          : "border-gray-200 hover:border-primary/30 hover:bg-gray-50/50 cursor-pointer",
+          ? 'border-primary/30 bg-gray-50/50'
+          : 'border-gray-200 hover:border-primary/30 hover:bg-gray-50/50 cursor-pointer',
       )}
       onClick={() => !uploading && fileInputRef.current?.click()}
       onDragOver={(e) => {
@@ -46,7 +46,7 @@ export function ResourceUploadZone({
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) onFileSelect(file)
-          e.target.value = ""
+          e.target.value = ''
         }}
       />
       {uploadFile ? (
@@ -71,18 +71,23 @@ export function ResourceUploadZone({
             <p className="text-xs text-gray-500 mt-1">
               {resourceTypeAccept[resourceType]
                 ? `支持 ${resourceTypeAccept[resourceType]}，最大 100MB`
-                : "支持多种格式，最大 100MB"}
+                : '支持多种格式，最大 100MB'}
             </p>
           </div>
         </>
       )}
       {uploadFile && !uploading && (
-        <div className="flex items-center justify-center gap-2 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="flex items-center justify-center gap-2 pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-3.5 w-3.5 mr-1" />重新选择
+            <Upload className="h-3.5 w-3.5 mr-1" />
+            重新选择
           </Button>
           <Button variant="outline" size="sm" onClick={onClear}>
-            <X className="h-3.5 w-3.5 mr-1" />清除
+            <X className="h-3.5 w-3.5 mr-1" />
+            清除
           </Button>
         </div>
       )}

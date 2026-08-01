@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import {
   AlertDialog,
@@ -9,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../ui/alert-dialog"
+} from '../ui/alert-dialog'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -27,8 +27,8 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmText = "确认",
-  cancelText = "取消",
+  confirmText = '确认',
+  cancelText = '取消',
   variant = 'default',
   onConfirm,
 }: ConfirmDialogProps) {
@@ -43,7 +43,9 @@ export function ConfirmDialog({
           <AlertDialogCancel>{cancelText}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className={variant === 'destructive' ? 'bg-destructive text-white hover:bg-destructive/90' : ''}
+            className={
+              variant === 'destructive' ? 'bg-destructive text-white hover:bg-destructive/90' : ''
+            }
           >
             {confirmText}
           </AlertDialogAction>

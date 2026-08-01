@@ -12,7 +12,7 @@ export interface Scenario {
   difficulty: number
   version: string
   viewCount?: number
-  status: "draft" | "pending" | "approved" | "rejected" | "published" | "archived"
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
   background?: string
   deliveryGoal?: string
   creatorId: string
@@ -32,7 +32,7 @@ export interface ScenarioTask {
   detailedDescription?: string
   descriptionPdf?: string
   estimatedHours: number
-  taskType: "assessment" | "training"
+  taskType: 'assessment' | 'training'
   difficulty: number
   background?: string
   dependencyIds: string[]
@@ -90,7 +90,7 @@ export interface RubricTemplate {
   id: string
   tenantId: string
   name: string
-  mode: "rubric" | "score_rule"
+  mode: 'rubric' | 'score_rule'
   types?: string[]
   description?: string
   data: Record<string, any>
@@ -176,7 +176,7 @@ export interface SceneBatch {
   majorId?: string
   majorName?: string // Deprecated
   workflowId?: string
-  status: "open" | "closed"
+  status: 'open' | 'closed'
   scenarioCount?: number
   createdAt: string
   updatedAt: string

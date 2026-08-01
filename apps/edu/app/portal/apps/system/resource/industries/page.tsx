@@ -1,20 +1,26 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState, useCallback } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { TableCell, TableHead } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Pencil, Trash2 } from "lucide-react"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest, buildQuery, type ListResponse } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { PortalCrudPage } from "@/components/shared/portal-crud-page"
-import type { Industry } from "@/lib/types/backend"
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { TableCell, TableHead } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Pencil, Trash2 } from 'lucide-react'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalRequest, buildQuery, type ListResponse } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import type { Industry } from '@/lib/types/backend'
 
 export default function IndustriesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -28,10 +34,12 @@ export default function IndustriesPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await portalRequest<ListResponse<Industry>>(`/industries${buildQuery({ tenantId, limit: 1000 })}`)
+      const res = await portalRequest<ListResponse<Industry>>(
+        `/industries${buildQuery({ tenantId, limit: 1000 })}`,
+      )
       setIndustries(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载行业数据失败")
+      setError(err instanceof Error ? err.message : '加载行业数据失败')
     } finally {
       setLoading(false)
     }
@@ -71,11 +79,19 @@ export default function IndustriesPage() {
       filterItems={(items, searchTerm) =>
         items.filter((ind) => {
           if (!searchTerm) return true
-          const parentName = ind.parentId ? parentMap.get(ind.parentId) : ""
-          return ind.name.includes(searchTerm) || ind.code.includes(searchTerm) || (parentName ?? "").includes(searchTerm)
+          const parentName = ind.parentId ? parentMap.get(ind.parentId) : ''
+          return (
+            ind.name.includes(searchTerm) ||
+            ind.code.includes(searchTerm) ||
+            (parentName ?? '').includes(searchTerm)
+          )
         })
       }
-      importConfig={{ importType: "industries", entityLabel: "行业", templateFileName: "行业批量导入模板.xlsx" }}
+      importConfig={{
+        importType: 'industries',
+        entityLabel: '行业',
+        templateFileName: '行业批量导入模板.xlsx',
+      }}
       colSpan={7}
       renderTableHeader={() => (
         <>
@@ -93,12 +109,18 @@ export default function IndustriesPage() {
           <TableCell className="font-mono text-sm">{industry.code}</TableCell>
           <TableCell className="font-medium">{industry.name}</TableCell>
           <TableCell className="text-muted-foreground">
-            {industry.parentId ? (parentMap.get(industry.parentId) ?? industry.parentId) : <span className="text-gray-300">-</span>}
+            {industry.parentId ? (
+              (parentMap.get(industry.parentId) ?? industry.parentId)
+            ) : (
+              <span className="text-gray-300">-</span>
+            )}
           </TableCell>
-          <TableCell className="text-center text-sm text-muted-foreground">{industry.sortOrder}</TableCell>
+          <TableCell className="text-center text-sm text-muted-foreground">
+            {industry.sortOrder}
+          </TableCell>
           <TableCell className="text-center">
-            <Badge variant={industry.enabled ? "default" : "secondary"}>
-              {industry.enabled ? "已启用" : "已关闭"}
+            <Badge variant={industry.enabled ? 'default' : 'secondary'}>
+              {industry.enabled ? '已启用' : '已关闭'}
             </Badge>
           </TableCell>
           <TableCell className="text-center">
@@ -109,77 +131,133 @@ export default function IndustriesPage() {
               <Pencil className="mr-1 h-3 w-3" />
               编辑
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={actions.delete}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+              onClick={actions.delete}
+            >
               <Trash2 className="mr-1 h-3 w-3" />
               删除
             </Button>
           </TableRowActions>
         </>
       )}
-      createDefault={() => ({ id: "", code: "", name: "", parentId: "", sortOrder: 0, enabled: true } as Industry)}
+      createDefault={() =>
+        ({ id: '', code: '', name: '', parentId: '', sortOrder: 0, enabled: true }) as Industry
+      }
       renderForm={(item, setItem) => {
         const set = (patch: Partial<Industry>) => setItem({ ...item, ...patch })
         return (
           <>
             <div className="grid gap-2">
-              <Label>行业代码 <span className="text-destructive">*</span></Label>
-              <Input placeholder="如：IT" value={item.code} onChange={(e) => set({ code: e.target.value })} disabled={!!item.id} />
+              <Label>
+                行业代码 <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                placeholder="如：IT"
+                value={item.code}
+                onChange={(e) => set({ code: e.target.value })}
+                disabled={!!item.id}
+              />
             </div>
             <div className="grid gap-2">
-              <Label>行业名称 <span className="text-destructive">*</span></Label>
-              <Input placeholder="如：信息技术" value={item.name} onChange={(e) => set({ name: e.target.value })} />
+              <Label>
+                行业名称 <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                placeholder="如：信息技术"
+                value={item.name}
+                onChange={(e) => set({ name: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>上级行业</Label>
-              <Select value={item.parentId || "__none__"} onValueChange={(val) => set({ parentId: val === "__none__" ? "" : val })}>
-                <SelectTrigger><SelectValue placeholder="无（顶级行业）" /></SelectTrigger>
+              <Select
+                value={item.parentId || '__none__'}
+                onValueChange={(val) => set({ parentId: val === '__none__' ? '' : val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="无（顶级行业）" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">无（顶级行业）</SelectItem>
-                  {candidateParents.filter((i) => i.id !== item.id).map((ind) => (
-                    <SelectItem key={ind.id} value={ind.id}>{ind.name} ({ind.code})</SelectItem>
-                  ))}
+                  {candidateParents
+                    .filter((i) => i.id !== item.id)
+                    .map((ind) => (
+                      <SelectItem key={ind.id} value={ind.id}>
+                        {ind.name} ({ind.code})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
               <Label>排序</Label>
-              <Input type="number" placeholder="0" value={item.sortOrder} onChange={(e) => set({ sortOrder: Number(e.target.value) || 0 })} />
+              <Input
+                type="number"
+                placeholder="0"
+                value={item.sortOrder}
+                onChange={(e) => set({ sortOrder: Number(e.target.value) || 0 })}
+              />
             </div>
           </>
         )
       }}
       getDeleteDescription={(item) => (
-        <>确定要删除行业 <span className="font-medium">{item.name}</span>（{item.code}）吗？此操作不可撤销。</>
+        <>
+          确定要删除行业 <span className="font-medium">{item.name}</span>（{item.code}
+          ）吗？此操作不可撤销。
+        </>
       )}
       onSave={async (item, isEdit) => {
         if (!tenantId) {
-          toast({ variant: "destructive", title: "保存失败", description: "未获取到租户信息" })
+          toast({ variant: 'destructive', title: '保存失败', description: '未获取到租户信息' })
           return
         }
         if (!item.code.trim() || !item.name.trim()) return
         if (isEdit) {
           await portalRequest(`/industries/${item.id}`, {
-            method: "PUT",
-            body: JSON.stringify({ code: item.code.trim(), name: item.name.trim(), parentId: item.parentId || null, enabled: item.enabled, sortOrder: item.sortOrder }),
+            method: 'PUT',
+            body: JSON.stringify({
+              code: item.code.trim(),
+              name: item.name.trim(),
+              parentId: item.parentId || null,
+              enabled: item.enabled,
+              sortOrder: item.sortOrder,
+            }),
           })
-          toast({ title: "保存成功", description: "行业信息已更新" })
+          toast({ title: '保存成功', description: '行业信息已更新' })
         } else {
-          await portalRequest("/industries", {
-            method: "POST",
-            body: JSON.stringify({ tenantId, code: item.code.trim(), name: item.name.trim(), parentId: item.parentId || null, enabled: true, sortOrder: item.sortOrder }),
+          await portalRequest('/industries', {
+            method: 'POST',
+            body: JSON.stringify({
+              tenantId,
+              code: item.code.trim(),
+              name: item.name.trim(),
+              parentId: item.parentId || null,
+              enabled: true,
+              sortOrder: item.sortOrder,
+            }),
           })
-          toast({ title: "创建成功", description: "新行业已添加" })
+          toast({ title: '创建成功', description: '新行业已添加' })
         }
       }}
       onDelete={async (item) => {
-        await portalRequest(`/industries/${item.id}`, { method: "DELETE" })
+        await portalRequest(`/industries/${item.id}`, { method: 'DELETE' })
       }}
       onToggleEnabled={async (item) => {
         await portalRequest(`/industries/${item.id}`, {
-          method: "PUT",
-          body: JSON.stringify({ code: item.code, name: item.name, parentId: item.parentId || null, enabled: !item.enabled, sortOrder: item.sortOrder }),
+          method: 'PUT',
+          body: JSON.stringify({
+            code: item.code,
+            name: item.name,
+            parentId: item.parentId || null,
+            enabled: !item.enabled,
+            sortOrder: item.sortOrder,
+          }),
         })
-        toast({ title: !item.enabled ? "已启用" : "已关闭" })
+        toast({ title: !item.enabled ? '已启用' : '已关闭' })
       }}
     />
   )

@@ -5,7 +5,7 @@ export interface AiSubjectivePreScore {
   hitPoints: string[]
   missedPoints: string[]
   highlights: string[]
-  confidence: "high" | "medium" | "low"
+  confidence: 'high' | 'medium' | 'low'
 }
 
 export interface AiInitialReview {
@@ -16,7 +16,7 @@ export interface AiInitialReview {
   maxScore: number
   basis: string[]
   doubts: string[]
-  confidence: "high" | "medium" | "low"
+  confidence: 'high' | 'medium' | 'low'
 }
 
 export interface AiGeneratedComment {

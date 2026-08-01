@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useEffect, Component, type ComponentType } from "react"
-import { RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useEffect, Component, type ComponentType } from 'react'
+import { RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export function ChunkErrorHandler() {
   useEffect(() => {
@@ -11,16 +11,16 @@ export function ChunkErrorHandler() {
     const handler = (event: PromiseRejectionEvent) => {
       if (reloading) return
       if (
-        event?.reason?.name === "ChunkLoadError" ||
-        event?.reason?.message?.includes("Loading chunk")
+        event?.reason?.name === 'ChunkLoadError' ||
+        event?.reason?.message?.includes('Loading chunk')
       ) {
         reloading = true
         window.location.reload()
       }
     }
 
-    window.addEventListener("unhandledrejection", handler)
-    return () => window.removeEventListener("unhandledrejection", handler)
+    window.addEventListener('unhandledrejection', handler)
+    return () => window.removeEventListener('unhandledrejection', handler)
   }, [])
 
   return null
@@ -39,10 +39,7 @@ export class ChunkErrorBoundary extends Component<WithChunkErrorProps, ChunkErro
   state: ChunkErrorBoundaryState = { error: null }
 
   static getDerivedStateFromError(error: Error) {
-    if (
-      error.name === "ChunkLoadError" ||
-      error.message?.includes("Loading chunk")
-    ) {
+    if (error.name === 'ChunkLoadError' || error.message?.includes('Loading chunk')) {
       return { error }
     }
     return null
@@ -53,11 +50,7 @@ export class ChunkErrorBoundary extends Component<WithChunkErrorProps, ChunkErro
       return (
         <div className="flex h-96 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
           <p>图谱组件加载失败，请检查网络连接后重试</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.location.reload()}
-          >
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
             <RefreshCw className="mr-1 size-3.5" />
             刷新页面
           </Button>

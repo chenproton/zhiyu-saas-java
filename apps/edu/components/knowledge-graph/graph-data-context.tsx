@@ -1,7 +1,12 @@
-"use client"
+'use client'
 
-import { createContext, useContext } from "react"
-import type { CareerPosition, AbilityDomain, AbilityPoint, PositionAbilityBinding } from "@zhiyu/shared-types"
+import { createContext, useContext } from 'react'
+import type {
+  CareerPosition,
+  AbilityDomain,
+  AbilityPoint,
+  PositionAbilityBinding,
+} from '@zhiyu/shared-types'
 
 export interface GraphDataContext {
   position?: CareerPosition

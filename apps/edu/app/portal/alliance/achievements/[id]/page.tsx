@@ -1,16 +1,16 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
-import Image from "next/image"
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { portalRequest } from "@/lib/api"
-import { allianceLabel } from "@zhiyu/shared-types"
-import type { AllianceAchievement } from "@/lib/types"
-import { reportError } from "@/lib/error-handling"
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
+import Image from 'next/image'
+import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { portalRequest } from '@/lib/api'
+import { allianceLabel } from '@zhiyu/shared-types'
+import type { AllianceAchievement } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 
 export default function AlliancePublicAchievementDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -22,7 +22,7 @@ export default function AlliancePublicAchievementDetailPage() {
     portalRequest<AllianceAchievement>(`/alliance/public/achievements/${id}`)
       .then(setAchievement)
       .catch((err) => {
-        reportError(err, { source: "加载成果详情" })
+        reportError(err, { source: '加载成果详情' })
       })
       .finally(() => setLoading(false))
   }, [id])
@@ -33,7 +33,10 @@ export default function AlliancePublicAchievementDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/portal/alliance/achievements" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+        <Link
+          href="/portal/alliance/achievements"
+          className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+        >
           <ArrowLeft className="h-4 w-4" /> 返回列表
         </Link>
       </div>
@@ -42,23 +45,31 @@ export default function AlliancePublicAchievementDetailPage() {
         <div>
           <h1 className="text-2xl font-bold">{achievement.title}</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {allianceLabel("achievementType", achievement.type)}
-            {achievement.achievementDate ? ` · ${achievement.achievementDate}` : ""}
+            {allianceLabel('achievementType', achievement.type)}
+            {achievement.achievementDate ? ` · ${achievement.achievementDate}` : ''}
           </p>
         </div>
         <div className="flex gap-2 items-center">
-          <Badge variant="outline">{allianceLabel("achievementStatus", achievement.status)}</Badge>
+          <Badge variant="outline">{allianceLabel('achievementStatus', achievement.status)}</Badge>
           <span className="text-sm text-muted-foreground">{achievement.viewCount} 次浏览</span>
         </div>
       </div>
 
       {achievement.coverImage && (
-        <Image src={achievement.coverImage} alt={achievement.title} width={1200} height={675} className="w-full max-h-64 object-cover rounded-xl" />
+        <Image
+          src={achievement.coverImage}
+          alt={achievement.title}
+          width={1200}
+          height={675}
+          className="w-full max-h-64 object-cover rounded-xl"
+        />
       )}
 
       {achievement.description && (
         <Card>
-          <CardHeader><CardTitle>成果描述</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>成果描述</CardTitle>
+          </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap">{achievement.description}</p>
           </CardContent>

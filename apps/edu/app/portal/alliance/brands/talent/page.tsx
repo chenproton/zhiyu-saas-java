@@ -1,22 +1,22 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { portalRequest } from "@/lib/api"
-import { allianceLabel } from "@zhiyu/shared-types"
-import type { AllianceBrand } from "@/lib/types"
-import { reportError } from "@/lib/error-handling"
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { portalRequest } from '@/lib/api'
+import { allianceLabel } from '@zhiyu/shared-types'
+import type { AllianceBrand } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 
 export default function AlliancePublicTalentBrandPage() {
   const [items, setItems] = useState<AllianceBrand[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    portalRequest<{ items: AllianceBrand[] }>("/alliance/public/brands?brandType=talent")
+    portalRequest<{ items: AllianceBrand[] }>('/alliance/public/brands?brandType=talent')
       .then((data) => setItems(data.items || []))
       .catch((err) => {
-        reportError(err, { source: "加载人才品牌列表" })
+        reportError(err, { source: '加载人才品牌列表' })
       })
       .finally(() => setLoading(false))
   }, [])
@@ -38,7 +38,7 @@ export default function AlliancePublicTalentBrandPage() {
                   <CardTitle className="text-lg">{item.name}</CardTitle>
                   <div className="flex items-center gap-1.5">
                     {item.isFeatured && <Badge variant="secondary">推荐</Badge>}
-                    <Badge variant="outline">{allianceLabel("brandStatus", item.status)}</Badge>
+                    <Badge variant="outline">{allianceLabel('brandStatus', item.status)}</Badge>
                   </div>
                 </div>
               </CardHeader>
@@ -53,12 +53,16 @@ export default function AlliancePublicTalentBrandPage() {
                   <p className="text-xs text-muted-foreground">专业: {item.data.major}</p>
                 )}
                 {item.data?.abilityScore != null && (
-                  <p className="text-xs text-muted-foreground">能力评分: {item.data.abilityScore}</p>
+                  <p className="text-xs text-muted-foreground">
+                    能力评分: {item.data.abilityScore}
+                  </p>
                 )}
                 {item.data?.tags && item.data.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {item.data.tags.map((tag: string, i: number) => (
-                      <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                      <Badge key={i} variant="secondary" className="text-xs">
+                        {tag}
+                      </Badge>
                     ))}
                   </div>
                 )}

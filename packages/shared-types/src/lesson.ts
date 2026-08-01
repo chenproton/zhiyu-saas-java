@@ -2,7 +2,7 @@ export interface Course {
   id: string
   code?: string
   name: string
-  type: "system" | "granular" | "hybrid"
+  type: 'system' | 'granular' | 'hybrid'
   category: string
   majorId?: string
   majorName?: string
@@ -17,7 +17,7 @@ export interface Course {
   offlineWeight?: number
   semester?: string
   className?: string
-  status: "draft" | "pending" | "approved" | "rejected" | "published" | "archived"
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
   coverColor?: string
   coverImage?: string
   courseTag?: string
@@ -58,7 +58,7 @@ export interface SystemCourseNode {
   name: string
   code?: string
   sortOrder: number
-  refType: "normal" | "original"
+  refType: 'normal' | 'original'
   sourceId?: string
   sourceName?: string
   teachingGoals?: string
@@ -82,14 +82,14 @@ export interface NodeQuiz {
   id: string
   nodeId: string
   title: string
-  type: "paper" | "question_bank" | "quiz"
+  type: 'paper' | 'question_bank' | 'quiz'
   timeLimit?: number
 }
 
 export interface NodeQuizQuestion {
   id: string
   quizId: string
-  type: "single" | "multiple" | "judge" | "essay"
+  type: 'single' | 'multiple' | 'judge' | 'essay'
   question: string
   options?: Record<string, any>
   answer?: string
@@ -110,7 +110,7 @@ export interface HybridNodeModule {
   id: string
   nodeId: string
   moduleKey: string
-  mode: "online" | "offline"
+  mode: 'online' | 'offline'
   data: Record<string, any>
 }
 
@@ -130,7 +130,7 @@ export interface CourseKnowledgeBinding {
   id: string
   courseId: string
   knowledgePointId: string
-  bindType: "course" | "node"
+  bindType: 'course' | 'node'
   sourceId?: string
 }
 
@@ -143,7 +143,7 @@ export interface LessonBatch {
   majorId?: string
   majorName?: string // Deprecated
   workflowId?: string
-  status: "open" | "closed"
+  status: 'open' | 'closed'
   courseCount?: number
   createdAt: string
   updatedAt: string
@@ -151,7 +151,7 @@ export interface LessonBatch {
 
 // ==================== Admin component local types (migrated from lib/mock-data-lesson) ====================
 
-export type ResourceType = "document" | "video" | "link" | "file"
+export type ResourceType = 'document' | 'video' | 'link' | 'file'
 
 export interface Resource {
   id: string
@@ -161,7 +161,7 @@ export interface Resource {
   size?: string
 }
 
-export type LessonQuestionType = "single" | "multiple" | "judgment"
+export type LessonQuestionType = 'single' | 'multiple' | 'judgment'
 
 export interface QuestionItem {
   id: string
@@ -196,7 +196,7 @@ export interface RubricPoint {
 
 export interface SubjectiveConfig {
   rubricPoints: RubricPoint[]
-  synthesisRule: "sum" | "weighted"
+  synthesisRule: 'sum' | 'weighted'
 }
 
 export interface GradeMapping {
@@ -225,7 +225,7 @@ export interface EvalPoint {
   types?: string[]
   knowledgePointIds?: string[]
   abilityPointIds?: string[]
-  scoringMethod?: "score" | "level" | "rubric"
+  scoringMethod?: 'score' | 'level' | 'rubric'
   gradeMapping?: GradeMapping[]
   weight?: number
 }
@@ -235,7 +235,7 @@ export interface LessonBehaviorRecord {
   courseId: string
   studentUserId: string
   recordDate: string
-  attendance: "present" | "late" | "absent"
+  attendance: 'present' | 'late' | 'absent'
   quizScore?: number
   interactionCount: number
   praiseCount: number
@@ -255,8 +255,20 @@ export interface LessonBehaviorAggregate {
   }
   signInDaily: { date: string; present: number; late: number; absent: number }[]
   quizResults: { id: string; name: string; avgScore: number; passRate: number; count: number }[]
-  rushAnswerRanking: { rank: number; name: string; correctCount: number; avgTime: string; badge: string }[]
+  rushAnswerRanking: {
+    rank: number
+    name: string
+    correctCount: number
+    avgTime: string
+    badge: string
+  }[]
   classInteraction: { name: string; active: number; total: number }[]
   attendanceRateData: { name: string; rate: number }[]
-  studentDetails: { name: string; attendance: number; quizAvg: number; interaction: number; praise: number }[]
+  studentDetails: {
+    name: string
+    attendance: number
+    quizAvg: number
+    interaction: number
+    praise: number
+  }[]
 }

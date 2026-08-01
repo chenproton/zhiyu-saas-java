@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useRef, useState } from "react"
-import { X, Plus, Loader2 } from "lucide-react"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { fileApi } from "@zhiyu/api-client"
+import { useRef, useState } from 'react'
+import { X, Plus, Loader2 } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { fileApi } from '@zhiyu/api-client'
 
 export interface UploadFieldProps {
   label: string
@@ -20,10 +20,16 @@ function uploadFile(file: File): Promise<string> {
 }
 
 /** 图片多选上传：本地文件上传 / URL 直填，返回图片地址数组 */
-export function ImageListUpload({ label, value, onChange, multiple = true, placeholder = "上传图片或输入 URL" }: UploadFieldProps) {
+export function ImageListUpload({
+  label,
+  value,
+  onChange,
+  multiple = true,
+  placeholder = '上传图片或输入 URL',
+}: UploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
-  const [urlInput, setUrlInput] = useState("")
+  const [urlInput, setUrlInput] = useState('')
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -40,7 +46,7 @@ export function ImageListUpload({ label, value, onChange, multiple = true, place
       onChange(multiple ? [...value, ...urls] : urls.slice(0, 1))
     } finally {
       setUploading(false)
-      if (inputRef.current) inputRef.current.value = ""
+      if (inputRef.current) inputRef.current.value = ''
     }
   }
 
@@ -48,7 +54,7 @@ export function ImageListUpload({ label, value, onChange, multiple = true, place
     const u = urlInput.trim()
     if (!u) return
     onChange(multiple ? [...value, u] : [u])
-    setUrlInput("")
+    setUrlInput('')
   }
 
   const remove = (idx: number) => onChange(value.filter((_, i) => i !== idx))
@@ -58,7 +64,10 @@ export function ImageListUpload({ label, value, onChange, multiple = true, place
       <Label>{label}</Label>
       <div className="flex flex-wrap gap-2">
         {value.map((url, idx) => (
-          <div key={idx} className="relative group w-20 h-20 rounded-lg overflow-hidden border bg-muted/30">
+          <div
+            key={idx}
+            className="relative group w-20 h-20 rounded-lg overflow-hidden border bg-muted/30"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt={`${label} ${idx + 1}`} className="w-full h-full object-cover" />
             <button
@@ -77,11 +86,25 @@ export function ImageListUpload({ label, value, onChange, multiple = true, place
             disabled={uploading}
             className="w-20 h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/40 disabled:opacity-50"
           >
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /><span className="text-[10px]">上传</span></>}
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                <span className="text-[10px]">上传</span>
+              </>
+            )}
           </button>
         )}
       </div>
-      <input ref={inputRef} type="file" accept="image/*" multiple={multiple} className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple={multiple}
+        className="hidden"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
       <div className="flex gap-2">
         <Input
           value={urlInput}
@@ -89,17 +112,27 @@ export function ImageListUpload({ label, value, onChange, multiple = true, place
           placeholder={placeholder}
           className="h-8 text-xs"
         />
-        <Button type="button" variant="outline" size="sm" onClick={addUrl} className="h-8 text-xs">添加</Button>
+        <Button type="button" variant="outline" size="sm" onClick={addUrl} className="h-8 text-xs">
+          添加
+        </Button>
       </div>
     </div>
   )
 }
 
 /** 单图上传（Logo/封面），返回图片地址 */
-export function SingleImageUpload({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+export function SingleImageUpload({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
-  const [urlInput, setUrlInput] = useState("")
+  const [urlInput, setUrlInput] = useState('')
 
   const handleFile = async (f: File | undefined) => {
     if (!f) return
@@ -112,7 +145,7 @@ export function SingleImageUpload({ label, value, onChange }: { label: string; v
       }
     } finally {
       setUploading(false)
-      if (inputRef.current) inputRef.current.value = ""
+      if (inputRef.current) inputRef.current.value = ''
     }
   }
 
@@ -125,7 +158,7 @@ export function SingleImageUpload({ label, value, onChange }: { label: string; v
           <img src={value} alt={label} className="w-full h-full object-cover" />
           <button
             type="button"
-            onClick={() => onChange("")}
+            onClick={() => onChange('')}
             className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <X className="h-3 w-3" />
@@ -138,13 +171,45 @@ export function SingleImageUpload({ label, value, onChange }: { label: string; v
           disabled={uploading}
           className="w-28 h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/40 disabled:opacity-50"
         >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /><span className="text-[10px]">上传</span></>}
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              <Plus className="h-4 w-4" />
+              <span className="text-[10px]">上传</span>
+            </>
+          )}
         </button>
       )}
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => handleFile(e.target.files?.[0])}
+      />
       <div className="flex gap-2">
-        <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="或输入图片 URL" className="h-8 text-xs" />
-        <Button type="button" variant="outline" size="sm" onClick={() => { const u = urlInput.trim(); if (u) { onChange(u); setUrlInput("") } }} className="h-8 text-xs">设置</Button>
+        <Input
+          value={urlInput}
+          onChange={(e) => setUrlInput(e.target.value)}
+          placeholder="或输入图片 URL"
+          className="h-8 text-xs"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const u = urlInput.trim()
+            if (u) {
+              onChange(u)
+              setUrlInput('')
+            }
+          }}
+          className="h-8 text-xs"
+        >
+          设置
+        </Button>
       </div>
     </div>
   )

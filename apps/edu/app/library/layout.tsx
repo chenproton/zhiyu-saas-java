@@ -1,25 +1,21 @@
-"use client"
+'use client'
 
-import { useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
-import { PlatformShell } from "@/components/platform-shell"
-import { libraryNavigationConfig } from "@/lib/navigation-config"
-import { useAuth } from "@/components/auth-provider"
+import { useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { PlatformShell } from '@/components/platform-shell'
+import { libraryNavigationConfig } from '@/lib/navigation-config'
+import { useAuth } from '@/components/auth-provider'
 
-export default function LibraryLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function LibraryLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, hasMenuPermission } = useAuth()
-  const isLanding = pathname.startsWith("/library/landing")
+  const isLanding = pathname.startsWith('/library/landing')
 
   useEffect(() => {
     if (!loading && !user && !isLanding) {
-      router.replace("/portal/login")
+      router.replace('/portal/login')
     }
   }, [loading, user, isLanding, router])
 
@@ -28,7 +24,7 @@ export default function LibraryLayout({
   const content = isLanding ? (
     <>{children}</>
   ) : (
-    <PlatformShell config={{ ...libraryNavigationConfig, sideBackHref: "/portal/apps" }}>
+    <PlatformShell config={{ ...libraryNavigationConfig, sideBackHref: '/portal/apps' }}>
       {children}
     </PlatformShell>
   )

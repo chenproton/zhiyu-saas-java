@@ -1,26 +1,16 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import { useParams } from "next/navigation"
-import {
-  publicPositionApi,
-  learnRoadApi,
-  scenarioApi,
-  taskApi,
-} from "@/lib/api"
-import { useAuth } from "@/components/auth-provider"
-import { useIndustryMap } from "@/lib/use-resource-maps"
-import type {
-  CareerPosition,
-  LearnRoad,
-  Scenario,
-  ScenarioTask,
-} from "@/lib/types"
-import { LearningPath } from "@/components/job/student/learning-path"
-import { PlatformFooter } from "@/components/job/student/platform-footer"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Briefcase } from "lucide-react"
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+import { publicPositionApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
+import { useAuth } from '@/components/auth-provider'
+import { useIndustryMap } from '@/lib/use-resource-maps'
+import type { CareerPosition, LearnRoad, Scenario, ScenarioTask } from '@/lib/types'
+import { LearningPath } from '@/components/job/student/learning-path'
+import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ArrowLeft, Briefcase } from 'lucide-react'
 
 export default function JobStudentLearnPage() {
   const params = useParams()
@@ -48,18 +38,22 @@ export default function JobStudentLearnPage() {
         if (!cancelled) setLoading(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   useEffect(() => {
     if (!id || !position) return
 
     scenarioApi
-      .list({ careerPositionId: id, status: "published", limit: 1000 })
+      .list({ careerPositionId: id, status: 'published', limit: 1000 })
       .then((res) => {
         const scens = res.items || []
         setScenarios(scens)
-        return Promise.all(scens.map((s: Scenario) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
+        return Promise.all(
+          scens.map((s: Scenario) => taskApi.list({ scenarioId: s.id, limit: 1000 })),
+        )
       })
       .then((results) => {
         const allTasks = results.flatMap((r) => r.items || [])
@@ -75,7 +69,9 @@ export default function JobStudentLearnPage() {
     learnRoadApi
       .list({ limit: 100 })
       .then((roadRes) => {
-        const relatedRoads = (roadRes.items || []).filter((r: LearnRoad) => r.positionIds?.includes(id))
+        const relatedRoads = (roadRes.items || []).filter((r: LearnRoad) =>
+          r.positionIds?.includes(id),
+        )
         setRoads(relatedRoads)
       })
       .catch(() => {})
@@ -104,7 +100,9 @@ export default function JobStudentLearnPage() {
         <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
           <Briefcase className="w-16 h-16 mb-4 opacity-40" />
           <div className="text-lg font-semibold text-[#475569]">岗位不存在或暂未公开</div>
-          <Link href="/job/student" className="text-blue-600 hover:underline mt-2">返回岗位列表</Link>
+          <Link href="/job/student" className="text-blue-600 hover:underline mt-2">
+            返回岗位列表
+          </Link>
         </div>
         <PlatformFooter />
       </div>
@@ -114,7 +112,11 @@ export default function JobStudentLearnPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
       <main className="flex-1 max-w-[1400px] mx-auto px-8 py-6 w-full">
-        <Link replace href={`/job/student/${id}`} className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-blue-600 mb-4">
+        <Link
+          replace
+          href={`/job/student/${id}`}
+          className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-blue-600 mb-4"
+        >
           <ArrowLeft className="w-4 h-4" /> 返回岗位详情
         </Link>
 
@@ -135,7 +137,19 @@ export default function JobStudentLearnPage() {
 function LoginPrompt({ text, desc }: { text: string; desc: string }) {
   return (
     <div className="bg-white rounded-2xl border border-[#e7e5e4] p-12 text-center text-[#94a3b8]">
-      <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+      <svg
+        className="w-12 h-12 mx-auto mb-3 opacity-40"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+        />
+      </svg>
       <div className="text-base font-semibold text-[#475569]">{text}</div>
       <p className="text-sm mt-1">{desc}</p>
     </div>

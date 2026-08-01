@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
-import { PlatformShell } from "@/components/platform-shell"
-import { useAuth } from "@/components/auth-provider"
-import type { PlatformNavigationConfig } from "@/components/platform-shell"
+import { useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { PlatformShell } from '@/components/platform-shell'
+import { useAuth } from '@/components/auth-provider'
+import type { PlatformNavigationConfig } from '@/components/platform-shell'
 
 interface PlatformLayoutProps {
   navigationConfig: PlatformNavigationConfig
@@ -21,7 +21,7 @@ export function PlatformLayout({ navigationConfig, landingPath, children }: Plat
 
   useEffect(() => {
     if (!loading && !user && !isLanding) {
-      router.replace("/portal/login")
+      router.replace('/portal/login')
     }
   }, [loading, user, router, isLanding])
 
@@ -33,7 +33,7 @@ export function PlatformLayout({ navigationConfig, landingPath, children }: Plat
     <PlatformShell
       config={{
         ...navigationConfig,
-        sideBackHref: "/portal/apps",
+        sideBackHref: '/portal/apps',
       }}
     >
       {children}

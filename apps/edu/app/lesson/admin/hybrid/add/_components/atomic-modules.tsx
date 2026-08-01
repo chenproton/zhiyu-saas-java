@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import React, { useState } from "react"
+import React, { useState } from 'react'
 import {
   BookOpen,
   MonitorPlay,
@@ -18,43 +18,43 @@ import {
   Award,
   PenTool,
   Search,
-} from "lucide-react"
-import { CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Switch } from "@/components/ui/switch"
+} from 'lucide-react'
+import { CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { EvaluationMethodSelector } from "../../../_components/assessment/evaluation-method-selector"
-import { CourseEvaluationRulesDialog } from "../../../_components/assessment/course-evaluation-rules-dialog"
-import type { EvalRuleConfig } from "@/lib/types/evaluation"
-import { TeachingResourceSelector } from "./teaching-resource-selector"
+} from '@/components/ui/select'
+import { EvaluationMethodSelector } from '../../../_components/assessment/evaluation-method-selector'
+import { CourseEvaluationRulesDialog } from '../../../_components/assessment/course-evaluation-rules-dialog'
+import type { EvalRuleConfig } from '@/lib/types/evaluation'
+import { TeachingResourceSelector } from './teaching-resource-selector'
 
 // ==================== Types ====================
 
 export const COURSE_CATEGORIES = [
-  "公共基础必修课程",
-  "公共基础限选课程",
-  "公共基础任选课程",
-  "专业基础课程",
-  "专业核心课程",
-  "专业拓展课程",
+  '公共基础必修课程',
+  '公共基础限选课程',
+  '公共基础任选课程',
+  '专业基础课程',
+  '专业核心课程',
+  '专业拓展课程',
 ] as const
 export type CourseCategory = (typeof COURSE_CATEGORIES)[number]
 
@@ -90,7 +90,7 @@ export interface TaskItem {
   name: string
   requirement: string
   attachments: AttachmentItem[]
-  source?: "manual" | "scenario"
+  source?: 'manual' | 'scenario'
   scenarioId?: string
   scenarioTitle?: string
 }
@@ -103,7 +103,7 @@ export interface QuestionOption {
 
 export interface QuizQuestion {
   id: string
-  type: "single" | "multiple" | "judge" | "essay"
+  type: 'single' | 'multiple' | 'judge' | 'essay'
   stem: string
   options: QuestionOption[]
   answer: string
@@ -119,7 +119,7 @@ export interface ClassroomQuestion {
   id: string
   stem: string
   answer: string
-  source?: "manual" | "bank"
+  source?: 'manual' | 'bank'
   bankId?: string
   bankTitle?: string
 }
@@ -135,7 +135,7 @@ export interface HomeworkItem {
 export interface ResourceItem {
   id: string
   name: string
-  type: "system" | "granular" | "case" | "question" | "material" | "simulation" | "custom"
+  type: 'system' | 'granular' | 'case' | 'question' | 'material' | 'simulation' | 'custom'
   source: string
 }
 
@@ -153,7 +153,7 @@ export interface NodeModuleData {
   teachingDesignContent: string
   postLessonReviewContent: string
   teachingDesignSharedNodeIds: string[]
-  moduleModes: Partial<Record<AtomicModuleKey, "online" | "offline">>
+  moduleModes: Partial<Record<AtomicModuleKey, 'online' | 'offline'>>
   previewContent: string
   previewAttachments: AttachmentItem[]
   preClassResources: ResourceItem[]
@@ -177,21 +177,21 @@ export interface NodeModuleData {
   trainingReports: ReportItem[]
 }
 
-export type AtomicModuleCategory = "pre-class" | "in-class" | "post-class"
+export type AtomicModuleCategory = 'pre-class' | 'in-class' | 'post-class'
 
 export type AtomicModuleKey =
-  | "prePreview"
-  | "preResources"
-  | "preTasks"
-  | "preQuizzes"
-  | "lecture"
-  | "inClassTasks"
-  | "inClassQuizzes"
-  | "classQuestions"
-  | "practiceTasks"
-  | "homeworks"
-  | "extensionMaterials"
-  | "trainingReports"
+  | 'prePreview'
+  | 'preResources'
+  | 'preTasks'
+  | 'preQuizzes'
+  | 'lecture'
+  | 'inClassTasks'
+  | 'inClassQuizzes'
+  | 'classQuestions'
+  | 'practiceTasks'
+  | 'homeworks'
+  | 'extensionMaterials'
+  | 'trainingReports'
 
 export interface AtomicModuleMeta {
   key: AtomicModuleKey
@@ -209,36 +209,34 @@ export interface AtomicModuleProps {
 
 // ==================== Default data ====================
 
-export function createDefaultNodeModuleData(
-  existing?: {
-    name?: string
-    code?: string
-    majorId?: string
-    majorName?: string
-    semester?: string
-    category?: CourseCategory
-    coverImage?: string
-  }
-): NodeModuleData {
+export function createDefaultNodeModuleData(existing?: {
+  name?: string
+  code?: string
+  majorId?: string
+  majorName?: string
+  semester?: string
+  category?: CourseCategory
+  coverImage?: string
+}): NodeModuleData {
   const incomingCategory = existing?.category
   const category: CourseCategory =
     incomingCategory && COURSE_CATEGORIES.includes(incomingCategory)
       ? incomingCategory
-      : "专业核心课程"
+      : '专业核心课程'
   const ts = Date.now().toString()
   return {
     form: {
-      name: existing?.name ?? "",
+      name: existing?.name ?? '',
       code: existing?.code ?? `HYB-${ts.slice(-6)}`,
-      majorId: existing?.majorId ?? "",
-      majorName: existing?.majorName ?? "",
-      semester: existing?.semester ?? "2026-2027-1",
+      majorId: existing?.majorId ?? '',
+      majorName: existing?.majorName ?? '',
+      semester: existing?.semester ?? '2026-2027-1',
       category,
-      courseObjectives: "",
-      detailedDescription: "",
-      background: "",
-      estimatedHours: "",
-      coverImage: "",
+      courseObjectives: '',
+      detailedDescription: '',
+      background: '',
+      estimatedHours: '',
+      coverImage: '',
     },
     teachingDesignContent: `● 知识目标
 ● 能力目标
@@ -247,16 +245,16 @@ export function createDefaultNodeModuleData(
 ● 教学难点
 ● 教学方法
 ● 考核方式`,
-    postLessonReviewContent: "请输入课后总结内容",
+    postLessonReviewContent: '请输入课后总结内容',
     teachingDesignSharedNodeIds: [],
     moduleModes: {},
-    previewContent: "",
+    previewContent: '',
     previewAttachments: [],
     preClassResources: [],
     preClassTasks: [],
     preClassQuizzes: [],
     preQuizEvalMethods: [],
-    lectureContent: "",
+    lectureContent: '',
     lectureResources: [],
     lectureSections: [],
     inClassTasks: [],
@@ -292,7 +290,7 @@ function MockRichEditor({
   )
 }
 
-function uid(prefix = "id") {
+function uid(prefix = 'id') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
@@ -301,7 +299,7 @@ function uid(prefix = "id") {
 function AttachmentListEditor({
   items,
   onChange,
-  addLabel = "上传附件",
+  addLabel = '上传附件',
 }: {
   items: AttachmentItem[]
   onChange: (items: AttachmentItem[]) => void
@@ -353,7 +351,7 @@ function AttachmentListEditor({
       <Button
         size="sm"
         variant="outline"
-        onClick={() => onChange([...items, { id: uid("att"), name: "", file: "" }])}
+        onClick={() => onChange([...items, { id: uid('att'), name: '', file: '' }])}
       >
         <Plus className="h-4 w-4 mr-1" />
         {addLabel}
@@ -367,7 +365,7 @@ function AttachmentListEditor({
 function TaskListEditor({
   items,
   onChange,
-  addLabel = "添加任务",
+  addLabel = '添加任务',
 }: {
   items: TaskItem[]
   onChange: (items: TaskItem[]) => void
@@ -416,7 +414,10 @@ function TaskListEditor({
         size="sm"
         variant="outline"
         onClick={() =>
-          onChange([...items, { id: uid("task"), name: "", requirement: "", attachments: [], source: "manual" }])
+          onChange([
+            ...items,
+            { id: uid('task'), name: '', requirement: '', attachments: [], source: 'manual' },
+          ])
         }
       >
         <Plus className="h-4 w-4 mr-1" />
@@ -470,7 +471,7 @@ function QuestionListEditor({
         size="sm"
         variant="outline"
         onClick={() =>
-          onChange([...items, { id: uid("q"), stem: "", answer: "", source: "manual" }])
+          onChange([...items, { id: uid('q'), stem: '', answer: '', source: 'manual' }])
         }
       >
         <Plus className="h-4 w-4 mr-1" />
@@ -482,33 +483,33 @@ function QuestionListEditor({
 
 // ==================== Quiz editor ====================
 
-const QUIZ_TYPE_OPTIONS: { value: QuizQuestion["type"]; label: string }[] = [
-  { value: "single", label: "单选题" },
-  { value: "multiple", label: "多选题" },
-  { value: "judge", label: "判断题" },
-  { value: "essay", label: "主观题" },
+const QUIZ_TYPE_OPTIONS: { value: QuizQuestion['type']; label: string }[] = [
+  { value: 'single', label: '单选题' },
+  { value: 'multiple', label: '多选题' },
+  { value: 'judge', label: '判断题' },
+  { value: 'essay', label: '主观题' },
 ]
 
-function createEmptyQuestion(type: QuizQuestion["type"] = "single"): QuizQuestion {
+function createEmptyQuestion(type: QuizQuestion['type'] = 'single'): QuizQuestion {
   return {
-    id: uid("question"),
+    id: uid('question'),
     type,
-    stem: "",
+    stem: '',
     options:
-      type === "single" || type === "multiple"
+      type === 'single' || type === 'multiple'
         ? [
-            { id: uid("opt"), label: "", isCorrect: false },
-            { id: uid("opt"), label: "", isCorrect: false },
+            { id: uid('opt'), label: '', isCorrect: false },
+            { id: uid('opt'), label: '', isCorrect: false },
           ]
         : [],
-    answer: "",
+    answer: '',
   }
 }
 
 function QuizListEditor({
   items,
   onChange,
-  addLabel = "添加测验",
+  addLabel = '添加测验',
 }: {
   items: QuizItem[]
   onChange: (items: QuizItem[]) => void
@@ -519,9 +520,7 @@ function QuizListEditor({
   const [editing, setEditing] = useState<QuizQuestion | null>(null)
 
   const updateQuiz = (quizId: string, patch: Partial<QuizItem>) => {
-    onChange(
-      items.map((q) => (q.id === quizId ? { ...q, ...patch } : q))
-    )
+    onChange(items.map((q) => (q.id === quizId ? { ...q, ...patch } : q)))
   }
 
   const openNewQuestion = (quizId: string) => {
@@ -542,11 +541,11 @@ function QuizListEditor({
     if (!quiz) return
 
     let answer = editing.answer
-    if (editing.type === "single" || editing.type === "multiple") {
+    if (editing.type === 'single' || editing.type === 'multiple') {
       answer = editing.options
         .filter((o) => o.isCorrect)
         .map((o) => o.label)
-        .join(", ")
+        .join(', ')
     }
     const saved: QuizQuestion = { ...editing, answer }
 
@@ -567,10 +566,8 @@ function QuizListEditor({
 
   const updateOption = (optId: string, patch: Partial<QuestionOption>) => {
     if (!editing) return
-    const nextOptions = editing.options.map((o) =>
-      o.id === optId ? { ...o, ...patch } : o
-    )
-    if (editing.type === "single" && patch.isCorrect) {
+    const nextOptions = editing.options.map((o) => (o.id === optId ? { ...o, ...patch } : o))
+    if (editing.type === 'single' && patch.isCorrect) {
       nextOptions.forEach((o) => {
         if (o.id !== optId) o.isCorrect = false
       })
@@ -597,7 +594,7 @@ function QuizListEditor({
                   <Badge variant="secondary" className="shrink-0">
                     {QUIZ_TYPE_OPTIONS.find((t) => t.value === question.type)?.label}
                   </Badge>
-                  <span className="text-sm truncate">{question.stem || "未填写题干"}</span>
+                  <span className="text-sm truncate">{question.stem || '未填写题干'}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Button
@@ -640,7 +637,7 @@ function QuizListEditor({
       <Button
         size="sm"
         variant="outline"
-        onClick={() => onChange([...items, { id: uid("quiz"), name: "", questions: [] }])}
+        onClick={() => onChange([...items, { id: uid('quiz'), name: '', questions: [] }])}
       >
         <Plus className="h-4 w-4 mr-1" />
         {addLabel}
@@ -649,7 +646,7 @@ function QuizListEditor({
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing?.id ? "编辑题目" : "新增题目"}</DialogTitle>
+            <DialogTitle>{editing?.id ? '编辑题目' : '新增题目'}</DialogTitle>
           </DialogHeader>
           {editing && (
             <div className="space-y-4 py-2">
@@ -658,7 +655,7 @@ function QuizListEditor({
                 <Select
                   value={editing.type}
                   onValueChange={(v) =>
-                    updateEditing(createEmptyQuestion(v as QuizQuestion["type"]))
+                    updateEditing(createEmptyQuestion(v as QuizQuestion['type']))
                   }
                 >
                   <SelectTrigger>
@@ -683,7 +680,7 @@ function QuizListEditor({
                 />
               </div>
 
-              {(editing.type === "single" || editing.type === "multiple") && (
+              {(editing.type === 'single' || editing.type === 'multiple') && (
                 <div className="space-y-3">
                   <Label>选项</Label>
                   {editing.options.map((option, idx) => (
@@ -697,9 +694,7 @@ function QuizListEditor({
                       />
                       <Input
                         value={option.label}
-                        onChange={(e) =>
-                          updateOption(option.id, { label: e.target.value })
-                        }
+                        onChange={(e) => updateOption(option.id, { label: e.target.value })}
                         placeholder={`选项 ${idx + 1}`}
                       />
                       <Button
@@ -722,7 +717,7 @@ function QuizListEditor({
                       updateEditing({
                         options: [
                           ...editing.options,
-                          { id: uid("opt"), label: "", isCorrect: false },
+                          { id: uid('opt'), label: '', isCorrect: false },
                         ],
                       })
                     }
@@ -733,11 +728,11 @@ function QuizListEditor({
                 </div>
               )}
 
-              {editing.type === "judge" && (
+              {editing.type === 'judge' && (
                 <div className="space-y-2">
                   <Label>正确答案</Label>
                   <Select
-                    value={editing.answer || "正确"}
+                    value={editing.answer || '正确'}
                     onValueChange={(v) => updateEditing({ answer: v })}
                   >
                     <SelectTrigger>
@@ -751,7 +746,7 @@ function QuizListEditor({
                 </div>
               )}
 
-              {editing.type === "essay" && (
+              {editing.type === 'essay' && (
                 <div className="space-y-2">
                   <Label>参考答案</Label>
                   <Textarea
@@ -785,14 +780,14 @@ function QuizListEditor({
 
 // ==================== Resource editor ====================
 
-const RESOURCE_TYPE_LABELS: Record<ResourceItem["type"], string> = {
-  system: "体系课",
-  granular: "颗粒微课",
-  case: "产业案例",
-  question: "题库",
-  material: "课件教案",
-  simulation: "虚拟仿真",
-  custom: "自定义",
+const RESOURCE_TYPE_LABELS: Record<ResourceItem['type'], string> = {
+  system: '体系课',
+  granular: '颗粒微课',
+  case: '产业案例',
+  question: '题库',
+  material: '课件教案',
+  simulation: '虚拟仿真',
+  custom: '自定义',
 }
 
 const EMPTY_RESOURCES: ResourceItem[] = []
@@ -800,7 +795,7 @@ const EMPTY_RESOURCES: ResourceItem[] = []
 function ResourceListEditor({
   items,
   onChange,
-  addLabel = "关联资源",
+  addLabel = '关联资源',
 }: {
   items: ResourceItem[]
   onChange: (items: ResourceItem[]) => void
@@ -818,10 +813,10 @@ function ResourceListEditor({
     onChange([
       ...items,
       {
-        id: uid("custom"),
-        name: `自定义资源${items.filter((i) => i.type === "custom").length + 1}`,
-        type: "custom",
-        source: "本地上传",
+        id: uid('custom'),
+        name: `自定义资源${items.filter((i) => i.type === 'custom').length + 1}`,
+        type: 'custom',
+        source: '本地上传',
       },
     ])
   }
@@ -949,9 +944,7 @@ function HomeworkListEditor({
               <Checkbox
                 id={`hw-attach-${item.id}`}
                 checked={item.allowAttachment}
-                onCheckedChange={(checked) =>
-                  update(idx, { allowAttachment: checked === true })
-                }
+                onCheckedChange={(checked) => update(idx, { allowAttachment: checked === true })}
               />
               <Label htmlFor={`hw-attach-${item.id}`} className="text-sm">
                 允许附件提交
@@ -975,11 +968,11 @@ function HomeworkListEditor({
           onChange([
             ...items,
             {
-              id: uid("hw"),
-              requirement: "",
+              id: uid('hw'),
+              requirement: '',
               allowText: true,
               allowAttachment: true,
-              deadline: "",
+              deadline: '',
             },
           ])
         }
@@ -1061,10 +1054,10 @@ function ReportListEditor({
           onChange([
             ...items,
             {
-              id: uid("report"),
-              name: "",
-              template: "",
-              requirement: "",
+              id: uid('report'),
+              name: '',
+              template: '',
+              requirement: '',
               required: true,
               attachments: [],
             },
@@ -1216,7 +1209,7 @@ function LectureModule({ data, onChange }: AtomicModuleProps) {
           onChange({
             lectureSections: [
               ...sections,
-              { id: uid("lecture-section"), name: "", content: "", attachments: [] },
+              { id: uid('lecture-section'), name: '', content: '', attachments: [] },
             ],
           })
         }
@@ -1284,21 +1277,21 @@ const EMPTY_QUESTION_BANK: { id: string; title: string; type: string }[] = []
 function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
   const questions = data.classQuestions || []
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [addMode, setAddMode] = useState<"manual" | "bank" | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedQuestionId, setSelectedQuestionId] = useState("")
+  const [addMode, setAddMode] = useState<'manual' | 'bank' | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedQuestionId, setSelectedQuestionId] = useState('')
 
   const filteredQuestions = EMPTY_QUESTION_BANK.filter(
     (q) =>
       q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.type.toLowerCase().includes(searchQuery.toLowerCase())
+      q.type.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   const resetDialog = () => {
     setDialogOpen(false)
     setAddMode(null)
-    setSearchQuery("")
-    setSelectedQuestionId("")
+    setSearchQuery('')
+    setSelectedQuestionId('')
   }
 
   const handleAddBankQuestion = () => {
@@ -1308,10 +1301,10 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
       classQuestions: [
         ...questions,
         {
-          id: uid("bank-q"),
+          id: uid('bank-q'),
           stem: question.title,
-          answer: "",
-          source: "bank",
+          answer: '',
+          source: 'bank',
           bankId: question.id,
           bankTitle: question.title,
         },
@@ -1330,7 +1323,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
     <CardContent className="space-y-4">
       {questions.map((q, idx) => (
         <div key={q.id} className="border rounded-lg p-3 space-y-3">
-          {q.source === "bank" ? (
+          {q.source === 'bank' ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Database className="h-4 w-4 text-[#1890ff]" />
@@ -1358,7 +1351,9 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => onChange({ classQuestions: questions.filter((_, i) => i !== idx) })}
+                  onClick={() =>
+                    onChange({ classQuestions: questions.filter((_, i) => i !== idx) })
+                  }
                 >
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
@@ -1380,7 +1375,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent size="lg" className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{addMode === "bank" ? "从题库引用" : "添加提问"}</DialogTitle>
+            <DialogTitle>{addMode === 'bank' ? '从题库引用' : '添加提问'}</DialogTitle>
           </DialogHeader>
           {!addMode ? (
             <div className="grid grid-cols-2 gap-4 py-4">
@@ -1389,7 +1384,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                   onChange({
                     classQuestions: [
                       ...questions,
-                      { id: uid("q"), stem: "", answer: "", source: "manual" },
+                      { id: uid('q'), stem: '', answer: '', source: 'manual' },
                     ],
                   })
                   resetDialog()
@@ -1400,7 +1395,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                 <span className="text-sm font-medium">手动新增提问</span>
               </button>
               <button
-                onClick={() => setAddMode("bank")}
+                onClick={() => setAddMode('bank')}
                 className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
               >
                 <Database className="h-8 w-8 text-blue-500" />
@@ -1415,7 +1410,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
-                    setSelectedQuestionId("")
+                    setSelectedQuestionId('')
                   }}
                   placeholder="搜索题目内容、题型..."
                   className="pl-9 text-sm h-9"
@@ -1432,8 +1427,8 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                       onClick={() => setSelectedQuestionId(q.id)}
                       className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
                         selectedQuestionId === q.id
-                          ? "bg-blue-50 text-blue-700 border-l-2 border-blue-500"
-                          : "hover:bg-gray-50 border-l-2 border-transparent"
+                          ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-500'
+                          : 'hover:bg-gray-50 border-l-2 border-transparent'
                       }`}
                     >
                       <span className="font-medium">{q.title}</span>
@@ -1458,25 +1453,32 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
   )
 }
 
-const EMPTY_SCENARIOS: { id: string; title: string; desc: string; post: string; batch: string; scope: "mine" | "shared" | "public" }[] = []
+const EMPTY_SCENARIOS: {
+  id: string
+  title: string
+  desc: string
+  post: string
+  batch: string
+  scope: 'mine' | 'shared' | 'public'
+}[] = []
 
 function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
   const tasks = data.practiceTasks || []
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [addMode, setAddMode] = useState<"manual" | "scenario" | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedScenarioId, setSelectedScenarioId] = useState("")
-  const [scenarioScope, setScenarioScope] = useState<"mine" | "shared" | "public">("mine")
-  const [scenarioPost, setScenarioPost] = useState("全部")
-  const [scenarioBatch, setScenarioBatch] = useState("全部")
+  const [addMode, setAddMode] = useState<'manual' | 'scenario' | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedScenarioId, setSelectedScenarioId] = useState('')
+  const [scenarioScope, setScenarioScope] = useState<'mine' | 'shared' | 'public'>('mine')
+  const [scenarioPost, setScenarioPost] = useState('全部')
+  const [scenarioBatch, setScenarioBatch] = useState('全部')
 
   const uniquePosts = Array.from(new Set(EMPTY_SCENARIOS.map((s) => s.post)))
   const uniqueBatches = Array.from(new Set(EMPTY_SCENARIOS.map((s) => s.batch)))
 
   const filteredScenarios = EMPTY_SCENARIOS.filter((s) => {
     const matchScope = s.scope === scenarioScope
-    const matchPost = scenarioPost === "全部" || s.post === scenarioPost
-    const matchBatch = scenarioBatch === "全部" || s.batch === scenarioBatch
+    const matchPost = scenarioPost === '全部' || s.post === scenarioPost
+    const matchBatch = scenarioBatch === '全部' || s.batch === scenarioBatch
     const matchSearch =
       s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.desc.toLowerCase().includes(searchQuery.toLowerCase())
@@ -1486,11 +1488,11 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
   const resetDialog = () => {
     setDialogOpen(false)
     setAddMode(null)
-    setSearchQuery("")
-    setSelectedScenarioId("")
-    setScenarioScope("mine")
-    setScenarioPost("全部")
-    setScenarioBatch("全部")
+    setSearchQuery('')
+    setSelectedScenarioId('')
+    setScenarioScope('mine')
+    setScenarioPost('全部')
+    setScenarioBatch('全部')
   }
 
   const handleAddScenario = () => {
@@ -1500,11 +1502,11 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
       practiceTasks: [
         ...tasks,
         {
-          id: uid("scenario-task"),
+          id: uid('scenario-task'),
           name: scenario.title,
           requirement: scenario.desc,
           attachments: [],
-          source: "scenario",
+          source: 'scenario',
           scenarioId: scenario.id,
           scenarioTitle: scenario.title,
         },
@@ -1523,7 +1525,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
     <CardContent className="space-y-4">
       {tasks.map((task, idx) => (
         <div key={task.id} className="border rounded-lg p-3 space-y-3">
-          {task.source === "scenario" ? (
+          {task.source === 'scenario' ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Database className="h-4 w-4 text-[#1890ff]" />
@@ -1581,7 +1583,9 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent size="xl" className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{addMode === "scenario" ? "从实践场景库引用" : "添加实践任务"}</DialogTitle>
+            <DialogTitle>
+              {addMode === 'scenario' ? '从实践场景库引用' : '添加实践任务'}
+            </DialogTitle>
           </DialogHeader>
           {!addMode ? (
             <div className="grid grid-cols-2 gap-4 py-4">
@@ -1590,7 +1594,13 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                   onChange({
                     practiceTasks: [
                       ...tasks,
-                      { id: uid("task"), name: "", requirement: "", attachments: [], source: "manual" },
+                      {
+                        id: uid('task'),
+                        name: '',
+                        requirement: '',
+                        attachments: [],
+                        source: 'manual',
+                      },
                     ],
                   })
                   resetDialog()
@@ -1601,7 +1611,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                 <span className="text-sm font-medium">手动新增任务</span>
               </button>
               <button
-                onClick={() => setAddMode("scenario")}
+                onClick={() => setAddMode('scenario')}
                 className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
               >
                 <Database className="h-8 w-8 text-blue-500" />
@@ -1613,21 +1623,21 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
               {/* Scope tabs */}
               <div className="flex gap-2">
                 {[
-                  { key: "mine" as const, label: "我的" },
-                  { key: "shared" as const, label: "共建" },
-                  { key: "public" as const, label: "公共" },
+                  { key: 'mine' as const, label: '我的' },
+                  { key: 'shared' as const, label: '共建' },
+                  { key: 'public' as const, label: '公共' },
                 ].map((t) => (
                   <button
                     key={t.key}
                     type="button"
                     onClick={() => {
                       setScenarioScope(t.key)
-                      setSelectedScenarioId("")
+                      setSelectedScenarioId('')
                     }}
                     className={`px-4 py-1.5 rounded-md text-sm transition-colors ${
                       scenarioScope === t.key
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                     }`}
                   >
                     {t.label}
@@ -1642,7 +1652,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
-                    setSelectedScenarioId("")
+                    setSelectedScenarioId('')
                   }}
                   placeholder="搜索场景名称、描述..."
                   className="pl-9 text-sm h-9"
@@ -1657,7 +1667,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                     value={scenarioPost}
                     onValueChange={(v) => {
                       setScenarioPost(v)
-                      setSelectedScenarioId("")
+                      setSelectedScenarioId('')
                     }}
                   >
                     <SelectTrigger className="h-9 text-sm w-full">
@@ -1679,7 +1689,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                     value={scenarioBatch}
                     onValueChange={(v) => {
                       setScenarioBatch(v)
-                      setSelectedScenarioId("")
+                      setSelectedScenarioId('')
                     }}
                   >
                     <SelectTrigger className="h-9 text-sm w-full">
@@ -1713,17 +1723,17 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                         <button
                           key={s.id}
                           type="button"
-                          onClick={() => setSelectedScenarioId(selected ? "" : s.id)}
+                          onClick={() => setSelectedScenarioId(selected ? '' : s.id)}
                           className={`w-full text-left p-3 rounded-lg border transition-all ${
                             selected
-                              ? "border-primary bg-primary/5 ring-1 ring-primary/10"
-                              : "border-gray-200 hover:border-gray-300 bg-white"
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary/10'
+                              : 'border-gray-200 hover:border-gray-300 bg-white'
                           }`}
                         >
                           <div className="flex items-center gap-2">
                             <div
                               className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
-                                selected ? "bg-primary border-primary" : "border-gray-300"
+                                selected ? 'bg-primary border-primary' : 'border-gray-300'
                               }`}
                             >
                               {selected && <CheckCircle2 className="w-3 h-3 text-white" />}
@@ -1737,7 +1747,9 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                             {s.post && s.batch && <span className="text-gray-300">|</span>}
                             {s.batch && <span>{s.batch}</span>}
                           </div>
-                          <div className="pl-7 mt-1 text-xs text-gray-400 line-clamp-2">{s.desc}</div>
+                          <div className="pl-7 mt-1 text-xs text-gray-400 line-clamp-2">
+                            {s.desc}
+                          </div>
                         </button>
                       )
                     })
@@ -1772,7 +1784,7 @@ function HomeworksModule({ data, onChange }: AtomicModuleProps) {
         <EvaluationMethodSelector
           selectedKeys={methods}
           onChange={(keys) => onChange({ homeworkEvalMethods: keys })}
-          allowedKeys={["exam"]}
+          allowedKeys={['exam']}
         />
       </div>
       <div className="border-t pt-4">
@@ -1828,99 +1840,99 @@ const icon = (Ic: React.ComponentType<{ className?: string }>) => Ic
 
 export const ATOMIC_MODULES: AtomicModuleMeta[] = [
   {
-    key: "prePreview",
-    label: "课前预习",
-    category: "pre-class",
+    key: 'prePreview',
+    label: '课前预习',
+    category: 'pre-class',
     icon: icon(BookOpen),
     component: PrePreviewModule,
   },
   {
-    key: "preResources",
-    label: "学习资源",
-    category: "pre-class",
+    key: 'preResources',
+    label: '学习资源',
+    category: 'pre-class',
     icon: icon(Database),
     component: PreResourcesModule,
   },
   {
-    key: "preTasks",
-    label: "课前任务",
-    category: "pre-class",
+    key: 'preTasks',
+    label: '课前任务',
+    category: 'pre-class',
     icon: icon(ClipboardList),
     component: PreTasksModule,
   },
   {
-    key: "preQuizzes",
-    label: "课前测验",
-    category: "pre-class",
+    key: 'preQuizzes',
+    label: '课前测验',
+    category: 'pre-class',
     icon: icon(HelpCircle),
     component: PreQuizzesModule,
   },
   {
-    key: "lecture",
-    label: "课堂讲授",
-    category: "in-class",
+    key: 'lecture',
+    label: '课堂讲授',
+    category: 'in-class',
     icon: icon(MonitorPlay),
     component: LectureModule,
   },
   {
-    key: "inClassTasks",
-    label: "课堂任务",
-    category: "in-class",
+    key: 'inClassTasks',
+    label: '课堂任务',
+    category: 'in-class',
     icon: icon(ClipboardList),
     component: InClassTasksModule,
   },
   {
-    key: "inClassQuizzes",
-    label: "随堂测验",
-    category: "in-class",
+    key: 'inClassQuizzes',
+    label: '随堂测验',
+    category: 'in-class',
     icon: icon(CheckCircle2),
     component: InClassQuizzesModule,
   },
   {
-    key: "classQuestions",
-    label: "课堂提问",
-    category: "in-class",
+    key: 'classQuestions',
+    label: '课堂提问',
+    category: 'in-class',
     icon: icon(MessageCircleQuestion),
     component: ClassQuestionsModule,
   },
   {
-    key: "practiceTasks",
-    label: "实践任务",
-    category: "in-class",
+    key: 'practiceTasks',
+    label: '实践任务',
+    category: 'in-class',
     icon: icon(Wrench),
     component: PracticeTasksModule,
   },
   {
-    key: "homeworks",
-    label: "课后作业",
-    category: "post-class",
+    key: 'homeworks',
+    label: '课后作业',
+    category: 'post-class',
     icon: icon(FileText),
     component: HomeworksModule,
   },
   {
-    key: "extensionMaterials",
-    label: "拓展资料",
-    category: "post-class",
+    key: 'extensionMaterials',
+    label: '拓展资料',
+    category: 'post-class',
     icon: icon(FolderOpen),
     component: ExtensionMaterialsModule,
   },
   {
-    key: "trainingReports",
-    label: "实训报告",
-    category: "post-class",
+    key: 'trainingReports',
+    label: '实训报告',
+    category: 'post-class',
     icon: icon(FileText),
     component: TrainingReportsModule,
   },
 ]
 
 export const ATOMIC_MODULES_BY_KEY = Object.fromEntries(
-  ATOMIC_MODULES.map((m) => [m.key, m])
+  ATOMIC_MODULES.map((m) => [m.key, m]),
 ) as Record<AtomicModuleKey, AtomicModuleMeta>
 
 export const DEFAULT_MODULES: AtomicModuleKey[] = []
 
 export const CATEGORY_LABELS: Record<AtomicModuleCategory, string> = {
-  "pre-class": "课前准备",
-  "in-class": "教学实施",
-  "post-class": "课后拓展",
+  'pre-class': '课前准备',
+  'in-class': '教学实施',
+  'post-class': '课后拓展',
 }

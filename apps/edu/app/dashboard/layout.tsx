@@ -1,12 +1,8 @@
-"use client"
+'use client'
 
-import { TopNav } from "@/components/portal/top-nav"
+import { TopNav } from '@/components/portal/top-nav'
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen pt-14 bg-[#f5f7fa]">
       <TopNav />

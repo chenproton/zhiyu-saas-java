@@ -1,3 +1,3 @@
-"use client"
+'use client'
 
-export { KnowledgeSelector } from "@/components/shared/knowledge-selector"
+export { KnowledgeSelector } from '@/components/shared/knowledge-selector'

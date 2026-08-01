@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { Scale } from "lucide-react"
+import { Scale } from 'lucide-react'
 
 export function TaskWeightCard() {
   return (

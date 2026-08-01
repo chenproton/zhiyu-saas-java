@@ -30,13 +30,7 @@ const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
   { value: 'expert', label: '精通' },
 ]
 
-const ABILITY_DOMAINS = [
-  '岗位与行业认知',
-  '专业知识',
-  '职业素养/价值观',
-  '专业技能',
-  '通用能力',
-]
+const ABILITY_DOMAINS = ['岗位与行业认知', '专业知识', '职业素养/价值观', '专业技能', '通用能力']
 
 interface Step3ResultTableProps {
   position: Position
@@ -45,14 +39,19 @@ interface Step3ResultTableProps {
   showAiFill?: boolean
 }
 
-export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true }: Step3ResultTableProps) {
+export function Step3ResultTable({
+  position,
+  onUpdate,
+  onPrev,
+  showAiFill = true,
+}: Step3ResultTableProps) {
   const bindings = position.abilityBindings
   const [aiNotice, setAiNotice] = useState<string | null>(null)
 
   const handleUpdateBinding = (bindingId: string, updates: Partial<PositionAbilityBinding>) => {
     onUpdate({
       abilityBindings: position.abilityBindings.map((b) =>
-        b.id === bindingId ? { ...b, ...updates } : b
+        b.id === bindingId ? { ...b, ...updates } : b,
       ),
     })
   }
@@ -64,11 +63,12 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
     groups.get(key)!.push(b)
   }
 
-  const domainCount = new Set(bindings.map((b) => b.domain).filter(Boolean)).size + (bindings.some(b => !b.domain) ? 1 : 0)
+  const domainCount =
+    new Set(bindings.map((b) => b.domain).filter(Boolean)).size +
+    (bindings.some((b) => !b.domain) ? 1 : 0)
 
   return (
     <div className="space-y-5">
-
       {aiNotice && (
         <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2 text-sm text-amber-800">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -81,7 +81,9 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
         <Card>
           <CardContent className="py-4 text-center">
             <p className="text-xs text-gray-500">工作职责</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-1">{position.responsibilities.length}</p>
+            <p className="text-2xl font-semibold text-gray-900 mt-1">
+              {position.responsibilities.length}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -146,14 +148,18 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
                             <TableCell>
                               <Select
                                 value={binding.domain || ''}
-                                onValueChange={(v) => handleUpdateBinding(binding.id, { domain: v || undefined })}
+                                onValueChange={(v) =>
+                                  handleUpdateBinding(binding.id, { domain: v || undefined })
+                                }
                               >
                                 <SelectTrigger className="h-7 text-[11px] w-[110px]">
                                   <SelectValue placeholder="选择领域" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {ABILITY_DOMAINS.map((d) => (
-                                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                                    <SelectItem key={d} value={d}>
+                                      {d}
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -161,14 +167,18 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
                             <TableCell>
                               <Select
                                 value={binding.level}
-                                onValueChange={(v) => handleUpdateBinding(binding.id, { level: v as CompetencyLevel })}
+                                onValueChange={(v) =>
+                                  handleUpdateBinding(binding.id, { level: v as CompetencyLevel })
+                                }
                               >
                                 <SelectTrigger className="h-7 text-xs w-[100px]">
                                   <SelectValue placeholder="请选择" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {COMPETENCY_LEVELS.map((l) => (
-                                    <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                                    <SelectItem key={l.value} value={l.value}>
+                                      {l.label}
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -176,12 +186,16 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
                             <TableCell className="text-sm text-gray-600 min-w-[240px]">
                               <Input
                                 value={binding.rubricDescription}
-                                onChange={(e) => handleUpdateBinding(binding.id, { rubricDescription: e.target.value })}
+                                onChange={(e) =>
+                                  handleUpdateBinding(binding.id, {
+                                    rubricDescription: e.target.value,
+                                  })
+                                }
                                 placeholder="请输入胜任标准描述..."
                                 className="h-7 text-xs"
                               />
                             </TableCell>
-                          </TableRow>
+                          </TableRow>,
                         )
                       })
                     }

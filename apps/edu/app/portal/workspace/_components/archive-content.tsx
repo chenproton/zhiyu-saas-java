@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import {
   BookOpen,
@@ -9,11 +9,16 @@ import {
   MonitorPlay,
   StickyNote,
   Award,
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import { mockStudentInfo, mockStudyTime, mockActivityItems, mockEvaluations } from "../_data/mock-student-data"
+import {
+  mockStudentInfo,
+  mockStudyTime,
+  mockActivityItems,
+  mockEvaluations,
+} from '../_data/mock-student-data'
 
 export function ArchiveContent() {
   return (
@@ -27,7 +32,8 @@ export function ArchiveContent() {
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-semibold text-gray-900">{mockStudentInfo.name}</h2>
               <p className="text-sm text-gray-500">
-                学号：{mockStudentInfo.studentNo} · {mockStudentInfo.major} · {mockStudentInfo.grade}
+                学号：{mockStudentInfo.studentNo} · {mockStudentInfo.major} ·{' '}
+                {mockStudentInfo.grade}
               </p>
             </div>
             <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
@@ -151,7 +157,7 @@ export function ArchiveContent() {
           {mockEvaluations.map((ev, i) => (
             <div key={i} className={`p-3 rounded-lg ${ev.bgColor} border ${ev.borderColor}`}>
               <p className={`text-xs ${ev.color} font-medium mb-1`}>{ev.typeLabel}</p>
-              <p className={`text-sm ${ev.color.replace("600", "800")}`}>{ev.content}</p>
+              <p className={`text-sm ${ev.color.replace('600', '800')}`}>{ev.content}</p>
             </div>
           ))}
         </CardContent>

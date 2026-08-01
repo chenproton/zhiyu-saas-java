@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { PlatformSideNav } from "@zhiyu/ui"
-import { allianceNavigationConfig } from "@/lib/navigation-config"
-import { useAuth } from "@/components/auth-provider"
+import { PlatformSideNav } from '@zhiyu/ui'
+import { allianceNavigationConfig } from '@/lib/navigation-config'
+import { useAuth } from '@/components/auth-provider'
 
 export default function AllianceAdminLayout({ children }: { children: React.ReactNode }) {
   const { hasMenuPermission } = useAuth()

@@ -8,8 +8,8 @@ import { DataProvider as EvaluationDataProvider } from '@/components/providers/d
 import { Toaster } from '@zhiyu/ui'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const _geist = Geist({ subsets: ['latin'] })
+const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: '场景化数智教学服务平台',
@@ -36,12 +36,12 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-              <EvaluationDataProvider>
-                <ChunkErrorHandler />
-                <GlobalApiErrorHandler />
-                <Toaster />
-                {children}
-              </EvaluationDataProvider>
+            <EvaluationDataProvider>
+              <ChunkErrorHandler />
+              <GlobalApiErrorHandler />
+              <Toaster />
+              {children}
+            </EvaluationDataProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -1,19 +1,19 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Building, Briefcase, Users, Trophy, Sparkles, ArrowRight } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { portalRequest } from "@/lib/api"
-import { allianceLabel } from "@zhiyu/shared-types"
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Building, Briefcase, Users, Trophy, Sparkles, ArrowRight } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { portalRequest } from '@/lib/api'
+import { allianceLabel } from '@zhiyu/shared-types'
 import type {
   AlliancePublicStats,
   AllianceBrand,
   AllianceEnterprise,
   AllianceAchievement,
-} from "@/lib/types"
-import { reportError } from "@/lib/error-handling"
+} from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 
 interface HomeData {
   stats: AlliancePublicStats | null
@@ -33,10 +33,16 @@ export default function AlliancePublicHomePage() {
 
   useEffect(() => {
     Promise.all([
-      portalRequest<AlliancePublicStats>("/alliance/public/stats").catch(() => null),
-      portalRequest<{ items: AllianceBrand[] }>("/alliance/public/brands?isFeatured=true").catch(() => ({ items: [] })),
-      portalRequest<{ items: AllianceEnterprise[] }>("/alliance/public/enterprises").catch(() => ({ items: [] })),
-      portalRequest<{ items: AllianceAchievement[] }>("/alliance/public/achievements?sort=latest").catch(() => ({ items: [] })),
+      portalRequest<AlliancePublicStats>('/alliance/public/stats').catch(() => null),
+      portalRequest<{ items: AllianceBrand[] }>('/alliance/public/brands?isFeatured=true').catch(
+        () => ({ items: [] }),
+      ),
+      portalRequest<{ items: AllianceEnterprise[] }>('/alliance/public/enterprises').catch(() => ({
+        items: [],
+      })),
+      portalRequest<{ items: AllianceAchievement[] }>(
+        '/alliance/public/achievements?sort=latest',
+      ).catch(() => ({ items: [] })),
     ])
       .then(([stats, brands, enterprises, achievements]) => {
         setData({
@@ -47,13 +53,12 @@ export default function AlliancePublicHomePage() {
         })
       })
       .catch((err) => {
-        reportError(err, { source: "加载校企合作首页数据" })
+        reportError(err, { source: '加载校企合作首页数据' })
       })
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading)
-    return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
 
   return (
     <div className="space-y-10">
@@ -65,11 +70,11 @@ export default function AlliancePublicHomePage() {
       {data.stats && (
         <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: "合作企业", value: data.stats.enterpriseCount, icon: Building },
-            { label: "合作项目", value: data.stats.projectCount, icon: Briefcase },
-            { label: "企业专家", value: data.stats.expertCount, icon: Users },
-            { label: "合作成果", value: data.stats.achievementCount, icon: Trophy },
-            { label: "品牌展示", value: data.stats.brandCount, icon: Sparkles },
+            { label: '合作企业', value: data.stats.enterpriseCount, icon: Building },
+            { label: '合作项目', value: data.stats.projectCount, icon: Briefcase },
+            { label: '企业专家', value: data.stats.expertCount, icon: Users },
+            { label: '合作成果', value: data.stats.achievementCount, icon: Trophy },
+            { label: '品牌展示', value: data.stats.brandCount, icon: Sparkles },
           ].map((item) => {
             const Icon = item.icon
             return (
@@ -88,7 +93,10 @@ export default function AlliancePublicHomePage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">品牌展示</h2>
-          <Link href="/portal/alliance/brands" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+          <Link
+            href="/portal/alliance/brands"
+            className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+          >
             查看更多 <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
@@ -103,7 +111,7 @@ export default function AlliancePublicHomePage() {
                     <CardTitle className="text-lg">{brand.name}</CardTitle>
                     <div className="flex items-center gap-1.5">
                       {brand.isFeatured && <Badge variant="secondary">推荐</Badge>}
-                      <Badge variant="outline">{allianceLabel("brandType", brand.brandType)}</Badge>
+                      <Badge variant="outline">{allianceLabel('brandType', brand.brandType)}</Badge>
                     </div>
                   </div>
                   {brand.description && (
@@ -115,12 +123,16 @@ export default function AlliancePublicHomePage() {
                     <p className="text-xs text-muted-foreground">专业: {brand.data.major}</p>
                   )}
                   {brand.data?.abilityScore != null && (
-                    <p className="text-xs text-muted-foreground">能力评分: {brand.data.abilityScore}</p>
+                    <p className="text-xs text-muted-foreground">
+                      能力评分: {brand.data.abilityScore}
+                    </p>
                   )}
                   {brand.data?.tags && brand.data.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {brand.data.tags.slice(0, 3).map((tag: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
                       ))}
                     </div>
                   )}
@@ -134,7 +146,10 @@ export default function AlliancePublicHomePage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">合作企业</h2>
-          <Link href="/portal/alliance/enterprises" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+          <Link
+            href="/portal/alliance/enterprises"
+            className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+          >
             查看更多 <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
@@ -153,7 +168,9 @@ export default function AlliancePublicHomePage() {
                   </CardHeader>
                   {enterprise.description && (
                     <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{enterprise.description}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {enterprise.description}
+                      </p>
                     </CardContent>
                   )}
                 </Card>
@@ -166,7 +183,10 @@ export default function AlliancePublicHomePage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">最新成果</h2>
-          <Link href="/portal/alliance/achievements" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+          <Link
+            href="/portal/alliance/achievements"
+            className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+          >
             查看更多 <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
@@ -180,12 +200,16 @@ export default function AlliancePublicHomePage() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{achievement.title}</CardTitle>
-                      <Badge variant="outline">{allianceLabel("achievementType", achievement.type)}</Badge>
+                      <Badge variant="outline">
+                        {allianceLabel('achievementType', achievement.type)}
+                      </Badge>
                     </div>
                   </CardHeader>
                   {achievement.description && (
                     <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{achievement.description}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {achievement.description}
+                      </p>
                     </CardContent>
                   )}
                 </Card>

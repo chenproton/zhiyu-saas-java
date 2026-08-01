@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { affairsNavigationConfig } from "@/lib/navigation-config"
-import { PlatformLayout } from "@/components/shared/platform-layout"
+import { affairsNavigationConfig } from '@/lib/navigation-config'
+import { PlatformLayout } from '@/components/shared/platform-layout'
 
 export default function AffairsLayout({ children }: { children: React.ReactNode }) {
   return (

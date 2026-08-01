@@ -14,7 +14,7 @@ export interface ErrorContext {
 
 /** 非阻塞地记录错误，不影响 UI 流程。 */
 export function reportError(err: unknown, context: string | ErrorContext): void {
-  const ctx: ErrorContext = typeof context === "string" ? { source: context } : context
+  const ctx: ErrorContext = typeof context === 'string' ? { source: context } : context
   const message = err instanceof Error ? err.message : String(err)
   const payload = {
     source: ctx.source,
@@ -23,11 +23,11 @@ export function reportError(err: unknown, context: string | ErrorContext): void 
     extras: ctx.extras,
   }
 
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === 'production') {
     // 生产环境可接入外部监控；目前先保持 console.error 以免完全静默
-    console.error("[app-error]", payload)
+    console.error('[app-error]', payload)
   } else {
-    console.error(`[app-error] ${ctx.source}:`, message, err, ctx.extras ?? "")
+    console.error(`[app-error] ${ctx.source}:`, message, err, ctx.extras ?? '')
   }
 }
 

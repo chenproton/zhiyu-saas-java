@@ -1,6 +1,6 @@
 // ==================== 岗位认证规则管理 ====================
 
-import type { CompetencyLevel } from "./job-source"
+import type { CompetencyLevel } from './job-source'
 
 export type RuleStatus =
   | 'draft' // 草稿
@@ -75,10 +75,7 @@ export const defaultLevelMapping: LevelMapping[] = [
   { level: '精通L5', min: 96, max: 100 },
 ]
 
-export function calculateLevel(
-  score: number,
-  mapping: LevelMapping[],
-): string {
+export function calculateLevel(score: number, mapping: LevelMapping[]): string {
   for (const level of mapping) {
     if (score >= level.min && score <= level.max) {
       return level.level
@@ -106,7 +103,7 @@ export interface CertificationAbilityPoint {
   id: string
   itemId: string
   abilityPointId: string
-  mappingType: "inherit" | "custom"
+  mappingType: 'inherit' | 'custom'
   customLevelMapping?: CustomLevelMapping[]
   requiredLevel: string
   weight: number

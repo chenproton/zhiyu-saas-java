@@ -9,6 +9,11 @@
     "build:all": "pnpm build:backend && pnpm build:edu",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\" \"packages/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\" \"packages/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
   }
 }

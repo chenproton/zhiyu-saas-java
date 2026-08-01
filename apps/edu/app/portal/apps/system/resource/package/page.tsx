@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Package, Clock, CheckCircle, ChevronDown, ChevronRight, Loader2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { cn } from "@/lib/utils"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest, buildQuery } from "@/lib/api"
-import { platformModuleDefs } from "@/lib/navigation-config"
-import type { SubscriptionPackage } from "@/lib/types/backend"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Package, Clock, CheckCircle, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { cn } from '@/lib/utils'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalRequest, buildQuery } from '@/lib/api'
+import { platformModuleDefs } from '@/lib/navigation-config'
+import type { SubscriptionPackage } from '@/lib/types/backend'
 
 interface SubModule {
   name: string
@@ -21,10 +21,8 @@ interface PackageModule {
   subModules: SubModule[]
 }
 
-function buildPackageModules(
-  modules: Record<string, any> | undefined,
-): PackageModule[] {
-  if (!modules || typeof modules !== "object") return []
+function buildPackageModules(modules: Record<string, any> | undefined): PackageModule[] {
+  if (!modules || typeof modules !== 'object') return []
 
   return Object.entries(platformModuleDefs)
     .filter(([key]) => Boolean(modules[key]))
@@ -57,7 +55,9 @@ export default function PackagePage() {
       setError(null)
 
       try {
-        const res = await portalRequest<SubscriptionPackage>(`/subscriptions${buildQuery({ tenantId })}`)
+        const res = await portalRequest<SubscriptionPackage>(
+          `/subscriptions${buildQuery({ tenantId })}`,
+        )
         if (!cancelled) {
           setSubscription(res)
           const parsed = buildPackageModules(res.modules)
@@ -67,7 +67,7 @@ export default function PackagePage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "加载套餐信息失败")
+          setError(err instanceof Error ? err.message : '加载套餐信息失败')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -83,7 +83,7 @@ export default function PackagePage() {
 
   const toggleModule = (moduleName: string) => {
     setExpandedModules((prev) =>
-      prev.includes(moduleName) ? prev.filter((m) => m !== moduleName) : [...prev, moduleName]
+      prev.includes(moduleName) ? prev.filter((m) => m !== moduleName) : [...prev, moduleName],
     )
   }
 
@@ -91,13 +91,13 @@ export default function PackagePage() {
   const totalCount = packageModules.length
 
   const statusBadge =
-    subscription?.status === "active" ? (
+    subscription?.status === 'active' ? (
       <Badge variant="default" className="bg-green-500 text-white">
         <CheckCircle className="w-3 h-3 mr-1" />
         已激活
       </Badge>
     ) : (
-      <Badge variant="secondary">{subscription?.status || "未知"}</Badge>
+      <Badge variant="secondary">{subscription?.status || '未知'}</Badge>
     )
 
   return (
@@ -134,7 +134,7 @@ export default function PackagePage() {
                     <CardDescription className="flex items-center gap-4 mt-1">
                       <span className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        有效期至 {subscription.validUntil || "未设置"}
+                        有效期至 {subscription.validUntil || '未设置'}
                       </span>
                       <span className="text-primary">
                         已开通 {enabledCount}/{totalCount} 个平台
@@ -161,32 +161,43 @@ export default function PackagePage() {
                   {packageModules.map((module) => {
                     const isExpanded = expandedModules.includes(module.name)
                     return (
-                      <div key={module.name} className="border border-gray-100 rounded-lg overflow-hidden">
+                      <div
+                        key={module.name}
+                        className="border border-gray-100 rounded-lg overflow-hidden"
+                      >
                         {/* 一级模块 */}
                         <button
                           onClick={() => toggleModule(module.name)}
                           className={cn(
-                            "w-full flex items-center justify-between p-4 text-left transition-colors",
-                            module.enabled ? "hover:bg-gray-50" : "bg-gray-50/50 opacity-60"
+                            'w-full flex items-center justify-between p-4 text-left transition-colors',
+                            module.enabled ? 'hover:bg-gray-50' : 'bg-gray-50/50 opacity-60',
                           )}
                         >
                           <div className="flex items-center gap-3">
                             <CheckCircle
-                              className={cn("w-5 h-5", module.enabled ? "text-primary" : "text-muted-foreground")}
+                              className={cn(
+                                'w-5 h-5',
+                                module.enabled ? 'text-primary' : 'text-muted-foreground',
+                              )}
                             />
                             <span
                               className={cn(
-                                "font-medium",
-                                module.enabled ? "text-foreground" : "text-muted-foreground"
+                                'font-medium',
+                                module.enabled ? 'text-foreground' : 'text-muted-foreground',
                               )}
                             >
                               {module.name}
                             </span>
-                            {!module.enabled && <Badge variant="secondary" className="text-xs">未开通</Badge>}
+                            {!module.enabled && (
+                              <Badge variant="secondary" className="text-xs">
+                                未开通
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">
-                              {module.subModules.filter((s) => s.enabled).length}/{module.subModules.length} 个功能
+                              {module.subModules.filter((s) => s.enabled).length}/
+                              {module.subModules.length} 个功能
                             </span>
                             {isExpanded ? (
                               <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -204,22 +215,24 @@ export default function PackagePage() {
                                 <div
                                   key={subModule.name}
                                   className={cn(
-                                    "flex items-center gap-2 p-2.5 rounded-md border text-sm",
+                                    'flex items-center gap-2 p-2.5 rounded-md border text-sm',
                                     subModule.enabled
-                                      ? "border-primary/30 bg-white"
-                                      : "border-gray-200 bg-gray-100/50 opacity-60"
+                                      ? 'border-primary/30 bg-white'
+                                      : 'border-gray-200 bg-gray-100/50 opacity-60',
                                   )}
                                 >
                                   <CheckCircle
                                     className={cn(
-                                      "w-3.5 h-3.5 shrink-0",
-                                      subModule.enabled ? "text-primary" : "text-muted-foreground"
+                                      'w-3.5 h-3.5 shrink-0',
+                                      subModule.enabled ? 'text-primary' : 'text-muted-foreground',
                                     )}
                                   />
                                   <span
                                     className={cn(
-                                      "truncate",
-                                      subModule.enabled ? "text-foreground" : "text-muted-foreground"
+                                      'truncate',
+                                      subModule.enabled
+                                        ? 'text-foreground'
+                                        : 'text-muted-foreground',
                                     )}
                                   >
                                     {subModule.name}

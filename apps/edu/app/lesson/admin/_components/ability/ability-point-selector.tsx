@@ -1,13 +1,20 @@
-"use client"
+'use client'
 
-import { useState, useMemo } from "react"
-import { Search, Plus, X, Award } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+import { useState, useMemo } from 'react'
+import { Search, Plus, X, Award } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 
 export interface AbilityPointItem {
   id: string
@@ -24,11 +31,16 @@ interface AbilityPointSelectorProps {
   onAddCustom?: (name: string, description?: string) => void
 }
 
-export function AbilityPointSelector({ selected, pool, onChange, onAddCustom }: AbilityPointSelectorProps) {
+export function AbilityPointSelector({
+  selected,
+  pool,
+  onChange,
+  onAddCustom,
+}: AbilityPointSelectorProps) {
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState("")
-  const [newName, setNewName] = useState("")
-  const [newDesc, setNewDesc] = useState("")
+  const [search, setSearch] = useState('')
+  const [newName, setNewName] = useState('')
+  const [newDesc, setNewDesc] = useState('')
   const [adding, setAdding] = useState(false)
 
   const filtered = useMemo(() => {
@@ -36,9 +48,9 @@ export function AbilityPointSelector({ selected, pool, onChange, onAddCustom }: 
     if (!q) return pool
     return pool.filter(
       (ap) =>
-        (ap.name || "").toLowerCase().includes(q) ||
-        (ap.code || "").toLowerCase().includes(q) ||
-        (ap.description || "").toLowerCase().includes(q)
+        (ap.name || '').toLowerCase().includes(q) ||
+        (ap.code || '').toLowerCase().includes(q) ||
+        (ap.description || '').toLowerCase().includes(q),
     )
   }, [pool, search])
 
@@ -54,8 +66,8 @@ export function AbilityPointSelector({ selected, pool, onChange, onAddCustom }: 
   const handleAddCustom = () => {
     if (!newName.trim()) return
     onAddCustom?.(newName.trim(), newDesc.trim())
-    setNewName("")
-    setNewDesc("")
+    setNewName('')
+    setNewDesc('')
     setAdding(false)
   }
 
@@ -67,10 +79,7 @@ export function AbilityPointSelector({ selected, pool, onChange, onAddCustom }: 
             <Badge key={ap.id} variant="secondary" className="flex items-center gap-1 px-2 py-1">
               <Award className="h-3 w-3" />
               <span>{ap.name}</span>
-              <button
-                onClick={() => toggle(ap)}
-                className="ml-1 rounded-full hover:bg-muted p-0.5"
-              >
+              <button onClick={() => toggle(ap)} className="ml-1 rounded-full hover:bg-muted p-0.5">
                 <X className="h-3 w-3" />
               </button>
             </Badge>
@@ -81,7 +90,7 @@ export function AbilityPointSelector({ selected, pool, onChange, onAddCustom }: 
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="text-xs h-9">
             <Award className="h-3.5 w-3.5 mr-1.5" />
-            {selected.length > 0 ? "调整能力点" : "关联能力点"}
+            {selected.length > 0 ? '调整能力点' : '关联能力点'}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
@@ -108,16 +117,16 @@ export function AbilityPointSelector({ selected, pool, onChange, onAddCustom }: 
                   key={ap.id}
                   onClick={() => toggle(ap)}
                   className={cn(
-                    "w-full text-left p-3 rounded-lg border transition-all flex items-start gap-3",
+                    'w-full text-left p-3 rounded-lg border transition-all flex items-start gap-3',
                     isSelected
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : "border-gray-200 hover:border-primary/40 bg-white"
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-gray-200 hover:border-primary/40 bg-white',
                   )}
                 >
                   <div
                     className={cn(
-                      "w-5 h-5 rounded border flex items-center justify-center shrink-0 mt-0.5",
-                      isSelected ? "bg-primary border-primary" : "border-gray-300"
+                      'w-5 h-5 rounded border flex items-center justify-center shrink-0 mt-0.5',
+                      isSelected ? 'bg-primary border-primary' : 'border-gray-300',
                     )}
                   >
                     {isSelected && <span className="text-white text-xs">✓</span>}
@@ -125,7 +134,9 @@ export function AbilityPointSelector({ selected, pool, onChange, onAddCustom }: 
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{ap.name}</p>
                     {ap.code && <p className="text-[10px] text-gray-400">{ap.code}</p>}
-                    {ap.description && <p className="text-xs text-gray-500 truncate mt-0.5">{ap.description}</p>}
+                    {ap.description && (
+                      <p className="text-xs text-gray-500 truncate mt-0.5">{ap.description}</p>
+                    )}
                   </div>
                 </button>
               )
@@ -134,22 +145,54 @@ export function AbilityPointSelector({ selected, pool, onChange, onAddCustom }: 
           {adding ? (
             <div className="space-y-2 py-2 border-t">
               <Label className="text-xs">新增能力点</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="名称" className="h-9 text-sm" />
-              <Input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="描述（可选）" className="h-9 text-sm" />
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="名称"
+                className="h-9 text-sm"
+              />
+              <Input
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="描述（可选）"
+                className="h-9 text-sm"
+              />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" className="text-xs" onClick={() => setAdding(false)}>取消</Button>
-                <Button size="sm" className="text-xs" onClick={handleAddCustom} disabled={!newName.trim()}>添加</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => setAdding(false)}
+                >
+                  取消
+                </Button>
+                <Button
+                  size="sm"
+                  className="text-xs"
+                  onClick={handleAddCustom}
+                  disabled={!newName.trim()}
+                >
+                  添加
+                </Button>
               </div>
             </div>
           ) : (
             onAddCustom && (
-              <Button variant="ghost" size="sm" className="text-xs mt-2" onClick={() => setAdding(true)}>
-                <Plus className="h-3.5 w-3.5 mr-1" />自定义能力点
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs mt-2"
+                onClick={() => setAdding(true)}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                自定义能力点
               </Button>
             )
           )}
           <DialogFooter>
-            <Button size="sm" onClick={() => setOpen(false)}>完成</Button>
+            <Button size="sm" onClick={() => setOpen(false)}>
+              完成
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

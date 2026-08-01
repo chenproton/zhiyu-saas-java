@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 
 export interface WeightConfigItem {
   id: string
@@ -44,15 +44,11 @@ export function WeightConfigDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {description ?? "配置各子节点权重，合计必须为 100%"}
+            {description ?? '配置各子节点权重，合计必须为 100%'}
           </DialogDescription>
         </DialogHeader>
         {/* DialogContent 仅在打开时挂载，表单状态随每次打开重置 */}
-        <WeightConfigForm
-          items={items}
-          onSave={onSave}
-          onCancel={() => onOpenChange(false)}
-        />
+        <WeightConfigForm items={items} onSave={onSave} onCancel={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )
@@ -120,10 +116,10 @@ function WeightConfigForm({
         {items.length > 0 && (
           <div
             className={`text-sm font-medium text-right ${
-              isValid ? "text-green-600" : "text-red-600"
+              isValid ? 'text-green-600' : 'text-red-600'
             }`}
           >
-            当前合计：{total}% {isValid ? "✓" : "（必须为 100%）"}
+            当前合计：{total}% {isValid ? '✓' : '（必须为 100%）'}
           </div>
         )}
       </div>

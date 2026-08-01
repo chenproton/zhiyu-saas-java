@@ -1,23 +1,23 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { portalRequest } from "@/lib/api"
-import { allianceLabel } from "@zhiyu/shared-types"
-import type { AllianceProject } from "@/lib/types"
-import { reportError } from "@/lib/error-handling"
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { portalRequest } from '@/lib/api'
+import { allianceLabel } from '@zhiyu/shared-types'
+import type { AllianceProject } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 
 export default function AlliancePublicProjectsPage() {
   const [items, setItems] = useState<AllianceProject[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    portalRequest<{ items: AllianceProject[] }>("/alliance/public/projects")
+    portalRequest<{ items: AllianceProject[] }>('/alliance/public/projects')
       .then((data) => setItems(data.items || []))
       .catch((err) => {
-        reportError(err, { source: "加载合作项目列表" })
+        reportError(err, { source: '加载合作项目列表' })
       })
       .finally(() => setLoading(false))
   }, [])
@@ -38,7 +38,7 @@ export default function AlliancePublicProjectsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <Badge variant="outline">{allianceLabel("projectPhase", item.phase)}</Badge>
+                    <Badge variant="outline">{allianceLabel('projectPhase', item.phase)}</Badge>
                   </div>
                   {item.startDate && <CardDescription>开始: {item.startDate}</CardDescription>}
                 </CardHeader>

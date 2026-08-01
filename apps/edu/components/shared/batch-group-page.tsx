@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { Check, FolderKanban, Pencil, Plus, Power, RotateCcw, Search, Trash2 } from "lucide-react"
-import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Check, FolderKanban, Pencil, Plus, Power, RotateCcw, Search, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -14,16 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -31,16 +31,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAuth } from "@/components/auth-provider"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { workflowApi, majorApi } from "@/lib/api"
-import type { Workflow, Major } from "@/lib/types/backend"
-import { useToast } from "@zhiyu/ui"
-import { cn } from "@/lib/utils"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { TableRowActions } from "@/components/shared/table-row-actions"
+} from '@/components/ui/table'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useAuth } from '@/components/auth-provider'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { workflowApi, majorApi } from '@/lib/api'
+import type { Workflow, Major } from '@/lib/types/backend'
+import { useToast } from '@zhiyu/ui'
+import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { TableRowActions } from '@/components/shared/table-row-actions'
 
 export interface BatchGroupItem {
   id: string
@@ -51,7 +51,9 @@ export interface BatchGroupItem {
 }
 
 export interface BatchGroupApi {
-  list: (params?: Record<string, string | number | boolean | undefined>) => Promise<{ items: any[] }>
+  list: (
+    params?: Record<string, string | number | boolean | undefined>,
+  ) => Promise<{ items: any[] }>
   create: (body: any) => Promise<any>
   update: (id: string, body: any) => Promise<any>
   delete: (id: string) => Promise<any>
@@ -70,21 +72,27 @@ interface BatchView extends BatchGroupItem {
   workflowName?: string
 }
 
-export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, detailHref }: BatchGroupPageProps) {
+export function BatchGroupPage({
+  api,
+  subtitle,
+  namePlaceholder,
+  workflowHint,
+  detailHref,
+}: BatchGroupPageProps) {
   const { toast } = useToast()
   const { tenantId } = useAuth()
   const [batches, setBatches] = useState<BatchView[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [majors, setMajors] = useState<Major[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filterStatus, setFilterStatus] = useState<"all" | "open" | "closed">("all")
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'closed'>('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingBatch, setEditingBatch] = useState<BatchView | null>(null)
-  const [newBatchName, setNewBatchName] = useState("")
-  const [newBatchWorkflow, setNewBatchWorkflow] = useState("")
-  const [selectedMajorId, setSelectedMajorId] = useState("all")
+  const [newBatchName, setNewBatchName] = useState('')
+  const [newBatchWorkflow, setNewBatchWorkflow] = useState('')
+  const [selectedMajorId, setSelectedMajorId] = useState('all')
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -99,7 +107,11 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
         if (!cancelled) setMajors(res.items.filter((m) => m.enabled))
       } catch (err: any) {
         if (!cancelled) {
-          toast({ variant: "destructive", title: "加载专业失败", description: err.message || "请稍后重试" })
+          toast({
+            variant: 'destructive',
+            title: '加载专业失败',
+            description: err.message || '请稍后重试',
+          })
         }
       }
     })()
@@ -121,10 +133,14 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
         (batchRes.items as BatchGroupItem[]).map((b) => ({
           ...b,
           workflowName: b.workflowId ? wfMap.get(b.workflowId) : undefined,
-        }))
+        })),
       )
     } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "无法获取批次数据" })
+      toast({
+        variant: 'destructive',
+        title: '加载失败',
+        description: err.message || '无法获取批次数据',
+      })
     } finally {
       setLoading(false)
     }
@@ -141,7 +157,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
   }, [loadData])
 
   const filteredWorkflows = useMemo(() => {
-    if (selectedMajorId === "all") return workflows
+    if (selectedMajorId === 'all') return workflows
     return workflows.filter((wf) => (wf.majorIds || []).includes(selectedMajorId))
   }, [workflows, selectedMajorId])
 
@@ -149,18 +165,16 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     const q = searchQuery.trim().toLowerCase()
     return batches.filter((batch) => {
       const matchesSearch =
-        !q ||
-        batch.name.toLowerCase().includes(q) ||
-        (batch.code || "").toLowerCase().includes(q)
-      const matchesStatus = filterStatus === "all" || batch.status === filterStatus
+        !q || batch.name.toLowerCase().includes(q) || (batch.code || '').toLowerCase().includes(q)
+      const matchesStatus = filterStatus === 'all' || batch.status === filterStatus
       return matchesSearch && matchesStatus
     })
   }, [batches, searchQuery, filterStatus])
 
   const resetForm = () => {
-    setNewBatchName("")
-    setNewBatchWorkflow("")
-    setSelectedMajorId("all")
+    setNewBatchName('')
+    setNewBatchWorkflow('')
+    setSelectedMajorId('all')
     setEditingBatch(null)
   }
 
@@ -169,24 +183,28 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     try {
       await api.create({
         name: newBatchName,
-        code: "BG-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 10000)).padStart(4, "0"),
+        code:
+          'BG-' +
+          new Date().getFullYear() +
+          '-' +
+          String(Math.floor(Math.random() * 10000)).padStart(4, '0'),
         workflowId: newBatchWorkflow,
-        status: "open",
+        status: 'open',
       })
       await loadData()
       setIsCreateDialogOpen(false)
       resetForm()
-      toast({ title: "创建成功" })
+      toast({ title: '创建成功' })
     } catch (err: any) {
-      toast({ variant: "destructive", title: "创建失败", description: err.message || "请稍后重试" })
+      toast({ variant: 'destructive', title: '创建失败', description: err.message || '请稍后重试' })
     }
   }
 
   const openEdit = (batch: BatchView) => {
     setEditingBatch(batch)
     setNewBatchName(batch.name)
-    setNewBatchWorkflow(batch.workflowId || "")
-    setSelectedMajorId("all")
+    setNewBatchWorkflow(batch.workflowId || '')
+    setSelectedMajorId('all')
     setIsEditDialogOpen(true)
   }
 
@@ -202,32 +220,34 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
       await loadData()
       setIsEditDialogOpen(false)
       resetForm()
-      toast({ title: "保存成功" })
+      toast({ title: '保存成功' })
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "请稍后重试" })
+      toast({ variant: 'destructive', title: '保存失败', description: err.message || '请稍后重试' })
     }
   }
 
   const handleToggleStatus = async (batch: BatchView) => {
     try {
-      const newStatus = batch.status === "open" ? "closed" : "open"
+      const newStatus = batch.status === 'open' ? 'closed' : 'open'
       await api.updateStatus(batch.id, newStatus)
       await loadData()
-      toast({ title: newStatus === "open" ? "批次已重新开放" : "批次已截止" })
+      toast({ title: newStatus === 'open' ? '批次已重新开放' : '批次已截止' })
     } catch (err: any) {
-      toast({ variant: "destructive", title: "操作失败", description: err.message || "请稍后重试" })
+      toast({ variant: 'destructive', title: '操作失败', description: err.message || '请稍后重试' })
     }
   }
 
-  const handleDeleteBatch = (id: string) => { setDeleteTargetId(id) }
+  const handleDeleteBatch = (id: string) => {
+    setDeleteTargetId(id)
+  }
   const confirmDeleteBatch = async () => {
     if (!deleteTargetId) return
     try {
       await api.delete(deleteTargetId)
       await loadData()
-      toast({ title: "删除成功" })
+      toast({ title: '删除成功' })
     } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message || "请稍后重试" })
+      toast({ variant: 'destructive', title: '删除失败', description: err.message || '请稍后重试' })
     } finally {
       setDeleteTargetId(null)
     }
@@ -245,7 +265,9 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="workflow">关联审批流 <span className="text-red-500">*</span></Label>
+        <Label htmlFor="workflow">
+          关联审批流 <span className="text-red-500">*</span>
+        </Label>
         {majors.length > 0 && (
           <Tabs value={selectedMajorId} onValueChange={setSelectedMajorId}>
             <TabsList className="h-auto flex-wrap justify-start">
@@ -260,9 +282,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
         )}
         <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
           {filteredWorkflows.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-gray-500 text-center">
-              暂无审批流程
-            </div>
+            <div className="px-4 py-6 text-sm text-gray-500 text-center">暂无审批流程</div>
           ) : (
             filteredWorkflows.map((wf) => {
               const selected = newBatchWorkflow === wf.id
@@ -271,12 +291,12 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                   key={wf.id}
                   onClick={() => setNewBatchWorkflow(wf.id)}
                   className={cn(
-                    "px-4 py-3 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-start justify-between gap-3",
-                    selected && "bg-primary/5"
+                    'px-4 py-3 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-start justify-between gap-3',
+                    selected && 'bg-primary/5',
                   )}
                 >
                   <div className="min-w-0">
-                    <div className={cn("font-medium text-sm", selected && "text-primary")}>
+                    <div className={cn('font-medium text-sm', selected && 'text-primary')}>
                       {wf.name}
                     </div>
                     {wf.description ? (
@@ -359,7 +379,10 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+            <Select
+              value={filterStatus}
+              onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -369,8 +392,15 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                 <SelectItem value="closed">已截止</SelectItem>
               </SelectContent>
             </Select>
-            {(searchQuery || filterStatus !== "all") && (
-              <Button variant="outline" size="sm" onClick={() => { setSearchQuery(""); setFilterStatus("all") }}>
+            {(searchQuery || filterStatus !== 'all') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('')
+                  setFilterStatus('all')
+                }}
+              >
                 <RotateCcw className="mr-1 h-3.5 w-3.5" />
                 重置
               </Button>
@@ -417,51 +447,58 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                     <TableRow key={batch.id} className="group">
                       <TableCell className="font-medium">
                         {detailHref ? (
-                          <Link href={detailHref(batch.id)} prefetch={false} className="hover:text-primary">
+                          <Link
+                            href={detailHref(batch.id)}
+                            prefetch={false}
+                            className="hover:text-primary"
+                          >
                             {batch.name}
                           </Link>
                         ) : (
                           batch.name
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-gray-600">{batch.code || "-"}</TableCell>
+                      <TableCell className="text-sm text-gray-600">{batch.code || '-'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {batch.workflowName || "-"}
+                          {batch.workflowName || '-'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-gray-600">
-                        <StatusBadge status={batch.status} label={batch.status === "open" ? "开放中" : "已截止"} />
+                        <StatusBadge
+                          status={batch.status}
+                          label={batch.status === 'open' ? '开放中' : '已截止'}
+                        />
                       </TableCell>
                       <TableRowActions>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => openEdit(batch)}
-                          >
-                            <Pencil className="mr-1 h-3 w-3" />
-                            编辑
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => handleToggleStatus(batch)}
-                          >
-                            <Power className="mr-1 h-3 w-3" />
-                            {batch.status === "open" ? "截止批次" : "重新开放"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                            onClick={() => handleDeleteBatch(batch.id)}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" />
-                            删除
-                          </Button>
-                        </TableRowActions>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => openEdit(batch)}
+                        >
+                          <Pencil className="mr-1 h-3 w-3" />
+                          编辑
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleToggleStatus(batch)}
+                        >
+                          <Power className="mr-1 h-3 w-3" />
+                          {batch.status === 'open' ? '截止批次' : '重新开放'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                          onClick={() => handleDeleteBatch(batch.id)}
+                        >
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          删除
+                        </Button>
+                      </TableRowActions>
                     </TableRow>
                   ))
                 )}
@@ -472,7 +509,9 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
       </Card>
       <ConfirmDialog
         open={deleteTargetId !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null)
+        }}
         title="确认删除"
         description="确定删除该批次吗？"
         variant="destructive"

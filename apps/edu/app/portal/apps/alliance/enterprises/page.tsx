@@ -1,22 +1,34 @@
-"use client"
+'use client'
 
-import { useEffect, useState, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { TableCell, TableHead } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Pencil, Trash2, ExternalLink } from "lucide-react"
-import Link from "next/link"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest, buildQuery } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import { allianceLabel } from "@zhiyu/shared-types"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { PortalCrudPage } from "@/components/shared/portal-crud-page"
-import type { AllianceEnterprise, AllianceProject, AllianceAchievement, AllianceAgreement, AllianceListResponse } from "@/lib/types"
+import { useEffect, useState, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
+import { TableCell, TableHead } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Pencil, Trash2, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { portalRequest, buildQuery } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import { allianceLabel } from '@zhiyu/shared-types'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import type {
+  AllianceEnterprise,
+  AllianceProject,
+  AllianceAchievement,
+  AllianceAgreement,
+  AllianceListResponse,
+} from '@/lib/types'
 
 export default function AllianceEnterprisesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -34,17 +46,19 @@ export default function AllianceEnterprisesPage() {
     setError(null)
     try {
       const [ent, proj, ach, agr] = await Promise.all([
-        portalRequest<AllianceListResponse<AllianceEnterprise>>("/alliance/enterprises"),
-        portalRequest<AllianceListResponse<AllianceProject>>("/alliance/projects?limit=1000"),
-        portalRequest<AllianceListResponse<AllianceAchievement>>("/alliance/achievements?limit=1000"),
-        portalRequest<AllianceListResponse<AllianceAgreement>>("/alliance/agreements?limit=1000"),
+        portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises'),
+        portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
+        portalRequest<AllianceListResponse<AllianceAchievement>>(
+          '/alliance/achievements?limit=1000',
+        ),
+        portalRequest<AllianceListResponse<AllianceAgreement>>('/alliance/agreements?limit=1000'),
       ])
       setEnterprises(ent.items || [])
       setProjects(proj.items || [])
       setAchievements(ach.items || [])
       setAgreements(agr.items || [])
     } catch (e: any) {
-      setError(e.message || "加载失败")
+      setError(e.message || '加载失败')
     } finally {
       setLoading(false)
     }
@@ -61,7 +75,7 @@ export default function AllianceEnterprisesPage() {
   const countBy = (arr: any[], field: string, id: string) =>
     arr.filter((x) => (x[field] || []).includes?.(id)).length
 
-  const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString("zh-CN") : "-")
+  const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('zh-CN') : '-')
 
   return (
     <PortalCrudPage
@@ -75,13 +89,18 @@ export default function AllianceEnterprisesPage() {
       error={error}
       onRetry={fetchEnterprises}
       filterItems={(items, search) =>
-        items.filter((e) =>
-          !search ||
-          e.name.toLowerCase().includes(search.toLowerCase()) ||
-          (e.industry || "").toLowerCase().includes(search.toLowerCase())
+        items.filter(
+          (e) =>
+            !search ||
+            e.name.toLowerCase().includes(search.toLowerCase()) ||
+            (e.industry || '').toLowerCase().includes(search.toLowerCase()),
         )
       }
-      importConfig={{ importType: "alliance-enterprises", entityLabel: "合作企业", templateFileName: "合作企业批量导入模板.xlsx" }}
+      importConfig={{
+        importType: 'alliance-enterprises',
+        entityLabel: '合作企业',
+        templateFileName: '合作企业批量导入模板.xlsx',
+      }}
       createHref="/portal/apps/alliance/enterprises/new"
       colSpan={14}
       renderTableHeader={() => (
@@ -105,70 +124,111 @@ export default function AllianceEnterprisesPage() {
       renderTableRow={(enterprise: any, actions: any) => (
         <>
           <TableCell className="font-medium">
-            <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}`} className="hover:underline">{enterprise.name}</Link>
-          </TableCell>
-          <TableCell><Switch checked={enterprise.isPublic || false} onCheckedChange={actions.toggle} /></TableCell>
-          <TableCell>{allianceLabel("enterpriseType", enterprise.enterpriseType)}</TableCell>
-          <TableCell>{enterprise.industry || "-"}</TableCell>
-          <TableCell className="max-w-[160px] truncate">{enterprise.address || "-"}</TableCell>
-          <TableCell>{allianceLabel("enterpriseStatus", enterprise.status)}</TableCell>
-          <TableCell>{allianceLabel("enterpriseRating", enterprise.rating)}</TableCell>
-          <TableCell>
-            <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=agreements`} className="text-primary hover:underline">{agreements.filter((a) => (a.enterpriseIds || []).includes?.(enterprise.id)).length}</Link>
+            <Link
+              href={`/portal/apps/alliance/enterprises/${enterprise.id}`}
+              className="hover:underline"
+            >
+              {enterprise.name}
+            </Link>
           </TableCell>
           <TableCell>
-            <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=projects`} className="text-primary hover:underline">{countBy(projects, "enterpriseIds", enterprise.id)}</Link>
+            <Switch checked={enterprise.isPublic || false} onCheckedChange={actions.toggle} />
+          </TableCell>
+          <TableCell>{allianceLabel('enterpriseType', enterprise.enterpriseType)}</TableCell>
+          <TableCell>{enterprise.industry || '-'}</TableCell>
+          <TableCell className="max-w-[160px] truncate">{enterprise.address || '-'}</TableCell>
+          <TableCell>{allianceLabel('enterpriseStatus', enterprise.status)}</TableCell>
+          <TableCell>{allianceLabel('enterpriseRating', enterprise.rating)}</TableCell>
+          <TableCell>
+            <Link
+              href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=agreements`}
+              className="text-primary hover:underline"
+            >
+              {agreements.filter((a) => (a.enterpriseIds || []).includes?.(enterprise.id)).length}
+            </Link>
           </TableCell>
           <TableCell>
-            <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=achievements`} className="text-primary hover:underline">{countBy(achievements, "enterpriseIds", enterprise.id)}</Link>
+            <Link
+              href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=projects`}
+              className="text-primary hover:underline"
+            >
+              {countBy(projects, 'enterpriseIds', enterprise.id)}
+            </Link>
           </TableCell>
-          <TableCell>{enterprise.createdBy || "-"}</TableCell>
+          <TableCell>
+            <Link
+              href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=achievements`}
+              className="text-primary hover:underline"
+            >
+              {countBy(achievements, 'enterpriseIds', enterprise.id)}
+            </Link>
+          </TableCell>
+          <TableCell>{enterprise.createdBy || '-'}</TableCell>
           <TableCell>{fmtDate(enterprise.createdAt)}</TableCell>
           <TableCell>{fmtDate(enterprise.updatedAt)}</TableCell>
           <TableRowActions>
             <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}`}>
-              <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
+              <Button variant="ghost" size="sm">
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                查看
+              </Button>
             </Link>
             <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}/edit`}>
-              <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+              <Button variant="ghost" size="sm">
+                <Pencil className="h-3.5 w-3.5 mr-1" />
+                编辑
+              </Button>
             </Link>
-            <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
+            <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              删除
+            </Button>
           </TableRowActions>
         </>
       )}
-      createDefault={() => ({
-        id: "",
-        name: "",
-        enterpriseType: "cooperation",
-        status: "negotiating",
-        rating: "general",
-        isPublic: false as any,
-        industry: "",
-        region: "",
-        description: "",
-        contactPerson: "",
-        contactPhone: "",
-        contactEmail: "",
-        cooperationTypes: [] as any,
-        businessLicensePhotos: [] as any,
-        qualificationPhotos: [] as any,
-        intellectualPropertyPhotos: [] as any,
-        coverPhotos: [] as any,
-        secondaryColleges: [] as any,
-        createdAt: "",
-        updatedAt: "",
-      } as AllianceEnterprise & { enabled?: boolean })}
+      createDefault={() =>
+        ({
+          id: '',
+          name: '',
+          enterpriseType: 'cooperation',
+          status: 'negotiating',
+          rating: 'general',
+          isPublic: false as any,
+          industry: '',
+          region: '',
+          description: '',
+          contactPerson: '',
+          contactPhone: '',
+          contactEmail: '',
+          cooperationTypes: [] as any,
+          businessLicensePhotos: [] as any,
+          qualificationPhotos: [] as any,
+          intellectualPropertyPhotos: [] as any,
+          coverPhotos: [] as any,
+          secondaryColleges: [] as any,
+          createdAt: '',
+          updatedAt: '',
+        }) as AllianceEnterprise & { enabled?: boolean }
+      }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>企业名称 *</Label>
-              <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />
+              <Input
+                value={item.name || ''}
+                onChange={(e: any) => setItem({ ...item, name: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>企业类型</Label>
-              <Select value={item.enterpriseType || "cooperation"} onValueChange={(v: any) => setItem({ ...item, enterpriseType: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={item.enterpriseType || 'cooperation'}
+                onValueChange={(v: any) => setItem({ ...item, enterpriseType: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cooperation">合作企业</SelectItem>
                   <SelectItem value="third-party">第三方雇主企业</SelectItem>
@@ -177,16 +237,27 @@ export default function AllianceEnterprisesPage() {
             </div>
             <div className="grid gap-2">
               <Label>所属行业</Label>
-              <Input value={item.industry || ""} onChange={(e: any) => setItem({ ...item, industry: e.target.value })} />
+              <Input
+                value={item.industry || ''}
+                onChange={(e: any) => setItem({ ...item, industry: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>所在地区</Label>
-              <Input value={item.region || ""} onChange={(e: any) => setItem({ ...item, region: e.target.value })} />
+              <Input
+                value={item.region || ''}
+                onChange={(e: any) => setItem({ ...item, region: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>合作状态</Label>
-              <Select value={item.status || "negotiating"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={item.status || 'negotiating'}
+                onValueChange={(v: any) => setItem({ ...item, status: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="negotiating">洽谈中</SelectItem>
                   <SelectItem value="active">合作中</SelectItem>
@@ -197,8 +268,13 @@ export default function AllianceEnterprisesPage() {
             </div>
             <div className="grid gap-2">
               <Label>合作评级</Label>
-              <Select value={item.rating || "general"} onValueChange={(v: any) => setItem({ ...item, rating: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={item.rating || 'general'}
+                onValueChange={(v: any) => setItem({ ...item, rating: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="strategic">战略合作</SelectItem>
                   <SelectItem value="deep">深度合作</SelectItem>
@@ -208,53 +284,86 @@ export default function AllianceEnterprisesPage() {
             </div>
             <div className="grid gap-2">
               <Label>联系人</Label>
-              <Input value={item.contactPerson || ""} onChange={(e: any) => setItem({ ...item, contactPerson: e.target.value })} />
+              <Input
+                value={item.contactPerson || ''}
+                onChange={(e: any) => setItem({ ...item, contactPerson: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>联系电话</Label>
-              <Input value={item.contactPhone || ""} onChange={(e: any) => setItem({ ...item, contactPhone: e.target.value })} />
+              <Input
+                value={item.contactPhone || ''}
+                onChange={(e: any) => setItem({ ...item, contactPhone: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>联系邮箱</Label>
-              <Input value={item.contactEmail || ""} onChange={(e: any) => setItem({ ...item, contactEmail: e.target.value })} />
+              <Input
+                value={item.contactEmail || ''}
+                onChange={(e: any) => setItem({ ...item, contactEmail: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>Logo URL</Label>
-              <Input value={item.logoUrl || ""} onChange={(e: any) => setItem({ ...item, logoUrl: e.target.value })} placeholder="https://..." />
+              <Input
+                value={item.logoUrl || ''}
+                onChange={(e: any) => setItem({ ...item, logoUrl: e.target.value })}
+                placeholder="https://..."
+              />
             </div>
             <div className="grid gap-2">
               <Label>企业地址</Label>
-              <Input value={item.address || ""} onChange={(e: any) => setItem({ ...item, address: e.target.value })} />
+              <Input
+                value={item.address || ''}
+                onChange={(e: any) => setItem({ ...item, address: e.target.value })}
+              />
             </div>
             <div className="flex items-center gap-2 pt-6">
-              <Switch checked={item.isPublic || false} onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })} />
+              <Switch
+                checked={item.isPublic || false}
+                onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })}
+              />
               <Label>公开显示</Label>
             </div>
           </div>
           <div className="grid gap-2">
             <Label>企业描述</Label>
-            <Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={4} />
+            <Textarea
+              value={item.description || ''}
+              onChange={(e: any) => setItem({ ...item, description: e.target.value })}
+              rows={4}
+            />
           </div>
         </div>
       )}
-      getDeleteDescription={(item: any) => (<>确定要删除合作企业 <b>{item.name}</b> 吗？此操作不可撤销。</>)}
+      getDeleteDescription={(item: any) => (
+        <>
+          确定要删除合作企业 <b>{item.name}</b> 吗？此操作不可撤销。
+        </>
+      )}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) {
-          await portalRequest(`/alliance/enterprises/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
+          await portalRequest(`/alliance/enterprises/${item.id}`, {
+            method: 'PUT',
+            body: JSON.stringify(item),
+          })
         } else {
-          await portalRequest("/alliance/enterprises", { method: "POST", body: JSON.stringify(item) })
+          await portalRequest('/alliance/enterprises', {
+            method: 'POST',
+            body: JSON.stringify(item),
+          })
         }
-        toast({ title: `企业已${isEdit ? "更新" : "创建"}` })
+        toast({ title: `企业已${isEdit ? '更新' : '创建'}` })
         await fetchEnterprises()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/enterprises/${item.id}`, { method: "DELETE" })
-        toast({ title: "企业已删除" })
+        await portalRequest(`/alliance/enterprises/${item.id}`, { method: 'DELETE' })
+        toast({ title: '企业已删除' })
         await fetchEnterprises()
       }}
       onToggleEnabled={async (item: any) => {
         await portalRequest(`/alliance/enterprises/${item.id}`, {
-          method: "PUT",
+          method: 'PUT',
           body: JSON.stringify({ ...item, isPublic: !item.isPublic }),
         })
         await fetchEnterprises()

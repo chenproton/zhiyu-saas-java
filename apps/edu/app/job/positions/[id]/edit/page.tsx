@@ -19,7 +19,16 @@ import { StepAbilityModeling } from '@/components/job/position-builder/step-abil
 import { Step3ResultTable } from '@/components/job/position-builder/ai-assisted-2/step3-result-table'
 import { UserSelector } from '@/components/shared/user-selector'
 import type { Position, Batch } from '@/lib/types/job-source'
-import { positionApi, batchApi, majorApi, industryApi, abilityApi, positionResponsibilityApi, positionCertificateApi, fileApi } from '@/lib/api'
+import {
+  positionApi,
+  batchApi,
+  majorApi,
+  industryApi,
+  abilityApi,
+  positionResponsibilityApi,
+  positionCertificateApi,
+  fileApi,
+} from '@/lib/api'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
@@ -29,14 +38,11 @@ import {
   convertApiAbilityDomainToLocal,
   convertApiAbilityToLocal,
 } from '@/lib/converters/job-converters'
-import { toast } from "@zhiyu/ui"
+import { toast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-
-
-
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -47,7 +53,9 @@ function PositionEditPageContent({ params }: PageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, tenantId } = useAuth()
-  const currentUser = user ? { id: user.id, name: user.name || user.username || user.id } : { id: '', name: '' }
+  const currentUser = user
+    ? { id: user.id, name: user.name || user.username || user.id }
+    : { id: '', name: '' }
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
   const [majorMap, setMajorMap] = useState<Map<string, string>>(new Map())
@@ -84,12 +92,14 @@ function PositionEditPageContent({ params }: PageProps) {
         setPositions(posList)
         setBatches(batchRes.items.map(convertJobBatchToBatch))
       } catch (err: any) {
-        if (!cancelled) toast({ title: err?.message || '请稍后重试', variant: "destructive" })
+        if (!cancelled) toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
       } finally {
         if (!cancelled) setLoading(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -136,7 +146,13 @@ function PositionEditPageContent({ params }: PageProps) {
         const abilityDomains = domainRes.items.map(convertApiAbilityDomainToLocal)
         setPosition((prev) => {
           if (!prev) return null
-          const next: Position = { ...prev, responsibilities, certificates, abilityBindings, abilityDomains }
+          const next: Position = {
+            ...prev,
+            responsibilities,
+            certificates,
+            abilityBindings,
+            abilityDomains,
+          }
           if (next.responsibilities.length === 0) {
             next.responsibilities = [{ id: `resp-${Date.now()}`, name: '', description: '' }]
           }
@@ -151,11 +167,13 @@ function PositionEditPageContent({ params }: PageProps) {
         setDetailsLoading(false)
         if (!cancelled) {
           console.error('Failed to load position details:', err)
-          toast({ title: err?.message || '请稍后重试', variant: "destructive" })
+          toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
         }
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [position, detailsLoaded])
 
   useEffect(() => {
@@ -170,17 +188,16 @@ function PositionEditPageContent({ params }: PageProps) {
   }, [searchParams])
 
   useEffect(() => {
-    Promise.all([
-      majorApi.list({ limit: 1000 }),
-      industryApi.list({ limit: 1000 }),
-    ]).then(([majorRes, industryRes]) => {
-      const majorMap = new Map<string, string>()
-      majorRes.items.forEach((m) => majorMap.set(m.id, m.name))
-      setMajorMap(majorMap)
-      const industryMap = new Map<string, string>()
-      industryRes.items.forEach((i) => industryMap.set(i.id, i.name))
-      setIndustryMap(industryMap)
-    }).catch(() => {})
+    Promise.all([majorApi.list({ limit: 1000 }), industryApi.list({ limit: 1000 })])
+      .then(([majorRes, industryRes]) => {
+        const majorMap = new Map<string, string>()
+        majorRes.items.forEach((m) => majorMap.set(m.id, m.name))
+        setMajorMap(majorMap)
+        const industryMap = new Map<string, string>()
+        industryRes.items.forEach((i) => industryMap.set(i.id, i.name))
+        setIndustryMap(industryMap)
+      })
+      .catch(() => {})
   }, [])
 
   if (loading) {
@@ -234,7 +251,7 @@ function PositionEditPageContent({ params }: PageProps) {
       toast({ title: '草稿已保存' })
     } catch (err: any) {
       console.error('Save position failed:', err)
-      toast({ title: err?.message || '请稍后重试', variant: "destructive" })
+      toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
     } finally {
       setIsSaving(false)
     }
@@ -253,7 +270,7 @@ function PositionEditPageContent({ params }: PageProps) {
       toast({ title: '封面上传成功' })
     } catch (err: any) {
       console.error('Cover upload failed:', err)
-      toast({ title: err?.message || '请稍后重试', variant: "destructive" })
+      toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
     } finally {
       setCoverUploading(false)
     }
@@ -295,7 +312,9 @@ function PositionEditPageContent({ params }: PageProps) {
       backText="取消"
       onBack={async () => {
         if (isNewPosition && !hasSavedRef.current) {
-          try { await positionApi.delete(position.id) } catch {}
+          try {
+            await positionApi.delete(position.id)
+          } catch {}
         }
         router.push('/job/positions')
       }}
@@ -308,77 +327,81 @@ function PositionEditPageContent({ params }: PageProps) {
       onNext={canGoNext ? handleNext : undefined}
       onSubmit={!canGoNext ? handleFinish : undefined}
       submitText="完成配置"
-      loadingText={detailsLoading ? "加载详情中" : undefined}
+      loadingText={detailsLoading ? '加载详情中' : undefined}
       title={position.name}
     >
       {activeStep === 'basic' ? (
-          <div className="grid grid-cols-3 gap-6">
-            <div className="col-span-2">
-              <StepBasicInfo position={position} onUpdate={updatePositionData} />
-            </div>
-
-            <div className="space-y-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <CoverImageUpload
-                    imageUrl={position.coverImage || ""}
-                    uploading={coverUploading}
-                    label="岗位封面"
-                    alt="岗位封面"
-                    onUpload={handleCoverUpload}
-                    onRemove={() => updatePositionData({ coverImage: "" })}
-                  />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <BatchSelector
-                    value={position.batchId || ''}
-                    onChange={(v) => updatePositionData({ batchId: v })}
-                    batchApi={batchApi}
-                    emptyLabel="未选择批次"
-                  />
-                  <div>
-                    <Label className="text-gray-500 text-xs">创建人</Label>
-                    <p className="font-medium text-gray-800 mt-1">{currentUser.name}</p>
-                  </div>
-
-                  <div>
-                    <Label className="text-gray-500 text-xs">共建人</Label>
-                    <UserSelector
-                      value={collaboratorIds}
-                      onChange={(ids) => updatePositionData({ collaborators: ids.filter((id) => id !== position.createdBy) })}
-                      multiple
-                      placeholder="点击选择共建人"
-                      tenantId={tenantId}
-                      excludeUserIds={position.createdBy ? [position.createdBy] : undefined}
-                    />
-                  </div>
-
-                  <div className="pt-3 border-t border-gray-100">
-                    <Label className="text-gray-500 text-xs">当前版本号</Label>
-                    <p className="font-medium text-gray-800 mt-1">{position.version}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-2">
+            <StepBasicInfo position={position} onUpdate={updatePositionData} />
           </div>
-        ) : (
+
           <div className="space-y-6">
-            {activeStep === 'ability' && (
-              <StepAbilityModeling position={position} onUpdate={updatePositionData} />
-            )}
-            {activeStep === 'competency' && (
-              <Step3ResultTable
-                position={position}
-                onUpdate={updatePositionData}
-                onPrev={handlePrev}
-                showAiFill={false}
-              />
-            )}
+            <Card>
+              <CardContent className="pt-6">
+                <CoverImageUpload
+                  imageUrl={position.coverImage || ''}
+                  uploading={coverUploading}
+                  label="岗位封面"
+                  alt="岗位封面"
+                  onUpload={handleCoverUpload}
+                  onRemove={() => updatePositionData({ coverImage: '' })}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <BatchSelector
+                  value={position.batchId || ''}
+                  onChange={(v) => updatePositionData({ batchId: v })}
+                  batchApi={batchApi}
+                  emptyLabel="未选择批次"
+                />
+                <div>
+                  <Label className="text-gray-500 text-xs">创建人</Label>
+                  <p className="font-medium text-gray-800 mt-1">{currentUser.name}</p>
+                </div>
+
+                <div>
+                  <Label className="text-gray-500 text-xs">共建人</Label>
+                  <UserSelector
+                    value={collaboratorIds}
+                    onChange={(ids) =>
+                      updatePositionData({
+                        collaborators: ids.filter((id) => id !== position.createdBy),
+                      })
+                    }
+                    multiple
+                    placeholder="点击选择共建人"
+                    tenantId={tenantId}
+                    excludeUserIds={position.createdBy ? [position.createdBy] : undefined}
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-gray-100">
+                  <Label className="text-gray-500 text-xs">当前版本号</Label>
+                  <p className="font-medium text-gray-800 mt-1">{position.version}</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {activeStep === 'ability' && (
+            <StepAbilityModeling position={position} onUpdate={updatePositionData} />
+          )}
+          {activeStep === 'competency' && (
+            <Step3ResultTable
+              position={position}
+              onUpdate={updatePositionData}
+              onPrev={handlePrev}
+              showAiFill={false}
+            />
+          )}
+        </div>
+      )}
 
       <ConfirmDialog
         open={isPreviewConfirmOpen}
@@ -393,14 +416,15 @@ function PositionEditPageContent({ params }: PageProps) {
   )
 }
 
-
 export default function PositionEditPage(props: PageProps) {
   return (
-    <Suspense fallback={
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
       <PositionEditPageContent {...props} />
     </Suspense>
   )

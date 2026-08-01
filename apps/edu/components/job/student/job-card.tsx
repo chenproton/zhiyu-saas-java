@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import { MapPin, Flame } from "lucide-react"
-import type { CareerPosition } from "@/lib/types"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+import Link from 'next/link'
+import { MapPin, Flame } from 'lucide-react'
+import type { CareerPosition } from '@/lib/types'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 interface JobCardProps {
   position: CareerPosition
@@ -15,24 +15,30 @@ interface JobCardProps {
 }
 
 const coverGradients = [
-  "linear-gradient(135deg,#1e3a8a,#3b7cff)",
-  "linear-gradient(135deg,#7c2d12,#dc2626)",
-  "linear-gradient(135deg,#064e3b,#0891b2)",
-  "linear-gradient(135deg,#334155,#64748b)",
-  "linear-gradient(135deg,#581c87,#a855f7)",
-  "linear-gradient(135deg,#1e40af,#3b82f6)",
-  "linear-gradient(135deg,#be123c,#f43f5e)",
-  "linear-gradient(135deg,#0f766e,#14b8a6)",
+  'linear-gradient(135deg,#1e3a8a,#3b7cff)',
+  'linear-gradient(135deg,#7c2d12,#dc2626)',
+  'linear-gradient(135deg,#064e3b,#0891b2)',
+  'linear-gradient(135deg,#334155,#64748b)',
+  'linear-gradient(135deg,#581c87,#a855f7)',
+  'linear-gradient(135deg,#1e40af,#3b82f6)',
+  'linear-gradient(135deg,#be123c,#f43f5e)',
+  'linear-gradient(135deg,#0f766e,#14b8a6)',
 ]
 
-
-export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCount = 0, industryName }: JobCardProps) {
+export function JobCard({
+  position,
+  index = 0,
+  isHot,
+  scenarioCount = 0,
+  taskCount = 0,
+  industryName,
+}: JobCardProps) {
   const displayTitle = position.shortName || position.name
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
     : { background: coverGradients[index % coverGradients.length] }
 
-  const majorName = position.majorNames?.[0] || "未分类"
+  const majorName = position.majorNames?.[0] || '未分类'
   const viewCount = position.viewCount ?? 0
   const relatedScenes = scenarioCount
 
@@ -52,7 +58,7 @@ export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCou
           <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
             <div className="flex gap-1.5">
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
-                {position.version || "v1.0"}
+                {position.version || 'v1.0'}
               </span>
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
                 {formatDate(position.updatedAt)} 收录
@@ -60,8 +66,12 @@ export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCou
             </div>
           </div>
           <div className="relative z-10">
-            <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-blue-100 transition-colors">{displayTitle}</div>
-            <div className="text-xs text-white/80">岗位编码：{position.code || position.id.slice(0, 8)}</div>
+            <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-blue-100 transition-colors">
+              {displayTitle}
+            </div>
+            <div className="text-xs text-white/80">
+              岗位编码：{position.code || position.id.slice(0, 8)}
+            </div>
           </div>
         </div>
         <div className="p-5 flex-1 flex flex-col">
@@ -75,13 +85,13 @@ export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCou
               <div className="text-[11px] text-slate-400 mt-0.5">关联场景</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{taskCount || "-"}</div>
+              <div className="text-lg font-bold text-slate-800">{taskCount || '-'}</div>
               <div className="text-[11px] text-slate-400 mt-0.5">场景任务</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 font-medium">
-              面向行业：{industryName || "未分类"}
+              面向行业：{industryName || '未分类'}
             </span>
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 font-medium flex items-center gap-1">
               <MapPin className="w-3 h-3" /> 适用专业：{majorName}

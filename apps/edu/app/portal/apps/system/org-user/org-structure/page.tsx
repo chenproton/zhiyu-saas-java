@@ -1,23 +1,30 @@
-"use client"
+'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { Spinner } from "@/components/ui/spinner"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+} from '@/components/ui/select'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Spinner } from '@/components/ui/spinner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Plus,
   ChevronRight,
@@ -31,18 +38,24 @@ import {
   LayoutList,
   AlertCircle,
   Loader2,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { HoverActionBar } from "@/components/shared/hover-action-bar"
-import { orgApi, orgTypeApi, portalUserManagementApi, importExportApi, downloadBlob } from "@/lib/api"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
-import type { Organization, OrgType } from "@/lib/types/backend"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { useToast } from "@zhiyu/ui"
-import { useImportFlow } from "@/hooks/use-import-flow"
-import { typeMetaFor } from "@/lib/org-type-icons"
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { HoverActionBar } from '@/components/shared/hover-action-bar'
+import {
+  orgApi,
+  orgTypeApi,
+  portalUserManagementApi,
+  importExportApi,
+  downloadBlob,
+} from '@/lib/api'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
+import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
+import type { Organization, OrgType } from '@/lib/types/backend'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { useToast } from '@zhiyu/ui'
+import { useImportFlow } from '@/hooks/use-import-flow'
+import { typeMetaFor } from '@/lib/org-type-icons'
 
 type OrgNodeType = string
 
@@ -69,15 +82,17 @@ function countByType(nodes: OrgNode[], type: OrgNodeType): number {
 
 function mapToOrgNode(
   node: Organization & { children?: (Organization & { children?: any[] })[] },
-  typeMap: Record<string, string>
+  typeMap: Record<string, string>,
 ): OrgNode {
   const sortedChildren = node.children
-    ? [...node.children].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((child) => mapToOrgNode(child, typeMap))
+    ? [...node.children]
+        .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+        .map((child) => mapToOrgNode(child, typeMap))
     : undefined
   return {
     id: node.id,
     name: node.name,
-    type: typeMap[node.typeId] || "组织",
+    type: typeMap[node.typeId] || '组织',
     typeId: node.typeId,
     parentId: node.parentId,
     order: node.sortOrder,
@@ -115,8 +130,8 @@ function TreeNode({
     <div ref={(el) => registerRef?.(node.id, el)}>
       <div
         className={cn(
-          "flex items-center gap-2 py-2 px-3 hover:bg-muted rounded-lg group transition-colors relative",
-          isHighlighted && "bg-yellow-100 ring-1 ring-yellow-300"
+          'flex items-center gap-2 py-2 px-3 hover:bg-muted rounded-lg group transition-colors relative',
+          isHighlighted && 'bg-yellow-100 ring-1 ring-yellow-300',
         )}
         style={{ marginLeft: level * 24 }}
       >
@@ -134,9 +149,9 @@ function TreeNode({
             <span className="w-4" />
           )}
         </button>
-        <Icon className={cn("w-4 h-4", meta.color)} />
+        <Icon className={cn('w-4 h-4', meta.color)} />
         <span className="flex-1 text-sm font-medium truncate">{node.name}</span>
-        <Badge variant="outline" className={cn("text-xs shrink-0", meta.badge)}>
+        <Badge variant="outline" className={cn('text-xs shrink-0', meta.badge)}>
           {node.type}
         </Badge>
         <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-[3rem] justify-end">
@@ -148,7 +163,7 @@ function TreeNode({
             variant="ghost"
             size="sm"
             className="h-7 px-2 text-xs"
-            onClick={() => onAction("addChild", node)}
+            onClick={() => onAction('addChild', node)}
           >
             <Plus className="mr-1 h-3 w-3" />
             添加子节点
@@ -157,17 +172,17 @@ function TreeNode({
             variant="ghost"
             size="sm"
             className="h-7 px-2 text-xs"
-            onClick={() => onAction("edit", node)}
+            onClick={() => onAction('edit', node)}
           >
             <Pencil className="mr-1 h-3 w-3" />
             编辑
           </Button>
-          {node.type === "班级" && (
+          {node.type === '班级' && (
             <Button
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-xs"
-              onClick={() => onAction("graduate", node)}
+              onClick={() => onAction('graduate', node)}
             >
               <GraduationCap className="mr-1 h-3 w-3" />
               批量毕业
@@ -177,7 +192,7 @@ function TreeNode({
             variant="ghost"
             size="sm"
             className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-            onClick={() => onAction("delete", node)}
+            onClick={() => onAction('delete', node)}
           >
             <Trash2 className="mr-1 h-3 w-3" />
             删除
@@ -213,12 +228,12 @@ export default function OrgStructurePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [dialogMode, setDialogMode] = useState<"addRoot" | "addChild" | "edit">("addRoot")
+  const [dialogMode, setDialogMode] = useState<'addRoot' | 'addChild' | 'edit'>('addRoot')
   const [selectedNode, setSelectedNode] = useState<OrgNode | null>(null)
-  const [formName, setFormName] = useState("")
-  const [formTypeId, setFormTypeId] = useState("")
-  const [formParentId, setFormParentId] = useState<string>("__root__")
-  const [formSortOrder, setFormSortOrder] = useState<string>("1")
+  const [formName, setFormName] = useState('')
+  const [formTypeId, setFormTypeId] = useState('')
+  const [formParentId, setFormParentId] = useState<string>('__root__')
+  const [formSortOrder, setFormSortOrder] = useState<string>('1')
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -248,7 +263,7 @@ export default function OrgStructurePage() {
   const fetchData = useCallback(async () => {
     if (!tenantId) {
       setIsLoading(false)
-      setError("未获取到租户信息，请重新登录")
+      setError('未获取到租户信息，请重新登录')
       return
     }
     setIsLoading(true)
@@ -263,7 +278,7 @@ export default function OrgStructurePage() {
       setTypeNames(map)
       setOrgData(treeRes.items.map((node) => mapToOrgNode(node, map)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载组织架构失败")
+      setError(err instanceof Error ? err.message : '加载组织架构失败')
     } finally {
       setIsLoading(false)
     }
@@ -292,9 +307,9 @@ export default function OrgStructurePage() {
     handleImport,
     executeImport,
   } = useImportFlow({
-    importType: "organizations",
-    entityLabel: "组织",
-    templateFileName: "组织批量导入模板.xlsx",
+    importType: 'organizations',
+    entityLabel: '组织',
+    templateFileName: '组织批量导入模板.xlsx',
     onSuccess: fetchData,
   })
 
@@ -339,7 +354,7 @@ export default function OrgStructurePage() {
     if (!highlightedId) return
     const el = nodeRefs.current[highlightedId]
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       const timer = setTimeout(() => setHighlightedId(null), 3000)
       return () => clearTimeout(timer)
     }
@@ -349,33 +364,33 @@ export default function OrgStructurePage() {
     setDialogMode(mode)
     setSelectedNode(node)
     setFormError(null)
-    if (mode === "edit" && node) {
+    if (mode === 'edit' && node) {
       setFormName(node.name)
       setFormTypeId(node.typeId)
       setFormSortOrder(String(node.order))
-      setFormParentId(node.parentId ?? "__root__")
-    } else if (mode === "addChild" && node) {
-      setFormName("")
-      setFormTypeId("")
+      setFormParentId(node.parentId ?? '__root__')
+    } else if (mode === 'addChild' && node) {
+      setFormName('')
+      setFormTypeId('')
       setFormSortOrder(String(node.children ? node.children.length + 1 : 1))
       setFormParentId(node.id)
     } else {
-      setFormName("")
-      setFormTypeId("")
+      setFormName('')
+      setFormTypeId('')
       setFormSortOrder(String(orgData.length + 1))
-      setFormParentId("__root__")
+      setFormParentId('__root__')
     }
     setIsDialogOpen(true)
   }
 
   const handleAction = (action: string, node: OrgNode) => {
-    if (action === "addChild") {
-      openDialog("addChild", node)
-    } else if (action === "edit") {
-      openDialog("edit", node)
-    } else if (action === "delete") {
+    if (action === 'addChild') {
+      openDialog('addChild', node)
+    } else if (action === 'edit') {
+      openDialog('edit', node)
+    } else if (action === 'delete') {
       handleDelete(node)
-    } else if (action === "graduate") {
+    } else if (action === 'graduate') {
       setGraduateTarget(node)
     }
   }
@@ -383,7 +398,7 @@ export default function OrgStructurePage() {
   const parentOptions = useMemo(() => {
     if (!isDialogOpen) return []
     const excluded = new Set<string>()
-    if (dialogMode === "edit" && selectedNode) {
+    if (dialogMode === 'edit' && selectedNode) {
       const collect = (node: OrgNode) => {
         excluded.add(node.id)
         node.children?.forEach(collect)
@@ -404,22 +419,26 @@ export default function OrgStructurePage() {
 
   const handleSave = async () => {
     if (!tenantId) {
-      toast({ variant: "destructive", title: "保存失败", description: "未获取到租户信息，请重新登录" })
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: '未获取到租户信息，请重新登录',
+      })
       return
     }
     if (!formName.trim() || !formTypeId) {
-      setFormError("请填写节点组织名称并选择组织类型")
+      setFormError('请填写节点组织名称并选择组织类型')
       return
     }
     setSaving(true)
     setFormError(null)
     try {
       let targetId: string | null = null
-      let toastTitle = ""
-      let toastDescription = ""
+      let toastTitle = ''
+      let toastDescription = ''
 
-      if (dialogMode === "edit" && selectedNode) {
-        const nextParentId = formParentId === "__root__" ? undefined : formParentId
+      if (dialogMode === 'edit' && selectedNode) {
+        const nextParentId = formParentId === '__root__' ? undefined : formParentId
         const parentChanged = (selectedNode.parentId ?? undefined) !== nextParentId
         await orgApi.update(selectedNode.id, {
           tenantId,
@@ -429,7 +448,7 @@ export default function OrgStructurePage() {
           sortOrder: Number(formSortOrder) || 0,
         })
         targetId = selectedNode.id
-        toastTitle = "保存成功"
+        toastTitle = '保存成功'
         toastDescription = `组织节点「${formName.trim()}」已更新`
         if (parentChanged) {
           const parentName = nextParentId
@@ -440,7 +459,7 @@ export default function OrgStructurePage() {
             : `组织节点「${formName.trim()}」已调整为一级节点`
         }
       } else {
-        const parentId = formParentId === "__root__" ? undefined : formParentId
+        const parentId = formParentId === '__root__' ? undefined : formParentId
         const newNode = await orgApi.create({
           tenantId,
           name: formName.trim(),
@@ -450,7 +469,7 @@ export default function OrgStructurePage() {
           memberCount: 0,
         })
         targetId = newNode.id
-        toastTitle = "创建成功"
+        toastTitle = '创建成功'
         toastDescription = `已添加节点「${newNode.name}」`
       }
 
@@ -461,7 +480,7 @@ export default function OrgStructurePage() {
       setIsDialogOpen(false)
       toast({ title: toastTitle, description: toastDescription })
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "保存失败，请重试")
+      setFormError(err instanceof Error ? err.message : '保存失败，请重试')
     } finally {
       setSaving(false)
     }
@@ -475,10 +494,14 @@ export default function OrgStructurePage() {
     if (!deleteTarget) return
     try {
       await orgApi.delete(deleteTarget.id)
-      toast({ title: "删除成功" })
+      toast({ title: '删除成功' })
       await fetchData()
     } catch (err) {
-      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setDeleteTarget(null)
     }
@@ -491,18 +514,22 @@ export default function OrgStructurePage() {
       const res = await portalUserManagementApi.list({
         tenantId,
         orgNodeId: graduateTarget.id,
-        status: "active",
+        status: 'active',
         limit: 1000,
       })
       const userIds = res.items.map((u) => u.id)
       if (userIds.length === 0) {
-        toast({ title: "暂无在籍学生", description: "该班级下没有可毕业的在籍学生" })
+        toast({ title: '暂无在籍学生', description: '该班级下没有可毕业的在籍学生' })
         return
       }
       await portalUserManagementApi.batchGraduate({ userIds })
-      toast({ title: "批量毕业成功", description: `已将 ${userIds.length} 名学生状态改为毕业` })
+      toast({ title: '批量毕业成功', description: `已将 ${userIds.length} 名学生状态改为毕业` })
     } catch (err) {
-      toast({ variant: "destructive", title: "批量毕业失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '批量毕业失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setGraduateLoading(false)
       setGraduateTarget(null)
@@ -516,10 +543,10 @@ export default function OrgStructurePage() {
   const handleExport = async () => {
     try {
       const res = await importExportApi.exportOrganizationsExcel([])
-      downloadBlob(await res.blob(), "组织架构导出.xlsx")
-      toast({ title: "导出完成" })
+      downloadBlob(await res.blob(), '组织架构导出.xlsx')
+      toast({ title: '导出完成' })
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
+      toast({ variant: 'destructive', title: '导出失败', description: err.message || '导出失败' })
     }
   }
 
@@ -550,10 +577,7 @@ export default function OrgStructurePage() {
             <Download className="h-4 w-4 mr-1" />
             批量导出
           </Button>
-          <Button
-            size="sm"
-            onClick={() => openDialog("addRoot")}
-          >
+          <Button size="sm" onClick={() => openDialog('addRoot')}>
             <Plus className="h-4 w-4 mr-1" />
             新增节点
           </Button>
@@ -630,87 +654,87 @@ export default function OrgStructurePage() {
           <div className="bg-background w-full max-w-[500px] rounded-lg border p-6 shadow-lg">
             <div className="flex flex-col gap-2 text-center sm:text-left mb-4">
               <h2 className="text-lg font-semibold">
-                {dialogMode === "addRoot"
-                  ? "新增节点"
-                  : dialogMode === "addChild"
-                  ? `添加子节点：${selectedNode?.name}`
-                  : "编辑节点"}
+                {dialogMode === 'addRoot'
+                  ? '新增节点'
+                  : dialogMode === 'addChild'
+                    ? `添加子节点：${selectedNode?.name}`
+                    : '编辑节点'}
               </h2>
               <p className="text-muted-foreground text-sm">配置组织节点信息</p>
             </div>
             <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>节点组织名称</Label>
-                  <Input
-                    placeholder="如：信息学院"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                  />
+              <div className="grid gap-2">
+                <Label>节点组织名称</Label>
+                <Input
+                  placeholder="如：信息学院"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>组织类型</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {orgTypes.map((type) => {
+                    const meta = typeMetaFor(type.name)
+                    const Icon = meta.icon
+                    const selected = formTypeId === type.id
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setFormTypeId(type.id)}
+                        className={cn(
+                          'flex flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center transition-colors',
+                          selected
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-input hover:bg-accent hover:text-accent-foreground',
+                        )}
+                      >
+                        <Icon className={cn('h-5 w-5', meta.color)} />
+                        <span className="text-xs font-medium">{type.name}</span>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="grid gap-2">
-                  <Label>组织类型</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {orgTypes.map((type) => {
-                      const meta = typeMetaFor(type.name)
-                      const Icon = meta.icon
-                      const selected = formTypeId === type.id
-                      return (
-                        <button
-                          key={type.id}
-                          type="button"
-                          onClick={() => setFormTypeId(type.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center transition-colors",
-                            selected
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-input hover:bg-accent hover:text-accent-foreground"
-                          )}
-                        >
-                          <Icon className={cn("h-5 w-5", meta.color)} />
-                          <span className="text-xs font-medium">{type.name}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>父节点</Label>
-                  <Select value={formParentId} onValueChange={setFormParentId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择父节点" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__root__">无（作为一级节点）</SelectItem>
-                      {parentOptions.map((option) => (
-                        <SelectItem key={option.id} value={option.id}>
-                          {`${"　".repeat(option.depth)}${option.name}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {dialogMode === "edit" && (
-                    <p className="text-xs text-muted-foreground">
-                      更改父节点后，当前节点及其全部子节点将迁移到新父节点下
-                    </p>
-                  )}
-                </div>
-                <div className="grid gap-2">
-                  <Label>排序序号</Label>
-                  <Input
-                    type="number"
-                    placeholder="1"
-                    value={formSortOrder}
-                    onChange={(e) => setFormSortOrder(e.target.value)}
-                  />
-                </div>
-                {formError && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>保存失败</AlertTitle>
-                    <AlertDescription>{formError}</AlertDescription>
-                  </Alert>
+              </div>
+              <div className="grid gap-2">
+                <Label>父节点</Label>
+                <Select value={formParentId} onValueChange={setFormParentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择父节点" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__root__">无（作为一级节点）</SelectItem>
+                    {parentOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {`${'　'.repeat(option.depth)}${option.name}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {dialogMode === 'edit' && (
+                  <p className="text-xs text-muted-foreground">
+                    更改父节点后，当前节点及其全部子节点将迁移到新父节点下
+                  </p>
                 )}
               </div>
+              <div className="grid gap-2">
+                <Label>排序序号</Label>
+                <Input
+                  type="number"
+                  placeholder="1"
+                  value={formSortOrder}
+                  onChange={(e) => setFormSortOrder(e.target.value)}
+                />
+              </div>
+              {formError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>保存失败</AlertTitle>
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+            </div>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-4">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
                 取消
@@ -740,7 +764,7 @@ export default function OrgStructurePage() {
         downloadLabel="下载组织架构批量导入模板"
         onDownload={handleDownloadTemplate}
         uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-        importLabel={() => "开始导入"}
+        importLabel={() => '开始导入'}
         onImport={handleImport}
         files={importFiles}
         onAddFiles={handleAddFiles}

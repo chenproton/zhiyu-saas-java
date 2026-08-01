@@ -241,83 +241,83 @@ export interface AllianceListResponse<T> {
 
 export const ALLIANCE_DICTS = {
   enterpriseType: {
-    cooperation: "合作企业",
-    "third-party": "第三方雇主企业",
-    platform: "第三方雇主企业",
-    "school-based": "合作企业",
+    cooperation: '合作企业',
+    'third-party': '第三方雇主企业',
+    platform: '第三方雇主企业',
+    'school-based': '合作企业',
   },
   enterpriseStatus: {
-    negotiating: "洽谈中",
-    active: "合作中",
-    paused: "已暂停",
-    terminated: "已终止",
+    negotiating: '洽谈中',
+    active: '合作中',
+    paused: '已暂停',
+    terminated: '已终止',
   },
   enterpriseRating: {
-    strategic: "战略合作",
-    deep: "深度合作",
-    general: "一般合作",
+    strategic: '战略合作',
+    deep: '深度合作',
+    general: '一般合作',
   },
   projectPhase: {
-    initiation: "启动",
-    execution: "执行中",
-    acceptance: "验收",
-    closure: "关闭",
-    archived: "已归档",
-    terminated: "已终止",
+    initiation: '启动',
+    execution: '执行中',
+    acceptance: '验收',
+    closure: '关闭',
+    archived: '已归档',
+    terminated: '已终止',
   },
   publishStatus: {
-    draft: "草稿",
-    published: "已发布",
-    archived: "已归档",
+    draft: '草稿',
+    published: '已发布',
+    archived: '已归档',
   },
   achievementType: {
-    job: "岗位成果",
-    scene: "场景成果",
-    course: "课程成果",
-    custom: "自定义成果",
+    job: '岗位成果',
+    scene: '场景成果',
+    course: '课程成果',
+    custom: '自定义成果',
   },
   achievementStatus: {
-    draft: "草稿",
-    published: "已发布",
-    archived: "已归档",
+    draft: '草稿',
+    published: '已发布',
+    archived: '已归档',
   },
   agreementStatus: {
-    draft: "草稿",
-    active: "生效中",
-    expired: "已失效",
-    renewed: "已续签",
-    terminated: "已终止",
+    draft: '草稿',
+    active: '生效中',
+    expired: '已失效',
+    renewed: '已续签',
+    terminated: '已终止',
   },
   accountType: {
-    enterprise: "企业账号",
-    expert: "专家账号",
+    enterprise: '企业账号',
+    expert: '专家账号',
   },
   expertRating: {
-    gold: "金牌专家",
-    silver: "银牌专家",
-    copper: "铜牌专家",
+    gold: '金牌专家',
+    silver: '银牌专家',
+    copper: '铜牌专家',
   },
   expertStatus: {
-    active: "正常",
-    inactive: "已停用",
+    active: '正常',
+    inactive: '已停用',
   },
   brandType: {
-    talent: "人才品牌",
-    employer: "雇主品牌",
-    job: "岗位品牌",
-    major: "专业品牌",
-    teacher: "师资品牌",
-    culture: "文化品牌",
+    talent: '人才品牌',
+    employer: '雇主品牌',
+    job: '岗位品牌',
+    major: '专业品牌',
+    teacher: '师资品牌',
+    culture: '文化品牌',
   },
   brandStatus: {
-    draft: "草稿",
-    published: "已发布",
-    archived: "已归档",
+    draft: '草稿',
+    published: '已发布',
+    archived: '已归档',
   },
   brandTopicLayout: {
-    grid: "网格布局",
-    timeline: "时间线布局",
-    magazine: "杂志布局",
+    grid: '网格布局',
+    timeline: '时间线布局',
+    magazine: '杂志布局',
   },
 } as const
 
@@ -325,7 +325,7 @@ export type AllianceDictKey = keyof typeof ALLIANCE_DICTS
 
 /** 将英文枚举值转换为中文展示文案，未知值原样返回。 */
 export function allianceLabel(dictKey: AllianceDictKey, value?: string | null): string {
-  if (value == null || value === "") return "-"
+  if (value == null || value === '') return '-'
   const dict = ALLIANCE_DICTS[dictKey] as Record<string, string>
   return dict[value] ?? value
 }

@@ -18,7 +18,7 @@ export interface WorkspaceTodo {
 export interface WorkspaceScheduleEvent {
   id: string
   title: string
-  type: "course" | "scene" | "exam" | "todo"
+  type: 'course' | 'scene' | 'exam' | 'todo'
   dayOfWeek: number
   period: string
   teacher?: string
@@ -68,7 +68,7 @@ export interface WorkspaceCourse {
   hours: number
   progress: number
   cover: string
-  status: "进行中" | "未开始" | "已完成"
+  status: '进行中' | '未开始' | '已完成'
   nextTask?: string
   nextDeadline?: string
 }
@@ -80,18 +80,18 @@ export interface WorkspaceSceneTask {
   taskName: string
   position: string
   abilityTags: string[]
-  status: "未开始" | "进行中" | "待提交" | "已批改" | "已完成"
+  status: '未开始' | '进行中' | '待提交' | '已批改' | '已完成'
   deadline: string
   score?: number
   totalScore: number
-  difficulty: "简单" | "中等" | "困难"
+  difficulty: '简单' | '中等' | '困难'
 }
 
 export interface WorkspaceExam {
   id: string
   name: string
-  type: "随堂测" | "单元测试" | "在线测评" | "岗位能力认定"
-  status: "待考" | "进行中" | "已完成"
+  type: '随堂测' | '单元测试' | '在线测评' | '岗位能力认定'
+  status: '待考' | '进行中' | '已完成'
   startTime: string
   endTime: string
   duration: number
@@ -117,7 +117,7 @@ export interface WorkspaceTeacherCourse {
   hours: number
   progress: number
   cover: string
-  status: "进行中" | "未开始" | "已结课"
+  status: '进行中' | '未开始' | '已结课'
   nextTask?: string
   nextDeadline?: string
 }
@@ -129,7 +129,7 @@ export interface WorkspaceClassPlan {
   term: string
   students: number
   teacher: string
-  status: "pending" | "active"
+  status: 'pending' | 'active'
 }
 
 export interface WorkspaceClassSession {
@@ -139,7 +139,7 @@ export interface WorkspaceClassSession {
   week: number
   weekday: string
   period: string
-  status: "pending" | "associated"
+  status: 'pending' | 'associated'
 }
 
 export interface WorkspaceDashboard {

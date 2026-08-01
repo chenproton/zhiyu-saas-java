@@ -1,22 +1,22 @@
-"use client"
+'use client'
 
-import { PositionList } from "@/components/job/positions/position-list"
-import { positionApi, batchApi, approvalApi, importExportApi } from "@/lib/api"
-import { useIndustryMap, useMajorMap } from "@/lib/use-resource-maps"
+import { PositionList } from '@/components/job/positions/position-list'
+import { positionApi, batchApi, approvalApi, importExportApi } from '@/lib/api'
+import { useIndustryMap, useMajorMap } from '@/lib/use-resource-maps'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
   positionToCreateRequest,
-} from "@/lib/converters/job-converters"
-import type { Position } from "@/lib/types/job-source"
-import { useAuth } from "@/components/auth-provider"
-import {
-  ContentListPage,
-  type ContentBatch,
-} from "@/components/shared/content-list-page"
-import { draftSuffix } from "@/lib/format-utils"
+} from '@/lib/converters/job-converters'
+import type { Position } from '@/lib/types/job-source'
+import { useAuth } from '@/components/auth-provider'
+import { ContentListPage, type ContentBatch } from '@/components/shared/content-list-page'
+import { draftSuffix } from '@/lib/format-utils'
 
-function mapPosition(backend: any, _currentUserId: string): Position & { creatorId: string; coCreatorIds: string[] } {
+function mapPosition(
+  backend: any,
+  _currentUserId: string,
+): Position & { creatorId: string; coCreatorIds: string[] } {
   const pos = convertCareerPositionToPosition(backend)
   return { ...pos, creatorId: pos.createdBy, coCreatorIds: pos.collaborators }
 }
@@ -28,7 +28,7 @@ function mapPositionBatch(backend: any): ContentBatch {
 
 export default function PositionsPage() {
   const { user } = useAuth()
-  const currentUserId = user?.id ?? ""
+  const currentUserId = user?.id ?? ''
   const industryMap = useIndustryMap()
   const majorMap = useMajorMap()
 
@@ -51,32 +51,34 @@ export default function PositionsPage() {
       createRedirectUrl={(id) => `/job/positions/${id}/edit?new=true`}
       coBuilderField="collaborators"
       statusFilterOptions={[
-        { value: "draft", label: "草稿" },
-        { value: "pending", label: "审批中" },
-        { value: "approved", label: "已通过" },
-        { value: "rejected", label: "已驳回" },
-        { value: "published", label: "已发布" },
-        { value: "archived", label: "已归档" },
+        { value: 'draft', label: '草稿' },
+        { value: 'pending', label: '审批中' },
+        { value: 'approved', label: '已通过' },
+        { value: 'rejected', label: '已驳回' },
+        { value: 'published', label: '已发布' },
+        { value: 'archived', label: '已归档' },
       ]}
       mapItem={(b) => mapPosition(b, currentUserId)}
       mapBatch={mapPositionBatch}
-      createPayload={(uid, _label) => positionToCreateRequest({
-        batchId: "",
-        name: `新建岗位_${draftSuffix()}`,
-        shortName: "新岗位",
-        industry: "",
-        majors: [],
-        positionType: "enterprise",
-        salaryRange: [0, 0],
-        description: "",
-        requirements: [],
-        careerPath: "",
-        version: "V1.0",
-        status: "draft",
-        createdBy: uid,
-        collaborators: [],
-      } as any)}
-      listExtraProps={{ configureStepParam: "2", industryMap, majorMap }}
+      createPayload={(uid, _label) =>
+        positionToCreateRequest({
+          batchId: '',
+          name: `新建岗位_${draftSuffix()}`,
+          shortName: '新岗位',
+          industry: '',
+          majors: [],
+          positionType: 'enterprise',
+          salaryRange: [0, 0],
+          description: '',
+          requirements: [],
+          careerPath: '',
+          version: 'V1.0',
+          status: 'draft',
+          createdBy: uid,
+          collaborators: [],
+        } as any)
+      }
+      listExtraProps={{ configureStepParam: '2', industryMap, majorMap }}
       renderList={(props) => (
         <PositionList
           positions={props.items}

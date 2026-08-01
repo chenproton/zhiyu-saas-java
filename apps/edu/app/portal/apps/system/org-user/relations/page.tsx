@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -10,39 +10,39 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Plus, Trash2, Search, Loader2 } from "lucide-react"
-import { portalUserRelationApi } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { UserSelector } from "@/components/shared/user-selector"
-import { TableRowActions } from "@/components/shared/table-row-actions"
+} from '@/components/ui/select'
+import { Plus, Trash2, Search, Loader2 } from 'lucide-react'
+import { portalUserRelationApi } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { UserSelector } from '@/components/shared/user-selector'
+import { TableRowActions } from '@/components/shared/table-row-actions'
 
 const relationTypes = [
-  { value: "superior", label: "上下级" },
-  { value: "collaboration", label: "业务协同" },
-  { value: "management", label: "管理关系" },
-  { value: "service", label: "服务关系" },
-  { value: "project", label: "项目参与" },
-  { value: "external", label: "外部合作" },
+  { value: 'superior', label: '上下级' },
+  { value: 'collaboration', label: '业务协同' },
+  { value: 'management', label: '管理关系' },
+  { value: 'service', label: '服务关系' },
+  { value: 'project', label: '项目参与' },
+  { value: 'external', label: '外部合作' },
 ]
 
 const typeLabelMap: Record<string, string> = Object.fromEntries(
-  relationTypes.map((t) => [t.value, t.label])
+  relationTypes.map((t) => [t.value, t.label]),
 )
 
 export default function RelationsPage() {
@@ -50,11 +50,11 @@ export default function RelationsPage() {
   const { tenantId } = usePortalAuth()
   const [relations, setRelations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchText, setSearchText] = useState("")
+  const [searchText, setSearchText] = useState('')
   const [showDialog, setShowDialog] = useState(false)
-  const [selectedInitiator, setSelectedInitiator] = useState("")
-  const [selectedTarget, setSelectedTarget] = useState("")
-  const [selectedType, setSelectedType] = useState("")
+  const [selectedInitiator, setSelectedInitiator] = useState('')
+  const [selectedTarget, setSelectedTarget] = useState('')
+  const [selectedType, setSelectedType] = useState('')
   const [saving, setSaving] = useState(false)
 
   const loadRelations = useCallback(async () => {
@@ -63,7 +63,7 @@ export default function RelationsPage() {
       const res = await portalUserRelationApi.list({ search: searchText || undefined })
       setRelations(res.items)
     } catch {
-      toast({ variant: "destructive", title: "加载失败", description: "加载关系列表失败" })
+      toast({ variant: 'destructive', title: '加载失败', description: '加载关系列表失败' })
     } finally {
       setLoading(false)
     }
@@ -84,15 +84,19 @@ export default function RelationsPage() {
         targetId: selectedTarget,
         relationType: selectedType,
       })
-      toast({ title: "创建成功" })
+      toast({ title: '创建成功' })
       setShowDialog(false)
-      setSelectedInitiator("")
-      setSelectedTarget("")
-      setSelectedType("")
-      setSearchText("")
+      setSelectedInitiator('')
+      setSelectedTarget('')
+      setSelectedType('')
+      setSearchText('')
       await loadRelations()
     } catch (err) {
-      toast({ variant: "destructive", title: "创建失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '创建失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     } finally {
       setSaving(false)
     }
@@ -101,10 +105,14 @@ export default function RelationsPage() {
   const handleDelete = async (id: string) => {
     try {
       await portalUserRelationApi.delete(id)
-      toast({ title: "删除成功" })
+      toast({ title: '删除成功' })
       loadRelations()
     } catch (err) {
-      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
     }
   }
 
@@ -160,26 +168,30 @@ export default function RelationsPage() {
                 <TableRow key={relation.id} className="group">
                   <TableCell>{index + 1}</TableCell>
                   <TableCell className="font-medium">{relation.initiatorName}</TableCell>
-                  <TableCell className="text-muted-foreground">{relation.initiatorDept || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {relation.initiatorDept || '—'}
+                  </TableCell>
                   <TableCell className="font-medium">{relation.targetName}</TableCell>
-                  <TableCell className="text-muted-foreground">{relation.targetDept || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {relation.targetDept || '—'}
+                  </TableCell>
                   <TableCell>
                     <span className="px-2 py-1 rounded text-xs bg-primary/10 text-primary">
                       {typeLabelMap[relation.relationType] || relation.relationType}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{relation.createdAt}</TableCell>
-                    <TableRowActions>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => handleDelete(relation.id)}
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        删除
-                      </Button>
-                    </TableRowActions>
+                  <TableRowActions>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={() => handleDelete(relation.id)}
+                    >
+                      <Trash2 className="mr-1 h-3 w-3" />
+                      删除
+                    </Button>
+                  </TableRowActions>
                 </TableRow>
               ))
             )}
@@ -197,7 +209,7 @@ export default function RelationsPage() {
               <label className="text-sm font-medium">关系发起人</label>
               <UserSelector
                 value={selectedInitiator ? [selectedInitiator] : []}
-                onChange={(ids) => setSelectedInitiator(ids[0] || "")}
+                onChange={(ids) => setSelectedInitiator(ids[0] || '')}
                 multiple={false}
                 placeholder="搜索选择用户..."
                 tenantId={tenantId}
@@ -207,7 +219,7 @@ export default function RelationsPage() {
               <label className="text-sm font-medium">关系目标人</label>
               <UserSelector
                 value={selectedTarget ? [selectedTarget] : []}
-                onChange={(ids) => setSelectedTarget(ids[0] || "")}
+                onChange={(ids) => setSelectedTarget(ids[0] || '')}
                 multiple={false}
                 placeholder="搜索选择用户..."
                 tenantId={tenantId}
@@ -230,8 +242,13 @@ export default function RelationsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)} disabled={saving}>取消</Button>
-            <Button onClick={handleCreate} disabled={saving || !selectedInitiator || !selectedTarget || !selectedType}>
+            <Button variant="outline" onClick={() => setShowDialog(false)} disabled={saving}>
+              取消
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={saving || !selectedInitiator || !selectedTarget || !selectedType}
+            >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               确定
             </Button>

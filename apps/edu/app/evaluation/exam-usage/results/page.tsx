@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useState, useEffect, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import {
   ArrowLeft,
   Search,
@@ -13,9 +13,9 @@ import {
   XCircle,
   Eye,
   Download,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -23,13 +23,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { examUsageApi, examResultApi } from "@/lib/api"
-import { useMajorMap } from "@/lib/use-resource-maps"
-import type { ExamUsage } from "@/lib/types"
-import { formatDate, formatDateTime } from "@/lib/format-utils"
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { examUsageApi, examResultApi } from '@/lib/api'
+import { useMajorMap } from '@/lib/use-resource-maps'
+import type { ExamUsage } from '@/lib/types'
+import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 interface ExamStudentResult {
   id: string
@@ -47,12 +47,12 @@ interface ExamStudentResult {
 
 function ExamResultsContent() {
   const searchParams = useSearchParams()
-  const usageId = searchParams.get("usageId") || ""
+  const usageId = searchParams.get('usageId') || ''
   const [usage, setUsage] = useState<ExamUsage | null>(null)
   const [results, setResults] = useState<ExamStudentResult[]>([])
   const [loading, setLoading] = useState(!!usageId)
-  const [search, setSearch] = useState("")
-  const [passFilter, setPassFilter] = useState<string>("all")
+  const [search, setSearch] = useState('')
+  const [passFilter, setPassFilter] = useState<string>('all')
   const majorMap = useMajorMap()
 
   useEffect(() => {
@@ -69,17 +69,17 @@ function ExamResultsContent() {
         setResults(
           items.map((r, idx) => ({
             id: r.id,
-            studentName: r.studentName || "匿名",
+            studentName: r.studentName || '匿名',
             studentId: r.userId,
-            className: r.className || "-",
-            grade: r.grade || "-",
-            majorId: r.majorName || "-",
+            className: r.className || '-',
+            grade: r.grade || '-',
+            majorId: r.majorName || '-',
             score: r.score,
             totalScore: r.totalScore,
             submitTime: new Date(r.submitTime),
             isPass: r.isPass,
             rank: idx + 1,
-          }))
+          })),
         )
       } finally {
         setLoading(false)
@@ -89,8 +89,8 @@ function ExamResultsContent() {
   }, [usageId])
 
   const filteredResults = results.filter((r) => {
-    if (passFilter !== "all") {
-      if (passFilter === "pass" ? !r.isPass : r.isPass) return false
+    if (passFilter !== 'all') {
+      if (passFilter === 'pass' ? !r.isPass : r.isPass) return false
     }
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -103,13 +103,13 @@ function ExamResultsContent() {
     total: results.length,
     pass: results.filter((r) => r.isPass).length,
     fail: results.length - results.filter((r) => r.isPass).length,
-    avgScore: results.length > 0
-      ? Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length)
-      : 0,
+    avgScore:
+      results.length > 0
+        ? Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length)
+        : 0,
     maxScore: results.length > 0 ? Math.max(...results.map((r) => r.score)) : 0,
     minScore: results.length > 0 ? Math.min(...results.map((r) => r.score)) : 0,
   }
-
 
   if (loading) {
     return (
@@ -151,9 +151,9 @@ function ExamResultsContent() {
             </Badge>
           </div>
           <Button variant="outline" disabled>
-              <Download className="mr-2 size-4" />
-              导出数据
-            </Button>
+            <Download className="mr-2 size-4" />
+            导出数据
+          </Button>
         </div>
       </div>
 
@@ -222,24 +222,24 @@ function ExamResultsContent() {
         </div>
         <div className="flex gap-2">
           <Button
-            variant={passFilter === "all" ? "default" : "outline"}
+            variant={passFilter === 'all' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setPassFilter("all")}
+            onClick={() => setPassFilter('all')}
           >
             全部
           </Button>
           <Button
-            variant={passFilter === "pass" ? "default" : "outline"}
+            variant={passFilter === 'pass' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setPassFilter("pass")}
+            onClick={() => setPassFilter('pass')}
           >
             <CheckCircle2 className="mr-1 size-3.5 text-emerald-500" />
             及格
           </Button>
           <Button
-            variant={passFilter === "fail" ? "default" : "outline"}
+            variant={passFilter === 'fail' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setPassFilter("fail")}
+            onClick={() => setPassFilter('fail')}
           >
             <XCircle className="mr-1 size-3.5 text-red-500" />
             不及格
@@ -255,44 +255,30 @@ function ExamResultsContent() {
               <TableRow>
                 <TableHead className="w-[120px]">
                   <div className="flex items-center gap-1">
-                      <User className="size-3.5" />
-                      学生名称
-                    </div>
+                    <User className="size-3.5" />
+                    学生名称
+                  </div>
                 </TableHead>
-                <TableHead className="w-[120px]">
-                  学号
-                </TableHead>
-                <TableHead className="w-[120px]">
-                  班级
-                </TableHead>
-                <TableHead className="w-[100px]">
-                  年级
-                </TableHead>
-                <TableHead className="w-[140px]">
-                  专业
-                </TableHead>
-                <TableHead className="w-[160px]">
-                  考试时间
-                </TableHead>
+                <TableHead className="w-[120px]">学号</TableHead>
+                <TableHead className="w-[120px]">班级</TableHead>
+                <TableHead className="w-[100px]">年级</TableHead>
+                <TableHead className="w-[140px]">专业</TableHead>
+                <TableHead className="w-[160px]">考试时间</TableHead>
                 <TableHead className="w-[100px]">
                   <div className="flex items-center gap-1">
-                      <Award className="size-3.5" />
-                      考试得分
-                    </div>
+                    <Award className="size-3.5" />
+                    考试得分
+                  </div>
                 </TableHead>
-                <TableHead className="w-[100px]">
-                  是否及格
-                </TableHead>
-                <TableHead className="sticky right-0 w-[100px] bg-white text-right">
-                  操作
-                </TableHead>
+                <TableHead className="w-[100px]">是否及格</TableHead>
+                <TableHead className="sticky right-0 w-[100px] bg-white text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredResults.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                    {results.length === 0 ? "暂无考试结果" : "没有找到匹配的结果"}
+                    {results.length === 0 ? '暂无考试结果' : '没有找到匹配的结果'}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -307,10 +293,16 @@ function ExamResultsContent() {
                         <span className="text-sm">{result.studentName}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{result.studentId}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{result.className}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {result.studentId}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {result.className}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{result.grade}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{majorMap.get(result.majorId) || result.majorId || '-'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {majorMap.get(result.majorId) || result.majorId || '-'}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDateTime(result.submitTime)}
                     </TableCell>
@@ -322,7 +314,7 @@ function ExamResultsContent() {
                       <div className="mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
                         <div
                           className={`h-full rounded-full ${
-                            result.isPass ? "bg-emerald-500" : "bg-red-500"
+                            result.isPass ? 'bg-emerald-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${(result.score / result.totalScore) * 100}%` }}
                         />

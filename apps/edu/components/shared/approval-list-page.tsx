@@ -1,19 +1,24 @@
-"use client"
+'use client'
 
-import { useState, useMemo } from "react"
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useState, useMemo } from 'react'
+import Link from 'next/link'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CheckSquare, Eye } from "lucide-react"
-import { useApprovalDialogs } from "@/components/shared/_components/approval-dialogs"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import type { ApprovalStepInfo } from "@/hooks/use-approvals"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CheckSquare, Eye } from 'lucide-react'
+import { useApprovalDialogs } from '@/components/shared/_components/approval-dialogs'
+import { TableRowActions } from '@/components/shared/table-row-actions'
+import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 
 export interface ApprovalColumn<T> {
   header: string
@@ -21,7 +26,9 @@ export interface ApprovalColumn<T> {
   cell: (item: T) => React.ReactNode
 }
 
-export interface ApprovalListPageProps<T extends { id: string; status: string; stepInfo?: ApprovalStepInfo; history?: any[] }> {
+export interface ApprovalListPageProps<
+  T extends { id: string; status: string; stepInfo?: ApprovalStepInfo; history?: any[] },
+> {
   entityLabel: string
   pageDescription: string
   emptyPendingText: string
@@ -40,11 +47,13 @@ export interface ApprovalListPageProps<T extends { id: string; status: string; s
   columns: ApprovalColumn<T>[]
 }
 
-export function ApprovalListPage<T extends { id: string; status: string; stepInfo?: ApprovalStepInfo; history?: any[] }>({
+export function ApprovalListPage<
+  T extends { id: string; status: string; stepInfo?: ApprovalStepInfo; history?: any[] },
+>({
   entityLabel,
   pageDescription,
   emptyPendingText,
-  emptyProcessedText = "暂无已处理记录",
+  emptyProcessedText = '暂无已处理记录',
   records,
   loading,
   getStepInfo,
@@ -73,17 +82,17 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
 
   const items: T[] = useMemo(() => records.map(mapRecord), [records, mapRecord])
 
-  const pendingItems = useMemo(() => items.filter((a) => a.status === "pending"), [items])
-  const processedItems = useMemo(() => items.filter((a) => a.status !== "pending"), [items])
+  const pendingItems = useMemo(() => items.filter((a) => a.status === 'pending'), [items])
+  const processedItems = useMemo(() => items.filter((a) => a.status !== 'pending'), [items])
 
   const selectedPendingIds = useMemo(
     () => pendingItems.filter((i) => selectedIds.has(i.id)).map((i) => i.id),
-    [selectedIds, pendingItems]
+    [selectedIds, pendingItems],
   )
 
   const { dialogs: batchDialogs, batchActionButtons } = useApprovalDialogs({
     entityLabel,
-    mode: "batch",
+    mode: 'batch',
     selectedCount: selectedPendingIds.length,
     onApprove: async (comment) => {
       if (selectedPendingIds.length > 0) {
@@ -109,7 +118,7 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
   }
 
   const toggleAll = (data: T[]) => {
-    const selectableIds = data.filter((i) => i.status === "pending").map((i) => i.id)
+    const selectableIds = data.filter((i) => i.status === 'pending').map((i) => i.id)
     const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id))
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -124,7 +133,7 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
   const colSpan = columns.length + 2
 
   const renderTable = (data: T[]) => {
-    const selectableIds = data.filter((i) => i.status === "pending").map((i) => i.id)
+    const selectableIds = data.filter((i) => i.status === 'pending').map((i) => i.id)
     const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id))
 
     return (
@@ -149,38 +158,52 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
                     />
                   </TableHead>
                   {columns.map((col, i) => (
-                    <TableHead key={i} className={`text-xs font-medium text-slate-500 whitespace-nowrap ${col.className || ""}`}>
+                    <TableHead
+                      key={i}
+                      className={`text-xs font-medium text-slate-500 whitespace-nowrap ${col.className || ''}`}
+                    >
                       {col.header}
                     </TableHead>
                   ))}
-                  <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">操作</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                    操作
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={colSpan} className="text-center py-8 text-gray-500">加载中...</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={colSpan} className="text-center py-8 text-gray-500">
+                      加载中...
+                    </TableCell>
+                  </TableRow>
                 ) : data.length === 0 ? (
-                  <TableRow><TableCell colSpan={colSpan} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={colSpan} className="text-center py-12 text-gray-500">
+                      暂无数据
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   data.map((item) => (
                     <TableRow key={item.id} className="group">
                       <TableCell className="text-center">
                         <Checkbox
                           checked={selectedIds.has(item.id)}
-                          disabled={item.status !== "pending"}
+                          disabled={item.status !== 'pending'}
                           onCheckedChange={() => toggleSelection(item.id)}
                           aria-label={`选择审批`}
                         />
                       </TableCell>
                       {columns.map((col, i) => (
-                        <TableCell key={i} className={col.className || ""}>
+                        <TableCell key={i} className={col.className || ''}>
                           {col.cell(item)}
                         </TableCell>
                       ))}
                       <TableRowActions className="sticky right-0 bg-white shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
                         <Button variant="outline" size="sm" asChild>
                           <Link href={detailHref(item)}>
-                            <Eye className="mr-1 h-3 w-3" />查看
+                            <Eye className="mr-1 h-3 w-3" />
+                            查看
                           </Link>
                         </Button>
                         {approveAction ? (
@@ -210,10 +233,10 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
 
         {selectedPendingIds.length > 0 && (
           <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <span className="text-sm text-gray-700">已选 {selectedPendingIds.length} 条待审批记录</span>
-            <div className="flex items-center gap-3">
-              {batchActionButtons()}
-            </div>
+            <span className="text-sm text-gray-700">
+              已选 {selectedPendingIds.length} 条待审批记录
+            </span>
+            <div className="flex items-center gap-3">{batchActionButtons()}</div>
           </div>
         )}
 
@@ -222,21 +245,41 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
             <TabsTrigger value="pending" className="gap-2 w-full">
               待审批
               {pendingItems.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-yellow-100 text-yellow-700">
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-5 px-1.5 bg-yellow-100 text-yellow-700"
+                >
                   {pendingItems.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="processed" className="w-full">已审批</TabsTrigger>
+            <TabsTrigger value="processed" className="w-full">
+              已审批
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="pending" className="mt-6">
-            {pendingItems.length > 0 ? renderTable(pendingItems) : (
-              <Card><CardContent className="py-12 text-center"><CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" /><h3 className="text-lg font-medium text-gray-700">暂无待审批项</h3><p className="text-sm text-gray-500 mt-1">{emptyPendingText}</p></CardContent></Card>
+            {pendingItems.length > 0 ? (
+              renderTable(pendingItems)
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-700">暂无待审批项</h3>
+                  <p className="text-sm text-gray-500 mt-1">{emptyPendingText}</p>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
           <TabsContent value="processed" className="mt-6">
-            {processedItems.length > 0 ? renderTable(processedItems) : (
-              <Card><CardContent className="py-12 text-center"><CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" /><h3 className="text-lg font-medium text-gray-700">{emptyProcessedText}</h3></CardContent></Card>
+            {processedItems.length > 0 ? (
+              renderTable(processedItems)
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-700">{emptyProcessedText}</h3>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
         </Tabs>
