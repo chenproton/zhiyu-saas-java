@@ -5,6 +5,7 @@ import {
   BarChart3, GraduationCap, TrendingUp, Users, AlertCircle, Filter,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -84,9 +85,7 @@ export function TeacherFinalTab() {
                 <Progress value={dim.avgScore} className="h-1.5" />
                 <div className="flex items-center justify-between text-[10px] text-gray-400">
                   <span>{dim.sessions} 个节次</span>
-                  <Badge variant={dim.status === "已汇总" ? "default" : dim.status === "采集中" ? "secondary" : "outline"} className="text-[10px] h-5">
-                    {dim.status}
-                  </Badge>
+                  <StatusBadge status={dim.status} label={dim.status} className="h-5" />
                 </div>
               </div>
             </div>

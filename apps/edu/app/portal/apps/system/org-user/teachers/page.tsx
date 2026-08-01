@@ -11,6 +11,7 @@ import { usePortalUsers } from "@/hooks/use-portal-users"
 import { useOrgTree } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { portalUserManagementApi, portalStaffTitleApi, importExportApi, downloadBlob } from "@/lib/api"
 import type { StaffTitle } from "@/lib/types/backend"
@@ -209,7 +210,7 @@ export default function TeachersPage() {
             ) : <span className="text-muted-foreground">—</span>}
           </TableCell>
           <TableCell>
-            <Badge variant={teacher.status === "正常" ? "default" : "destructive"}>{teacher.status}</Badge>
+            <StatusBadge status={teacher.status} />
           </TableCell>
           <TableRowActions>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -170,7 +170,7 @@ export default function TenantPage() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Building className="w-5 h-5 text-primary" /></div>
               <div><h2 className="text-lg font-semibold">{tenant.enterpriseName}</h2><p className="text-sm text-muted-foreground font-mono">{tenant.code}</p></div>
-              <Badge variant={tenant.status === "active" ? "default" : "secondary"} className="ml-auto">{tenant.status === "active" ? "启用" : "停用"}</Badge>
+              <StatusBadge status={tenant.status} label={tenant.status === "active" ? "启用" : "停用"} className="ml-auto" />
             </div>
           </div>
           <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">

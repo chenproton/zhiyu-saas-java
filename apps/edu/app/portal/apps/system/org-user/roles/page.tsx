@@ -22,6 +22,7 @@ import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useToast } from "@zhiyu/ui"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from "@/lib/menu-permissions"
 import type { MenuTreeItem, PermissionModule } from "@/lib/menu-permissions"
 
@@ -444,9 +445,7 @@ export default function RolesPage() {
                           <Badge variant="secondary">{role.userCount} 人</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={status === "active" ? "default" : "secondary"}>
-                            {status === "active" ? "启用" : "停用"}
-                          </Badge>
+                          <StatusBadge status={status} label={status === "active" ? "启用" : "停用"} />
                         </TableCell>
                         <TableCell className="text-muted-foreground">{role.createdAt}</TableCell>
                           <TableRowActions>
@@ -569,9 +568,10 @@ export default function RolesPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={u.status === "active" ? "default" : "secondary"}>
-                        {u.status === "active" ? "正常" : u.status === "graduated" ? "已毕业" : "禁用"}
-                      </Badge>
+                      <StatusBadge
+                        status={u.status}
+                        label={u.status === "active" ? "正常" : u.status === "graduated" ? "已毕业" : "禁用"}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

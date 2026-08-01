@@ -18,13 +18,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { landingApi } from "@/lib/api"
+import { StatusBadge } from "@/components/shared/status-badge"
 import type { LandingExamItem } from "@/lib/api"
-
-const statusMeta: Record<string, { color: string; bg: string; icon: typeof CheckCircle2 }> = {
-  进行中: { color: "#2563eb", bg: "#eff6ff", icon: PlayCircle },
-  未开始: { color: "#f59e0b", bg: "#fffbeb", icon: Clock },
-  已结束: { color: "#10b981", bg: "#ecfdf5", icon: CheckCircle2 },
-}
 
 export default function ExamListPage() {
   const [exams, setExams] = useState<LandingExamItem[]>([])
@@ -199,40 +194,31 @@ export default function ExamListPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {examsList.map((exam) => {
-              const meta = statusMeta[exam.status] || statusMeta["未开始"]
-              const StatusIcon = meta.icon
-              return (
-                <Link key={exam.id} href={`/evaluation/landing/exams/${exam.id}`} className="block">
-                  <div
-                    className="h-full cursor-pointer rounded-xl bg-white p-5 transition-all duration-300"
-                    style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget
-                      el.style.transform = "translateY(-4px)"
-                      el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)"
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget
-                      el.style.transform = "translateY(0)"
-                      el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)"
-                    }}
-                  >
-                    <div className="mb-3 flex items-start justify-between">
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-lg"
-                        style={{ background: "#eff6ff", color: "#2563eb" }}
-                      >
-                        <ClipboardList className="h-5 w-5" />
-                      </div>
-                      <span
-                        className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                        style={{ background: meta.bg, color: meta.color }}
-                      >
-                        <StatusIcon className="h-3 w-3" />
-                        {exam.status}
-                      </span>
+            {examsList.map((exam) => (
+              <Link key={exam.id} href={`/evaluation/landing/exams/${exam.id}`} className="block">
+                <div
+                  className="h-full cursor-pointer rounded-xl bg-white p-5 transition-all duration-300"
+                  style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget
+                    el.style.transform = "translateY(-4px)"
+                    el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)"
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget
+                    el.style.transform = "translateY(0)"
+                    el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)"
+                  }}
+                >
+                  <div className="mb-3 flex items-start justify-between">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-lg"
+                      style={{ background: "#eff6ff", color: "#2563eb" }}
+                    >
+                      <ClipboardList className="h-5 w-5" />
                     </div>
+                    <StatusBadge status={exam.status} />
+                  </div>
                     <h3 className="mb-1 text-base font-semibold text-gray-900">{exam.name}</h3>
                     <p className="mb-3 text-sm text-gray-500 line-clamp-2">{exam.description}</p>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
@@ -265,10 +251,9 @@ export default function ExamListPage() {
                         </Button>
                       </div>
                     )}
-                  </div>
-                </Link>
-              )
-            })}
+                </div>
+              </Link>
+            ))}
           </div>
         )}
 

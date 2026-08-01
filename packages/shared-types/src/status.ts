@@ -40,6 +40,25 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   graded:        { label: "已评分",  color: "#16a34a", bg: "#dcfce7" },
   "已评分":      { label: "已评分",  color: "#16a34a", bg: "#dcfce7" },
   "待评分":      { label: "待评分",  color: "#d97706", bg: "#fef3c7" },
+  // 成绩/发布状态
+  "已发布":      { label: "已发布",  color: "#16a34a", bg: "#dcfce7" },
+  "录入中":      { label: "录入中",  color: "#d97706", bg: "#fef3c7" },
+  "已暂存":      { label: "已暂存",  color: "#64748b", bg: "#f1f5f9" },
+  "待发布":      { label: "待发布",  color: "#64748b", bg: "#f1f5f9" },
+  "已结束":      { label: "已结束",  color: "#16a34a", bg: "#dcfce7" },
+  "已汇总":      { label: "已汇总",  color: "#2563eb", bg: "#dbeafe" },
+  "采集中":      { label: "采集中",  color: "#d97706", bg: "#fef3c7" },
+  // 用户/账号状态（中文键）
+  "正常":        { label: "正常",    color: "#16a34a", bg: "#dcfce7" },
+  "禁用":        { label: "禁用",    color: "#dc2626", bg: "#fee2e2" },
+  // 日志状态
+  success:       { label: "成功",    color: "#16a34a", bg: "#dcfce7" },
+  failed:        { label: "失败",    color: "#dc2626", bg: "#fee2e2" },
+  failure:       { label: "失败",    color: "#dc2626", bg: "#fee2e2" },
+  // 出勤状态
+  present:       { label: "已到",    color: "#16a34a", bg: "#dcfce7" },
+  late:          { label: "迟到",    color: "#d97706", bg: "#fef3c7" },
+  absent:        { label: "缺勤",    color: "#dc2626", bg: "#fee2e2" },
 }
 
 export function getStatusConfig(status: string): StatusConfig {

@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Award, FileText, GraduationCap, TrendingUp } from "lucide-react"
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import {
@@ -22,13 +23,6 @@ import {
   mockGradeTrend,
   mockCompareData,
 } from "../_data/mock-student-data"
-
-const statusMap: Record<string, { label: string; className: string }> = {
-  已发布: { label: "已发布", className: "bg-green-100 text-green-700 border-green-200" },
-  录入中: { label: "录入中", className: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-  已暂存: { label: "已暂存", className: "bg-gray-100 text-gray-700 border-gray-200" },
-  待发布: { label: "待发布", className: "bg-gray-100 text-gray-700 border-gray-200" },
-}
 
 export function GradesContent() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -121,9 +115,7 @@ export function GradesContent() {
                       <p className="text-2xl font-bold text-blue-600">{g.total}</p>
                       <p className="text-xs text-gray-400">总评成绩</p>
                     </div>
-                    <Badge variant="outline" className={statusMap[g.status]?.className || ""}>
-                      {statusMap[g.status]?.label || g.status}
-                    </Badge>
+                    <StatusBadge status={g.status} />
                     <Button
                       variant="ghost"
                       size="sm"

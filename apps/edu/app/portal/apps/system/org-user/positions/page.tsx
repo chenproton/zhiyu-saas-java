@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { portalStaffTitleApi, portalUserManagementApi, type User } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import { TableRowActions } from "@/components/shared/table-row-actions"
@@ -205,9 +206,7 @@ export default function PositionsPage() {
                     <Badge variant="secondary">{position.userCount} 人</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={position.status === "active" ? "default" : "secondary"}>
-                      {position.status === "active" ? "启用" : "停用"}
-                    </Badge>
+                    <StatusBadge status={position.status} label={position.status === "active" ? "启用" : "停用"} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">{new Date(position.createdAt).toLocaleString("zh-CN")}</TableCell>
                     <TableRowActions>

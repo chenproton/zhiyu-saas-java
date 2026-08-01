@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Search, Download, RefreshCw, AlertCircle } from "lucide-react"
@@ -83,9 +83,10 @@ export default function LoginLogsPage() {
     {
       header: "状态",
       cell: (log) => (
-        <Badge variant={log.status === "success" ? "default" : "destructive"}>
-          {log.status === "success" ? "成功" : (log.status || "失败")}
-        </Badge>
+        <StatusBadge
+          status={log.status === "success" ? "success" : log.status || "failed"}
+          label={log.status === "success" ? "成功" : log.status || "失败"}
+        />
       ),
     },
     { header: "登录时间", cell: (log) => <span className="text-muted-foreground">{log.createdAt}</span> },

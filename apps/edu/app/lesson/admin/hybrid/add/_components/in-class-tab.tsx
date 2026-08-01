@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Users,
@@ -232,9 +233,10 @@ export function CheckInPanel({ onBack }: { onBack?: () => void }) {
                   <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">{s.name.charAt(0)}</div>
                   <span className="text-sm">{s.name}</span>
                 </div>
-                <Badge variant={s.status === "present" ? "default" : s.status === "late" ? "secondary" : "destructive"} className="text-xs">
-                  {s.status === "present" ? "已到" : s.status === "late" ? "迟到" : "缺勤"}
-                </Badge>
+                <StatusBadge
+                  status={s.status}
+                  label={s.status === "present" ? "已到" : s.status === "late" ? "迟到" : "缺勤"}
+                />
               </div>
             ))}
           </div>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import {
   Table,
   TableBody,
@@ -240,9 +240,7 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
                           />
                         </TableCell>
                         <TableCell>
-                          <Badge variant={a.status === "active" ? "default" : "secondary"}>
-                            {a.status === "active" ? "启用" : "停用"}
-                          </Badge>
+                          <StatusBadge status={a.status} label={a.status === "active" ? "启用" : "停用"} />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -260,9 +258,7 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
                         <TableCell className="font-mono text-sm">{a.username}</TableCell>
                         <TableCell>{a.name}</TableCell>
                         <TableCell>
-                          <Badge variant={a.status === "active" ? "default" : "secondary"}>
-                            {a.status === "active" ? "启用" : "停用"}
-                          </Badge>
+                          <StatusBadge status={a.status} label={a.status === "active" ? "启用" : "停用"} />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">

@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/components/auth-provider"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { workflowApi, majorApi } from "@/lib/api"
 import type { Workflow, Major } from "@/lib/types/backend"
 import { useToast } from "@zhiyu/ui"
@@ -430,9 +431,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-gray-600">
-                        <Badge variant={batch.status === "open" ? "secondary" : "outline"} className="text-xs">
-                          {batch.status === "open" ? "开放中" : "已截止"}
-                        </Badge>
+                        <StatusBadge status={batch.status} label={batch.status === "open" ? "开放中" : "已截止"} />
                       </TableCell>
                       <TableRowActions>
                           <Button

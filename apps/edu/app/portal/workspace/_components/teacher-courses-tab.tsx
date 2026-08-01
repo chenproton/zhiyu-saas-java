@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/popover"
 import { SectionCard } from "./section-card"
 import { StatCard } from "./stat-card"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { PrepAssociateDialog } from "./prep-associate-dialog"
 import { GradingIframeDialog } from "./grading-iframe-dialog"
 import { HybridGradingDialog } from "./hybrid-grading-dialog"
@@ -672,9 +673,7 @@ export function TeacherCoursesTab({ prepAssociations = {}, onAssociate }: Teache
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-semibold text-gray-900">{plan.course}</h3>
                             <Badge variant="outline" className="text-xs">{plan.name}</Badge>
-                            <Badge variant={plan.status === "active" ? "default" : "secondary"} className="text-xs">
-                              {plan.status === "active" ? "已开课" : "待开课"}
-                            </Badge>
+                            <StatusBadge status={plan.status} label={plan.status === "active" ? "已开课" : "待开课"} />
                             <Badge className={`text-[10px] font-semibold border-0 text-white ${accentColors.badgeBg}`}>
                               {courseTypeTag}
                             </Badge>
