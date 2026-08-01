@@ -3,13 +3,11 @@ package handler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -117,7 +115,7 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.AddCondition("c.batch_id = " + qb.NextArg(batchID))
 			}
 		},
-		ScanRows: h.scanCourseRows,
+		ScanRows: store.ScanCourseRows,
 	}
 
 	params, ok := listParamsFromRequest(r, true)
@@ -422,7 +420,7 @@ func (h *CourseHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transitionWithHook(w, r, domain.StatusPublished, func(tx pgx.Tx, id string) error {
-		return h.generateCourseAssessments(r.Context(), tx, id)
+		return h.Service.GenerateCourseAssessments(r.Context(), store.NewWithTx(tx), id)
 	})
 }
 
@@ -449,14 +447,14 @@ func (h *CourseHandler) Assessments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exams, err := h.listCourseExamUsages(r.Context(), courseID, *claims.TenantID)
+	exams, err := h.Service.ListCourseExamUsages(r.Context(), courseID, *claims.TenantID)
 	if err != nil {
 		slog.Error("查询课程考试安排失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询课程测评失败")
 		return
 	}
 
-	homeworks, err := h.listCourseHomeworks(r.Context(), courseID, *claims.TenantID)
+	homeworks, err := h.Service.ListCourseHomeworks(r.Context(), courseID, *claims.TenantID)
 	if err != nil {
 		slog.Error("查询课程作业失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询课程测评失败")
@@ -469,86 +467,6 @@ func (h *CourseHandler) Assessments(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *CourseHandler) listCourseExamUsages(ctx context.Context, courseID, tenantID string) ([]map[string]interface{}, error) {
-	rows, err := h.DB.Query(ctx, `
-		SELECT eu.id, eu.exam_id, e.name AS exam_name, e.is_temp, eu.name, eu.start_time, eu.end_time, eu.duration, eu.status
-		FROM exam_usages eu
-		JOIN exams e ON e.id = eu.exam_id
-		WHERE eu.tenant_id = $1 AND eu.target_type = 'course' AND $2 = ANY(eu.target_ids)
-		ORDER BY eu.created_at ASC
-	`, tenantID, courseID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := make([]map[string]interface{}, 0)
-	for rows.Next() {
-		var id, examID, examName, name, status string
-		var isTemp bool
-		var startTime, endTime *time.Time
-		var duration *int
-		if err := rows.Scan(&id, &examID, &examName, &isTemp, &name, &startTime, &endTime, &duration, &status); err != nil {
-			return nil, err
-		}
-		item := map[string]interface{}{
-			"id":        id,
-			"examId":    examID,
-			"examName":  examName,
-			"isTemp":    isTemp,
-			"name":      name,
-			"duration":  duration,
-			"status":    status,
-			"type":      "exam",
-		}
-		if startTime != nil {
-			item["startTime"] = startTime.Format(time.RFC3339)
-		}
-		if endTime != nil {
-			item["endTime"] = endTime.Format(time.RFC3339)
-		}
-		items = append(items, item)
-	}
-	return items, rows.Err()
-}
-
-func (h *CourseHandler) listCourseHomeworks(ctx context.Context, courseID, tenantID string) ([]map[string]interface{}, error) {
-	rows, err := h.DB.Query(ctx, `
-		SELECT id, title, requirement, need_attachment, deadline, status
-		FROM course_homeworks
-		WHERE tenant_id = $1 AND course_id = $2
-		ORDER BY created_at ASC
-	`, tenantID, courseID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := make([]map[string]interface{}, 0)
-	for rows.Next() {
-		var id, title, requirement, status string
-		var needAttachment bool
-		var deadline *time.Time
-		if err := rows.Scan(&id, &title, &requirement, &needAttachment, &deadline, &status); err != nil {
-			return nil, err
-		}
-		item := map[string]interface{}{
-			"id":            id,
-			"title":         title,
-			"requirement":   requirement,
-			"needAttachment": needAttachment,
-			"status":        status,
-			"type":          "homework",
-		}
-		if deadline != nil {
-			item["deadline"] = deadline.Format(time.RFC3339)
-		}
-		items = append(items, item)
-	}
-	return items, rows.Err()
-}
-
-// SubmitHomework POST /api/v1/lesson/courses/{id}/homeworks/{homeworkId}/submit
 func (h *CourseHandler) SubmitHomework(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -570,29 +488,18 @@ func (h *CourseHandler) SubmitHomework(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var exists bool
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT EXISTS(SELECT 1 FROM course_homeworks WHERE id = $1 AND course_id = $2 AND tenant_id = $3)
-	`, homeworkID, courseID, *claims.TenantID).Scan(&exists)
+	exists, err := h.Service.CourseHomeworkExists(r.Context(), homeworkID, courseID, *claims.TenantID)
 	if err != nil || !exists {
 		respondError(w, http.StatusNotFound, "作业不存在")
 		return
 	}
 
-	var submissionID string
-	err = h.DB.QueryRow(r.Context(), `
-		INSERT INTO course_homework_submissions (tenant_id, course_id, homework_id, student_id, content, attachment_urls, status)
-		VALUES ($1, $2, $3, $4, $5, $6, 'submitted')
-		ON CONFLICT (homework_id, student_id)
-		DO UPDATE SET content = EXCLUDED.content, attachment_urls = EXCLUDED.attachment_urls, status = 'submitted', updated_at = NOW()
-		RETURNING id
-	`, *claims.TenantID, courseID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls).Scan(&submissionID)
+	submissionID, err := h.Service.SubmitCourseHomework(r.Context(), *claims.TenantID, courseID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls)
 	if err != nil {
 		slog.Error("提交课程作业失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "提交作业失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "submitted"})
 }
 
@@ -610,53 +517,33 @@ func (h *CourseHandler) ListHomeworkSubmissions(w http.ResponseWriter, r *http.R
 	courseID := chi.URLParam(r, "id")
 	homeworkID := chi.URLParam(r, "homeworkId")
 
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT s.id, s.student_id, COALESCE(u.name, ''), s.content, s.attachment_urls, s.status, s.score, s.total_score, s.comment, s.created_at, s.graded_at
-		FROM course_homework_submissions s
-		JOIN users u ON u.id = s.student_id
-		WHERE s.tenant_id = $1 AND s.course_id = $2 AND s.homework_id = $3
-		ORDER BY s.created_at DESC
-	`, *claims.TenantID, courseID, homeworkID)
+	subs, err := h.Service.ListCourseHomeworkSubmissions(r.Context(), *claims.TenantID, courseID, homeworkID)
 	if err != nil {
 		slog.Error("查询课程作业提交失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-
-	items := make([]map[string]interface{}, 0)
-	for rows.Next() {
-		var id, studentID, studentName, content, status, comment string
-		var score, totalScore *float64
-		var attachmentUrls []string
-		var createdAt, gradedAt *time.Time
-		if err := rows.Scan(&id, &studentID, &studentName, &content, &attachmentUrls, &status, &score, &totalScore, &comment, &createdAt, &gradedAt); err != nil {
-			continue
+	items := make([]map[string]any, 0, len(subs))
+	for _, s := range subs {
+		item := map[string]any{
+			"id": s.ID, "studentId": s.StudentID, "studentName": s.StudentName,
+			"content": s.Content, "attachmentUrls": s.AttachmentURLs,
+			"status": s.Status, "comment": s.Comment,
 		}
-		item := map[string]interface{}{
-			"id":            id,
-			"studentId":     studentID,
-			"studentName":   studentName,
-			"content":       content,
-			"attachmentUrls": attachmentUrls,
-			"status":        status,
-			"comment":       comment,
+		if s.Score != nil {
+			item["score"] = *s.Score
 		}
-		if score != nil {
-			item["score"] = *score
+		if s.TotalScore != nil {
+			item["totalScore"] = *s.TotalScore
 		}
-		if totalScore != nil {
-			item["totalScore"] = *totalScore
+		if s.CreatedAt != nil {
+			item["createdAt"] = s.CreatedAt.Format(time.RFC3339)
 		}
-		if createdAt != nil {
-			item["createdAt"] = createdAt.Format(time.RFC3339)
-		}
-		if gradedAt != nil {
-			item["gradedAt"] = gradedAt.Format(time.RFC3339)
+		if s.GradedAt != nil {
+			item["gradedAt"] = s.GradedAt.Format(time.RFC3339)
 		}
 		items = append(items, item)
 	}
-
 	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items})
 }
 
@@ -683,14 +570,7 @@ func (h *CourseHandler) GradeHomeworkSubmission(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	var studentID string
-	var totalScore float64
-	err := h.DB.QueryRow(r.Context(), `
-		UPDATE course_homework_submissions
-		SET score = $1, comment = $2, status = 'graded', graded_at = NOW(), graded_by = $3
-		WHERE id = $4 AND tenant_id = $5 AND course_id = $6 AND homework_id = $7
-		RETURNING student_id, COALESCE(total_score, 100)
-	`, req.Score, req.Comment, claims.UserID, submissionID, *claims.TenantID, courseID, homeworkID).Scan(&studentID, &totalScore)
+	err := h.Service.GradeCourseHomework(r.Context(), claims.UserID, *claims.TenantID, courseID, homeworkID, submissionID, req.Score, req.Comment)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "提交记录不存在")
@@ -700,15 +580,6 @@ func (h *CourseHandler) GradeHomeworkSubmission(w http.ResponseWriter, r *http.R
 		respondError(w, http.StatusInternalServerError, "批改失败")
 		return
 	}
-
-	// 同步到课程统一评价结果表，参与能力汇聚
-	_, _ = h.DB.Exec(r.Context(), `
-		INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score)
-		VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5)
-		ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
-		DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', graded_at = NOW(), updated_at = NOW()
-	`, *claims.TenantID, courseID, studentID, req.Score, totalScore)
-
 	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "graded"})
 }
 
@@ -734,29 +605,18 @@ func (h *CourseHandler) SubmitNodeHomework(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var exists bool
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT EXISTS(SELECT 1 FROM node_homeworks WHERE id = $1 AND node_id = $2 AND tenant_id = $3)
-	`, homeworkID, nodeID, *claims.TenantID).Scan(&exists)
+	exists, err := h.Service.NodeHomeworkExists(r.Context(), homeworkID, nodeID, *claims.TenantID)
 	if err != nil || !exists {
 		respondError(w, http.StatusNotFound, "作业不存在")
 		return
 	}
 
-	var submissionID string
-	err = h.DB.QueryRow(r.Context(), `
-		INSERT INTO node_homework_submissions (tenant_id, node_id, homework_id, student_id, content, attachment_urls, status)
-		VALUES ($1, $2, $3, $4, $5, $6, 'submitted')
-		ON CONFLICT (homework_id, student_id)
-		DO UPDATE SET content = EXCLUDED.content, attachment_urls = EXCLUDED.attachment_urls, status = 'submitted', updated_at = NOW()
-		RETURNING id
-	`, *claims.TenantID, nodeID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls).Scan(&submissionID)
+	submissionID, err := h.Service.SubmitNodeHomework(r.Context(), *claims.TenantID, nodeID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls)
 	if err != nil {
 		slog.Error("提交节点作业失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "提交作业失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "submitted"})
 }
 
@@ -774,53 +634,33 @@ func (h *CourseHandler) ListNodeHomeworkSubmissions(w http.ResponseWriter, r *ht
 	nodeID := chi.URLParam(r, "nodeId")
 	homeworkID := chi.URLParam(r, "homeworkId")
 
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT s.id, s.student_id, COALESCE(u.name, ''), s.content, s.attachment_urls, s.status, s.score, s.total_score, s.comment, s.created_at, s.graded_at
-		FROM node_homework_submissions s
-		JOIN users u ON u.id = s.student_id
-		WHERE s.tenant_id = $1 AND s.node_id = $2 AND s.homework_id = $3
-		ORDER BY s.created_at DESC
-	`, *claims.TenantID, nodeID, homeworkID)
+	subs, err := h.Service.ListNodeHomeworkSubmissions(r.Context(), *claims.TenantID, nodeID, homeworkID)
 	if err != nil {
 		slog.Error("查询节点作业提交失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	defer rows.Close()
-
-	items := make([]map[string]interface{}, 0)
-	for rows.Next() {
-		var id, studentID, studentName, content, status, comment string
-		var score, totalScore *float64
-		var attachmentUrls []string
-		var createdAt, gradedAt *time.Time
-		if err := rows.Scan(&id, &studentID, &studentName, &content, &attachmentUrls, &status, &score, &totalScore, &comment, &createdAt, &gradedAt); err != nil {
-			continue
+	items := make([]map[string]any, 0, len(subs))
+	for _, s := range subs {
+		item := map[string]any{
+			"id": s.ID, "studentId": s.StudentID, "studentName": s.StudentName,
+			"content": s.Content, "attachmentUrls": s.AttachmentURLs,
+			"status": s.Status, "comment": s.Comment,
 		}
-		item := map[string]interface{}{
-			"id":             id,
-			"studentId":      studentID,
-			"studentName":    studentName,
-			"content":        content,
-			"attachmentUrls": attachmentUrls,
-			"status":         status,
-			"comment":        comment,
+		if s.Score != nil {
+			item["score"] = *s.Score
 		}
-		if score != nil {
-			item["score"] = *score
+		if s.TotalScore != nil {
+			item["totalScore"] = *s.TotalScore
 		}
-		if totalScore != nil {
-			item["totalScore"] = *totalScore
+		if s.CreatedAt != nil {
+			item["createdAt"] = s.CreatedAt.Format(time.RFC3339)
 		}
-		if createdAt != nil {
-			item["createdAt"] = createdAt.Format(time.RFC3339)
-		}
-		if gradedAt != nil {
-			item["gradedAt"] = gradedAt.Format(time.RFC3339)
+		if s.GradedAt != nil {
+			item["gradedAt"] = s.GradedAt.Format(time.RFC3339)
 		}
 		items = append(items, item)
 	}
-
 	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items})
 }
 
@@ -847,14 +687,7 @@ func (h *CourseHandler) GradeNodeHomeworkSubmission(w http.ResponseWriter, r *ht
 		return
 	}
 
-	var studentID string
-	var totalScore float64
-	err := h.DB.QueryRow(r.Context(), `
-		UPDATE node_homework_submissions
-		SET score = $1, comment = $2, status = 'graded', graded_at = NOW(), graded_by = $3
-		WHERE id = $4 AND tenant_id = $5 AND node_id = $6 AND homework_id = $7
-		RETURNING student_id, COALESCE(total_score, 100)
-	`, req.Score, req.Comment, claims.UserID, submissionID, *claims.TenantID, nodeID, homeworkID).Scan(&studentID, &totalScore)
+	err := h.Service.GradeNodeHomework(r.Context(), claims.UserID, *claims.TenantID, nodeID, homeworkID, submissionID, req.Score, req.Comment)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "提交记录不存在")
@@ -864,15 +697,6 @@ func (h *CourseHandler) GradeNodeHomeworkSubmission(w http.ResponseWriter, r *ht
 		respondError(w, http.StatusInternalServerError, "批改失败")
 		return
 	}
-
-	// 同步到节点统一评价结果表
-	_, _ = h.DB.Exec(r.Context(), `
-		INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, status, total_score, max_score, comment, graded_at, graded_by)
-		VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5, $6, NOW(), $7)
-		ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key)
-		DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', comment = EXCLUDED.comment, graded_at = NOW(), graded_by = EXCLUDED.graded_by, updated_at = NOW()
-	`, *claims.TenantID, nodeID, studentID, req.Score, totalScore, req.Comment, claims.UserID)
-
 	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "graded"})
 }
 
@@ -896,413 +720,3 @@ func (h *CourseHandler) fetchCourse(ctx context.Context, id string) (*domain.Cou
 	return h.Service.GetCourseDetail(ctx, id)
 }
 
-func (h *CourseHandler) scanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
-	items := make([]domain.Course, 0)
-	for rows.Next() {
-		var c domain.Course
-		if err := rows.Scan(
-			&c.ID, &c.Code, &c.Name, &c.Type, &c.Category, &c.MajorID, &c.MajorName, &c.TeacherID, &c.IndustryID, &c.IndustryName, &c.Version,
-			&c.OnlineHours, &c.OfflineHours, &c.OnlineWeight, &c.OfflineWeight, &c.Semester, &c.ClassName,
-			&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.Difficulty, &c.Description,
-			&c.KnowledgePointIds, &c.AbilityPointIds, &c.ResourceIds, &c.EvalData, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
-			&c.NodeCount, &c.ResourceCount, &c.ViewCount, &c.StudyCount, &c.CreatedAt, &c.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, c)
-	}
-	return items, nil
-}
-
-
-func (h *CourseHandler) replaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, kpIDs, resIDs []string) {
-	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id = $1 AND bind_type = 'course'`, courseID)
-	_, _ = h.DB.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id = $1`, courseID)
-
-	for _, kpID := range kpIDs {
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
-			VALUES ($1, $2, $3, $4, 'course', NULL)
-			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, kpID)
-	}
-
-	for _, resID := range resIDs {
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (course_id, resource_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, resID)
-	}
-
-	h.syncKnowledgePointGranularLessons(ctx, tenantID, courseID, kpIDs)
-}
-
-// syncKnowledgePointGranularLessons 维护知识点对当前颗粒课的双向引用：
-// 将 courseID 加入所有关联知识点的 granular_lesson_ids，并从已移除关联的知识点中删除。
-func (h *CourseHandler) syncKnowledgePointGranularLessons(ctx context.Context, tenantID, courseID string, kpIDs []string) {
-	if tenantID == "" {
-		return
-	}
-	// 添加新关联
-	_, _ = h.DB.Exec(ctx, `
-		UPDATE knowledge_points
-		SET granular_lesson_ids = array_append(granular_lesson_ids, $1),
-		    updated_at = NOW()
-		WHERE tenant_id = $2 AND id = ANY($3::uuid[]) AND NOT $1 = ANY(granular_lesson_ids)
-	`, courseID, tenantID, kpIDs)
-	// 移除旧关联
-	_, _ = h.DB.Exec(ctx, `
-		UPDATE knowledge_points
-		SET granular_lesson_ids = array_remove(granular_lesson_ids, $1),
-		    updated_at = NOW()
-		WHERE tenant_id = $2 AND ($3::uuid[] IS NULL OR id <> ALL($3::uuid[]))
-		  AND $1 = ANY(granular_lesson_ids)
-	`, courseID, tenantID, kpIDs)
-}
-
-
-// generateCourseAssessments 在课程发布时为 system 课程生成测评资源。
-// 体系课测评已下放到节点：遍历 system_course_nodes，对每个含 eval_data.evalRuleConfig 的节点生成 exam_usages / node_homeworks。
-func (h *CourseHandler) generateCourseAssessments(ctx context.Context, tx pgx.Tx, courseID string) error {
-	var courseType, courseName, tenantID, creatorID string
-	err := tx.QueryRow(ctx, `
-		SELECT c.type, c.name, c.tenant_id, c.creator_id
-		FROM courses c
-		WHERE c.id = $1
-	`, courseID).Scan(&courseType, &courseName, &tenantID, &creatorID)
-	if err != nil {
-		return fmt.Errorf("读取课程信息失败: %w", err)
-	}
-
-	if courseType != "system" {
-		return nil
-	}
-
-	rows, err := tx.Query(ctx, `
-		SELECT id, name, eval_data
-		FROM system_course_nodes
-		WHERE course_id = $1
-		ORDER BY sort_order ASC, id ASC
-	`, courseID)
-	if err != nil {
-		return fmt.Errorf("查询课程节点失败: %w", err)
-	}
-	defer rows.Close()
-
-	type nodeEval struct {
-		id       string
-		name     string
-		evalData domain.JSONMap
-	}
-	var nodes []nodeEval
-	for rows.Next() {
-		var n nodeEval
-		if err := rows.Scan(&n.id, &n.name, &n.evalData); err != nil {
-			return fmt.Errorf("扫描课程节点失败: %w", err)
-		}
-		nodes = append(nodes, n)
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("遍历课程节点失败: %w", err)
-	}
-
-	for _, n := range nodes {
-		ruleConfig := extractEvalRuleConfig(n.evalData)
-		if ruleConfig == nil {
-			continue
-		}
-
-		methods := getStringSliceFromJSONMap(ruleConfig, "evaluationMethods")
-		methodResourceConfigs, _ := ruleConfig["methodResourceConfigs"].(map[string]interface{})
-		if methodResourceConfigs == nil {
-			methodResourceConfigs = make(map[string]interface{})
-		}
-
-		updated := false
-		for _, methodKey := range methods {
-			rc, _ := methodResourceConfigs[methodKey].(map[string]interface{})
-			if rc == nil {
-				rc = make(map[string]interface{})
-			}
-
-			switch methodKey {
-			case "paper":
-				newRC, err := h.ensureNodePaperUsage(ctx, tx, n.id, n.name, courseName, tenantID, creatorID, rc, ruleConfig)
-				if err != nil {
-					return fmt.Errorf("生成节点 %s 试卷测评失败: %w", n.id, err)
-				}
-				methodResourceConfigs[methodKey] = newRC
-				updated = true
-			case "question_bank", "quiz":
-				newRC, err := h.ensureNodeQuestionExam(ctx, tx, n.id, n.name, courseName, tenantID, creatorID, methodKey, rc, ruleConfig)
-				if err != nil {
-					return fmt.Errorf("生成节点 %s %s测评失败: %w", n.id, methodKey, err)
-				}
-				methodResourceConfigs[methodKey] = newRC
-				updated = true
-			case "homework":
-				if err := h.ensureNodeHomework(ctx, tx, n.id, n.name, courseName, tenantID, creatorID); err != nil {
-					return fmt.Errorf("生成节点 %s 作业失败: %w", n.id, err)
-				}
-			}
-		}
-
-		if updated {
-			ruleConfig["methodResourceConfigs"] = methodResourceConfigs
-			n.evalData["evalRuleConfig"] = ruleConfig
-			if _, err := tx.Exec(ctx, `UPDATE system_course_nodes SET eval_data = $1, updated_at = NOW() WHERE id = $2`, n.evalData, n.id); err != nil {
-				return fmt.Errorf("更新节点 %s 测评配置失败: %w", n.id, err)
-			}
-		}
-	}
-
-	// 兼容旧数据：清理课程级 exam_usages / course_homeworks，避免重复展示。
-	// 仅删除无关联结果的记录，防止误删历史数据。
-	_, _ = tx.Exec(ctx, `
-		DELETE FROM exam_usages eu
-		WHERE eu.target_type = 'course' AND $1 = ANY(eu.target_ids)
-		  AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = eu.id)
-	`, courseID)
-	_, _ = tx.Exec(ctx, `
-		DELETE FROM course_homeworks ch
-		WHERE ch.course_id = $1
-		  AND NOT EXISTS (SELECT 1 FROM course_homework_submissions chs WHERE chs.homework_id = ch.id)
-	`, courseID)
-
-	return nil
-}
-
-func extractEvalRuleConfig(evalData domain.JSONMap) domain.JSONMap {
-	if evalData == nil {
-		return nil
-	}
-	if rc, ok := evalData["evalRuleConfig"].(map[string]interface{}); ok {
-		return rc
-	}
-	return nil
-}
-
-func (h *CourseHandler) ensureNodePaperUsage(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID string, rc map[string]interface{}, ruleConfig domain.JSONMap) (map[string]interface{}, error) {
-	paperIDs := getStringSliceFromJSONMap(ruleConfig, "paperIds")
-	if len(paperIDs) == 0 {
-		return rc, nil
-	}
-
-	for _, paperID := range paperIDs {
-		if paperID == "" {
-			continue
-		}
-		var examName string
-		err := tx.QueryRow(ctx, `SELECT name FROM exams WHERE id = $1 AND tenant_id = $2`, paperID, tenantID).Scan(&examName)
-		if err != nil {
-			return rc, fmt.Errorf("查询试卷 %s 失败: %w", paperID, err)
-		}
-
-		var usageID string
-		err = tx.QueryRow(ctx, `
-			SELECT id FROM exam_usages
-			WHERE exam_id = $1 AND target_type = 'node' AND $2 = ANY(target_ids)
-		`, paperID, nodeID).Scan(&usageID)
-		if err != nil && err != pgx.ErrNoRows {
-			return rc, err
-		}
-
-		if usageID == "" {
-			usageID = uuid.NewString()
-			var creator interface{}
-			if creatorID != "" {
-				creator = creatorID
-			}
-			_, err = tx.Exec(ctx, `
-				INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-				VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'node', $5, 'published', $6)
-			`, usageID, tenantID, paperID, fmt.Sprintf("%s-%s-%s", courseName, nodeName, examName), []string{nodeID}, creator)
-			if err != nil {
-				return rc, fmt.Errorf("创建节点试卷安排失败: %w", err)
-			}
-			rc["usageId"] = usageID
-		}
-	}
-	return rc, nil
-}
-
-func (h *CourseHandler) ensureNodeQuestionExam(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID, methodKey string, rc map[string]interface{}, ruleConfig domain.JSONMap) (map[string]interface{}, error) {
-	field := map[string]string{
-		"question_bank": "questionBankQuestions",
-		"quiz":          "quizQuestions",
-	}[methodKey]
-
-	questionIDs := getStringSliceFromJSONMap(ruleConfig, field)
-	if len(questionIDs) == 0 {
-		return rc, nil
-	}
-
-	label := map[string]string{
-		"question_bank": "题库",
-		"quiz":          "随堂测",
-	}[methodKey]
-
-	examID, _ := rc["examId"].(string)
-	usageID, _ := rc["usageId"].(string)
-
-	if examID == "" {
-		duration := 90
-		if d, ok := rc["duration"].(float64); ok && d > 0 {
-			duration = int(d)
-		} else if d, ok := rc["timeLimit"].(float64); ok && d > 0 {
-			duration = int(d)
-		}
-		newID, err := courseCreateTempExam(ctx, tx, tenantID, fmt.Sprintf("%s-%s-%s", courseName, nodeName, label), duration, creatorID)
-		if err != nil {
-			return rc, err
-		}
-		examID = newID
-		rc["examId"] = examID
-	}
-
-	if err := courseEnsureExamQuestions(ctx, tx, tenantID, examID, questionIDs); err != nil {
-		return rc, err
-	}
-
-	if usageID == "" {
-		newID, err := courseCreateExamUsage(ctx, tx, tenantID, examID, "node", nodeID, fmt.Sprintf("%s-%s-%s", courseName, nodeName, label), creatorID)
-		if err != nil {
-			return rc, err
-		}
-		usageID = newID
-		rc["usageId"] = usageID
-	}
-
-	return rc, nil
-}
-
-func courseCreateTempExam(ctx context.Context, tx pgx.Tx, tenantID, name string, duration int, creatorID string) (string, error) {
-	id := uuid.NewString()
-	code, err := generateUniqueEntityCode(ctx, tx, "SJ", "exams", tenantID)
-	if err != nil {
-		return "", fmt.Errorf("生成考试编码失败: %w", err)
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
-			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-		VALUES ($1, $2, $3, $4, '', 'published', 0, $5, NULL, '{}', '{}', NULL, 'v1.0', 'mine', $6, TRUE)
-	`, id, tenantID, code, name, duration, creatorID)
-	if err != nil {
-		return "", fmt.Errorf("创建临时考试失败: %w", err)
-	}
-	return id, nil
-}
-
-func courseEnsureExamQuestions(ctx context.Context, tx pgx.Tx, tenantID, examID string, questionIDs []string) error {
-	rows, err := tx.Query(ctx, `
-		SELECT id, type, content, options, answer, analysis, score
-		FROM questions
-		WHERE id = ANY($1) AND tenant_id = $2
-		ORDER BY array_position($1, id)
-	`, questionIDs, tenantID)
-	if err != nil {
-		return fmt.Errorf("查询题目失败: %w", err)
-	}
-	defer rows.Close()
-
-	type q struct {
-		id       string
-		qType    string
-		content  string
-		options  []byte
-		answer   []byte
-		analysis *string
-		score    float64
-	}
-	var questions []q
-	for rows.Next() {
-		var qq q
-		var optionsStr, answerStr *string
-		if err := rows.Scan(&qq.id, &qq.qType, &qq.content, &optionsStr, &answerStr, &qq.analysis, &qq.score); err != nil {
-			continue
-		}
-		if optionsStr != nil {
-			qq.options = []byte(*optionsStr)
-		} else {
-			qq.options = []byte("[]")
-		}
-		if answerStr != nil {
-			qq.answer = []byte(*answerStr)
-		} else {
-			qq.answer = []byte("[]")
-		}
-		questions = append(questions, qq)
-	}
-
-	for i, qq := range questions {
-		var existingID string
-		_ = tx.QueryRow(ctx, `SELECT id FROM exam_questions WHERE exam_id = $1 AND question_id = $2`, examID, qq.id).Scan(&existingID)
-		if existingID != "" {
-			_, err := tx.Exec(ctx, `
-				UPDATE exam_questions SET type = $1, content = $2, options = $3, answer = $4, analysis = $5, score = $6, sort_order = $7
-				WHERE id = $8
-			`, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, qq.score, i+1, existingID)
-			if err != nil {
-				return fmt.Errorf("更新考试题目失败: %w", err)
-			}
-		} else {
-			_, err := tx.Exec(ctx, `
-				INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-			`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, qq.score, i+1)
-			if err != nil {
-				return fmt.Errorf("插入考试题目失败: %w", err)
-			}
-		}
-	}
-
-	_, err = tx.Exec(ctx, `
-		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
-		WHERE id = $1
-	`, examID)
-	if err != nil {
-		return fmt.Errorf("重新计算考试总分失败: %w", err)
-	}
-	return nil
-}
-
-func courseCreateExamUsage(ctx context.Context, tx pgx.Tx, tenantID, examID, targetType, targetID, name, creatorID string) (string, error) {
-	id := uuid.NewString()
-	var creator interface{}
-	if creatorID != "" {
-		creator = creatorID
-	}
-	_, err := tx.Exec(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, $5, $6, 'published', $7)
-	`, id, tenantID, examID, name, targetType, []string{targetID}, creator)
-	if err != nil {
-		return "", fmt.Errorf("创建考试安排失败: %w", err)
-	}
-	return id, nil
-}
-
-func (h *CourseHandler) ensureNodeHomework(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID string) error {
-	var exists bool
-	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM node_homeworks WHERE node_id = $1)`, nodeID).Scan(&exists)
-	if err != nil {
-		return fmt.Errorf("查询节点作业失败: %w", err)
-	}
-	if exists {
-		return nil
-	}
-
-	var creator interface{}
-	if creatorID != "" {
-		creator = creatorID
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment, creator_id)
-		VALUES ($1, $2, $3, $4, '', FALSE, $5)
-	`, uuid.NewString(), tenantID, nodeID, fmt.Sprintf("%s-%s-节点作业", courseName, nodeName), creator)
-	if err != nil {
-		return fmt.Errorf("创建节点作业失败: %w", err)
-	}
-	return nil
-}

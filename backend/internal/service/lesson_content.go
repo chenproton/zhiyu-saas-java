@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -317,4 +318,248 @@ func (s *LessonContentService) DeleteCourse(ctx context.Context, id string) erro
 // Queryer 暴露底层查询器。
 func (s *LessonContentService) Queryer() store.Queryer {
 	return s.st.Q()
+}
+
+// ===== 课程/节点作业 =====
+
+// SubmitCourseHomework 提交课程作业。
+func (s *LessonContentService) SubmitCourseHomework(ctx context.Context, tenantID, courseID, homeworkID, studentID, content string, attachmentURLs []string) (string, error) {
+	return s.st.CourseHomeworks().SubmitCourseHomework(ctx, tenantID, courseID, homeworkID, studentID, content, attachmentURLs)
+}
+
+// ListCourseHomeworkSubmissions 查询课程作业提交。
+func (s *LessonContentService) ListCourseHomeworkSubmissions(ctx context.Context, tenantID, courseID, homeworkID string) ([]store.HomeworkSubmissionItem, error) {
+	return s.st.CourseHomeworks().ListCourseHomeworkSubmissions(ctx, tenantID, courseID, homeworkID)
+}
+
+// GradeCourseHomework 批改课程作业。
+func (s *LessonContentService) GradeCourseHomework(ctx context.Context, graderID, tenantID, courseID, homeworkID, submissionID string, score float64, comment string) error {
+	_, _, err := s.st.CourseHomeworks().GradeCourseHomework(ctx, graderID, tenantID, courseID, homeworkID, submissionID, score, comment)
+	return err
+}
+
+// SubmitNodeHomework 提交节点作业。
+func (s *LessonContentService) SubmitNodeHomework(ctx context.Context, tenantID, nodeID, homeworkID, studentID, content string, attachmentURLs []string) (string, error) {
+	return s.st.CourseHomeworks().SubmitNodeHomework(ctx, tenantID, nodeID, homeworkID, studentID, content, attachmentURLs)
+}
+
+// ListNodeHomeworkSubmissions 查询节点作业提交。
+func (s *LessonContentService) ListNodeHomeworkSubmissions(ctx context.Context, tenantID, nodeID, homeworkID string) ([]store.HomeworkSubmissionItem, error) {
+	return s.st.CourseHomeworks().ListNodeHomeworkSubmissions(ctx, tenantID, nodeID, homeworkID)
+}
+
+// GradeNodeHomework 批改节点作业。
+func (s *LessonContentService) GradeNodeHomework(ctx context.Context, graderID, tenantID, nodeID, homeworkID, submissionID string, score float64, comment string) error {
+	_, _, err := s.st.CourseHomeworks().GradeNodeHomework(ctx, graderID, tenantID, nodeID, homeworkID, submissionID, score, comment)
+	return err
+}
+
+// ===== 课程评估生成（发布 hook）=====
+
+// GenerateCourseAssessments 发布课程时生成节点测评（考试/作业）。
+func (s *LessonContentService) GenerateCourseAssessments(ctx context.Context, txStore *store.Store, courseID string) error {
+	q := txStore.Q()
+	info, err := txStore.CourseAssessments().FetchCourseInfo(ctx, q, courseID)
+	if err != nil {
+		return err
+	}
+	if info.Type != "system" {
+		return nil
+	}
+
+	nodes, err := txStore.CourseAssessments().ListNodeEvalData(ctx, q, courseID)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range nodes {
+		ruleConfig := extractEvalRuleConfig(n.EvalData)
+		if ruleConfig == nil {
+			continue
+		}
+		methods := getStringSliceFromJSONMap(ruleConfig, "evaluationMethods")
+		methodResourceConfigs, _ := ruleConfig["methodResourceConfigs"].(map[string]interface{})
+		if methodResourceConfigs == nil {
+			methodResourceConfigs = make(map[string]interface{})
+		}
+
+		updated := false
+		for _, methodKey := range methods {
+			rc, _ := methodResourceConfigs[methodKey].(map[string]interface{})
+			if rc == nil {
+				rc = make(map[string]interface{})
+			}
+			switch methodKey {
+			case "paper":
+				newRC, err := s.ensureNodePaperUsage(ctx, q, n, info, rc, ruleConfig)
+				if err != nil {
+					return err
+				}
+				methodResourceConfigs[methodKey] = newRC
+				updated = true
+			case "question_bank", "quiz":
+				newRC, err := s.ensureNodeQuestionExam(ctx, q, n, info, methodKey, rc, ruleConfig)
+				if err != nil {
+					return err
+				}
+				methodResourceConfigs[methodKey] = newRC
+				updated = true
+			case "homework":
+				if err := s.ensureNodeHomework(ctx, q, n, info); err != nil {
+					return err
+				}
+			}
+		}
+
+		if updated {
+			ruleConfig["methodResourceConfigs"] = methodResourceConfigs
+			n.EvalData["evalRuleConfig"] = ruleConfig
+			if err := txStore.CourseAssessments().UpdateNodeEvalData(ctx, q, n.ID, n.EvalData); err != nil {
+				return err
+			}
+		}
+	}
+
+	return txStore.CourseAssessments().CleanupCourseLevelAssessments(ctx, q, courseID)
+}
+
+// ensureNodePaperUsage 生成节点试卷安排。
+func (s *LessonContentService) ensureNodePaperUsage(ctx context.Context, q store.Queryer, n store.NodeEvalRow, info *store.CourseInfo, rc map[string]interface{}, ruleConfig map[string]interface{}) (map[string]interface{}, error) {
+	paperIDs := getStringSliceFromJSONMap(ruleConfig, "paperIds")
+	if len(paperIDs) == 0 {
+		return rc, nil
+	}
+	for _, paperID := range paperIDs {
+		if paperID == "" {
+			continue
+		}
+		examName, err := s.st.CourseAssessments().PaperExamName(ctx, q, paperID, info.TenantID)
+		if err != nil {
+			return rc, err
+		}
+		usageID, err := s.st.CourseAssessments().FindNodeUsage(ctx, q, paperID, n.ID)
+		if err != nil {
+			return rc, err
+		}
+		if usageID == "" {
+			usageID, err = s.st.CourseAssessments().CreateNodeUsage(ctx, q, info.TenantID, paperID, n.ID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, examName), info.CreatorID)
+			if err != nil {
+				return rc, err
+			}
+			rc["usageId"] = usageID
+		}
+	}
+	return rc, nil
+}
+
+// ensureNodeQuestionExam 生成节点题库/随堂测考试。
+func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q store.Queryer, n store.NodeEvalRow, info *store.CourseInfo, methodKey string, rc map[string]interface{}, ruleConfig map[string]interface{}) (map[string]interface{}, error) {
+	field := map[string]string{
+		"question_bank": "questionBankQuestions",
+		"quiz":          "quizQuestions",
+	}[methodKey]
+	questionIDs := getStringSliceFromJSONMap(ruleConfig, field)
+	if len(questionIDs) == 0 {
+		return rc, nil
+	}
+	label := map[string]string{
+		"question_bank": "题库",
+		"quiz":          "随堂测",
+	}[methodKey]
+
+	examID, _ := rc["examId"].(string)
+	usageID, _ := rc["usageId"].(string)
+
+	if examID == "" {
+		duration := 90
+		if d, ok := rc["duration"].(float64); ok && d > 0 {
+			duration = int(d)
+		} else if d, ok := rc["timeLimit"].(float64); ok && d > 0 {
+			duration = int(d)
+		}
+		newID, err := s.st.CourseAssessments().CreateTempExam(ctx, q, info.TenantID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, label), duration, info.CreatorID)
+		if err != nil {
+			return rc, err
+		}
+		examID = newID
+		rc["examId"] = examID
+	}
+
+	if err := s.st.CourseAssessments().EnsureExamQuestions(ctx, q, info.TenantID, examID, questionIDs); err != nil {
+		return rc, err
+	}
+
+	if usageID == "" {
+		newID, err := s.st.CourseAssessments().CreateExamUsage(ctx, q, info.TenantID, examID, "node", n.ID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, label), info.CreatorID)
+		if err != nil {
+			return rc, err
+		}
+		usageID = newID
+		rc["usageId"] = usageID
+	}
+	return rc, nil
+}
+
+// ensureNodeHomework 生成节点作业。
+func (s *LessonContentService) ensureNodeHomework(ctx context.Context, q store.Queryer, n store.NodeEvalRow, info *store.CourseInfo) error {
+	exists, err := s.st.CourseAssessments().NodeHomeworkExists(ctx, q, n.ID)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+	return s.st.CourseAssessments().CreateNodeHomework(ctx, q, info.TenantID, n.ID, fmt.Sprintf("%s-%s-节点作业", info.Name, n.Name), info.CreatorID)
+}
+
+// extractEvalRuleConfig 提取节点评估规则配置。
+func extractEvalRuleConfig(evalData map[string]interface{}) map[string]interface{} {
+	if evalData == nil {
+		return nil
+	}
+	if rc, ok := evalData["evalRuleConfig"].(map[string]interface{}); ok {
+		return rc
+	}
+	return nil
+}
+
+// getStringSliceFromJSONMap 从 JSONMap 提取字符串数组（service 层本地实现）。
+func getStringSliceFromJSONMap(m map[string]interface{}, key string) []string {
+	raw, ok := m[key]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case []string:
+		return v
+	case []interface{}:
+		out := make([]string, 0, len(v))
+		for _, x := range v {
+			if s, ok := x.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// ListCourseExamUsages 查询课程考试安排。
+func (s *LessonContentService) ListCourseExamUsages(ctx context.Context, courseID, tenantID string) ([]map[string]any, error) {
+	return s.st.CourseAssessments().ListCourseExamUsages(ctx, tenantID, courseID)
+}
+
+// ListCourseHomeworks 查询课程作业列表。
+func (s *LessonContentService) ListCourseHomeworks(ctx context.Context, courseID, tenantID string) ([]map[string]any, error) {
+	return s.st.CourseAssessments().ListCourseHomeworks(ctx, tenantID, courseID)
+}
+
+// CourseHomeworkExists 校验课程作业存在。
+func (s *LessonContentService) CourseHomeworkExists(ctx context.Context, homeworkID, courseID, tenantID string) (bool, error) {
+	return s.st.CourseHomeworks().CourseHomeworkExists(ctx, homeworkID, courseID, tenantID)
+}
+
+// NodeHomeworkExists 校验节点作业存在。
+func (s *LessonContentService) NodeHomeworkExists(ctx context.Context, homeworkID, nodeID, tenantID string) (bool, error) {
+	return s.st.CourseHomeworks().NodeHomeworkExists(ctx, homeworkID, nodeID, tenantID)
 }

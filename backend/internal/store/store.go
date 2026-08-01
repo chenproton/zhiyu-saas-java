@@ -47,6 +47,8 @@ type Store struct {
 	taskEval        *TaskEvaluationStore
 	positions       *PositionStore
 	courses         *CourseStore
+	courseHomeworks *CourseHomeworkStore
+	courseAssess    *CourseAssessmentStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -79,6 +81,8 @@ func New(db *pgxpool.Pool) *Store {
 		taskEval:        NewTaskEvaluationStore(db),
 		positions:       NewPositionStore(db),
 		courses:         NewCourseStore(db),
+		courseHomeworks: NewCourseHomeworkStore(db),
+		courseAssess:    NewCourseAssessmentStore(db),
 	}
 }
 
@@ -112,6 +116,8 @@ func NewWithTx(tx pgx.Tx) *Store {
 		taskEval:        NewTaskEvaluationStore(tx),
 		positions:       NewPositionStore(tx),
 		courses:         NewCourseStore(tx),
+		courseHomeworks: NewCourseHomeworkStore(tx),
+		courseAssess:    NewCourseAssessmentStore(tx),
 	}
 }
 
@@ -248,6 +254,16 @@ func (s *Store) Positions() *PositionStore {
 // Courses 返回课程 store。
 func (s *Store) Courses() *CourseStore {
 	return s.courses
+}
+
+// CourseHomeworks 返回作业 store。
+func (s *Store) CourseHomeworks() *CourseHomeworkStore {
+	return s.courseHomeworks
+}
+
+// CourseAssessments 返回评估生成 store。
+func (s *Store) CourseAssessments() *CourseAssessmentStore {
+	return s.courseAssess
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。
