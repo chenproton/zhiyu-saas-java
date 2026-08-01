@@ -52,6 +52,7 @@ type Store struct {
 	questionBanks   *QuestionBankStore
 	questions       *QuestionStore
 	exams           *ExamStore
+	examResults     *ExamResultStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -89,6 +90,7 @@ func New(db *pgxpool.Pool) *Store {
 		questionBanks:   NewQuestionBankStore(db),
 		questions:       NewQuestionStore(db),
 		exams:           NewExamStore(db),
+		examResults:     NewExamResultStore(db),
 	}
 }
 
@@ -127,6 +129,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		questionBanks:   NewQuestionBankStore(tx),
 		questions:       NewQuestionStore(tx),
 		exams:           NewExamStore(tx),
+		examResults:     NewExamResultStore(tx),
 	}
 }
 
@@ -288,6 +291,11 @@ func (s *Store) Questions() *QuestionStore {
 // Exams 返回试卷 store。
 func (s *Store) Exams() *ExamStore {
 	return s.exams
+}
+
+// ExamResults 返回考试结果 store。
+func (s *Store) ExamResults() *ExamResultStore {
+	return s.examResults
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

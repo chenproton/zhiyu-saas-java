@@ -191,7 +191,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		questionHandler:               &handler.QuestionHandler{Service: service.NewEvaluationService(svc)},
 		examHandler:                   &handler.ExamHandler{Service: service.NewEvaluationService(svc), RedisClient: redisClient},
 		examUsageHandler:              &handler.ExamUsageHandler{DB: db},
-		examResultHandler:             &handler.ExamResultHandler{DB: db},
+		examResultHandler:             &handler.ExamResultHandler{Service: service.NewEvaluationService(svc)},
 		evaluationResultHandler:       &handler.EvaluationResultHandler{DB: db},
 		certificationHandler:          &handler.CertificationHandler{DB: db},
 		certificationModelHandler:     &handler.CertificationModelHandler{DB: db},

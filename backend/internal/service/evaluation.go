@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"math"
+	"strings"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -182,4 +184,113 @@ func (s *EvaluationService) BulkUpdateExamScores(ctx context.Context, examID str
 	return s.WithTx(ctx, func(txStore *store.Store) error {
 		return txStore.Exams().BulkUpdateScores(ctx, txStore.Q(), examID, scores)
 	})
+}
+
+// ListExamResults 查询考试结果列表。
+func (s *EvaluationService) ListExamResults(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.ExamResult]) ([]domain.ExamResult, int, error) {
+	return s.st.ExamResults().List(ctx, p, cfg)
+}
+
+// SubmitExamResult 提交考试结果（评分编排：拉取题目→判分→写结果→同步 3 类评价）。
+func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, userID, usageID string, answers map[string]interface{}, methodKey string) (*domain.ExamResult, error) {
+	examID, totalScore, err := s.st.ExamResults().UsageExamInfo(ctx, usageID)
+	if err != nil {
+		return nil, err
+	}
+	questions, err := s.st.ExamResults().FetchExamQuestions(ctx, examID)
+	if err != nil {
+		return nil, err
+	}
+
+	score := 0.0
+	hasSubjective := false
+	passScore := totalScore * 0.6
+	for _, qq := range questions {
+		if qq.Type == string(domain.QuestionTypeFill) || qq.Type == string(domain.QuestionTypeEssay) || qq.Type == string(domain.QuestionTypeShortAnswer) {
+			hasSubjective = true
+			continue
+		}
+		raw, ok := answers[qq.ID]
+		if !ok {
+			continue
+		}
+		if isCorrect(qq.Type, qq.Answer, raw) {
+			score += qq.Score
+		}
+	}
+	isPass := false
+	if !hasSubjective {
+		isPass = score >= passScore
+	}
+
+	profile, err := s.st.ExamResults().FetchUserProfile(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	var majorNamePtr *string
+	if profile.MajorName != "" {
+		majorNamePtr = &profile.MajorName
+	}
+
+	answersJSON := domain.JSONMap(answers)
+	result, err := s.st.ExamResults().SaveResult(ctx, tenantID, usageID, userID, &store.SaveExamResultParams{
+		StudentName: profile.Name,
+		ClassName:   profile.ClassName,
+		Grade:       profile.Grade,
+		MajorID:     profile.MajorID,
+		Score:       score,
+		TotalScore:  totalScore,
+		IsPass:      isPass,
+		Answers:     answersJSON,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result.MajorName = majorNamePtr
+
+	s.st.ExamResults().SyncSceneEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
+	s.st.ExamResults().SyncCourseEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
+	s.st.ExamResults().SyncNodeEvaluation(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
+	return result, nil
+}
+
+// isCorrect 判断客观题答案是否正确。
+func isCorrect(qType string, correct []string, raw interface{}) bool {
+	switch qType {
+	case string(domain.QuestionTypeSingle), string(domain.QuestionTypeJudge):
+		s, _ := raw.(string)
+		return len(correct) > 0 && strings.EqualFold(s, correct[0])
+	case string(domain.QuestionTypeMultiple):
+		var given []string
+		switch v := raw.(type) {
+		case []string:
+			given = v
+		case []interface{}:
+			for _, x := range v {
+				if ss, ok := x.(string); ok {
+					given = append(given, ss)
+				}
+			}
+		}
+		if len(given) != len(correct) {
+			return false
+		}
+		m := make(map[string]int)
+		for _, c := range correct {
+			m[c]++
+		}
+		for _, g := range given {
+			if m[g] == 0 {
+				return false
+			}
+			m[g]--
+		}
+		return true
+	}
+	return false
+}
+
+// RoundScore 分数取整到 1 位小数。
+func RoundScore(s float64) float64 {
+	return math.Round(s*10) / 10
 }
