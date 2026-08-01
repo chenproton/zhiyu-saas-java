@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -88,8 +87,7 @@ func (h *CertificateLibraryHandler) Create(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req CreateCertificateLibraryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -134,8 +132,7 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req UpdateCertificateLibraryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

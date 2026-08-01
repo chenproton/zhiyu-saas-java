@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from "@/lib/external-links"
+// 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { allPeriods, days, type ScheduleEvent } from "../_data/mock-student-data"
 
 interface ScheduleGridProps {
@@ -89,7 +90,7 @@ function getWeeksInMonth(year: number, month: number) {
   return Math.ceil((totalDays + startDay - 1) / 7)
 }
 
-export function ScheduleGrid({ events }: ScheduleGridProps) {
+export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
   const [view, setView] = useState<ViewType>("week")
   const [currentDate, setCurrentDate] = useState(() => new Date())
 

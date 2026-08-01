@@ -13,6 +13,7 @@ import {
   CheckCircle2, Zap, MessageSquare, Trophy, Users, ClipboardList, TrendingUp,
 } from "lucide-react"
 import { SectionCard } from "./section-card"
+// 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import {
   mockSignInData,
   mockSignInDaily,

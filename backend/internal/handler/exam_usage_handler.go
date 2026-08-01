@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -94,8 +93,7 @@ func (h *ExamUsageHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateExamUsageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.ExamID == "" || req.Name == "" {
@@ -134,8 +132,7 @@ func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateExamUsageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {

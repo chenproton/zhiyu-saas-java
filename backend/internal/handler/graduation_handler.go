@@ -2,10 +2,8 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -128,8 +126,7 @@ func (h *GraduationHandler) CreateTopic(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req CreateGraduationTopicRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.CareerPositionID == "" {
@@ -182,8 +179,7 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req CreateGraduationTopicRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {
@@ -306,8 +302,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 
 	if r.Method == http.MethodPost {
 		var req CreateGraduationArchiveRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "无效请求体")
+		if !decodeBody(w, r, &req) {
 			return
 		}
 		if req.TopicID == "" || req.UserID == "" {
@@ -335,55 +330,20 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	topicID := r.URL.Query().Get("topicId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	if topicID != "" {
-		where = append(where, "topic_id = $"+itoa(argIdx))
-		args = append(args, topicID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM graduation_project_archives WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification
-		FROM graduation_project_archives
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY last_updated DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.GraduationProjectArchive](r.Context(), h.DB, r, listQueryConfig[domain.GraduationProjectArchive]{
+		Table:         "graduation_project_archives",
+		SelectColumns: "id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification",
+		OrderBy:       "last_updated DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if topicID := r.URL.Query().Get("topicId"); topicID != "" {
+				qb.addCondition("topic_id = " + qb.nextArg(topicID))
+			}
+		},
+		ScanRows: scanGraduationArchiveRows,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询毕业档案失败")
 		return
-	}
-	defer rows.Close()
-
-	items := make([]domain.GraduationProjectArchive, 0)
-	for rows.Next() {
-		var a domain.GraduationProjectArchive
-		if err := rows.Scan(&a.ID, &a.TopicID, &a.UserID,
-			&a.Phase, &a.DocStatus, &a.DocCount, &a.LastUpdated, &a.HasRectification); err != nil {
-			respondError(w, http.StatusInternalServerError, "读取毕业档案失败")
-			return
-		}
-		items = append(items, a)
 	}
 	respondJSON(w, http.StatusOK, GraduationArchiveListResponse{Items: items, Total: total})
 }
@@ -397,8 +357,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 
 	if r.Method == http.MethodPost {
 		var req CreateGraduationEvaluationRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "无效请求体")
+		if !decodeBody(w, r, &req) {
 			return
 		}
 		if req.TopicID == "" || req.UserID == "" {
@@ -427,68 +386,23 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	topicID := r.URL.Query().Get("topicId")
-	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	if topicID != "" {
-		where = append(where, "topic_id = $"+itoa(argIdx))
-		args = append(args, topicID)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM graduation_project_evaluations WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, topic_id, user_id, advisor_score, enterprise_score, defense_score,
-			comprehensive_grade, is_excellent, status, evaluated_at
-		FROM graduation_project_evaluations
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY evaluated_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.GraduationProjectEvaluation](r.Context(), h.DB, r, listQueryConfig[domain.GraduationProjectEvaluation]{
+		Table:         "graduation_project_evaluations",
+		SelectColumns: "id, topic_id, user_id, advisor_score, enterprise_score, defense_score, comprehensive_grade, is_excellent, status, evaluated_at",
+		OrderBy:       "evaluated_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if topicID := r.URL.Query().Get("topicId"); topicID != "" {
+				qb.addCondition("topic_id = " + qb.nextArg(topicID))
+			}
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: scanGraduationEvaluationRows,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询毕业评价失败")
 		return
-	}
-	defer rows.Close()
-
-	items := make([]domain.GraduationProjectEvaluation, 0)
-	for rows.Next() {
-		var e domain.GraduationProjectEvaluation
-		var advisorScore, enterpriseScore, defenseScore *float64
-		var comprehensiveGrade *string
-		if err := rows.Scan(&e.ID, &e.TopicID, &e.UserID, &advisorScore, &enterpriseScore, &defenseScore,
-			&comprehensiveGrade, &e.IsExcellent, &e.Status, &e.EvaluatedAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "读取毕业评价失败")
-			return
-		}
-		e.AdvisorScore = advisorScore
-		e.EnterpriseScore = enterpriseScore
-		e.DefenseScore = defenseScore
-		e.ComprehensiveGrade = comprehensiveGrade
-		items = append(items, e)
 	}
 	respondJSON(w, http.StatusOK, GraduationEvaluationListResponse{Items: items, Total: total})
 }
@@ -608,6 +522,19 @@ func (h *GraduationHandler) scanTopicRows(rows pgx.Rows) ([]domain.GraduationPro
 	return items, nil
 }
 
+func scanGraduationArchiveRows(rows pgx.Rows) ([]domain.GraduationProjectArchive, error) {
+	items := make([]domain.GraduationProjectArchive, 0)
+	for rows.Next() {
+		var a domain.GraduationProjectArchive
+		if err := rows.Scan(&a.ID, &a.TopicID, &a.UserID,
+			&a.Phase, &a.DocStatus, &a.DocCount, &a.LastUpdated, &a.HasRectification); err != nil {
+			return nil, err
+		}
+		items = append(items, a)
+	}
+	return items, nil
+}
+
 func (h *GraduationHandler) fetchArchive(ctx context.Context, id string) (domain.GraduationProjectArchive, error) {
 	var a domain.GraduationProjectArchive
 	err := h.DB.QueryRow(ctx, `
@@ -643,4 +570,23 @@ func (h *GraduationHandler) fetchEvaluation(ctx context.Context, id string) (dom
 	e.DefenseScore = defenseScore
 	e.ComprehensiveGrade = comprehensiveGrade
 	return e, nil
+}
+
+func scanGraduationEvaluationRows(rows pgx.Rows) ([]domain.GraduationProjectEvaluation, error) {
+	items := make([]domain.GraduationProjectEvaluation, 0)
+	for rows.Next() {
+		var e domain.GraduationProjectEvaluation
+		var advisorScore, enterpriseScore, defenseScore *float64
+		var comprehensiveGrade *string
+		if err := rows.Scan(&e.ID, &e.TopicID, &e.UserID, &advisorScore, &enterpriseScore, &defenseScore,
+			&comprehensiveGrade, &e.IsExcellent, &e.Status, &e.EvaluatedAt); err != nil {
+			return nil, err
+		}
+		e.AdvisorScore = advisorScore
+		e.EnterpriseScore = enterpriseScore
+		e.DefenseScore = defenseScore
+		e.ComprehensiveGrade = comprehensiveGrade
+		items = append(items, e)
+	}
+	return items, nil
 }

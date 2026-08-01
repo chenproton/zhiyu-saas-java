@@ -394,8 +394,7 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 			if pid, ok := nameToID[parentName]; ok {
 				parentID = &pid
 			} else {
-				var pid string
-				_ = h.DB.QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, parentName).Scan(&pid)
+				pid, _ := lookupIDByName(ctx, h.DB, "organizations", tenantID, parentName)
 				if pid != "" {
 					parentID = &pid
 				}
@@ -620,8 +619,7 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 			if tname == "" {
 				continue
 			}
-			var tid string
-			_ = h.DB.QueryRow(ctx, `SELECT id FROM staff_titles WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, tname).Scan(&tid)
+			tid, _ := lookupIDByName(ctx, h.DB, "staff_titles", tenantID, tname)
 			if tid != "" {
 				titleIDs = append(titleIDs, tid)
 			}
@@ -992,8 +990,7 @@ func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *e
 		contactEmail := nullableStr(col(row, 8))
 		address := nullableStr(col(row, 9))
 
-		var existingID string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_enterprises WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_enterprises", tenantID, name)
 		if existingID != "" {
 			if !overwrite {
 				result.Skipped++
@@ -1075,8 +1072,7 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 		endDate := nullableStr(col(row, 4))
 		description := nullableStr(col(row, 5))
 
-		var existingID string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_projects WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_projects", tenantID, name)
 		if existingID != "" {
 			if !overwrite {
 				result.Skipped++
@@ -1234,8 +1230,7 @@ func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excel
 		city := nullableStr(col(row, 4))
 		introduction := nullableStr(col(row, 5))
 
-		var existingID string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_experts WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_experts", tenantID, name)
 		if existingID != "" {
 			if !overwrite {
 				result.Skipped++
@@ -1316,8 +1311,7 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 		}
 		content := nullableStr(col(row, 5))
 
-		var existingID string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_agreements WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_agreements", tenantID, name)
 		if existingID != "" {
 			if !overwrite {
 				result.Skipped++

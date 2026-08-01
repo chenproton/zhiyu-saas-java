@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -100,8 +99,7 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 
 	id := chi.URLParam(r, "id")
 	var req ToggleMethodRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

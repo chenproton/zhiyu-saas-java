@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -85,8 +84,7 @@ func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req CreateTenantAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Username == "" || req.Name == "" {
@@ -130,8 +128,7 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req UpdateTenantAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Username == "" || req.Name == "" {

@@ -10,10 +10,7 @@ import (
 type Handlers struct {
 	authHandler                   *handler.AuthHandler
 	fileHandler                   *handler.FileHandler
-	institutionHandler            *handler.InstitutionHandler
 	resourceHandler               *handler.ResourceHandler
-	orderHandler                  *handler.OrderHandler
-	bannerHandler                 *handler.BannerHandler
 	statsHandler                  *handler.StatsHandler
 	portalHandler                 *handler.PortalHandler
 	importExportHandler           *handler.ImportExportHandler
@@ -117,10 +114,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	return &Handlers{
 		authHandler:                   handler.NewAuthHandler(db, jwtSecret),
 		fileHandler:                   fileHandler,
-		institutionHandler:            &handler.InstitutionHandler{DB: db},
 		resourceHandler:               &handler.ResourceHandler{DB: db},
-		orderHandler:                  &handler.OrderHandler{DB: db},
-		bannerHandler:                 &handler.BannerHandler{DB: db},
 		statsHandler:                  &handler.StatsHandler{DB: db},
 		portalHandler:                 &handler.PortalHandler{DB: db},
 		importExportHandler:           &handler.ImportExportHandler{DB: db},
@@ -156,7 +150,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		userRelationHandler:           &handler.UserRelationHandler{DB: db},
 		workflowHandler:               &handler.WorkflowHandler{DB: db},
 		approvalHandler:               &handler.ApprovalHandler{DB: db},
-		allianceHandler:               &handler.AllianceHandler{DB: db, Store: store.NewAllianceStore(db)},
+		allianceHandler:               &handler.AllianceHandler{Store: store.NewAllianceStore(db)},
 		positionHandler:               &handler.PositionHandler{DB: db, RedisClient: redisClient},
 		positionCloneHandler:          &handler.PositionCloneHandler{DB: db},
 		abilityHandler:                &handler.AbilityHandler{DB: db},

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -86,8 +85,7 @@ func (h *OrgTypeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateOrgTypeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -140,8 +138,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateOrgTypeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

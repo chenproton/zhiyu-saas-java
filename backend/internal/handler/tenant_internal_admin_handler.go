@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -54,8 +53,7 @@ func (h *TenantHandler) CreateSchoolAdmin(w http.ResponseWriter, r *http.Request
 	}
 
 	var req CreateTenantAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Username == "" || req.Name == "" {
@@ -97,8 +95,7 @@ func (h *TenantHandler) UpdateSchoolAdmin(w http.ResponseWriter, r *http.Request
 	}
 
 	var req UpdateTenantAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Username == "" || req.Name == "" {

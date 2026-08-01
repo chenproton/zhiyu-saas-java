@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -98,8 +97,7 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateKnowledgePointRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {
@@ -161,8 +159,7 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateKnowledgePointRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {

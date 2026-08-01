@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"math"
@@ -87,8 +86,7 @@ func (h *CertificationModelHandler) PutWeights(w http.ResponseWriter, r *http.Re
 	positionID := chi.URLParam(r, "positionId")
 
 	var req putCertificationWeightsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

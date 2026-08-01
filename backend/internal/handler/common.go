@@ -102,6 +102,15 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
 }
 
+// decodeBody 解析 JSON 请求体，失败时写 400 响应并返回 false。
+func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) bool {
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		respondError(w, http.StatusBadRequest, "无效请求体")
+		return false
+	}
+	return true
+}
+
 // MaxPageSize limits the number of items per page to prevent unbounded queries.
 const MaxPageSize = 200
 
@@ -151,7 +160,8 @@ func withTx(ctx context.Context, db *pgxpool.Pool, fn func(tx pgx.Tx) error) err
 
 // lookupIDByNameTables 是 lookupIDByName 允许查询的表名白名单。
 var lookupIDByNameTables = []string{
-	"ability_points", "ability_domains", "career_positions", "certificate_library",
+	"ability_points", "ability_domains", "alliance_agreements", "alliance_enterprises",
+	"alliance_experts", "alliance_projects", "career_positions", "certificate_library",
 	"courses", "evaluation_batches", "exams", "industries", "institutions",
 	"knowledge_points", "majors", "organizations", "question_banks", "questions",
 	"resource_library", "roles", "scenarios", "staff_titles", "subscription_packages", "terms", "users",
@@ -210,6 +220,12 @@ func canManagePortal(claims *middleware.Claims) bool {
 // canManagePlatform returns true for platform-level configuration/operation.
 func canManagePlatform(claims *middleware.Claims) bool {
 	return platformAdminOnly(claims)
+}
+
+// requireOperator reports whether the request is from a platform operator.
+func requireOperator(r *http.Request) bool {
+	claims := middleware.CurrentUser(r)
+	return claims != nil && canManagePlatform(claims)
 }
 
 // canModifyContent returns true for business-resource write operations.
@@ -440,6 +456,8 @@ var (
 		"exam_results er LEFT JOIN majors m ON m.id = er.major_id",
 		"exam_usages",
 		"exams e",
+		"graduation_project_archives",
+		"graduation_project_evaluations",
 		"graduation_project_topics",
 		"hybrid_node_modules",
 		"industries",
@@ -447,6 +465,7 @@ var (
 		"learn_roads",
 		"lesson_batches",
 		"lesson_batches lb LEFT JOIN majors m ON m.id = lb.major_id",
+		"login_logs",
 		"majors",
 		"micro_cert_templates",
 		"node_evaluation_results",
@@ -455,6 +474,7 @@ var (
 		"on_site_question_library",
 		"org_types",
 		"organizations",
+		"operation_logs",
 		"period_slots",
 		"position_ability_bindings",
 		"position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
@@ -530,6 +550,10 @@ var (
 		"id, tenant_id, name, url, description, image_url, creator_id, created_at",
 		"id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at",
 		"id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id, history, created_at, updated_at",
+		"id, tenant_id, user_id, user_name, ip, location, device, status, created_at",
+		"id, tenant_id, user_id, user_name, module, action, target_type, target_id, detail, ip, status, created_at",
+		"id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification",
+		"id, topic_id, user_id, advisor_score, enterprise_score, defense_score, comprehensive_grade, is_excellent, status, evaluated_at",
 		"id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at",
 		"id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
 		"id, user_id, type, reason, status, created_at",
@@ -562,8 +586,10 @@ var (
 		"cp.created_at DESC",
 		"e.created_at DESC",
 		"er.score DESC, er.submit_time ASC",
+		"evaluated_at DESC",
 		"id DESC",
 		"issue_date DESC",
+		"last_updated DESC",
 		"min_score ASC",
 		"module_key ASC",
 		"n.sort_order ASC, n.id ASC",

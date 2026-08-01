@@ -107,8 +107,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req SaveTaskEvaluationMethodsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -323,8 +322,7 @@ func (h *TaskEvaluationHandler) CreateTemplate(w http.ResponseWriter, r *http.Re
 	}
 
 	var req RubricTemplateInput
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.Mode == "" || req.Data == nil {
@@ -363,8 +361,7 @@ func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 	id := chi.URLParam(r, "id")
 
 	var req RubricTemplateInput
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.Mode == "" || req.Data == nil {

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -86,8 +85,7 @@ func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateRecommendRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -129,8 +127,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateRecommendRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

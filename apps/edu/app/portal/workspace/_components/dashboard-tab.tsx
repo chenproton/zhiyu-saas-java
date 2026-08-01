@@ -6,7 +6,7 @@ import { Bell, BookOpen, Briefcase, Calendar, CheckSquare, ChevronRight, Clock, 
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard } from "./section-card"
-import { ScheduleGrid } from "./schedule-grid"
+import { WorkspaceScheduleGrid } from "./workspace-schedule-grid"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalApi } from "@/lib/api"
 import type { WorkspaceAnnouncement, WorkspaceTodo, WorkspaceScheduleEvent } from "@/lib/types"
@@ -49,7 +49,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3">
           <SectionCard>
-            <ScheduleGrid events={schedule} />
+            <WorkspaceScheduleGrid events={schedule} />
           </SectionCard>
         </div>
 

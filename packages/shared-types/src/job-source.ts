@@ -15,16 +15,6 @@
 // 用户角色类型
 export type UserRole = 'admin' | 'builder' | 'reviewer' | 'student'
 
-// 用户信息
-export interface User {
-  id: string
-  name: string
-  email: string
-  role: UserRole
-  avatar?: string
-  department?: string
-}
-
 // 批次状态
 export type BatchStatus = 'open' | 'closed'
 

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -90,8 +89,7 @@ func (h *PositionResponsibilityHandler) Create(w http.ResponseWriter, r *http.Re
 	}
 
 	var req CreatePositionResponsibilityRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -127,8 +125,7 @@ func (h *PositionResponsibilityHandler) Update(w http.ResponseWriter, r *http.Re
 	}
 
 	var req UpdatePositionResponsibilityRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

@@ -1,3 +1,8 @@
+// ============================================================
+// 【演示数据】混合课程初始课程树占位 mock（Web 前端开发示例）
+// 引用方：lesson/admin/hybrid/add/page.tsx 作为新建混合课程的初始课程树
+// 后续规划：改为空初始树或由后端课程模板接口提供后删除本文件
+// ============================================================
 import type { SystemCourseNode } from "@/lib/types/lesson-source"
 
 export const WEB_FRONTEND_SEMESTER_NODES: SystemCourseNode[] = [

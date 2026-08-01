@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"math"
@@ -155,8 +154,7 @@ func (h *CertificationHandler) CreateRule(w http.ResponseWriter, r *http.Request
 	}
 
 	var req CreateCertificationRuleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.CareerPositionID == "" {
@@ -210,8 +208,7 @@ func (h *CertificationHandler) UpdateRuleStatus(w http.ResponseWriter, r *http.R
 	var req struct {
 		Status string `json:"status"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Status != "draft" && req.Status != "published" {
@@ -246,8 +243,7 @@ func (h *CertificationHandler) UpdateRule(w http.ResponseWriter, r *http.Request
 	}
 
 	var req CreateCertificationRuleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.CareerPositionID == "" {
@@ -304,8 +300,7 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 
 	if r.Method == http.MethodPost {
 		var req CreateCertificationItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "无效请求体")
+		if !decodeBody(w, r, &req) {
 			return
 		}
 		if req.Name == "" {
@@ -370,8 +365,7 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 
 	if r.Method == http.MethodPost {
 		var req CreateCertificationPointRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "无效请求体")
+		if !decodeBody(w, r, &req) {
 			return
 		}
 		if req.AbilityPointID == "" || req.RequiredLevel == "" {
@@ -501,8 +495,7 @@ func (h *CertificationHandler) PutFullRule(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req PutFullCertificationRuleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.CareerPositionID == "" {
@@ -621,8 +614,7 @@ func (h *CertificationHandler) UpdateItem(w http.ResponseWriter, r *http.Request
 	}
 
 	var req UpdateCertificationItemRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {
@@ -662,8 +654,7 @@ func (h *CertificationHandler) UpdatePoint(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req UpdateCertificationPointRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.AbilityPointID == "" || req.RequiredLevel == "" {
@@ -744,8 +735,7 @@ func (h *CertificationHandler) CreateTask(w http.ResponseWriter, r *http.Request
 	}
 
 	var req CertificationTaskRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.TaskID == "" {
@@ -785,8 +775,7 @@ func (h *CertificationHandler) UpdateTask(w http.ResponseWriter, r *http.Request
 	}
 
 	var req CertificationTaskRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.TaskID == "" {

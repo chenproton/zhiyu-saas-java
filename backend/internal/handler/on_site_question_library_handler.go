@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -81,8 +80,7 @@ func (h *OnSiteQuestionLibraryHandler) Create(w http.ResponseWriter, r *http.Req
 	}
 
 	var req CreateOnSiteQuestionLibraryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.QuestionText == "" {
@@ -127,8 +125,7 @@ func (h *OnSiteQuestionLibraryHandler) Update(w http.ResponseWriter, r *http.Req
 	}
 
 	var req UpdateOnSiteQuestionLibraryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

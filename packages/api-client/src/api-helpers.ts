@@ -138,34 +138,9 @@ export interface SelectTenantRequest {
   tenantId: string
 }
 
-export interface User {
-  id: string
-  tenantId?: string
-  institutionId?: string
-  orgNodeId?: string
-  majorId?: string
-  role: "school" | "enterprise" | "operator"
-  platform: "saas" | "portal"
-  roleIds?: string[]
-  roleCodes?: string[]
-  roleNames?: string[]
-  loginName?: string
-  username: string
-  name: string
-  email: string
-  phone?: string
-  avatarUrl?: string
-  studentNo?: string
-  workId?: string
-  idCard?: string
-  titleIds?: string[]
-  oauth?: Record<string, any>
-  status: string
-  graduateYear?: number
-  lastLoginAt?: string
-  createdAt: string
-  updatedAt: string
-}
+// User 的权威定义在 @zhiyu/shared-types（shared-models.ts），此处仅 re-export 以保持既有导入路径
+import type { User } from "../../shared-types/src/shared-models"
+export type { User }
 
 export interface MeResponse {
   user: User
@@ -320,6 +295,18 @@ export function buildQuery(params: Record<string, string | number | boolean | un
   }
   const s = qs.toString()
   return s ? `?${s}` : ""
+}
+
+/** 触发浏览器下载 Blob 文件 */
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {

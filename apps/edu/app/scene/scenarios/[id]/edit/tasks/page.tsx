@@ -148,7 +148,7 @@ import { questionCache, allQuestions, loadedExams } from "./_components/shared-d
 import { useAuth } from "@/components/auth-provider"
 import type {
   Task, PositionAbility, GradeMapping,
-} from "@/lib/mock-data"
+} from "@/lib/types/scene-mock"
 import { COMPETENCY_LEVEL_LABELS } from "@/lib/types/job-source"
 
 // Module-level mutable arrays — populated from APIs on mount, zero mock data
@@ -4936,7 +4936,7 @@ function EditCardDialog({
     if (cardType === "info") {
       updateTask({ name: localTask.name, taskType: localTask.type as "assessment"|"training", difficulty: localTask.difficulty as 1|2|3|4|5, estimatedHours: localTask.hours, background: localTask.background })
     } else if (cardType === "evaluationRules") {
-      const toTaskEvalPoint = (ep: EvalPoint): import("@/lib/mock-data").TaskEvalPoint => {
+      const toTaskEvalPoint = (ep: EvalPoint): import("@/lib/types/scene-mock").TaskEvalPoint => {
         const gmMax = ep.gradeMapping && ep.gradeMapping.length > 0
           ? Math.max(...ep.gradeMapping.map(g => g.maxScore))
           : 100

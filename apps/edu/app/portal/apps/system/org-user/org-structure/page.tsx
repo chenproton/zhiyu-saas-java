@@ -35,7 +35,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { HoverActionBar } from "@/components/shared/hover-action-bar"
-import { orgApi, orgTypeApi, portalUserManagementApi, importExportApi } from "@/lib/api"
+import { orgApi, orgTypeApi, portalUserManagementApi, importExportApi, downloadBlob } from "@/lib/api"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import type { Organization, OrgType } from "@/lib/types/backend"
@@ -523,15 +523,7 @@ export default function OrgStructurePage() {
   const handleExport = async () => {
     try {
       const res = await importExportApi.exportOrganizationsExcel([])
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "组织架构导出.xlsx"
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(await res.blob(), "组织架构导出.xlsx")
       toast({ title: "导出完成" })
     } catch (err: any) {
       toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })

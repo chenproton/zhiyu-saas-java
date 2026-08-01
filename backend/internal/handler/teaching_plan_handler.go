@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -105,8 +104,7 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req GenerateTeachingPlanRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.ProgramID == "" || req.TermID == "" {
@@ -283,8 +281,7 @@ func (h *TeachingPlanHandler) UpdateEntry(w http.ResponseWriter, r *http.Request
 	}
 
 	var req UpdateTeachingPlanEntryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"fmt"
@@ -183,8 +182,7 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateOrgRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -235,8 +233,7 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateOrgRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

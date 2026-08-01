@@ -19,7 +19,7 @@ import type {
   TimetableResponse,
   MyScheduleResponse,
 } from "../types/affairs"
-import { request, authedFetch, buildQuery, ListResponse } from "../api-helpers"
+import { request, authedFetch, buildQuery, downloadBlob, ListResponse } from "../api-helpers"
 
 // ==================== 学期 ====================
 
@@ -158,11 +158,7 @@ export const scheduleApi = {
   /** 导出当前学期排课为 Excel（格式与导入模板一致） */
   exportExcel: async (termId: string) => {
     const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url; a.download = "排课导出.xlsx"; a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(await res.blob(), "排课导出.xlsx")
   },
   /** 班级/教师课表视图（默认仅 published，含 version） */
   timetable: (params: { termId: string; classNodeId?: string; teacherId?: string; status?: string }) =>

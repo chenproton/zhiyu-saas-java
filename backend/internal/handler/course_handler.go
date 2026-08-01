@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -155,8 +154,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateCourseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.Type == "" || req.Category == "" {
@@ -236,8 +234,7 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateCourseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -550,8 +547,7 @@ func (h *CourseHandler) SubmitHomework(w http.ResponseWriter, r *http.Request) {
 		Content         string   `json:"content"`
 		AttachmentUrls  []string `json:"attachmentUrls"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -664,8 +660,7 @@ func (h *CourseHandler) GradeHomeworkSubmission(w http.ResponseWriter, r *http.R
 		Score   float64 `json:"score"`
 		Comment string  `json:"comment"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -716,8 +711,7 @@ func (h *CourseHandler) SubmitNodeHomework(w http.ResponseWriter, r *http.Reques
 		Content        string   `json:"content"`
 		AttachmentUrls []string `json:"attachmentUrls"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -830,8 +824,7 @@ func (h *CourseHandler) GradeNodeHomeworkSubmission(w http.ResponseWriter, r *ht
 		Score   float64 `json:"score"`
 		Comment string  `json:"comment"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

@@ -22,6 +22,7 @@ import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
 import CourseNodeTree from "../../system/add/_components/CourseNodeTree"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { BatchSelector } from "@/components/shared/batch-selector"
+// 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { WEB_FRONTEND_SEMESTER_NODES } from "./_mock/semester-nodes"
 import {
   ATOMIC_MODULES,

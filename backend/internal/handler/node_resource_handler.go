@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -134,8 +133,7 @@ func (h *NodeResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateNodeResourceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.NodeID == "" || req.Name == "" || req.Type == "" {
@@ -185,8 +183,7 @@ func (h *NodeResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req BindNodeResourceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.NodeID == "" || req.ResourceID == "" {

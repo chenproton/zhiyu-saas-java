@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -226,8 +225,7 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreatePositionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -312,8 +310,7 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdatePositionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -616,8 +613,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req SaveFullPositionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
