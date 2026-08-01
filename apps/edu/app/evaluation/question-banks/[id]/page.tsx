@@ -81,10 +81,20 @@ export default function QuestionBankDetailPage() {
     moveQuestions,
     questionBanks,
     loadBankQuestions,
+    loadQuestionBanks,
     evaluationLoading,
   } = useData()
 
   const bank = getQuestionBank(bankId)
+
+  const [loadingBank, setLoadingBank] = useState(!getQuestionBank(bankId))
+  const triedReload = useRef(false)
+
+  useEffect(() => {
+    if (getQuestionBank(bankId) || triedReload.current) return
+    triedReload.current = true
+    loadQuestionBanks?.().finally(() => setLoadingBank(false))
+  }, [bankId, getQuestionBank, loadQuestionBanks])
 
   useEffect(() => {
     if (bankId) {
@@ -145,7 +155,7 @@ export default function QuestionBankDetailPage() {
   }, [questions, search, typeFilter, creatorFilter])
 
   if (!bank) {
-    if (evaluationLoading) {
+    if (evaluationLoading || loadingBank) {
       return (
         <div className="flex h-[50vh] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

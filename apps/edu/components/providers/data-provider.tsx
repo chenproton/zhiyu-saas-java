@@ -547,6 +547,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     updateQuestionBank,
     deleteQuestionBank,
     updateQuestionBankStatus,
+    loadQuestionBanks,
     questions,
     getQuestionsByBank,
     getQuestion,
