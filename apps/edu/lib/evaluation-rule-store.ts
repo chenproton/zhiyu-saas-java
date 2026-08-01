@@ -5,7 +5,7 @@ import {
   type EvalRuleConfig,
   type EvalRuleMethodKey,
   type EvalRulePoint,
-  type EvalRuleReviewStep,
+  type EvalRuleReviewStepInput,
   type EvalRuleSubjectConfig,
   type EvalObjectType,
   type EvalScoreType,
@@ -99,7 +99,7 @@ export type EvalRuleAction =
   | { type: "SET_RUBRIC_ID"; field: RubricIdField; rubricId: string | null }
   | { type: "SET_QUESTION_IDS"; field: QuestionIdField; ids: string[] }
   | { type: "TOGGLE_QUESTION"; field: QuestionIdField; id: string }
-  | { type: "SET_REVIEW_STEPS"; steps: EvalRuleReviewStep[] }
+  | { type: "SET_REVIEW_STEPS"; steps: EvalRuleReviewStepInput[] }
   | { type: "SET_GRADE_MAPPING"; gradeMapping: EvalRuleConfig["gradeMapping"] }
   | { type: "SET_RESOURCE_CONFIG"; methodKey: string; resourceConfig: Record<string, any> }
   | { type: "SET_CUSTOM_QUESTIONS"; questions: EvalRuleConfig["randomDrawCustomQuestions"] }
@@ -239,7 +239,8 @@ function reducer(state: EvalRuleState, action: EvalRuleAction): EvalRuleState {
     }
 
     case "SET_REVIEW_STEPS": {
-      // reviewSteps 暂存在 review 方式的 resourceConfig 中，保持与旧逻辑兼容
+      next.reviewSteps = action.steps
+      // Keep a copy in review resourceConfig for backward compatibility with older consumers.
       next.methodResourceConfigs = {
         ...next.methodResourceConfigs,
         review: { ...(next.methodResourceConfigs.review || {}), reviewSteps: action.steps },
@@ -403,7 +404,7 @@ export function useEvalRuleStore(options: UseEvalRuleStoreOptions) {
     dispatch({ type: "TOGGLE_QUESTION", field, id })
   }, [])
 
-  const setReviewSteps = useCallback((steps: EvalRuleReviewStep[]) => {
+  const setReviewSteps = useCallback((steps: EvalRuleReviewStepInput[]) => {
     dispatch({ type: "SET_REVIEW_STEPS", steps })
   }, [])
 

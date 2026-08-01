@@ -675,7 +675,7 @@ function AddSystemPageInner() {
               type: localRes.type,
               url: localRes.url || "",
               description: localRes.description,
-              size: localRes.size,
+              size: localRes.size != null ? Number(localRes.size) : undefined,
             })
             await nodeResourceApi.bind({ nodeId: realNodeId, resourceId: created.id })
           } catch {

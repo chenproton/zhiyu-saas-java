@@ -125,15 +125,23 @@ import type { RandomDrawQuestion } from "@/lib/types"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import type { TaskEvaluationMethod } from "@/lib/types/scene"
 import { methodsToEvalRuleConfig, evalRuleConfigToMethods } from "@/lib/types/evaluation"
+import { EvaluationRulesEditor, type EvalRuleConfig, type EvalRuleReviewStepInput, uid } from "@/components/evaluation-rules"
 import { useToast } from "@zhiyu/ui"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { MajorSelect } from "@/components/shared/major-select"
 import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
 import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
 import { EvalMethodSelector } from "@/components/shared/eval-method-selector"
-import { KnowledgeSelector } from "@/app/lesson/admin/_components/knowledge/knowledge-selector"
+import { KnowledgeSelector } from "@/components/shared/knowledge-selector"
 import type { KnowledgePointItem } from "@/lib/types/lesson"
-import { ResourceSelector, type ResourceItem } from "@/app/lesson/admin/_components/resources/resource-selector"
+import { ResourceSelector, type ResourceItem } from "@/components/shared/resource-selector"
+import {
+  useTaskDatasets,
+  type TaskKnowledgePointItem,
+  type TaskResourceItem,
+  type RubricScheme,
+  type UseTaskDatasetsResult,
+} from "./_components/hooks/use-task-datasets"
 import { TaskInfoCard } from "./_components/task-info-card"
 import { TaskDescriptionCard } from "./_components/task-description-card"
 import { TaskWeightCard } from "./_components/task-weight-card"
@@ -141,7 +149,6 @@ import { TaskKnowledgeCard } from "./_components/task-knowledge-card"
 import { BankQuestionSelectorPanel } from "./_components/bank-question-selector-panel"
 import { RandomDrawResourcePanel } from "./_components/random-draw-resource-panel"
 import { PaperConfigPanel } from "./_components/paper-config-panel"
-import { ResourceMaterialConfig } from "./_components/resource-material-config"
 import { MethodDialogContent, type MethodDialogCtx } from "./_components/method-config-dialog"
 import { questionCache, allQuestions, loadedExams } from "./_components/shared-defs"
 import { useAuth } from "@/components/auth-provider"
@@ -149,16 +156,6 @@ import type {
   Task, PositionAbility, GradeMapping,
 } from "@/lib/types/scene-mock"
 import { COMPETENCY_LEVEL_LABELS } from "@/lib/types/job-source"
-
-// Module-level mutable arrays — populated from APIs on mount, zero mock data
-const scenarios: any[] = []
-const knowledgePoints: any[] = []
-const abilityPoints: any[] = []
-const learningResources: any[] = []
-const positionAbilities: any[] = []
-const questionBank: Record<string, any[]> = { frontend: [], backend: [], draft: [] }
-const granularLessons: any[] = []
-const professions: any[] = []
 
 // Generate a valid v4 UUID for custom items so they can be stored in backend UUID[] columns
 function generateUUID(): string {
@@ -411,17 +408,6 @@ interface ScoreRuleItem {
   weight: number
 }
 
-type RubricScheme = {
-  id: string
-  name: string
-  types: EvalSubType[]
-  desc: string
-  points: EvalPoint[]
-  mode: "rubric" | "score_rule"
-  scoreRuleItems?: ScoreRuleItem[]
-  isDeleted?: boolean
-}
-
 type EvalPointField =
   | "randomDrawEvalPoints"
   | "reviewEvalPoints"
@@ -482,6 +468,106 @@ interface TaskState {
   reviewSteps: any[]
   methodResourceConfigs: Record<string, any>
   evalMethodVersion: number
+}
+
+function taskStateToEvalRuleConfig(state: TaskState): EvalRuleConfig {
+  const normalizeMethod = (m: string) => (m === "exam" ? "homework" : m)
+  const normalizeMap = <T,>(record: Record<string, T>): Record<string, T> => {
+    const next: Record<string, T> = {}
+    Object.entries(record || {}).forEach(([k, v]) => { next[normalizeMethod(k)] = v })
+    return next
+  }
+  return {
+    evaluationMethods: state.evaluationMethods.map(normalizeMethod) as EvalRuleConfig["evaluationMethods"],
+    disabledEvaluationMethods: (state.disabledEvaluationMethods || []).map(normalizeMethod) as EvalRuleConfig["disabledEvaluationMethods"],
+    methodWeights: normalizeMap(state.methodWeights || {}),
+    evalObject: state.evalObject,
+    methodEvalObjects: normalizeMap(state.methodEvalObjects || {}),
+    evalSubjects: state.evalSubjects,
+    methodEvalSubjects: normalizeMap(state.methodEvalSubjects || {}),
+    randomDrawQuestions: state.randomDrawQuestions,
+    randomDrawCustomQuestions: state.randomDrawCustomQuestions,
+    randomDrawSelectedIds: state.randomDrawSelectedIds,
+    randomDrawEvalPoints: state.randomDrawEvalPoints,
+    randomDrawScoreType: state.randomDrawScoreType,
+    randomDrawRubricId: state.randomDrawRubricId,
+    reviewEvalPoints: state.reviewEvalPoints,
+    reviewScoreType: state.reviewScoreType,
+    reviewRubricId: state.reviewRubricId,
+    paperIds: state.paperIds,
+    paperWeights: state.paperWeights,
+    paperEvalPoints: state.paperEvalPoints,
+    questionBankQuestions: state.questionBankQuestions,
+    questionBankEvalPoints: state.questionBankEvalPoints,
+    outcomeEvalPoints: state.outcomeEvalPoints,
+    outcomeScoreType: state.outcomeScoreType,
+    outcomeRubricId: state.outcomeRubricId,
+    homeworkEvalPoints: state.homeworkEvalPoints,
+    homeworkScoreType: state.homeworkScoreType,
+    homeworkRubricId: state.homeworkRubricId,
+    quizQuestions: state.quizQuestions,
+    quizEvalPoints: state.quizEvalPoints,
+    gradeMapping: state.gradeMapping,
+    methodResourceConfigs: state.methodResourceConfigs,
+    reviewSteps: (state.reviewSteps || []).map((rs: any, i: number) => ({
+      label: rs.label,
+      description: rs.desc || null,
+      enabled: rs.enabled,
+      subjectType: rs.subjectType || null,
+      weight: rs.weight,
+      sortOrder: i,
+    })),
+  }
+}
+
+function evalRuleConfigToTaskStateUpdates(config: EvalRuleConfig): Partial<TaskState> {
+  const normalizeMethod = (m: string) => (m === "homework" ? "exam" : m)
+  const normalizeMap = <T,>(record: Record<string, T>): Record<string, T> => {
+    const next: Record<string, T> = {}
+    Object.entries(record || {}).forEach(([k, v]) => { next[normalizeMethod(k)] = v })
+    return next
+  }
+  return {
+    evaluationMethods: config.evaluationMethods.map(normalizeMethod),
+    disabledEvaluationMethods: (config.disabledEvaluationMethods || []).map(normalizeMethod),
+    methodWeights: normalizeMap(config.methodWeights || {}),
+    evalObject: config.evalObject,
+    methodEvalObjects: normalizeMap(config.methodEvalObjects || {}),
+    evalSubjects: config.evalSubjects as EvalSubjectConfig[],
+    methodEvalSubjects: normalizeMap(config.methodEvalSubjects || {}) as Record<string, EvalSubjectConfig[]>,
+    randomDrawQuestions: config.randomDrawQuestions,
+    randomDrawCustomQuestions: config.randomDrawCustomQuestions,
+    randomDrawSelectedIds: config.randomDrawSelectedIds,
+    randomDrawEvalPoints: config.randomDrawEvalPoints as EvalPoint[],
+    randomDrawScoreType: config.randomDrawScoreType,
+    randomDrawRubricId: config.randomDrawRubricId,
+    reviewEvalPoints: config.reviewEvalPoints as EvalPoint[],
+    reviewScoreType: config.reviewScoreType,
+    reviewRubricId: config.reviewRubricId,
+    paperIds: config.paperIds,
+    paperWeights: config.paperWeights,
+    paperEvalPoints: config.paperEvalPoints as EvalPoint[],
+    questionBankQuestions: config.questionBankQuestions,
+    questionBankEvalPoints: config.questionBankEvalPoints as EvalPoint[],
+    outcomeEvalPoints: config.outcomeEvalPoints as EvalPoint[],
+    outcomeScoreType: config.outcomeScoreType,
+    outcomeRubricId: config.outcomeRubricId,
+    homeworkEvalPoints: config.homeworkEvalPoints as EvalPoint[],
+    homeworkScoreType: config.homeworkScoreType,
+    homeworkRubricId: config.homeworkRubricId,
+    quizQuestions: config.quizQuestions,
+    quizEvalPoints: config.quizEvalPoints as EvalPoint[],
+    gradeMapping: config.gradeMapping,
+    methodResourceConfigs: config.methodResourceConfigs,
+    reviewSteps: (config.reviewSteps || []).map((rs: EvalRuleReviewStepInput, i: number) => ({
+      id: (rs as { id?: string }).id || uid("rs"),
+      label: rs.label,
+      desc: rs.description || "",
+      enabled: rs.enabled,
+      subjectType: rs.subjectType || "",
+      weight: rs.weight,
+    })),
+  }
 }
 
 const defaultEvalSubjects: EvalSubjectConfig[] = [
@@ -678,18 +764,7 @@ export default function TasksEditPage() {
   const { toast } = useToast()
   const { tenantId, user } = useAuth()
 
-  // Sync persisted custom knowledge points whenever auth/user becomes available.
-  // The initial data load may run before useAuth resolves user, leaving the
-  // module-level custom set empty. This recompute ensures KPs created by the
-  // current user are marked as custom without waiting for a full reload.
-  if (user?.id && knowledgePoints.length > 0) {
-    knowledgePoints.forEach((kp: any) => {
-      if (kp.creatorId && kp.creatorId === user.id) {
-        customKnowledgePointIds.add(kp.id)
-        persistedCustomKnowledgePointIds.add(kp.id)
-      }
-    })
-  }
+  const datasets = useTaskDatasets(scenarioId)
 
   const [existingScenario, setExistingScenario] = useState<any>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
@@ -700,161 +775,28 @@ export default function TasksEditPage() {
   const [positions, setPositions] = useState<any[]>([])
   const [industries, setIndustries] = useState<any[]>([])
   const [majors, setMajors] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
-  const [positionAbilityBindings, setPositionAbilityBindings] = useState<any[]>([])
-  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
-  const [cloneDataVersion, setCloneDataVersion] = useState(0)
-  // 懒加载数据集就绪后 bump 一次以触发重渲染（module 级数组非响应式）
-  const [lazyDataVersion, setLazyDataVersion] = useState(0)
-  void lazyDataVersion
+  const [professions, setProfessions] = useState<any[]>([])
 
   const userNameMap = useMemo(() => {
     const map: Record<string, string> = {}
-    users.forEach((u: any) => { map[u.id] = u.name || u.id })
+    datasets.users.forEach((u: any) => { map[u.id] = u.name || u.id })
     return map
-  }, [users])
+  }, [datasets.users])
 
-  // 已加载的数据集标记：知识/能力/资源/测评/用户/克隆候选按需首用时才请求
-  const loadedDatasetsRef = useRef<Set<string>>(new Set())
   const scenarioDataRef = useRef<any>(null)
   const taskStatesRef = useRef(taskStates)
   useEffect(() => {
     taskStatesRef.current = taskStates
   })
 
+  const { loadDatasets } = datasets
   const ensureDatasets = useCallback(async (keys: string[]) => {
-    const pending = keys.filter((k) => !loadedDatasetsRef.current.has(k))
-    if (pending.length === 0) return
-    pending.forEach((k) => loadedDatasetsRef.current.add(k))
-
-    const jobs = pending.map(async (key) => {
-      try {
-        if (key === "knowledge") {
-          const [kpRes, glRes] = await Promise.all([
-            knowledgeApi.list({ limit: 1000 }),
-            courseApi.list({ type: "granular", limit: 1000 }),
-          ])
-          knowledgePoints.length = 0
-          customKnowledgePointIds.clear()
-          kpRes.items.forEach((kp: any) => {
-            knowledgePoints.push({ ...kp, granularLessons: kp.granularLessonIds || [] })
-            if (kp.creatorId && kp.creatorId === user?.id) {
-              customKnowledgePointIds.add(kp.id)
-            }
-          })
-          granularLessons.length = 0
-          glRes.items.forEach((gl: any) => granularLessons.push(gl))
-        } else if (key === "ability") {
-          const apRes = await abilityApi.list({ limit: 1000 })
-          abilityPoints.length = 0
-          apRes.items.forEach((ap: any) => abilityPoints.push(ap))
-          const positionId = scenarioDataRef.current?.careerPositionId
-          if (positionId) {
-            try {
-              const bindingsRes = await abilityApi.listBindings({ careerPositionId: positionId })
-              setPositionAbilityBindings(bindingsRes.items)
-            } catch {
-              setPositionAbilityBindings([])
-            }
-          }
-        } else if (key === "resources") {
-          const resRes = await resourceLibraryApi.list({ limit: 1000 })
-          learningResources.length = 0
-          resRes.items.forEach((res: any) => {
-            learningResources.push({
-              ...res,
-              type: res.resourceType || res.type,
-              size: res.fileSize !== undefined ? String(res.fileSize) : res.size,
-            })
-          })
-        } else if (key === "evaluation") {
-          const [examRes, rubricRes] = await Promise.all([
-            examApi.list({ limit: 1000 }),
-            taskEvaluationApi.listTemplates({ limit: 200 }).catch(() => ({ items: [] as any[], total: 0 })),
-          ])
-          loadedExams.length = 0
-          ;(examRes.items || []).forEach((e: any) => loadedExams.push(e))
-          const mapTemplate = (rt: any): RubricScheme => ({
-            id: rt.id,
-            name: rt.name,
-            types: (rt.types || []) as EvalSubType[],
-            desc: rt.description || "",
-            points: rt.mode === "rubric" ? (rt.data?.points || []).map((p: any) => ({
-              ...p,
-              id: p.id || `ep-${Math.random().toString(36).slice(2, 9)}`,
-              desc: p.description || "",
-            })) : [],
-            mode: (rt.mode || "rubric") as "rubric" | "score_rule",
-            scoreRuleItems: rt.mode === "score_rule" ? (rt.data?.scoreRuleItems || []) : undefined,
-            isDeleted: rt.isDeleted || false,
-          })
-          setRubricLibrary((rubricRes.items || []).map(mapTemplate))
-          // 补齐任务引用但已从库中删除的量规模板
-          const referencedTemplateIds = new Set<string>()
-          Object.values(taskStatesRef.current).forEach((ts) => {
-            if (ts.randomDrawRubricId) referencedTemplateIds.add(ts.randomDrawRubricId)
-            if (ts.reviewRubricId) referencedTemplateIds.add(ts.reviewRubricId)
-            if (ts.outcomeRubricId) referencedTemplateIds.add(ts.outcomeRubricId)
-            if (ts.homeworkRubricId) referencedTemplateIds.add(ts.homeworkRubricId)
-          })
-          const existingIds = new Set((rubricRes.items || []).map((rt: any) => rt.id))
-          const missingIds = Array.from(referencedTemplateIds).filter((id) => id && !existingIds.has(id))
-          if (missingIds.length > 0) {
-            const fetched = await Promise.all(missingIds.map((id) => taskEvaluationApi.getTemplate(id).catch(() => null)))
-            const newTemplates = fetched.filter(Boolean).map(mapTemplate)
-            if (newTemplates.length > 0) {
-              setRubricLibrary((prev) => [...prev, ...newTemplates])
-            }
-          }
-        } else if (key === "users") {
-          const userRes = await userManagementApi.list({ limit: 1000 })
-          setUsers(userRes.items)
-          // 补齐头部共建人姓名（初始挂载时以 id 占位）
-          const nameMap = new Map((userRes.items || []).map((u: any) => [u.id, u.name]))
-          setExistingScenario((prev: any) =>
-            prev
-              ? { ...prev, coBuilders: (prev.coBuilders || []).map((cb: { id: string; name: string }) => ({ ...cb, name: nameMap.get(cb.id) || cb.id })) }
-              : prev
-          )
-        } else if (key === "clone") {
-          // 克隆对话框候选：全部场景及其任务
-          try {
-            const allScenariosRes = await scenarioApi.list({ limit: 1000 })
-            const allTasksRes = await taskApi.list({ limit: 1000 })
-            const scenarioNameMap = new Map<string, string>()
-            const scenarioMetaMap = new Map<string, { creatorId: string; coBuilderIds: string[]; status: string }>()
-            for (const s of allScenariosRes.items) {
-              scenarioNameMap.set(s.id, s.name)
-              scenarioMetaMap.set(s.id, { creatorId: s.creatorId, coBuilderIds: s.coBuilderIds || [], status: s.status })
-            }
-            const tasksByScenarioId = new Map<string, any[]>()
-            for (const t of allTasksRes.items) {
-              const sName = scenarioNameMap.get(t.scenarioId) || "未知场景"
-              const sMeta = scenarioMetaMap.get(t.scenarioId) || { creatorId: "", coBuilderIds: [], status: "" }
-              const enhanced = { ...t, scenarioName: sName, scenarioCreatorId: sMeta.creatorId, scenarioCoBuilderIds: sMeta.coBuilderIds, scenarioStatus: sMeta.status }
-              if (!tasksByScenarioId.has(t.scenarioId)) tasksByScenarioId.set(t.scenarioId, [])
-              tasksByScenarioId.get(t.scenarioId)!.push(enhanced)
-            }
-            scenarios.length = 0
-            if (scenarioDataRef.current) scenarios.push(scenarioDataRef.current as any)
-            for (const s of allScenariosRes.items) {
-              const tasksForScenario = tasksByScenarioId.get(s.id) || []
-              if (tasksForScenario.length > 0) {
-                scenarios.push({ ...s, tasks: tasksForScenario })
-              }
-            }
-            setCloneDataVersion((v) => v + 1)
-          } catch {
-            // 克隆候选加载失败不影响主流程
-          }
-        }
-      } catch (err) {
-        console.error(`加载数据集 ${key} 失败`, err)
-      }
+    await loadDatasets(keys, {
+      taskStatesRef,
+      setExistingScenario,
+      scenarioDataRef,
     })
-    await Promise.all(jobs)
-    setLazyDataVersion((v) => v + 1)
-  }, [user?.id])
+  }, [loadDatasets])
 
   // Load core data on mount (其余数据集按卡片/对话框首次激活时懒加载)
   useEffect(() => {
@@ -901,15 +843,16 @@ export default function TasksEditPage() {
           }
         })
 
-        professions.length = 0
+        const nextProfessions: any[] = []
         posRes.items.forEach((p: any) => {
-          const prof = professions.find((pr: any) => pr.name === (p.industryName || "其他"))
+          const prof = nextProfessions.find((pr: any) => pr.name === (p.industryName || "其他"))
           if (prof) {
             prof.positions.push({ id: p.id, name: p.name, professionId: prof.id })
           } else {
-            professions.push({ id: `prof-${professions.length + 1}`, name: p.industryName || "其他", positions: [{ id: p.id, name: p.name, professionId: `prof-${professions.length + 1}` }] })
+            nextProfessions.push({ id: `prof-${nextProfessions.length + 1}`, name: p.industryName || "其他", positions: [{ id: p.id, name: p.name, professionId: `prof-${nextProfessions.length + 1}` }] })
           }
         })
+        setProfessions(nextProfessions)
 
         // Convert API tasks to mock Task format
         const apiTasks = tasksRes.items
@@ -1010,14 +953,9 @@ export default function TasksEditPage() {
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
   const [deleteConfirmTask, setDeleteConfirmTask] = useState<{ id: string; name: string } | null>(null)
 
-  const posAbilities = useMemo(() =>
-    positionAbilities.filter(a => a.positionId === existingScenario?.positionId),
-    [existingScenario?.positionId]
-  )
-
   const allTasks = useMemo(() => {
-    void cloneDataVersion
-    return (scenarios as any[]).flatMap((s: any) =>
+    void datasets.cloneDataVersion
+    return (datasets.scenarios as any[]).flatMap((s: any) =>
       (s.tasks || []).map((t: any) => ({
         ...t,
         scenarioName: s.name,
@@ -1026,9 +964,7 @@ export default function TasksEditPage() {
         scenarioStatus: t.scenarioStatus || s.status || "",
       }))
     )
-  },
-    [cloneDataVersion]
-  )
+  }, [datasets.scenarios, datasets.cloneDataVersion])
 
   const totalWeight = Object.values(taskStates).reduce((sum, s) => sum + s.weight, 0)
 
@@ -1056,15 +992,15 @@ export default function TasksEditPage() {
       }
       case "knowledge":
         if (state.knowledgePoints.length === 0) return "未配置"
-        const kpNames = state.knowledgePoints.map(id => knowledgePoints.find(k => k.id === id)?.name).filter(Boolean)
+        const kpNames = state.knowledgePoints.map(id => datasets.knowledgePoints.find(k => k.id === id)?.name).filter(Boolean)
         return kpNames.slice(0, 3).join("、") + (kpNames.length > 3 ? ` 等${state.knowledgePoints.length}个` : "")
       case "ability":
         if (state.abilityPoints.length === 0) return "未配置"
-        const abNames = state.abilityPoints.map(id => abilityPoints.find(a => a.id === id)?.name).filter(Boolean)
+        const abNames = state.abilityPoints.map(id => (datasets.abilityPoints.find(a => (a as { id: string }).id === id) as { name?: string } | undefined)?.name).filter(Boolean)
         return abNames.slice(0, 3).join("、") + (abNames.length > 3 ? ` 等${state.abilityPoints.length}个` : "")
       case "resources":
         if (state.resources.length === 0) return "未配置"
-        const resNames = state.resources.map(id => learningResources.find(r => r.id === id)?.name).filter(Boolean)
+        const resNames = state.resources.map(id => datasets.learningResources.find(r => r.id === id)?.name).filter(Boolean)
         return resNames.slice(0, 3).join("、") + (resNames.length > 3 ? ` 等${state.resources.length}个` : "")
       case "evaluation":
         if (state.evaluationMethods.length === 0) return "未配置"
@@ -1214,11 +1150,13 @@ export default function TasksEditPage() {
     // Persist custom knowledge points added in this session and map their IDs
     const kpIdMapping: Record<string, string> = {}
     const failedCreateIds: string[] = []
-    for (const kpId of Array.from(customKnowledgePointIds)) {
-      const kp = knowledgePoints.find(k => k.id === kpId)
+    let nextKnowledgePoints = [...datasets.knowledgePoints]
+    const nextCustomKnowledgePointIds = new Set(datasets.customKnowledgePointIds)
+    for (const kpId of Array.from(datasets.customKnowledgePointIds)) {
+      const kp = nextKnowledgePoints.find(k => k.id === kpId)
       if (!kp) continue
       try {
-        if (persistedCustomKnowledgePointIds.has(kpId)) {
+        if (datasets.persistedCustomKnowledgePointIds.current.has(kpId)) {
           // Already persisted in a previous save: update instead of re-create
           const updated = await knowledgeApi.update(kpId, {
             name: kp.name,
@@ -1227,8 +1165,10 @@ export default function TasksEditPage() {
             linked: kp.linked ?? false,
             granularLessonIds: kp.granularLessons || [],
           } as any)
-          const idx = knowledgePoints.findIndex(k => k.id === kpId)
-          if (idx >= 0) knowledgePoints[idx].granularLessons = updated.granularLessonIds || knowledgePoints[idx].granularLessons || []
+          const idx = nextKnowledgePoints.findIndex(k => k.id === kpId)
+          if (idx >= 0) {
+            nextKnowledgePoints[idx] = { ...nextKnowledgePoints[idx], granularLessons: updated.granularLessonIds || nextKnowledgePoints[idx].granularLessons || [] }
+          }
         } else {
           const created = await knowledgeApi.create({
             name: kp.name,
@@ -1240,45 +1180,53 @@ export default function TasksEditPage() {
             sourceId: scenarioId,
           } as any)
           kpIdMapping[kpId] = created.id
-          const idx = knowledgePoints.findIndex(k => k.id === kpId)
-          if (idx >= 0) knowledgePoints[idx] = { ...knowledgePoints[idx], id: created.id, granularLessons: created.granularLessonIds || knowledgePoints[idx].granularLessons || [] }
-          customKnowledgePointIds.delete(kpId)
-          customKnowledgePointIds.add(created.id)
-          persistedCustomKnowledgePointIds.add(created.id)
+          const idx = nextKnowledgePoints.findIndex(k => k.id === kpId)
+          if (idx >= 0) {
+            nextKnowledgePoints[idx] = { ...nextKnowledgePoints[idx], id: created.id, granularLessons: created.granularLessonIds || nextKnowledgePoints[idx].granularLessons || [] }
+          }
+          nextCustomKnowledgePointIds.delete(kpId)
+          nextCustomKnowledgePointIds.add(created.id)
+          datasets.persistedCustomKnowledgePointIds.current.add(created.id)
         }
       } catch (err: any) {
         failedCreateIds.push(kpId)
       }
     }
+    datasets.setKnowledgePoints(nextKnowledgePoints)
+    datasets.setCustomKnowledgePointIds(nextCustomKnowledgePointIds)
     if (failedCreateIds.length > 0) {
       toast({ variant: "destructive", title: "部分自定义知识点保存失败", description: `${failedCreateIds.length} 个知识点未能创建，将从任务中移除` })
     }
 
     // Persist custom ability points added in this session and map their IDs
     const abIdMapping: Record<string, string> = {}
-    for (const abId of Array.from(customAbilityPointIds)) {
-      const ap = abilityPoints.find(a => a.id === abId)
+    let nextAbilityPoints = [...datasets.abilityPoints]
+    for (const abId of Array.from(datasets.customAbilityPointIds.current)) {
+      const ap = nextAbilityPoints.find(a => (a as { id: string }).id === abId)
       if (!ap) continue
       try {
         const created = await abilityApi.create({
-          name: ap.name,
-          description: ap.description,
-          category: ap.category,
+          name: (ap as { name: string }).name,
+          description: (ap as { description?: string }).description,
+          category: (ap as { category?: string }).category,
           attributes: [],
           isPublic: false,
         } as any)
         abIdMapping[abId] = created.id
-        const idx = abilityPoints.findIndex(a => a.id === abId)
-        if (idx >= 0) abilityPoints[idx] = { ...abilityPoints[idx], id: created.id }
-        customAbilityPointIds.delete(abId)
+        const idx = nextAbilityPoints.findIndex(a => (a as { id: string }).id === abId)
+        if (idx >= 0) nextAbilityPoints[idx] = { ...nextAbilityPoints[idx] as object, id: created.id }
+        datasets.customAbilityPointIds.current.delete(abId)
       } catch (err: any) {
       }
     }
+    datasets.setAbilityPoints(nextAbilityPoints)
 
     // Persist custom resources added in this session and map their IDs
     const resourceIdMapping: Record<string, string> = {}
-    for (const resId of Array.from(customResourceIds)) {
-      const res = learningResources.find(r => r.id === resId)
+    let nextLearningResources = [...datasets.learningResources]
+    const nextCustomResourceIds = new Set(datasets.customResourceIds)
+    for (const resId of Array.from(datasets.customResourceIds)) {
+      const res = nextLearningResources.find(r => r.id === resId)
       if (!res) continue
       try {
         const created = await taskResourceApi.create({
@@ -1293,12 +1241,14 @@ export default function TasksEditPage() {
           uploadedBy: res.uploadedBy,
         } as any)
         resourceIdMapping[resId] = created.id
-        const idx = learningResources.findIndex(r => r.id === resId)
-        if (idx >= 0) learningResources[idx] = { ...learningResources[idx], id: created.id }
-        customResourceIds.delete(resId)
+        const idx = nextLearningResources.findIndex(r => r.id === resId)
+        if (idx >= 0) nextLearningResources[idx] = { ...nextLearningResources[idx], id: created.id }
+        nextCustomResourceIds.delete(resId)
       } catch (err: any) {
       }
     }
+    datasets.setLearningResources(nextLearningResources)
+    datasets.setCustomResourceIds(nextCustomResourceIds)
 
     // Replace temporary custom IDs with persisted IDs across all task states
     const replaceIds = (ids: string[]) => ids.map(id => kpIdMapping[id] || abIdMapping[id] || resourceIdMapping[id] || id).filter(id => !id.startsWith("kp-custom-") && !id.startsWith("ab-custom-"))
@@ -1764,13 +1714,15 @@ export default function TasksEditPage() {
           onClose={() => setEditingCard(null)}
           positionId={existingScenario?.positionId}
           toast={toast}
-          positionAbilityBindings={positionAbilityBindings}
+          positionAbilityBindings={datasets.positionAbilityBindings}
           userNameMap={userNameMap}
           tenantId={tenantId}
           majors={majors}
-          rubricLibrary={rubricLibrary}
-          setRubricLibrary={setRubricLibrary}
+          rubricLibrary={datasets.rubricLibrary}
+          setRubricLibrary={datasets.setRubricLibrary}
           scenarioId={scenarioId}
+          datasets={datasets}
+          professions={professions}
         />
       )}
 
@@ -1820,12 +1772,6 @@ const difficultyLabels: Record<string, string> = {
   medium: "中等",
   hard: "困难",
 }
-
-// Module-level sets to track custom (added/cloned) points/resources across dialog re-opens
-const customKnowledgePointIds = new Set<string>()
-const persistedCustomKnowledgePointIds = new Set<string>()
-const customAbilityPointIds = new Set<string>()
-const customResourceIds = new Set<string>()
 
 function PaperDetailWrapper({ paperId, open, onOpenChange }: { paperId: string | null, open: boolean, onOpenChange: (v: boolean) => void }) {
   const [paper, setPaper] = useState<any>(null)
@@ -1949,2806 +1895,12 @@ const typeColorMap: Record<string, string> = {
   short_answer: "bg-teal-500",
 }
 
-// ============ Edit Card Dialog ============
-
-
-// ============ EvalRulesPanel (extracted from EditCardDialog) ============
-
 const DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG = { questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true, submitFormatDesc: "", venueResources: "" }
 const DEFAULT_REVIEW_RESOURCE_CONFIG = { materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true }
 const DEFAULT_OUTCOME_RESOURCE_CONFIG = { materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的成果材料，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true }
 const DEFAULT_HOMEWORK_RESOURCE_CONFIG = { materialType: "homework_file", submitFormatDesc: "请提交 PDF 或 DOCX 格式的作业文件。", deadlineDays: 7, allowResubmit: false, venueResources: "", requiresMaterial: true }
 
-function EvalRulesPanel({
-  state,
-  updateState,
-  toast,
-  positionId,
-  majors,
-  tenantId,
-  rubricLibrary,
-  setRubricLibrary,
-  reviewSteps,
-  setReviewSteps,
-}: {
-  state: TaskState
-  updateState: (u: Partial<TaskState>) => void
-  toast: (opts: { title?: string; description?: string; variant?: "default" | "destructive" }) => void
-  positionId?: string
-  majors: any[]
-  tenantId?: string
-  rubricLibrary: RubricScheme[]
-  setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
-  reviewSteps: any[]
-  setReviewSteps: React.Dispatch<React.SetStateAction<any[]>>
-}) {
-  const [methodDialogViews, setMethodDialogViews] = useState<Record<string, "list" | "edit">>({})
-  const [newPointName, setNewPointName] = useState("")
-  const [editingRubricId, setEditingRubricId] = useState<string | null>(null)
-
-  const [erQSearch, setErQSearch] = useState("")
-  const [erPSearch, setErPSearch] = useState("")
-  const [erKpSearch, setErKpSearch] = useState("")
-  const [erAbSearch, setErAbSearch] = useState("")
-  const [erDialogOpen, setErDialogOpen] = useState<"object" | "subject" | "resource" | "method" | null>(null)
-  const [erDialogMethod, setErDialogMethod] = useState<string | null>(null)
-  const [rubricKpDialogOpen, setRubricKpDialogOpen] = useState(false)
-  const [rubricKpSearch, setRubricKpSearch] = useState("")
-  const [rubricKpTargetPointId, setRubricKpTargetPointId] = useState<string | null>(null)
-  const [rubricKpTargetField, setRubricKpTargetField] = useState<string | null>(null)
-  const [rubricAbDialogOpen, setRubricAbDialogOpen] = useState(false)
-  const [rubricAbSearch, setRubricAbSearch] = useState("")
-  const [rubricAbTargetPointId, setRubricAbTargetPointId] = useState<string | null>(null)
-  const [rubricAbTargetField, setRubricAbTargetField] = useState<string | null>(null)
-  const [questionTab, setQuestionTab] = useState<"my" | "collab" | "public">("my")
-  const [questionSearch, setQuestionSearch] = useState("")
-  const [showAddQuestion, setShowAddQuestion] = useState(false)
-  const [questionDetailOpen, setQuestionDetailOpen] = useState(false)
-  const [selectedQuestionForDetail, setSelectedQuestionForDetail] = useState<string | null>(null)
-
-  const [editingReviewStepId, setEditingReviewStepId] = useState<string | null>(null)
-  const [editingStepLabel, setEditingStepLabel] = useState("")
-  const [editingStepDesc, setEditingStepDesc] = useState("")
-  const [showAddStep, setShowAddStep] = useState(false)
-  const [newStepLabel, setNewStepLabel] = useState("")
-  const [newStepDesc, setNewStepDesc] = useState("")
-  const [newStepSubjectType, setNewStepSubjectType] = useState("")
-
-  const [selectedPaperForDetail, setSelectedPaperForDetail] = useState<string | null>(null)
-  const [paperDetailOpen, setPaperDetailOpen] = useState(false)
-  const [showCreatePaper, setShowCreatePaper] = useState(false)
-  const [configPaperId, setConfigPaperId] = useState<string | null>(null)
-  const [configSelectedIds, setConfigSelectedIds] = useState<string[]>([])
-  const [newPaperName, setNewPaperName] = useState("")
-  const [newPaperQuestionCount, setNewPaperQuestionCount] = useState(10)
-  const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
-
-  const [rdqSearch, setRdqSearch] = useState("")
-  const [rdqActionOpen, setRdqActionOpen] = useState(false)
-  const [rdqActionMode, setRdqActionMode] = useState<"add" | "edit" | null>(null)
-  const [rdqActionTarget, setRdqActionTarget] = useState<{ id: string; name: string; description: string; answer: string } | null>(null)
-  const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", majorId: "" })
-  const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
-  const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
-  const [rdqMajorTab, setRdqMajorTab] = useState("全部")
-  const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
-  const [rdqDrawCount, setRdqDrawCount] = useState(5)
-  const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
-  const [qbPassRate, setQbPassRate] = useState(60)
-
-  const [newQuestionType, setNewQuestionType] = useState<"single" | "multiple" | "judgment" | "short_answer" | "essay" | "fill_blank">("single")
-  const [newQuestionName, setNewQuestionName] = useState("")
-  const [newQuestionContent, setNewQuestionContent] = useState("")
-  const [newQuestionDifficulty, setNewQuestionDifficulty] = useState<"easy" | "medium" | "hard">("easy")
-  const [newQuestionScore, setNewQuestionScore] = useState(10)
-  const [newQuestionOptions, setNewQuestionOptions] = useState(["", "", "", ""])
-  const [newQuestionAnswer, setNewQuestionAnswer] = useState("")
-  const [newQuestionMultipleAnswer, setNewQuestionMultipleAnswer] = useState<string[]>([])
-  const [newQuestionJudgmentAnswer, setNewQuestionJudgmentAnswer] = useState<"true" | "false">("true")
-  const [newQuestionBank, setNewQuestionBank] = useState("draft")
-
-        const qSearch = erQSearch
-        const setQSearch = setErQSearch
-        const pSearch = erPSearch
-        const setPSearch = setErPSearch
-        const kpSearchForEval = erKpSearch
-        const setKpSearchForEval = setErKpSearch
-        const abSearchForEval = erAbSearch
-        const setAbSearchForEval = setErAbSearch
-
-        const [isOrderConfigOpen, setIsOrderConfigOpen] = useState(false)
-        const [isWeightConfigOpen, setIsWeightConfigOpen] = useState(false)
-
-        // 测评方式实例计数（纯 UI 模拟，不持久化）
-        const [methodInstanceCounts, setMethodInstanceCounts] = useState<Record<string, number>>({})
-
-        const getMethodInstances = () => {
-          const instances: { methodKey: string; instanceIndex: number }[] = []
-          state.evaluationMethods.forEach(methodKey => {
-            const count = methodInstanceCounts[methodKey] || 1
-            for (let i = 0; i < count; i++) {
-              instances.push({ methodKey, instanceIndex: i })
-            }
-          })
-          return instances
-        }
-
-        const subjectLabels: Record<string, string> = {
-          teacher: "教师",
-          enterprise_mentor: "企业导师",
-          self: "自评",
-          peer: "互评",
-        }
-
-        const getMethodConfigSummary = (methodKey: string) => {
-          switch (methodKey) {
-            case "random_draw":
-              return { title: "现场问答", summary: `${state.randomDrawSelectedIds.length} 题 / ${state.randomDrawEvalPoints.length} 个评价点`, configured: state.randomDrawSelectedIds.length > 0 || state.randomDrawEvalPoints.length > 0 }
-            case "review":
-              return { title: "现场评审", summary: `${state.reviewEvalPoints.length} 个评价点`, configured: state.reviewEvalPoints.length > 0 }
-            case "paper":
-              return { title: "试卷", summary: state.paperIds.length > 0 ? `已选 ${state.paperIds.length} 张试卷` : "未选择", configured: state.paperIds.length > 0 }
-            case "question_bank":
-              return { title: "题库", summary: `${state.questionBankQuestions.length} 题`, configured: state.questionBankQuestions.length > 0 }
-            case "outcome":
-              return { title: "成果评价", summary: `${state.outcomeEvalPoints.length} 个评价点`, configured: state.outcomeEvalPoints.length > 0 }
-            case "homework":
-              return { title: "作业", summary: `${state.homeworkEvalPoints.length} 个评价点`, configured: state.homeworkEvalPoints.length > 0 }
-            case "quiz":
-              return { title: "随堂测", summary: `${state.quizQuestions.length} 题`, configured: state.quizQuestions.length > 0 }
-            default: return { title: "", summary: "", configured: false }
-          }
-        }
-
-        const updateEvalSubject = (idx: number, updates: Partial<EvalSubjectConfig>) => {
-          const newSubjects = [...state.evalSubjects]
-          newSubjects[idx] = { ...newSubjects[idx], ...updates }
-          updateState({ evalSubjects: newSubjects })
-        }
-
-        const updateMethodEvalSubject = (methodKey: string, idx: number, updates: Partial<EvalSubjectConfig>) => {
-          const baseSubjects = state.methodEvalSubjects[methodKey] || state.evalSubjects
-          const newSubjects = [...baseSubjects]
-          newSubjects[idx] = { ...newSubjects[idx], ...updates }
-          updateState({ methodEvalSubjects: { ...state.methodEvalSubjects, [methodKey]: newSubjects } })
-        }
-
-        const getEvalPoints = (field: EvalPointField) => {
-          switch (field) {
-            case "randomDrawEvalPoints": return state.randomDrawEvalPoints
-            case "reviewEvalPoints": return state.reviewEvalPoints
-            case "paperEvalPoints": return state.paperEvalPoints
-            case "questionBankEvalPoints": return state.questionBankEvalPoints
-            case "outcomeEvalPoints": return state.outcomeEvalPoints
-            case "homeworkEvalPoints": return state.homeworkEvalPoints
-            case "quizEvalPoints": return state.quizEvalPoints
-          }
-        }
-
-        const setEvalPoints = (field: EvalPointField, points: EvalPoint[]) => {
-          switch (field) {
-            case "randomDrawEvalPoints": updateState({ randomDrawEvalPoints: points }); break
-            case "reviewEvalPoints": updateState({ reviewEvalPoints: points }); break
-            case "paperEvalPoints": updateState({ paperEvalPoints: points }); break
-            case "questionBankEvalPoints": updateState({ questionBankEvalPoints: points }); break
-            case "outcomeEvalPoints": updateState({ outcomeEvalPoints: points }); break
-            case "homeworkEvalPoints": updateState({ homeworkEvalPoints: points }); break
-            case "quizEvalPoints": updateState({ quizEvalPoints: points }); break
-          }
-        }
-
-        const addEvalPoint = (field: EvalPointField, preset?: Partial<EvalPoint>) => {
-          const name = preset ? (preset.name ?? newPointName.trim()) : newPointName.trim()
-          if (!name && !preset) return
-          const newPoint: EvalPoint = {
-            id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-            name: name || "未命名评价点",
-            desc: preset?.desc || "",
-            subType: preset?.subType,
-            types: preset?.types,
-            knowledgePointIds: preset?.knowledgePointIds,
-            abilityPointIds: preset?.abilityPointIds,
-            scoringMethod: preset?.scoringMethod || "level",
-            gradeMapping: preset?.gradeMapping !== undefined ? preset.gradeMapping : (preset?.name === "" ? [] : JSON.parse(JSON.stringify(defaultGradeMapping))),
-          }
-          setEvalPoints(field, [...getEvalPoints(field), newPoint])
-          setNewPointName("")
-        }
-
-        const removeEvalPoint = (field: EvalPointField, id: string) => {
-          setEvalPoints(field, getEvalPoints(field).filter(p => p.id !== id))
-        }
-
-        const updateEvalPoint = (field: EvalPointField, id: string, updates: Partial<EvalPoint>) => {
-          setEvalPoints(field, getEvalPoints(field).map(p => p.id === id ? { ...p, ...updates } : p))
-        }
-
-        const toggleQuestion = (qid: string, field: "randomDrawQuestions" | "questionBankQuestions" | "quizQuestions") => {
-          const arr = field === "randomDrawQuestions" ? state.randomDrawQuestions : field === "quizQuestions" ? state.quizQuestions : state.questionBankQuestions
-          const exists = arr.includes(qid)
-          const newArr = exists ? arr.filter(x => x !== qid) : [...arr, qid]
-          if (field === "randomDrawQuestions") updateState({ randomDrawQuestions: newArr })
-          else if (field === "quizQuestions") updateState({ quizQuestions: newArr })
-          else updateState({ questionBankQuestions: newArr })
-        }
-
-        const addEvalPointFromAbility = (field: EvalPointField, abilityId: string, subType?: EvalSubType) => {
-          const ab = abilityPoints.find(a => a.id === abilityId)
-          if (!ab) return
-          addEvalPoint(field, {
-            name: ab.name,
-            desc: ab.description || "",
-            abilityPointIds: [ab.id],
-            subType,
-            scoringMethod: "level",
-          })
-        }
-
-        const addEvalPointFromKnowledge = (field: EvalPointField, kpId: string, subType?: EvalSubType) => {
-          const kp = knowledgePoints.find(k => k.id === kpId)
-          if (!kp) return
-          addEvalPoint(field, {
-            name: kp.name,
-            desc: kp.description || "",
-            knowledgePointIds: [kp.id],
-            subType,
-            scoringMethod: "level",
-          })
-        }
-
-        const LevelRuleEditor = ({ gradeMapping, onChange }: { gradeMapping: GradeMapping[]; onChange: (gm: GradeMapping[]) => void }) => {
-          const gradeColors = [
-            { light: "bg-green-50 border-green-200 text-green-700", dot: "bg-green-500" },
-            { light: "bg-blue-50 border-blue-200 text-blue-700", dot: "bg-blue-500" },
-            { light: "bg-yellow-50 border-yellow-200 text-yellow-700", dot: "bg-yellow-500" },
-            { light: "bg-red-50 border-red-200 text-red-700", dot: "bg-red-500" },
-          ]
-          return (
-            <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
-              <p className="text-xs font-medium text-gray-600 mb-2">等级转换规则</p>
-              <div className="h-6 bg-gray-200 rounded overflow-hidden flex mb-2">
-                {[...gradeMapping].sort((a, b) => a.minScore - b.minScore).map(g => {
-                  const width = g.maxScore - g.minScore + 1
-                  return <div key={g.id} className={cn("flex items-center justify-center text-white text-[10px] font-medium", g.color)} style={{ width: `${width}%` }}>{g.grade}</div>
-                })}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[...gradeMapping].sort((a, b) => b.maxScore - a.maxScore).map((g, i) => {
-                  const c = gradeColors[i % gradeColors.length]
-                  return (
-                    <div key={g.id} className={cn("rounded border p-2", c.light)}>
-                      <div className="flex items-center justify-between mb-1">
-                        <Input value={g.grade} onChange={e => onChange(gradeMapping.map(x => x.id === g.id ? { ...x, grade: e.target.value } : x))} className="w-14 h-6 text-center text-xs font-semibold" />
-                        <div className={cn("w-3 h-3 rounded-full", c.dot)} />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" value={g.minScore} onChange={e => onChange(gradeMapping.map(x => x.id === g.id ? { ...x, minScore: parseInt(e.target.value) || 0 } : x))} className="w-16 h-6 text-center text-xs" min={0} max={100} />
-                        <span className="text-gray-500 text-xs">-</span>
-                        <Input type="number" value={g.maxScore} onChange={e => onChange(gradeMapping.map(x => x.id === g.id ? { ...x, maxScore: parseInt(e.target.value) || 0 } : x))} className="w-16 h-6 text-center text-xs" min={0} max={100} />
-                        <span className="text-xs text-gray-500">分</span>
-                      </div>
-                      <div className="mt-1.5">
-                        <Input value={g.remark || ""} onChange={e => onChange(gradeMapping.map(x => x.id === g.id ? { ...x, remark: e.target.value } : x))} className="h-7 text-[10px] bg-white/70" placeholder="等级备注说明（一句话辅助教师参考）" />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        }
-
-        const EvalPointCard = ({ ep, field }: { ep: EvalPoint; field: EvalPointField }) => (
-          <div className="p-3 bg-white rounded-lg border">
-            <div className="flex items-center gap-2 mb-2">
-              <Input value={ep.name} onChange={e => updateEvalPoint(field, ep.id, { name: e.target.value })} className="flex-1 h-8 text-sm" />
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500" onClick={() => removeEvalPoint(field, ep.id)}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              <Badge variant="outline" className={cn("text-[10px]", evalSubTypeColors[ep.subType as EvalSubType])}>{ep.subType ? evalSubTypeLabels[ep.subType as EvalSubType] : "未分类"}</Badge>
-              <Select value={ep.scoringMethod || "level"} onValueChange={v => updateEvalPoint(field, ep.id, { scoringMethod: v as "score" | "level" | "rubric" })}>
-                <SelectTrigger className="h-7 text-[10px] w-28">
-                  <SelectValue placeholder="评分方式" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="score" disabled>分值制</SelectItem>
-                  <SelectItem value="level">等级制</SelectItem>
-                  <SelectItem value="rubric" disabled>rubric量表</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="mb-2">
-              <p className="text-xs text-gray-500 mb-1">关联能力点</p>
-              <div className="flex flex-wrap gap-1">
-                {(ep.abilityPointIds || []).map(abId => {
-                  const ab = abilityPoints.find(a => a.id === abId)
-                  return ab ? (
-                    <Badge key={abId} variant="secondary" className="text-[10px] font-normal">
-                      {ab.name}
-                      <button onClick={() => updateEvalPoint(field, ep.id, { abilityPointIds: (ep.abilityPointIds || []).filter(id => id !== abId) })} className="ml-1 text-gray-400 hover:text-red-500">×</button>
-                    </Badge>
-                  ) : null
-                })}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary">+ 添加能力点</Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader><DialogTitle>关联能力点</DialogTitle></DialogHeader>
-                    <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input value={abSearchForEval} onChange={e => setAbSearchForEval(e.target.value)} placeholder="搜索能力点..." className="pl-9" />
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {abilityPoints.filter(a => !abSearchForEval || a.name.includes(abSearchForEval)).map(a => {
-                        const alreadyLinked = (ep.abilityPointIds || []).includes(a.id)
-                        return (
-                          <div key={a.id} onClick={() => {
-                            if (alreadyLinked) return
-                            updateEvalPoint(field, ep.id, { abilityPointIds: [...(ep.abilityPointIds || []), a.id] })
-                          }} className={cn("p-2 rounded-lg border cursor-pointer text-sm", alreadyLinked ? "border-primary bg-primary/5 opacity-50" : "hover:border-gray-300")}>
-                            <div className="flex items-center gap-2">
-                              <span className="flex-1">{a.name}</span>
-                              {alreadyLinked && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-            <div className="mb-2">
-              <p className="text-xs text-gray-500 mb-1">关联知识点</p>
-              <div className="flex flex-wrap gap-1">
-                {(ep.knowledgePointIds || []).map(kpid => {
-                  const kp = knowledgePoints.find(k => k.id === kpid)
-                  return kp ? (
-                    <Badge key={kpid} variant="secondary" className="text-[10px] font-normal">
-                      {kp.name}
-                      <button onClick={() => updateEvalPoint(field, ep.id, { knowledgePointIds: (ep.knowledgePointIds || []).filter(id => id !== kpid) })} className="ml-1 text-gray-400 hover:text-red-500">×</button>
-                    </Badge>
-                  ) : null
-                })}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary">+ 添加知识点</Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader><DialogTitle>关联知识点</DialogTitle></DialogHeader>
-                    <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input value={kpSearchForEval} onChange={e => setKpSearchForEval(e.target.value)} placeholder="搜索知识点..." className="pl-9" />
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {knowledgePoints.filter(k => !kpSearchForEval || k.name.includes(kpSearchForEval)).map(k => {
-                        const alreadyLinked = (ep.knowledgePointIds || []).includes(k.id)
-                        return (
-                          <div key={k.id} onClick={() => {
-                            if (alreadyLinked) return
-                            updateEvalPoint(field, ep.id, { knowledgePointIds: [...(ep.knowledgePointIds || []), k.id] })
-                          }} className={cn("p-2 rounded-lg border cursor-pointer text-sm", alreadyLinked ? "border-primary bg-primary/5 opacity-50" : "hover:border-gray-300")}>
-                            <div className="flex items-center gap-2">
-                              <span className="flex-1">{k.name}</span>
-                              {alreadyLinked && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-            {ep.scoringMethod === "level" && ep.gradeMapping && (
-              <LevelRuleEditor
-                gradeMapping={ep.gradeMapping}
-                onChange={gm => updateEvalPoint(field, ep.id, { gradeMapping: gm })}
-              />
-            )}
-          </div>
-        )
-
-        const openRubricKpDialog = (pointId: string, field: EvalPointField) => {
-          setRubricKpTargetPointId(pointId)
-          setRubricKpTargetField(field)
-          setRubricKpSearch("")
-          setRubricKpDialogOpen(true)
-        }
-
-        const openRubricAbDialog = (pointId: string, field: EvalPointField) => {
-          setRubricAbTargetPointId(pointId)
-          setRubricAbTargetField(field)
-          setRubricAbSearch("")
-          setRubricAbDialogOpen(true)
-        }
-
-        const RubricEvalPointCard = ({ ep, field }: { ep: EvalPoint; field: EvalPointField }) => {
-          const [expanded, setExpanded] = useState(false)
-          const pointTypes = ep.types?.length ? ep.types : ep.subType ? [ep.subType] : []
-          return (
-            <div className="bg-white rounded-lg border overflow-hidden">
-              {/* Collapsed header - always visible */}
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-gray-50 transition-colors"
-              >
-                {expanded ? <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />}
-                <div className="flex items-center gap-1 shrink-0">
-                  {pointTypes.length > 0 ? pointTypes.map(t => (
-                    <Badge key={t} variant="outline" className={cn("text-[10px]", evalSubTypeColors[t])}>{evalSubTypeLabels[t]}</Badge>
-                  )) : <Badge variant="outline" className="text-[10px]">未分类</Badge>}
-                </div>
-                <span className="text-sm text-gray-700 flex-1 truncate">{ep.name || "未命名评价点"}</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 shrink-0" onClick={e => { e.stopPropagation(); removeEvalPoint(field, ep.id); }}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </button>
-
-              {/* Expanded content */}
-              {expanded && (
-                <div className="px-3 pb-3 border-t">
-                  {/* 1. 评价点内容 */}
-                  <div className="mt-2">
-                    <Label className="text-xs text-gray-500">评价点内容</Label>
-                    <Input value={ep.name} onChange={e => updateEvalPoint(field, ep.id, { name: e.target.value })} className="mt-1 h-8 text-sm" placeholder="输入评价点内容" />
-                  </div>
-
-                  {/* 2. 量规类型 */}
-                  <div className="mt-2">
-                    <Label className="text-xs text-gray-500">量规类型</Label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {(Object.keys(evalSubTypeLabels) as EvalSubType[]).map(type => {
-                        const selected = pointTypes.includes(type)
-                        return (
-                          <button
-                            key={type}
-                            onClick={() => {
-                              const current = ep.types || (ep.subType ? [ep.subType] : [])
-                              const has = current.includes(type)
-                              const newTypes = has ? current.filter(t => t !== type) : [...current, type]
-                              updateEvalPoint(field, ep.id, { types: newTypes, subType: undefined })
-                            }}
-                            className={cn(
-                              "px-2 py-0.5 rounded-full text-[10px] border transition-all",
-                              selected ? cn(evalSubTypeColors[type], "border-current") : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
-                            )}
-                          >
-                            {evalSubTypeLabels[type]}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 3. 关联能力点 */}
-                  <div className="mt-2">
-                    <Label className="text-xs text-gray-500">关联能力点</Label>
-                    <div className="flex items-center gap-2 flex-wrap mt-1">
-                      {(ep.abilityPointIds || []).map(abId => {
-                        const ab = abilityPoints.find(a => a.id === abId)
-                        return ab ? (
-                          <Badge key={abId} variant="secondary" className="text-[10px] font-normal">
-                            {ab.name}
-                            <button onClick={() => updateEvalPoint(field, ep.id, { abilityPointIds: (ep.abilityPointIds || []).filter(id => id !== abId) })} className="ml-1 text-gray-400 hover:text-red-500">×</button>
-                          </Badge>
-                        ) : null
-                      })}
-                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={() => openRubricAbDialog(ep.id, field)}>+ 关联能力点</Button>
-                    </div>
-                  </div>
-
-                  {/* 4. 关联知识点 */}
-                  <div className="mt-2">
-                    <Label className="text-xs text-gray-500">关联知识点</Label>
-                    <div className="flex items-center gap-2 flex-wrap mt-1">
-                      {(ep.knowledgePointIds || []).map(kpid => {
-                        const kp = knowledgePoints.find(k => k.id === kpid)
-                        return kp ? (
-                          <Badge key={kpid} variant="secondary" className="text-[10px] font-normal">
-                            {kp.name}
-                            <button onClick={() => updateEvalPoint(field, ep.id, { knowledgePointIds: (ep.knowledgePointIds || []).filter(id => id !== kpid) })} className="ml-1 text-gray-400 hover:text-red-500">×</button>
-                          </Badge>
-                        ) : null
-                      })}
-                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={() => openRubricKpDialog(ep.id, field)}>+ 关联知识点</Button>
-                    </div>
-                  </div>
-
-                  {/* 5. 评分规则 + 等级转换规则 */}
-                  <div className="mt-2">
-                    <Label className="text-xs text-gray-500">评分规则</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Select value={ep.scoringMethod || "level"} onValueChange={v => updateEvalPoint(field, ep.id, { scoringMethod: v as "score" | "level" | "rubric" })}>
-                        <SelectTrigger className="h-7 text-[10px] w-32"><SelectValue placeholder="评分方式" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="score">分值制</SelectItem>
-                          <SelectItem value="level">等级制</SelectItem>
-                          <SelectItem value="rubric">rubric量表</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {ep.scoringMethod === "level" && ep.gradeMapping && (
-                      <LevelRuleEditor gradeMapping={ep.gradeMapping} onChange={gm => updateEvalPoint(field, ep.id, { gradeMapping: gm })} />
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        }
-
-        const EvalPointConfigPanel = ({ points, field }: { points: EvalPoint[]; field: EvalPointField }) => {
-          const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({})
-
-          // Group points by subType
-          const grouped = points.reduce((acc, ep) => {
-            const key = ep.subType || "uncategorized"
-            if (!acc[key]) acc[key] = []
-            acc[key].push(ep)
-            return acc
-          }, {} as Record<string, EvalPoint[]>)
-
-          const subTypeKeys = Object.keys(evalSubTypeLabels) as EvalSubType[]
-          const usedSubTypes = subTypeKeys.filter(st => grouped[st]?.length > 0)
-
-          const toggleType = (st: string) => setExpandedTypes(prev => ({ ...prev, [st]: !prev[st] }))
-
-          return (
-            <div className="border rounded-xl p-4">
-              <p className="text-sm font-medium mb-3">评价点配置</p>
-
-              {/* Sub-type selector */}
-              <div className="mb-4">
-                <p className="text-xs text-gray-500 mb-2">选择细分类型并添加评价点</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {subTypeKeys.map(st => {
-                    const count = grouped[st]?.length || 0
-                    const active = count > 0
-                    return (
-                      <button
-                        key={st}
-                        onClick={() => {
-                          if (!active) {
-                            // Add a blank eval point of this type
-                            addEvalPoint(field, { subType: st, name: `${evalSubTypeLabels[st]}评价点` })
-                          }
-                          toggleType(st)
-                        }}
-                        className={cn(
-                          "px-2.5 py-1 rounded-full text-xs border transition-all",
-                          active
-                            ? cn(evalSubTypeColors[st], "border-current")
-                            : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
-                        )}
-                      >
-                        {evalSubTypeLabels[st]}
-                        {count > 0 && <span className="ml-1 font-medium">({count})</span>}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Grouped eval points */}
-              <div className="space-y-3">
-                {usedSubTypes.map(st => {
-                  const expanded = expandedTypes[st] !== false
-                  const eps = grouped[st]
-                  return (
-                    <div key={st} className="border rounded-lg overflow-hidden">
-                      <button
-                        onClick={() => toggleType(st)}
-                        className={cn("w-full flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors", expanded ? "bg-gray-50" : "bg-white hover:bg-gray-50")}
-                      >
-                        {expanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        <Badge variant="outline" className={cn("text-[10px]", evalSubTypeColors[st])}>{evalSubTypeLabels[st]}</Badge>
-                        <span className="flex-1 text-left text-gray-600">{eps.length} 个评价点</span>
-                        <div className="flex items-center gap-1">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={e => e.stopPropagation()}>
-                                <Award className="h-3 w-3 mr-1" />能力点
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                              <DialogHeader><DialogTitle>从能力点创建 — {evalSubTypeLabels[st]}</DialogTitle></DialogHeader>
-                              <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
-                                {abilityPoints.map(a => (
-                                  <div key={a.id} onClick={() => addEvalPointFromAbility(field, a.id, st)} className="p-2.5 rounded-lg border cursor-pointer hover:border-gray-300 text-sm">
-                                    <div className="flex items-center gap-2">
-                                      <span className="flex-1 font-medium">{a.name}</span>
-                                      {a.code && <Badge variant="outline" className="text-[10px]">{a.code}</Badge>}
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{a.description}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={e => e.stopPropagation()}>
-                                <Lightbulb className="h-3 w-3 mr-1" />知识点
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                              <DialogHeader><DialogTitle>从知识点创建 — {evalSubTypeLabels[st]}</DialogTitle></DialogHeader>
-                              <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
-                                {knowledgePoints.map(k => (
-                                  <div key={k.id} onClick={() => addEvalPointFromKnowledge(field, k.id, st)} className="p-2.5 rounded-lg border cursor-pointer hover:border-gray-300 text-sm">
-                                    <div className="flex items-center gap-2">
-                                      <span className="flex-1 font-medium">{k.name}</span>
-                                      {k.code && <Badge variant="outline" className="text-[10px]">{k.code}</Badge>}
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{k.description}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={e => { e.stopPropagation(); addEvalPoint(field, { subType: st, name: "" }); }}>
-                            <Plus className="h-3 w-3 mr-1" />手动添加
-                          </Button>
-                        </div>
-                      </button>
-                      {expanded && (
-                        <div className="p-3 space-y-2 border-t">
-                          {eps.map(ep => <EvalPointCard key={ep.id} ep={ep} field={field} />)}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-
-                {/* Uncategorized points */}
-                {grouped["uncategorized"]?.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <button onClick={() => toggleType("uncategorized")} className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white hover:bg-gray-50 transition-colors">
-                      {expandedTypes["uncategorized"] !== false ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                      <span className="text-gray-600">未分类评价点</span>
-                      <span className="text-gray-400">({grouped["uncategorized"].length})</span>
-                    </button>
-                    {expandedTypes["uncategorized"] !== false && (
-                      <div className="p-3 space-y-2 border-t">
-                        {grouped["uncategorized"].map(ep => <EvalPointCard key={ep.id} ep={ep} field={field} />)}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        }
-
-        const questionTypeLabels: Record<string, string> = {
-          single: "单选",
-          multiple: "多选",
-          judgment: "判断",
-          short_answer: "简答",
-          essay: "问答题",
-          fill_blank: "填空",
-        }
-
-        const difficultyLabels: Record<string, string> = {
-          easy: "简单",
-          medium: "中等",
-          hard: "困难",
-        }
-
-        const QuestionSelectorPanel = ({ field, selectedIds, showAutoSelect = false, maxCount, questionScores, onUpdateQuestionScore }: { field: "randomDrawQuestions" | "questionBankQuestions" | "quizQuestions", selectedIds: string[], showAutoSelect?: boolean, maxCount?: number, questionScores?: Record<string, number>, onUpdateQuestionScore?: (qid: string, score: number) => void }) => {
-          const filteredQuestions = allQuestions.filter(q => {
-            const matchTab = questionTab === "my" ? q.source === "my" : questionTab === "collab" ? q.source === "collab" : q.source === "public"
-            const matchSearch = !questionSearch || q.name.includes(questionSearch) || q.content.includes(questionSearch)
-            return matchTab && matchSearch
-          })
-
-          return (
-            <div className="flex gap-4 flex-1 min-h-0">
-              {/* Left column */}
-              <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                <Tabs value={questionTab} onValueChange={v => setQuestionTab(v as "my" | "collab" | "public")} className="mb-3">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="my">我的</TabsTrigger>
-                    <TabsTrigger value="collab">共建</TabsTrigger>
-                    <TabsTrigger value="public">公共题库</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input value={questionSearch} onChange={e => setQuestionSearch(e.target.value)} placeholder="搜索题目名称..." className="pl-9" />
-                  </div>
-                  <Button onClick={() => setShowAddQuestion(true)}>
-                    <Plus className="h-4 w-4 mr-1" />新增题目
-                  </Button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {filteredQuestions.length === 0 ? (
-                    <div className="text-center text-gray-400 py-8">
-                      <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">暂无题目</p>
-                    </div>
-                  ) : (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">题目名称</th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">题目类型</th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">题目难度</th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">所属题库</th>
-                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[31%]">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredQuestions.map(q => {
-                          const isSelected = selectedIds.includes(q.id)
-                          return (
-                            <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors cursor-pointer", isSelected ? "bg-primary/[0.03]" : "")} onClick={() => toggleQuestion(q.id, field)}>
-                              <td className="px-3 py-2">
-                                <div className="flex items-center gap-2">
-                                  <div className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
-                                    {isSelected && <Check className="h-3 w-3 text-white" />}
-                                  </div>
-                                  <span className="text-sm font-medium text-gray-800 line-clamp-1">{q.name}</span>
-                                </div>
-                              </td>
-                              <td className="px-3 py-2">
-                                <Badge className={`text-xs text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
-                              </td>
-                              <td className="px-3 py-2">
-                                <span className="text-xs text-gray-500">{difficultyLabels[q.difficulty] || q.difficulty}</span>
-                              </td>
-                              <td className="px-3 py-2">
-                                <span className="text-xs text-gray-500">{questionBankLabels[(q as any).questionBank] || (q as any).questionBank || "-"}</span>
-                              </td>
-                              <td className="px-3 py-2">
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={e => { e.stopPropagation(); setSelectedQuestionForDetail(q.id); setQuestionDetailOpen(true) }}>
-                                      查看详情
-                                    </Button>
-                                  {isSelected ? (
-                                    <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleQuestion(q.id, field) }}>
-                                        取消
-                                      </Button>
-                                  ) : (
-                                    <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleQuestion(q.id, field) }}>
-                                        使用
-                                      </Button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-
-              {/* Right column */}
-              <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-gray-700">已选择题目 ({selectedIds.length}{maxCount ? `/${maxCount}` : ""})</p>
-                  {showAutoSelect && (
-                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => toast({ title: "提示", description: "参考测评认证中心-试卷管理-自动抽题功能即可" })}>
-                      自动选择
-                    </Button>
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {selectedIds.length === 0 ? (
-                    <div className="text-center text-gray-400 py-8">
-                      <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-xs">从左侧搜索并选择题目</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {selectedIds.map(qid => {
-                        const q = allQuestions.find(aq => aq.id === qid)
-                        if (!q) return null
-                        return (
-                          <div key={qid} className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 relative">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-medium flex-1 truncate">{q.name}</span>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400 -mr-1 -mt-1" onClick={() => toggleQuestion(qid, field)}>
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                      <Badge className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
-                              <span className="text-[10px] text-gray-400">{difficultyLabels[q.difficulty] || q.difficulty}</span>
-                              {onUpdateQuestionScore ? (
-                                <div className="flex items-center gap-1 ml-auto">
-                                  <span className="text-[10px] text-gray-400">分值</span>
-                                  <Input
-                                    type="number"
-                                    value={questionScores?.[qid] ?? q.score}
-                                    onChange={e => {
-                                      const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0))
-                                      onUpdateQuestionScore(qid, val)
-                                    }}
-                                    className="w-14 h-5 text-[10px] px-1 py-0"
-                                    min={0}
-                                    max={100}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-gray-400">{q.score}分</span>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                  </div>
-                </div>
-              </div>
-            )
-        }
-
-        // Resource-only panel (no eval points)
-        const renderEvalResourceOnlyPanel = (methodKey: string, majorsParam: any[]) => {
-          const majorOptions = [{ id: "全部", name: "全部" }, ...majorsParam.map((m: any) => ({ id: m.id, name: m.name }))]
-          const majorNameMap: Record<string, string> = {}
-          majorsParam.forEach((m: any) => { majorNameMap[m.id] = m.name })
-
-          if (methodKey === "random_draw") {
-            const filteredRdq = state.randomDrawCustomQuestions.filter(q => {
-              const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
-              const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || (majorNameMap[q.majorId] || "").includes(rdqSearch)
-              return matchMajor && matchSearch
-            })
-
-            const handleAddRdq = () => {
-              setNewRdqForm({ name: "", description: "", answer: "", majorId: "" })
-              setRdqActionMode("add")
-              setRdqActionTarget(null)
-              setRdqActionOpen(true)
-            }
-
-            const handleEditRdq = (q: typeof state.randomDrawCustomQuestions[0]) => {
-              setNewRdqForm({ name: q.name, description: q.description, answer: q.answer, majorId: q.majorId })
-              setRdqActionMode("edit")
-              setRdqActionTarget(q)
-              setRdqActionOpen(true)
-            }
-
-            const handleSaveRdq = () => {
-              if (!newRdqForm.name.trim()) return
-              if (rdqActionMode === "edit" && rdqActionTarget) {
-                updateState({
-                  randomDrawCustomQuestions: state.randomDrawCustomQuestions.map(q =>
-                    q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), majorId: newRdqForm.majorId.trim() } : q
-                  )
-                })
-                setRdqActionOpen(false)
-                return
-              }
-              const newId = `rdq-${Date.now()}`
-              const newQ = {
-                id: newId,
-                name: newRdqForm.name.trim(),
-                description: newRdqForm.description.trim(),
-                answer: newRdqForm.answer.trim(),
-                majorId: newRdqForm.majorId.trim(),
-              }
-              updateState({ randomDrawCustomQuestions: [...state.randomDrawCustomQuestions, newQ] })
-              setRdqActionOpen(false)
-              setRdqSearch("")
-            }
-
-            const handleDeleteRdq = (id: string) => {
-              updateState({
-                randomDrawCustomQuestions: state.randomDrawCustomQuestions.filter(q => q.id !== id),
-                randomDrawSelectedIds: state.randomDrawSelectedIds.filter(sid => sid !== id)
-              })
-            }
-
-            const handleToggleSelect = (id: string) => {
-              const isSelected = state.randomDrawSelectedIds.includes(id)
-              if (isSelected) {
-                updateState({ randomDrawSelectedIds: state.randomDrawSelectedIds.filter(sid => sid !== id) })
-              } else {
-                updateState({ randomDrawSelectedIds: [...state.randomDrawSelectedIds, id] })
-              }
-            }
-
-            const selectedRdqList = state.randomDrawSelectedIds.map(id => state.randomDrawCustomQuestions.find(q => q.id === id)).filter(Boolean) as typeof state.randomDrawCustomQuestions
-
-            return (
-              <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input value={rdqSearch} onChange={e => setRdqSearch(e.target.value)} placeholder="搜索现场问答题名称、描述或适用专业..." className="pl-9" />
-                  </div>
-                  <Button onClick={handleAddRdq}>
-                    <Plus className="h-4 w-4 mr-1" />新增现场问答题
-                  </Button>
-                </div>
-
-                <div className="flex gap-4 flex-1 min-h-0">
-                  {/* Left: All questions */}
-                  <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                    <div className="flex items-center gap-1 mb-2 flex-wrap">
-                      {majorOptions.map(opt => (
-                        <button
-                          key={opt.id}
-                          onClick={() => setRdqMajorTab(opt.id)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-md text-[11px] transition-all",
-                            rdqMajorTab === opt.id
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-gray-500 hover:bg-gray-100"
-                          )}
-                        >
-                          {opt.name}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-sm font-medium mb-2 text-gray-700">
-                      {rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`)}
-                    </p>
-                    <div className="flex-1 overflow-y-auto pr-1">
-                      {filteredRdq.length === 0 ? (
-                        <div className="text-center text-gray-400 py-8">
-                          <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">{rdqSearch ? "未找到匹配的现场问答题" : "暂无现场问答题，请点击上方按钮新增"}</p>
-                        </div>
-                      ) : (
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">题目名称</th>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">题目描述</th>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[14%]">适用专业</th>
-                              <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">操作</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {filteredRdq.map(q => {
-                              const isSelected = state.randomDrawSelectedIds.includes(q.id)
-                              return (
-                                <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors", isSelected ? "bg-primary/[0.03]" : "")}>
-                                  <td className="px-3 py-2">
-                                    <span className="text-sm font-medium text-gray-800">{q.name}</span>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <p className="text-xs text-gray-500 line-clamp-1" title={q.description}>{q.description || "-"}</p>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <Badge variant="secondary" className="text-[10px]">{majorNameMap[q.majorId] || "-"}</Badge>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <div className="flex items-center justify-end gap-1">
-                                      <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => { setSelectedRdqForDetail(q.id); setRdqDetailOpen(true) }}>
-                                        详情
-                                      </Button>
-                                      <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => handleEditRdq(q)}>
-                                        编辑
-                                      </Button>
-                                      {isSelected ? (
-                                        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleToggleSelect(q.id)}>
-                                          取消
-                                        </Button>
-                                      ) : (
-                                        <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => handleToggleSelect(q.id)}>
-                                          选择
-                                        </Button>
-                                      )}
-                                      <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-red-400 hover:text-red-600" onClick={() => handleDeleteRdq(q.id)}>
-                                        删除
-                                      </Button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: Selected questions */}
-                  <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-                    <p className="text-sm font-medium mb-3 text-gray-700">已配置现场问答题 ({selectedRdqList.length})</p>
-                    <div className="flex-1 overflow-y-auto">
-                      {selectedRdqList.length === 0 ? (
-                        <div className="text-center text-gray-400 py-8">
-                          <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-xs">请从左侧选择现场问答题</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {selectedRdqList.map(q => (
-                            <div key={q.id} className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 relative">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-medium flex-1 truncate">{q.name}</span>
-                                <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400 -mr-1 -mt-1" onClick={() => handleToggleSelect(q.id)}>
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                              <p className="text-[11px] text-gray-500 line-clamp-1">{q.description || "暂无描述"}</p>
-                              <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{majorNameMap[q.majorId] || "通用"}</Badge>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 抽题规则 */}
-                <div className="border rounded-xl p-4 mt-4">
-                  <p className="text-sm font-medium mb-3">抽题规则</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-gray-500">抽题方式</Label>
-                      <Select value={rdqDrawMode} onValueChange={v => setRdqDrawMode(v as "random" | "manual")}>
-                        <SelectTrigger className="mt-1 text-sm h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="random">系统随机分配</SelectItem>
-                          <SelectItem value="manual">老师手动选择</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">抽题数量</Label>
-                      <Input type="number" value={rdqDrawCount} onChange={e => setRdqDrawCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Add / Edit Dialog */}
-                <Dialog open={rdqActionOpen} onOpenChange={setRdqActionOpen}>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>{rdqActionMode === "add" ? "新增现场问答题" : "编辑现场问答题"}</DialogTitle>
-                      <DialogDescription>{rdqActionMode === "add" ? "创建一个新的现场问答题" : "修改现场问答题信息"}</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div>
-                        <Label>题目名称</Label>
-                        <Input value={newRdqForm.name} onChange={e => setNewRdqForm({ ...newRdqForm, name: e.target.value })} placeholder="输入题目名称" className="mt-1.5" />
-                      </div>
-                      <div>
-                        <Label>适用专业</Label>
-                        <Select value={newRdqForm.majorId} onValueChange={v => setNewRdqForm({ ...newRdqForm, majorId: v })}>
-                          <SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger>
-                          <SelectContent>
-                            {majors.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>题目描述</Label>
-                        <Textarea value={newRdqForm.description} onChange={e => setNewRdqForm({ ...newRdqForm, description: e.target.value })} placeholder="输入题目描述" className="mt-1.5" rows={3} />
-                      </div>
-                      <div>
-                        <Label>题目答案</Label>
-                        <Textarea value={newRdqForm.answer} onChange={e => setNewRdqForm({ ...newRdqForm, answer: e.target.value })} placeholder="输入题目答案" className="mt-1.5" rows={3} />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setRdqActionOpen(false)}>取消</Button>
-                      <Button onClick={handleSaveRdq} disabled={!newRdqForm.name.trim()}>
-                        {rdqActionMode === "add" ? "新增" : "保存修改"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Detail Dialog */}
-                <Dialog open={rdqDetailOpen} onOpenChange={setRdqDetailOpen}>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>现场问答题详情</DialogTitle>
-                    </DialogHeader>
-                    {(() => {
-            const q = allQuestions.find(x => x.id === selectedRdqForDetail)
-                      if (!q) return null
-                      return (
-                        <div className="space-y-4 py-2">
-                          <div>
-                            <Label className="text-xs text-gray-500">题目名称</Label>
-                            <p className="text-sm font-medium mt-1">{q.name}</p>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-gray-500">适用专业</Label>
-                            <Badge variant="secondary" className="text-[10px] mt-1">{majorNameMap[(q as any).majorId] || "通用"}</Badge>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-gray-500">题目描述</Label>
-                            <p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">{q.description || "-"}</p>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-gray-500">题目答案</Label>
-                            <p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">{q.answer || "-"}</p>
-                          </div>
-                        </div>
-                      )
-                    })()}
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setRdqDetailOpen(false)}>关闭</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            )
-          }
-          if (methodKey === "review") {
-            const cfg = state.methodResourceConfigs.review || {}
-            const setCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, review: { ...cfg, ...patch } } })
-            const requiresMaterial = cfg.requiresMaterial !== false
-            return (
-              <div className="space-y-4">
-                <div className="p-4 bg-amber-50/80 rounded-xl border border-amber-200 text-sm text-amber-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Info className="h-4 w-4" />
-                    <span className="font-medium">评审说明</span>
-                  </div>
-                  <p>评审时教师根据学生现场表现或提交的材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
-                </div>
-                <div className="border rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium">评审材料要求</p>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={requiresMaterial} onCheckedChange={v => setCfg({ requiresMaterial: v })} />
-                      <span className="text-xs text-gray-600">是否需要提交评审材料</span>
-                    </div>
-                  </div>
-                  {requiresMaterial && (
-                    <>
-                      <div>
-                        <Label className="text-xs text-gray-500">预估提交天数</Label>
-                        <Input type="number" value={cfg.deadlineDays ?? 7} onChange={e => setCfg({ deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
-                      </div>
-                      <div className="mt-3">
-                        <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
-                        <Textarea
-                          value={cfg.submitFormatDesc || ""}
-                          onChange={e => setCfg({ submitFormatDesc: e.target.value })}
-                          placeholder="请用一句话说明学生需要提交的材料要求..."
-                          rows={4}
-                          className="text-sm"
-                        />
-                      </div>
-                    </>
-                  )}
-                  <div className="mt-3">
-                    <Label className="text-xs text-gray-500 mb-1.5">评审场地/环境资源准备</Label>
-                    <Textarea
-                      value={cfg.venueResources || ""}
-                      onChange={e => setCfg({ venueResources: e.target.value })}
-                      placeholder="请描述评审所需的场地、设备及环境资源准备要求..."
-                      rows={4}
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex items-center gap-2">
-                      <Switch checked={cfg.allowResubmit ?? false} onCheckedChange={v => setCfg({ allowResubmit: v })} />
-                      <span className="text-xs text-gray-600">允许重新提交</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="border rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <p className="text-sm font-medium">评审流程设置</p>
-                      {(() => {
-                        const enabledSteps = reviewSteps.filter(s => s.enabled)
-                        const totalWeight = enabledSteps.reduce((sum, s) => sum + (s.weight || 0), 0)
-                        return enabledSteps.length > 0 && (
-                          <div className={cn(
-                            "flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium",
-                            totalWeight === 100 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
-                          )}>
-                            <span>权重合计 {totalWeight}%</span>
-                            {totalWeight !== 100 && <span className="text-[10px]">(需等于100%)</span>}
-                          </div>
-                        )
-                      })()}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
-                        const enabled = reviewSteps.filter(s => s.enabled)
-                        const count = enabled.length
-                        if (count === 0) return
-                        const base = Math.floor(100 / count)
-                        const remainder = 100 % count
-                        const newSteps = reviewSteps.map(s => {
-                          if (!s.enabled) return s
-                          const idx = enabled.findIndex(e => e.id === s.id)
-                          return { ...s, weight: base + (idx < remainder ? 1 : 0) }
-                        })
-                        setReviewSteps(newSteps)
-                      }}>
-                        <RotateCcw className="h-3.5 w-3.5 mr-1" />一键平均权重
-                      </Button>
-                      <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setShowAddStep(true); setNewStepLabel(""); setNewStepDesc(""); }}>
-                        <Plus className="h-3.5 w-3.5 mr-1" />新增步骤
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {reviewSteps.map((step, i) => (
-                      <div key={step.id} className="p-3 rounded-lg border">
-                        {editingReviewStepId === step.id ? (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              <Input value={editingStepLabel} onChange={e => setEditingStepLabel(e.target.value)} placeholder="步骤名称" className="text-sm h-8" />
-                              <Select value={step.subjectType || ""} onValueChange={v => setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, subjectType: v } : s))}>
-                                <SelectTrigger className="text-sm h-8"><SelectValue placeholder="请选择评价主体" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="teacher">教师</SelectItem>
-                                  <SelectItem value="enterprise_mentor">企业导师</SelectItem>
-                                  <SelectItem value="peer">互评</SelectItem>
-                                  <SelectItem value="self">自评</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Input value={editingStepDesc} onChange={e => setEditingStepDesc(e.target.value)} placeholder="步骤描述" className="text-sm h-8" />
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" className="h-7 text-xs" onClick={() => {
-                                setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, label: editingStepLabel || s.label, desc: editingStepDesc || s.desc } : s))
-                                setEditingReviewStepId(null)
-                              }}>保存</Button>
-                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingReviewStepId(null)}>取消</Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-2">
-                                <Switch checked={step.enabled} onCheckedChange={v => {
-                                  if (v && !step.subjectType) {
-                                    setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, enabled: v, subjectType: "teacher" } : s))
-                                  } else {
-                                    setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, enabled: v } : s))
-                                  }
-                                }} />
-                                <div>
-                                  <p className="text-sm font-medium">{step.label}</p>
-                                  <p className="text-xs text-gray-400">{step.desc}</p>
-                                </div>
-                              </div>
-                              <Badge variant={step.subjectType ? "secondary" : "outline"} className="text-[10px]">{step.subjectType ? (subjectLabels[step.subjectType] || step.subjectType) : "未绑定"}</Badge>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {step.enabled && (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    value={step.weight || 0}
-                                    onChange={e => setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } : s))}
-                                    className="h-7 text-xs w-14 text-center"
-                                    min={0}
-                                    max={100}
-                                  />
-                                  <span className="text-xs text-gray-400">%</span>
-                                </div>
-                              )}
-                              <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-400 hover:text-primary" onClick={() => { setEditingReviewStepId(step.id); setEditingStepLabel(step.label); setEditingStepDesc(step.desc); }}>
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                              {reviewSteps.length > 1 && (
-                                <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-400 hover:text-red-500" onClick={() => setReviewSteps(reviewSteps.filter(s => s.id !== step.id))}>
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {showAddStep && (
-                    <div className="mt-2 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/[0.02] space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input value={newStepLabel} onChange={e => setNewStepLabel(e.target.value)} placeholder="步骤名称" className="text-sm h-8" />
-                        <Select value={newStepSubjectType} onValueChange={v => setNewStepSubjectType(v)}>
-                          <SelectTrigger className="text-sm h-8"><SelectValue placeholder="请选择评价主体" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="teacher">教师</SelectItem>
-                            <SelectItem value="enterprise_mentor">企业导师</SelectItem>
-                            <SelectItem value="peer">互评</SelectItem>
-                            <SelectItem value="self">自评</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Input value={newStepDesc} onChange={e => setNewStepDesc(e.target.value)} placeholder="步骤描述" className="text-sm h-8" />
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" className="h-7 text-xs" onClick={() => {
-                          if (!newStepLabel.trim() || !newStepSubjectType) return
-                          setReviewSteps([...reviewSteps, { id: `rs-${Date.now()}`, label: newStepLabel, desc: newStepDesc, enabled: true, subjectType: newStepSubjectType, weight: 0 }])
-                          setShowAddStep(false)
-                          setNewStepLabel("")
-                          setNewStepDesc("")
-                          setNewStepSubjectType("")
-                        }}>添加</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowAddStep(false); setNewStepLabel(""); setNewStepDesc(""); setNewStepSubjectType(""); }}>取消</Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          }
-          if (methodKey === "paper") {
-            const paperCfg = state.methodResourceConfigs.paper || {}
-            const setPaperCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, paper: { ...paperCfg, ...patch } } })
-            return (
-              <PaperConfigPanel
-                paperCfg={paperCfg}
-                setPaperCfg={setPaperCfg}
-                paperIds={state.paperIds}
-                onSelectPaper={(paperId) => updateState({ paperIds: [paperId], paperWeights: { [paperId]: 100 } })}
-                pSearch={pSearch}
-                setPSearch={setPSearch}
-                configPaperId={configPaperId}
-                setConfigPaperId={setConfigPaperId}
-                showCreatePaper={showCreatePaper}
-                setShowCreatePaper={setShowCreatePaper}
-                selectedPaperForDetail={selectedPaperForDetail}
-                setSelectedPaperForDetail={setSelectedPaperForDetail}
-                paperDetailOpen={paperDetailOpen}
-                setPaperDetailOpen={setPaperDetailOpen}
-              />
-            )
-          }
-          if (methodKey === "question_bank") {
-            const qbCfg = state.methodResourceConfigs.question_bank || {}
-            const setQbCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...qbCfg, ...patch } } })
-
-            return (
-              <div className="space-y-4">
-                <BankQuestionSelectorPanel
-                  field="questionBankQuestions"
-                  selectedIds={state.questionBankQuestions}
-                  onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
-                  questionScores={state.methodResourceConfigs?.question_bank?.questionScores || {}}
-                  onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), [qid]: score } } } })}
-                  onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), ...scores } } } })}
-                />
-                <div className="border rounded-xl p-4">
-                  <p className="text-sm font-medium mb-3">答题规则</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-gray-500">答题方式</Label>
-                      <Select value={qbDrawMode} onValueChange={v => { setQbDrawMode(v as "all" | "practice"); setQbCfg({ drawMode: v }) }}>
-                        <SelectTrigger className="mt-1 text-sm h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">全部作答</SelectItem>
-                          <SelectItem value="practice">自由刷题</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {qbDrawMode === "practice" && (
-                      <div>
-                        <Label className="text-xs text-gray-500">正确率（%）</Label>
-                        <Input type="number" value={qbPassRate} onChange={e => { const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0)); setQbPassRate(val); setQbCfg({ passRate: val }) }} className="mt-1 text-sm" min={0} max={100} />
-                        <p className="text-[10px] text-gray-400 mt-1">超过正确率则得分 100，低于正确率得分 0</p>
-                      </div>
-                    )}
-                    <div>
-                      <Label className="text-xs text-gray-500">时间限制（分钟）</Label>
-                      <Input type="number" value={qbCfg.timeLimit ?? 90} onChange={e => setQbCfg({ timeLimit: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} />
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Switch checked={qbCfg.allowRetake ?? false} onCheckedChange={v => setQbCfg({ allowRetake: v })} />
-                      <span className="text-xs text-gray-600">允许重复测评</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={qbCfg.shuffleQuestions ?? true} onCheckedChange={v => setQbCfg({ shuffleQuestions: v })} />
-                      <span className="text-xs text-gray-600">题目乱序</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={qbCfg.showResult ?? true} onCheckedChange={v => setQbCfg({ showResult: v })} />
-                      <span className="text-xs text-gray-600">提交后展示成绩</span>
-                    </div>
-                  </div>
-                  {(qbCfg.allowRetake ?? false) && (
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-gray-500">最多重考次数</Label>
-                        <Input type="number" value={qbCfg.retakeCount ?? 1} onChange={e => setQbCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-4 pt-4 border-t">
-                    <Label className="text-xs text-gray-500 mb-2">测评启用条件</Label>
-                    <div className="space-y-2 mt-1">
-                      {[
-                        { key: "manual", label: "后台手动启用", desc: `老师手动开启后，学生才能进入作答。每位学生从点击「开始答题」时起，计时 ${qbCfg.timeLimit ?? 90} 分钟，时间结束系统将自动提交。` },
-                        { key: "scheduled", label: "定时启用", desc: "提前预设测评的开始、结束时间。到开始时间后，学生方可进入作答；从开始时间起按测评时长计时，到预设结束时间自动关闭并提交。" },
-                        { key: "always", label: "随时作答", desc: "测评创建完成后立即开放，学生可随时进入作答。学生从点击「开始答题」时起按设定时长计时，时间结束系统将自动提交。" },
-                      ].map(mode => (
-                        <button
-                          key={mode.key}
-                          onClick={() => setQbCfg({ activationMode: mode.key })}
-                          className={cn(
-                            "w-full text-left p-3 rounded-lg border transition-all",
-                            (qbCfg.activationMode ?? "manual") === mode.key
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-gray-200 text-gray-600 hover:border-gray-300"
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", (qbCfg.activationMode ?? "manual") === mode.key ? "bg-primary border-primary" : "border-gray-300")}>
-                              {(qbCfg.activationMode ?? "manual") === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}
-                            </div>
-                            <span className="text-xs font-medium">{mode.label}</span>
-                          </div>
-                          <p className="text-[11px] text-gray-400 mt-1 ml-6">{mode.desc}</p>
-                        </button>
-                      ))}
-                    </div>
-                    {(qbCfg.activationMode ?? "manual") === "scheduled" && (
-                      <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs text-gray-500">启用时间</Label>
-                          <Input type="datetime-local" value={qbCfg.scheduledTime ?? ""} onChange={e => setQbCfg({ scheduledTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500">停用时间</Label>
-                          <Input type="datetime-local" value={qbCfg.scheduledEndTime ?? ""} onChange={e => setQbCfg({ scheduledEndTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            )
-          }
-          if (methodKey === "outcome") {
-            const cfg = state.methodResourceConfigs.outcome || {}
-            const setCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, outcome: { ...cfg, ...patch } } })
-            const requiresMaterial = cfg.requiresMaterial !== false
-            return (
-              <div className="space-y-4">
-                <div className="p-4 bg-cyan-50/80 rounded-xl border border-cyan-200 text-sm text-cyan-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Info className="h-4 w-4" />
-                    <span className="font-medium">成果评价说明</span>
-                  </div>
-                  <p>成果评价时教师根据学生提交的成果材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
-                </div>
-                <div className="border rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">成果材料要求</h3></div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={requiresMaterial} onCheckedChange={v => setCfg({ requiresMaterial: v })} />
-                      <span className="text-xs text-gray-600">是否需要提交成果材料</span>
-                    </div>
-                  </div>
-                  {requiresMaterial && (
-                    <>
-                      <div>
-                        <Label className="text-xs text-gray-500">预估提交天数</Label>
-                        <Input type="number" value={cfg.deadlineDays ?? 7} onChange={e => setCfg({ deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
-                      </div>
-                      <div className="mt-3">
-                        <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
-                        <Textarea
-                          value={cfg.submitFormatDesc || ""}
-                          onChange={e => setCfg({ submitFormatDesc: e.target.value })}
-                          placeholder="请用一句话说明学生需要提交的成果材料要求..."
-                          rows={4}
-                          className="text-sm"
-                        />
-                      </div>
-                    </>
-                  )}
-                  <div className="mt-3">
-                    <Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label>
-                    <Textarea
-                      value={cfg.venueResources || ""}
-                      onChange={e => setCfg({ venueResources: e.target.value })}
-                      placeholder="请描述评价所需的场地、设备及环境资源准备要求..."
-                      rows={4}
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex items-center gap-2">
-                      <Switch checked={cfg.allowResubmit ?? false} onCheckedChange={v => setCfg({ allowResubmit: v })} />
-                      <span className="text-xs text-gray-600">允许重新提交</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          }
-          if (methodKey === "homework") {
-            const cfg = state.methodResourceConfigs.homework || {}
-            const setCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, homework: { ...cfg, ...patch } } })
-            const requiresMaterial = cfg.requiresMaterial !== false
-            return (
-              <div className="space-y-4">
-                <div className="p-4 bg-pink-50 rounded-lg border border-pink-100 text-sm text-pink-700">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Info className="h-4 w-4" />
-                    <span className="font-medium">作业说明</span>
-                  </div>
-                  <p>学生提交作业后，教师按评分规则进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
-                </div>
-                <div className="border rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">作业提交要求</h3></div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={requiresMaterial} onCheckedChange={v => setCfg({ requiresMaterial: v })} />
-                      <span className="text-xs text-gray-600">是否需要提交作业材料</span>
-                    </div>
-                  </div>
-                  {requiresMaterial && (
-                    <>
-                      <div>
-                        <Label className="text-xs text-gray-500">预估提交天数</Label>
-                        <Input type="number" value={cfg.deadlineDays ?? 7} onChange={e => setCfg({ deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
-                      </div>
-                      <div className="mt-3">
-                        <Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label>
-                        <Textarea
-                          value={cfg.submitFormatDesc || ""}
-                          onChange={e => setCfg({ submitFormatDesc: e.target.value })}
-                          placeholder="请用一句话说明学生需要提交的作业格式要求..."
-                          rows={4}
-                          className="text-sm"
-                        />
-                      </div>
-                    </>
-                  )}
-                  <div className="mt-3">
-                    <Label className="text-xs text-gray-500 mb-1.5">作业场地/环境资源准备</Label>
-                    <Textarea
-                      value={cfg.venueResources || ""}
-                      onChange={e => setCfg({ venueResources: e.target.value })}
-                      placeholder="请描述作业所需的场地、设备及环境资源准备要求..."
-                      rows={4}
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex items-center gap-2">
-                      <Switch checked={cfg.allowResubmit ?? false} onCheckedChange={v => setCfg({ allowResubmit: v })} />
-                      <span className="text-xs text-gray-600">允许重新提交</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          }
-          if (methodKey === "quiz") {
-            const quizCfg = state.methodResourceConfigs.quiz || {}
-            const setQuizCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...quizCfg, ...patch } } })
-            const quizPresetTimes = [5, 10, 15, 20, 30]
-            const quizTimeLimit = quizCfg.timeLimit ?? 90
-            const quizIsPreset = quizPresetTimes.includes(quizTimeLimit)
-            return (
-              <div className="space-y-4">
-                <BankQuestionSelectorPanel
-                  field="quizQuestions"
-                  selectedIds={state.quizQuestions}
-                  maxCount={30}
-                  onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
-                  questionScores={state.methodResourceConfigs?.quiz?.questionScores || {}}
-                  onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), [qid]: score } } } })}
-                  onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), ...scores } } } })}
-                />
-                <div className="border rounded-xl p-4">
-                  <p className="text-sm font-medium mb-3">答题规则</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-gray-500">时间限制</Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {quizPresetTimes.map(min => (
-                          <button
-                            key={min}
-                            onClick={() => setQuizCfg({ timeLimit: min })}
-                            className={cn(
-                              "px-3 py-1.5 rounded-lg text-xs border transition-all",
-                              quizTimeLimit === min && quizIsPreset
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-gray-200 text-gray-600 hover:border-gray-300"
-                            )}
-                          >
-                            {min} 分钟
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => setQuizCfg({ timeLimit: quizIsPreset ? 1 : quizTimeLimit })}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs border transition-all",
-                            !quizIsPreset && quizTimeLimit > 0
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-gray-200 text-gray-600 hover:border-gray-300"
-                          )}
-                        >
-                          自定义
-                        </button>
-                      </div>
-                      {!quizIsPreset && (
-                        <div className="mt-2">
-                          <Input
-                            type="number"
-                            value={quizTimeLimit}
-                            onChange={e => {
-                              const val = Math.max(1, parseInt(e.target.value) || 1)
-                              setQuizCfg({ timeLimit: val })
-                            }}
-                            className="w-32 text-sm"
-                            min={1}
-                            placeholder="输入分钟数"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Switch checked={quizCfg.allowRetake ?? false} onCheckedChange={v => setQuizCfg({ allowRetake: v })} />
-                      <span className="text-xs text-gray-600">允许重复测评</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={quizCfg.shuffleQuestions ?? true} onCheckedChange={v => setQuizCfg({ shuffleQuestions: v })} />
-                      <span className="text-xs text-gray-600">题目乱序</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={quizCfg.showResult ?? true} onCheckedChange={v => setQuizCfg({ showResult: v })} />
-                      <span className="text-xs text-gray-600">提交后展示成绩</span>
-                    </div>
-                  </div>
-                  {(quizCfg.allowRetake ?? false) && (
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-gray-500">最多重考次数</Label>
-                        <Input type="number" value={quizCfg.retakeCount ?? 1} onChange={e => setQuizCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-4 pt-4 border-t">
-                    <Label className="text-xs text-gray-500 mb-2">测评启用条件</Label>
-                    <div className="space-y-2 mt-1">
-                      {[
-                        { key: "manual", label: "后台手动启用", desc: `老师手动开启后，学生才能进入作答。每位学生从点击「开始答题」时起，计时 ${quizCfg.timeLimit ?? 90} 分钟，时间结束系统将自动提交。` },
-                        { key: "scheduled", label: "定时启用", desc: "提前预设测评的开始、结束时间。到开始时间后，学生方可进入作答；从开始时间起按测评时长计时，到预设结束时间自动关闭并提交。" },
-                        { key: "always", label: "随时作答", desc: "测评创建完成后立即开放，学生可随时进入作答。学生从点击「开始答题」时起按设定时长计时，时间结束系统将自动提交。" },
-                      ].map(mode => (
-                        <button
-                          key={mode.key}
-                          onClick={() => setQuizCfg({ activationMode: mode.key })}
-                          className={cn(
-                            "w-full text-left p-3 rounded-lg border transition-all",
-                            (quizCfg.activationMode ?? "manual") === mode.key
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-gray-200 text-gray-600 hover:border-gray-300"
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", (quizCfg.activationMode ?? "manual") === mode.key ? "bg-primary border-primary" : "border-gray-300")}>
-                              {(quizCfg.activationMode ?? "manual") === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}
-                            </div>
-                            <span className="text-xs font-medium">{mode.label}</span>
-                          </div>
-                          <p className="text-[11px] text-gray-400 mt-1 ml-6">{mode.desc}</p>
-                        </button>
-                      ))}
-                    </div>
-                    {(quizCfg.activationMode ?? "manual") === "scheduled" && (
-                      <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs text-gray-500">启用时间</Label>
-                          <Input type="datetime-local" value={quizCfg.scheduledTime ?? ""} onChange={e => setQuizCfg({ scheduledTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500">停用时间</Label>
-                          <Input type="datetime-local" value={quizCfg.scheduledEndTime ?? ""} onChange={e => setQuizCfg({ scheduledEndTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          }
-          return null
-        }
-
-        const getMethodEvalInfo = (methodKey: string) => {
-          switch (methodKey) {
-            case "random_draw": return { points: state.randomDrawEvalPoints, field: "randomDrawEvalPoints" as const }
-            case "review": return { points: state.reviewEvalPoints, field: "reviewEvalPoints" as const }
-            case "paper": return { points: state.paperEvalPoints, field: "paperEvalPoints" as const }
-            case "question_bank": return { points: state.questionBankEvalPoints, field: "questionBankEvalPoints" as const }
-            case "outcome": return { points: state.outcomeEvalPoints, field: "outcomeEvalPoints" as const }
-            case "homework": return { points: state.homeworkEvalPoints, field: "homeworkEvalPoints" as const }
-            case "quiz": return { points: state.quizEvalPoints, field: "quizEvalPoints" as const }
-            default: return { points: [] as EvalPoint[], field: "randomDrawEvalPoints" as const }
-          }
-        }
-
-        const getMethodRubricIdField = (methodKey: string): "randomDrawRubricId" | "reviewRubricId" | "outcomeRubricId" | "homeworkRubricId" | null => {
-          switch (methodKey) {
-            case "random_draw": return "randomDrawRubricId"
-            case "review": return "reviewRubricId"
-            case "outcome": return "outcomeRubricId"
-            case "homework": return "homeworkRubricId"
-            default: return null
-          }
-        }
-
-        const methodDialogCtx: MethodDialogCtx = {
-          state,
-          updateState,
-          rubricLibrary,
-          setRubricLibrary,
-          editingRubricId,
-          setEditingRubricId,
-          methodDialogViews,
-          setMethodDialogViews,
-          openRubricKpDialog,
-          openRubricAbDialog,
-          setEvalPoints,
-          updateEvalPoint,
-          addEvalPoint,
-          removeEvalPoint,
-          toast,
-          knowledgePoints,
-          abilityPoints,
-        }
-
-        const openDialog = (type: "object" | "subject" | "resource" | "method", methodKey: string) => {
-          setErDialogMethod(methodKey)
-          setErDialogOpen(type)
-          if (type === "method") {
-            const rubricIdField = getMethodRubricIdField(methodKey)
-            const currentRubricId = rubricIdField ? (state as any)[rubricIdField] as string | null : null
-            const info = getMethodEvalInfo(methodKey)
-            const hasManualRubric = (state as any)[info.field]?.length > 0
-            const hasManualScoreRule = state.methodResourceConfigs[methodKey]?.scoreRuleItems?.length > 0
-            const hasManualRules = methodKey === "homework" ? hasManualScoreRule : (hasManualRubric || hasManualScoreRule)
-            if (currentRubricId) {
-              setMethodDialogViews(prev => ({ ...prev, [methodKey]: "list" }))
-            } else if (hasManualRules) {
-              setMethodDialogViews(prev => ({ ...prev, [methodKey]: "edit" }))
-            } else {
-              setMethodDialogViews(prev => ({ ...prev, [methodKey]: "list" }))
-            }
-            setEditingRubricId(null)
-          }
-        }
-
-        const renderObjectDialogContent = (methodKey: string) => {
-          const currentObject = state.methodEvalObjects[methodKey] || state.evalObject
-          return (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-500 mb-4">选择本评价方式的测评对象类型</p>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { key: "individual", label: "个人", desc: "以学生个人为单位进行测评", icon: <User className="h-6 w-6" /> },
-                  { key: "group", label: "小组", desc: "以小组为单位进行测评", icon: <Users className="h-6 w-6" /> },
-                ].map(opt => (
-                  <button
-                    key={opt.key}
-                    onClick={() => updateState({ methodEvalObjects: { ...state.methodEvalObjects, [methodKey]: opt.key as EvalObjectType } })}
-                    className={cn("p-5 rounded-xl border text-left transition-all flex items-center gap-4", currentObject === opt.key ? "border-primary bg-primary/[0.03] ring-1 ring-primary/20" : "border-gray-200 hover:border-gray-300 bg-white")}
-                  >
-                    <div className={cn("p-3 rounded-lg", currentObject === opt.key ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400")}>
-                      {opt.icon}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold mb-1">{opt.label}</p>
-                      <p className="text-xs text-gray-400">{opt.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )
-        }
-
-        const renderSubjectDialogContent = (methodKey: string) => {
-          const currentSubjects = state.methodEvalSubjects[methodKey] || state.evalSubjects
-          const evalObject = state.methodEvalObjects[methodKey] || state.evalObject
-          const displayTypes = ["teacher", "enterprise_mentor", "self", "peer"] as const
-
-          const handleDistributeWeights = () => {
-            const enabled = currentSubjects.filter(s => s.enabled && displayTypes.includes(s.type as typeof displayTypes[number]))
-            const count = enabled.length
-            if (count === 0) return
-            const base = Math.floor(100 / count)
-            const remainder = 100 % count
-            const enabledIdxMap = new Map(enabled.map((s, i) => [s.type, i]))
-            const newSubjects = currentSubjects.map(s => {
-              if (!s.enabled || !displayTypes.includes(s.type as typeof displayTypes[number])) return s
-              const idx = enabledIdxMap.get(s.type) ?? 0
-              return { ...s, params: { ...s.params, weightPercent: base + (idx < remainder ? 1 : 0) } }
-            })
-            updateState({ methodEvalSubjects: { ...state.methodEvalSubjects, [methodKey]: newSubjects } })
-          }
-
-          const allowedSubjectsForMethod: Record<string, string[]> = {
-            paper: ["teacher", "enterprise_mentor"],
-            question_bank: ["teacher", "enterprise_mentor"],
-            quiz: ["teacher", "enterprise_mentor"],
-            random_draw: ["teacher", "enterprise_mentor", "self", "peer"],
-            review: ["teacher", "enterprise_mentor", "self", "peer"],
-            outcome: ["teacher", "enterprise_mentor"],
-            homework: ["teacher", "enterprise_mentor"],
-          }
-
-          return (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-500">配置参与评价的主体及其参数</p>
-                <Button variant="outline" size="sm" className="text-xs h-8" onClick={handleDistributeWeights}>
-                  <Scale className="h-3.5 w-3.5 mr-1" />一键平均权重
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {currentSubjects.filter(s => displayTypes.includes(s.type as typeof displayTypes[number])).map(subject => {
-                  const originalIdx = currentSubjects.findIndex(s => s.type === subject.type)
-                  const methodAllowed = (allowedSubjectsForMethod[methodKey] || []).includes(subject.type)
-                  const peerAllowed = subject.type !== "peer" || evalObject === "group"
-                  const allowed = methodAllowed && peerAllowed
-                  return (
-                    <div key={subject.type} className={cn("p-3 rounded-lg border transition-all", !allowed ? "opacity-50 bg-gray-50 border-gray-200" : subject.enabled ? "border-primary bg-primary/[0.03]" : "border-gray-200 bg-white")}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Switch checked={subject.enabled} disabled={!allowed} onCheckedChange={v => updateMethodEvalSubject(methodKey, originalIdx, { enabled: v })} />
-                          <span className={cn("text-xs font-medium", !allowed && "text-gray-400")}>{subjectLabels[subject.type]}</span>
-                        </div>
-                        {subject.enabled && allowed && subject.params?.weightPercent !== undefined && (
-                          <Badge variant="outline" className="text-[10px]">权重 {subject.params.weightPercent}%</Badge>
-                        )}
-                      </div>
-                      {subject.enabled && (
-                        <div className="pl-8 space-y-2">
-                          {subject.type === "teacher" && (
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <Label className="text-[11px] text-gray-500">专业背景要求</Label>
-                                <MajorSelect
-                                  tenantId={tenantId}
-                                  value={subject.params?.teacherBackground || ""}
-                                  onChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, teacherBackground: v || "" } })}
-                                  placeholder="选择专业背景"
-                                  className="mt-0.5 text-xs h-8"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-[11px] text-gray-500">评分人数</Label>
-                                <Input type="number" value={subject.params?.scorerCount || 1} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, scorerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-0.5 text-xs h-8" min={1} />
-                                {(subject.params?.scorerCount || 1) > 1 && (
-                                  <div className="mt-1">
-                                    <Label className="text-[11px] text-gray-500">统计规则</Label>
-                                    <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
-                                      <SelectTrigger className="mt-0.5 text-xs h-8">
-                                        <SelectValue placeholder="选择统计规则" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="average">平均值</SelectItem>
-                                        <SelectItem value="median">中位数</SelectItem>
-                                        <SelectItem value="max">最高分</SelectItem>
-                                        <SelectItem value="min">最低分</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
-                                <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
-                              </div>
-                              <div>
-                                <Label className="text-[11px] text-gray-500">最低教龄 (年)</Label>
-                                <Input type="number" value={subject.params?.minTeachingYears || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, minTeachingYears: Math.max(0, parseInt(e.target.value) || 0) } })} className="mt-0.5 text-xs h-8" min={0} />
-                              </div>
-                            </div>
-                          )}
-                          {subject.type === "enterprise_mentor" && (
-                            <>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">专业领域</Label>
-                                  <MajorSelect
-                                    tenantId={tenantId}
-                                    value={subject.params?.expertise || ""}
-                                    onChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, expertise: v || "" } })}
-                                    placeholder="选择专业领域"
-                                    className="mt-0.5 text-xs h-8"
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">工作年限要求 (年)</Label>
-                                  <Input type="number" value={subject.params?.minYears || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, minYears: Math.max(0, parseInt(e.target.value) || 0) } })} className="mt-0.5 text-xs h-8" min={0} />
-                                </div>
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">评分人数</Label>
-                                  <Input type="number" value={subject.params?.scorerCount || 1} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, scorerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-0.5 text-xs h-8" min={1} />
-                                  {(subject.params?.scorerCount || 1) > 1 && (
-                                    <div className="mt-1">
-                                      <Label className="text-[11px] text-gray-500">统计规则</Label>
-                                      <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
-                                        <SelectTrigger className="mt-0.5 text-xs h-8">
-                                          <SelectValue placeholder="选择统计规则" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="average">平均值</SelectItem>
-                                          <SelectItem value="median">中位数</SelectItem>
-                                          <SelectItem value="max">最高分</SelectItem>
-                                          <SelectItem value="min">最低分</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  )}
-                                </div>
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
-                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
-                                </div>
-                              </div>
-                              <div>
-                                <Label className="text-[11px] text-gray-500">岗位工作经历</Label>
-                                <Input value={subject.params?.jobExperience || ""} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, jobExperience: e.target.value } })} placeholder="请填写岗位工作经历要求" className="mt-0.5 text-xs h-8" />
-                              </div>
-                            </>
-                          )}
-                          {subject.type === "peer" && (
-                            <>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">互评人数</Label>
-                                  <Input type="number" value={subject.params?.peerCount || 3} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, peerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-0.5 text-xs h-8" min={1} />
-                                  {(subject.params?.peerCount || 3) > 1 && (
-                                    <div className="mt-1">
-                                      <Label className="text-[11px] text-gray-500">统计规则</Label>
-                                      <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
-                                        <SelectTrigger className="mt-0.5 text-xs h-8">
-                                          <SelectValue placeholder="选择统计规则" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="average">平均值</SelectItem>
-                                          <SelectItem value="median">中位数</SelectItem>
-                                          <SelectItem value="max">最高分</SelectItem>
-                                          <SelectItem value="min">最低分</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  )}
-                                </div>
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
-                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">互评规则</Label>
-                                  <Select value={subject.params?.peerRule || ""} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, peerRule: v } })}>
-                                    <SelectTrigger className="mt-0.5 text-xs h-8">
-                                      <SelectValue placeholder="选择互评规则" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="随机分配">随机分配</SelectItem>
-                                      <SelectItem value="相邻座位">相邻座位</SelectItem>
-                                      <SelectItem value="自由组合">自由组合</SelectItem>
-                                      <SelectItem value="指定分组">指定分组</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="flex items-end pb-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <Switch checked={subject.params?.anonymous || false} onCheckedChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, anonymous: v } })} />
-                                    <span className="text-[11px] text-gray-600">匿名评价</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </>
-                          )}
-                          {subject.type === "self" && (
-                            <>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
-                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
-                                </div>
-                                <div className="flex items-end pb-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <Switch checked={subject.params?.requiresReflection || false} onCheckedChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, requiresReflection: v } })} />
-                                    <span className="text-[11px] text-gray-600">需要提交反思报告</span>
-                                  </div>
-                                </div>
-                              </div>
-                              {subject.params?.requiresReflection && (
-                                <div>
-                                  <Label className="text-[11px] text-gray-500">反思报告最少字数</Label>
-                                  <Input type="number" value={subject.params?.reflectionMinLength || 300} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, reflectionMinLength: Math.max(100, parseInt(e.target.value) || 100) } })} className="mt-0.5 text-xs h-8 w-28" min={100} />
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        }
-
-
-
-        const objectOptions = [
-          { key: "individual", label: "个人", desc: "以个人为单位" },
-          { key: "group", label: "小组", desc: "以小组为单位" },
-        ] as const
-
-        const ObjectCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
-          const currentObject = state.methodEvalObjects[methodKey] || state.evalObject
-          const opt = objectOptions.find(o => o.key === currentObject)
-          return (
-            <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="h-4 w-4 text-gray-400 group-hover:text-primary" />
-                <span className="text-xs font-medium text-gray-500">测评对象</span>
-              </div>
-              <p className="text-sm font-semibold truncate">{opt?.label || "未选择"}</p>
-              <p className="text-xs text-gray-400 truncate mt-0.5">{opt?.desc || "点击配置"}</p>
-            </button>
-          )
-        }
-
-        const SubjectCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
-          const currentSubjects = state.methodEvalSubjects[methodKey] || state.evalSubjects
-          const evalObject = state.methodEvalObjects[methodKey] || state.evalObject
-          const enabledSubjects = currentSubjects.filter(s => s.enabled && !(s.type === "peer" && evalObject !== "group"))
-          const totalWeight = enabledSubjects.reduce((s, sub) => s + (sub.params?.weightPercent || 0), 0)
-          return (
-            <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-gray-400 group-hover:text-primary" />
-                  <span className="text-xs font-medium text-gray-500">评价主体</span>
-                </div>
-                {enabledSubjects.length > 0 && <Badge variant="outline" className="text-[10px]">{enabledSubjects.length} 类</Badge>}
-              </div>
-              <p className="text-sm font-semibold truncate">
-                {enabledSubjects.length === 0 ? "未配置" : enabledSubjects.map(s => subjectLabels[s.type]).join("、")}
-              </p>
-              <p className="text-xs text-gray-400 truncate mt-0.5">
-                {enabledSubjects.length === 0 ? "点击配置" : `总权重 ${totalWeight}%`}
-              </p>
-            </button>
-          )
-        }
-
-        const ResourceCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
-          const summary = getMethodConfigSummary(methodKey)
-          return (
-            <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Database className="h-4 w-4 text-gray-400 group-hover:text-primary" />
-                  <span className="text-xs font-medium text-gray-500">测评资源</span>
-                </div>
-                {summary.configured && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-              </div>
-              <p className="text-sm font-semibold truncate">{summary.summary || "未配置"}</p>
-              <p className="text-xs text-gray-400 truncate mt-0.5">&nbsp;</p>
-            </button>
-          )
-        }
-
-        const MethodCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
-          const info = getMethodEvalInfo(methodKey)
-          const rubricIdField = getMethodRubricIdField(methodKey)
-          const currentRubricId = rubricIdField ? (state as any)[rubricIdField] as string | null : null
-          const currentScheme = currentRubricId ? rubricLibrary.find(s => s.id === currentRubricId) : null
-          const manualScoreRuleItems = state.methodResourceConfigs[methodKey]?.scoreRuleItems || []
-          const hasManualRubric = info.points.length > 0
-          const hasManualScoreRule = manualScoreRuleItems.length > 0
-          const hasManualRules = methodKey === "homework" ? hasManualScoreRule : (hasManualRubric || hasManualScoreRule)
-
-          let title: string
-          let evalCount: number
-          let evalLabel: string
-          let badgeUnit: string
-
-          if (currentScheme) {
-            title = `使用模板：${currentScheme.name}`
-            evalCount = currentScheme.mode === "score_rule" ? (currentScheme.scoreRuleItems?.length || 0) : currentScheme.points.length
-            evalLabel = currentScheme.mode === "score_rule" ? "评价项" : "评价点"
-            badgeUnit = currentScheme.mode === "score_rule" ? "项" : "点"
-          } else if (hasManualRules) {
-            title = state.methodResourceConfigs[methodKey]?.rubricName || "自定义评价标准"
-            const isScoreRule = hasManualScoreRule
-            evalCount = isScoreRule ? manualScoreRuleItems.length : info.points.length
-            evalLabel = isScoreRule ? "评价项" : "评价点"
-            badgeUnit = isScoreRule ? "项" : "点"
-          } else {
-            title = "未配置评价点"
-            evalCount = 0
-            evalLabel = "评价点"
-            badgeUnit = "点"
-          }
-
-          const subTypeCount = Object.entries(
-            info.points.reduce((acc, p) => {
-              if (p.subType) acc[p.subType] = (acc[p.subType] || 0) + 1
-              return acc
-            }, {} as Record<string, number>)
-          ).map(([k, v]) => `${evalSubTypeLabels[k as EvalSubType]}${v}`)
-          return (
-            <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-gray-400 group-hover:text-primary" />
-                  <span className="text-xs font-medium text-gray-500">评价标准配置</span>
-                </div>
-                {evalCount > 0 && <Badge variant="outline" className="text-[10px]">{evalCount} {badgeUnit}</Badge>}
-              </div>
-              <p className="text-sm font-semibold truncate">
-                {title}
-              </p>
-              <p className="text-xs text-gray-400 truncate mt-0.5">
-                {currentScheme ? `${evalCount} 个${evalLabel}` : (subTypeCount.length === 0 ? "点击配置" : subTypeCount.join(" · "))}
-              </p>
-            </button>
-          )
-        }
-
-        const methodWeightTotal = state.evaluationMethods.reduce((sum, m) => sum + (state.methodWeights[m] || 0), 0)
-
-        const updateMethodWeight = (methodKey: string, value: number) => {
-          const clamped = Math.max(0, Math.min(100, value))
-          updateState({ methodWeights: { ...state.methodWeights, [methodKey]: clamped } })
-        }
-
-        const distributeMethodWeights = () => {
-          const count = state.evaluationMethods.length
-          if (count === 0) return
-          const base = Math.floor(100 / count)
-          const remainder = 100 % count
-          const newWeights: Record<string, number> = {}
-          state.evaluationMethods.forEach((m, i) => {
-            newWeights[m] = base + (i < remainder ? 1 : 0)
-          })
-          updateState({ methodWeights: newWeights })
-        }
-
-        const moveMethodUp = (index: number) => {
-          if (index <= 0) return
-          const newMethods = [...state.evaluationMethods]
-          const temp = newMethods[index]
-          newMethods[index] = newMethods[index - 1]
-          newMethods[index - 1] = temp
-          updateState({ evaluationMethods: newMethods })
-        }
-
-        const moveMethodDown = (index: number) => {
-          if (index >= state.evaluationMethods.length - 1) return
-          const newMethods = [...state.evaluationMethods]
-          const temp = newMethods[index]
-          newMethods[index] = newMethods[index + 1]
-          newMethods[index + 1] = temp
-          updateState({ evaluationMethods: newMethods })
-        }
-
-        return (
-          <div className="h-full flex flex-col">
-            {state.evaluationMethods.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-                <Target className="h-12 w-12 mb-3 opacity-50" />
-                <p className="text-sm">尚未配置评价方式</p>
-                <p className="text-xs mt-1">请先在「配置任务测评形式」中选择评价类型</p>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto space-y-5 p-1">
-                {/* 评价方式顺序和权重配置入口 */}
-                <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => setIsOrderConfigOpen(true)}>
-                    <ListOrdered className="h-3.5 w-3.5 mr-1.5" />
-                    配置评价顺序
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => setIsWeightConfigOpen(true)}>
-                    <Scale className="h-3.5 w-3.5 mr-1.5" />
-                    配置评价权重
-                    <span className={cn(
-                      "ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium",
-                      methodWeightTotal === 100 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
-                    )}>
-                      {methodWeightTotal}%
-                    </span>
-                  </Button>
-                </div>
-
-                {/* 评价方式顺序配置弹窗 */}
-                <Dialog open={isOrderConfigOpen} onOpenChange={setIsOrderConfigOpen}>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>评价方式顺序配置</DialogTitle>
-                      <DialogDescription>点击箭头调整评价方式的执行顺序</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-1.5 py-4">
-                      {getMethodInstances().map(({ methodKey, instanceIndex }, index) => {
-                        const method = evaluationMethodOptions.find(o => o.key === methodKey)
-                        if (!method) return null
-                        const instanceCount = methodInstanceCounts[methodKey] || 1
-                        const displayLabel = instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
-                        const instanceKey = `${methodKey}-${instanceIndex}`
-                        return (
-                          <div
-                            key={instanceKey}
-                            className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 bg-gray-50/50"
-                          >
-                            <span className="w-5 h-5 rounded-full bg-gray-200 text-gray-500 text-[10px] flex items-center justify-center font-medium">
-                              {index + 1}
-                            </span>
-                            <div className={cn("p-1.5 rounded-md", method.color)}>{method.icon}</div>
-                            <span className="text-sm font-medium flex-1">{displayLabel}</span>
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={() => moveMethodUp(index)}
-                                disabled={index === 0}
-                                className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                              >
-                                <ChevronUp className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                onClick={() => moveMethodDown(index)}
-                                disabled={index === getMethodInstances().length - 1}
-                                className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                              >
-                                <ChevronDown className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    <DialogFooter>
-                      <Button onClick={() => setIsOrderConfigOpen(false)}>完成</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                {/* 评价方式权重配置弹窗 */}
-                <Dialog open={isWeightConfigOpen} onOpenChange={setIsWeightConfigOpen}>
-                  <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>评价方式权重配置</DialogTitle>
-                      <DialogDescription>
-                        配置各评价方式的权重占比，合计需等于 100%
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className={cn(
-                          "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium",
-                          methodWeightTotal === 100 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
-                        )}>
-                          <span>合计</span>
-                          <span>{methodWeightTotal}%</span>
-                          {methodWeightTotal !== 100 && <span className="text-[10px]">(需等于100%)</span>}
-                        </div>
-                        <Button variant="outline" size="sm" className="text-xs h-8" onClick={distributeMethodWeights}>
-                          <RotateCcw className="h-3.5 w-3.5 mr-1" />一键平均
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                        {getMethodInstances().map(({ methodKey, instanceIndex }) => {
-                          const method = evaluationMethodOptions.find(o => o.key === methodKey)
-                          if (!method) return null
-                          const instanceCount = methodInstanceCounts[methodKey] || 1
-                          const displayLabel = instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
-                          const instanceKey = `${methodKey}-${instanceIndex}`
-                          const weight = state.methodWeights[methodKey] || 0
-                          return (
-                            <div key={instanceKey} className="flex items-center gap-2.5 p-3 rounded-lg border border-gray-100 bg-gray-50/50">
-                              <div className={cn("p-1.5 rounded-md shrink-0", method.color)}>
-                                {method.icon}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium text-gray-700 truncate">{displayLabel}</p>
-                                <div className="flex items-center gap-1 mt-1">
-                                  <Input
-                                    type="number"
-                                    value={weight}
-                                    onChange={e => updateMethodWeight(methodKey, parseInt(e.target.value) || 0)}
-                                    className="h-7 text-xs w-16 text-center"
-                                    min={0}
-                                    max={100}
-                                  />
-                                  <span className="text-xs text-gray-400">%</span>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button onClick={() => setIsWeightConfigOpen(false)}>完成</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                {getMethodInstances().map(({ methodKey, instanceIndex }) => {
-                  const method = evaluationMethodOptions.find(o => o.key === methodKey)
-                  if (!method) return null
-                  const instanceCount = methodInstanceCounts[methodKey] || 1
-                  const displayLabel = instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
-                  const instanceKey = `${methodKey}-${instanceIndex}`
-                  return (
-                    <div key={instanceKey} className="border border-border rounded-xl p-5 bg-white shadow-sm">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className={cn("p-2 rounded-lg", method.color)}>{method.icon}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold">{displayLabel}</p>
-                          <p className="text-xs text-gray-400">{method.desc}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <ObjectCard methodKey={methodKey} onClick={() => openDialog("object", methodKey)} />
-                        <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
-                          <span className="text-[10px] font-medium">①</span>
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </div>
-                        <SubjectCard methodKey={methodKey} onClick={() => openDialog("subject", methodKey)} />
-                        <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
-                          <span className="text-[10px] font-medium">②</span>
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </div>
-                        <ResourceCard methodKey={methodKey} onClick={() => openDialog("resource", methodKey)} />
-                        <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
-                          <span className="text-[10px] font-medium">③</span>
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </div>
-                        {(methodKey === "question_bank" || methodKey === "paper" || methodKey === "quiz") ? (
-                          <div className="flex-1 min-w-0 p-4 rounded-xl border text-left bg-green-50/50 border-green-100">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Target className="h-4 w-4 text-green-500" />
-                              <span className="text-xs font-medium text-green-600">评价标准配置</span>
-                            </div>
-                            <p className="text-sm font-semibold text-green-700">自动读取得分</p>
-                            <p className="text-xs text-green-500 truncate mt-0.5">系统将自动读取上一步测评资源的得分</p>
-                          </div>
-                        ) : (
-                          <MethodCard methodKey={methodKey} onClick={() => openDialog("method", methodKey)} />
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            <Dialog open={erDialogOpen === "object"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[63vw] max-w-[63vw] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>测评对象配置</DialogTitle>
-                  <DialogDescription>
-                    配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评对象
-                  </DialogDescription>
-                </DialogHeader>
-                {erDialogMethod && renderObjectDialogContent(erDialogMethod)}
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={erDialogOpen === "subject"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>评价主体配置</DialogTitle>
-                  <DialogDescription>
-                    配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价主体
-                  </DialogDescription>
-                </DialogHeader>
-                {erDialogMethod && renderSubjectDialogContent(erDialogMethod)}
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] flex flex-col overflow-hidden">
-                <DialogHeader className="shrink-0">
-                  <DialogTitle>测评资源配置</DialogTitle>
-                  <DialogDescription>
-                    配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
-                {erDialogMethod === "question_bank" ? (
-                  <BankQuestionSelectorPanel
-                    field="questionBankQuestions"
-                    selectedIds={state.questionBankQuestions}
-                    onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
-                    questionScores={state.methodResourceConfigs?.question_bank?.questionScores || {}}
-                    onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), [qid]: score } } } })}
-                    onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), ...scores } } } })}
-                  />
-                ) : erDialogMethod === "quiz" ? (
-                  <BankQuestionSelectorPanel
-                    field="quizQuestions"
-                    selectedIds={state.quizQuestions}
-                    maxCount={30}
-                    onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
-                    questionScores={state.methodResourceConfigs?.quiz?.questionScores || {}}
-                    onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), [qid]: score } } } })}
-                    onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), ...scores } } } })}
-                  />
-                ) : erDialogMethod === "random_draw" ? (
-                  <RandomDrawResourcePanel
-                    state={state}
-                    updateState={updateState}
-                    majors={majors}
-                    rdqSearch={rdqSearch}
-                    setRdqSearch={setRdqSearch}
-                    rdqActionOpen={rdqActionOpen}
-                    setRdqActionOpen={setRdqActionOpen}
-                    rdqActionMode={rdqActionMode}
-                    setRdqActionMode={setRdqActionMode}
-                    rdqActionTarget={rdqActionTarget}
-                    setRdqActionTarget={setRdqActionTarget}
-                    newRdqForm={newRdqForm}
-                    setNewRdqForm={setNewRdqForm}
-                    rdqDetailOpen={rdqDetailOpen}
-                    setRdqDetailOpen={setRdqDetailOpen}
-                    selectedRdqForDetail={selectedRdqForDetail}
-                    setSelectedRdqForDetail={setSelectedRdqForDetail}
-                  />
-                ) : erDialogMethod ? (
-                  renderEvalResourceOnlyPanel(erDialogMethod, majors)
-                ) : null}
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={erDialogOpen === "method"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[85vw] max-w-[85vw] max-h-[90vh] overflow-x-hidden overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>评价标准配置</DialogTitle>
-                  <DialogDescription>
-                    配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价点与评分规则
-                  </DialogDescription>
-                </DialogHeader>
-                {erDialogMethod && <MethodDialogContent methodKey={erDialogMethod} info={getMethodEvalInfo(erDialogMethod)} ctx={methodDialogCtx} />}
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={questionDetailOpen} onOpenChange={setQuestionDetailOpen}>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>题目详情</DialogTitle>
-                </DialogHeader>
-                {(() => {
-                  const q = allQuestions.find(aq => aq.id === selectedQuestionForDetail) as any
-                  if (!q) return null
-                  return (
-                    <div className="space-y-3 py-2">
-                      <div>
-                        <Label className="text-xs text-gray-500">题目名称</Label>
-                        <p className="text-sm font-medium mt-1">{q.name}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-500">题目内容</Label>
-                        <p className="text-sm mt-1">{q.content}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div>
-                          <Label className="text-xs text-gray-500">题型</Label>
-                          <p className="text-sm mt-1">{questionTypeLabels[q.type] || q.type}</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500">难度</Label>
-                          <p className="text-sm mt-1">{difficultyLabels[q.difficulty] || q.difficulty}</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500">分值</Label>
-                          <p className="text-sm mt-1">{q.score}分</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500">所属题库</Label>
-                          <p className="text-sm mt-1">{questionBankLabels[q.questionBank] || q.questionBank || "-"}</p>
-                        </div>
-                      </div>
-                      {q.options && q.options.length > 0 && (
-                        <div>
-                          <Label className="text-xs text-gray-500">选项</Label>
-                          <div className="space-y-1 mt-1">
-                            {q.options.map((opt: string, i: number) => (
-                              <div key={i} className={cn("text-sm p-2 rounded border", Array.isArray(q.answer) ? q.answer.includes(opt) ? "border-green-300 bg-green-50" : "border-gray-200" : q.answer === opt ? "border-green-300 bg-green-50" : "border-gray-200")}>
-                                {String.fromCharCode(65 + i)}. {opt}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {q.type === "judgment" && (
-                        <div>
-                          <Label className="text-xs text-gray-500">正确答案</Label>
-                          <p className="text-sm mt-1">{q.answer === "true" ? "正确" : "错误"}</p>
-                        </div>
-                      )}
-                      {q.type === "subjective" && q.answer && (
-                        <div>
-                          <Label className="text-xs text-gray-500">参考答案</Label>
-                          <p className="text-sm mt-1">{q.answer}</p>
-                        </div>
-                      )}
-                      {Array.isArray(q.answer) && q.type !== "judgment" && (
-                        <div>
-                          <Label className="text-xs text-gray-500">正确答案</Label>
-                          <p className="text-sm mt-1">{q.answer.join(", ")}</p>
-                        </div>
-                      )}
-                      {!Array.isArray(q.answer) && q.type !== "judgment" && q.type !== "subjective" && (
-                        <div>
-                          <Label className="text-xs text-gray-500">正确答案</Label>
-                          <p className="text-sm mt-1">{q.answer}</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setQuestionDetailOpen(false)}>关闭</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={showAddQuestion} onOpenChange={setShowAddQuestion}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>新增题目</DialogTitle>
-                </DialogHeader>
-                <div className="py-8 text-center text-gray-500">
-                  此处参考 1.0 版本页面功能即可
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => setShowAddQuestion(false)}>知道了</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Paper Detail Dialog */}
-            <PaperDetailWrapper
-              paperId={selectedPaperForDetail}
-              open={paperDetailOpen}
-              onOpenChange={setPaperDetailOpen}
-            />
-
-            {/* Create Paper Dialog */}
-            <ExamFormDialog
-              open={showCreatePaper}
-              onOpenChange={setShowCreatePaper}
-              onSubmit={async (data) => {
-                try {
-                  const created = await examApi.create(data as any)
-                  loadedExams.push(created)
-                  updateState({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
-                  setShowCreatePaper(false)
-                  setConfigPaperId(created.id)
-                  setConfigSelectedIds([])
-                } catch (_) {
-                  toast({ variant: "destructive", title: "创建失败", description: "创建试卷失败" })
-                }
-              }}
-            />
-
-            {/* Rubric Knowledge Points Multi-Select Dialog */}
-            <Dialog open={rubricKpDialogOpen} onOpenChange={v => { if (!v) setRubricKpDialogOpen(false) }}>
-              <DialogContent
-        className="sm:max-w-[85vw] max-h-[90vh] flex flex-col"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
-                <DialogHeader>
-                  <DialogTitle>关联考查知识点</DialogTitle>
-                  <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
-                </DialogHeader>
-                {(() => {
-                  const field = rubricKpTargetField
-                  const pointId = rubricKpTargetPointId
-                  const ep = field && pointId ? getEvalPoints(field as EvalPointField).find(p => p.id === pointId) : null
-                  const selectedIds = ep?.knowledgePointIds || []
-                  const filteredKp = knowledgePoints.filter(k => !rubricKpSearch || k.name.includes(rubricKpSearch) || k.description.includes(rubricKpSearch) || (k.code && k.code.includes(rubricKpSearch)))
-
-                  const toggleKp = (kpId: string) => {
-                    if (!field || !pointId) return
-                    const newIds = selectedIds.includes(kpId) ? selectedIds.filter(id => id !== kpId) : [...selectedIds, kpId]
-                    updateEvalPoint(field as EvalPointField, pointId, { knowledgePointIds: newIds })
-                  }
-
-                  return (
-                    <div className="flex gap-4 flex-1 min-h-0 py-2">
-                      <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                        <div className="relative mb-3">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input value={rubricKpSearch} onChange={e => setRubricKpSearch(e.target.value)} placeholder="搜索知识点名称、描述或编码..." className="pl-9" />
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                          <table className="w-full text-sm">
-                            <thead className="bg-gray-50 sticky top-0 z-10">
-                              <tr>
-                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">知识点名称</th>
-                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">编码</th>
-                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">描述</th>
-                                <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">操作</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {filteredKp.map(kp => {
-                                const isSelected = selectedIds.includes(kp.id)
-                                return (
-                                  <tr key={kp.id} className={cn("hover:bg-gray-50 cursor-pointer", isSelected ? "bg-primary/[0.03]" : "")} onClick={() => toggleKp(kp.id)}>
-                                    <td className="px-3 py-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
-                                          {isSelected && <Check className="h-3 w-3 text-white" />}
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-800">{kp.name}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-2">{kp.code ? <Badge variant="outline" className="text-[10px] h-5 px-1.5">{kp.code}</Badge> : <span className="text-xs text-gray-400">-</span>}</td>
-                                    <td className="px-3 py-2"><p className="text-xs text-gray-500 line-clamp-1">{kp.description}</p></td>
-                                    <td className="px-3 py-2 text-right">
-                                      {isSelected ? (
-                                        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleKp(kp.id); }}>取消</Button>
-                                      ) : (
-                                        <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleKp(kp.id); }}>选择</Button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                      <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-                        <p className="text-sm font-medium mb-3 text-gray-700">已选择知识点 ({selectedIds.length})</p>
-                        <div className="flex-1 overflow-y-auto space-y-2">
-                          {selectedIds.length === 0 && (
-                            <div className="text-center text-gray-400 py-8">
-                              <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-xs">从左侧选择知识点</p>
-                            </div>
-                          )}
-                          {selectedIds.map(kpId => {
-                            const kp = knowledgePoints.find(k => k.id === kpId)
-                            if (!kp) return null
-                            return (
-                              <div key={kpId} className="p-2 rounded-lg border border-primary/20 bg-primary/5">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-medium flex-1 truncate">{kp.name}</span>
-                                  <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400" onClick={() => toggleKp(kpId)}><X className="h-3 w-3" /></Button>
-                                </div>
-                                <p className="text-[10px] text-gray-500 line-clamp-1">{kp.description}</p>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-                <DialogFooter>
-                  <Button onClick={() => setRubricKpDialogOpen(false)}>完成</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Rubric Ability Points Multi-Select Dialog */}
-            <Dialog open={rubricAbDialogOpen} onOpenChange={v => { if (!v) setRubricAbDialogOpen(false) }}>
-              <DialogContent className="sm:max-w-[85vw] max-h-[90vh] flex flex-col">
-                <DialogHeader>
-                  <DialogTitle>关联考查能力点</DialogTitle>
-                  <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
-                </DialogHeader>
-                {(() => {
-                  const field = rubricAbTargetField
-                  const pointId = rubricAbTargetPointId
-                  const ep = field && pointId ? getEvalPoints(field as EvalPointField).find(p => p.id === pointId) : null
-                  const selectedIds = ep?.abilityPointIds || []
-                  const filteredAb = abilityPoints.filter(a => !rubricAbSearch || (a.name || "").includes(rubricAbSearch) || (a.description || "").includes(rubricAbSearch) || (a.code || "").includes(rubricAbSearch))
-
-                  const toggleAb = (abId: string) => {
-                    if (!field || !pointId) return
-                    const newIds = selectedIds.includes(abId) ? selectedIds.filter(id => id !== abId) : [...selectedIds, abId]
-                    updateEvalPoint(field as EvalPointField, pointId, { abilityPointIds: newIds })
-                  }
-
-                  return (
-                    <div className="flex gap-4 flex-1 min-h-0 py-2">
-                      <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                        <div className="relative mb-3">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input value={rubricAbSearch} onChange={e => setRubricAbSearch(e.target.value)} placeholder="搜索能力点名称、描述或编码..." className="pl-9" />
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                          <table className="w-full text-sm">
-                            <thead className="bg-gray-50 sticky top-0 z-10">
-                              <tr>
-                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">能力点名称</th>
-                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">编码</th>
-                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">描述</th>
-                                <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">操作</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {filteredAb.map(ab => {
-                                const isSelected = selectedIds.includes(ab.id)
-                                return (
-                                  <tr key={ab.id} className={cn("hover:bg-gray-50 cursor-pointer", isSelected ? "bg-primary/[0.03]" : "")} onClick={() => toggleAb(ab.id)}>
-                                    <td className="px-3 py-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
-                                          {isSelected && <Check className="h-3 w-3 text-white" />}
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-800">{ab.name}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-2">{ab.code ? <Badge variant="outline" className="text-[10px] h-5 px-1.5">{ab.code}</Badge> : <span className="text-xs text-gray-400">-</span>}</td>
-                                    <td className="px-3 py-2"><p className="text-xs text-gray-500 line-clamp-1">{ab.description}</p></td>
-                                    <td className="px-3 py-2 text-right">
-                                      {isSelected ? (
-                                        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleAb(ab.id); }}>取消</Button>
-                                      ) : (
-                                        <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleAb(ab.id); }}>选择</Button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                      <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-                        <p className="text-sm font-medium mb-3 text-gray-700">已选择能力点 ({selectedIds.length})</p>
-                        <div className="flex-1 overflow-y-auto space-y-2">
-                          {selectedIds.length === 0 && (
-                            <div className="text-center text-gray-400 py-8">
-                              <Award className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-xs">从左侧选择能力点</p>
-                            </div>
-                          )}
-                          {selectedIds.map(abId => {
-                            const ab = abilityPoints.find(a => a.id === abId)
-                            if (!ab) return null
-                            return (
-                              <div key={abId} className="p-2 rounded-lg border border-primary/20 bg-primary/5">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-medium flex-1 truncate">{ab.name}</span>
-                                  <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400" onClick={() => toggleAb(abId)}><X className="h-3 w-3" /></Button>
-                                </div>
-                                <p className="text-[10px] text-gray-500 line-clamp-1">{ab.description}</p>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-                <DialogFooter>
-                  <Button onClick={() => setRubricAbDialogOpen(false)}>完成</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        )
-      }
+// ============ Edit Card Dialog ============
 
 
 function EditCardDialog({
@@ -4771,6 +1923,8 @@ function EditCardDialog({
   rubricLibrary,
   setRubricLibrary,
   scenarioId,
+  datasets,
+  professions,
 }: {
   allTasks: Task[]
   taskId: string
@@ -4791,6 +1945,8 @@ function EditCardDialog({
   rubricLibrary: RubricScheme[]
   setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
   scenarioId: string
+  datasets: UseTaskDatasetsResult
+  professions: any[]
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
   const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
@@ -4828,13 +1984,13 @@ function EditCardDialog({
   const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
   const [kpFormOpen, setKpFormOpen] = useState(false)
   const [kpFormMode, setKpFormMode] = useState<"add" | "clone" | "edit">("add")
-  const [kpFormTarget, setKpFormTarget] = useState<(typeof knowledgePoints)[0] | null>(null)
+  const [kpFormTarget, setKpFormTarget] = useState<TaskKnowledgePointItem | null>(null)
   const [kpFormInitial, setKpFormInitial] = useState({ name: "", description: "", code: "", granularLessonIds: [] as string[] })
   const [glSelectOpen, setGlSelectOpen] = useState(false)
   const [glSelectTargetKp, setGlSelectTargetKp] = useState<string | null>(null)
 
   // Determine if a knowledge point is reference (original library) or custom (added/cloned)
-  const isReferenceKp = (kpId: string) => !customKnowledgePointIds.has(kpId)
+  const isReferenceKp = (kpId: string) => !datasets.customKnowledgePointIds.has(kpId)
 
   // For random draw custom questions (现场问答题)
 
@@ -4864,29 +2020,6 @@ function EditCardDialog({
 
   // For assessment config
   const [assessActiveTab, setAssessActiveTab] = useState<string | null>(state.evaluationMethods[0] || null)
-
-  const [reviewSteps, setReviewSteps] = useState([
-    { id: "rs-1", label: "初评", desc: "由指导教师进行第一轮评审", enabled: true, subjectType: "teacher" as string | null, weight: 40 },
-    { id: "rs-2", label: "复评", desc: "由专家组进行第二轮复核", enabled: false, subjectType: null as string | null, weight: 30 },
-    { id: "rs-3", label: "终评", desc: "答辩委员会最终评定", enabled: false, subjectType: null as string | null, weight: 30 },
-  ])
-
-  useEffect(() => {
-    if (state.reviewSteps && state.reviewSteps.length > 0) {
-      queueMicrotask(() => {
-        setReviewSteps(state.reviewSteps.map((rs: any) => ({
-          id: rs.id || `rs-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-          label: rs.label,
-          desc: rs.desc || "",
-          enabled: rs.enabled,
-          subjectType: rs.subjectType,
-          weight: rs.weight,
-        })))
-      })
-    }
-  }, [state.reviewSteps])
-
-
 
   const ensureTempExam = async (mk: "question_bank" | "quiz", currentCfg: any): Promise<string | null> => {
     const questionIds = mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions
@@ -4952,7 +2085,7 @@ function EditCardDialog({
           abilityPointIds: ep.abilityPointIds,
         }
       }
-      const enabledReviewSteps = reviewSteps.filter(s => s.enabled).map(s => ({
+      const enabledReviewSteps = (state.reviewSteps || []).filter((s: any) => s.enabled).map((s: any) => ({
         id: s.id,
         label: s.label,
         desc: s.desc,
@@ -4980,7 +2113,7 @@ function EditCardDialog({
       updateState({ methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps })
       // Persist evaluation methods (including resource config) to backend immediately
       let currentVersion = state.evalMethodVersion
-      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
+      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
       if (methodsInput.length > 0) {
         try {
           const savedRes = await taskEvaluationApi.saveMethods(taskId, { version: currentVersion, methods: methodsInput })
@@ -5004,7 +2137,7 @@ function EditCardDialog({
           } catch { /* temp exam creation failed, skip */ }
         }
         updateState({ methodResourceConfigs: updatedRC })
-        methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
+        methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
         try {
           const savedRes = await taskEvaluationApi.saveMethods(taskId, { version: currentVersion, methods: methodsInput })
           currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
@@ -5035,8 +2168,8 @@ function EditCardDialog({
   const handleAddKnowledge = () => {
     if (!newKnowledgeName.trim()) return
     const newId = generateUUID()
-    customKnowledgePointIds.add(newId)
-    knowledgePoints.push({ id: newId, name: newKnowledgeName.trim(), description: newKnowledgeDesc.trim(), category: newKnowledgeCategory })
+    datasets.markKnowledgePointCustom(newId)
+    datasets.setKnowledgePoints((prev) => [...prev, { id: newId, name: newKnowledgeName.trim(), description: newKnowledgeDesc.trim(), linked: false, granularLessons: [], category: newKnowledgeCategory }])
     updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
     setNewKnowledgeName("")
     setNewKnowledgeDesc("")
@@ -5046,8 +2179,8 @@ function EditCardDialog({
   const handleAddAbility = () => {
     if (!newAbilityName.trim()) return
     const newId = generateUUID()
-    customAbilityPointIds.add(newId)
-    abilityPoints.push({ id: newId, name: newAbilityName.trim(), description: newAbilityDesc.trim(), category: newAbilityCategory })
+    datasets.customAbilityPointIds.current.add(newId)
+    datasets.setAbilityPoints((prev) => [...prev, { id: newId, name: newAbilityName.trim(), description: newAbilityDesc.trim(), category: newAbilityCategory }])
     updateState({ abilityPoints: [...state.abilityPoints, newId] })
     setNewAbilityName("")
     setNewAbilityDesc("")
@@ -5134,8 +2267,8 @@ function EditCardDialog({
       extraData,
       ...extraData,
     }
-    customResourceIds.add(newId)
-    learningResources.push(newRes as any)
+    datasets.markResourceCustom(newId)
+    datasets.setLearningResources((prev) => [...prev, newRes as TaskResourceItem])
     updateState({ resources: [...state.resources, newId] })
     setNewResName("")
     setNewResType("document")
@@ -5164,9 +2297,9 @@ function EditCardDialog({
         return <TaskDescriptionCard description={state.description} onDescriptionChange={v => updateState({ description: v })} descriptionPdf={state.descriptionPdf} onDescriptionPdfChange={v => updateState({ descriptionPdf: v })} toast={toast} />
 
       case "knowledge": {
-        const pool: KnowledgePointItem[] = knowledgePoints.map((kp: any) => ({
+        const pool: KnowledgePointItem[] = datasets.knowledgePoints.map((kp) => ({
           id: kp.id, name: kp.name, code: kp.code, description: kp.description,
-          linked: !customKnowledgePointIds.has(kp.id),
+          linked: !datasets.customKnowledgePointIds.has(kp.id),
           granularLessons: kp.granularLessons || [],
         }))
         const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) => {
@@ -5180,17 +2313,21 @@ function EditCardDialog({
             pool={pool}
             onChange={(items) => {
               const ids = items.map(i => i.id)
-              for (const item of items) {
-                if (item.id.startsWith("kp-custom-") && !customKnowledgePointIds.has(item.id)) {
-                  customKnowledgePointIds.add(item.id)
+              datasets.setKnowledgePoints((prev) => {
+                const next = [...prev]
+                for (const item of items) {
+                  if (item.id.startsWith("kp-custom-") && !datasets.customKnowledgePointIds.has(item.id)) {
+                    datasets.markKnowledgePointCustom(item.id)
+                  }
+                  const idx = next.findIndex(k => k.id === item.id)
+                  if (idx >= 0) {
+                    next[idx] = { ...next[idx], name: item.name, description: item.description || "", code: item.code || "", granularLessons: item.granularLessons || next[idx].granularLessons || [] }
+                  } else {
+                    next.push({ id: item.id, name: item.name, description: item.description || "", code: item.code || "", linked: item.linked, granularLessons: item.granularLessons || [] })
+                  }
                 }
-                const idx = knowledgePoints.findIndex(k => k.id === item.id)
-                if (idx >= 0) {
-                  knowledgePoints[idx] = { ...knowledgePoints[idx], name: item.name, description: item.description || "", code: item.code || "", granularLessons: (item as any).granularLessons || knowledgePoints[idx].granularLessons || [] }
-                } else {
-                  knowledgePoints.push({ id: item.id, name: item.name, description: item.description || "", code: item.code || "", granularLessons: (item as any).granularLessons || [] })
-                }
-              }
+                return next
+              })
               updateState({ knowledgePoints: ids })
             }}
             onAddCustom={(name, description) => {
@@ -5219,7 +2356,7 @@ function EditCardDialog({
         // Build abilities related to current position from bindings
         const bindings = positionAbilityBindings.filter((b: any) => b.careerPositionId === positionId)
         const bindingMap = new Map(bindings.map((b: any) => [b.abilityPointId, b]))
-        const relatedAbilities = abilityPoints
+        const relatedAbilities = datasets.abilityPoints
           .filter((ab: any) => bindingMap.has(ab.id))
           .map((ab: any) => {
             const binding = bindingMap.get(ab.id)
@@ -5263,7 +2400,17 @@ function EditCardDialog({
           return acc
         }, {} as Record<string, typeof relatedAbilities>)
 
-        const detailAb = selectedAbilityForDetail ? abilityPoints.find(a => a.id === selectedAbilityForDetail) : null
+        const detailAb = selectedAbilityForDetail
+          ? datasets.abilityPoints.find(a => (a as { id: string }).id === selectedAbilityForDetail) as {
+              name: string
+              code?: string
+              description?: string
+              domain?: string
+              positionIds?: string[]
+              requiredLevel?: string
+              proficiencyDesc?: string
+            } | undefined
+          : null
 
         const requiredLevelColors: Record<string, string> = {
           "了解": "bg-gray-100 text-gray-600 border-gray-200",
@@ -5448,7 +2595,7 @@ function EditCardDialog({
       }
 
       case "resources": {
-        const rPool: ResourceItem[] = learningResources.map((r: any) => ({
+        const rPool: ResourceItem[] = datasets.learningResources.map((r) => ({
           id: r.id, name: r.name, type: r.type, url: r.url, description: r.description, size: r.size,
         }))
         return (
@@ -5457,7 +2604,10 @@ function EditCardDialog({
             pool={rPool}
             selectedIds={state.resources || []}
             onChange={(ids: string[]) => updateState({ resources: ids })}
-            onUpload={(r: ResourceItem) => { customResourceIds.add(r.id); learningResources.push(r); }}
+            onUpload={(r: ResourceItem) => {
+              datasets.markResourceCustom(r.id)
+              datasets.setLearningResources((prev) => [...prev, r as TaskResourceItem])
+            }}
           />
         )
       }
@@ -5483,17 +2633,13 @@ function EditCardDialog({
 
       case "evaluationRules":
         return (
-          <EvalRulesPanel
-            state={state}
-            updateState={updateState}
-            toast={toast}
-            positionId={positionId}
-            majors={majors}
-            tenantId={tenantId}
-            rubricLibrary={rubricLibrary}
-            setRubricLibrary={setRubricLibrary}
-            reviewSteps={reviewSteps}
-            setReviewSteps={setReviewSteps}
+          <EvaluationRulesEditor
+            inline
+            evaluationMethods={state.evaluationMethods}
+            config={taskStateToEvalRuleConfig(state)}
+            onChange={config => updateState(evalRuleConfigToTaskStateUpdates(config))}
+            knowledgePoints={datasets.knowledgePoints}
+            abilityPoints={datasets.abilityPoints as { id: string; name: string; description?: string }[]}
           />
         )
       case "weight":

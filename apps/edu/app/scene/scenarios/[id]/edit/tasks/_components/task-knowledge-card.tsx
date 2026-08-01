@@ -17,10 +17,8 @@ import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-fo
 import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { courseApi } from "@/lib/api"
-
-const knowledgePoints: any[] = []
-const granularLessons: any[] = []
-const customKnowledgePointIds = new Set<string>()
+import type { Course } from "@/lib/types/lesson"
+import type { TaskKnowledgePointItem } from "./hooks/use-task-datasets"
 
 function generateUUID(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -46,6 +44,12 @@ interface TaskState {
 interface TaskKnowledgeCardProps {
   state: TaskState
   updateState: (u: Partial<TaskState>) => void
+  knowledgePoints: TaskKnowledgePointItem[]
+  setKnowledgePoints: (kp: TaskKnowledgePointItem[]) => void
+  granularLessons: Course[]
+  setGranularLessons: (gl: Course[]) => void
+  customKnowledgePointIds: Set<string>
+  markKnowledgePointCustom: (id: string) => void
   kpSearch: string
   setKpSearch: (v: string) => void
   kpDetailOpen: boolean
@@ -56,8 +60,8 @@ interface TaskKnowledgeCardProps {
   setKpFormOpen: (v: boolean) => void
   kpFormMode: "add" | "clone" | "edit"
   setKpFormMode: (v: "add" | "clone" | "edit") => void
-  kpFormTarget: (typeof knowledgePoints)[0] | null
-  setKpFormTarget: (v: (typeof knowledgePoints)[0] | null) => void
+  kpFormTarget: TaskKnowledgePointItem | null
+  setKpFormTarget: (v: TaskKnowledgePointItem | null) => void
   kpFormInitial: { name: string; description: string; code: string; granularLessonIds: string[] }
   setKpFormInitial: (v: { name: string; description: string; code: string; granularLessonIds: string[] } | ((prev: { name: string; description: string; code: string; granularLessonIds: string[] }) => { name: string; description: string; code: string; granularLessonIds: string[] })) => void
   glSelectOpen: boolean
@@ -69,6 +73,12 @@ interface TaskKnowledgeCardProps {
 export function TaskKnowledgeCard({
   state,
   updateState,
+  knowledgePoints,
+  setKnowledgePoints,
+  granularLessons,
+  setGranularLessons,
+  customKnowledgePointIds,
+  markKnowledgePointCustom,
   kpSearch,
   setKpSearch,
   kpDetailOpen,
@@ -109,14 +119,14 @@ export function TaskKnowledgeCard({
     setKpFormOpen(true)
   }
 
-  const openCloneKp = (kp: (typeof knowledgePoints)[0]) => {
+  const openCloneKp = (kp: TaskKnowledgePointItem) => {
     setKpFormMode("clone")
     setKpFormTarget(kp)
     setKpFormInitial({ name: `${kp.name}（克隆）`, description: kp.description || "", code: generateKpCode(), granularLessonIds: kp.granularLessons || [] })
     setKpFormOpen(true)
   }
 
-  const openEditKp = (kp: (typeof knowledgePoints)[0]) => {
+  const openEditKp = (kp: TaskKnowledgePointItem) => {
     setKpFormMode("edit")
     setKpFormTarget(kp)
     setKpFormInitial({ name: kp.name, description: kp.description || "", code: kp.code || generateKpCode(), granularLessonIds: kp.granularLessons || [] })
@@ -125,26 +135,25 @@ export function TaskKnowledgeCard({
 
   const handleSaveKp = (values: { name: string; description: string; code: string; granularLessonIds: string[] }) => {
     if (kpFormMode === "edit" && kpFormTarget) {
-      const kp = knowledgePoints.find(k => k.id === kpFormTarget.id)
-      if (kp) {
-        kp.name = values.name.trim()
-        kp.description = values.description.trim()
-        kp.code = values.code
-        kp.granularLessons = values.granularLessonIds
-      }
+      setKnowledgePoints(knowledgePoints.map(k =>
+        k.id === kpFormTarget.id
+          ? { ...k, name: values.name.trim(), description: values.description.trim(), code: values.code, granularLessons: values.granularLessonIds }
+          : k
+      ))
       setKpFormOpen(false)
       return
     }
     const newId = generateUUID()
-    const newKp = {
+    const newKp: TaskKnowledgePointItem = {
       id: newId,
       name: values.name.trim(),
       description: values.description.trim(),
       code: values.code,
+      linked: false,
       granularLessons: values.granularLessonIds,
     }
-    knowledgePoints.push(newKp as any)
-    customKnowledgePointIds.add(newId)
+    setKnowledgePoints([...knowledgePoints, newKp])
+    markKnowledgePointCustom(newId)
     updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
     setKpFormOpen(false)
     setKpSearch("")
@@ -159,14 +168,15 @@ export function TaskKnowledgeCard({
         category: "专业基础",
       } as any)
       const newCourseId = created.id
-      granularLessons.push({ id: newCourseId, name: created.name, code: created.code, description: created.description })
+      setGranularLessons([...granularLessons, { id: newCourseId, name: created.name, code: created.code, description: created.description } as Course])
       setKpFormInitial(prev => ({ ...prev, granularLessonIds: [...prev.granularLessonIds, newCourseId] }))
       if (kpFormMode === "edit" && kpFormTarget) {
-        const kp = knowledgePoints.find(k => k.id === kpFormTarget.id)
-        if (kp) {
-          kp.granularLessons = [...(kp.granularLessons || []), newCourseId]
-          updateState({ knowledgePoints: [...state.knowledgePoints] })
-        }
+        setKnowledgePoints(knowledgePoints.map(k =>
+          k.id === kpFormTarget.id
+            ? { ...k, granularLessons: [...(k.granularLessons || []), newCourseId] }
+            : k
+        ))
+        updateState({ knowledgePoints: [...state.knowledgePoints] })
       }
       setGranularConfirm({ open: true, courseId: newCourseId })
       return newCourseId
@@ -181,14 +191,17 @@ export function TaskKnowledgeCard({
   }
 
   const handleToggleGlForKp = (glIds: string[]) => {
-    const kp = knowledgePoints.find(k => k.id === glSelectTargetKp)
-    if (!kp) return
-    kp.granularLessons = glIds
+    if (!glSelectTargetKp) return
+    setKnowledgePoints(knowledgePoints.map(k =>
+      k.id === glSelectTargetKp
+        ? { ...k, granularLessons: glIds }
+        : k
+    ))
     updateState({ knowledgePoints: [...state.knowledgePoints] })
   }
 
   const detailKp = selectedKpForDetail ? knowledgePoints.find(k => k.id === selectedKpForDetail) : null
-  const detailGranularLessons = detailKp?.granularLessons?.map((gid: any) => granularLessons.find((g: any) => g.id === gid)).filter(Boolean) || []
+  const detailGranularLessons = detailKp?.granularLessons?.map((gid: string) => granularLessons.find((g) => g.id === gid)).filter(Boolean) || []
 
   const glTargetKp = glSelectTargetKp ? knowledgePoints.find(k => k.id === glSelectTargetKp) : null
   const glSelectedIds = glTargetKp?.granularLessons || []
@@ -304,7 +317,7 @@ export function TaskKnowledgeCard({
                   const kp = knowledgePoints.find(k => k.id === kpId)
                   if (!kp) return null
                   const isReference = !customKnowledgePointIds.has(kpId)
-                  const kpGlNames = kp.granularLessons?.map((gid: any) => granularLessons.find((g: any) => g.id === gid)?.name).filter(Boolean) || []
+                  const kpGlNames = kp.granularLessons?.map((gid: string) => granularLessons.find((g) => g.id === gid)?.name).filter(Boolean) || []
                   return (
                     <div key={kpId} className={cn(
                       "p-2 rounded-lg border cursor-pointer transition-colors relative overflow-hidden",
@@ -328,7 +341,7 @@ export function TaskKnowledgeCard({
                       <p className="text-[11px] text-gray-500 line-clamp-1 mb-1">{kp.description}</p>
                       {kpGlNames.length > 0 && (
                         <div className="flex items-center gap-0.5 flex-wrap">
-                          {kpGlNames.slice(0, 2).map((name: any, i: number) => (
+                          {kpGlNames.slice(0, 2).map((name, i: number) => (
                             <Badge key={i} variant="outline" className="text-[9px] font-normal px-1 py-0 h-4">{name}</Badge>
                           ))}
                           {kpGlNames.length > 2 && <span className="text-[9px] text-gray-400">+{kpGlNames.length - 2}</span>}
@@ -413,12 +426,13 @@ export function TaskKnowledgeCard({
                             category: "专业基础",
                           } as any)
                           const newCourseId = created.id
-                          granularLessons.push({ id: newCourseId, name: created.name, code: created.code, description: created.description })
-                          const kp = knowledgePoints.find(k => k.id === detailKp.id)
-                          if (kp) {
-                            kp.granularLessons = [...(kp.granularLessons || []), newCourseId]
-                            updateState({ knowledgePoints: [...state.knowledgePoints] })
-                          }
+                          setGranularLessons([...granularLessons, { id: newCourseId, name: created.name, code: created.code, description: created.description } as Course])
+                          setKnowledgePoints(knowledgePoints.map(k =>
+                            k.id === detailKp.id
+                              ? { ...k, granularLessons: [...(k.granularLessons || []), newCourseId] }
+                              : k
+                          ))
+                          updateState({ knowledgePoints: [...state.knowledgePoints] })
                           setGranularConfirm({ open: true, courseId: newCourseId })
                         } catch (err: any) {
                         }
