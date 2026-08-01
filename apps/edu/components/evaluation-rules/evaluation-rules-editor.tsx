@@ -62,7 +62,7 @@ import { useEvalRuleStore } from "@/lib/evaluation-rule-store"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { BankQuestionSelectorPanel } from "@/app/scene/scenarios/[id]/edit/tasks/_components/bank-question-selector-panel"
 import { examApi, examUsageApi, randomDrawQuestionApi, majorApi, taskEvaluationApi } from "@/lib/api"
-import { loadedExams } from "@/app/scene/scenarios/[id]/edit/tasks/_components/shared-defs"
+import { getLoadedExams, setLoadedExams, addLoadedExam, type LoadedExam } from "@/app/scene/scenarios/[id]/edit/tasks/_components/shared-defs"
 import {
   evaluationMethodOptions,
   evalSubTypeLabels,
@@ -384,12 +384,11 @@ export function EvaluationRulesEditor({
   }, [config.randomDrawSelectedIds, updateConfig, loadRdqQuestions, toast])
 
   const loadPapers = useCallback(async () => {
-    if (loadedExams.length > 0) return
+    if (getLoadedExams().length > 0) return
     setLoadingPapers(true)
     try {
       const res = await examApi.list({ limit: 1000 })
-      loadedExams.length = 0
-      ;(res.items || []).forEach((e: any) => loadedExams.push(e))
+      setLoadedExams((res.items || []) as LoadedExam[])
     } catch { /* ignore */ }
     finally { setLoadingPapers(false) }
   }, [])
@@ -412,7 +411,7 @@ export function EvaluationRulesEditor({
   const handleCreatePaper = useCallback(async (data: any) => {
     try {
       const created = await examApi.create(data as any)
-      loadedExams.push(created)
+      addLoadedExam(created as LoadedExam)
       updateConfig({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
     } catch (_) {
       toast({ variant: "destructive", title: "创建失败", description: "创建试卷失败" })
@@ -1294,7 +1293,7 @@ export function EvaluationRulesEditor({
               <div className="text-center py-8 text-gray-400">加载中...</div>
             ) : (
               <div className="space-y-2">
-                {loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).map((paper: any) => {
+                {getLoadedExams().filter(p => !paperSearch || p.name.includes(paperSearch)).map(paper => {
                   const selected = config.paperIds.includes(paper.id)
                   const questionCount = paper.questions?.length ?? paper.questionCount ?? 0
                   const totalScore = paper.totalScore ?? 100
@@ -1308,14 +1307,14 @@ export function EvaluationRulesEditor({
                     </div>
                   )
                 })}
-                {loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).length === 0 && !paperSearch && (
+                {getLoadedExams().filter(p => !paperSearch || p.name.includes(paperSearch)).length === 0 && !paperSearch && (
                   <div className="text-center py-8 text-gray-400">
                     <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">暂无可选试卷</p>
                     <p className="text-xs mt-1">请点击「新建试卷」创建试卷</p>
                   </div>
                 )}
-                {loadedExams.length > 0 && loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).length === 0 && (
+                {getLoadedExams().length > 0 && getLoadedExams().filter(p => !paperSearch || p.name.includes(paperSearch)).length === 0 && (
                   <div className="text-center py-8 text-gray-400">
                     <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">未找到匹配的试卷</p>
@@ -1362,7 +1361,7 @@ export function EvaluationRulesEditor({
             <DialogContent className="sm:max-w-lg">
               <DialogHeader><DialogTitle>试卷详情</DialogTitle></DialogHeader>
               {(() => {
-                const paper = loadedExams.find((e: any) => e.id === selectedPaperForDetailLocal)
+                const paper = getLoadedExams().find(e => e.id === selectedPaperForDetailLocal)
                 if (!paper) return null
                 return (
                   <div className="space-y-3 py-2">

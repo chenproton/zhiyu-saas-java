@@ -15,7 +15,18 @@ import {
 import { cn } from "@/lib/utils"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { questionBankApi, questionApi } from "@/lib/api"
-import { allQuestions, questionCache, typeColorMap, questionTypeLabels, difficultyLabels } from "./shared-defs"
+import type { QuestionType } from "@/lib/types"
+import {
+  getAllQuestions,
+  getCachedQuestion,
+  hasCachedQuestion,
+  setCachedQuestion,
+  setCachedQuestions,
+  typeColorMap,
+  questionTypeLabels,
+  difficultyLabels,
+  type CachedQuestion,
+} from "./shared-defs"
 
 interface BankQuestionSelectorPanelProps {
   field: "questionBankQuestions" | "quizQuestions"
@@ -67,7 +78,7 @@ export function BankQuestionSelectorPanel({
   }, [])
 
   useEffect(() => {
-    const missingIds = selectedIds.filter(qid => !questionCache.has(qid) && !preloadedQuestions.some(q => q.id === qid))
+    const missingIds = selectedIds.filter(qid => !hasCachedQuestion(qid) && !preloadedQuestions.some(q => q.id === qid))
     if (missingIds.length === 0) return
     Promise.all(
       missingIds.map(async (qid) => {
@@ -77,7 +88,7 @@ export function BankQuestionSelectorPanel({
       })
     ).then(results => {
       const loaded = results.filter(Boolean)
-      loaded.forEach(q => questionCache.set(q.id, q))
+      loaded.forEach(q => setCachedQuestion(q as CachedQuestion))
       setPreloadedQuestions(prev => [...prev, ...loaded])
     })
   }, [selectedIds, preloadedQuestions])
@@ -85,8 +96,8 @@ export function BankQuestionSelectorPanel({
   const loadQuestions = async (bankId: string) => {
     setLoadingQuestions(true)
     try {
-      const res = await questionApi.list({ bankId, limit: 1000 }) as unknown as { items: any[] }
-      for (const q of res.items) questionCache.set(q.id, q)
+      const res = await questionApi.list({ bankId, limit: 1000 }) as unknown as { items: CachedQuestion[] }
+      setCachedQuestions(res.items)
       setBankQuestions(res.items)
     } catch (_) {} finally { setLoadingQuestions(false) }
   }
@@ -146,11 +157,11 @@ export function BankQuestionSelectorPanel({
     }
   }
 
-  const resolveQuestion = useCallback((qid: string) => {
+  const resolveQuestion = useCallback((qid: string): CachedQuestion | undefined => {
     return bankQuestions.find((bq: any) => bq.id === qid)
       || preloadedQuestions.find((q: any) => q.id === qid)
-      || questionCache.get(qid)
-      || allQuestions.find((aq: any) => aq.id === qid)
+      || getCachedQuestion(qid)
+      || getAllQuestions().find(aq => aq.id === qid)
   }, [bankQuestions, preloadedQuestions])
 
   const selectedQuestionItems = useMemo(() => {
@@ -159,7 +170,7 @@ export function BankQuestionSelectorPanel({
       return {
         id: qid,
         questionId: qid,
-        type: q?.type ?? "single",
+        type: (q?.type ?? "single") as QuestionType,
         content: q?.content ?? "",
         answer: "",
         score: questionScores?.[qid] ?? q?.score ?? 0,
@@ -220,10 +231,10 @@ export function BankQuestionSelectorPanel({
                               </div>
                             </td>
                             <td className="px-3 py-2">
-                              <Badge className={`text-xs text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
+                              <Badge className={`text-xs text-white hover:opacity-90 ${typeColorMap[q.type ?? ""] || ""}`}>{questionTypeLabels[q.type ?? ""] || q.type}</Badge>
                             </td>
                             <td className="px-3 py-2">
-                              <span className="text-xs text-gray-500">{difficultyLabels[q.difficulty] || q.difficulty}</span>
+                              <span className="text-xs text-gray-500">{difficultyLabels[q.difficulty ?? ""] || q.difficulty}</span>
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex items-center justify-end gap-1">
@@ -340,8 +351,8 @@ export function BankQuestionSelectorPanel({
                       </Button>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Badge className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
-                      <span className="text-[10px] text-gray-400">{difficultyLabels[q.difficulty] || q.difficulty}</span>
+                      <Badge className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type ?? ""] || ""}`}>{questionTypeLabels[q.type ?? ""] || q.type}</Badge>
+                      <span className="text-[10px] text-gray-400">{difficultyLabels[q.difficulty ?? ""] || q.difficulty}</span>
                       {(field === "questionBankQuestions" || field === "quizQuestions") && onUpdateQuestionScore ? (
                         <div className="flex items-center gap-1 ml-auto">
                           <span className="text-[10px] text-gray-400">分值</span>

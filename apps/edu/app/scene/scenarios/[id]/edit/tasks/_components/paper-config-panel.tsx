@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { examApi } from "@/lib/api"
-import { loadedExams } from "./shared-defs"
+import { getLoadedExams } from "./shared-defs"
 
 interface PaperConfigPanelProps {
   paperCfg: Record<string, any>
@@ -66,7 +66,7 @@ export function PaperConfigPanel({
             </Button>
         </div>
         <div className="space-y-2">
-          {loadedExams.filter((p: any) => !pSearch || p.name.includes(pSearch)).map((paper: any) => {
+          {getLoadedExams().filter(p => !pSearch || p.name.includes(pSearch)).map(paper => {
             const selected = paperIds.includes(paper.id)
             const questionCount = paper.questions?.length ?? paper.questionCount ?? 0
             const totalScore = paper.totalScore ?? 100
@@ -82,14 +82,14 @@ export function PaperConfigPanel({
               </div>
             )
           })}
-          {loadedExams.filter((p: any) => !pSearch || p.name.includes(pSearch)).length === 0 && !pSearch && (
+          {getLoadedExams().filter(p => !pSearch || p.name.includes(pSearch)).length === 0 && !pSearch && (
             <div className="text-center py-8 text-gray-400">
               <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">暂无可选试卷</p>
               <p className="text-xs mt-1">请点击「新建试卷」创建试卷，或在测评中心准备试卷后刷新</p>
             </div>
           )}
-          {loadedExams.length > 0 && loadedExams.filter((p: any) => !pSearch || p.name.includes(pSearch)).length === 0 && (
+          {getLoadedExams().length > 0 && getLoadedExams().filter(p => !pSearch || p.name.includes(pSearch)).length === 0 && (
             <div className="text-center py-8 text-gray-400">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">未找到匹配的试卷</p>
@@ -190,7 +190,7 @@ export function PaperConfigPanel({
         <DialogHeader>
           <DialogTitle>试卷创建成功</DialogTitle>
           <DialogDescription>
-            试卷「{loadedExams.find((e: any) => e.id === configPaperId)?.name || ""}」已创建并选中。
+            试卷「{getLoadedExams().find(e => e.id === configPaperId)?.name || ""}」已创建并选中。
             你可以在试卷管理页面中配置题目、分数等。
           </DialogDescription>
         </DialogHeader>

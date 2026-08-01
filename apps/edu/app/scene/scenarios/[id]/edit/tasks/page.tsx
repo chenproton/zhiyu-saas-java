@@ -150,7 +150,7 @@ import { BankQuestionSelectorPanel } from "./_components/bank-question-selector-
 import { RandomDrawResourcePanel } from "./_components/random-draw-resource-panel"
 import { PaperConfigPanel } from "./_components/paper-config-panel"
 import { MethodDialogContent, type MethodDialogCtx } from "./_components/method-config-dialog"
-import { questionCache, allQuestions, loadedExams } from "./_components/shared-defs"
+import { getLoadedExam, upsertLoadedExam, type LoadedExam } from "./_components/shared-defs"
 import { useAuth } from "@/components/auth-provider"
 import type {
   Task, PositionAbility, GradeMapping,
@@ -1779,7 +1779,7 @@ function PaperDetailWrapper({ paperId, open, onOpenChange }: { paperId: string |
 
   useEffect(() => {
     if (open && paperId) {
-      const cached = loadedExams.find(e => e.id === paperId)
+      const cached = getLoadedExam(paperId)
       if (cached?.questions?.length) {
         queueMicrotask(() => setPaper(cached))
       } else {
@@ -1787,14 +1787,12 @@ function PaperDetailWrapper({ paperId, open, onOpenChange }: { paperId: string |
         ;(async () => {
           setLoading(true)
           try {
-            const data = await examApi.get(paperId) as any
+            const data = await examApi.get(paperId) as LoadedExam
             if (cancelled) return
-            const idx = loadedExams.findIndex(e => e.id === paperId)
-            if (idx >= 0) loadedExams[idx] = { ...loadedExams[idx], ...data }
-            else loadedExams.push(data)
-            setPaper(data)
+            upsertLoadedExam(paperId, data)
+            setPaper(getLoadedExam(paperId) ?? data)
           } catch {
-            if (!cancelled) setPaper(cached || null)
+            if (!cancelled) setPaper(cached ?? null)
           } finally {
             if (!cancelled) setLoading(false)
           }

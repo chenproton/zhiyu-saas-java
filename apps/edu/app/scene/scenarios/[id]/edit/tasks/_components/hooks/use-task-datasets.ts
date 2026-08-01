@@ -16,7 +16,7 @@ import {
 import type { KnowledgePointItem, Course } from "@/lib/types/lesson"
 import type { ResourceItem } from "@/components/shared/resource-selector"
 import type { RubricScheme } from "@/components/evaluation-rules/types"
-import { loadedExams } from "../shared-defs"
+import { setLoadedExams, type LoadedExam } from "../shared-defs"
 
 export type { RubricScheme }
 
@@ -205,8 +205,7 @@ export function useTaskDatasets(scenarioId: string): UseTaskDatasetsResult {
               examApi.list({ limit: 1000 }),
               taskEvaluationApi.listTemplates({ limit: 200 }).catch(() => ({ items: [] as unknown[], total: 0 })),
             ])
-            loadedExams.length = 0
-            ;(examRes.items || []).forEach((e: unknown) => loadedExams.push(e))
+            setLoadedExams((examRes.items || []) as LoadedExam[])
             const mapTemplate = (rt: unknown): RubricScheme => {
               const item = rt as {
                 id: string
