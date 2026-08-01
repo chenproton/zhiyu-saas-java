@@ -58,7 +58,7 @@ func (s *ScenarioCloneStore) FetchSource(ctx context.Context, id string) (*Sourc
 
 // CloneScenario 在事务内克隆场景及全部关联（任务/交付物/评估方法/评估点/评审步骤/绑定/权重/等级映射）。
 // 返回新场景 ID 与生成的新 code。
-func (s *ScenarioCloneStore) CloneScenario(ctx context.Context, tx Queryer, tenantID, oldScenarioID, newName string, src *SourceScenarioFields) (string, string, error) {
+func (s *ScenarioCloneStore) CloneScenario(ctx context.Context, tx Queryer, tenantID, oldScenarioID, newName, creatorID string, src *SourceScenarioFields) (string, string, error) {
 	newID := uuid.NewString()
 	newCode := GenerateUniqueScenarioCode(ctx, tx, tenantID, src.Code)
 
@@ -69,7 +69,7 @@ func (s *ScenarioCloneStore) CloneScenario(ctx context.Context, tx Queryer, tena
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12, $13, $14, $15)
 	`, newID, newName, newCode, src.CoverImage, src.CareerPositionID, src.IndustryIDs,
 		src.ProfessionIDs, src.BatchID, src.Difficulty, src.Version, src.Background,
-		src.DeliveryGoal, src.CoBuilderIDs, tenantID); err != nil {
+		src.DeliveryGoal, creatorID, src.CoBuilderIDs, tenantID); err != nil {
 		return "", "", err
 	}
 

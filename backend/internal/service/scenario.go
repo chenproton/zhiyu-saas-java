@@ -55,7 +55,7 @@ func (s *ScenarioService) Queryer() store.Queryer {
 }
 
 // CloneScenario 克隆场景及全部关联，返回新场景 ID 与 code。
-func (s *ScenarioService) CloneScenario(ctx context.Context, tenantID, oldScenarioID, newName string) (string, string, error) {
+func (s *ScenarioService) CloneScenario(ctx context.Context, tenantID, oldScenarioID, newName, creatorID string) (string, string, error) {
 	src, err := s.st.ScenarioClone().FetchSource(ctx, oldScenarioID)
 	if err != nil {
 		return "", "", err
@@ -68,7 +68,7 @@ func (s *ScenarioService) CloneScenario(ctx context.Context, tenantID, oldScenar
 	}
 	var newID, newCode string
 	err = s.WithTx(ctx, func(txStore *store.Store) error {
-		id, code, err := txStore.ScenarioClone().CloneScenario(ctx, txStore.Q(), tenantID, oldScenarioID, newName, src)
+		id, code, err := txStore.ScenarioClone().CloneScenario(ctx, txStore.Q(), tenantID, oldScenarioID, newName, creatorID, src)
 		if err != nil {
 			return err
 		}

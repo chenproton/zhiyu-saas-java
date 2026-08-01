@@ -46,7 +46,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newID, newCode, err := h.Service.CloneScenario(r.Context(), tenantID, id, req.Name)
+	newID, newCode, err := h.Service.CloneScenario(r.Context(), tenantID, id, req.Name, claims.UserID)
 	if err != nil {
 		if service.IsNotFound(err) {
 			respondError(w, http.StatusNotFound, "场景方案不存在")
