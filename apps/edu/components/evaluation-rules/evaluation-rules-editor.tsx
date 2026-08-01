@@ -224,14 +224,18 @@ export function EvaluationRulesEditor({
       })
     if (!changed) return
     lastSyncedReviewStepsRef.current = incoming
-    setReviewSteps(incoming.map((rs, i) => ({
-      id: uid(`rs-${i}`),
-      label: rs.label,
-      desc: rs.description || "",
-      enabled: rs.enabled,
-      subjectType: rs.subjectType || "",
-      weight: rs.weight,
-    })))
+    if (incoming.length === 0) return
+    // Defer state update to avoid cascading renders while still syncing external prop changes.
+    queueMicrotask(() => {
+      setReviewSteps(incoming.map((rs, i) => ({
+        id: uid(`rs-${i}`),
+        label: rs.label,
+        desc: rs.description || "",
+        enabled: rs.enabled,
+        subjectType: rs.subjectType || "",
+        weight: rs.weight,
+      })))
+    })
   }, [configProp.reviewSteps])
 
   // 用户操作驱动本地 state 与 store 同步，避免 useEffect 双向同步导致的无限重渲染
