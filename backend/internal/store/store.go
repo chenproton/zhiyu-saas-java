@@ -28,6 +28,16 @@ type Store struct {
 	userExtFields  *UserExtensionFieldStore
 	userRelations  *UserRelationStore
 	users          *UserStore
+	scenarioWeight *ScenarioWeightStore
+	scenarioGrade  *ScenarioGradeStore
+	taskBindings   *TaskKnowledgeAbilityStore
+	knowledgePoint *KnowledgePointStore
+	nodeHomework   *NodeHomeworkStore
+	resourceBind   *ResourceBindingStore
+	positionAbility *PositionAbilityStore
+	positionResp    *PositionResponsibilityStore
+	positionCert    *PositionCertificateStore
+	positionClone   *PositionCloneStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -41,6 +51,16 @@ func New(db *pgxpool.Pool) *Store {
 		userExtFields: NewUserExtensionFieldStore(db),
 		userRelations: NewUserRelationStore(db),
 		users:         NewUserStore(db),
+		scenarioWeight: NewScenarioWeightStore(db),
+		scenarioGrade:  NewScenarioGradeStore(db),
+		taskBindings:   NewTaskKnowledgeAbilityStore(db),
+		knowledgePoint: NewKnowledgePointStore(db),
+		nodeHomework:   NewNodeHomeworkStore(db),
+		resourceBind:   NewResourceBindingStore(db),
+		positionAbility: NewPositionAbilityStore(db),
+		positionResp:    NewPositionResponsibilityStore(db),
+		positionCert:    NewPositionCertificateStore(db),
+		positionClone:   NewPositionCloneStore(db),
 	}
 }
 
@@ -55,6 +75,16 @@ func NewWithTx(tx pgx.Tx) *Store {
 		userExtFields: NewUserExtensionFieldStore(tx),
 		userRelations: NewUserRelationStore(tx),
 		users:         NewUserStore(tx),
+		scenarioWeight: NewScenarioWeightStore(tx),
+		scenarioGrade:  NewScenarioGradeStore(tx),
+		taskBindings:   NewTaskKnowledgeAbilityStore(tx),
+		knowledgePoint: NewKnowledgePointStore(tx),
+		nodeHomework:   NewNodeHomeworkStore(tx),
+		resourceBind:   NewResourceBindingStore(tx),
+		positionAbility: NewPositionAbilityStore(tx),
+		positionResp:    NewPositionResponsibilityStore(tx),
+		positionCert:    NewPositionCertificateStore(tx),
+		positionClone:   NewPositionCloneStore(tx),
 	}
 }
 
@@ -96,6 +126,56 @@ func (s *Store) UserRelations() *UserRelationStore {
 // Users 返回用户 store。
 func (s *Store) Users() *UserStore {
 	return s.users
+}
+
+// ScenarioWeights 返回场景权重 store。
+func (s *Store) ScenarioWeights() *ScenarioWeightStore {
+	return s.scenarioWeight
+}
+
+// ScenarioGrades 返回场景等级映射 store。
+func (s *Store) ScenarioGrades() *ScenarioGradeStore {
+	return s.scenarioGrade
+}
+
+// TaskBindings 返回任务知识/能力绑定 store。
+func (s *Store) TaskBindings() *TaskKnowledgeAbilityStore {
+	return s.taskBindings
+}
+
+// KnowledgePoints 返回知识点 store。
+func (s *Store) KnowledgePoints() *KnowledgePointStore {
+	return s.knowledgePoint
+}
+
+// NodeHomeworks 返回节点作业 store。
+func (s *Store) NodeHomeworks() *NodeHomeworkStore {
+	return s.nodeHomework
+}
+
+// ResourceBindings 返回资源绑定 store。
+func (s *Store) ResourceBindings() *ResourceBindingStore {
+	return s.resourceBind
+}
+
+// PositionAbilities 返回岗位能力绑定 store。
+func (s *Store) PositionAbilities() *PositionAbilityStore {
+	return s.positionAbility
+}
+
+// PositionResponsibilities 返回岗位职责 store。
+func (s *Store) PositionResponsibilities() *PositionResponsibilityStore {
+	return s.positionResp
+}
+
+// PositionCertificates 返回岗位证书 store。
+func (s *Store) PositionCertificates() *PositionCertificateStore {
+	return s.positionCert
+}
+
+// PositionClone 返回岗位克隆 store。
+func (s *Store) PositionClone() *PositionCloneStore {
+	return s.positionClone
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

@@ -1,20 +1,17 @@
 package handler
 
 import (
-	"context"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PositionCertificateHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionConfigService
 }
 
 type PositionCertificateListResponse struct {
@@ -44,60 +41,20 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	careerPositionID := r.URL.Query().Get("careerPositionId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
 	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 50); err == nil && v > 0 {
 		limit = v
 	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
+	offset := 0
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
 		offset = v
 	}
 
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if careerPositionID != "" {
-		where = append(where, "career_position_id = $"+itoa(argIdx))
-		args = append(args, careerPositionID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM position_certificates WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT pc.id, pc.career_position_id, pc.certificate_library_id,
-			cl.name, cl.url, cl.description, cl.image_url
-		FROM position_certificates pc
-		JOIN certificate_library cl ON cl.id = pc.certificate_library_id
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY cl.name ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := h.Service.ListCertificates(r.Context(), r.URL.Query().Get("careerPositionId"), limit, offset)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询证书失败")
 		return
 	}
-	defer rows.Close()
-
-	items, err := h.scanCertificateRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取证书失败")
-		return
-	}
-
-	if items == nil {
-		items = []domain.PositionCertificate{}
-	}
-
 	respondJSON(w, http.StatusOK, PositionCertificateListResponse{Items: items, Total: total})
 }
 
@@ -108,7 +65,7 @@ func (h *PositionCertificateHandler) Get(w http.ResponseWriter, r *http.Request)
 	}
 
 	id := chi.URLParam(r, "id")
-	item, err := h.fetchCertificate(r.Context(), id)
+	item, err := h.Service.GetCertificate(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "证书不存在")
 		return
@@ -126,7 +83,6 @@ func (h *PositionCertificateHandler) Create(w http.ResponseWriter, r *http.Reque
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.CareerPositionID == "" || req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
@@ -138,34 +94,17 @@ func (h *PositionCertificateHandler) Create(w http.ResponseWriter, r *http.Reque
 		tenantID = *claims.TenantID
 	}
 
-	// Find or create in certificate library
-	var libraryID string
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
-	`, tenantID, req.Name).Scan(&libraryID)
-	if err != nil {
-		libraryID = uuid.NewString()
-		_, err = h.DB.Exec(r.Context(), `
-			INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, libraryID, tenantID, req.Name, req.URL, req.Description, req.ImageURL)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "创建certificate in library失败")
-			return
-		}
-	}
-
-	id := uuid.NewString()
-	_, err = h.DB.Exec(r.Context(), `
-		INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
-		VALUES ($1, $2, $3, $4)
-	`, id, tenantID, req.CareerPositionID, libraryID)
+	item, err := h.Service.CreateCertificate(r.Context(), tenantID, &store.PositionCertificateParams{
+		CareerPositionID: req.CareerPositionID,
+		Name:             req.Name,
+		URL:              req.URL,
+		Description:      req.Description,
+		ImageURL:         req.ImageURL,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建证书失败")
 		return
 	}
-
-	item, _ := h.fetchCertificate(r.Context(), id)
 	respondJSON(w, http.StatusCreated, item)
 }
 
@@ -176,7 +115,7 @@ func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Reque
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchCertificate(r.Context(), id); err != nil {
+	if _, err := h.Service.GetCertificate(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
@@ -185,7 +124,6 @@ func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Reque
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.CareerPositionID == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
@@ -197,41 +135,18 @@ func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Reque
 		tenantID = *claims.TenantID
 	}
 
-	// Find or create in certificate library if name provided
-	var libraryID string
-	var err error
-	if req.Name != "" {
-		err = h.DB.QueryRow(r.Context(), `
-			SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
-		`, tenantID, req.Name).Scan(&libraryID)
-		if err != nil {
-			libraryID = uuid.NewString()
-			_, err = h.DB.Exec(r.Context(), `
-				INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
-				VALUES ($1, $2, $3, $4, $5, $6)
-			`, libraryID, tenantID, req.Name, req.URL, req.Description, req.ImageURL)
-			if err != nil {
-				respondError(w, http.StatusInternalServerError, "创建certificate in library失败")
-				return
-			}
-		}
-		_, err = h.DB.Exec(r.Context(), `
-			UPDATE position_certificates SET
-				career_position_id = $1, certificate_library_id = $2
-			WHERE id = $3
-		`, req.CareerPositionID, libraryID, id)
-	} else {
-		_, err = h.DB.Exec(r.Context(), `
-			UPDATE position_certificates SET career_position_id = $1
-			WHERE id = $2
-		`, req.CareerPositionID, id)
-	}
+	item, err := h.Service.UpdateCertificate(r.Context(), tenantID, &store.PositionCertificateUpdateParams{
+		ID:               id,
+		CareerPositionID: req.CareerPositionID,
+		Name:             req.Name,
+		URL:              req.URL,
+		Description:      req.Description,
+		ImageURL:         req.ImageURL,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新证书失败")
 		return
 	}
-
-	item, _ := h.fetchCertificate(r.Context(), id)
 	respondJSON(w, http.StatusOK, item)
 }
 
@@ -242,57 +157,13 @@ func (h *PositionCertificateHandler) Delete(w http.ResponseWriter, r *http.Reque
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchCertificate(r.Context(), id); err != nil {
+	if _, err := h.Service.GetCertificate(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_certificates WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.DeleteCertificate(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *PositionCertificateHandler) fetchCertificate(ctx context.Context, id string) (domain.PositionCertificate, error) {
-	var item domain.PositionCertificate
-	var url, description, imageURL *string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT pc.id, pc.career_position_id, pc.certificate_library_id,
-			cl.name, cl.url, cl.description, cl.image_url
-		FROM position_certificates pc
-		JOIN certificate_library cl ON cl.id = pc.certificate_library_id
-		WHERE pc.id = $1
-	`, id).Scan(
-		&item.ID, &item.CareerPositionID, &item.CertificateLibraryID,
-		&item.Name, &url, &description, &imageURL,
-	)
-	if err != nil {
-		return item, err
-	}
-	item.URL = url
-	item.Description = description
-	item.ImageURL = imageURL
-	return item, nil
-}
-
-func (h *PositionCertificateHandler) scanCertificateRows(rows pgx.Rows) ([]domain.PositionCertificate, error) {
-	items := make([]domain.PositionCertificate, 0)
-	for rows.Next() {
-		var item domain.PositionCertificate
-		var url, description, imageURL *string
-		if err := rows.Scan(
-			&item.ID, &item.CareerPositionID, &item.CertificateLibraryID,
-			&item.Name, &url, &description, &imageURL,
-		); err != nil {
-			return nil, err
-		}
-		item.URL = url
-		item.Description = description
-		item.ImageURL = imageURL
-		items = append(items, item)
-	}
-	return items, nil
 }

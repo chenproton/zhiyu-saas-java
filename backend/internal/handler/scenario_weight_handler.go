@@ -5,15 +5,14 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioWeightHandler struct {
-	DB *pgxpool.Pool
+	Service *service.ScenarioConfigService
 }
 
 type ScenarioWeightListResponse struct {
@@ -37,7 +36,7 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 	scenarioID := r.URL.Query().Get("scenarioId")
 	taskID := r.URL.Query().Get("taskId")
 
-	items, total, err := executeListQuery[domain.ScenarioWeightConfig](r.Context(), h.DB, r, store.ListQueryConfig[domain.ScenarioWeightConfig]{
+	cfg := store.ListQueryConfig[domain.ScenarioWeightConfig]{
 		Table:         "scenario_weight_configs",
 		SelectColumns: "id, scenario_id, task_id, weight",
 		TenantScoped:  true,
@@ -50,18 +49,18 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 				qb.AddCondition("task_id = " + qb.NextArg(taskID))
 			}
 		},
-		ScanRows: h.scanWeightRows,
-	})
+	}
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListWeights(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		slog.Error("查询场景权重配置列表失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询场景权重配置列表失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, ScenarioWeightListResponse{Items: items, Total: total})
 }
 
@@ -79,50 +78,22 @@ func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Requ
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	var id string
-	if req.ID != "" {
-		_, err := h.DB.Exec(r.Context(), `
-			UPDATE scenario_weight_configs SET scenario_id = $1, task_id = $2, weight = $3 WHERE id = $4
-		`, req.ScenarioID, req.TaskID, req.Weight, req.ID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "更新权重失败")
-			return
-		}
-		id = req.ID
-	} else {
-		err := h.DB.QueryRow(r.Context(), `
-			INSERT INTO scenario_weight_configs (tenant_id, scenario_id, task_id, weight)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (scenario_id, task_id) DO UPDATE SET weight = EXCLUDED.weight
-			RETURNING id
-		`, tenantID, req.ScenarioID, req.TaskID, req.Weight).Scan(&id)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "更新或创建权重失败")
-			return
-		}
+	wgt, err := h.Service.UpsertWeight(r.Context(), tenantID, &store.ScenarioWeightUpsertParams{
+		ID:         req.ID,
+		ScenarioID: req.ScenarioID,
+		TaskID:     req.TaskID,
+		Weight:     req.Weight,
+	})
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "更新或创建权重失败")
+		return
 	}
-
-	var wgt domain.ScenarioWeightConfig
-	_ = h.DB.QueryRow(r.Context(), `SELECT id, scenario_id, task_id, weight FROM scenario_weight_configs WHERE id = $1`, id).Scan(
-		&wgt.ID, &wgt.ScenarioID, &wgt.TaskID, &wgt.Weight,
-	)
 	respondJSON(w, http.StatusOK, wgt)
 }
 
-func (h *ScenarioWeightHandler) scanWeightRows(rows pgx.Rows) ([]domain.ScenarioWeightConfig, error) {
-	items := make([]domain.ScenarioWeightConfig, 0)
-	for rows.Next() {
-		var w domain.ScenarioWeightConfig
-		if err := rows.Scan(&w.ID, &w.ScenarioID, &w.TaskID, &w.Weight); err != nil {
-			return nil, err
-		}
-		items = append(items, w)
-	}
-	return items, nil
-}
+var _ = errors.Is

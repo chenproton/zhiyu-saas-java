@@ -1,21 +1,17 @@
 package handler
 
 import (
-	"context"
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PositionAbilityHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionConfigService
 }
 
 type PositionAbilityListResponse struct {
@@ -35,17 +31,7 @@ type CreatePositionAbilityRequest struct {
 	Weight            float64  `json:"weight"`
 }
 
-type UpdatePositionAbilityRequest struct {
-	CareerPositionID  string   `json:"careerPositionId"`
-	ResponsibilityID  string   `json:"responsibilityId"`
-	AbilityPointID    string   `json:"abilityPointId"`
-	Source            string   `json:"source"`
-	Domain            *string  `json:"domain"`
-	RequiredLevel     string   `json:"requiredLevel"`
-	RubricDescription *string  `json:"rubricDescription"`
-	Attributes        []string `json:"attributes"`
-	Weight            float64  `json:"weight"`
-}
+type UpdatePositionAbilityRequest = CreatePositionAbilityRequest
 
 func (h *PositionAbilityHandler) ListBindings(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
@@ -67,17 +53,16 @@ func (h *PositionAbilityHandler) ListBindings(w http.ResponseWriter, r *http.Req
 			}
 		},
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanBindingRows)
-	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-		} else {
-			respondError(w, http.StatusInternalServerError, "查询绑定失败")
-		}
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-
+	items, total, err := h.Service.ListAbilityBindings(r.Context(), params, cfg)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "查询绑定失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, PositionAbilityListResponse{Items: items, Total: total})
 }
 
@@ -91,7 +76,6 @@ func (h *PositionAbilityHandler) CreateBinding(w http.ResponseWriter, r *http.Re
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.CareerPositionID == "" || req.ResponsibilityID == "" || req.AbilityPointID == "" || req.RequiredLevel == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
@@ -99,26 +83,26 @@ func (h *PositionAbilityHandler) CreateBinding(w http.ResponseWriter, r *http.Re
 	if req.Source == "" {
 		req.Source = "custom"
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO position_ability_bindings (
-			id, tenant_id, career_position_id, responsibility_id, ability_point_id, source,
-			domain, required_level, rubric_description, attributes, weight
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-	`, id, tenantID, req.CareerPositionID, req.ResponsibilityID, req.AbilityPointID, req.Source,
-		req.Domain, req.RequiredLevel, req.RubricDescription, coalesceStringSlice(req.Attributes), req.Weight)
+	binding, err := h.Service.CreateAbilityBinding(r.Context(), tenantID, &store.PositionAbilityParams{
+		CareerPositionID:  req.CareerPositionID,
+		ResponsibilityID:  req.ResponsibilityID,
+		AbilityPointID:    req.AbilityPointID,
+		Source:            req.Source,
+		Domain:            req.Domain,
+		RequiredLevel:     req.RequiredLevel,
+		RubricDescription: req.RubricDescription,
+		Attributes:        coalesceStringSlice(req.Attributes),
+		Weight:            req.Weight,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建绑定失败")
 		return
 	}
-
-	binding, _ := h.fetchBinding(r.Context(), id)
 	respondJSON(w, http.StatusCreated, binding)
 }
 
@@ -129,7 +113,7 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchBinding(r.Context(), id); err != nil {
+	if _, err := h.Service.GetAbilityBinding(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "绑定不存在")
 		return
 	}
@@ -138,25 +122,26 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.CareerPositionID == "" || req.ResponsibilityID == "" || req.AbilityPointID == "" || req.RequiredLevel == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE position_ability_bindings SET
-			career_position_id = $1, responsibility_id = $2, ability_point_id = $3, source = $4,
-			domain = $5, required_level = $6, rubric_description = $7, attributes = $8, weight = $9
-		WHERE id = $10
-	`, req.CareerPositionID, req.ResponsibilityID, req.AbilityPointID, req.Source,
-		req.Domain, req.RequiredLevel, req.RubricDescription, coalesceStringSlice(req.Attributes), req.Weight, id)
+	binding, err := h.Service.UpdateAbilityBinding(r.Context(), id, &store.PositionAbilityParams{
+		CareerPositionID:  req.CareerPositionID,
+		ResponsibilityID:  req.ResponsibilityID,
+		AbilityPointID:    req.AbilityPointID,
+		Source:            req.Source,
+		Domain:            req.Domain,
+		RequiredLevel:     req.RequiredLevel,
+		RubricDescription: req.RubricDescription,
+		Attributes:        coalesceStringSlice(req.Attributes),
+		Weight:            req.Weight,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新绑定失败")
 		return
 	}
-
-	binding, _ := h.fetchBinding(r.Context(), id)
 	respondJSON(w, http.StatusOK, binding)
 }
 
@@ -167,57 +152,13 @@ func (h *PositionAbilityHandler) DeleteBinding(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchBinding(r.Context(), id); err != nil {
+	if _, err := h.Service.GetAbilityBinding(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "绑定不存在")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_ability_bindings WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.DeleteAbilityBinding(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除绑定失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *PositionAbilityHandler) fetchBinding(ctx context.Context, id string) (domain.PositionAbilityBinding, error) {
-	var b domain.PositionAbilityBinding
-	var domainField, rubricDescription *string
-	var attributes []string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, career_position_id, responsibility_id, ability_point_id, source,
-			domain, required_level, rubric_description, attributes, weight
-		FROM position_ability_bindings WHERE id = $1
-	`, id).Scan(
-		&b.ID, &b.CareerPositionID, &b.ResponsibilityID, &b.AbilityPointID, &b.Source,
-		&domainField, &b.RequiredLevel, &rubricDescription, &attributes, &b.Weight,
-	)
-	if err != nil {
-		return b, err
-	}
-	b.Domain = domainField
-	b.RubricDescription = rubricDescription
-	b.Attributes = attributes
-	return b, nil
-}
-
-func (h *PositionAbilityHandler) scanBindingRows(rows pgx.Rows) ([]domain.PositionAbilityBinding, error) {
-	items := make([]domain.PositionAbilityBinding, 0)
-	for rows.Next() {
-		var b domain.PositionAbilityBinding
-		var domainField, rubricDescription *string
-		var attributes []string
-		if err := rows.Scan(
-			&b.ID, &b.CareerPositionID, &b.ResponsibilityID, &b.AbilityPointID, &b.Source,
-			&domainField, &b.RequiredLevel, &rubricDescription, &attributes, &b.Weight,
-		); err != nil {
-			return nil, err
-		}
-		b.Domain = domainField
-		b.RubricDescription = rubricDescription
-		b.Attributes = attributes
-		items = append(items, b)
-	}
-	return items, nil
 }
