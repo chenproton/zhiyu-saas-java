@@ -233,7 +233,7 @@
 
 ### 3.4 handler 层常见模式（回读吞错返回 null + 200）
 
-`crud.go:93,166`、`course_clone_handler.go:43`、`node_homework_handler.go`、`affairs_term_handler.go:78`、`teaching_plan_handler.go:128-130,269`（Generate 回读失败解引用 nil 指针 panic 风险）、`user_management_handler.go:312-314,628-631`（**Get 失败后直接 `user.PasswordHash = ""` 解引用 nil → panic**）、`exam_usage_handler.go:148`、`staff_title_handler.go:187-195`、`subscription_handler.go:79-85`（AdminGet 任何错误 → 200 空订阅）
+`crud.go:93,166`、`course_clone_handler.go:43`、`node_homework_handler.go`、`affairs_term_handler.go:78`、`teaching_plan_handler.go:128-130,269`（Generate 回读失败解引用 nil 指针 panic 风险）、`user_management_handler.go:312-314,628-631`（**Get 失败后直接 `user.PasswordHash = ""` 解引用 nil → panic** ✅ 已修复）、`exam_usage_handler.go:148`、`staff_title_handler.go:187-195`、`subscription_handler.go:79-85`（AdminGet 任何错误 → 200 空订阅）
 
 ### 3.5 错误分类不当（内部错误映射为 400/404）
 
