@@ -77,7 +77,7 @@ func (h *JobBannerHandler) crud() crudConfig[JobBannerRequest, domain.JobBannerC
 			}
 			return b.ID, nil
 		},
-		UpdateFn: func(ctx context.Context, id string, t *JobBannerRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *JobBannerRequest) error {
 			_, err := h.Service.UpdateBanner(ctx, id, &store.BannerParams{
 				Title:     t.Title,
 				ImageURL:  t.ImageURL,

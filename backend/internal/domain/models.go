@@ -108,26 +108,6 @@ type Institution struct {
 	UpdatedAt         time.Time         `json:"updatedAt"`
 }
 
-type Resource struct {
-	ID             string         `json:"id"`
-	InstitutionID  string         `json:"institutionId"`
-	Name           string         `json:"name"`
-	Intro          string         `json:"intro"`
-	Category       string         `json:"category"`
-	CoverImage     *string        `json:"coverImage,omitempty"`
-	Attachment     *string        `json:"attachment,omitempty"`
-	AttachmentName *string        `json:"attachmentName,omitempty"`
-	Price          float64        `json:"price"`
-	Version        string         `json:"version"`
-	Status         ResourceStatus `json:"status"`
-	RejectReason   *string        `json:"rejectReason,omitempty"`
-	SalesCount     int            `json:"salesCount"`
-	ViewCount      int            `json:"viewCount"`
-	Tags           []ResourceTag  `json:"tags,omitempty"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	UpdatedAt      time.Time      `json:"updatedAt"`
-}
-
 type ResourceTag struct {
 	ID         string `json:"id"`
 	ResourceID string `json:"resourceId"`
@@ -147,40 +127,4 @@ type Order struct {
 	Status       OrderStatus `json:"status"`
 	PaidAt       *time.Time  `json:"paidAt,omitempty"`
 	CreatedAt    time.Time   `json:"createdAt"`
-}
-
-type Authorization struct {
-	ID         string    `json:"id"`
-	OrderID    string    `json:"orderId"`
-	BuyerID    string    `json:"buyerId"`
-	ResourceID string    `json:"resourceId"`
-	AuthCode   string    `json:"authCode"`
-	Status     int       `json:"status"`
-	CreatedAt  time.Time `json:"createdAt"`
-}
-
-type Withdrawal struct {
-	ID            string           `json:"id"`
-	InstitutionID string           `json:"institutionId"`
-	Amount        float64          `json:"amount"`
-	AccountType   string           `json:"accountType"`
-	AccountInfo   string           `json:"accountInfo"`
-	Status        WithdrawalStatus `json:"status"`
-	HandledAt     *time.Time       `json:"handledAt,omitempty"`
-	CreatedAt     time.Time        `json:"createdAt"`
-}
-
-type Banner struct {
-	ID      string `json:"id"`
-	Title   string `json:"title"`
-	Image   string `json:"image"`
-	Link    string `json:"link"`
-	Sort    int    `json:"sort"`
-	Enabled bool   `json:"enabled"`
-}
-
-type PlatformConfig struct {
-	PlatformFeeRate     float64 `json:"platformFeeRate"`
-	MinWithdrawalAmount float64 `json:"minWithdrawalAmount"`
-	CreditHoursRatio    float64 `json:"creditHoursRatio"`
 }

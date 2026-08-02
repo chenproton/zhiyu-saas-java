@@ -78,7 +78,7 @@ func (h *RoleHandler) crud() crudConfig[CreateRoleRequest, domain.Role] {
 				Permissions: t.Permissions,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id string, t *CreateRoleRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *CreateRoleRequest) error {
 			return h.Store.Update(ctx, id, store.RoleUpdateParams{
 				Name:        t.Name,
 				Description: t.Description,

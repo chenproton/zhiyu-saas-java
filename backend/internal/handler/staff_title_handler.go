@@ -108,7 +108,7 @@ func (h *StaffTitleHandler) crud() crudConfig[StaffTitleRequest, domain.StaffTit
 				Status:      t.Status,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id string, t *StaffTitleRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *StaffTitleRequest) error {
 			return h.Store.Update(ctx, id, store.StaffTitleUpdateParams{
 				Name:        t.Name,
 				Description: t.Description,

@@ -194,18 +194,6 @@ type UserExtensionField struct {
 	CreatedAt           time.Time `json:"createdAt"`
 }
 
-type UserRelation struct {
-	ID                 string    `json:"id"`
-	TenantID           string    `json:"tenantId"`
-	InitiatorID        string    `json:"initiatorId"`
-	InitiatorOrgNodeID *string   `json:"initiatorOrgNodeId,omitempty"`
-	TargetID           string    `json:"targetId"`
-	TargetOrgNodeID    *string   `json:"targetOrgNodeId,omitempty"`
-	RelationType       string    `json:"relationType"`
-	Description        *string   `json:"description,omitempty"`
-	CreatedAt          time.Time `json:"createdAt"`
-}
-
 type StaffTitle struct {
 	ID          string    `json:"id"`
 	TenantID    string    `json:"tenantId"`
@@ -227,12 +215,6 @@ type Role struct {
 	UserCount   int       `json:"userCount"`
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"createdAt"`
-}
-
-type UserRoleBinding struct {
-	ID     string `json:"id"`
-	UserID string `json:"userId"`
-	RoleID string `json:"roleId"`
 }
 
 type LoginLog struct {

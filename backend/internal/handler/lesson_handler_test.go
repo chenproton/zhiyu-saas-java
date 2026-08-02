@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 )
 
@@ -263,7 +264,7 @@ func TestCourseNode_CRUD(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
-	node, err := testhelper.Unmarshal[domain.SystemCourseNode](w)
+	node, err := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
 	if err != nil {
 		t.Fatalf("unmarshal node: %v", err)
 	}
@@ -280,7 +281,7 @@ func TestCourseNode_CRUD(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	items, _, err := testhelper.UnmarshalList[domain.SystemCourseNode](w)
+	items, _, err := testhelper.UnmarshalList[handler.SystemCourseNodeResponse](w)
 	if err != nil {
 		t.Fatalf("unmarshal list: %v", err)
 	}
@@ -292,7 +293,7 @@ func TestCourseNode_CRUD(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	got, err := testhelper.Unmarshal[domain.SystemCourseNode](w)
+	got, err := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
 	if err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -308,7 +309,7 @@ func TestCourseNode_CRUD(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
-	updated, err := testhelper.Unmarshal[domain.SystemCourseNode](w)
+	updated, err := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
 	if err != nil {
 		t.Fatalf("unmarshal updated: %v", err)
 	}
@@ -326,7 +327,7 @@ func TestCourseNode_CRUD(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected 201 for child node, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
-	child, err := testhelper.Unmarshal[domain.SystemCourseNode](w)
+	child, err := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
 	if err != nil {
 		t.Fatalf("unmarshal child: %v", err)
 	}
@@ -386,7 +387,7 @@ func TestNodeQuiz_CRUD(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", w.Code)
 	}
-	node, _ := testhelper.Unmarshal[domain.SystemCourseNode](w)
+	node, _ := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
 	defer env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE id = $1", node.ID)
 
 	w = env.Do("POST", "/api/v1/lesson/quizzes", map[string]interface{}{
@@ -501,7 +502,7 @@ func TestNodeHomework_CRUD(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", w.Code)
 	}
-	node, _ := testhelper.Unmarshal[domain.SystemCourseNode](w)
+	node, _ := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
 	defer env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE id = $1", node.ID)
 
 	w = env.Do("POST", "/api/v1/lesson/homeworks", map[string]interface{}{
@@ -600,7 +601,7 @@ func TestHybridModule(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", w.Code)
 	}
-	node, _ := testhelper.Unmarshal[domain.SystemCourseNode](w)
+	node, _ := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
 	defer env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE id = $1", node.ID)
 
 	w = env.Do("POST", "/api/v1/lesson/hybrid-modules", map[string]interface{}{

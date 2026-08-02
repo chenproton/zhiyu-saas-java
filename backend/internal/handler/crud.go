@@ -36,7 +36,7 @@ type crudConfig[T any, V any] struct {
 	PrepareCreate  func(t *T, tenantID, userID string)
 	ValidateUpdate func(t *T) string
 	CreateFn       func(ctx context.Context, t *T, tenantID, userID string) (string, error)
-	UpdateFn       func(ctx context.Context, id string, t *T) error
+	UpdateFn       func(ctx context.Context, id, tenantID string, t *T) error
 	DeleteFn       func(ctx context.Context, id, tenantID string) error
 	GetByIDFn      func(ctx context.Context, id, tenantID string) (V, error)
 	// TenantFn 解析当前请求租户（仅 GetByIDFn 需要租户过滤的实体设置，如联盟实体）；
@@ -155,7 +155,7 @@ func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 			return
 		}
 	}
-	if err := cfg.UpdateFn(r.Context(), id, &body); err != nil {
+	if err := cfg.UpdateFn(r.Context(), id, tenantID, &body); err != nil {
 		if cfg.UniqueViolationMsg != "" && isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, cfg.UniqueViolationMsg)
 			return

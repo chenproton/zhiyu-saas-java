@@ -145,7 +145,7 @@ func (h *AllianceHandler) enterpriseCRUD() crudConfig[allianceEnterpriseRequest,
 			IsPublic:                   t.IsPublic,
 		})
 	}
-	cfg.UpdateFn = func(ctx context.Context, id string, t *allianceEnterpriseRequest) error {
+	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *allianceEnterpriseRequest) error {
 		return h.Store.UpdateEnterprise(ctx, id, &store.AllianceEnterpriseUpdateParams{
 			Name:                       t.Name,
 			EnterpriseType:             t.EnterpriseType,
@@ -207,7 +207,7 @@ func (h *AllianceHandler) projectCRUD() crudConfig[domain.AllianceProject, domai
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceProject, tenantID, userID string) (string, error) {
 		return h.Store.CreateProject(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id string, t *domain.AllianceProject) error {
+	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceProject) error {
 		return h.Store.UpdateProject(ctx, id, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
@@ -244,7 +244,7 @@ func (h *AllianceHandler) achievementCRUD() crudConfig[domain.AllianceAchievemen
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceAchievement, tenantID, userID string) (string, error) {
 		return h.Store.CreateAchievement(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id string, t *domain.AllianceAchievement) error {
+	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceAchievement) error {
 		return h.Store.UpdateAchievement(ctx, id, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
@@ -281,7 +281,7 @@ func (h *AllianceHandler) expertCRUD() crudConfig[domain.AllianceExpert, domain.
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceExpert, tenantID, userID string) (string, error) {
 		return h.Store.CreateExpert(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id string, t *domain.AllianceExpert) error {
+	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceExpert) error {
 		return h.Store.UpdateExpert(ctx, id, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
@@ -318,7 +318,7 @@ func (h *AllianceHandler) agreementCRUD() crudConfig[domain.AllianceAgreement, d
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceAgreement, tenantID, userID string) (string, error) {
 		return h.Store.CreateAgreement(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id string, t *domain.AllianceAgreement) error {
+	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceAgreement) error {
 		return h.Store.UpdateAgreement(ctx, id, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
@@ -354,7 +354,7 @@ func (h *AllianceHandler) brandCRUD() crudConfig[domain.AllianceBrand, domain.Al
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceBrand, tenantID, userID string) (string, error) {
 		return h.Store.CreateBrand(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id string, t *domain.AllianceBrand) error {
+	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceBrand) error {
 		return h.Store.UpdateBrand(ctx, id, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {

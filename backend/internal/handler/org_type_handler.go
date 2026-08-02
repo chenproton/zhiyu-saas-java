@@ -81,7 +81,7 @@ func (h *OrgTypeHandler) crud() crudConfig[OrgTypeRequest, domain.OrgType] {
 				Description: t.Description,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id string, t *OrgTypeRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *OrgTypeRequest) error {
 			return h.Store.Update(ctx, id, store.OrgTypeUpdateParams{
 				Name:        t.Name,
 				Category:    string(t.Category),

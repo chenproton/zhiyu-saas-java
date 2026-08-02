@@ -78,7 +78,7 @@ func (h *LearnRoadHandler) crud() crudConfig[CreateLearnRoadRequest, domain.Lear
 				Steps:       t.Steps,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id string, t *CreateLearnRoadRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *CreateLearnRoadRequest) error {
 			// 部分更新：未传的字段回填现有值，避免清空
 			existing, err := h.Store.GetByID(ctx, id)
 			if err != nil {

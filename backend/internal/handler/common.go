@@ -288,8 +288,6 @@ func jsonRawMessageToJSONMap(raw json.RawMessage) domain.JSONMap {
 	return m
 }
 
-// getStringSliceFromJSONMap 从 JSONMap 提取字符串数组。
-
 // goAsync 启动安全后台 goroutine：panic 记录日志不崩进程；wg 非空时自动 Done。
 func goAsync(wg *sync.WaitGroup, fn func()) {
 	go func() {

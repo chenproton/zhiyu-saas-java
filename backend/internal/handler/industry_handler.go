@@ -77,7 +77,7 @@ func (h *IndustryHandler) crud() crudConfig[IndustryRequest, domain.Industry] {
 				SortOrder: t.SortOrder,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id string, t *IndustryRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *IndustryRequest) error {
 			return h.Store.Update(ctx, id, store.IndustryUpdateParams{
 				Code:      t.Code,
 				Name:      t.Name,

@@ -67,7 +67,7 @@ func (h *CertificateLibraryHandler) crud() crudConfig[CertificateLibraryRequest,
 				CreatorID:   userID,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id string, t *CertificateLibraryRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *CertificateLibraryRequest) error {
 			existing, err := h.Store.GetByID(ctx, id)
 			if err != nil {
 				return err

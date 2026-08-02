@@ -150,13 +150,6 @@ type PositionRecommendation struct {
 	UpdatedAt        time.Time `json:"updatedAt"`
 }
 
-type LearnRoadStep struct {
-	Name        string   `json:"name"`
-	Description *string  `json:"description,omitempty"`
-	ScenarioID  *string  `json:"scenarioId,omitempty"`
-	ResourceIDs []string `json:"resourceIds,omitempty"`
-}
-
 type LearnRoad struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`

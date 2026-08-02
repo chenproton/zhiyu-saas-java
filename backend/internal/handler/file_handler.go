@@ -145,8 +145,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	if format == "png" {
 		cmd := exec.Command("libreoffice", "--headless", "--convert-to", "png", "--outdir", tmpDir, path)
 		if _, err := cmd.CombinedOutput(); err != nil {
-			logger.Error("libreoffice convert failed", "error", err)
-			respondError(w, http.StatusInternalServerError, "文件转换失败")
+			respondServerError(w, r, err, "文件转换失败")
 			return
 		}
 		entries, _ := os.ReadDir(tmpDir)
@@ -175,8 +174,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 
 	cmd := exec.Command("libreoffice", "--headless", "--convert-to", outExt, "--outdir", tmpDir, path)
 	if _, err := cmd.CombinedOutput(); err != nil {
-		logger.Error("libreoffice convert failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "文件转换失败")
+		respondServerError(w, r, err, "文件转换失败")
 		return
 	}
 

@@ -75,7 +75,7 @@ func (h *MajorHandler) crud() crudConfig[MajorRequest, domain.Major] {
 				Enabled:  t.Enabled,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id string, t *MajorRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *MajorRequest) error {
 			return h.Store.Update(ctx, id, store.MajorUpdateParams{
 				Code:    t.Code,
 				Name:    t.Name,

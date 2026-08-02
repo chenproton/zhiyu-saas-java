@@ -120,12 +120,6 @@ type TaskResource struct {
 	UploadedAt        time.Time `json:"uploadedAt"`
 }
 
-type TaskResourceBinding struct {
-	ID         string `json:"id"`
-	TaskID     string `json:"taskId"`
-	ResourceID string `json:"resourceId"`
-}
-
 type TaskKnowledgeBinding struct {
 	ID               string `json:"id"`
 	TaskID           string `json:"taskId"`

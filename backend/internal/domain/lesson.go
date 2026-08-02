@@ -44,12 +44,6 @@ type Course struct {
 	UpdatedAt         time.Time    `json:"updatedAt"`
 }
 
-type CourseResourceBinding struct {
-	ID         string `json:"id"`
-	CourseID   string `json:"courseId"`
-	ResourceID string `json:"resourceId"`
-}
-
 type KnowledgePoint struct {
 	ID                string    `json:"id"`
 	Name              string    `json:"name"`
@@ -63,31 +57,6 @@ type KnowledgePoint struct {
 	SourceID          *string   `json:"sourceId,omitempty"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
-}
-
-type SystemCourseNode struct {
-	ID                  string    `json:"id"`
-	CourseID            string    `json:"courseId"`
-	ParentID            *string   `json:"parentId,omitempty"`
-	Name                string    `json:"name"`
-	Code                *string   `json:"code,omitempty"`
-	SortOrder           int       `json:"sortOrder"`
-	RefType             string    `json:"refType"`
-	SourceID            *string   `json:"sourceId,omitempty"`
-	SourceName          *string   `json:"sourceName,omitempty"`
-	TeachingGoals       *string   `json:"teachingGoals,omitempty"`
-	DetailedDescription *string   `json:"detailedDescription,omitempty"`
-	DescriptionPdf      *string   `json:"descriptionPdf,omitempty"`
-	Background          *string   `json:"background,omitempty"`
-	EstimatedHours      *float64  `json:"estimatedHours,omitempty"`
-	Duration            *float64  `json:"duration,omitempty"`
-	Difficulty          *int      `json:"difficulty,omitempty"`
-	KnowledgePointIds   JSONSlice `json:"knowledgePointIds,omitempty"`
-	ResourceIds         JSONSlice `json:"resourceIds,omitempty"`
-	EvalData            JSONMap   `json:"evalData,omitempty"`
-	Status              string    `json:"status"`
-	CreatedAt           time.Time `json:"createdAt"`
-	UpdatedAt           time.Time `json:"updatedAt"`
 }
 
 type NodeQuiz struct {
@@ -166,10 +135,4 @@ type NodeResource struct {
 	Size        *int      `json:"size,omitempty"`
 	UploadedBy  *string   `json:"uploadedBy,omitempty"`
 	UploadedAt  time.Time `json:"uploadedAt"`
-}
-
-type NodeResourceBinding struct {
-	ID         string `json:"id"`
-	NodeID     string `json:"nodeId"`
-	ResourceID string `json:"resourceId"`
 }

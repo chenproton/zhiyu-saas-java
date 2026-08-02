@@ -1,13 +1,12 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -15,17 +14,9 @@ type OnSiteQuestionLibraryHandler struct {
 	Store *store.OnSiteQuestionLibraryStore
 }
 
-type CreateOnSiteQuestionLibraryRequest struct {
-	QuestionText      string   `json:"questionText"`
-	Answer            *string  `json:"answer"`
-	QuestionType      string   `json:"questionType"`
-	Score             float64  `json:"score"`
-	Difficulty        *string  `json:"difficulty"`
-	KnowledgePointIDs []string `json:"knowledgePointIds"`
-	Tags              []string `json:"tags"`
-}
-
-type UpdateOnSiteQuestionLibraryRequest struct {
+// OnSiteQuestionLibraryRequest 现场题库题目创建/更新请求体。
+// 更新流程为部分更新：指针字段未传时回填现有值。
+type OnSiteQuestionLibraryRequest struct {
 	QuestionText      *string  `json:"questionText"`
 	Answer            *string  `json:"answer"`
 	QuestionType      *string  `json:"questionType"`
@@ -50,139 +41,111 @@ func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Reque
 	respondJSON(w, http.StatusOK, ListResponse[domain.OnSiteQuestionLibraryItem]{Items: items, Total: total})
 }
 
-func (h *OnSiteQuestionLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	item, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "题目不存在")
-		return
+// crud 返回现场题库题目 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *OnSiteQuestionLibraryHandler) crud() crudConfig[OnSiteQuestionLibraryRequest, domain.OnSiteQuestionLibraryItem] {
+	return crudConfig[OnSiteQuestionLibraryRequest, domain.OnSiteQuestionLibraryItem]{
+		NotFoundMsg:    "题目不存在",
+		CreateErrMsg:   "创建题目失败",
+		UpdateErrMsg:   "更新题目失败",
+		DeleteErrMsg:   "删除题目失败",
+		CheckOwnership: true,
+		GetOwnership:   false,
+		ValidateCreate: func(t *OnSiteQuestionLibraryRequest) string {
+			if t.QuestionText == nil || *t.QuestionText == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *OnSiteQuestionLibraryRequest) (string, bool) {
+			return requireTenant(w, r)
+		},
+		CreateFn: func(ctx context.Context, t *OnSiteQuestionLibraryRequest, tenantID, userID string) (string, error) {
+			qt := ""
+			if t.QuestionType != nil {
+				qt = *t.QuestionType
+			}
+			score := 0.0
+			if t.Score != nil {
+				score = *t.Score
+			}
+			return h.Store.Create(ctx, store.OnSiteQuestionLibraryCreateParams{
+				TenantID:          tenantID,
+				QuestionText:      *t.QuestionText,
+				Answer:            t.Answer,
+				QuestionType:      qt,
+				Score:             score,
+				Difficulty:        t.Difficulty,
+				KnowledgePointIDs: coalesceStringSlice(t.KnowledgePointIDs),
+				Tags:              coalesceStringSlice(t.Tags),
+				CreatorID:         userID,
+			})
+		},
+		UpdateFn: func(ctx context.Context, id, _ string, t *OnSiteQuestionLibraryRequest) error {
+			// 部分更新：未传的字段回填现有值，避免清空
+			existing, err := h.Store.GetByID(ctx, id)
+			if err != nil {
+				return err
+			}
+			q := existing.QuestionText
+			if t.QuestionText != nil {
+				q = *t.QuestionText
+			}
+			a := existing.Answer
+			if t.Answer != nil {
+				a = t.Answer
+			}
+			qt := existing.QuestionType
+			if t.QuestionType != nil {
+				qt = *t.QuestionType
+			}
+			s := existing.Score
+			if t.Score != nil {
+				s = *t.Score
+			}
+			d := existing.Difficulty
+			if t.Difficulty != nil {
+				d = t.Difficulty
+			}
+			kps := coalesceStringSlice(t.KnowledgePointIDs)
+			if len(kps) == 0 {
+				kps = existing.KnowledgePointIDs
+			}
+			ts := coalesceStringSlice(t.Tags)
+			if len(ts) == 0 {
+				ts = existing.Tags
+			}
+			return h.Store.Update(ctx, id, store.OnSiteQuestionLibraryUpdateParams{
+				QuestionText:      q,
+				Answer:            a,
+				QuestionType:      qt,
+				Score:             s,
+				Difficulty:        d,
+				KnowledgePointIDs: kps,
+				Tags:              ts,
+			})
+		},
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Store.Delete(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.OnSiteQuestionLibraryItem, error) {
+			return h.Store.GetByID(ctx, id)
+		},
+		TenantIDFn: func(t *domain.OnSiteQuestionLibraryItem) string { return t.TenantID },
 	}
-	respondJSON(w, http.StatusOK, item)
+}
+
+func (h *OnSiteQuestionLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
+	crudGet(w, r, h.crud())
 }
 
 func (h *OnSiteQuestionLibraryHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	var req CreateOnSiteQuestionLibraryRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.QuestionText == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	id, err := h.Store.Create(r.Context(), store.OnSiteQuestionLibraryCreateParams{
-		TenantID:          tenantID,
-		QuestionText:      req.QuestionText,
-		Answer:            req.Answer,
-		QuestionType:      req.QuestionType,
-		Score:             req.Score,
-		Difficulty:        req.Difficulty,
-		KnowledgePointIDs: req.KnowledgePointIDs,
-		Tags:              req.Tags,
-		CreatorID:         claims.UserID,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "创建题目失败")
-		return
-	}
-
-	item, _ := h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusCreated, item)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *OnSiteQuestionLibraryHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	existing, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "题目不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, existing.TenantID) {
-		return
-	}
-
-	var req UpdateOnSiteQuestionLibraryRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-
-	q := existing.QuestionText
-	if req.QuestionText != nil {
-		q = *req.QuestionText
-	}
-	a := existing.Answer
-	if req.Answer != nil {
-		a = req.Answer
-	}
-	qt := existing.QuestionType
-	if req.QuestionType != nil {
-		qt = *req.QuestionType
-	}
-	s := existing.Score
-	if req.Score != nil {
-		s = *req.Score
-	}
-	d := existing.Difficulty
-	if req.Difficulty != nil {
-		d = req.Difficulty
-	}
-	kps := coalesceStringSlice(req.KnowledgePointIDs)
-	if len(kps) == 0 {
-		kps = existing.KnowledgePointIDs
-	}
-	ts := coalesceStringSlice(req.Tags)
-	if len(ts) == 0 {
-		ts = existing.Tags
-	}
-
-	err = h.Store.Update(r.Context(), id, store.OnSiteQuestionLibraryUpdateParams{
-		QuestionText:      q,
-		Answer:            a,
-		QuestionType:      qt,
-		Score:             s,
-		Difficulty:        d,
-		KnowledgePointIDs: kps,
-		Tags:              ts,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "更新题目失败")
-		return
-	}
-
-	item, _ := h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusOK, item)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *OnSiteQuestionLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	existing, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "题目不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, existing.TenantID) {
-		return
-	}
-
-	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除题目失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -14,15 +14,8 @@ type PositionCertificateHandler struct {
 	Service *service.PositionConfigService
 }
 
-type CreatePositionCertificateRequest struct {
-	CareerPositionID string  `json:"careerPositionId"`
-	Name             string  `json:"name"`
-	URL              *string `json:"url"`
-	Description      *string `json:"description"`
-	ImageURL         *string `json:"imageUrl"`
-}
-
-type UpdatePositionCertificateRequest struct {
+// PositionCertificateRequest 岗位证书创建/更新请求体（字段一致）。
+type PositionCertificateRequest struct {
 	CareerPositionID string  `json:"careerPositionId"`
 	Name             string  `json:"name"`
 	URL              *string `json:"url"`
@@ -53,112 +46,83 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusOK, ListResponse[domain.PositionCertificate]{Items: items, Total: total})
 }
 
-func (h *PositionCertificateHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
+// crud 返回岗位证书 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+// 注意：PositionCertificate 无 TenantID 字段，原实现不做租户归属校验，维持原行为。
+func (h *PositionCertificateHandler) crud() crudConfig[PositionCertificateRequest, domain.PositionCertificate] {
+	return crudConfig[PositionCertificateRequest, domain.PositionCertificate]{
+		NotFoundMsg:  "证书不存在",
+		CreateErrMsg: "创建证书失败",
+		UpdateErrMsg: "更新证书失败",
+		DeleteErrMsg: "删除证书失败",
+		ValidateCreate: func(t *PositionCertificateRequest) string {
+			if t.CareerPositionID == "" || t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *PositionCertificateRequest) (string, bool) {
+			// 与原实现一致：容忍空租户，不返回 403
+			claims := middleware.CurrentUser(r)
+			if claims == nil || claims.TenantID == nil {
+				return "", true
+			}
+			return *claims.TenantID, true
+		},
+		ValidateUpdate: func(t *PositionCertificateRequest) string {
+			if t.CareerPositionID == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *PositionCertificateRequest, tenantID, userID string) (string, error) {
+			item, err := h.Service.CreateCertificate(ctx, tenantID, &store.PositionCertificateParams{
+				CareerPositionID: t.CareerPositionID,
+				Name:             t.Name,
+				URL:              t.URL,
+				Description:      t.Description,
+				ImageURL:         t.ImageURL,
+			})
+			if err != nil {
+				return "", err
+			}
+			return item.ID, nil
+		},
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *PositionCertificateRequest) error {
+			_, err := h.Service.UpdateCertificate(ctx, tenantID, &store.PositionCertificateUpdateParams{
+				ID:               id,
+				CareerPositionID: t.CareerPositionID,
+				Name:             t.Name,
+				URL:              t.URL,
+				Description:      t.Description,
+				ImageURL:         t.ImageURL,
+			})
+			return err
+		},
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Service.DeleteCertificate(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.PositionCertificate, error) {
+			item, err := h.Service.GetCertificate(ctx, id)
+			if err != nil {
+				return domain.PositionCertificate{}, err
+			}
+			return *item, nil
+		},
 	}
+}
 
-	id := chi.URLParam(r, "id")
-	item, err := h.Service.GetCertificate(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "证书不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, item)
+func (h *PositionCertificateHandler) Get(w http.ResponseWriter, r *http.Request) {
+	crudGet(w, r, h.crud())
 }
 
 func (h *PositionCertificateHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	var req CreatePositionCertificateRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.CareerPositionID == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	claims := middleware.CurrentUser(r)
-	tenantID := ""
-	if claims != nil && claims.TenantID != nil {
-		tenantID = *claims.TenantID
-	}
-
-	item, err := h.Service.CreateCertificate(r.Context(), tenantID, &store.PositionCertificateParams{
-		CareerPositionID: req.CareerPositionID,
-		Name:             req.Name,
-		URL:              req.URL,
-		Description:      req.Description,
-		ImageURL:         req.ImageURL,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "创建证书失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, item)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificate(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "证书不存在")
-		return
-	}
-
-	var req UpdatePositionCertificateRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.CareerPositionID == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	claims := middleware.CurrentUser(r)
-	tenantID := ""
-	if claims != nil && claims.TenantID != nil {
-		tenantID = *claims.TenantID
-	}
-
-	item, err := h.Service.UpdateCertificate(r.Context(), tenantID, &store.PositionCertificateUpdateParams{
-		ID:               id,
-		CareerPositionID: req.CareerPositionID,
-		Name:             req.Name,
-		URL:              req.URL,
-		Description:      req.Description,
-		ImageURL:         req.ImageURL,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "更新证书失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, item)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *PositionCertificateHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificate(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "证书不存在")
-		return
-	}
-	if err := h.Service.DeleteCertificate(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除证书失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

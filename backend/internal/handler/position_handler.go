@@ -334,10 +334,6 @@ type SaveFullPositionRequest struct {
 	AbilityDomains   []FullPositionAbilityDomain  `json:"abilityDomains"`
 }
 
-type SaveFullPositionResponse struct {
-	domain.CareerPosition
-}
-
 func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {

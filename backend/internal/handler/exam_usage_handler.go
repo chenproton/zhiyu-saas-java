@@ -89,7 +89,7 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 			}
 			return u.ID, nil
 		},
-		UpdateFn: func(ctx context.Context, id string, t *ExamUsageRequest) error {
+		UpdateFn: func(ctx context.Context, id, _ string, t *ExamUsageRequest) error {
 			_, err := h.Service.UpdateExamUsage(ctx, id, &store.ExamUsageCreateParams{
 				Name:        t.Name,
 				Description: t.Description,
