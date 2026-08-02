@@ -10,6 +10,7 @@ import type { ContentBatch } from '@/components/shared/content-list-page'
 import type { ExamFormData } from '@/lib/types'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
+import { reportError } from '@/lib/error-handling'
 
 interface ExamItem {
   id: string
@@ -97,7 +98,7 @@ export default function ExamsPage() {
         await approvalApi.review(records.items[0].id, { status })
         setRefreshKey((k) => k + 1)
       } catch (err) {
-        console.error('审批操作失败', err)
+        reportError(err, '审批操作')
         toast({ variant: 'destructive', title: '审批操作失败' })
       }
     },

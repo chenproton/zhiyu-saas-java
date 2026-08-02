@@ -53,6 +53,7 @@ import PublishCheckPanel from './_components/PublishCheckPanel'
 
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { Major } from '@/lib/types/backend'
+import { reportError } from '@/lib/error-handling'
 import {
   courseApi,
   courseNodeApi,
@@ -568,9 +569,12 @@ function AddSystemPageInner() {
             const toAdd = grainResources.filter((r) => !existing.has(r.id))
             return [...prev, ...toAdd]
           })
-        } catch {}
+        } catch (err) {
+          reportError(err, '加载颗粒课资源')
+        }
       }
-    } catch {
+    } catch (err) {
+      reportError(err, '加载知识点')
       setKnowledgePoints([])
       setSelectedResourceIds([])
     }
@@ -602,7 +606,9 @@ function AddSystemPageInner() {
         if (!localNodeIds.has(backendId)) {
           try {
             await courseNodeApi.delete(backendId)
-          } catch {}
+          } catch (err) {
+            reportError(err, '删除多余课程节点')
+          }
         }
       }
 
@@ -692,8 +698,9 @@ function AddSystemPageInner() {
                 size: localRes.size != null ? Number(localRes.size) : undefined,
               })
               await nodeResourceApi.bind({ nodeId: realNodeId, resourceId: created.id })
-            } catch {
+            } catch (err) {
               // 忽略失败，继续
+              reportError(err, '绑定节点资源')
             }
           }
         }
@@ -852,7 +859,9 @@ function AddSystemPageInner() {
         if (isNewCourse && courseId && !hasSavedRef.current) {
           try {
             await courseApi.delete(courseId)
-          } catch {}
+          } catch (err) {
+            reportError(err, '删除未保存的课程草稿')
+          }
         }
         router.push('/lesson/admin/system')
       }}

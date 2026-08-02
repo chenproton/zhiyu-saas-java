@@ -53,6 +53,7 @@ import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
 import type { LearnRoad, LearnRoadStep } from '@/lib/types/job'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { reportError } from '@/lib/error-handling'
 
 interface Task {
   id: string
@@ -581,7 +582,7 @@ export default function LearnRoadsPage() {
         setPositionTasks(allTasks)
         return { scenarios: scens, tasks: allTasks }
       } catch (err) {
-        console.error('[learn-roads] load scenes failed', err)
+        reportError(err, '加载岗位学习路径场景')
         toast({
           title: '加载场景失败',
           description: err instanceof Error ? err.message : '请稍后重试',

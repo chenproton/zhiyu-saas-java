@@ -35,7 +35,9 @@ import {
   collectOrgSubtreeIds,
 } from '@/components/shared/_components/org-filter-tree'
 import { OrgNodePicker } from '@/components/shared/org-node-picker'
+import { PaginationBar } from '@/components/shared/pagination-bar'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ErrorState } from '@/components/shared/error-state'
 import { ResetPasswordDialog } from '@/components/shared/reset-password-dialog'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
@@ -48,10 +50,6 @@ import {
   Download,
   FolderTree,
   Loader2,
-  AlertCircle,
-  RotateCcw,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
 } from 'lucide-react'
 
@@ -325,17 +323,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
       </div>
 
       {error && (
-        <div className="mb-4 rounded border border-destructive/20 bg-destructive/10 p-4 text-destructive flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-medium">加载失败</p>
-            <p className="text-sm opacity-90">{error}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={refetch}>
-            <RotateCcw className="h-4 w-4 mr-1" />
-            重试
-          </Button>
-        </div>
+        <ErrorState description={error} onRetry={refetch} />
       )}
 
       <div className="flex flex-col md:flex-row gap-4 items-start">
@@ -481,27 +469,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
             <span>
               共 {total} 条记录{selectedIds.length > 0 ? `，已选择 ${selectedIds.length} 条` : ''}
             </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span>
-                {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         </div>
       </div>

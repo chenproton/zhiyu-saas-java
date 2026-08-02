@@ -33,6 +33,7 @@ import type {
   ApprovalRecord,
 } from '@/lib/types'
 import { getNextStatus, canPerformAction } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 import {
   questionBankApi,
   questionApi,
@@ -427,7 +428,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await Promise.all(tasks.map((fn) => fn()))
       } catch (err) {
         if (!cancelled) {
-          console.error('Failed to load evaluation data', err)
+          reportError(err, '加载评测数据')
         }
       } finally {
         if (!cancelled) setEvaluationLoading(false)

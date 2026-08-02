@@ -35,6 +35,7 @@ import { useAuth } from '@/components/auth-provider'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { reportError } from '@/lib/error-handling'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -156,7 +157,7 @@ function PositionEditPageContent({ params }: PageProps) {
       } catch (err: any) {
         setDetailsLoading(false)
         if (!cancelled) {
-          console.error('Failed to load position details:', err)
+          reportError(err, '加载岗位详情')
           toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
         }
       }
@@ -238,7 +239,7 @@ function PositionEditPageContent({ params }: PageProps) {
       setPositions((prev) => prev.map((p) => (p.id === position.id ? savedPosition : p)))
       toast({ title: '草稿已保存' })
     } catch (err: any) {
-      console.error('Save position failed:', err)
+      reportError(err, '保存岗位')
       toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
     } finally {
       setIsSaving(false)
@@ -257,7 +258,7 @@ function PositionEditPageContent({ params }: PageProps) {
       updatePositionData({ coverImage: res.url })
       toast({ title: '封面上传成功' })
     } catch (err: any) {
-      console.error('Cover upload failed:', err)
+      reportError(err, '上传封面')
       toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
     } finally {
       setCoverUploading(false)
@@ -298,7 +299,9 @@ function PositionEditPageContent({ params }: PageProps) {
         if (isNewPosition && !hasSavedRef.current) {
           try {
             await positionApi.delete(position.id)
-          } catch {}
+          } catch (err) {
+            reportError(err, '删除未保存的岗位草稿')
+          }
         }
         router.push('/job/positions')
       }}

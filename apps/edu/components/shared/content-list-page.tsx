@@ -59,6 +59,7 @@ import { useImportFlow } from '@/hooks/use-import-flow'
 import { majorApi, workflowApi, downloadBlob } from '@/lib/api'
 import type { Major, Workflow } from '@/lib/types/backend'
 import type { ImportPreviewResult, ListResponse } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -363,7 +364,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           setMajors((majorsResp.items as Major[]).filter((m) => m.enabled))
           setWorkflows(workflowsResp.items as Workflow[])
         } catch (err) {
-          console.error(err)
+          reportError(err, '加载专业与审批流配置')
         }
       }
       let front = itemsResp.items.map((i: any) => mapItemRef.current(i, currentUserId))
@@ -398,13 +399,13 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             return item
           })
         } catch (err) {
-          console.error(err)
+          reportError(err, '加载审批拒绝原因')
         }
       }
 
       setFrontItems(front)
     } catch (err) {
-      console.error(err)
+      reportError(err, '加载列表数据')
       setLoadError(err instanceof Error ? err.message : `加载${entityLabel}列表失败`)
     } finally {
       setIsLoading(false)
@@ -721,7 +722,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         }
       } catch (err) {
         failed++
-        console.error(err)
+        reportError(err, '批量克隆')
       }
     }
     if (failed > 0) {

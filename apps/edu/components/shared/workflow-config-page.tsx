@@ -34,6 +34,7 @@ import {
 } from '@/components/shared/_components/workflow-editor'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { reportError } from '@/lib/error-handling'
 
 const DEFAULT_STEP: WorkflowStepEditor = { name: '', approverIds: [], approvalMode: 'any' }
 
@@ -87,7 +88,9 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
     try {
       const res = await majorApi.list()
       setMajors(res.items || [])
-    } catch {}
+    } catch (err) {
+      reportError(err, '加载专业列表')
+    }
   }, [])
 
   useEffect(() => {

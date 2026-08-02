@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 
 const brandCards = [
   {
@@ -66,7 +67,9 @@ export default function AllianceBrandsPage() {
           c[b.brandType] = (c[b.brandType] || 0) + 1
         }
         setCounts(c)
-      } catch {}
+      } catch (err) {
+        reportError(err, '加载品牌计数')
+      }
     }
     loadCounts()
   }, [tenantId])

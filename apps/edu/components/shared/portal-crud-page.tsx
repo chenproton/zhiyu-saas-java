@@ -29,6 +29,7 @@ import { importExportApi } from '@/lib/api'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ErrorState } from '@/components/shared/error-state'
 import { PaginationBar } from '@/components/shared/pagination-bar'
 
 export interface PortalStatItem {
@@ -343,9 +344,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
       )}
 
       {error && !loading && (
-        <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorState description={error} onRetry={onRetry} />
       )}
 
       {!loading && !body && (

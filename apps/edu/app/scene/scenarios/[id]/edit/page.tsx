@@ -36,6 +36,7 @@ import { useAuth } from '@/components/auth-provider'
 import { UserSelector } from '@/components/shared/user-selector'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { reportError } from '@/lib/error-handling'
 
 export default function ScenarioEditPage() {
   const params = useParams()
@@ -102,7 +103,7 @@ export default function ScenarioEditPage() {
         setCoverImage(scenario.coverImage || '')
         setScenarioStatus(scenario.status || 'draft')
       } catch (err: any) {
-        console.error('Failed to load form data', err)
+        reportError(err, '加载场景表单数据')
         toast({ title: err.message || '请刷新页面重试', variant: 'destructive' })
       } finally {
         setDataLoading(false)
@@ -176,7 +177,7 @@ export default function ScenarioEditPage() {
       setCoverImage(res.url)
       toast({ title: '封面上传成功' })
     } catch (err: any) {
-      console.error('Cover upload failed:', err)
+      reportError(err, '上传封面')
       toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
     } finally {
       setCoverUploading(false)
@@ -191,7 +192,9 @@ export default function ScenarioEditPage() {
         if (isNewScenario && !hasSavedRef.current) {
           try {
             await scenarioApi.delete(scenarioId)
-          } catch {}
+          } catch (err) {
+            reportError(err, '删除未保存的场景草稿')
+          }
         }
         router.push('/scene')
       }}

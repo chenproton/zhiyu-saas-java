@@ -30,6 +30,7 @@ import type { PeriodSlot, ScheduleEntry, TeachingPlan, TeachingPlanEntry, Venue 
 import { cn } from '@/lib/utils'
 import { ScheduleEditDialog } from './schedule-edit-dialog'
 import { ScheduleImportDialog } from './schedule-import-dialog'
+import { reportError } from '@/lib/error-handling'
 
 interface ScheduleGridTabProps {
   plan: TeachingPlan
@@ -84,7 +85,8 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     setGridLoading(true)
     try {
       setScheduleEntries((await scheduleApi.list({ termId: plan.termId, limit: 500 })).items)
-    } catch {
+    } catch (err) {
+      reportError(err, '加载排课数据')
     } finally {
       setGridLoading(false)
     }
@@ -98,7 +100,9 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
       ])
       setPeriodSlots(s.items)
       setVenues(v.items)
-    } catch {}
+    } catch (err) {
+      reportError(err, '加载节次与场地')
+    }
   }, [])
 
   useEffect(() => {

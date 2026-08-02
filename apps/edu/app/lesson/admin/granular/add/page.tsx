@@ -49,6 +49,7 @@ import PublishCheckPanel from '../../system/add/_components/PublishCheckPanel'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
 import { usePreviewResources } from '@/components/shared/resource-preview-modal'
+import { reportError } from '@/lib/error-handling'
 
 const customKnowledgePointIds = new Set<string>()
 const courseResourcePool: ResourceItem[] = []
@@ -360,7 +361,9 @@ function AddGranularPageInner() {
         if (isNewCourse && editId && !hasSavedRef.current) {
           try {
             await courseApi.delete(editId)
-          } catch {}
+          } catch (err) {
+            reportError(err, '删除未保存的课程草稿')
+          }
         }
         router.push('/lesson/admin/granular')
       }}

@@ -1,7 +1,6 @@
 'use client'
 
 import { type ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -11,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Loader2 } from 'lucide-react'
+import { PaginationBar } from '@/components/shared/pagination-bar'
 
 export interface LogColumn<T> {
   header: string
@@ -89,27 +89,12 @@ export function LogTableShell<T extends { id: string }>({
 
       <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
         <span>共 {total} 条记录</span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1 || loading}
-            onClick={() => onPageChange(page - 1)}
-          >
-            上一页
-          </Button>
-          <span className="px-2">
-            {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages || loading}
-            onClick={() => onPageChange(page + 1)}
-          >
-            下一页
-          </Button>
-        </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          disabled={loading}
+        />
       </div>
     </>
   )

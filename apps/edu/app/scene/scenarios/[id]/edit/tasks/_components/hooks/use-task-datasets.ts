@@ -17,6 +17,7 @@ import type { KnowledgePointItem, Course } from '@/lib/types/lesson'
 import type { ResourceItem } from '@/components/shared/resource-selector'
 import type { RubricScheme } from '@/components/evaluation-rules/types'
 import { setLoadedExams, type LoadedExam } from '../shared-defs'
+import { reportError } from '@/lib/error-handling'
 
 export type { RubricScheme }
 
@@ -339,7 +340,7 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
             }
           }
         } catch (err) {
-          console.error(`加载数据集 ${key} 失败`, err)
+          reportError(err, `加载数据集 ${key}`)
         }
       })
       await Promise.all(jobs)

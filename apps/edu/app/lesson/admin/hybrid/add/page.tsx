@@ -40,6 +40,7 @@ import CourseNodeTree from '../../system/add/_components/CourseNodeTree'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
+import { reportError } from '@/lib/error-handling'
 import {
   ATOMIC_MODULES,
   ATOMIC_MODULES_BY_KEY,
@@ -96,7 +97,8 @@ function HybridCourseAddForm() {
         const c = await courseApi.get(editId)
         setExisting(c)
         if (c.batchId) setBatchId(c.batchId)
-      } catch {
+      } catch (err) {
+        reportError(err, '加载课程信息')
         setExisting(null)
       }
     })()
@@ -136,7 +138,8 @@ function HybridCourseAddForm() {
         className: parsed.className,
         sessions: parsed.sessions || [],
       }
-    } catch {
+    } catch (err) {
+      reportError(err, '解析排课会话参数')
       return null
     }
   }, [claimSessionsParam])
@@ -574,7 +577,9 @@ function HybridCourseAddForm() {
         if (isNewCourse && editId && !hasSavedRef.current) {
           try {
             await courseApi.delete(editId)
-          } catch {}
+          } catch (err) {
+            reportError(err, '删除未保存的课程草稿')
+          }
         }
         router.push('/lesson/admin/hybrid')
       }}
