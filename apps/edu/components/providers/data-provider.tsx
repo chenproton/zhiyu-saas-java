@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useToast } from '@zhiyu/ui'
 import type {
@@ -189,8 +189,6 @@ export interface DataContextValue {
 
   // 岗位能力测评结果
   jobAbilityResults: JobAbilityResult[]
-  positionsList: Position[]
-  getPositionAbilityItems: (positionId: string) => EvalAbilityItem[]
 
   // 审批中心
   approvalItems: ApprovalItem[]
@@ -262,7 +260,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [sceneTasks, setSceneTasks] = useState<SceneTask[]>([])
   const [sceneEvaluationResults, setSceneEvaluationResults] = useState<SceneEvaluationResult[]>([])
   const [jobAbilityResults, setJobAbilityResults] = useState<JobAbilityResult[]>([])
-  const [positionsListState] = useState<Position[]>([])
   const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>([])
 
   // 毕业设计管理状态
@@ -308,7 +305,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadExams = useCallback(async () => {
-    const res = await examApi.list({ limit: 1000 })
+    const res = await examApi.list({ limit: 200 })
     setExams(res.items.map(parseExam))
   }, [])
 
@@ -340,7 +337,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadJobAbilityResults = useCallback(async () => {
-    const res = await jobAbilityResultApi.list({ limit: 1000 })
+    const res = await jobAbilityResultApi.list({ limit: 200 })
     setJobAbilityResults(
       res.items.map((r) => ({
         ...r,
@@ -351,8 +348,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const loadApprovalItems = useCallback(async () => {
     const [banks, exams] = await Promise.all([
-      approvalApi.list({ targetType: 'question_bank', limit: 1000 }),
-      approvalApi.list({ targetType: 'exam', limit: 1000 }),
+      approvalApi.list({ targetType: 'question_bank', limit: 200 }),
+      approvalApi.list({ targetType: 'exam', limit: 200 }),
     ])
     setApprovalItems([...banks.items, ...exams.items].map(mapApprovalRecord))
   }, [])
@@ -810,7 +807,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [exams, loadExams],
   )
 
-  const value: DataContextValue = {
+  const value = useMemo<DataContextValue>(
+    () => ({
     evaluationLoading,
     questionBanks,
     getQuestionBank,
@@ -845,8 +843,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     sceneTasks,
     sceneEvaluationResults,
     jobAbilityResults,
-    positionsList: positionsListState,
-    getPositionAbilityItems: () => [],
     approvalItems,
     approveItem,
     rejectItem,
@@ -959,7 +955,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     },
 
     certIssuanceRecords,
-    issueCert: async (data): Promise<CertIssuanceRecord> => {
+    issueCert: async (data: { templateId: string; studentId: string }): Promise<CertIssuanceRecord> => {
       await microCertApi.issue(data.templateId, [data.studentId])
       const records = await loadCertIssuanceRecords()
       const record = records.find(
@@ -970,7 +966,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
       return record
     },
-    issueBatchCerts: async (records): Promise<CertIssuanceRecord[]> => {
+    issueBatchCerts: async (records: Array<{ templateId: string; studentId: string }>): Promise<CertIssuanceRecord[]> => {
       const groups = new Map<string, string[]>()
       records.forEach((r) => {
         const list = groups.get(r.templateId) || []
@@ -996,7 +992,64 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         ),
       )
     },
-  }
+  }),
+  [
+    evaluationLoading,
+    questionBanks,
+    questions,
+    exams,
+    evaluationCategories,
+    evaluationMethods,
+    sceneTasks,
+    sceneEvaluationResults,
+    jobAbilityResults,
+    approvalItems,
+    graduationProjectTopics,
+    graduationProjectArchives,
+    graduationProjectEvaluations,
+    graduationQueryResults,
+    processEvaluations,
+    rectificationDetails,
+    appealRecords,
+    evaluationStandards,
+    studentAbilityArchives,
+    studentAbilityPortraits,
+    creditConversionRules,
+    archiveVersions,
+    certIssuanceRecords,
+    loadQuestionBanks,
+    loadBankQuestions,
+    loadExams,
+    loadGraduationArchives,
+    loadGraduationEvaluations,
+    loadStudentAbilityArchives,
+    loadCertIssuanceRecords,
+    approveItem,
+    rejectItem,
+    getQuestionBank,
+    createQuestionBank,
+    updateQuestionBank,
+    deleteQuestionBank,
+    updateQuestionBankStatus,
+    getQuestionsByBank,
+    getQuestion,
+    createQuestion,
+    updateQuestion,
+    updateQuestionStatus,
+    deleteQuestion,
+    moveQuestions,
+    getExam,
+    createExam,
+    updateExam,
+    deleteExam,
+    updateExamStatus,
+    addQuestionToExam,
+    removeQuestionFromExam,
+    updateExamQuestionScore,
+    updateExamQuestionScores,
+    reorderExamQuestions,
+  ],
+)
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

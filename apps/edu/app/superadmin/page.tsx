@@ -258,14 +258,6 @@ export default function SuperAdminPage() {
   }, [searchTerm])
 
   useEffect(() => {
-    ;(async () => {
-      if (authenticated) {
-        await fetchTenants()
-      }
-    })()
-  }, [fetchTenants, authenticated])
-
-  useEffect(() => {
     if (!authenticated) return
     const timer = setTimeout(() => fetchTenants(), 300)
     return () => clearTimeout(timer)
