@@ -5,23 +5,27 @@ import type { LucideIcon } from 'lucide-react'
 import {
   BookOpen,
   Briefcase,
-  Calendar,
   CheckSquare,
-  ChevronRight,
   ClipboardList,
   Database,
   FileText,
   Layers,
-  LayoutGrid,
-  Library,
-  Users,
+  TrendingUp,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
-import type { WorkspaceDashboard, WorkspaceResourceStat } from '@/lib/types'
+import type { WorkspaceDashboard } from '@/lib/types'
+import {
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from 'recharts'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
 const iconMap: Record<string, LucideIcon> = {
   'book-open': BookOpen,
@@ -31,26 +35,13 @@ const iconMap: Record<string, LucideIcon> = {
   'check-circle': CheckSquare,
 }
 
-const extraResourceEntries = [
-  {
-    label: '教学资源共享库',
-    icon: Library,
-    href: '/library/knowledge',
-    desc: '知识点、能力点与教学资源',
-  },
-  {
-    label: '教务管理',
-    icon: Calendar,
-    href: '/affairs/programs',
-    desc: '培养方案、教学计划、排课',
-  },
-  {
-    label: '产教融合',
-    icon: Users,
-    href: '/portal/apps/alliance/enterprises',
-    desc: '合作企业、项目与成果',
-  },
-  { label: '应用中心', icon: LayoutGrid, href: '/portal/apps', desc: '全部平台应用入口' },
+const resourceTrendItems = [
+  { key: 'courses', label: '课程', icon: BookOpen, color: '#3b82f6' },
+  { key: 'scenarios', label: '场景', icon: Layers, color: '#10b981' },
+  { key: 'careerPositions', label: '岗位', icon: Briefcase, color: '#8b5cf6' },
+  { key: 'questionBanks', label: '题库', icon: Database, color: '#06b6d4' },
+  { key: 'exams', label: '试卷', icon: FileText, color: '#f97316' },
+  { key: 'examUsages', label: '考试', icon: CheckSquare, color: '#ef4444' },
 ]
 
 export function SchoolAdminResourcesTab() {
@@ -66,6 +57,7 @@ export function SchoolAdminResourcesTab() {
   const resourceStats = dashboard?.resourceStats || []
   const todos = dashboard?.todos || []
   const pendingCount = todos.reduce((acc, item) => acc + item.count, 0)
+  const growth = dashboard?.resourceGrowth || []
 
   return (
     <div className="space-y-3">
@@ -96,34 +88,24 @@ export function SchoolAdminResourcesTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
-          <SectionCard title="资源管理入口" icon={LayoutGrid} iconColor="blue">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {resourceStats.map((item) => (
-                <ResourceCard key={item.label} item={item} />
-              ))}
-              {extraResourceEntries.map((entry) => (
-                <a
-                  key={entry.label}
-                  href={entry.href}
-                  className="group flex items-start gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors">
-                    <entry.icon className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-gray-900">{entry.label}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{entry.desc}</div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </a>
-              ))}
-            </div>
+          {/* 资源增长趋势（每种资源一张卡片） */}
+          <SectionCard title="资源增长趋势" icon={TrendingUp} iconColor="blue">
+            {growth.length === 0 ? (
+              <div className="py-10 text-center text-sm text-gray-400">暂无增长数据</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {resourceTrendItems.map((item) => (
+                  <ResourceTrendCard
+                    key={item.key}
+                    item={item}
+                    data={growth.map((g) => ({
+                      month: g.month,
+                      value: g[item.key as keyof typeof g] as number,
+                    }))}
+                  />
+                ))}
+              </div>
+            )}
           </SectionCard>
         </div>
 
@@ -155,27 +137,63 @@ export function SchoolAdminResourcesTab() {
   )
 }
 
-function ResourceCard({ item }: { item: WorkspaceResourceStat }) {
-  const Icon = iconMap[item.icon || ''] || Database
+function ResourceTrendCard({
+  item,
+  data,
+}: {
+  item: (typeof resourceTrendItems)[number]
+  data: { month: string; value: number }[]
+}) {
+  const Icon = item.icon
+  const latest = data[data.length - 1]?.value ?? 0
   return (
-    <a
-      href={item.href || '#'}
-      className="group flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all"
-    >
-      <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors">
-        <Icon className="w-6 h-6" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-lg font-bold text-gray-900">{item.value}</div>
-        <div className="text-sm text-gray-500 truncate">{item.label}</div>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
-      >
-        <ChevronRight className="w-4 h-4" />
-      </Button>
-    </a>
+    <Card className="border border-gray-100 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: `${item.color}1a`, color: item.color }}
+            >
+              <Icon className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-semibold text-gray-900">{item.label}资源增长</span>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold" style={{ color: item.color }}>
+              {latest}
+            </p>
+            <p className="text-xs text-gray-400">本月新增</p>
+          </div>
+        </div>
+        <div className="h-20 w-full">
+          <ChartContainer config={{}} className="h-full w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 10 }}
+                  stroke="#94a3b8"
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={16}
+                />
+                <YAxis hide />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  name={item.label}
+                  stroke={item.color}
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

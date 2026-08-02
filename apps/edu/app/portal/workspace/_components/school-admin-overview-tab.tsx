@@ -5,39 +5,55 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Bell,
   BookOpen,
+  Briefcase,
+  Calendar,
   CheckSquare,
   ChevronRight,
   Clock,
   ClipboardList,
+  Database,
+  FileText,
   Layers,
-  TrendingUp,
+  LayoutGrid,
+  Library,
   Users,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
-import type { WorkspaceDashboard } from '@/lib/types'
-import {
-  Line,
-  LineChart,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import type { WorkspaceDashboard, WorkspaceResourceStat } from '@/lib/types'
 
-const chartConfig = {
-  courses: { label: '课程', color: '#3b82f6' },
-  scenarios: { label: '场景', color: '#10b981' },
-  careerPositions: { label: '岗位', color: '#8b5cf6' },
-  questionBanks: { label: '题库', color: '#06b6d4' },
-  exams: { label: '试卷', color: '#f97316' },
-  examUsages: { label: '考试', color: '#ef4444' },
+const iconMap: Record<string, LucideIcon> = {
+  'book-open': BookOpen,
+  layers: Layers,
+  briefcase: Briefcase,
+  'file-text': FileText,
+  'check-circle': CheckSquare,
 }
+
+const extraResourceEntries = [
+  {
+    label: '教学资源共享库',
+    icon: Library,
+    href: '/library/knowledge',
+    desc: '知识点、能力点与教学资源',
+  },
+  {
+    label: '教务管理',
+    icon: Calendar,
+    href: '/affairs/programs',
+    desc: '培养方案、教学计划、排课',
+  },
+  {
+    label: '产教融合',
+    icon: Users,
+    href: '/portal/apps/alliance/enterprises',
+    desc: '合作企业、项目与成果',
+  },
+  { label: '应用中心', icon: LayoutGrid, href: '/portal/apps', desc: '全部平台应用入口' },
+]
 
 interface SchoolAdminOverviewTabProps {
   onTabChange?: (tab: string) => void
@@ -55,109 +71,41 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
 
   const announcements = dashboard?.announcements || []
   const todos = dashboard?.todos || []
-  const stats = dashboard?.stats
   const resourceStats = dashboard?.resourceStats || []
   const personnelStats = dashboard?.personnelStats || []
-  const growth = dashboard?.resourceGrowth || []
-
-  const totalStudents = personnelStats.find((p) => p.label === '学生')?.value || 0
-  const totalTeachers = personnelStats.find((p) => p.label === '教职工')?.value || 0
 
   return (
     <div className="space-y-3">
-      {/* 顶部关键指标 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard
-          label="课程资源"
-          value={resourceStats.find((r) => r.label === '课程资源')?.value || 0}
-          icon={BookOpen}
-          color="blue"
-        />
-        <StatCard
-          label="实践场景"
-          value={resourceStats.find((r) => r.label === '实践场景')?.value || 0}
-          icon={Layers}
-          color="green"
-        />
-        <StatCard label="待审批" value={stats?.value2 || 0} icon={ClipboardList} color="amber" />
-        <StatCard
-          label="师生总数"
-          value={totalStudents + totalTeachers}
-          icon={Users}
-          color="indigo"
-        />
-      </div>
-
-      {/* 主体：资源增长折线图 + 右侧边栏 */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
-          <SectionCard title="资源增长趋势" icon={TrendingUp} iconColor="blue">
-            <div className="h-[360px] w-full">
-              {growth.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-gray-400">
-                  暂无增长数据
-                </div>
-              ) : (
-                <ChartContainer config={chartConfig} className="h-full w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={growth} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                      <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Line
-                        type="monotone"
-                        dataKey="courses"
-                        name={chartConfig.courses.label}
-                        stroke={chartConfig.courses.color}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="scenarios"
-                        name={chartConfig.scenarios.label}
-                        stroke={chartConfig.scenarios.color}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="careerPositions"
-                        name={chartConfig.careerPositions.label}
-                        stroke={chartConfig.careerPositions.color}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="questionBanks"
-                        name={chartConfig.questionBanks.label}
-                        stroke={chartConfig.questionBanks.color}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="exams"
-                        name={chartConfig.exams.label}
-                        stroke={chartConfig.exams.color}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="examUsages"
-                        name={chartConfig.examUsages.label}
-                        stroke={chartConfig.examUsages.color}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              )}
+          {/* 资源管理入口 */}
+          <SectionCard title="资源管理入口" icon={LayoutGrid} iconColor="blue">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {resourceStats.map((item) => (
+                <ResourceCard key={item.label} item={item} />
+              ))}
+              {extraResourceEntries.map((entry) => (
+                <a
+                  key={entry.label}
+                  href={entry.href}
+                  className="group flex items-start gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors">
+                    <entry.icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-gray-900">{entry.label}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{entry.desc}</div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </a>
+              ))}
             </div>
           </SectionCard>
 
@@ -264,37 +212,27 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
   )
 }
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-}: {
-  label: string
-  value: number
-  icon: LucideIcon
-  color: 'blue' | 'green' | 'amber' | 'indigo' | 'purple' | 'rose'
-}) {
-  const colorClass = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-emerald-500 to-emerald-600',
-    amber: 'from-amber-500 to-amber-600',
-    indigo: 'from-indigo-500 to-indigo-600',
-    purple: 'from-purple-500 to-purple-600',
-    rose: 'from-rose-500 to-rose-600',
-  }[color]
-
+function ResourceCard({ item }: { item: WorkspaceResourceStat }) {
+  const Icon = iconMap[item.icon || ''] || Database
   return (
-    <Card className={`bg-gradient-to-r ${colorClass} text-white border-0`}>
-      <CardContent className="p-4 flex items-center justify-between">
-        <div>
-          <p className="text-white/80 text-sm">{label}</p>
-          <p className="text-2xl font-bold">{value}</p>
-        </div>
-        <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-          <Icon className="w-6 h-6" />
-        </div>
-      </CardContent>
-    </Card>
+    <a
+      href={item.href || '#'}
+      className="group flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+    >
+      <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors">
+        <Icon className="w-6 h-6" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-lg font-bold text-gray-900">{item.value}</div>
+        <div className="text-sm text-gray-500 truncate">{item.label}</div>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </Button>
+    </a>
   )
 }
