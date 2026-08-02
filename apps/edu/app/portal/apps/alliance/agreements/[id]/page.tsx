@@ -4,16 +4,11 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
-import type {
-  AllianceAgreement,
-  AllianceEnterprise,
-  AllianceProject,
-  AllianceListResponse,
-} from '@/lib/types'
+import type { AllianceAgreement, AllianceEnterprise, AllianceProject } from '@/lib/types'
 
 export default function AllianceAgreementDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,9 +22,9 @@ export default function AllianceAgreementDetailPage() {
   useEffect(() => {
     if (!tenantId || !id) return
     Promise.all([
-      portalRequest<AllianceAgreement>(`/alliance/agreements/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
-      portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
+      allianceAgreementApi.get(id),
+      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceProjectApi.list({ limit: 1000 }),
     ])
       .then(([a, ents, projs]) => {
         setAgreement(a)

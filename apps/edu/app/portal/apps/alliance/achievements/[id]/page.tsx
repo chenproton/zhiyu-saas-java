@@ -13,12 +13,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceAchievementApi, portalRequest } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { Plus, Trash2 } from 'lucide-react'
-import type { AllianceAchievement, AllianceListResponse } from '@/lib/types'
+import type { AllianceAchievement } from '@/lib/types'
 
 interface RelatedRef {
   id: string
@@ -43,11 +43,11 @@ export default function AllianceAchievementDetailPage() {
   const loadData = () => {
     if (!tenantId || !id) return
     Promise.all([
-      portalRequest<AllianceAchievement>(`/alliance/achievements/${id}`),
+      allianceAchievementApi.get(id),
       portalRequest<{ items: RelatedRef[] }>('/career/positions?limit=1000').catch(() => ({
         items: [],
       })),
-      portalRequest<AllianceListResponse<AllianceAchievement>>('/alliance/achievements?limit=1000'),
+      allianceAchievementApi.list({ limit: 1000 }),
     ])
       .then(([a, pos, ach]) => {
         setAchievement(a)
@@ -69,10 +69,7 @@ export default function AllianceAchievementDetailPage() {
     setSaving(true)
     try {
       const updated = { ...achievement, [key]: items } as AllianceAchievement
-      await portalRequest(`/alliance/achievements/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(updated),
-      })
+      await allianceAchievementApi.update(id, updated)
       setAchievement(updated)
       toast({ title: '已保存' })
     } catch (e: any) {

@@ -5,11 +5,11 @@ import { useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
-import type { AllianceExpert, AllianceEnterprise, AllianceListResponse } from '@/lib/types'
+import type { AllianceExpert, AllianceEnterprise } from '@/lib/types'
 
 export default function AllianceExpertDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -22,8 +22,8 @@ export default function AllianceExpertDetailPage() {
   useEffect(() => {
     if (!tenantId || !id) return
     Promise.all([
-      portalRequest<AllianceExpert>(`/alliance/experts/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
+      allianceExpertApi.get(id),
+      allianceEnterpriseApi.list({ limit: 1000 }),
     ])
       .then(([e, ents]) => {
         setExpert(e)

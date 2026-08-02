@@ -17,9 +17,8 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { portalRequest } from '@/lib/api'
+import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
-import type { AllianceEnterprise, AllianceProject, AllianceListResponse } from '@/lib/types'
 
 const AGREEMENT_TYPES = [
   '战略合作协议',
@@ -51,8 +50,8 @@ export default function AllianceAgreementNewPage() {
 
   useEffect(() => {
     Promise.all([
-      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
-      portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
+      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceProjectApi.list({ limit: 1000 }),
     ])
       .then(([ents, projs]) => {
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
@@ -70,10 +69,7 @@ export default function AllianceAgreementNewPage() {
     }
     setSaving(true)
     try {
-      const data = await portalRequest<{ id: string }>('/alliance/agreements', {
-        method: 'POST',
-        body: JSON.stringify(item),
-      })
+      const data = await allianceAgreementApi.create(item)
       toast({ title: '协议已创建' })
       router.push(`/portal/apps/alliance/agreements/${data.id}`)
     } catch (e: any) {

@@ -17,7 +17,12 @@ import { Switch } from '@/components/ui/switch'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import {
+  allianceEnterpriseApi,
+  allianceProjectApi,
+  allianceAchievementApi,
+  allianceAgreementApi,
+} from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -28,7 +33,6 @@ import type {
   AllianceProject,
   AllianceAchievement,
   AllianceAgreement,
-  AllianceListResponse,
 } from '@/lib/types'
 
 export default function AllianceEnterprisesPage() {
@@ -47,12 +51,10 @@ export default function AllianceEnterprisesPage() {
     setError(null)
     try {
       const [ent, proj, ach, agr] = await Promise.all([
-        portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises'),
-        portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
-        portalRequest<AllianceListResponse<AllianceAchievement>>(
-          '/alliance/achievements?limit=1000',
-        ),
-        portalRequest<AllianceListResponse<AllianceAgreement>>('/alliance/agreements?limit=1000'),
+        allianceEnterpriseApi.list(),
+        allianceProjectApi.list({ limit: 1000 }),
+        allianceAchievementApi.list({ limit: 1000 }),
+        allianceAgreementApi.list({ limit: 1000 }),
       ])
       setEnterprises(ent.items || [])
       setProjects(proj.items || [])
@@ -332,29 +334,20 @@ export default function AllianceEnterprisesPage() {
       )}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) {
-          await portalRequest(`/alliance/enterprises/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify(item),
-          })
+          await allianceEnterpriseApi.update(item.id, item)
         } else {
-          await portalRequest('/alliance/enterprises', {
-            method: 'POST',
-            body: JSON.stringify(item),
-          })
+          await allianceEnterpriseApi.create(item)
         }
         toast({ title: `企业已${isEdit ? '更新' : '创建'}` })
         await fetchEnterprises()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/enterprises/${item.id}`, { method: 'DELETE' })
+        await allianceEnterpriseApi.delete(item.id)
         toast({ title: '企业已删除' })
         await fetchEnterprises()
       }}
       onToggleEnabled={async (item: any) => {
-        await portalRequest(`/alliance/enterprises/${item.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ ...item, isPublic: !item.isPublic }),
-        })
+        await allianceEnterpriseApi.togglePublic(item.id, !item.isPublic)
         await fetchEnterprises()
       }}
     />

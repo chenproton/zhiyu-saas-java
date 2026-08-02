@@ -19,9 +19,8 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2, X, Plus } from 'lucide-react'
-import { portalRequest } from '@/lib/api'
+import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
-import type { AllianceEnterprise, AllianceListResponse } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -69,7 +68,7 @@ export default function AllianceExpertNewPage() {
   const [specialtyInput, setSpecialtyInput] = useState('')
 
   useEffect(() => {
-    portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000')
+    allianceEnterpriseApi.list({ limit: 1000 })
       .then((res) => setEnterprises((res.items || []).map((e) => ({ label: e.name, value: e.id }))))
       .catch(() => {})
   }, [])
@@ -96,10 +95,7 @@ export default function AllianceExpertNewPage() {
       } else {
         payload.enterpriseId = ''
       }
-      const data = await portalRequest<{ id: string }>('/alliance/experts', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      })
+      const data = await allianceExpertApi.create(payload)
       toast({ title: '专家已创建' })
       router.push(`/portal/apps/alliance/experts/${data.id}`)
     } catch (e: any) {

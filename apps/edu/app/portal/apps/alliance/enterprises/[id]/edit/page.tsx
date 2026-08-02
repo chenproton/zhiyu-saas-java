@@ -20,7 +20,7 @@ import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-li
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceEnterpriseApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import type { AllianceEnterprise } from '@/lib/types'
 
@@ -50,7 +50,7 @@ export default function AllianceEnterpriseEditPage() {
 
   useEffect(() => {
     if (!tenantId || !id) return
-    portalRequest<AllianceEnterprise>(`/alliance/enterprises/${id}`)
+    allianceEnterpriseApi.get(id)
       .then((data) => setItem(data))
       .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
@@ -60,10 +60,7 @@ export default function AllianceEnterpriseEditPage() {
     if (!item) return
     setSaving(true)
     try {
-      await portalRequest(`/alliance/enterprises/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(item),
-      })
+      await allianceEnterpriseApi.update(id, item)
       toast({ title: '企业已更新' })
       router.push(`/portal/apps/alliance/enterprises/${id}`)
     } catch (e: any) {

@@ -20,9 +20,8 @@ import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-li
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2, X, Plus } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
-import type { AllianceEnterprise, AllianceListResponse } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -75,8 +74,8 @@ export default function AllianceExpertEditPage() {
   useEffect(() => {
     if (!tenantId || !id) return
     Promise.all([
-      portalRequest<any>(`/alliance/experts/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
+      allianceExpertApi.get(id),
+      allianceEnterpriseApi.list({ limit: 1000 }),
     ])
       .then(([expert, ents]) => {
         setItem({
@@ -130,10 +129,7 @@ export default function AllianceExpertEditPage() {
       } else {
         payload.enterpriseId = ''
       }
-      await portalRequest(`/alliance/experts/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      })
+      await allianceExpertApi.update(id, payload)
       toast({ title: '专家已更新' })
       router.push(`/portal/apps/alliance/experts/${id}`)
     } catch (e: any) {

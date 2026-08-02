@@ -17,14 +17,14 @@ import { Switch } from '@/components/ui/switch'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceBrandApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
-import type { AllianceBrand, AllianceListResponse } from '@/lib/types'
+import type { AllianceBrand } from '@/lib/types'
 
 const brandType = 'job'
 const brandLabel = '岗位品牌'
@@ -42,9 +42,7 @@ export default function AllianceJobBrandPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await portalRequest<AllianceListResponse<AllianceBrand>>(
-        `/alliance/brands?brandType=${brandType}`,
-      )
+      const data = await allianceBrandApi.list({ brandType })
       setItems(data.items || [])
     } catch (e: any) {
       setError(e.message || '加载失败')
@@ -211,18 +209,15 @@ export default function AllianceJobBrandPage() {
       onSave={async (item: any, isEdit: boolean) => {
         item.brandType = brandType
         if (isEdit) {
-          await portalRequest(`/alliance/brands/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify(item),
-          })
+          await allianceBrandApi.update(item.id, item)
         } else {
-          await portalRequest('/alliance/brands', { method: 'POST', body: JSON.stringify(item) })
+          await allianceBrandApi.create(item)
         }
         toast({ title: `品牌已${isEdit ? '更新' : '创建'}` })
         await fetchItems()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/brands/${item.id}`, { method: 'DELETE' })
+        await allianceBrandApi.delete(item.id)
         toast({ title: '品牌已删除' })
         await fetchItems()
       }}

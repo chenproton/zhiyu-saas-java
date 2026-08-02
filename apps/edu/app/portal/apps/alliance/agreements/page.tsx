@@ -15,18 +15,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
-import type {
-  AllianceAgreement,
-  AllianceEnterprise,
-  AllianceProject,
-  AllianceListResponse,
-} from '@/lib/types'
+import type { AllianceAgreement, AllianceEnterprise, AllianceProject } from '@/lib/types'
 
 export default function AllianceAgreementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -43,9 +38,9 @@ export default function AllianceAgreementsPage() {
     setError(null)
     try {
       const [data, ents, projs] = await Promise.all([
-        portalRequest<AllianceListResponse<AllianceAgreement>>('/alliance/agreements'),
-        portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
-        portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
+        allianceAgreementApi.list(),
+        allianceEnterpriseApi.list({ limit: 1000 }),
+        allianceProjectApi.list({ limit: 1000 }),
       ])
       setItems(data.items || [])
       setEnterprises(ents.items || [])
@@ -229,21 +224,15 @@ export default function AllianceAgreementsPage() {
       getDeleteDescription={(item: any) => <>确定要删除协议「{item.name}」吗？</>}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) {
-          await portalRequest(`/alliance/agreements/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify(item),
-          })
+          await allianceAgreementApi.update(item.id, item)
         } else {
-          await portalRequest('/alliance/agreements', {
-            method: 'POST',
-            body: JSON.stringify(item),
-          })
+          await allianceAgreementApi.create(item)
         }
         toast({ title: `协议已${isEdit ? '更新' : '创建'}` })
         await fetchItems()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/agreements/${item.id}`, { method: 'DELETE' })
+        await allianceAgreementApi.delete(item.id)
         toast({ title: '协议已删除' })
         await fetchItems()
       }}
