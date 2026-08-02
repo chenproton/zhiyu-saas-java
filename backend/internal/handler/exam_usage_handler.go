@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -14,7 +15,8 @@ type ExamUsageHandler struct {
 	Service *service.EvaluationService
 }
 
-type CreateExamUsageRequest struct {
+// ExamUsageRequest 考试安排创建/更新请求体（字段一致，更新流程忽略 examId）。
+type ExamUsageRequest struct {
 	ExamID      string   `json:"examId"`
 	Name        string   `json:"name"`
 	Description *string  `json:"description"`
@@ -45,109 +47,88 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.ExamUsage]{Items: items, Total: total})
 }
 
+// crud 返回考试安排 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage] {
+	return crudConfig[ExamUsageRequest, domain.ExamUsage]{
+		NotFoundMsg:    "考试安排不存在",
+		CreateErrMsg:   "创建考试安排失败",
+		UpdateErrMsg:   "更新考试安排失败",
+		DeleteErrMsg:   "删除考试安排失败",
+		CheckOwnership: true,
+		GetOwnership:   true,
+		ValidateCreate: func(t *ExamUsageRequest) string {
+			if t.ExamID == "" || t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *ExamUsageRequest) (string, bool) {
+			return requireTenant(w, r)
+		},
+		ValidateUpdate: func(t *ExamUsageRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *ExamUsageRequest, tenantID, userID string) (string, error) {
+			u, err := h.Service.CreateExamUsage(ctx, &store.ExamUsageCreateParams{
+				TenantID:    tenantID,
+				ExamID:      t.ExamID,
+				Name:        t.Name,
+				Description: t.Description,
+				StartTime:   t.StartTime,
+				EndTime:     t.EndTime,
+				Duration:    t.Duration,
+				TargetType:  t.TargetType,
+				TargetIDs:   coalesceStringSlice(t.TargetIDs),
+				CreatorID:   userID,
+			})
+			if err != nil {
+				return "", err
+			}
+			return u.ID, nil
+		},
+		UpdateFn: func(ctx context.Context, id string, t *ExamUsageRequest) error {
+			_, err := h.Service.UpdateExamUsage(ctx, id, &store.ExamUsageCreateParams{
+				Name:        t.Name,
+				Description: t.Description,
+				StartTime:   t.StartTime,
+				EndTime:     t.EndTime,
+				Duration:    t.Duration,
+				TargetType:  t.TargetType,
+				TargetIDs:   coalesceStringSlice(t.TargetIDs),
+			})
+			return err
+		},
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Service.DeleteExamUsage(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.ExamUsage, error) {
+			u, err := h.Service.GetExamUsage(ctx, id)
+			if err != nil {
+				return domain.ExamUsage{}, err
+			}
+			return *u, nil
+		},
+		TenantIDFn: func(t *domain.ExamUsage) string { return t.TenantID },
+	}
+}
+
 func (h *ExamUsageHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	usage, err := h.Service.GetExamUsage(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "考试安排不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, usage.TenantID) {
-		return
-	}
-	respondJSON(w, http.StatusOK, usage)
+	crudGet(w, r, h.crud())
 }
 
 func (h *ExamUsageHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	var req CreateExamUsageRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.ExamID == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	usage, err := h.Service.CreateExamUsage(r.Context(), &store.ExamUsageCreateParams{
-		TenantID:    tenantID,
-		ExamID:      req.ExamID,
-		Name:        req.Name,
-		Description: req.Description,
-		StartTime:   req.StartTime,
-		EndTime:     req.EndTime,
-		Duration:    req.Duration,
-		TargetType:  req.TargetType,
-		TargetIDs:   coalesceStringSlice(req.TargetIDs),
-		CreatorID:   claims.UserID,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "创建考试安排失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, usage)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	usage, err := h.Service.GetExamUsage(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "考试安排不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, usage.TenantID) {
-		return
-	}
-
-	var req CreateExamUsageRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	usage, err = h.Service.UpdateExamUsage(r.Context(), id, &store.ExamUsageCreateParams{
-		Name:        req.Name,
-		Description: req.Description,
-		StartTime:   req.StartTime,
-		EndTime:     req.EndTime,
-		Duration:    req.Duration,
-		TargetType:  req.TargetType,
-		TargetIDs:   coalesceStringSlice(req.TargetIDs),
-	})
-	if err != nil {
-		respondServerError(w, r, err, "更新考试安排失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, usage)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *ExamUsageHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	usage, err := h.Service.GetExamUsage(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "考试安排不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, usage.TenantID) {
-		return
-	}
-	if err := h.Service.DeleteExamUsage(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除考试安排失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }
 
 func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {

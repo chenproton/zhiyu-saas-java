@@ -7,31 +7,6 @@ import (
 	"time"
 )
 
-// GetBanner 查询单个轮播图。
-func (s *PositionService) GetBanner(ctx context.Context, id string) (*domain.JobBannerConfig, error) {
-	return s.st.Banners().Get(ctx, id)
-}
-
-// CreateBanner 创建轮播图。
-func (s *PositionService) CreateBanner(ctx context.Context, tenantID string, p *store.BannerParams) (*domain.JobBannerConfig, error) {
-	return s.st.Banners().Create(ctx, tenantID, p)
-}
-
-// UpdateBanner 更新轮播图。
-func (s *PositionService) UpdateBanner(ctx context.Context, id string, p *store.BannerParams) (*domain.JobBannerConfig, error) {
-	return s.st.Banners().Update(ctx, id, p)
-}
-
-// DeleteBanner 删除轮播图。
-func (s *PositionService) DeleteBanner(ctx context.Context, id string) error {
-	return s.st.Banners().Delete(ctx, id)
-}
-
-// ListAnnouncements 查询公告。
-func (s *PositionService) ListAnnouncements(ctx context.Context, role string, tenantID *string) ([]store.AnnouncementRow, error) {
-	return s.st.Portal().ListAnnouncements(ctx, role, tenantID)
-}
-
 // DraftCourseCount 待提交课程数。
 func (s *PositionService) DraftCourseCount(ctx context.Context, userID string, tenantID *string) int {
 	return s.st.Portal().DraftCourseCount(ctx, userID, tenantID)

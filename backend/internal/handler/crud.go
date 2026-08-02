@@ -37,8 +37,11 @@ type crudConfig[T any, V any] struct {
 	ValidateUpdate func(t *T) string
 	CreateFn       func(ctx context.Context, t *T, tenantID, userID string) (string, error)
 	UpdateFn       func(ctx context.Context, id string, t *T) error
-	DeleteFn       func(ctx context.Context, id string) error
-	GetByIDFn      func(ctx context.Context, id string) (V, error)
+	DeleteFn       func(ctx context.Context, id, tenantID string) error
+	GetByIDFn      func(ctx context.Context, id, tenantID string) (V, error)
+	// TenantFn 解析当前请求租户（仅 GetByIDFn 需要租户过滤的实体设置，如联盟实体）；
+	// ok=false 时已写入错误响应。未设置时 tenantID 为空串。
+	TenantFn func(w http.ResponseWriter, r *http.Request) (tenantID string, ok bool)
 	// TenantIDFn 返回实体所属租户，用于归属校验；nil 时跳过。
 	TenantIDFn func(t *V) string
 	// AfterLoad 详情/更新回读后补充数据（如 userCount）；创建回读不执行，与原实现一致。
@@ -87,7 +90,7 @@ func crudCreate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 		respondServerError(w, r, err, cfg.CreateErrMsg)
 		return
 	}
-	item, _ := cfg.GetByIDFn(r.Context(), id)
+	item, _ := cfg.GetByIDFn(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusCreated, item)
 }
 
@@ -96,7 +99,15 @@ func crudGet[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudConfi
 		return
 	}
 	id := chi.URLParam(r, "id")
-	item, err := cfg.GetByIDFn(r.Context(), id)
+	tenantID := ""
+	if cfg.TenantFn != nil {
+		var ok bool
+		tenantID, ok = cfg.TenantFn(w, r)
+		if !ok {
+			return
+		}
+	}
+	item, err := cfg.GetByIDFn(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
 		return
@@ -118,7 +129,15 @@ func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 		return
 	}
 	id := chi.URLParam(r, "id")
-	existing, err := cfg.GetByIDFn(r.Context(), id)
+	tenantID := ""
+	if cfg.TenantFn != nil {
+		var ok bool
+		tenantID, ok = cfg.TenantFn(w, r)
+		if !ok {
+			return
+		}
+	}
+	existing, err := cfg.GetByIDFn(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
 		return
@@ -144,7 +163,7 @@ func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 		respondServerError(w, r, err, cfg.UpdateErrMsg)
 		return
 	}
-	item, _ := cfg.GetByIDFn(r.Context(), id)
+	item, _ := cfg.GetByIDFn(r.Context(), id, tenantID)
 	if cfg.AfterLoad != nil {
 		if err := cfg.AfterLoad(r.Context(), &item); err != nil {
 			respondServerError(w, r, err, "查询失败")
@@ -159,7 +178,15 @@ func crudDelete[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 		return
 	}
 	id := chi.URLParam(r, "id")
-	existing, err := cfg.GetByIDFn(r.Context(), id)
+	tenantID := ""
+	if cfg.TenantFn != nil {
+		var ok bool
+		tenantID, ok = cfg.TenantFn(w, r)
+		if !ok {
+			return
+		}
+	}
+	existing, err := cfg.GetByIDFn(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
 		return
@@ -178,7 +205,7 @@ func crudDelete[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 			return
 		}
 	}
-	if err := cfg.DeleteFn(r.Context(), id); err != nil {
+	if err := cfg.DeleteFn(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, cfg.DeleteErrMsg)
 		return
 	}

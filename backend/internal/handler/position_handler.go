@@ -520,10 +520,6 @@ func strPtr(s string) *string {
 	return &s
 }
 
-func mapCategory(category string) string {
-	return category
-}
-
 // ===== Content actions =====
 
 func (h *PositionHandler) actions() contentActions {

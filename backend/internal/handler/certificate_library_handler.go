@@ -97,8 +97,10 @@ func (h *CertificateLibraryHandler) crud() crudConfig[CertificateLibraryRequest,
 				ImageURL:    updateImg,
 			})
 		},
-		DeleteFn: h.Store.Delete,
-		GetByIDFn: func(ctx context.Context, id string) (domain.CertificateLibraryItem, error) {
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Store.Delete(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.CertificateLibraryItem, error) {
 			return h.Store.GetByID(ctx, id)
 		},
 		TenantIDFn: func(t *domain.CertificateLibraryItem) string { return t.TenantID },

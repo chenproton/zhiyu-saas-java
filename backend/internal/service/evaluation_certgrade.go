@@ -28,3 +28,8 @@ func (s *EvaluationService) ListCertGrades(ctx context.Context, positionID strin
 	}
 	return grades, comps, lb, nil
 }
+
+// PositionTenantID 查询岗位租户。
+func (s *EvaluationService) PositionTenantID(ctx context.Context, positionID string) (string, error) {
+	return s.st.CertGrades().PositionTenantID(ctx, positionID)
+}

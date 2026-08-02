@@ -88,8 +88,10 @@ func (h *OrgTypeHandler) crud() crudConfig[OrgTypeRequest, domain.OrgType] {
 				Description: t.Description,
 			})
 		},
-		DeleteFn: h.Store.Delete,
-		GetByIDFn: func(ctx context.Context, id string) (domain.OrgType, error) {
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Store.Delete(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.OrgType, error) {
 			return h.Store.GetByID(ctx, id)
 		},
 		TenantIDFn: func(t *domain.OrgType) string { return t.TenantID },

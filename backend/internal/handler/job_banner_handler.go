@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -14,15 +14,8 @@ type JobBannerHandler struct {
 	Service *service.PositionService
 }
 
-type CreateJobBannerRequest struct {
-	Title     string  `json:"title"`
-	ImageURL  string  `json:"imageUrl"`
-	LinkURL   *string `json:"linkUrl"`
-	SortOrder int     `json:"sortOrder"`
-	IsEnabled bool    `json:"isEnabled"`
-}
-
-type UpdateJobBannerRequest struct {
+// JobBannerRequest 轮播图创建/更新请求体（字段一致）。
+type JobBannerRequest struct {
 	Title     string  `json:"title"`
 	ImageURL  string  `json:"imageUrl"`
 	LinkURL   *string `json:"linkUrl"`
@@ -49,97 +42,76 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.JobBannerConfig]{Items: items, Total: total})
 }
 
+// crud 返回轮播图 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *JobBannerHandler) crud() crudConfig[JobBannerRequest, domain.JobBannerConfig] {
+	return crudConfig[JobBannerRequest, domain.JobBannerConfig]{
+		NotFoundMsg:  "轮播图不存在",
+		CreateErrMsg: "创建轮播图失败",
+		UpdateErrMsg: "更新轮播图失败",
+		DeleteErrMsg: "删除轮播图失败",
+		ValidateCreate: func(t *JobBannerRequest) string {
+			if t.Title == "" || t.ImageURL == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *JobBannerRequest) (string, bool) {
+			return requireTenant(w, r)
+		},
+		ValidateUpdate: func(t *JobBannerRequest) string {
+			if t.Title == "" || t.ImageURL == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *JobBannerRequest, tenantID, userID string) (string, error) {
+			b, err := h.Service.CreateBanner(ctx, tenantID, &store.BannerParams{
+				Title:     t.Title,
+				ImageURL:  t.ImageURL,
+				LinkURL:   t.LinkURL,
+				SortOrder: t.SortOrder,
+				IsEnabled: t.IsEnabled,
+			})
+			if err != nil {
+				return "", err
+			}
+			return b.ID, nil
+		},
+		UpdateFn: func(ctx context.Context, id string, t *JobBannerRequest) error {
+			_, err := h.Service.UpdateBanner(ctx, id, &store.BannerParams{
+				Title:     t.Title,
+				ImageURL:  t.ImageURL,
+				LinkURL:   t.LinkURL,
+				SortOrder: t.SortOrder,
+				IsEnabled: t.IsEnabled,
+			})
+			return err
+		},
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Service.DeleteBanner(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.JobBannerConfig, error) {
+			b, err := h.Service.GetBanner(ctx, id)
+			if err != nil {
+				return domain.JobBannerConfig{}, err
+			}
+			return *b, nil
+		},
+	}
+}
+
 func (h *JobBannerHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	banner, err := h.Service.GetBanner(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "轮播图不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, banner)
+	crudGet(w, r, h.crud())
 }
 
 func (h *JobBannerHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	if claims.TenantID == nil || *claims.TenantID == "" {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	var req CreateJobBannerRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Title == "" || req.ImageURL == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	banner, err := h.Service.CreateBanner(r.Context(), *claims.TenantID, &store.BannerParams{
-		Title:     req.Title,
-		ImageURL:  req.ImageURL,
-		LinkURL:   req.LinkURL,
-		SortOrder: req.SortOrder,
-		IsEnabled: req.IsEnabled,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "创建轮播图失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, banner)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *JobBannerHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetBanner(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "轮播图不存在")
-		return
-	}
-	var req UpdateJobBannerRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Title == "" || req.ImageURL == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	banner, err := h.Service.UpdateBanner(r.Context(), id, &store.BannerParams{
-		Title:     req.Title,
-		ImageURL:  req.ImageURL,
-		LinkURL:   req.LinkURL,
-		SortOrder: req.SortOrder,
-		IsEnabled: req.IsEnabled,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "更新轮播图失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, banner)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *JobBannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetBanner(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "轮播图不存在")
-		return
-	}
-	if err := h.Service.DeleteBanner(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除轮播图失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

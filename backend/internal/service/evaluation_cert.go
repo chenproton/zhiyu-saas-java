@@ -161,3 +161,8 @@ func (s *EvaluationService) PutCertificationWeights(ctx context.Context, tenantI
 		return err
 	})
 }
+
+// FindRuleByPosition 按岗位查规则。
+func (s *EvaluationService) FindRuleByPosition(ctx context.Context, tenantID, positionID string) (*domain.CertificationRule, error) {
+	return s.st.Certifications().FindRuleByPosition(ctx, tenantID, positionID)
+}

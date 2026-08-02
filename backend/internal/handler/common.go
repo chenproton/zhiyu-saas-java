@@ -26,14 +26,6 @@ func emptyStrToNil(s *string) *string {
 	return s
 }
 
-// strPtrIfNonEmpty 将非空字符串转为 *string，空字符串返回 nil。
-func strPtrIfNonEmpty(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 // coalesceStringSlice 将 nil 切片转为空切片，避免 SQL 参数中写入 NULL。
 func coalesceStringSlice(s []string) []string {
 	if s == nil {
@@ -297,25 +289,6 @@ func jsonRawMessageToJSONMap(raw json.RawMessage) domain.JSONMap {
 }
 
 // getStringSliceFromJSONMap 从 JSONMap 提取字符串数组。
-func getStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
-	raw, ok := m[key]
-	if !ok || raw == nil {
-		return nil
-	}
-	switch v := raw.(type) {
-	case []string:
-		return v
-	case []interface{}:
-		out := make([]string, 0, len(v))
-		for _, x := range v {
-			if s, ok := x.(string); ok {
-				out = append(out, s)
-			}
-		}
-		return out
-	}
-	return nil
-}
 
 // goAsync 启动安全后台 goroutine：panic 记录日志不崩进程；wg 非空时自动 Done。
 func goAsync(wg *sync.WaitGroup, fn func()) {

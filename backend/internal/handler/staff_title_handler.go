@@ -115,8 +115,10 @@ func (h *StaffTitleHandler) crud() crudConfig[StaffTitleRequest, domain.StaffTit
 				Status:      t.Status,
 			})
 		},
-		DeleteFn: h.Store.Delete,
-		GetByIDFn: func(ctx context.Context, id string) (domain.StaffTitle, error) {
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Store.Delete(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.StaffTitle, error) {
 			return h.Store.GetByID(ctx, id)
 		},
 		TenantIDFn: func(t *domain.StaffTitle) string { return t.TenantID },

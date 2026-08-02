@@ -86,8 +86,10 @@ func (h *IndustryHandler) crud() crudConfig[IndustryRequest, domain.Industry] {
 				SortOrder: t.SortOrder,
 			})
 		},
-		DeleteFn: h.Store.Delete,
-		GetByIDFn: func(ctx context.Context, id string) (domain.Industry, error) {
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Store.Delete(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.Industry, error) {
 			return h.Store.GetByID(ctx, id)
 		},
 		TenantIDFn: func(t *domain.Industry) string { return t.TenantID },

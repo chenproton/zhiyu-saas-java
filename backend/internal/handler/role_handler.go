@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -17,12 +18,6 @@ type RoleHandler struct {
 type CreateRoleRequest struct {
 	TenantID    string         `json:"tenantId"`
 	Code        string         `json:"code"`
-	Name        string         `json:"name"`
-	Description *string        `json:"description"`
-	Permissions domain.JSONMap `json:"permissions"`
-}
-
-type UpdateRoleRequest struct {
 	Name        string         `json:"name"`
 	Description *string        `json:"description"`
 	Permissions domain.JSONMap `json:"permissions"`
@@ -48,119 +43,72 @@ func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.Role]{Items: items, Total: total})
 }
 
+// crud 返回角色 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *RoleHandler) crud() crudConfig[CreateRoleRequest, domain.Role] {
+	return crudConfig[CreateRoleRequest, domain.Role]{
+		NotFoundMsg:        "角色不存在",
+		CreateErrMsg:       "创建角色失败",
+		UpdateErrMsg:       "更新角色失败",
+		DeleteErrMsg:       "删除角色失败",
+		Permit:             func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		UniqueViolationMsg: "角色代码已存在，请使用其他代码",
+		CheckOwnership:     true,
+		GetOwnership:       true,
+		ValidateCreate: func(t *CreateRoleRequest) string {
+			if t.TenantID == "" || t.Code == "" || t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *CreateRoleRequest) (string, bool) {
+			return t.TenantID, verifyRequestTenant(w, r, t.TenantID)
+		},
+		ValidateUpdate: func(t *CreateRoleRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *CreateRoleRequest, tenantID, userID string) (string, error) {
+			return h.Store.Create(ctx, store.RoleCreateParams{
+				TenantID:    tenantID,
+				Code:        t.Code,
+				Name:        t.Name,
+				Description: t.Description,
+				Permissions: t.Permissions,
+			})
+		},
+		UpdateFn: func(ctx context.Context, id string, t *CreateRoleRequest) error {
+			return h.Store.Update(ctx, id, store.RoleUpdateParams{
+				Name:        t.Name,
+				Description: t.Description,
+				Permissions: t.Permissions,
+			})
+		},
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Store.Delete(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.Role, error) {
+			return h.Store.GetByID(ctx, id)
+		},
+		TenantIDFn: func(t *domain.Role) string { return t.TenantID },
+	}
+}
+
 func (h *RoleHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	role, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "角色不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, role.TenantID) {
-		return
-	}
-	respondJSON(w, http.StatusOK, role)
+	crudGet(w, r, h.crud())
 }
 
 func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	var req CreateRoleRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.TenantID == "" || req.Code == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	if !verifyRequestTenant(w, r, req.TenantID) {
-		return
-	}
-
-	id, err := h.Store.Create(r.Context(), store.RoleCreateParams{
-		TenantID:    req.TenantID,
-		Code:        req.Code,
-		Name:        req.Name,
-		Description: req.Description,
-		Permissions: req.Permissions,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "角色代码已存在，请使用其他代码")
-			return
-		}
-		respondServerError(w, r, err, "创建角色失败")
-		return
-	}
-
-	role, _ := h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusCreated, role)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	role, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "角色不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, role.TenantID) {
-		return
-	}
-
-	var req UpdateRoleRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	if err := h.Store.Update(r.Context(), id, store.RoleUpdateParams{
-		Name:        req.Name,
-		Description: req.Description,
-		Permissions: req.Permissions,
-	}); err != nil {
-		respondServerError(w, r, err, "更新角色失败")
-		return
-	}
-
-	role, _ = h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusOK, role)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	role, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "角色不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, role.TenantID) {
-		return
-	}
-
-	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除角色失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }
 
 func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {

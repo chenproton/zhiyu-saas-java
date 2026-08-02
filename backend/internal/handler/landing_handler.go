@@ -84,14 +84,3 @@ func computeExamStatus(start, end interface{}, now time.Time) string {
 	}
 	return "进行中"
 }
-
-func joinStrings(parts []string, sep string) string {
-	out := ""
-	for i, p := range parts {
-		if i > 0 {
-			out += sep
-		}
-		out += p
-	}
-	return out
-}

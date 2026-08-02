@@ -83,8 +83,10 @@ func (h *MajorHandler) crud() crudConfig[MajorRequest, domain.Major] {
 				Enabled: t.Enabled,
 			})
 		},
-		DeleteFn: h.Store.Delete,
-		GetByIDFn: func(ctx context.Context, id string) (domain.Major, error) {
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Store.Delete(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.Major, error) {
 			return h.Store.GetByID(ctx, id)
 		},
 		TenantIDFn: func(t *domain.Major) string { return t.TenantID },

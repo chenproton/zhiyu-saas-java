@@ -77,19 +77,19 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AllianceHandler) GetEnterprise(w http.ResponseWriter, r *http.Request) {
-	allianceGet(w, r, h.Store.GetEnterpriseByID, "企业不存在")
+	crudGet(w, r, h.enterpriseCRUD())
 }
 
 func (h *AllianceHandler) CreateEnterprise(w http.ResponseWriter, r *http.Request) {
-	allianceCreate(w, r, h.enterpriseCRUD())
+	crudCreate(w, r, h.enterpriseCRUD())
 }
 
 func (h *AllianceHandler) UpdateEnterprise(w http.ResponseWriter, r *http.Request) {
-	allianceUpdate(w, r, h.enterpriseCRUD())
+	crudUpdate(w, r, h.enterpriseCRUD())
 }
 
 func (h *AllianceHandler) DeleteEnterprise(w http.ResponseWriter, r *http.Request) {
-	allianceDelete(w, r, h.enterpriseCRUD())
+	crudDelete(w, r, h.enterpriseCRUD())
 }
 
 // ===== 企业合作协议 =====
@@ -201,19 +201,19 @@ func (h *AllianceHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AllianceHandler) GetProject(w http.ResponseWriter, r *http.Request) {
-	allianceGet(w, r, h.Store.GetProjectByID, "项目不存在")
+	crudGet(w, r, h.projectCRUD())
 }
 
 func (h *AllianceHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
-	allianceCreate(w, r, h.projectCRUD())
+	crudCreate(w, r, h.projectCRUD())
 }
 
 func (h *AllianceHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
-	allianceUpdate(w, r, h.projectCRUD())
+	crudUpdate(w, r, h.projectCRUD())
 }
 
 func (h *AllianceHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
-	allianceDelete(w, r, h.projectCRUD())
+	crudDelete(w, r, h.projectCRUD())
 }
 
 // ===== 里程碑 =====
@@ -306,19 +306,19 @@ func (h *AllianceHandler) ListAchievements(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *AllianceHandler) GetAchievement(w http.ResponseWriter, r *http.Request) {
-	allianceGet(w, r, h.Store.GetAchievementByID, "成果不存在")
+	crudGet(w, r, h.achievementCRUD())
 }
 
 func (h *AllianceHandler) CreateAchievement(w http.ResponseWriter, r *http.Request) {
-	allianceCreate(w, r, h.achievementCRUD())
+	crudCreate(w, r, h.achievementCRUD())
 }
 
 func (h *AllianceHandler) UpdateAchievement(w http.ResponseWriter, r *http.Request) {
-	allianceUpdate(w, r, h.achievementCRUD())
+	crudUpdate(w, r, h.achievementCRUD())
 }
 
 func (h *AllianceHandler) DeleteAchievement(w http.ResponseWriter, r *http.Request) {
-	allianceDelete(w, r, h.achievementCRUD())
+	crudDelete(w, r, h.achievementCRUD())
 }
 
 // ===== 专家 =====
@@ -328,19 +328,19 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AllianceHandler) GetExpert(w http.ResponseWriter, r *http.Request) {
-	allianceGet(w, r, h.Store.GetExpertByID, "专家不存在")
+	crudGet(w, r, h.expertCRUD())
 }
 
 func (h *AllianceHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
-	allianceCreate(w, r, h.expertCRUD())
+	crudCreate(w, r, h.expertCRUD())
 }
 
 func (h *AllianceHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
-	allianceUpdate(w, r, h.expertCRUD())
+	crudUpdate(w, r, h.expertCRUD())
 }
 
 func (h *AllianceHandler) DeleteExpert(w http.ResponseWriter, r *http.Request) {
-	allianceDelete(w, r, h.expertCRUD())
+	crudDelete(w, r, h.expertCRUD())
 }
 
 // ===== 合作协议（独立） =====
@@ -350,19 +350,19 @@ func (h *AllianceHandler) ListAgreements(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *AllianceHandler) GetAgreement(w http.ResponseWriter, r *http.Request) {
-	allianceGet(w, r, h.Store.GetAgreementByID, "协议不存在")
+	crudGet(w, r, h.agreementCRUD())
 }
 
 func (h *AllianceHandler) CreateAgreement(w http.ResponseWriter, r *http.Request) {
-	allianceCreate(w, r, h.agreementCRUD())
+	crudCreate(w, r, h.agreementCRUD())
 }
 
 func (h *AllianceHandler) UpdateAgreement(w http.ResponseWriter, r *http.Request) {
-	allianceUpdate(w, r, h.agreementCRUD())
+	crudUpdate(w, r, h.agreementCRUD())
 }
 
 func (h *AllianceHandler) DeleteAgreement(w http.ResponseWriter, r *http.Request) {
-	allianceDelete(w, r, h.agreementCRUD())
+	crudDelete(w, r, h.agreementCRUD())
 }
 
 // ===== 权限 =====
@@ -588,19 +588,19 @@ func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AllianceHandler) GetBrand(w http.ResponseWriter, r *http.Request) {
-	allianceGet(w, r, h.Store.GetBrandByID, "品牌不存在")
+	crudGet(w, r, h.brandCRUD())
 }
 
 func (h *AllianceHandler) CreateBrand(w http.ResponseWriter, r *http.Request) {
-	allianceCreate(w, r, h.brandCRUD())
+	crudCreate(w, r, h.brandCRUD())
 }
 
 func (h *AllianceHandler) UpdateBrand(w http.ResponseWriter, r *http.Request) {
-	allianceUpdate(w, r, h.brandCRUD())
+	crudUpdate(w, r, h.brandCRUD())
 }
 
 func (h *AllianceHandler) DeleteBrand(w http.ResponseWriter, r *http.Request) {
-	allianceDelete(w, r, h.brandCRUD())
+	crudDelete(w, r, h.brandCRUD())
 }
 
 // ===== 公开 API（门户前台） =====

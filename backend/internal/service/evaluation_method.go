@@ -20,3 +20,8 @@ func (s *EvaluationService) GetEvaluationMethod(ctx context.Context, id string) 
 func (s *EvaluationService) ToggleEvaluationMethod(ctx context.Context, id string, enabled bool) (*domain.EvaluationMethod, error) {
 	return s.st.EvaluationMethods().Toggle(ctx, id, enabled)
 }
+
+// ListEvaluationCategories 查询评价分类。
+func (s *EvaluationService) ListEvaluationCategories(ctx context.Context) ([]domain.EvaluationMethodCategory, error) {
+	return s.st.EvaluationMethods().ListCategories(ctx)
+}
