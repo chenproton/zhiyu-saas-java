@@ -49,7 +49,7 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	if err := os.MkdirAll(h.UploadDir, 0o755); err != nil {
-		respondError(w, http.StatusInternalServerError, "准备上传目录失败")
+		respondServerError(w, r, err, "准备上传目录失败")
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		}
 		sort.Slice(images, func(i, j int) bool { return i < j })
 		if len(images) == 0 {
-			respondError(w, http.StatusInternalServerError, "未生成幻灯片")
+			respondServerError(w, r, err, "未生成幻灯片")
 			return
 		}
 		respondJSON(w, http.StatusOK, map[string]any{"images": images})

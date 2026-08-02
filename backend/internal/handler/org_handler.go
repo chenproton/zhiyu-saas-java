@@ -194,7 +194,7 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新组织失败")
+		respondServerError(w, r, err, "更新组织失败")
 		return
 	}
 
@@ -220,7 +220,7 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.Delete(r.Context(), id, org.TenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除组织失败")
+		respondServerError(w, r, err, "删除组织失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

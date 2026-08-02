@@ -89,7 +89,7 @@ func (h *AffairsTermHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "学期已存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建学期失败")
+		respondServerError(w, r, err, "创建学期失败")
 		return
 	}
 	term, _ := h.Service.GetTerm(r.Context(), id, tenantID)
@@ -126,7 +126,7 @@ func (h *AffairsTermHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name, StartDate: req.StartDate, EndDate: req.EndDate,
 		WeeksCount: req.WeeksCount, IsCurrent: req.IsCurrent,
 	}); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新学期失败")
+		respondServerError(w, r, err, "更新学期失败")
 		return
 	}
 	term, _ := h.Service.GetTerm(r.Context(), id, tenantID)

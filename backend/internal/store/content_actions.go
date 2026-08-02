@@ -13,11 +13,11 @@ type txBeginner interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
-// allowedContentTables lists the tables that may be used by ContentActionStore.
-var allowedContentTables = []string{"career_positions", "courses", "exams", "question_banks", "scenarios", "training_programs"}
+// AllowedContentTables 内容动作允许操作的表白名单（handler 侧校验共用，单一真相）。
+var AllowedContentTables = []string{"career_positions", "courses", "exams", "question_banks", "scenarios", "training_programs"}
 
-// allowedInviteColumns lists the columns that may be updated by Invite().
-var allowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_creator_ids", "collaborators"}
+// AllowedInviteColumns 内容动作允许更新的协作者列白名单（handler 侧校验共用，单一真相）。
+var AllowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_creator_ids", "collaborators"}
 
 // sanitizeIdentifier 校验标识符必须在白名单内，防止 SQL 注入。
 func sanitizeIdentifier(identifier string, allowed []string) (string, error) {
@@ -54,12 +54,12 @@ func NewContentActionStore(q Queryer, beginner txBeginner) *ContentActionStore {
 
 // tableFor returns the sanitized table name.
 func (s *ContentActionStore) tableFor(table string) (string, error) {
-	return sanitizeIdentifier(table, allowedContentTables)
+	return sanitizeIdentifier(table, AllowedContentTables)
 }
 
 // inviteColFor returns the sanitized invite column name.
 func (s *ContentActionStore) inviteColFor(inviteCol string) (string, error) {
-	return sanitizeIdentifier(inviteCol, allowedInviteColumns)
+	return sanitizeIdentifier(inviteCol, AllowedInviteColumns)
 }
 
 func canTransition(from, to domain.ContentStatus) bool {

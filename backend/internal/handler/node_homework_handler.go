@@ -162,7 +162,7 @@ func (h *NodeHomeworkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.DeleteNodeHomework(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除作业失败")
+		respondServerError(w, r, err, "删除作业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

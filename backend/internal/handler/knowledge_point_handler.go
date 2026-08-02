@@ -120,7 +120,7 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建知识点失败")
+		respondServerError(w, r, err, "创建知识点失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, kp)
@@ -163,7 +163,7 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新知识点失败")
+		respondServerError(w, r, err, "更新知识点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, kp)
@@ -182,7 +182,7 @@ func (h *KnowledgePointHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.DeleteKnowledgePoint(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除知识点失败")
+		respondServerError(w, r, err, "删除知识点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

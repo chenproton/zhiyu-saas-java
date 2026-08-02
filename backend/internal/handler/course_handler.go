@@ -226,7 +226,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建课程失败")
+		respondServerError(w, r, err, "创建课程失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, course)
@@ -365,7 +365,7 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新课程失败")
+		respondServerError(w, r, err, "更新课程失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, course)
@@ -384,7 +384,7 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.DeleteCourse(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除课程失败")
+		respondServerError(w, r, err, "删除课程失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -447,14 +447,14 @@ func (h *CourseHandler) Assessments(w http.ResponseWriter, r *http.Request) {
 	exams, err := h.Service.ListCourseExamUsages(r.Context(), courseID, *claims.TenantID)
 	if err != nil {
 		slog.Error("查询课程考试安排失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询课程测评失败")
+		respondServerError(w, r, err, "查询课程测评失败")
 		return
 	}
 
 	homeworks, err := h.Service.ListCourseHomeworks(r.Context(), courseID, *claims.TenantID)
 	if err != nil {
 		slog.Error("查询课程作业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询课程测评失败")
+		respondServerError(w, r, err, "查询课程测评失败")
 		return
 	}
 
@@ -494,7 +494,7 @@ func (h *CourseHandler) SubmitHomework(w http.ResponseWriter, r *http.Request) {
 	submissionID, err := h.Service.SubmitCourseHomework(r.Context(), *claims.TenantID, courseID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls)
 	if err != nil {
 		slog.Error("提交课程作业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "提交作业失败")
+		respondServerError(w, r, err, "提交作业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "submitted"})
@@ -517,7 +517,7 @@ func (h *CourseHandler) ListHomeworkSubmissions(w http.ResponseWriter, r *http.R
 	subs, err := h.Service.ListCourseHomeworkSubmissions(r.Context(), *claims.TenantID, courseID, homeworkID)
 	if err != nil {
 		slog.Error("查询课程作业提交失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询失败")
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	items := make([]map[string]any, 0, len(subs))
@@ -574,7 +574,7 @@ func (h *CourseHandler) GradeHomeworkSubmission(w http.ResponseWriter, r *http.R
 			return
 		}
 		slog.Error("批改课程作业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "批改失败")
+		respondServerError(w, r, err, "批改失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "graded"})
@@ -611,7 +611,7 @@ func (h *CourseHandler) SubmitNodeHomework(w http.ResponseWriter, r *http.Reques
 	submissionID, err := h.Service.SubmitNodeHomework(r.Context(), *claims.TenantID, nodeID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls)
 	if err != nil {
 		slog.Error("提交节点作业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "提交作业失败")
+		respondServerError(w, r, err, "提交作业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "submitted"})
@@ -634,7 +634,7 @@ func (h *CourseHandler) ListNodeHomeworkSubmissions(w http.ResponseWriter, r *ht
 	subs, err := h.Service.ListNodeHomeworkSubmissions(r.Context(), *claims.TenantID, nodeID, homeworkID)
 	if err != nil {
 		slog.Error("查询节点作业提交失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询失败")
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	items := make([]map[string]any, 0, len(subs))
@@ -691,7 +691,7 @@ func (h *CourseHandler) GradeNodeHomeworkSubmission(w http.ResponseWriter, r *ht
 			return
 		}
 		slog.Error("批改节点作业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "批改失败")
+		respondServerError(w, r, err, "批改失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "graded"})

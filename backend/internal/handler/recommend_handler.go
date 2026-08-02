@@ -142,7 +142,7 @@ func (h *RecommendHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteRecommend(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除推荐失败")
+		respondServerError(w, r, err, "删除推荐失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

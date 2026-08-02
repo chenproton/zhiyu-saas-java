@@ -265,7 +265,7 @@ func (h *TeachingPlanHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.ConfirmTeachingPlan(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "确认教学计划失败")
+		respondServerError(w, r, err, "确认教学计划失败")
 		return
 	}
 	plan, _ := h.Service.GetTeachingPlan(r.Context(), id, tenantID)

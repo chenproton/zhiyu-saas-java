@@ -157,7 +157,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 			respondError(w, http.StatusConflict, "评价规则已被其他会话修改")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "保存测评方式失败")
+		respondServerError(w, r, err, "保存测评方式失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, TaskEvaluationMethodListResponse{Methods: configs})
@@ -329,7 +329,7 @@ func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 	}
 
 	if err := h.Service.DeleteTemplate(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除评分模板失败")
+		respondServerError(w, r, err, "删除评分模板失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

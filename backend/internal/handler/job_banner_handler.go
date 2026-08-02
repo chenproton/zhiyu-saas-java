@@ -155,7 +155,7 @@ func (h *JobBannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteBanner(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除轮播图失败")
+		respondServerError(w, r, err, "删除轮播图失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

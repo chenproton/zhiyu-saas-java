@@ -58,7 +58,7 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("查询专业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询专业失败")
+		respondServerError(w, r, err, "查询专业失败")
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建专业失败")
+		respondServerError(w, r, err, "创建专业失败")
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新专业失败")
+		respondServerError(w, r, err, "更新专业失败")
 		return
 	}
 
@@ -192,7 +192,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除专业失败")
+		respondServerError(w, r, err, "删除专业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

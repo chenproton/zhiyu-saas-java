@@ -61,7 +61,7 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		slog.Error("查询微证书模板列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询微证书模板列表失败")
+		respondServerError(w, r, err, "查询微证书模板列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, MicroCertTemplateListResponse{Items: items, Total: total})
@@ -86,7 +86,7 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("查询证书发放记录列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询证书发放记录列表失败")
+		respondServerError(w, r, err, "查询证书发放记录列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, CertIssuanceListResponse{Items: items, Total: total})
@@ -183,7 +183,7 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 		Content:      req.Content,
 		CoverImage:   req.CoverImage,
 	}); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新微证书模板失败")
+		respondServerError(w, r, err, "更新微证书模板失败")
 		return
 	}
 
@@ -205,7 +205,7 @@ func (h *MicroCertHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.Store.DeleteTemplate(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除微证书模板失败")
+		respondServerError(w, r, err, "删除微证书模板失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

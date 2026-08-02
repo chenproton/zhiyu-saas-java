@@ -143,7 +143,7 @@ func (h *PositionResponsibilityHandler) Delete(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if err := h.Service.DeleteResponsibility(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除岗位职责失败")
+		respondServerError(w, r, err, "删除岗位职责失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

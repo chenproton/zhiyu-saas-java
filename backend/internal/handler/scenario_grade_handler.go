@@ -59,7 +59,7 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 	items, total, err := h.Service.ListGradeMappings(r.Context(), params, cfg)
 	if err != nil {
 		slog.Error("查询场景等级映射列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询场景等级映射列表失败")
+		respondServerError(w, r, err, "查询场景等级映射列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ScenarioGradeMappingListResponse{Items: items, Total: total})
@@ -109,7 +109,7 @@ func (h *ScenarioGradeHandler) DeleteGradeMapping(w http.ResponseWriter, r *http
 
 	id := chi.URLParam(r, "id")
 	if err := h.Service.DeleteGradeMapping(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除成绩映射失败")
+		respondServerError(w, r, err, "删除成绩映射失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

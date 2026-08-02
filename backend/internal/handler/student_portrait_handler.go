@@ -131,7 +131,7 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 	aggCtx, aggCancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer aggCancel()
 	if err := h.Agg.AggregatePosition(aggCtx, tenantID, req.CareerPositionID, []string{req.UserID}); err != nil {
-		respondError(w, http.StatusInternalServerError, "生成画像失败")
+		respondServerError(w, r, err, "生成画像失败")
 		return
 	}
 

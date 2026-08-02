@@ -145,7 +145,7 @@ func (h *GraduationHandler) CreateTopic(w http.ResponseWriter, r *http.Request) 
 			respondError(w, http.StatusConflict, "毕业设计题目名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建毕业设计课题失败")
+		respondServerError(w, r, err, "创建毕业设计课题失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, topic)
@@ -188,7 +188,7 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 			respondError(w, http.StatusConflict, "毕业设计题目名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新毕业设计课题失败")
+		respondServerError(w, r, err, "更新毕业设计课题失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, topic)
@@ -210,7 +210,7 @@ func (h *GraduationHandler) DeleteTopic(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := h.Service.DeleteGraduationTopic(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除毕业设计课题失败")
+		respondServerError(w, r, err, "删除毕业设计课题失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

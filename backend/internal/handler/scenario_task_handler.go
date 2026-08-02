@@ -229,7 +229,7 @@ func (h *ScenarioTaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.DeleteTask(r.Context(), id, *task.TenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除任务失败")
+		respondServerError(w, r, err, "删除任务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -260,7 +260,7 @@ func (h *ScenarioTaskHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.ReorderTasks(r.Context(), req.ScenarioID, req.TaskIDs); err != nil {
-		respondError(w, http.StatusInternalServerError, "重新排序任务失败")
+		respondServerError(w, r, err, "重新排序任务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]bool{"ok": true})

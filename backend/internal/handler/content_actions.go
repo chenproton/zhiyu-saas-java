@@ -36,15 +36,9 @@ type contentActions struct {
 	fetch      func(ctx context.Context, id string) (interface{}, error)
 }
 
-// allowedContentTables lists the tables that may be used by contentActions.
-var allowedContentTables = []string{"career_positions", "courses", "exams", "question_banks", "scenarios", "training_programs"}
-
-// allowedInviteColumns lists the columns that may be updated by invite().
-var allowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_creator_ids", "collaborators"}
-
 // tableFor returns the sanitized table name for contentActions queries.
 func (c contentActions) tableFor(w http.ResponseWriter) (string, bool) {
-	for _, a := range allowedContentTables {
+	for _, a := range store.AllowedContentTables {
 		if c.table == a {
 			return c.table, true
 		}
@@ -55,7 +49,7 @@ func (c contentActions) tableFor(w http.ResponseWriter) (string, bool) {
 
 // inviteColFor returns the sanitized invite column name for invite().
 func (c contentActions) inviteColFor(w http.ResponseWriter) (string, bool) {
-	for _, a := range allowedInviteColumns {
+	for _, a := range store.AllowedInviteColumns {
 		if c.inviteCol == a {
 			return c.inviteCol, true
 		}

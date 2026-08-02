@@ -116,7 +116,7 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建题库失败")
+		respondServerError(w, r, err, "创建题库失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, bank)
@@ -183,7 +183,7 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新题库失败")
+		respondServerError(w, r, err, "更新题库失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, bank)
@@ -207,7 +207,7 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteQuestionBank(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除题库失败")
+		respondServerError(w, r, err, "删除题库失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

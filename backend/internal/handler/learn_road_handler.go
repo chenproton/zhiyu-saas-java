@@ -62,7 +62,7 @@ func (h *LearnRoadHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("查询学习路径失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询学习路径失败")
+		respondServerError(w, r, err, "查询学习路径失败")
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *LearnRoadHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("create learn road failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建学习路径失败")
+		respondServerError(w, r, err, "创建学习路径失败")
 		return
 	}
 
@@ -146,7 +146,7 @@ func (h *LearnRoadHandler) Update(w http.ResponseWriter, r *http.Request) {
 		PositionIDs: req.PositionIDs,
 		Steps:       req.Steps,
 	}); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新学习路径失败")
+		respondServerError(w, r, err, "更新学习路径失败")
 		return
 	}
 
@@ -167,7 +167,7 @@ func (h *LearnRoadHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除学习路径失败")
+		respondServerError(w, r, err, "删除学习路径失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

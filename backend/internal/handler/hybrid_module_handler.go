@@ -97,7 +97,7 @@ func (h *HybridModuleHandler) DeleteModule(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := h.Service.DeleteHybridModule(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除混合模块失败")
+		respondServerError(w, r, err, "删除混合模块失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

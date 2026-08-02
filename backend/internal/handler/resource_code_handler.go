@@ -102,7 +102,7 @@ func (h *ResourceCodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "资源编码代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建资源编码失败")
+		respondServerError(w, r, err, "创建资源编码失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, resourceCode)
@@ -157,7 +157,7 @@ func (h *ResourceCodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteResourceCode(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除资源编码失败")
+		respondServerError(w, r, err, "删除资源编码失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -58,7 +58,7 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("查询职称失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询职称失败")
+		respondServerError(w, r, err, "查询职称失败")
 		return
 	}
 
@@ -137,7 +137,7 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "职称代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建职称失败")
+		respondServerError(w, r, err, "创建职称失败")
 		return
 	}
 
@@ -219,7 +219,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除职称失败")
+		respondServerError(w, r, err, "删除职称失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -252,7 +252,7 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.Store.UpdateStatus(r.Context(), id, req.Status); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新状态失败")
+		respondServerError(w, r, err, "更新状态失败")
 		return
 	}
 

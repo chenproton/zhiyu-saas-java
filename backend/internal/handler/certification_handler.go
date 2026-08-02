@@ -241,7 +241,7 @@ func (h *CertificationHandler) DeleteRule(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := h.Service.DeleteCertificationRule(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除认证规则失败")
+		respondServerError(w, r, err, "删除认证规则失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -358,7 +358,7 @@ func (h *CertificationHandler) DeleteItem(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := h.Service.DeleteCertificationItem(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除认证项失败")
+		respondServerError(w, r, err, "删除认证项失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -376,7 +376,7 @@ func (h *CertificationHandler) DeletePoint(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := h.Service.DeleteCertificationPoint(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除认证点失败")
+		respondServerError(w, r, err, "删除认证点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -463,7 +463,7 @@ func (h *CertificationHandler) PutFullRule(w http.ResponseWriter, r *http.Reques
 
 	levelMapping := req.LevelMapping
 	if err := h.Service.PutCertificationFull(r.Context(), tenantID, id, req.CareerPositionID, req.RuleSource, levelMapping, items); err != nil {
-		respondError(w, http.StatusInternalServerError, "保存认证规则失败")
+		respondServerError(w, r, err, "保存认证规则失败")
 		return
 	}
 	rule, _ := h.Service.GetCertificationRule(r.Context(), id)
@@ -594,7 +594,7 @@ func (h *CertificationHandler) DeleteTask(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := h.Service.DeleteCertificationTask(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除关联任务失败")
+		respondServerError(w, r, err, "删除关联任务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

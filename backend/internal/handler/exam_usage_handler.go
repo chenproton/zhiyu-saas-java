@@ -166,7 +166,7 @@ func (h *ExamUsageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteExamUsage(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除考试安排失败")
+		respondServerError(w, r, err, "删除考试安排失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -183,7 +183,7 @@ func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.SetExamUsageStatus(r.Context(), id, "in_progress"); err != nil {
-		respondError(w, http.StatusInternalServerError, "开始考试安排失败")
+		respondServerError(w, r, err, "开始考试安排失败")
 		return
 	}
 	usage, _ = h.Service.GetExamUsage(r.Context(), id)
@@ -201,7 +201,7 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.SetExamUsageStatus(r.Context(), id, "finished"); err != nil {
-		respondError(w, http.StatusInternalServerError, "完成考试安排失败")
+		respondServerError(w, r, err, "完成考试安排失败")
 		return
 	}
 	usage, _ = h.Service.GetExamUsage(r.Context(), id)

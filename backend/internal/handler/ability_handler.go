@@ -117,7 +117,7 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建能力点失败")
+		respondServerError(w, r, err, "创建能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, ability)
@@ -153,7 +153,7 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新能力点失败")
+		respondServerError(w, r, err, "更新能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ability)
@@ -170,7 +170,7 @@ func (h *AbilityHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteAbility(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除能力点失败")
+		respondServerError(w, r, err, "删除能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -158,7 +158,7 @@ func (h *NodeQuizHandler) DeleteQuiz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.DeleteQuiz(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除测验失败")
+		respondServerError(w, r, err, "删除测验失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -272,7 +272,7 @@ func (h *NodeQuizHandler) DeleteQuestion(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err := h.Service.DeleteQuizQuestion(r.Context(), questionID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除题目失败")
+		respondServerError(w, r, err, "删除题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": questionID})

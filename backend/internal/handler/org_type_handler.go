@@ -57,7 +57,7 @@ func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("查询组织类型失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询组织类型失败")
+		respondServerError(w, r, err, "查询组织类型失败")
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *OrgTypeHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建组织类型失败")
+		respondServerError(w, r, err, "创建组织类型失败")
 		return
 	}
 
@@ -162,7 +162,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新组织类型失败")
+		respondServerError(w, r, err, "更新组织类型失败")
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除组织类型失败")
+		respondServerError(w, r, err, "删除组织类型失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

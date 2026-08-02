@@ -162,7 +162,7 @@ func (h *PositionCertificateHandler) Delete(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if err := h.Service.DeleteCertificate(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除证书失败")
+		respondServerError(w, r, err, "删除证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

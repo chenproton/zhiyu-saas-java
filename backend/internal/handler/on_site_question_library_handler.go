@@ -56,7 +56,7 @@ func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		slog.Error("查询现场题库列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询现场题库列表失败")
+		respondServerError(w, r, err, "查询现场题库列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, OnSiteQuestionLibraryListResponse{Items: items, Total: total})
@@ -193,7 +193,7 @@ func (h *OnSiteQuestionLibraryHandler) Delete(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除题目失败")
+		respondServerError(w, r, err, "删除题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

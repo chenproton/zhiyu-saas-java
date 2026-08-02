@@ -61,7 +61,7 @@ func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("查询角色列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询角色列表失败")
+		respondServerError(w, r, err, "查询角色列表失败")
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "角色代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建角色失败")
+		respondServerError(w, r, err, "创建角色失败")
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		Permissions: req.Permissions,
 	}); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新角色失败")
+		respondServerError(w, r, err, "更新角色失败")
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除角色失败")
+		respondServerError(w, r, err, "删除角色失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -211,7 +211,7 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.Store.Assign(r.Context(), role.TenantID, id, req.UserID); err != nil {
 		slog.Error("assign role failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "分配角色失败")
+		respondServerError(w, r, err, "分配角色失败")
 		return
 	}
 

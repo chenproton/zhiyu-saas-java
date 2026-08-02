@@ -204,7 +204,7 @@ func (h *ResourceLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.Service.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除资源失败")
+		respondServerError(w, r, err, "删除资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

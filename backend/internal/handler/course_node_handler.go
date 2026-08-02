@@ -283,7 +283,7 @@ func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteNode(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除课程节点失败")
+		respondServerError(w, r, err, "删除课程节点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -304,7 +304,7 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.ReorderNodes(r.Context(), req.CourseID, req.NodeIDs); err != nil {
-		respondError(w, http.StatusInternalServerError, "重新排序nodes失败")
+		respondServerError(w, r, err, "重新排序nodes失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]bool{"ok": true})

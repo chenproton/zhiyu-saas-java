@@ -159,7 +159,7 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建岗位失败")
+		respondServerError(w, r, err, "创建岗位失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, pos)
@@ -254,7 +254,7 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新岗位失败")
+		respondServerError(w, r, err, "更新岗位失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, pos)
@@ -273,7 +273,7 @@ func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除岗位失败")
+		respondServerError(w, r, err, "删除岗位失败")
 		return
 	}
 	h.clearPublicPositionsCacheByTenantID(r, tenantID)

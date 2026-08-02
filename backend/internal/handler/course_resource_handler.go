@@ -158,7 +158,7 @@ func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Re
 	if err := h.Service.Unbind(r.Context(), "course_resource_bindings", id, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
 		return store.CourseSyncUnbind(ctx, q, courseID, resourceID)
 	}); err != nil {
-		respondError(w, http.StatusInternalServerError, "解绑课程资源失败")
+		respondServerError(w, r, err, "解绑课程资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

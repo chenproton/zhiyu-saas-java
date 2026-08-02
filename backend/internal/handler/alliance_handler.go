@@ -44,7 +44,7 @@ func (h *AllianceHandler) GetSchoolInfo(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		slog.Error("获取学校信息失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "获取学校信息失败")
+		respondServerError(w, r, err, "获取学校信息失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, info)
@@ -69,7 +69,7 @@ func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Reques
 
 	if err := h.Store.UpsertSchoolInfo(r.Context(), &info); err != nil {
 		slog.Error("更新学校信息失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新学校信息失败")
+		respondServerError(w, r, err, "更新学校信息失败")
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *htt
 	items, err := h.Store.ListEnterpriseAgreements(r.Context(), eid)
 	if err != nil {
 		slog.Error("查询企业协议列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询失败")
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
@@ -166,7 +166,7 @@ func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	id, err := h.Store.CreateEnterpriseAgreement(r.Context(), &p)
 	if err != nil {
 		slog.Error("创建企业协议失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建失败")
+		respondServerError(w, r, err, "创建失败")
 		return
 	}
 
@@ -197,7 +197,7 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	}
 	if err := h.Store.UpdateEnterpriseAgreement(r.Context(), id, &p); err != nil {
 		slog.Error("更新企业协议失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新失败")
+		respondServerError(w, r, err, "更新失败")
 		return
 	}
 
@@ -217,7 +217,7 @@ func (h *AllianceHandler) DeleteEnterpriseAgreement(w http.ResponseWriter, r *ht
 	}
 	id := chi.URLParam(r, "id")
 	if err := h.Store.DeleteEnterpriseAgreement(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除失败")
+		respondServerError(w, r, err, "删除失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -297,7 +297,7 @@ func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request
 	id, err := h.Store.CreateMilestone(r.Context(), &m)
 	if err != nil {
 		slog.Error("创建里程碑失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建失败")
+		respondServerError(w, r, err, "创建失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, map[string]string{"id": id})
@@ -321,7 +321,7 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 	}
 	if err := h.Store.UpdateMilestone(r.Context(), id, &m); err != nil {
 		slog.Error("更新里程碑失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新失败")
+		respondServerError(w, r, err, "更新失败")
 		return
 	}
 	_ = tenantID
@@ -340,7 +340,7 @@ func (h *AllianceHandler) DeleteMilestone(w http.ResponseWriter, r *http.Request
 	}
 	id := chi.URLParam(r, "id")
 	if err := h.Store.DeleteMilestone(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除失败")
+		respondServerError(w, r, err, "删除失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -478,7 +478,7 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 			return
 		}
 		slog.Error("查询权限列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询权限列表失败")
+		respondServerError(w, r, err, "查询权限列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
@@ -527,7 +527,7 @@ func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Reques
 	id, err := h.Store.CreatePermission(r.Context(), &p)
 	if err != nil {
 		slog.Error("创建权限失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建失败")
+		respondServerError(w, r, err, "创建失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, map[string]string{"id": id})
@@ -551,7 +551,7 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 	_ = tenantID
 	if err := h.Store.UpdatePermission(r.Context(), id, &p); err != nil {
 		slog.Error("更新权限失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新失败")
+		respondServerError(w, r, err, "更新失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -569,7 +569,7 @@ func (h *AllianceHandler) DeletePermission(w http.ResponseWriter, r *http.Reques
 	}
 	id := chi.URLParam(r, "id")
 	if err := h.Store.DeletePermission(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除失败")
+		respondServerError(w, r, err, "删除失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -630,7 +630,7 @@ func (h *AllianceHandler) CreateDictionaryItem(w http.ResponseWriter, r *http.Re
 			return
 		}
 		slog.Error("创建字典项失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建失败")
+		respondServerError(w, r, err, "创建失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, map[string]string{"id": id})
@@ -655,7 +655,7 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 		Name:      req.Name,
 		SortOrder: req.SortOrder,
 	}); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新失败")
+		respondServerError(w, r, err, "更新失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -673,7 +673,7 @@ func (h *AllianceHandler) DeleteDictionaryItem(w http.ResponseWriter, r *http.Re
 	}
 	id := chi.URLParam(r, "id")
 	if err := h.Store.DeleteDictionary(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除失败")
+		respondServerError(w, r, err, "删除失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -732,7 +732,7 @@ func (h *AllianceHandler) GetPublicSchoolInfo(w http.ResponseWriter, r *http.Req
 			respondJSON(w, http.StatusOK, &domain.AllianceSchoolInfo{})
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "获取失败")
+		respondServerError(w, r, err, "获取失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, info)

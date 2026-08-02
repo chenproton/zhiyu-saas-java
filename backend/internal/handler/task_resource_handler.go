@@ -184,7 +184,7 @@ func (h *TaskResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Requ
 
 	id := chi.URLParam(r, "id")
 	if err := h.Service.Unbind(r.Context(), "task_resource_bindings", id, nil); err != nil {
-		respondError(w, http.StatusInternalServerError, "解绑资源失败")
+		respondServerError(w, r, err, "解绑资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

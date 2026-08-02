@@ -165,7 +165,7 @@ func (h *AbilityDomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteAbilityDomain(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除能力域失败")
+		respondServerError(w, r, err, "删除能力域失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -46,8 +45,7 @@ func allianceList[T any](w http.ResponseWriter, r *http.Request, db store.ListQu
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error(errMsg, "error", err)
-		respondError(w, http.StatusInternalServerError, errMsg)
+		respondServerError(w, r, err, errMsg)
 		return
 	}
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
@@ -100,8 +98,7 @@ func allianceCreate[T any](w http.ResponseWriter, r *http.Request, cfg allianceC
 
 	id, err := cfg.CreateFn(r.Context(), &body, tenantID, claims.UserID)
 	if err != nil {
-		slog.Error("创建"+cfg.LogName+"失败", "error", err)
-		respondError(w, http.StatusInternalServerError, cfg.CreateErrMsg)
+		respondServerError(w, r, err, cfg.CreateErrMsg)
 		return
 	}
 	item, _ := cfg.GetFn(r.Context(), id, tenantID)
@@ -130,8 +127,7 @@ func allianceUpdate[T any](w http.ResponseWriter, r *http.Request, cfg allianceC
 		return
 	}
 	if err := cfg.UpdateFn(r.Context(), id, &body); err != nil {
-		slog.Error("更新"+cfg.LogName+"失败", "error", err)
-		respondError(w, http.StatusInternalServerError, cfg.UpdateErrMsg)
+		respondServerError(w, r, err, cfg.UpdateErrMsg)
 		return
 	}
 	item, _ := cfg.GetFn(r.Context(), id, tenantID)
@@ -157,8 +153,7 @@ func allianceDelete[T any](w http.ResponseWriter, r *http.Request, cfg allianceC
 		}
 	}
 	if err := cfg.DeleteFn(r.Context(), id, tenantID); err != nil {
-		slog.Error("删除"+cfg.LogName+"失败", "error", err)
-		respondError(w, http.StatusInternalServerError, cfg.DeleteErrMsg)
+		respondServerError(w, r, err, cfg.DeleteErrMsg)
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

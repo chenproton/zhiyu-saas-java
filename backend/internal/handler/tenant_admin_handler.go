@@ -57,7 +57,7 @@ func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建管理员失败")
+		respondServerError(w, r, err, "创建管理员失败")
 		return
 	}
 
@@ -94,13 +94,13 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新管理员失败")
+		respondServerError(w, r, err, "更新管理员失败")
 		return
 	}
 
 	updated, err2 := h.AdminService.Get(r.Context(), tenantID, adminID)
 	if err2 != nil {
-		respondError(w, http.StatusInternalServerError, "获取更新后的管理员失败")
+		respondServerError(w, r, err2, "获取更新后的管理员失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, updated)
@@ -121,7 +121,7 @@ func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.AdminService.Delete(r.Context(), tenantID, adminID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除管理员失败")
+		respondServerError(w, r, err, "删除管理员失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "deleted": "true"})

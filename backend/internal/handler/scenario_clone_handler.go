@@ -61,14 +61,14 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("[CloneScenario] clone failed", "scenario_id", id, "error", err)
-		respondError(w, http.StatusInternalServerError, "克隆场景方案失败")
+		respondServerError(w, r, err, "克隆场景方案失败")
 		return
 	}
 
 	scenario, err := h.Service.Get(r.Context(), newID)
 	if err != nil {
 		slog.Error("[CloneScenario] fetch cloned scenario failed", "new_id", newID, "error", err)
-		respondError(w, http.StatusInternalServerError, "获取cloned scenario失败")
+		respondServerError(w, r, err, "获取cloned scenario失败")
 		return
 	}
 	slog.Info("[CloneScenario] success", "new_scenario_id", newID, "code", newCode)

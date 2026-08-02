@@ -60,14 +60,14 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("[ClonePosition] clone failed", "position_id", id, "error", err)
-		respondError(w, http.StatusInternalServerError, "克隆岗位失败")
+		respondServerError(w, r, err, "克隆岗位失败")
 		return
 	}
 
 	pos, err := h.Service.FetchPosition(r.Context(), newID)
 	if err != nil {
 		slog.Error("[ClonePosition] fetch cloned position failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "获取cloned position失败")
+		respondServerError(w, r, err, "获取cloned position失败")
 		return
 	}
 	slog.Info("[ClonePosition] success", "new_position_id", newID)

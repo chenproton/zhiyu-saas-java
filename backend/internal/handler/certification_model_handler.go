@@ -123,7 +123,7 @@ func (h *CertificationModelHandler) PutWeights(w http.ResponseWriter, r *http.Re
 
 	rule, err := h.Service.FindPositionRule(r.Context(), positionID, tenantID)
 	if err != nil || rule == nil {
-		respondError(w, http.StatusInternalServerError, "保存权重失败")
+		respondServerError(w, r, err, "保存权重失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, rule)

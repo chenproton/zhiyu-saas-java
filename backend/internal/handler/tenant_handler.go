@@ -146,7 +146,7 @@ func (h *TenantHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "租户标识或管理员用户名已存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建租户失败")
+		respondServerError(w, r, err, "创建租户失败")
 		return
 	}
 
@@ -246,7 +246,7 @@ func (h *TenantHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.UpdateStatus(r.Context(), id, req.Status); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新状态失败")
+		respondServerError(w, r, err, "更新状态失败")
 		return
 	}
 

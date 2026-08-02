@@ -178,7 +178,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 				respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 				return
 			}
-			respondError(w, http.StatusInternalServerError, "评审审批记录失败")
+			respondServerError(w, r, err, "评审审批记录失败")
 			return
 		}
 		record, _ = h.Service.GetApproval(r.Context(), id)
@@ -199,7 +199,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	if !stepComplete {
 		ok, err := h.Service.UpdateApprovalHistory(r.Context(), id, record.History)
 		if err != nil || !ok {
-			respondError(w, http.StatusInternalServerError, "更新审批记录失败")
+			respondServerError(w, r, err, "更新审批记录失败")
 			return
 		}
 		record, _ = h.Service.GetApproval(r.Context(), id)
@@ -221,7 +221,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "评审审批记录失败")
+		respondServerError(w, r, err, "评审审批记录失败")
 		return
 	}
 	record, _ = h.Service.GetApproval(r.Context(), id)

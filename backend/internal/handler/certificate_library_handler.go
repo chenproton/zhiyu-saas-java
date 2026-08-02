@@ -57,7 +57,7 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		slog.Error("查询证书库列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询证书库列表失败")
+		respondServerError(w, r, err, "查询证书库列表失败")
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *CertificateLibraryHandler) Create(w http.ResponseWriter, r *http.Reques
 	})
 	if err != nil {
 		slog.Error("创建证书失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建证书失败")
+		respondServerError(w, r, err, "创建证书失败")
 		return
 	}
 
@@ -163,7 +163,7 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 	})
 	if err != nil {
 		slog.Error("更新证书失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新证书失败")
+		respondServerError(w, r, err, "更新证书失败")
 		return
 	}
 
@@ -189,7 +189,7 @@ func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Reques
 
 	if err := h.Store.Delete(r.Context(), id); err != nil {
 		slog.Error("删除证书失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "删除证书失败")
+		respondServerError(w, r, err, "删除证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

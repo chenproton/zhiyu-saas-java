@@ -58,7 +58,7 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 	items, total, err := h.Service.ListWeights(r.Context(), params, cfg)
 	if err != nil {
 		slog.Error("查询场景权重配置列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询场景权重配置列表失败")
+		respondServerError(w, r, err, "查询场景权重配置列表失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, ScenarioWeightListResponse{Items: items, Total: total})

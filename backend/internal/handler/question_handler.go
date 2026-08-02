@@ -204,7 +204,7 @@ func (h *QuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除题目失败")
+		respondServerError(w, r, err, "删除题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

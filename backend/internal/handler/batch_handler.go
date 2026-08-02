@@ -132,7 +132,7 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "查询"+h.Config.EntityName+"es失败")
+		respondServerError(w, r, err, "查询"+h.Config.EntityName+"es失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
@@ -210,14 +210,12 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 	vals = append(vals, h.Config.CreateExtraVals...)
 
 	if err := h.Service.BatchCreate(r.Context(), h.Config.WriteTableName, cols, vals); err != nil {
-		slog.Error("batch create failed", "entity", h.Config.EntityName, "error", err)
-		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
+		respondServerError(w, r, err, "创建"+h.Config.EntityName+"失败")
 		return
 	}
 	batch, err2 := h.scanRow(r.Context(), id)
 	if err2 != nil {
-		slog.Error("batch create scan failed", "entity", h.Config.EntityName, "error", err2)
-		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
+		respondServerError(w, r, err2, "创建"+h.Config.EntityName+"失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, batch)
@@ -260,12 +258,12 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 	args = append(args, id)
 
 	if err := h.Service.BatchUpdate(r.Context(), h.Config.WriteTableName, setClauses, args); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"失败")
+		respondServerError(w, r, err, "更新"+h.Config.EntityName+"失败")
 		return
 	}
 	batch, err2 := h.scanRow(r.Context(), id)
 	if err2 != nil {
-		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"失败")
+		respondServerError(w, r, err2, "更新"+h.Config.EntityName+"失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, batch)
@@ -285,7 +283,7 @@ func (h *BatchHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.BatchDelete(r.Context(), h.Config.WriteTableName, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除"+h.Config.EntityName+"失败")
+		respondServerError(w, r, err, "删除"+h.Config.EntityName+"失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -313,12 +311,12 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.BatchUpdateStatus(r.Context(), h.Config.WriteTableName, id, req.Status); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"状态失败")
+		respondServerError(w, r, err, "更新"+h.Config.EntityName+"状态失败")
 		return
 	}
 	batch, err2 := h.scanRow(r.Context(), id)
 	if err2 != nil {
-		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"状态失败")
+		respondServerError(w, r, err2, "更新"+h.Config.EntityName+"状态失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, batch)

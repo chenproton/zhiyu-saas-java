@@ -91,7 +91,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "提交考试结果失败")
+		respondServerError(w, r, err, "提交考试结果失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, result)

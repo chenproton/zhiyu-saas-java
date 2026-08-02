@@ -57,7 +57,7 @@ func (h *TaskKnowledgeAbilityHandler) UnbindKnowledge(w http.ResponseWriter, r *
 
 	id := chi.URLParam(r, "id")
 	if err := h.Service.UnbindKnowledge(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "解绑知识失败")
+		respondServerError(w, r, err, "解绑知识失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -98,7 +98,7 @@ func (h *TaskKnowledgeAbilityHandler) UnbindAbility(w http.ResponseWriter, r *ht
 
 	id := chi.URLParam(r, "id")
 	if err := h.Service.UnbindAbility(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "解绑能力点失败")
+		respondServerError(w, r, err, "解绑能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

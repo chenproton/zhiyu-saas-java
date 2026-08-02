@@ -65,7 +65,7 @@ func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("查询行业列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询行业列表失败")
+		respondServerError(w, r, err, "查询行业列表失败")
 		return
 	}
 
@@ -118,7 +118,7 @@ func (h *IndustryHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建行业失败")
+		respondServerError(w, r, err, "创建行业失败")
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新行业失败")
+		respondServerError(w, r, err, "更新行业失败")
 		return
 	}
 
@@ -201,7 +201,7 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除行业失败")
+		respondServerError(w, r, err, "删除行业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

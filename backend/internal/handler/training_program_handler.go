@@ -305,7 +305,7 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 		})
 	}
 	if err := h.Service.PutTrainingProgramCourses(r.Context(), id, courses); err != nil {
-		respondError(w, http.StatusInternalServerError, "保存课程设置失败")
+		respondServerError(w, r, err, "保存课程设置失败")
 		return
 	}
 	coursesOut, _ := h.Service.ListTrainingProgramCourses(r.Context(), id)

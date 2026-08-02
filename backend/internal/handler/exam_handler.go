@@ -128,7 +128,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建考试失败")
+		respondServerError(w, r, err, "创建考试失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, exam)
@@ -199,7 +199,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新考试失败")
+		respondServerError(w, r, err, "更新考试失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, exam)
@@ -219,7 +219,7 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteExam(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除考试失败")
+		respondServerError(w, r, err, "删除考试失败")
 		return
 	}
 	h.clearLandingExamsCache(r, tenantID)
@@ -265,7 +265,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.AddExamQuestion(r.Context(), tenantID, id, q, score); err != nil {
-		respondError(w, http.StatusInternalServerError, "添加题目失败")
+		respondServerError(w, r, err, "添加题目失败")
 		return
 	}
 	exam, _ := h.Service.GetExam(r.Context(), id)
@@ -286,7 +286,7 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.RemoveExamQuestion(r.Context(), id, questionID); err != nil {
-		respondError(w, http.StatusInternalServerError, "移除题目失败")
+		respondServerError(w, r, err, "移除题目失败")
 		return
 	}
 	exam, _ := h.Service.GetExam(r.Context(), id)
@@ -322,7 +322,7 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 			respondError(w, http.StatusNotFound, "考试中未找到该题目")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新question score失败")
+		respondServerError(w, r, err, "更新question score失败")
 		return
 	}
 	exam, _ := h.Service.GetExam(r.Context(), examID)
@@ -354,7 +354,7 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := h.Service.BulkUpdateExamScores(r.Context(), examID, req); err != nil {
-		respondError(w, http.StatusInternalServerError, "批量更新分数失败")
+		respondServerError(w, r, err, "批量更新分数失败")
 		return
 	}
 	exam, _ := h.Service.GetExam(r.Context(), examID)

@@ -45,7 +45,7 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "查询登录日志失败")
+		respondServerError(w, r, err, "查询登录日志失败")
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "查询操作日志失败")
+		respondServerError(w, r, err, "查询操作日志失败")
 		return
 	}
 

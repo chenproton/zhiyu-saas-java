@@ -112,7 +112,7 @@ func (h *RandomDrawQuestionHandler) Create(w http.ResponseWriter, r *http.Reques
 			respondError(w, http.StatusConflict, "现场问答题名称已存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建随机抽题失败")
+		respondServerError(w, r, err, "创建随机抽题失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, q)
@@ -150,7 +150,7 @@ func (h *RandomDrawQuestionHandler) Update(w http.ResponseWriter, r *http.Reques
 			respondError(w, http.StatusConflict, "现场问答题名称已存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新随机抽题失败")
+		respondServerError(w, r, err, "更新随机抽题失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, q)
@@ -168,7 +168,7 @@ func (h *RandomDrawQuestionHandler) Delete(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := h.Service.DeleteRandomDrawQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除随机抽题失败")
+		respondServerError(w, r, err, "删除随机抽题失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

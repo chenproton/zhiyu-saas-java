@@ -177,7 +177,7 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建用户失败")
+		respondServerError(w, r, err, "创建用户失败")
 		return
 	}
 	user.PasswordHash = ""
@@ -244,7 +244,7 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("update user failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新用户失败")
+		respondServerError(w, r, err, "更新用户失败")
 		return
 	}
 
@@ -270,7 +270,7 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除用户失败")
+		respondServerError(w, r, err, "删除用户失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -302,7 +302,7 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := h.Service.UpdateStatus(r.Context(), id, req.Status); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新状态失败")
+		respondServerError(w, r, err, "更新状态失败")
 		return
 	}
 
@@ -341,7 +341,7 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.Service.ResetPassword(r.Context(), id, req.Password); err != nil {
-		respondError(w, http.StatusInternalServerError, "重置密码失败")
+		respondServerError(w, r, err, "重置密码失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -402,7 +402,7 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "批量创建用户失败")
+		respondServerError(w, r, err, "批量创建用户失败")
 		return
 	}
 	respondJSON(w, http.StatusCreated, UserListResponse{Items: created, Total: len(created)})
@@ -441,7 +441,7 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.Service.BatchGraduate(r.Context(), callerTenantID, req.UserIDs, graduateYear); err != nil {
-		respondError(w, http.StatusInternalServerError, "批量毕业操作失败")
+		respondServerError(w, r, err, "批量毕业操作失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]int{"count": len(req.UserIDs)})
@@ -515,7 +515,7 @@ func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *htt
 			respondError(w, http.StatusBadRequest, "无效机构节点ID")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新用户机构绑定失败")
+		respondServerError(w, r, err, "更新用户机构绑定失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]int64{"count": count})
@@ -553,7 +553,7 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 			respondError(w, http.StatusBadRequest, "存在无效角色或角色不属于当前租户")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "绑定角色失败")
+		respondServerError(w, r, err, "绑定角色失败")
 		return
 	}
 

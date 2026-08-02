@@ -157,7 +157,7 @@ func (h *PositionAbilityHandler) DeleteBinding(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if err := h.Service.DeleteAbilityBinding(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除绑定失败")
+		respondServerError(w, r, err, "删除绑定失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -60,14 +60,14 @@ func (h *CourseCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("[CloneCourse] clone failed", "course_id", id, "error", err)
-		respondError(w, http.StatusInternalServerError, "克隆课程失败")
+		respondServerError(w, r, err, "克隆课程失败")
 		return
 	}
 
 	course, err := h.Service.GetCourse(r.Context(), newID)
 	if err != nil {
 		slog.Error("[CloneCourse] fetch cloned course failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "获取克隆课程失败")
+		respondServerError(w, r, err, "获取克隆课程失败")
 		return
 	}
 	slog.Info("[CloneCourse] success", "new_course_id", newID)
