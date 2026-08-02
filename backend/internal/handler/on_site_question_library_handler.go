@@ -49,7 +49,7 @@ func (h *OnSiteQuestionLibraryHandler) crud() crudConfig[OnSiteQuestionLibraryRe
 		UpdateErrMsg:   "更新题目失败",
 		DeleteErrMsg:   "删除题目失败",
 		CheckOwnership: true,
-		GetOwnership:   false,
+		GetOwnership:   true,
 		ValidateCreate: func(t *OnSiteQuestionLibraryRequest) string {
 			if t.QuestionText == nil || *t.QuestionText == "" {
 				return "缺少必填字段"

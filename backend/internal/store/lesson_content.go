@@ -45,8 +45,8 @@ func (s *KnowledgePointStore) ListConfig() ListQueryConfig[domain.KnowledgePoint
 }
 
 // Get 查询单个知识点。
-func (s *KnowledgePointStore) Get(ctx context.Context, id string) (*domain.KnowledgePoint, error) {
-	kp, err := s.fetchKP(ctx, id)
+func (s *KnowledgePointStore) Get(ctx context.Context, id, tenantID string) (*domain.KnowledgePoint, error) {
+	kp, err := s.fetchKP(ctx, id, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -72,7 +72,7 @@ func (s *KnowledgePointStore) Create(ctx context.Context, tx Queryer, tenantID s
 	if err := SyncCourseKnowledgePoints(ctx, tx, tenantID, id, jsonSliceToStringSlice(granularIDs)); err != nil {
 		return nil, err
 	}
-	return s.fetchKP(ctx, id)
+	return s.fetchKP(ctx, id, tenantID)
 }
 
 // Update 在事务内更新知识点并同步颗粒课引用。
@@ -84,19 +84,19 @@ func (s *KnowledgePointStore) Update(ctx context.Context, tx Queryer, tenantID, 
 	if _, err := tx.Exec(ctx, `
 		UPDATE knowledge_points SET name = $1, code = $2, description = $3, linked = $4,
 			granular_lesson_ids = $5, updated_at = NOW()
-		WHERE id = $6
-	`, p.Name, p.Code, p.Description, p.Linked, granularIDs, id); err != nil {
+		WHERE id = $6 AND tenant_id = $7
+	`, p.Name, p.Code, p.Description, p.Linked, granularIDs, id, tenantID); err != nil {
 		return nil, err
 	}
 	if err := SyncCourseKnowledgePoints(ctx, tx, tenantID, id, jsonSliceToStringSlice(granularIDs)); err != nil {
 		return nil, err
 	}
-	return s.fetchKP(ctx, id)
+	return s.fetchKP(ctx, id, tenantID)
 }
 
 // Delete 删除知识点。
-func (s *KnowledgePointStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM knowledge_points WHERE id = $1`, id)
+func (s *KnowledgePointStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM knowledge_points WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -121,12 +121,12 @@ type KnowledgePointUpdateParams struct {
 	GranularLessonIds domain.JSONSlice
 }
 
-func (s *KnowledgePointStore) fetchKP(ctx context.Context, id string) (*domain.KnowledgePoint, error) {
+func (s *KnowledgePointStore) fetchKP(ctx context.Context, id, tenantID string) (*domain.KnowledgePoint, error) {
 	var kp domain.KnowledgePoint
 	err := s.q.QueryRow(ctx, `
 		SELECT id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, source_type, source_id, created_at, updated_at
-		FROM knowledge_points WHERE id = $1
-	`, id).Scan(
+		FROM knowledge_points WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(
 		&kp.ID, &kp.Name, &kp.Code, &kp.Description, &kp.Linked, &kp.GranularLessonIds,
 		&kp.CreatorID, &kp.SourceType, &kp.SourceID, &kp.CreatedAt, &kp.UpdatedAt,
 	)
@@ -220,8 +220,8 @@ func (s *NodeHomeworkStore) ListConfig() ListQueryConfig[domain.NodeHomework] {
 }
 
 // Get 查询单个作业。
-func (s *NodeHomeworkStore) Get(ctx context.Context, id string) (*domain.NodeHomework, error) {
-	hw, err := s.fetchHW(ctx, id)
+func (s *NodeHomeworkStore) Get(ctx context.Context, id, tenantID string) (*domain.NodeHomework, error) {
+	hw, err := s.fetchHW(ctx, id, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -240,26 +240,26 @@ func (s *NodeHomeworkStore) Create(ctx context.Context, tenantID string, p *Node
 	`, id, tenantID, p.NodeID, p.Title, p.Requirement, p.NeedAttachment, p.Deadline); err != nil {
 		return nil, err
 	}
-	return s.fetchHW(ctx, id)
+	return s.fetchHW(ctx, id, tenantID)
 }
 
 // Update 更新作业。
-func (s *NodeHomeworkStore) Update(ctx context.Context, id string, p *NodeHomeworkUpdateParams) (*domain.NodeHomework, error) {
-	if _, err := s.fetchHW(ctx, id); err != nil {
+func (s *NodeHomeworkStore) Update(ctx context.Context, id, tenantID string, p *NodeHomeworkUpdateParams) (*domain.NodeHomework, error) {
+	if _, err := s.fetchHW(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE node_homeworks SET title = $1, requirement = $2, need_attachment = $3, deadline = $4
-		WHERE id = $5
-	`, p.Title, p.Requirement, p.NeedAttachment, p.Deadline, id); err != nil {
+		WHERE id = $5 AND tenant_id = $6
+	`, p.Title, p.Requirement, p.NeedAttachment, p.Deadline, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.fetchHW(ctx, id)
+	return s.fetchHW(ctx, id, tenantID)
 }
 
 // Delete 删除作业。
-func (s *NodeHomeworkStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM node_homeworks WHERE id = $1`, id)
+func (s *NodeHomeworkStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM node_homeworks WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -280,12 +280,12 @@ type NodeHomeworkUpdateParams struct {
 	Deadline       *time.Time
 }
 
-func (s *NodeHomeworkStore) fetchHW(ctx context.Context, id string) (*domain.NodeHomework, error) {
+func (s *NodeHomeworkStore) fetchHW(ctx context.Context, id, tenantID string) (*domain.NodeHomework, error) {
 	var hw domain.NodeHomework
 	err := s.q.QueryRow(ctx, `
 		SELECT id, node_id, title, requirement, need_attachment, deadline
-		FROM node_homeworks WHERE id = $1
-	`, id).Scan(&hw.ID, &hw.NodeID, &hw.Title, &hw.Requirement, &hw.NeedAttachment, &hw.Deadline)
+		FROM node_homeworks WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&hw.ID, &hw.NodeID, &hw.Title, &hw.Requirement, &hw.NeedAttachment, &hw.Deadline)
 	if err != nil {
 		return nil, err
 	}

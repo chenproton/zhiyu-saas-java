@@ -153,6 +153,9 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
+	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
+		return
+	}
 
 	var req CreateExamRequest
 	if !decodeBody(w, r, &req) {
@@ -224,6 +227,9 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
+	if !verifyTenantOwnership(w, r, tenantID) {
+		return
+	}
 	if err := h.Service.DeleteExam(r.Context(), id); err != nil {
 		respondServerError(w, r, err, "删除考试失败")
 		return
@@ -239,9 +245,18 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetExam(r.Context(), id); err != nil {
+	exam, err := h.Service.GetExam(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
 		return
 	}
 
@@ -254,7 +269,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q, err := h.Service.FetchExamQuestion(r.Context(), req.QuestionID)
+	q, err := h.Service.FetchExamQuestion(r.Context(), tenantID, req.QuestionID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
@@ -263,11 +278,6 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	score := req.Score
 	if score == 0 {
 		score = q.Score
-	}
-
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
 	}
 
 	if err := h.Service.AddExamQuestion(r.Context(), tenantID, id, q, score); err != nil {
@@ -287,8 +297,12 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	questionID := chi.URLParam(r, "questionId")
-	if _, err := h.Service.GetExam(r.Context(), id); err != nil {
+	exam, err := h.Service.GetExam(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
 		return
 	}
 	if err := h.Service.RemoveExamQuestion(r.Context(), id, questionID); err != nil {

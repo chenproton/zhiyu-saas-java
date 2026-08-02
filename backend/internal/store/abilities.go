@@ -22,13 +22,13 @@ func (s *AbilityStore) List(ctx context.Context, p ListParams, cfg ListQueryConf
 }
 
 // Get 查询单个能力点。
-func (s *AbilityStore) Get(ctx context.Context, id string) (*domain.AbilityPoint, error) {
+func (s *AbilityStore) Get(ctx context.Context, id, tenantID string) (*domain.AbilityPoint, error) {
 	var a domain.AbilityPoint
 	var description, code *string
 	err := s.q.QueryRow(ctx, `
 		SELECT id, name, code, description, category, attributes, is_public, creator_id, created_at
-		FROM ability_points WHERE id = $1
-	`, id).Scan(&a.ID, &a.Name, &code, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatorID, &a.CreatedAt)
+		FROM ability_points WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&a.ID, &a.Name, &code, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatorID, &a.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -48,26 +48,26 @@ func (s *AbilityStore) Create(ctx context.Context, tenantID string, p *AbilityPo
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Update 更新能力点。
-func (s *AbilityStore) Update(ctx context.Context, id string, p *AbilityPointParams) (*domain.AbilityPoint, error) {
-	if _, err := s.Get(ctx, id); err != nil {
+func (s *AbilityStore) Update(ctx context.Context, id, tenantID string, p *AbilityPointParams) (*domain.AbilityPoint, error) {
+	if _, err := s.Get(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE ability_points SET name = $1, description = $2, category = $3, attributes = $4, is_public = $5
-		WHERE id = $6
-	`, p.Name, p.Description, p.Category, p.Attributes, p.IsPublic, id); err != nil {
+		WHERE id = $6 AND tenant_id = $7
+	`, p.Name, p.Description, p.Category, p.Attributes, p.IsPublic, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Delete 删除能力点。
-func (s *AbilityStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM ability_points WHERE id = $1`, id)
+func (s *AbilityStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM ability_points WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 

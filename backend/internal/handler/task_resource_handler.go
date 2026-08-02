@@ -177,6 +177,24 @@ func (h *TaskResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Requ
 	}
 
 	id := chi.URLParam(r, "id")
+	taskID, err := h.Service.BindTargetID(r.Context(), "task_resource_bindings", id)
+	if err != nil {
+		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		return
+	}
+	scenarioID, err := h.Service.TaskScenarioID(r.Context(), taskID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "任务不存在")
+		return
+	}
+	scenarioTenantID, err := h.Service.ScenarioTenantID(r.Context(), scenarioID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "场景不存在")
+		return
+	}
+	if scenarioTenantID != nil && !verifyTenantOwnership(w, r, *scenarioTenantID) {
+		return
+	}
 	if err := h.Service.Unbind(r.Context(), "task_resource_bindings", id, nil); err != nil {
 		respondServerError(w, r, err, "解绑资源失败")
 		return

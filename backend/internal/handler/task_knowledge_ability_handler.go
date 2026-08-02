@@ -56,6 +56,14 @@ func (h *TaskKnowledgeAbilityHandler) UnbindKnowledge(w http.ResponseWriter, r *
 	}
 
 	id := chi.URLParam(r, "id")
+	taskID, err := h.Service.TaskBindingTaskID(r.Context(), "task_knowledge_bindings", id)
+	if err != nil {
+		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		return
+	}
+	if !h.verifyTaskTenant(w, r, taskID) {
+		return
+	}
 	if err := h.Service.UnbindKnowledge(r.Context(), id); err != nil {
 		respondServerError(w, r, err, "解绑知识失败")
 		return
@@ -97,9 +105,35 @@ func (h *TaskKnowledgeAbilityHandler) UnbindAbility(w http.ResponseWriter, r *ht
 	}
 
 	id := chi.URLParam(r, "id")
+	taskID, err := h.Service.TaskBindingTaskID(r.Context(), "task_ability_bindings", id)
+	if err != nil {
+		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		return
+	}
+	if !h.verifyTaskTenant(w, r, taskID) {
+		return
+	}
 	if err := h.Service.UnbindAbility(r.Context(), id); err != nil {
 		respondServerError(w, r, err, "解绑能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// verifyTaskTenant 校验任务所属场景的租户归属（task→scenario→tenant 链路）。
+func (h *TaskKnowledgeAbilityHandler) verifyTaskTenant(w http.ResponseWriter, r *http.Request, taskID string) bool {
+	scenarioID, err := h.Service.TaskScenarioID(r.Context(), taskID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "任务不存在")
+		return false
+	}
+	scenarioTenantID, err := h.Service.ScenarioTenantID(r.Context(), scenarioID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "场景不存在")
+		return false
+	}
+	if scenarioTenantID != nil && !verifyTenantOwnership(w, r, *scenarioTenantID) {
+		return false
+	}
+	return true
 }

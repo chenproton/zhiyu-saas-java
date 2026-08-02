@@ -53,6 +53,11 @@ func (s *PositionConfigService) GetResponsibility(ctx context.Context, id string
 	return s.st.PositionResponsibilities().Get(ctx, id)
 }
 
+// PositionTenantID 查询岗位所属租户（租户归属校验用）。
+func (s *PositionConfigService) PositionTenantID(ctx context.Context, positionID string) (string, error) {
+	return s.st.Positions().TenantID(ctx, positionID)
+}
+
 // CreateResponsibility 创建职责。
 func (s *PositionConfigService) CreateResponsibility(ctx context.Context, p *store.PositionResponsibilityParams) (*domain.PositionResponsibility, error) {
 	return s.st.PositionResponsibilities().Create(ctx, p)

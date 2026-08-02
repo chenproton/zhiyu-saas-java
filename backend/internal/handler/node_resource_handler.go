@@ -164,6 +164,24 @@ func (h *NodeResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Requ
 	}
 
 	id := chi.URLParam(r, "id")
+	nodeID, err := h.Service.BindTargetID(r.Context(), "node_resource_bindings", id)
+	if err != nil {
+		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		return
+	}
+	courseID, err := h.Service.NodeCourseID(r.Context(), nodeID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "节点不存在")
+		return
+	}
+	courseTenantID, err := h.Service.CourseTenantID(r.Context(), courseID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, courseTenantID) {
+		return
+	}
 	if err := h.Service.Unbind(r.Context(), "node_resource_bindings", id, nil); err != nil {
 		respondServerError(w, r, err, "解绑节点资源失败")
 		return

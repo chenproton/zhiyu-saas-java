@@ -95,8 +95,17 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetAbilityBinding(r.Context(), id); err != nil {
+	binding, err := h.Service.GetAbilityBinding(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "绑定不存在")
+		return
+	}
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), binding.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
 		return
 	}
 
@@ -108,8 +117,18 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
+	if req.CareerPositionID != binding.CareerPositionID {
+		newPositionTenantID, err := h.Service.PositionTenantID(r.Context(), req.CareerPositionID)
+		if err != nil {
+			respondError(w, http.StatusNotFound, "岗位不存在")
+			return
+		}
+		if !verifyTenantOwnership(w, r, newPositionTenantID) {
+			return
+		}
+	}
 
-	binding, err := h.Service.UpdateAbilityBinding(r.Context(), id, &store.PositionAbilityParams{
+	binding, err = h.Service.UpdateAbilityBinding(r.Context(), id, &store.PositionAbilityParams{
 		CareerPositionID:  req.CareerPositionID,
 		ResponsibilityID:  req.ResponsibilityID,
 		AbilityPointID:    req.AbilityPointID,
@@ -134,8 +153,17 @@ func (h *PositionAbilityHandler) DeleteBinding(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetAbilityBinding(r.Context(), id); err != nil {
+	binding, err := h.Service.GetAbilityBinding(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "绑定不存在")
+		return
+	}
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), binding.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
 		return
 	}
 	if err := h.Service.DeleteAbilityBinding(r.Context(), id); err != nil {

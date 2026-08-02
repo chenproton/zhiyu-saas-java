@@ -13,8 +13,8 @@ func (s *PositionService) ListAbilities(ctx context.Context, p store.ListParams,
 }
 
 // GetAbility 查询单个能力点。
-func (s *PositionService) GetAbility(ctx context.Context, id string) (*domain.AbilityPoint, error) {
-	return s.st.Abilities().Get(ctx, id)
+func (s *PositionService) GetAbility(ctx context.Context, id, tenantID string) (*domain.AbilityPoint, error) {
+	return s.st.Abilities().Get(ctx, id, tenantID)
 }
 
 // CreateAbility 创建能力点。
@@ -23,13 +23,13 @@ func (s *PositionService) CreateAbility(ctx context.Context, tenantID string, p 
 }
 
 // UpdateAbility 更新能力点。
-func (s *PositionService) UpdateAbility(ctx context.Context, id string, p *store.AbilityPointParams) (*domain.AbilityPoint, error) {
-	return s.st.Abilities().Update(ctx, id, p)
+func (s *PositionService) UpdateAbility(ctx context.Context, id, tenantID string, p *store.AbilityPointParams) (*domain.AbilityPoint, error) {
+	return s.st.Abilities().Update(ctx, id, tenantID, p)
 }
 
 // DeleteAbility 删除能力点。
-func (s *PositionService) DeleteAbility(ctx context.Context, id string) error {
-	return s.st.Abilities().Delete(ctx, id)
+func (s *PositionService) DeleteAbility(ctx context.Context, id, tenantID string) error {
+	return s.st.Abilities().Delete(ctx, id, tenantID)
 }
 
 // ListAbilityDomains 查询能力域列表。

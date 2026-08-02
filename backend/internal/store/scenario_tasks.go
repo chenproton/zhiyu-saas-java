@@ -40,6 +40,13 @@ func (s *ScenarioTaskStore) Get(ctx context.Context, id string) (*domain.Scenari
 	return t, nil
 }
 
+// TaskScenarioID 查询任务所属场景（租户归属校验用）。
+func (s *ScenarioTaskStore) TaskScenarioID(ctx context.Context, taskID string) (string, error) {
+	var scenarioID string
+	err := s.q.QueryRow(ctx, `SELECT scenario_id FROM scenario_tasks WHERE id = $1`, taskID).Scan(&scenarioID)
+	return scenarioID, err
+}
+
 // ScenarioTenantID 查询场景所属租户（归属校验用）。
 func (s *ScenarioTaskStore) ScenarioTenantID(ctx context.Context, scenarioID string) (*string, error) {
 	var tenantID *string

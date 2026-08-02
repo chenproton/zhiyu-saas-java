@@ -58,8 +58,20 @@ func (s *CourseStore) ListConfig() ListQueryConfig[domain.Course] {
 	}
 }
 
-// Get 查询单个课程。
-func (s *CourseStore) Get(ctx context.Context, id string) (*domain.Course, error) {
+// Get 查询单个课程（租户限定）。
+func (s *CourseStore) Get(ctx context.Context, id, tenantID string) (*domain.Course, error) {
+	c, err := s.fetchCourseScoped(ctx, id, tenantID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// GetUnscoped 查询单个课程（不限定租户，供已校验归属后的读取路径使用）。
+func (s *CourseStore) GetUnscoped(ctx context.Context, id string) (*domain.Course, error) {
 	c, err := s.fetchCourse(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -89,9 +101,9 @@ func (s *CourseStore) Create(ctx context.Context, tenantID string, p *CourseCrea
 	return s.fetchCourse(ctx, id)
 }
 
-// Update 更新课程（含 resource_count 重算）。
-func (s *CourseStore) Update(ctx context.Context, id string, p *CourseUpdateParams) (*domain.Course, error) {
-	if _, err := s.fetchCourse(ctx, id); err != nil {
+// Update 更新课程（含 resource_count 重算，限定租户）。
+func (s *CourseStore) Update(ctx context.Context, id, tenantID string, p *CourseUpdateParams) (*domain.Course, error) {
+	if _, err := s.fetchCourseScoped(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	_, err := s.q.Exec(ctx, `
@@ -101,19 +113,22 @@ func (s *CourseStore) Update(ctx context.Context, id string, p *CourseUpdatePara
 			course_tag = $16, difficulty = $17, description = $18, co_creator_ids = $19, batch_id = $20,
 			knowledge_point_ids = $21, ability_point_ids = $22, resource_ids = $23, eval_data = $24,
 			resource_count = COALESCE(array_length($23::uuid[], 1), 0), updated_at = NOW()
-		WHERE id = $25
+		WHERE id = $25 AND tenant_id = $26
 	`, p.Name, p.Type, p.Category, p.MajorID, p.TeacherID, p.IndustryID, p.Version,
 		p.OnlineHours, p.OfflineHours, p.OnlineWeight, p.OfflineWeight, p.Semester, p.ClassName,
 		p.CoverColor, p.CoverImage, p.CourseTag, p.Difficulty, p.Description, p.CoCreatorIds, p.BatchID,
-		p.KnowledgePointIds, p.AbilityPointIds, p.ResourceIds, p.EvalData, id)
+		p.KnowledgePointIds, p.AbilityPointIds, p.ResourceIds, p.EvalData, id, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	return s.fetchCourse(ctx, id)
+	return s.fetchCourseScoped(ctx, id, tenantID)
 }
 
-// Delete 删除课程（先解绑引用与清理子表）。
-func (s *CourseStore) Delete(ctx context.Context, id string) error {
+// Delete 删除课程（先解绑引用与清理子表，限定租户）。
+func (s *CourseStore) Delete(ctx context.Context, id, tenantID string) error {
+	if _, err := s.fetchCourseScoped(ctx, id, tenantID); err != nil {
+		return err
+	}
 	if _, err := s.q.Exec(ctx, `UPDATE training_program_courses SET course_id = NULL WHERE course_id = $1`, id); err != nil {
 		return fmt.Errorf("unbind course from programs: %w", err)
 	}
@@ -132,7 +147,7 @@ func (s *CourseStore) Delete(ctx context.Context, id string) error {
 	if _, err := s.q.Exec(ctx, `DELETE FROM course_evaluation_results WHERE course_id = $1`, id); err != nil {
 		return fmt.Errorf("delete course eval results: %w", err)
 	}
-	_, err := s.q.Exec(ctx, `DELETE FROM courses WHERE id = $1`, id)
+	_, err := s.q.Exec(ctx, `DELETE FROM courses WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -244,6 +259,40 @@ func (s *CourseStore) fetchCourse(ctx context.Context, id string) (*domain.Cours
 		LEFT JOIN view_counters vc ON vc.target_type = 'course' AND vc.target_id = c.id
 		WHERE c.id = $1
 	`, id).Scan(
+		&c.ID, &c.Code, &c.Name, &c.Type, &c.Category, &c.MajorID, &c.MajorName, &c.TeacherID, &c.IndustryID, &c.IndustryName, &c.Version,
+		&c.OnlineHours, &c.OfflineHours, &c.OnlineWeight, &c.OfflineWeight, &c.Semester, &c.ClassName,
+		&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.Difficulty, &c.Description,
+		&c.KnowledgePointIds, &c.AbilityPointIds, &c.ResourceIds, &c.EvalData, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
+		&c.NodeCount, &c.ResourceCount, &c.ViewCount, &c.StudyCount, &c.CreatedAt, &c.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// fetchCourseScoped 查询单个课程（限定租户）。
+func (s *CourseStore) fetchCourseScoped(ctx context.Context, id, tenantID string) (*domain.Course, error) {
+	var c domain.Course
+	err := s.q.QueryRow(ctx, `
+		SELECT c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
+			c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name,
+			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
+			c.knowledge_point_ids::text[] AS knowledge_point_ids,
+			c.ability_point_ids::text[] AS ability_point_ids,
+			c.resource_ids::text[] AS resource_ids,
+			c.eval_data,
+			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
+			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
+			COALESCE(vc.cnt, 0) AS view_count,
+			c.study_count, c.created_at, c.updated_at
+		FROM courses c
+		LEFT JOIN majors m ON m.id = c.major_id
+		LEFT JOIN industries i ON i.id = c.industry_id
+		LEFT JOIN lesson_batches lb ON lb.id = c.batch_id
+		LEFT JOIN view_counters vc ON vc.target_type = 'course' AND vc.target_id = c.id
+		WHERE c.id = $1 AND c.tenant_id = $2
+	`, id, tenantID).Scan(
 		&c.ID, &c.Code, &c.Name, &c.Type, &c.Category, &c.MajorID, &c.MajorName, &c.TeacherID, &c.IndustryID, &c.IndustryName, &c.Version,
 		&c.OnlineHours, &c.OfflineHours, &c.OnlineWeight, &c.OfflineWeight, &c.Semester, &c.ClassName,
 		&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.Difficulty, &c.Description,

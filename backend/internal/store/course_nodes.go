@@ -88,9 +88,16 @@ func (s *CourseNodeStore) ListConfig() ListQueryConfig[CourseNodeBase] {
 	}
 }
 
+// CourseIDOf 查询节点所属课程（租户归属校验用）。
+func (s *CourseNodeStore) CourseIDOf(ctx context.Context, nodeID string) (string, error) {
+	var courseID string
+	err := s.q.QueryRow(ctx, `SELECT course_id FROM system_course_nodes WHERE id = $1`, nodeID).Scan(&courseID)
+	return courseID, err
+}
+
 // Get 查询单个节点基础行。
-func (s *CourseNodeStore) Get(ctx context.Context, id string) (*CourseNodeBase, error) {
-	n, err := s.fetchNode(ctx, id)
+func (s *CourseNodeStore) Get(ctx context.Context, id, tenantID string) (*CourseNodeBase, error) {
+	n, err := s.fetchNode(ctx, id, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -127,12 +134,12 @@ func (s *CourseNodeStore) Create(ctx context.Context, tx Queryer, tenantID strin
 			return nil, err
 		}
 	}
-	return s.fetchNode(ctx, id)
+	return s.fetchNode(ctx, id, tenantID)
 }
 
 // Update 在事务内更新节点并重绑知识点/资源。
-func (s *CourseNodeStore) Update(ctx context.Context, tx Queryer, id string, p *CourseNodeUpdateParams, kpIDs, resIDs []string) (*CourseNodeBase, error) {
-	if _, err := s.fetchNode(ctx, id); err != nil {
+func (s *CourseNodeStore) Update(ctx context.Context, tx Queryer, id, tenantID string, p *CourseNodeUpdateParams, kpIDs, resIDs []string) (*CourseNodeBase, error) {
+	if _, err := s.fetchNode(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	evalData := p.EvalData
@@ -144,10 +151,10 @@ func (s *CourseNodeStore) Update(ctx context.Context, tx Queryer, id string, p *
 			source_name = $6, teaching_goals = $7, detailed_description = $8, description_pdf = $9,
 			background = $10, estimated_hours = $11, duration = $12, difficulty = $13,
 			knowledge_point_ids = $14, resource_ids = $15, eval_data = $16, status = $17, updated_at = NOW()
-		WHERE id = $18
+		WHERE id = $18 AND tenant_id = $19
 	`, p.Name, p.Code, p.SortOrder, p.RefType, p.SourceID, p.SourceName, p.TeachingGoals,
 		p.DetailedDescription, p.DescriptionPdf, p.Background, p.EstimatedHours,
-		p.Duration, p.Difficulty, kpIDs, resIDs, evalData, p.Status, id); err != nil {
+		p.Duration, p.Difficulty, kpIDs, resIDs, evalData, p.Status, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM node_knowledge_point_bindings WHERE node_id = $1`, id); err != nil {
@@ -166,12 +173,12 @@ func (s *CourseNodeStore) Update(ctx context.Context, tx Queryer, id string, p *
 			return nil, err
 		}
 	}
-	return s.fetchNode(ctx, id)
+	return s.fetchNode(ctx, id, tenantID)
 }
 
 // Delete 删除节点。
-func (s *CourseNodeStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM system_course_nodes WHERE id = $1`, id)
+func (s *CourseNodeStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM system_course_nodes WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -350,14 +357,14 @@ type CourseNodeCreateParams struct {
 // CourseNodeUpdateParams 更新节点参数。
 type CourseNodeUpdateParams = CourseNodeCreateParams
 
-func (s *CourseNodeStore) fetchNode(ctx context.Context, id string) (*CourseNodeBase, error) {
+func (s *CourseNodeStore) fetchNode(ctx context.Context, id, tenantID string) (*CourseNodeBase, error) {
 	var n CourseNodeBase
 	err := s.q.QueryRow(ctx, `
 		SELECT n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name,
 			n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours,
 			n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status
-		FROM system_course_nodes n WHERE n.id = $1
-	`, id).Scan(
+		FROM system_course_nodes n WHERE n.id = $1 AND n.tenant_id = $2
+	`, id, tenantID).Scan(
 		&n.ID, &n.CourseID, &n.ParentID, &n.Name, &n.Code, &n.SortOrder, &n.RefType, &n.SourceID, &n.SourceName,
 		&n.TeachingGoals, &n.DetailedDescription, &n.DescriptionPdf, &n.Background, &n.EstimatedHours,
 		&n.Duration, &n.Difficulty, &n.KnowledgePointIds, &n.ResourceIds, &n.EvalData, &n.Status,

@@ -26,8 +26,8 @@ func (s *LessonContentService) ListKnowledgePoints(ctx context.Context, p store.
 }
 
 // GetKnowledgePoint 查询单个知识点。
-func (s *LessonContentService) GetKnowledgePoint(ctx context.Context, id string) (*domain.KnowledgePoint, error) {
-	return s.st.KnowledgePoints().Get(ctx, id)
+func (s *LessonContentService) GetKnowledgePoint(ctx context.Context, id, tenantID string) (*domain.KnowledgePoint, error) {
+	return s.st.KnowledgePoints().Get(ctx, id, tenantID)
 }
 
 // CreateKnowledgePoint 创建知识点（事务内同步颗粒课引用）。
@@ -59,8 +59,8 @@ func (s *LessonContentService) UpdateKnowledgePoint(ctx context.Context, tenantI
 }
 
 // DeleteKnowledgePoint 删除知识点。
-func (s *LessonContentService) DeleteKnowledgePoint(ctx context.Context, id string) error {
-	return s.st.KnowledgePoints().Delete(ctx, id)
+func (s *LessonContentService) DeleteKnowledgePoint(ctx context.Context, id, tenantID string) error {
+	return s.st.KnowledgePoints().Delete(ctx, id, tenantID)
 }
 
 // ListNodeHomeworks 查询作业列表。
@@ -69,8 +69,8 @@ func (s *LessonContentService) ListNodeHomeworks(ctx context.Context, p store.Li
 }
 
 // GetNodeHomework 查询单个作业。
-func (s *LessonContentService) GetNodeHomework(ctx context.Context, id string) (*domain.NodeHomework, error) {
-	return s.st.NodeHomeworks().Get(ctx, id)
+func (s *LessonContentService) GetNodeHomework(ctx context.Context, id, tenantID string) (*domain.NodeHomework, error) {
+	return s.st.NodeHomeworks().Get(ctx, id, tenantID)
 }
 
 // CreateNodeHomework 创建作业。
@@ -79,13 +79,13 @@ func (s *LessonContentService) CreateNodeHomework(ctx context.Context, tenantID 
 }
 
 // UpdateNodeHomework 更新作业。
-func (s *LessonContentService) UpdateNodeHomework(ctx context.Context, id string, p *store.NodeHomeworkUpdateParams) (*domain.NodeHomework, error) {
-	return s.st.NodeHomeworks().Update(ctx, id, p)
+func (s *LessonContentService) UpdateNodeHomework(ctx context.Context, id, tenantID string, p *store.NodeHomeworkUpdateParams) (*domain.NodeHomework, error) {
+	return s.st.NodeHomeworks().Update(ctx, id, tenantID, p)
 }
 
 // DeleteNodeHomework 删除作业。
-func (s *LessonContentService) DeleteNodeHomework(ctx context.Context, id string) error {
-	return s.st.NodeHomeworks().Delete(ctx, id)
+func (s *LessonContentService) DeleteNodeHomework(ctx context.Context, id, tenantID string) error {
+	return s.st.NodeHomeworks().Delete(ctx, id, tenantID)
 }
 
 // ListQuizzes 查询测验列表。
@@ -185,8 +185,8 @@ func (s *LessonContentService) ListNodeBases(ctx context.Context, p store.ListPa
 }
 
 // GetNodeBase 查询单个节点基础行。
-func (s *LessonContentService) GetNodeBase(ctx context.Context, id string) (*store.CourseNodeBase, error) {
-	return s.st.CourseNodes().Get(ctx, id)
+func (s *LessonContentService) GetNodeBase(ctx context.Context, id, tenantID string) (*store.CourseNodeBase, error) {
+	return s.st.CourseNodes().Get(ctx, id, tenantID)
 }
 
 // CreateNode 创建节点（事务内绑定知识点/资源）。
@@ -204,10 +204,10 @@ func (s *LessonContentService) CreateNode(ctx context.Context, tenantID string, 
 }
 
 // UpdateNode 更新节点（事务内重绑知识点/资源）。
-func (s *LessonContentService) UpdateNode(ctx context.Context, id string, p *store.CourseNodeUpdateParams, kpIDs, resIDs []string) (*store.CourseNodeBase, error) {
+func (s *LessonContentService) UpdateNode(ctx context.Context, id, tenantID string, p *store.CourseNodeUpdateParams, kpIDs, resIDs []string) (*store.CourseNodeBase, error) {
 	var node *store.CourseNodeBase
 	err := s.WithTx(ctx, func(txStore *store.Store) error {
-		n, err := txStore.CourseNodes().Update(ctx, txStore.Q(), id, p, kpIDs, resIDs)
+		n, err := txStore.CourseNodes().Update(ctx, txStore.Q(), id, tenantID, p, kpIDs, resIDs)
 		if err != nil {
 			return err
 		}
@@ -218,8 +218,8 @@ func (s *LessonContentService) UpdateNode(ctx context.Context, id string, p *sto
 }
 
 // DeleteNode 删除节点。
-func (s *LessonContentService) DeleteNode(ctx context.Context, id string) error {
-	return s.st.CourseNodes().Delete(ctx, id)
+func (s *LessonContentService) DeleteNode(ctx context.Context, id, tenantID string) error {
+	return s.st.CourseNodes().Delete(ctx, id, tenantID)
 }
 
 // ReorderNodes 批量重排节点（事务内）。
@@ -282,7 +282,12 @@ func (s *LessonContentService) ListCourses(ctx context.Context, p store.ListPara
 
 // GetCourseDetail 查询单个课程。
 func (s *LessonContentService) GetCourseDetail(ctx context.Context, id string) (*domain.Course, error) {
-	return s.st.Courses().Get(ctx, id)
+	return s.st.Courses().GetUnscoped(ctx, id)
+}
+
+// GetCourseDetailInTenant 查询单个课程（租户限定）。
+func (s *LessonContentService) GetCourseDetailInTenant(ctx context.Context, id, tenantID string) (*domain.Course, error) {
+	return s.st.Courses().Get(ctx, id, tenantID)
 }
 
 // CreateCourse 创建课程（主记录、绑定、知识点引用在同一事务）。
@@ -309,7 +314,7 @@ func (s *LessonContentService) CreateCourse(ctx context.Context, tenantID string
 func (s *LessonContentService) UpdateCourse(ctx context.Context, id, tenantID, userID string, p *store.CourseUpdateParams, replaceBindings bool, kpIDs, resIDs []string) (*domain.Course, error) {
 	var course *domain.Course
 	err := s.WithTx(ctx, func(txStore *store.Store) error {
-		c, err := txStore.Courses().Update(ctx, id, p)
+		c, err := txStore.Courses().Update(ctx, id, tenantID, p)
 		if err != nil {
 			return err
 		}
@@ -328,8 +333,8 @@ func (s *LessonContentService) UpdateCourse(ctx context.Context, id, tenantID, u
 }
 
 // DeleteCourse 删除课程。
-func (s *LessonContentService) DeleteCourse(ctx context.Context, id string) error {
-	return s.st.Courses().Delete(ctx, id)
+func (s *LessonContentService) DeleteCourse(ctx context.Context, id, tenantID string) error {
+	return s.st.Courses().Delete(ctx, id, tenantID)
 }
 
 // Queryer 暴露底层查询器。

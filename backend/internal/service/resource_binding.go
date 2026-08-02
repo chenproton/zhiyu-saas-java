@@ -39,6 +39,31 @@ func (s *ResourceBindingService) Unbind(ctx context.Context, bindTable, id strin
 	return s.st.ResourceBindings().Unbind(ctx, bindTable, id, afterUnbind)
 }
 
+// BindTargetID 查询绑定行关联的主实体 ID（租户归属校验用）。
+func (s *ResourceBindingService) BindTargetID(ctx context.Context, bindTable, id string) (string, error) {
+	return s.st.ResourceBindings().BindTargetID(ctx, bindTable, id)
+}
+
+// CourseTenantID 查询课程所属租户（租户归属校验用）。
+func (s *ResourceBindingService) CourseTenantID(ctx context.Context, courseID string) (string, error) {
+	return s.st.ContentActions().GetTenantID(ctx, "courses", courseID)
+}
+
+// NodeCourseID 查询节点所属课程（租户归属校验用）。
+func (s *ResourceBindingService) NodeCourseID(ctx context.Context, nodeID string) (string, error) {
+	return s.st.CourseNodes().CourseIDOf(ctx, nodeID)
+}
+
+// TaskScenarioID 查询任务所属场景（租户归属校验用）。
+func (s *ResourceBindingService) TaskScenarioID(ctx context.Context, taskID string) (string, error) {
+	return s.st.ScenarioTasks().TaskScenarioID(ctx, taskID)
+}
+
+// ScenarioTenantID 查询场景所属租户（租户归属校验用）。
+func (s *ResourceBindingService) ScenarioTenantID(ctx context.Context, scenarioID string) (*string, error) {
+	return s.st.ScenarioTasks().ScenarioTenantID(ctx, scenarioID)
+}
+
 // ListCourseResources 课程资源列表（专属列）。
 func (s *ResourceBindingService) ListCourseResources(ctx context.Context, tenantID, courseID, search string, limit, offset int) ([]domain.NodeResource, int, error) {
 	return s.st.ResourceBindings().ListCourseResources(ctx, tenantID, courseID, search, limit, offset)
