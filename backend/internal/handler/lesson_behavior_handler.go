@@ -93,6 +93,10 @@ func (h *LessonBehaviorHandler) Aggregate(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	courseID := r.URL.Query().Get("courseId")
 	if courseID == "" {
@@ -101,11 +105,15 @@ func (h *LessonBehaviorHandler) Aggregate(w http.ResponseWriter, r *http.Request
 		})
 		return
 	}
+	if _, err := h.Service.Store().Courses().Get(r.Context(), courseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
+		return
+	}
 
 	startDate := r.URL.Query().Get("startDate")
 	endDate := r.URL.Query().Get("endDate")
 
-	records, err := h.Service.ListLessonBehaviorRecords(r.Context(), courseID, startDate, endDate)
+	records, err := h.Service.ListLessonBehaviorRecords(r.Context(), tenantID, courseID, startDate, endDate)
 	if err != nil {
 		respondServerError(w, r, err, "加载behavior records失败")
 		return
@@ -132,6 +140,16 @@ func (h *LessonBehaviorHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
+		return
+	}
+
+	if _, err := h.Service.Store().Courses().Get(r.Context(), req.CourseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
+		return
+	}
+	student, err := h.Service.Store().Users().Get(r.Context(), req.StudentUserID)
+	if err != nil || student.TenantID == nil || *student.TenantID != tenantID {
+		respondError(w, http.StatusNotFound, "学生不存在")
 		return
 	}
 

@@ -58,14 +58,14 @@ func (s *AllianceStore) CreatePermission(ctx context.Context, p *domain.Alliance
 	return id, nil
 }
 
-func (s *AllianceStore) UpdatePermission(ctx context.Context, id string, p *domain.AlliancePermission) error {
+func (s *AllianceStore) UpdatePermission(ctx context.Context, id, tenantID string, p *domain.AlliancePermission) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_permissions SET
 			account_name = $1, account_type = $2, enterprise_id = $3, expert_id = $4,
 			is_enabled = $5, resource_permissions = $6, platform_permissions = $7, updated_at = NOW()
-		WHERE id = $8
+		WHERE id = $8 AND tenant_id = $9
 	`, p.AccountName, p.AccountType, p.EnterpriseID, p.ExpertID,
-		p.IsEnabled, emptyJSON(p.ResourcePermissions), emptyJSON(p.PlatformPermissions), id)
+		p.IsEnabled, emptyJSON(p.ResourcePermissions), emptyJSON(p.PlatformPermissions), id, tenantID)
 	return err
 }
 

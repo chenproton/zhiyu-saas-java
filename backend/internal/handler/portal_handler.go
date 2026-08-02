@@ -24,6 +24,10 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	if claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
 
 	// 当前角色由前端传入（角色切换后端无状态），但只允许切换到用户自己绑定的角色，
 	// 防止学生带 ?role=school_admin 越权查看管理员视图

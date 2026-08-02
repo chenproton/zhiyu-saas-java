@@ -95,7 +95,7 @@
 | `handler/recommend_handler.go:87-125` | recommendations | Update/Delete 跨租户 ✅ 已修复（store Get/Update/Delete/fetchRecommend 补 tenant_id 过滤，handler requireTenant 传租户） |
 | `handler/micro_cert_handler.go:85-207` | 证书模板/发放 | Get/Update/DeleteTemplate、IssueCerts 全跨租户（可给他租户用户发证） ✅ 已修复 |
 | `handler/workflow_handler.go:58` | GET /workflows/{id} | Get 无归属校验（Update/Delete 有） ✅ 已修复（store Get/Update/Delete 补 tenant_id IS NOT DISTINCT FROM 过滤，兼容 NULL 租户全局流程） |
-| `handler/lesson_behavior_handler.go:108-142` | behavior-collection | Aggregate 跨租户读（含学生姓名/考勤/成绩）；Create 信任请求体伪造 |
+| `handler/lesson_behavior_handler.go:108-142` | behavior-collection | Aggregate 跨租户读（含学生姓名/考勤/成绩）；Create 信任请求体伪造 ✅ 已修复（课程/学生双归属校验） |
 | `handler/student_portrait_handler.go:85-127` | POST /evaluation/portraits/generate | req.UserID 信任请求体 + store 无租户过滤 → 跨租户聚合学生画像 ✅ 已修复（校验 users.tenant_id，学生只能生成本人） |
 | `handler/approval_handler.go:210-229,168-197` | POST /approvals/{id}/review | `isUserApproverForStep` fail-open（错误即放行）；GetWorkflow 失败时一步点击即 approved + 同步发布 ✅ 已修复（isUserApproverForStep/isStepComplete/isLastStep 全部 fail-closed） |
 | `handler/portal_handler.go:29-35` | GET /portal/workspace/dashboard?role=x | role 参数完全信任前端，学生带 ?role=school_admin 获取全校统计 ✅ 已修复（role 仅允许切换到用户自己绑定的角色） |
@@ -108,7 +108,7 @@
 | `handler/evaluation_result_handler.go:129-136` | POST /evaluation/results | EvaluatorID 信任请求体可伪造评估人 ✅ 已修复（校验评估人租户，学生只能本人） |
 | `handler/student_portrait_handler.go` / `micro_cert` | — | 同源问题 |
 | `handler/certification_handler.go:138` | CreateRule | req.CareerPositionID 未校验归属，指向他租户岗位 ✅ 已修复 |
-| `handler/alliance_handler.go:105-282,440-564` | 联盟协议/里程碑/权限/字典 | List/Create/Update 跨租户（enterprise/project/milestone/permission/dictionary） |
+| `handler/alliance_handler.go:105-282,440-564` | 联盟协议/里程碑/权限/字典 | List/Create/Update 跨租户（enterprise/project/milestone/permission/dictionary） ✅ 已修复（父实体归属校验 + store 租户过滤） |
 | `handler/course_node_handler.go:136-188,268-287` | Create/Reorder | CourseID 未校验归属，可挂节点到任意租户课程 ✅ 已修复 |
 | `handler/exam_handler.go:235-279` | AddQuestion | FetchExamQuestion 无租户/题库过滤，可快照他租户题目（含答案） |
 | `handler/graduation_handler.go:330` | GET /evaluation/graduation/query | `*claims.TenantID` 无 nil 检查直接解引用 → panic ✅ 已修复（TenantID nil 时返回 403） |
@@ -120,13 +120,13 @@
 
 | 文件:行号 | 问题 |
 |-----------|------|
-| `store/position_bindings.go:218` ListConfig | TenantScoped=false → 全租户职责列表 |
-| `store/random_draw_questions.go:102` ListConfig | TenantScoped=false → 全租户抽题（含答案） |
-| `store/organizations.go:52-96` Tree/MemberCounts | tenantID 为空串时返回全库组织树 |
-| `store/resource_bindings.go:45-53` List | 同上 |
-| `store/user_relations.go:33` List | 同上 |
-| `store/portal.go:372-532` 各 List | 经 creator_id 间接过滤而非实体 tenant_id，nil 时全租户 |
-| `store/landing.go:33-51` | JOIN exam_usages 未约束 eu.tenant_id |
+| `store/position_bindings.go:218` ListConfig | TenantScoped=false → 全租户职责列表 ✅ 已修复（TenantScoped=true） |
+| `store/random_draw_questions.go:102` ListConfig | TenantScoped=false → 全租户抽题（含答案） ✅ 已修复（TenantScoped=true） |
+| `store/organizations.go:52-96` Tree/MemberCounts | tenantID 为空串时返回全库组织树 ✅ 已修复（空租户返回空） |
+| `store/resource_bindings.go:45-53` List | 同上 ✅ 已修复（空租户返回空） |
+| `store/user_relations.go:33` List | 同上 ✅ 已修复（空租户返回空） |
+| `store/portal.go:372-532` 各 List | 经 creator_id 间接过滤而非实体 tenant_id，nil 时全租户 ✅ 已修复（dashboard 入口强制租户必填，nil 时 403） |
+| `store/landing.go:33-51` | JOIN exam_usages 未约束 eu.tenant_id ❌ 误报（e.tenant_id = $1 已约束，eu 经 exam_id 关联同租户考试） |
 
 ### 1.2 未鉴权/敏感信息
 

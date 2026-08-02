@@ -100,7 +100,15 @@ func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *htt
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	eid := chi.URLParam(r, "eid")
+	if _, err := h.Store.GetEnterpriseByID(r.Context(), eid, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "企业不存在")
+		return
+	}
 
 	items, err := h.Store.ListEnterpriseAgreements(r.Context(), eid)
 	if err != nil {
@@ -123,6 +131,10 @@ func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	}
 
 	eid := chi.URLParam(r, "eid")
+	if _, err := h.Store.GetEnterpriseByID(r.Context(), eid, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "企业不存在")
+		return
+	}
 	var p store.AllianceEnterpriseAgreementCreateParams
 	if !decodeBody(w, r, &p) {
 		return
@@ -156,6 +168,12 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 		return
 	}
 
+	eid := chi.URLParam(r, "eid")
+	if _, err := h.Store.GetEnterpriseByID(r.Context(), eid, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "企业不存在")
+		return
+	}
+
 	id := chi.URLParam(r, "id")
 	if _, err := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "协议不存在")
@@ -184,6 +202,11 @@ func (h *AllianceHandler) DeleteEnterpriseAgreement(w http.ResponseWriter, r *ht
 	}
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
+		return
+	}
+	eid := chi.URLParam(r, "eid")
+	if _, err := h.Store.GetEnterpriseByID(r.Context(), eid, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "企业不存在")
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -224,7 +247,15 @@ func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	pid := chi.URLParam(r, "pid")
+	if _, err := h.Store.GetProjectByID(r.Context(), pid, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "项目不存在")
+		return
+	}
 	items, err := h.Store.ListMilestones(r.Context(), pid)
 	if err != nil {
 		respondServerError(w, r, err, "查询失败")
@@ -245,6 +276,10 @@ func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request
 	}
 
 	pid := chi.URLParam(r, "pid")
+	if _, err := h.Store.GetProjectByID(r.Context(), pid, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "项目不存在")
+		return
+	}
 	var m domain.AllianceProjectMilestone
 	if !decodeBody(w, r, &m) {
 		return
@@ -267,13 +302,21 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := chi.URLParam(r, "id")
+	if _, err := h.Store.GetMilestoneByID(r.Context(), id, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "里程碑不存在")
+		return
+	}
 	var m domain.AllianceProjectMilestone
 	if !decodeBody(w, r, &m) {
 		return
 	}
-	if err := h.Store.UpdateMilestone(r.Context(), id, &m); err != nil {
+	if err := h.Store.UpdateMilestone(r.Context(), id, tenantID, &m); err != nil {
 		slog.Error("更新里程碑失败", "error", err)
 		respondServerError(w, r, err, "更新失败")
 		return
@@ -443,15 +486,20 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	if _, ok := requireTenant(w, r); !ok {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if _, err := h.Store.GetPermissionByID(r.Context(), id, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "权限不存在")
+		return
+	}
 	var p domain.AlliancePermission
 	if !decodeBody(w, r, &p) {
 		return
 	}
-	if err := h.Store.UpdatePermission(r.Context(), id, &p); err != nil {
+	if err := h.Store.UpdatePermission(r.Context(), id, tenantID, &p); err != nil {
 		slog.Error("更新权限失败", "error", err)
 		respondServerError(w, r, err, "更新失败")
 		return
@@ -544,7 +592,15 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
+	if _, err := h.Store.GetDictionaryByID(r.Context(), id, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "字典项不存在")
+		return
+	}
 
 	var req struct {
 		Name      string `json:"name"`
@@ -553,7 +609,7 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 	if !decodeBody(w, r, &req) {
 		return
 	}
-	if err := h.Store.UpdateDictionary(r.Context(), id, &domain.AllianceDictionary{
+	if err := h.Store.UpdateDictionary(r.Context(), id, tenantID, &domain.AllianceDictionary{
 		Name:      req.Name,
 		SortOrder: req.SortOrder,
 	}); err != nil {

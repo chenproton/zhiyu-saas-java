@@ -34,10 +34,22 @@ func (s *AllianceStore) CreateDictionary(ctx context.Context, d *domain.Alliance
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateDictionary(ctx context.Context, id string, d *domain.AllianceDictionary) error {
+func (s *AllianceStore) GetDictionaryByID(ctx context.Context, id, tenantID string) (*domain.AllianceDictionary, error) {
+	var d domain.AllianceDictionary
+	err := s.q.QueryRow(ctx, `
+		SELECT id, tenant_id, dict_type, code, name, sort_order, created_at
+		FROM alliance_dictionaries WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&d.ID, &d.TenantID, &d.DictType, &d.Code, &d.Name, &d.SortOrder, &d.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+func (s *AllianceStore) UpdateDictionary(ctx context.Context, id, tenantID string, d *domain.AllianceDictionary) error {
 	_, err := s.q.Exec(ctx, `
-		UPDATE alliance_dictionaries SET name = $1, sort_order = $2 WHERE id = $3
-	`, d.Name, d.SortOrder, id)
+		UPDATE alliance_dictionaries SET name = $1, sort_order = $2 WHERE id = $3 AND tenant_id = $4
+	`, d.Name, d.SortOrder, id, tenantID)
 	return err
 }
 

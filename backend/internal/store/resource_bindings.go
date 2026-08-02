@@ -50,6 +50,9 @@ func (s *ResourceBindingStore) List(ctx context.Context, tenantID, search string
 		where = append(where, "rl.tenant_id = $"+Itoa(argIdx))
 		args = append(args, tenantID)
 		argIdx++
+	} else {
+		// 纵深防御：无租户时不返回全库资源
+		where = append(where, "1=0")
 	}
 	join := ""
 	if bind != nil && bindID != "" {

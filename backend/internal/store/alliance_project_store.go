@@ -164,13 +164,33 @@ func (s *AllianceStore) CreateMilestone(ctx context.Context, m *domain.AllianceP
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateMilestone(ctx context.Context, id string, m *domain.AllianceProjectMilestone) error {
+func (s *AllianceStore) GetMilestoneByID(ctx context.Context, id, tenantID string) (*domain.AllianceProjectMilestone, error) {
+	var m domain.AllianceProjectMilestone
+	var description *string
+	var dueDate, completedDate *time.Time
+	err := s.q.QueryRow(ctx, `
+		SELECT id, tenant_id, project_id, name, description, due_date, completed_date,
+			is_completed, sort_order, created_at, updated_at
+		FROM alliance_project_milestones WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&m.ID, &m.TenantID, &m.ProjectID, &m.Name, &description,
+		&dueDate, &completedDate, &m.IsCompleted, &m.SortOrder,
+		&m.CreatedAt, &m.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	m.Description = description
+	m.DueDate = formatDate(dueDate)
+	m.CompletedDate = formatDate(completedDate)
+	return &m, nil
+}
+
+func (s *AllianceStore) UpdateMilestone(ctx context.Context, id, tenantID string, m *domain.AllianceProjectMilestone) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_project_milestones SET
 			name = $1, description = $2, due_date = $3, completed_date = $4,
 			is_completed = $5, sort_order = $6, updated_at = NOW()
-		WHERE id = $7
-	`, m.Name, m.Description, m.DueDate, m.CompletedDate, m.IsCompleted, m.SortOrder, id)
+		WHERE id = $7 AND tenant_id = $8
+	`, m.Name, m.Description, m.DueDate, m.CompletedDate, m.IsCompleted, m.SortOrder, id, tenantID)
 	return err
 }
 

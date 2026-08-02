@@ -215,7 +215,7 @@ func (s *PositionResponsibilityStore) ListConfig() ListQueryConfig[domain.Positi
 	return ListQueryConfig[domain.PositionResponsibility]{
 		Table:         "position_responsibilities",
 		SelectColumns: "id, career_position_id, name, description, sort_order",
-		TenantScoped:  false,
+		TenantScoped:  true,
 		OrderBy:       "sort_order ASC, id ASC",
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
