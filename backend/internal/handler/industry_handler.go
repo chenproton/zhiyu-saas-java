@@ -17,11 +17,6 @@ type IndustryHandler struct {
 	Store   *store.IndustriesStore
 }
 
-type IndustryListResponse struct {
-	Items []domain.Industry `json:"items"`
-	Total int               `json:"total"`
-}
-
 type CreateIndustryRequest struct {
 	TenantID  string  `json:"tenantId"`
 	Code      string  `json:"code"`
@@ -69,7 +64,7 @@ func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, IndustryListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Industry]{Items: items, Total: total})
 }
 
 func (h *IndustryHandler) Get(w http.ResponseWriter, r *http.Request) {

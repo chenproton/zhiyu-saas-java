@@ -15,11 +15,6 @@ type CourseResourceHandler struct {
 	Service *service.ResourceBindingService
 }
 
-type CourseResourceListResponse struct {
-	Items []domain.NodeResource `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type CreateCourseResourceRequest struct {
 	CourseID    string  `json:"courseId"`
 	Name        string  `json:"name"`
@@ -59,7 +54,7 @@ func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Req
 		respondServerError(w, r, err, "查询课程资源失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, CourseResourceListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.NodeResource]{Items: items, Total: total})
 }
 
 func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {

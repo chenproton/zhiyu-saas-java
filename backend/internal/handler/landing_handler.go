@@ -26,11 +26,6 @@ type LandingExamItem struct {
 	TargetAudience string `json:"targetAudience"`
 }
 
-type LandingExamListResponse struct {
-	Items []LandingExamItem `json:"items"`
-	Total int               `json:"total"`
-}
-
 func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -66,7 +61,7 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 		item.Status = computeExamStatus(e.StartTime, e.EndTime, now)
 		items = append(items, item)
 	}
-	respondJSON(w, http.StatusOK, LandingExamListResponse{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[LandingExamItem]{Items: items, Total: len(items)})
 }
 
 func computeExamStatus(start, end interface{}, now time.Time) string {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -321,5 +320,3 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	respondJSON(w, http.StatusOK, batch)
 }
-
-var _ = strings.Join

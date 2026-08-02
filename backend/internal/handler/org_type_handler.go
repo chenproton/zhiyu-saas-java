@@ -17,11 +17,6 @@ type OrgTypeHandler struct {
 	Store   *store.OrgTypesStore
 }
 
-type OrgTypeListResponse struct {
-	Items []domain.OrgType `json:"items"`
-	Total int              `json:"total"`
-}
-
 type CreateOrgTypeRequest struct {
 	TenantID    string                 `json:"tenantId"`
 	Name        string                 `json:"name"`
@@ -61,7 +56,7 @@ func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, OrgTypeListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.OrgType]{Items: items, Total: total})
 }
 
 func (h *OrgTypeHandler) Get(w http.ResponseWriter, r *http.Request) {

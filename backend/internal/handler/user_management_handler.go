@@ -17,12 +17,6 @@ import (
 type UserManagementHandler struct {
 	Service *service.UserService
 }
-
-type UserListResponse struct {
-	Items []domain.User `json:"items"`
-	Total int           `json:"total"`
-}
-
 type CreateUserRequest struct {
 	TenantID      string              `json:"tenantId"`
 	InstitutionID *string             `json:"institutionId"`
@@ -104,7 +98,7 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询用户列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, UserListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.User]{Items: items, Total: total})
 }
 
 func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -306,7 +300,11 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user, _ = h.Service.Get(r.Context(), id)
+	user, err = h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "更新后查询用户失败")
+		return
+	}
 	user.PasswordHash = ""
 	respondJSON(w, http.StatusOK, user)
 }
@@ -405,7 +403,7 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "批量创建用户失败")
 		return
 	}
-	respondJSON(w, http.StatusCreated, UserListResponse{Items: created, Total: len(created)})
+	respondJSON(w, http.StatusCreated, ListResponse[domain.User]{Items: created, Total: len(created)})
 }
 
 func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Request) {

@@ -15,12 +15,6 @@ import (
 type TrainingProgramHandler struct {
 	Service *service.PositionService
 }
-
-type TrainingProgramListResponse struct {
-	Items []domain.TrainingProgram `json:"items"`
-	Total int                      `json:"total"`
-}
-
 type TrainingProgramRequest struct {
 	Name         string   `json:"name"`
 	Code         *string  `json:"code"`
@@ -66,7 +60,7 @@ func (h *TrainingProgramHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询人培方案失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, TrainingProgramListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.TrainingProgram]{Items: items, Total: total})
 }
 
 func (h *TrainingProgramHandler) Get(w http.ResponseWriter, r *http.Request) {

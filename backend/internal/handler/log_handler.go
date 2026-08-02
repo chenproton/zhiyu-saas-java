@@ -14,16 +14,6 @@ type LogHandler struct {
 	Service *service.LogService
 }
 
-type LoginLogListResponse struct {
-	Items []domain.LoginLog `json:"items"`
-	Total int               `json:"total"`
-}
-
-type OperationLogListResponse struct {
-	Items []domain.OperationLog `json:"items"`
-	Total int                   `json:"total"`
-}
-
 func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 	items, total, err := executeListQuery[domain.LoginLog](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.LoginLog]{
 		Table:         "login_logs",
@@ -49,7 +39,7 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, LoginLogListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.LoginLog]{Items: items, Total: total})
 }
 
 func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +70,7 @@ func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, OperationLogListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.OperationLog]{Items: items, Total: total})
 }
 
 func (h *LogHandler) scanLoginLogRows(rows pgx.Rows) ([]domain.LoginLog, error) {

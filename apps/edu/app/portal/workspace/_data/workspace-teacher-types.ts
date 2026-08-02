@@ -83,22 +83,6 @@ export const mockTeacherInfo: TeacherInfo = {
   students: 0,
 }
 
-// ==================== 通知公告 ====================
-
-export const mockTeacherAnnouncements: TeacherAnnouncement[] = []
-
-// ==================== 待办事项 ====================
-
-export const mockTeacherTodos: TeacherTodoItem[] = []
-
-// ==================== 教学日历事件 ====================
-
-export const mockTeacherCalendarEvents: TeacherCalendarEvent[] = []
-
-// ==================== 我的课程 ====================
-
-export const mockTeacherCourses: TeacherCourse[] = []
-
 // ==================== 开课计划-课程节次 ====================
 
 export type TeacherScheduleEventType = 'course' | 'scene' | 'meeting' | 'training' | 'exam' | 'todo'
@@ -114,17 +98,6 @@ export interface TeacherScheduleEvent {
   tag?: string
   className?: string
 }
-
-export const teacherPeriods = [
-  '上午 1',
-  '上午 2',
-  '上午 3',
-  '上午 4',
-  '下午 1',
-  '下午 2',
-  '下午 3',
-  '下午 4',
-] as const
 
 export const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
@@ -143,12 +116,6 @@ export interface PrepAssociationRecord {
 export const hybridCourseSessions: Record<string, PrepSubItem[]> = {}
 
 export const scenarioTasks: Record<string, PrepSubItem[]> = {}
-
-export const mockTeacherSchedule: TeacherScheduleEvent[] = []
-
-// ==================== 成绩提交 ====================
-
-export const mockGradeSubmissions: GradeSubmitItem[] = []
 
 // ==================== 教学跟踪数据 ====================
 
@@ -244,16 +211,6 @@ export const mockAssessmentDimensions: {
 
 export const mockCompositeDistribution: { range: string; count: number }[] = []
 
-export const mockSessionSummary: {
-  week: number
-  day: string
-  topic: string
-  attendance: number
-  quizAvg: number
-  homeworkRate: number
-  homeworkAvg: number
-}[] = []
-
 export const mockStudentRanking: {
   rank: number
   name: string
@@ -264,21 +221,6 @@ export const mockStudentRanking: {
   report: number
   total: number
   grade: string
-}[] = []
-
-// ==================== 学生画像数据 ====================
-
-export const mockStudentPortraits: {
-  id: string
-  name: string
-  studentNo: string
-  className: string
-  grade: string
-  major: string
-  overallGrade: string
-  overallScore: number
-  abilities: { name: string; score: number }[]
-  attendance: number
 }[] = []
 
 // ==================== 教师个人中心 ====================

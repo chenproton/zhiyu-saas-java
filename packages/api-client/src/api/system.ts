@@ -1,29 +1,14 @@
 import type {
-  Tenant,
   Organization,
   OrgType,
   Role,
   Major,
   Industry,
-  ResourceCode,
-  SubscriptionPackage,
   Workflow,
   ApprovalRecord,
-  LoginLog,
-  OperationLog,
 } from '../types/backend'
 import { request, buildQuery, ListResponse } from '../api-helpers'
 import { createCrudApi } from '../api-factory'
-
-export const tenantApi = {
-  ...createCrudApi<
-    Tenant,
-    Omit<Tenant, 'id' | 'createdAt' | 'updatedAt'>,
-    Partial<Omit<Tenant, 'id' | 'createdAt' | 'updatedAt'>>
-  >('/tenants'),
-  updateStatus: (id: string, status: string) =>
-    request<Tenant>(`/tenants/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
-}
 
 export const orgApi = {
   ...createCrudApi<
@@ -64,39 +49,6 @@ export const industryApi = createCrudApi<
   Omit<Industry, 'id' | 'createdAt' | 'updatedAt'>,
   Partial<Omit<Industry, 'id' | 'createdAt' | 'updatedAt'>>
 >('/industries')
-
-export const resourceCodeApi = createCrudApi<
-  ResourceCode,
-  Omit<ResourceCode, 'id' | 'createdAt'>,
-  Partial<Omit<ResourceCode, 'id' | 'createdAt'>>
->('/resource-codes')
-
-export const subscriptionApi = {
-  get: (tenantId: string) => request<SubscriptionPackage>(`/subscriptions?tenantId=${tenantId}`),
-  update: (id: string, req: Partial<Omit<SubscriptionPackage, 'id' | 'createdAt' | 'updatedAt'>>) =>
-    request<SubscriptionPackage>(`/subscriptions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-}
-
-export const logApi = {
-  loginLogs: (params?: {
-    tenantId?: string
-    userId?: string
-    status?: string
-    limit?: number
-    offset?: number
-  }) => request<ListResponse<LoginLog>>(`/logs/login${buildQuery(params || {})}`),
-  operationLogs: (params?: {
-    tenantId?: string
-    userId?: string
-    module?: string
-    action?: string
-    limit?: number
-    offset?: number
-  }) => request<ListResponse<OperationLog>>(`/logs/operation${buildQuery(params || {})}`),
-}
 
 export const workflowApi = createCrudApi<
   Workflow,

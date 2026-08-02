@@ -15,11 +15,6 @@ type NodeHomeworkHandler struct {
 	Service *service.LessonContentService
 }
 
-type NodeHomeworkListResponse struct {
-	Items []domain.NodeHomework `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type CreateNodeHomeworkRequest struct {
 	NodeID         string     `json:"nodeId"`
 	Title          string     `json:"title"`
@@ -64,7 +59,7 @@ func (h *NodeHomeworkHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询作业失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, NodeHomeworkListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.NodeHomework]{Items: items, Total: total})
 }
 
 func (h *NodeHomeworkHandler) Get(w http.ResponseWriter, r *http.Request) {

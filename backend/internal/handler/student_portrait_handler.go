@@ -22,21 +22,10 @@ func NewStudentPortraitHandler(st *store.Store) *StudentPortraitHandler {
 	return &StudentPortraitHandler{Service: service.NewEvaluationService(svc), Agg: service.NewJobAbilityAggregator(st)}
 }
 
-type StudentPortraitListResponse struct {
-	Items []domain.StudentAbilityPortrait `json:"items"`
-	Total int                             `json:"total"`
-}
-
 type GeneratePortraitRequest struct {
 	UserID           string `json:"userId"`
 	CareerPositionID string `json:"careerPositionId"`
 }
-
-type StudentArchiveListResponse struct {
-	Items []domain.StudentAbilityArchive `json:"items"`
-	Total int                            `json:"total"`
-}
-
 type CreateStudentArchiveRequest struct {
 	UserID       string  `json:"userId"`
 	MaterialType string  `json:"materialType"`
@@ -82,7 +71,7 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询学生画像失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, StudentPortraitListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.StudentAbilityPortrait]{Items: items, Total: total})
 }
 
 func (h *StudentPortraitHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +169,7 @@ func (h *StudentPortraitHandler) ListArchives(w http.ResponseWriter, r *http.Req
 		respondServerError(w, r, err, "查询学生档案列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, StudentArchiveListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.StudentAbilityArchive]{Items: items, Total: total})
 }
 
 func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Request) {

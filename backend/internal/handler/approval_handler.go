@@ -17,11 +17,6 @@ type ApprovalHandler struct {
 	Service *service.PositionService
 }
 
-type ApprovalListResponse struct {
-	Items []domain.ApprovalRecord `json:"items"`
-	Total int                     `json:"total"`
-}
-
 type CreateApprovalRequest struct {
 	TargetType string  `json:"targetType"`
 	TargetID   string  `json:"targetId"`
@@ -79,7 +74,7 @@ func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询审批记录失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ApprovalListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.ApprovalRecord]{Items: items, Total: total})
 }
 
 func (h *ApprovalHandler) Get(w http.ResponseWriter, r *http.Request) {

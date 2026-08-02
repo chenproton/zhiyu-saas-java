@@ -8,7 +8,6 @@ import type {
   AbilityDomain,
   JobBatch,
   PositionRecommendation,
-  BannerConfig,
   LearnRoad,
 } from '../types/job'
 import { request, buildQuery, ListResponse } from '../api-helpers'
@@ -220,8 +219,4 @@ export const learnRoadApi = createCrudApi<
   Partial<Omit<LearnRoad, 'id' | 'createdAt' | 'updatedAt'>>
 >('/job/learn-roads')
 
-export const jobBannerApi = createCrudApi<
-  BannerConfig,
-  Omit<BannerConfig, 'id' | 'createdAt' | 'updatedAt'>,
-  Partial<Omit<BannerConfig, 'id' | 'createdAt' | 'updatedAt'>>
->('/job/banners')
+

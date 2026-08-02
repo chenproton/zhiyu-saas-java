@@ -1,5 +1,4 @@
 export { Toaster } from './components/ui/toaster'
-export { useIsMobile } from './hooks/use-mobile'
 export { useToast, toast, reducer } from './hooks/use-toast'
 export { useImportFlow } from './hooks/use-import-flow'
 export type { UseImportFlowOptions } from './hooks/use-import-flow'

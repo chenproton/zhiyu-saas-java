@@ -14,11 +14,6 @@ type KnowledgePointHandler struct {
 	Service *service.LessonContentService
 }
 
-type KnowledgePointListResponse struct {
-	Items []domain.KnowledgePoint `json:"items"`
-	Total int                     `json:"total"`
-}
-
 type CreateKnowledgePointRequest struct {
 	Name              string           `json:"name"`
 	Code              *string          `json:"code"`
@@ -67,7 +62,7 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询知识点失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, KnowledgePointListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.KnowledgePoint]{Items: items, Total: total})
 }
 
 func (h *KnowledgePointHandler) Get(w http.ResponseWriter, r *http.Request) {

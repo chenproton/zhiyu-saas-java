@@ -18,11 +18,6 @@ type ExamHandler struct {
 	RedisClient *redis.Client
 }
 
-type ExamListResponse struct {
-	Items []domain.Exam `json:"items"`
-	Total int           `json:"total"`
-}
-
 type CreateExamRequest struct {
 	Name                string   `json:"name"`
 	Description         string   `json:"description"`
@@ -57,7 +52,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询考试失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ExamListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Exam]{Items: items, Total: total})
 }
 
 func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {

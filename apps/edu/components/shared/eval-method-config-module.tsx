@@ -1,61 +1,12 @@
 'use client'
 
-import { useMemo, type ReactNode } from 'react'
-import {
-  Database,
-  ClipboardList,
-  BookOpen,
-  FileQuestion,
-  FolderCheck,
-  Gavel,
-  PenTool,
-} from 'lucide-react'
+import { useMemo } from 'react'
+import { PenTool } from 'lucide-react'
 import { EvalMethodSelector } from './eval-method-selector'
 import { CourseEvaluationRulesDialog } from '@/app/lesson/admin/_components/assessment/course-evaluation-rules-dialog'
 import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
 import { mergeEvalRuleMethods } from '@/lib/types/evaluation'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
-
-export const EVAL_METHOD_DISPLAY: Record<
-  string,
-  { label: string; icon: ReactNode; color: string }
-> = {
-  question_bank: {
-    label: '题库',
-    icon: <Database className="h-5 w-5" />,
-    color: 'bg-orange-50 text-orange-600 border-orange-200',
-  },
-  paper: {
-    label: '试卷',
-    icon: <ClipboardList className="h-5 w-5" />,
-    color: 'bg-green-50 text-green-600 border-green-200',
-  },
-  quiz: {
-    label: '随堂测',
-    icon: <FileQuestion className="h-5 w-5" />,
-    color: 'bg-red-50 text-red-600 border-red-200',
-  },
-  random_draw: {
-    label: '现场问答',
-    icon: <FileQuestion className="h-5 w-5" />,
-    color: 'bg-blue-50 text-blue-600 border-blue-200',
-  },
-  review: {
-    label: '现场评审',
-    icon: <Gavel className="h-5 w-5" />,
-    color: 'bg-purple-50 text-purple-600 border-purple-200',
-  },
-  outcome: {
-    label: '成果评价',
-    icon: <FolderCheck className="h-5 w-5" />,
-    color: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-  },
-  homework: {
-    label: '作业',
-    icon: <BookOpen className="h-5 w-5" />,
-    color: 'bg-pink-50 text-pink-600 border-pink-200',
-  },
-}
 
 export interface EvalMethodConfigModuleProps {
   value: EvalRuleConfig | Partial<EvalRuleConfig> | undefined

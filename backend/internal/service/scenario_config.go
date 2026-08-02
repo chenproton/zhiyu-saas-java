@@ -38,11 +38,6 @@ func (s *ScenarioConfigService) UpsertGradeMapping(ctx context.Context, tenantID
 	return s.st.ScenarioGrades().Upsert(ctx, tenantID, p)
 }
 
-// DeleteGradeMapping 删除等级映射。
-func (s *ScenarioConfigService) DeleteGradeMapping(ctx context.Context, id string) error {
-	return s.st.ScenarioGrades().Delete(ctx, id)
-}
-
 // BindKnowledge 绑定知识点。
 func (s *ScenarioConfigService) BindKnowledge(ctx context.Context, tenantID, taskID, knowledgePointID string) (domain.TaskKnowledgeBinding, error) {
 	return s.st.TaskBindings().BindKnowledge(ctx, tenantID, taskID, knowledgePointID)

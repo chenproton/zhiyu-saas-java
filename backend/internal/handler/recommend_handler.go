@@ -13,12 +13,6 @@ import (
 type RecommendHandler struct {
 	Service *service.PositionService
 }
-
-type RecommendListResponse struct {
-	Items []domain.PositionRecommendation `json:"items"`
-	Total int                             `json:"total"`
-}
-
 type CreateRecommendRequest struct {
 	MajorID          *string `json:"majorId"`
 	CareerPositionID string  `json:"careerPositionId"`
@@ -70,7 +64,7 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询推荐失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, RecommendListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.PositionRecommendation]{Items: items, Total: total})
 }
 
 func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {

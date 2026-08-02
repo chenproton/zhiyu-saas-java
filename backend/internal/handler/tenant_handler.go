@@ -17,12 +17,6 @@ type TenantHandler struct {
 	Service      *service.TenantService
 	AdminService *service.TenantAdminService
 }
-
-type TenantListResponse struct {
-	Items []domain.Tenant `json:"items"`
-	Total int             `json:"total"`
-}
-
 type CreateTenantRequest struct {
 	Name           string  `json:"name"`
 	Code           string  `json:"code"`
@@ -94,7 +88,7 @@ func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询租户列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, TenantListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Tenant]{Items: items, Total: total})
 }
 
 func (h *TenantHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -285,7 +279,7 @@ func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询租户失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, TenantListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Tenant]{Items: items, Total: total})
 }
 
 func (h *TenantHandler) AdminCreate(w http.ResponseWriter, r *http.Request) {

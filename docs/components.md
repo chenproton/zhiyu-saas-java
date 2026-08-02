@@ -148,8 +148,6 @@
 | 组件 | 文件 | 对应测评方式 |
 |------|------|-----------|
 | `BankQuestionSelectorPanel` | `bank-question-selector-panel.tsx` | 题库、随堂测 |
-| `PaperConfigPanel` | `paper-config-panel.tsx` | 试卷 |
-| `RandomDrawResourcePanel` | `random-draw-resource-panel.tsx` | 现场问答 |
 | `ResourceMaterialConfig` | 现场评审、成果评价、作业（配置逻辑已并入 `atomic-modules`，2026-08 删除原文件） |
 | `MethodConfigDialog` | `method-config-dialog.tsx` | 所有方式的评价标准配置 |
 
@@ -163,7 +161,6 @@
 |------|------|------|
 | `TaskInfoCard` | `task-info-card.tsx` | 任务名称/类型/学时/难度/背景 |
 | `TaskDescriptionCard` | `task-description-card.tsx` | 富文本说明 + PDF 上传 |
-| `TaskKnowledgeCard` | `task-knowledge-card.tsx` | 知识点搜索/选择/克隆 |
 | `TaskWeightCard` | `task-weight-card.tsx` | 任务间权重分配 |
 
 ## 评测专用组件

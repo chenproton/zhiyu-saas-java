@@ -366,13 +366,12 @@ func (h *PortalHandler) listTeacherClassPlansAndSessions(ctx context.Context, us
 	dayNames := map[int]string{1: "周一", 2: "周二", 3: "周三", 4: "周四", 5: "周五", 6: "周六", 7: "周日"}
 
 	for _, se := range rows {
-		seID, planEntryID, courseName, entryType, dayOfWeek := se.ID, se.PlanEntryID, se.CourseName, se.Type, se.DayOfWeek
+		seID, planEntryID, courseName, dayOfWeek := se.ID, se.PlanEntryID, se.CourseName, se.DayOfWeek
 		startWeek, endWeek, status, termName, teacherName, venueName := se.StartWeek, se.EndWeek, se.Status, se.TermName, se.TeacherName, se.VenueName
 		weekPattern, classNames := se.WeekPattern, se.ClassNames
 		if planEntryID == "" {
 			planEntryID = seID
 		}
-		_ = entryType
 
 		key := planKey{planEntryID, courseName, termName}
 		idx, ok := planIndex[key]

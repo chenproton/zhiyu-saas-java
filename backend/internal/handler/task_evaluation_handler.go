@@ -163,11 +163,6 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 	respondJSON(w, http.StatusOK, TaskEvaluationMethodListResponse{Methods: configs})
 }
 
-type RubricTemplateListResponse struct {
-	Items []domain.RubricTemplate `json:"items"`
-	Total int                     `json:"total"`
-}
-
 type RubricTemplateInput struct {
 	Name        string         `json:"name"`
 	Mode        string         `json:"mode"`
@@ -203,7 +198,7 @@ func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Req
 		respondServerError(w, r, err, "查询评分模板失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, RubricTemplateListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.RubricTemplate]{Items: items, Total: total})
 }
 
 func (h *TaskEvaluationHandler) GetTemplate(w http.ResponseWriter, r *http.Request) {

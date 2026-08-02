@@ -14,11 +14,6 @@ type AppealHandler struct {
 	Service *service.EvaluationService
 }
 
-type AppealListResponse struct {
-	Items []domain.AppealRecord `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type CreateAppealRequest struct {
 	UserID string `json:"userId"`
 	Type   string `json:"type"`
@@ -63,7 +58,7 @@ func (h *AppealHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询申诉失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, AppealListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AppealRecord]{Items: items, Total: total})
 }
 
 func (h *AppealHandler) Get(w http.ResponseWriter, r *http.Request) {

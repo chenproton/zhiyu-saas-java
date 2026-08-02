@@ -148,34 +148,7 @@ export const mockStudentInfo: StudentInfo = {
   gpa: '-',
 }
 
-export const mockAnnouncements: Announcement[] = []
-
-export const mockTodos: TodoItem[] = []
-
-export const mockCalendarEvents: CalendarEvent[] = []
-
-export const mockPositions: Position[] = []
-
-export const mockAbilityDimensions: AbilityDimension[] = []
-
-export const mockAbilityGaps: AbilityGap[] = []
-
-export const mockWeeklyActivity: { day: string; value: number }[] = []
-
-export const mockMonthlyTrend: { month: string; completed: number; score: number }[] = []
-
-export const mockArchiveItems: ArchiveItem[] = []
-
 export const mockTopics: Topic[] = []
-
-export const mockCertifications: { id: string; name: string; date: string; status: string }[] = []
-
-export const mockLearningPath: {
-  id: string
-  title: string
-  resources: string
-  duration: string
-}[] = []
 
 // ==================== 学生课程表数据（参考 zhiyu-registrar 数据结构）====================
 
@@ -207,8 +180,6 @@ export interface ScheduleEvent {
   status?: string
 }
 
-export const mockScheduleEvents: ScheduleEvent[] = []
-
 export const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 // ==================== 成绩查看 Mock 数据 ====================
@@ -239,12 +210,6 @@ export interface CompareItem {
   avg: number
 }
 
-export const mockGradeRecords: GradeRecord[] = []
-
-export const mockGradeTrend: GradeTrendItem[] = []
-
-export const mockCompareData: CompareItem[] = []
-
 // ==================== 学习档案 Mock 数据 ====================
 
 export interface StudyTimeItem {
@@ -266,12 +231,6 @@ export interface EvaluationItem {
   bgColor: string
   borderColor: string
 }
-
-export const mockStudyTime: StudyTimeItem[] = []
-
-export const mockActivityItems: ActivityItem[] = []
-
-export const mockEvaluations: EvaluationItem[] = []
 
 // ==================== 学生能力画像详情 Mock 数据 ====================
 
@@ -351,40 +310,3 @@ export interface GraduationDesignItem {
   status: string
   statusColor: string
 }
-
-export const mockPortraitStudentInfo: PortraitStudentInfo = {
-  name: '同学',
-  avatar: '?',
-  studentNo: '',
-  gender: '',
-  college: '',
-  major: '',
-  className: '',
-  grade: '',
-  rank: 0,
-  totalStudents: 0,
-  violation: '无',
-  physicalTest: '',
-  partyStatus: '',
-}
-
-export const mockPortraitHonors: HonorItem[] = []
-
-export const mockPortraitAcademicSummaries: PortraitAcademicSummary[] = []
-
-export const mockPortraitRadarData: Record<string, number[]> = {}
-
-export const mockPortraitJobTabs: Record<string, PortraitJobTab> = {}
-
-export const mockPortraitRecommendedJobs: RecommendedJob[] = []
-
-export const mockPortraitRecommendedCompanies: {
-  name: string
-  match: number
-  matchColor?: string
-  positions: string[]
-}[] = []
-
-export const mockPortraitCourseScores: CourseScoreItem[] = []
-
-export const mockPortraitGraduationDesigns: GraduationDesignItem[] = []

@@ -48,7 +48,7 @@ func allianceList[T any](w http.ResponseWriter, r *http.Request, db store.ListQu
 		respondServerError(w, r, err, errMsg)
 		return
 	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[T]{Items: items, Total: total})
 }
 
 // allianceGet 统一 "claims 检查 → requireTenant → GetByID → 404/响应" 的详情流程。
@@ -166,7 +166,7 @@ func alliancePublicList[T any](w http.ResponseWriter, r *http.Request, listFn fu
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[T]{Items: items, Total: len(items)})
 }
 
 // alliancePublicGet 统一匿名公开详情：store 查询 → 404/响应。

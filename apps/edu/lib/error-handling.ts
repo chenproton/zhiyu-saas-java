@@ -31,10 +31,3 @@ export function reportError(err: unknown, context: string | ErrorContext): void 
   }
 }
 
-/** 用于 async/await 的 catch 块：记录错误并返回 fallback。 */
-export function withFallback<T>(context: string | ErrorContext, fallback: T): (err: unknown) => T {
-  return (err: unknown) => {
-    reportError(err, context)
-    return fallback
-  }
-}

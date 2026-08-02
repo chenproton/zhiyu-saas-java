@@ -15,11 +15,6 @@ type CourseNodeHandler struct {
 	Service *service.LessonContentService
 }
 
-type CourseNodeListResponse struct {
-	Items []SystemCourseNodeResponse `json:"items"`
-	Total int                        `json:"total"`
-}
-
 type SystemCourseNodeResponse struct {
 	ID                  string                           `json:"id"`
 	CourseID            string                           `json:"courseId"`
@@ -134,7 +129,7 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "丰富课程节点失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, CourseNodeListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[SystemCourseNodeResponse]{Items: items, Total: total})
 }
 
 func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {

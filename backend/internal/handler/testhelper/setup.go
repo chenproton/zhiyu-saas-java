@@ -109,7 +109,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/auth/me", authHandler.Me)
 
 			statsHandler := &handler.StatsHandler{}
-			r.Get("/stats/dashboard", statsHandler.Dashboard)
 			r.Get("/stats/me", statsHandler.MyStats)
 
 			tenantHandler := &handler.TenantHandler{Service: service.NewTenantService(svc2), AdminService: service.NewTenantAdminService(svc2)}

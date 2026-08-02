@@ -15,7 +15,7 @@ const WEEK_PATTERN_SUFFIX: Record<string, string> = {
 }
 
 /** 按周次过滤：startWeek <= week <= endWeek 且周次模式匹配 */
-export function filterEntriesByWeek(entries: ScheduleEntry[], week?: number): ScheduleEntry[] {
+function filterEntriesByWeek(entries: ScheduleEntry[], week?: number): ScheduleEntry[] {
   if (!week) return entries
   return entries.filter((e) => {
     if (e.startWeek > week || e.endWeek < week) return false

@@ -18,11 +18,6 @@ type MicroCertHandler struct {
 	Store   *store.MicroCertStore
 }
 
-type MicroCertTemplateListResponse struct {
-	Items []domain.MicroCertTemplate `json:"items"`
-	Total int                        `json:"total"`
-}
-
 type CreateMicroCertTemplateRequest struct {
 	Title        string  `json:"title"`
 	CertTypeID   string  `json:"certTypeId"`
@@ -34,11 +29,6 @@ type CreateMicroCertTemplateRequest struct {
 type IssueCertsRequest struct {
 	TemplateID string   `json:"templateId"`
 	UserIDs    []string `json:"userIds"`
-}
-
-type CertIssuanceListResponse struct {
-	Items []domain.CertIssuanceRecord `json:"items"`
-	Total int                         `json:"total"`
 }
 
 func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +54,7 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 		respondServerError(w, r, err, "查询微证书模板列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, MicroCertTemplateListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.MicroCertTemplate]{Items: items, Total: total})
 }
 
 func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +79,7 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询证书发放记录列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, CertIssuanceListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.CertIssuanceRecord]{Items: items, Total: total})
 }
 
 func normalizeCertTypeID(id string) string {

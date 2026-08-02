@@ -17,11 +17,6 @@ type CertificateLibraryHandler struct {
 	Store   *store.CertificateLibraryStore
 }
 
-type CertificateLibraryListResponse struct {
-	Items []domain.CertificateLibraryItem `json:"items"`
-	Total int                             `json:"total"`
-}
-
 type CreateCertificateLibraryRequest struct {
 	Name        string  `json:"name"`
 	URL         *string `json:"url"`
@@ -61,7 +56,7 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, CertificateLibraryListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.CertificateLibraryItem]{Items: items, Total: total})
 }
 
 func (h *CertificateLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {

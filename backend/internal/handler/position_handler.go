@@ -17,11 +17,6 @@ type PositionHandler struct {
 	RedisClient *redis.Client
 }
 
-type PositionListResponse struct {
-	Items []domain.CareerPosition `json:"items"`
-	Total int                     `json:"total"`
-}
-
 type CreatePositionRequest struct {
 	BatchID       *string  `json:"batchId"`
 	Name          string   `json:"name"`
@@ -62,7 +57,7 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询岗位失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.CareerPosition]{Items: items, Total: total})
 }
 
 func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +90,7 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询岗位失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.CareerPosition]{Items: items, Total: total})
 }
 
 func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
@@ -515,7 +510,7 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 		respondServerError(w, r, err, "查询收藏岗位失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.CareerPosition]{Items: items, Total: total})
 }
 
 func strPtr(s string) *string {

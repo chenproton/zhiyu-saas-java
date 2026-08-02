@@ -43,11 +43,6 @@ type JobAbilityResultItem struct {
 	EvaluatedAt           time.Time        `json:"evaluationTime"`
 }
 
-type JobAbilityResultListResponse struct {
-	Items []JobAbilityResultItem `json:"items"`
-	Total int                    `json:"total"`
-}
-
 type JobAbilitySummaryItem struct {
 	PositionID   string  `json:"positionId"`
 	PositionName string  `json:"positionName"`
@@ -120,7 +115,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 			AchievementRate: r2.AchievementRate, Grade: r2.Grade, EvaluatedAt: r2.EvaluatedAt,
 		})
 	}
-	respondJSON(w, http.StatusOK, JobAbilityResultListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[JobAbilityResultItem]{Items: items, Total: total})
 }
 
 func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -214,7 +209,9 @@ func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Reque
 		}()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
-		_ = h.Agg.RunAggregate(ctx, logID, tenantID, req.CareerPositionID, req.UserIDs)
+		if err := h.Agg.RunAggregate(ctx, logID, tenantID, req.CareerPositionID, req.UserIDs); err != nil {
+			slog.Error("job ability aggregate failed", "logId", logID, "error", err)
+		}
 	}()
 	respondJSON(w, http.StatusAccepted, map[string]string{"logId": logID, "status": "running"})
 }

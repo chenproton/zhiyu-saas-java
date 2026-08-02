@@ -16,12 +16,6 @@ type RoleHandler struct {
 	Service *service.RoleService
 	Store   *store.RolesStore
 }
-
-type RoleListResponse struct {
-	Items []domain.Role `json:"items"`
-	Total int           `json:"total"`
-}
-
 type CreateRoleRequest struct {
 	TenantID    string         `json:"tenantId"`
 	Code        string         `json:"code"`
@@ -65,7 +59,7 @@ func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, RoleListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Role]{Items: items, Total: total})
 }
 
 func (h *RoleHandler) Get(w http.ResponseWriter, r *http.Request) {

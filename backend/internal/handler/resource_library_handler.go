@@ -13,12 +13,6 @@ import (
 type ResourceLibraryHandler struct {
 	Service *service.ResourceService
 }
-
-type ResourceLibraryListResponse struct {
-	Items []domain.ResourceLibraryItem `json:"items"`
-	Total int                          `json:"total"`
-}
-
 type CreateResourceLibraryRequest struct {
 	Name         string              `json:"name"`
 	ResourceType domain.ResourceType `json:"resourceType"`
@@ -69,7 +63,7 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询资源失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ResourceLibraryListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.ResourceLibraryItem]{Items: items, Total: total})
 }
 
 func (h *ResourceLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {

@@ -14,11 +14,6 @@ type HybridModuleHandler struct {
 	Service *service.PositionService
 }
 
-type HybridModuleListResponse struct {
-	Items []domain.HybridNodeModule `json:"items"`
-	Total int                       `json:"total"`
-}
-
 type UpsertHybridModuleRequest struct {
 	ID        string         `json:"id"`
 	NodeID    string         `json:"nodeId"`
@@ -56,7 +51,7 @@ func (h *HybridModuleHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询混合模块失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, HybridModuleListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.HybridNodeModule]{Items: items, Total: total})
 }
 
 func (h *HybridModuleHandler) UpsertModule(w http.ResponseWriter, r *http.Request) {

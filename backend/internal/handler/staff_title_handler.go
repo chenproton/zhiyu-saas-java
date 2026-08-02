@@ -18,12 +18,6 @@ type StaffTitleHandler struct {
 	Service *service.StaffTitleService
 	Store   *store.StaffTitlesStore
 }
-
-type StaffTitleListResponse struct {
-	Items []domain.StaffTitle `json:"items"`
-	Total int                 `json:"total"`
-}
-
 type CreateStaffTitleRequest struct {
 	TenantID    string  `json:"tenantId"`
 	Code        string  `json:"code"`
@@ -75,7 +69,7 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	respondJSON(w, http.StatusOK, StaffTitleListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.StaffTitle]{Items: items, Total: total})
 }
 
 func (h *StaffTitleHandler) Get(w http.ResponseWriter, r *http.Request) {

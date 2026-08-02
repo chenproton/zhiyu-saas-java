@@ -13,12 +13,6 @@ import (
 type ResourceCodeHandler struct {
 	Service *service.PositionService
 }
-
-type ResourceCodeListResponse struct {
-	Items []domain.ResourceCode `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type CreateResourceCodeRequest struct {
 	TenantID    string  `json:"tenantId"`
 	Code        string  `json:"code"`
@@ -61,7 +55,7 @@ func (h *ResourceCodeHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询资源编码失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ResourceCodeListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.ResourceCode]{Items: items, Total: total})
 }
 
 func (h *ResourceCodeHandler) Get(w http.ResponseWriter, r *http.Request) {

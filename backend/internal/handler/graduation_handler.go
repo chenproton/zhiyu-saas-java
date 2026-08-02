@@ -15,11 +15,6 @@ type GraduationHandler struct {
 	Service *service.EvaluationService
 }
 
-type GraduationTopicListResponse struct {
-	Items []domain.GraduationProjectTopic `json:"items"`
-	Total int                             `json:"total"`
-}
-
 type CreateGraduationTopicRequest struct {
 	Name               string  `json:"name"`
 	CareerPositionID   string  `json:"careerPositionId"`
@@ -33,20 +28,10 @@ type CreateGraduationTopicRequest struct {
 	Description        *string `json:"description"`
 }
 
-type GraduationArchiveListResponse struct {
-	Items []domain.GraduationProjectArchive `json:"items"`
-	Total int                               `json:"total"`
-}
-
 type CreateGraduationArchiveRequest struct {
 	TopicID string `json:"topicId"`
 	UserID  string `json:"userId"`
 	Phase   string `json:"phase"`
-}
-
-type GraduationEvaluationListResponse struct {
-	Items []domain.GraduationProjectEvaluation `json:"items"`
-	Total int                                  `json:"total"`
 }
 
 type CreateGraduationEvaluationRequest struct {
@@ -57,11 +42,6 @@ type CreateGraduationEvaluationRequest struct {
 	DefenseScore       *float64 `json:"defenseScore"`
 	ComprehensiveGrade *string  `json:"comprehensiveGrade"`
 	IsExcellent        bool     `json:"isExcellent"`
-}
-
-type GraduationQueryListResponse struct {
-	Items []domain.GraduationQueryResult `json:"items"`
-	Total int                            `json:"total"`
 }
 
 func (h *GraduationHandler) ListTopics(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +72,7 @@ func (h *GraduationHandler) ListTopics(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询毕业设计课题失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, GraduationTopicListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.GraduationProjectTopic]{Items: items, Total: total})
 }
 
 func (h *GraduationHandler) GetTopic(w http.ResponseWriter, r *http.Request) {
@@ -305,7 +285,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 		respondServerError(w, r, err, "查询毕业档案失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, GraduationArchiveListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.GraduationProjectArchive]{Items: items, Total: total})
 }
 
 func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Request) {
@@ -364,7 +344,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "查询毕业评价失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, GraduationEvaluationListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.GraduationProjectEvaluation]{Items: items, Total: total})
 }
 
 func (h *GraduationHandler) QueryResults(w http.ResponseWriter, r *http.Request) {
@@ -386,5 +366,5 @@ func (h *GraduationHandler) QueryResults(w http.ResponseWriter, r *http.Request)
 		respondServerError(w, r, err, "查询毕业查询结果失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, GraduationQueryListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.GraduationQueryResult]{Items: items, Total: total})
 }

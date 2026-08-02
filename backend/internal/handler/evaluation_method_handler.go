@@ -14,16 +14,6 @@ type EvaluationMethodHandler struct {
 	Service *service.EvaluationService
 }
 
-type EvaluationMethodCategoryListResponse struct {
-	Items []domain.EvaluationMethodCategory `json:"items"`
-	Total int                               `json:"total"`
-}
-
-type EvaluationMethodListResponse struct {
-	Items []domain.EvaluationMethod `json:"items"`
-	Total int                       `json:"total"`
-}
-
 type ToggleMethodRequest struct {
 	Enabled bool `json:"enabled"`
 }
@@ -39,7 +29,7 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 		respondServerError(w, r, err, "查询分类失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, EvaluationMethodCategoryListResponse{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.EvaluationMethodCategory]{Items: items, Total: len(items)})
 }
 
 func (h *EvaluationMethodHandler) ListMethods(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +61,7 @@ func (h *EvaluationMethodHandler) ListMethods(w http.ResponseWriter, r *http.Req
 		respondServerError(w, r, err, "查询测评方式失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, EvaluationMethodListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.EvaluationMethod]{Items: items, Total: total})
 }
 
 func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request) {

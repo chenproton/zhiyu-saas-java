@@ -152,7 +152,7 @@ export const periodSlotApi = {
 // ==================== 排课 ====================
 
 /** 排课冲突错误（HTTP 409），conflicts 携带教师/班级/场地冲突明细 */
-export class ScheduleConflictError extends Error {
+class ScheduleConflictError extends Error {
   conflicts: ScheduleConflict[]
   constructor(message: string, conflicts: ScheduleConflict[]) {
     super(message)

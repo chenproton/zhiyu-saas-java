@@ -13,12 +13,6 @@ import (
 type TeachingPlanHandler struct {
 	Service *service.PositionService
 }
-
-type TeachingPlanListResponse struct {
-	Items []domain.TeachingPlan `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type TeachingPlanDetailResponse struct {
 	TeachingPlan domain.TeachingPlan        `json:"plan"`
 	Entries      []domain.TeachingPlanEntry `json:"entries"`
@@ -61,7 +55,7 @@ func (h *TeachingPlanHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询教学计划失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, TeachingPlanListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.TeachingPlan]{Items: items, Total: total})
 }
 
 func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
@@ -227,8 +221,12 @@ func (h *TeachingPlanHandler) UpdateEntry(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "更新计划条目失败")
 		return
 	}
-	entry, _ = h.Service.GetTeachingPlanEntry(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusOK, entry)
+	updatedEntry, err := h.Service.GetTeachingPlanEntry(r.Context(), id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "更新后查询计划条目失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, updatedEntry)
 }
 
 func (h *TeachingPlanHandler) DeleteEntry(w http.ResponseWriter, r *http.Request) {

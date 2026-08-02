@@ -14,12 +14,6 @@ import (
 type TaskResourceHandler struct {
 	Service *service.ResourceBindingService
 }
-
-type TaskResourceListResponse struct {
-	Items []domain.TaskResource `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type CreateTaskResourceRequest struct {
 	Name              string         `json:"name"`
 	Type              string         `json:"type"`
@@ -92,7 +86,7 @@ func (h *TaskResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 	for i := range rows {
 		items = append(items, toTaskResource(&rows[i]))
 	}
-	respondJSON(w, http.StatusOK, TaskResourceListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.TaskResource]{Items: items, Total: total})
 }
 
 func (h *TaskResourceHandler) Create(w http.ResponseWriter, r *http.Request) {

@@ -51,64 +51,64 @@ import {
 
 // ==================== Date parsing helpers ====================
 
-export const parseDate = (v: string | Date | undefined): Date => (v ? new Date(v) : new Date())
-export const parseOptDate = (v: string | Date | undefined): Date | undefined =>
+const parseDate = (v: string | Date | undefined): Date => (v ? new Date(v) : new Date())
+const parseOptDate = (v: string | Date | undefined): Date | undefined =>
   v ? new Date(v) : undefined
 
-export const parseQuestionBank = (bank: QuestionBank): QuestionBank => ({
+const parseQuestionBank = (bank: QuestionBank): QuestionBank => ({
   ...bank,
   createdAt: parseDate(bank.createdAt as unknown as string | Date),
   updatedAt: parseDate(bank.updatedAt as unknown as string | Date),
 })
 
-export const parseQuestion = (q: Question): Question => ({
+const parseQuestion = (q: Question): Question => ({
   ...q,
   createdAt: parseDate(q.createdAt as unknown as string | Date),
 })
 
-export const parseExam = (exam: Exam): Exam => ({
+const parseExam = (exam: Exam): Exam => ({
   ...exam,
   questions: exam.questions || [],
   createdAt: parseDate(exam.createdAt as unknown as string | Date),
   updatedAt: parseDate(exam.updatedAt as unknown as string | Date),
 })
 
-export const parseSceneResult = (r: SceneEvaluationResult): SceneEvaluationResult => ({
+const parseSceneResult = (r: SceneEvaluationResult): SceneEvaluationResult => ({
   ...r,
   gradedAt: parseOptDate(r.gradedAt as unknown as string | Date),
   createdAt: parseOptDate(r.createdAt as unknown as string | Date),
   updatedAt: parseOptDate(r.updatedAt as unknown as string | Date),
 })
 
-export const parseTopic = (t: GraduationProjectTopic): GraduationProjectTopic => ({
+const parseTopic = (t: GraduationProjectTopic): GraduationProjectTopic => ({
   ...t,
   startDate: parseDate(t.startDate as unknown as string | Date),
   endDate: parseDate(t.endDate as unknown as string | Date),
   createdAt: parseDate(t.createdAt as unknown as string | Date),
 })
 
-export const parseArchive = (a: GraduationProjectArchive): GraduationProjectArchive => ({
+const parseArchive = (a: GraduationProjectArchive): GraduationProjectArchive => ({
   ...a,
   lastUpdated: parseDate(a.lastUpdated as unknown as string | Date),
 })
 
-export const parseEvaluation = (e: GraduationProjectEvaluation): GraduationProjectEvaluation => ({
+const parseEvaluation = (e: GraduationProjectEvaluation): GraduationProjectEvaluation => ({
   ...e,
   evaluationTime: parseDate(e.evaluationTime as unknown as string | Date),
 })
 
-export const parseStudentArchive = (a: StudentAbilityArchive): StudentAbilityArchive => ({
+const parseStudentArchive = (a: StudentAbilityArchive): StudentAbilityArchive => ({
   ...a,
   obtainDate: parseDate(a.obtainDate as unknown as string | Date),
   createdAt: parseDate(a.createdAt as unknown as string | Date),
 })
 
-export const parsePortrait = (p: StudentAbilityPortrait): StudentAbilityPortrait => ({
+const parsePortrait = (p: StudentAbilityPortrait): StudentAbilityPortrait => ({
   ...p,
   updatedAt: parseDate(p.updatedAt as unknown as string | Date),
 })
 
-export const parseCertRecord = (r: CertIssuanceRecord): CertIssuanceRecord => ({
+const parseCertRecord = (r: CertIssuanceRecord): CertIssuanceRecord => ({
   ...r,
   issueDate: parseDate(r.issueDate as unknown as string | Date),
   expireDate: parseOptDate(r.expireDate as unknown as string | Date | undefined),
@@ -117,7 +117,7 @@ export const parseCertRecord = (r: CertIssuanceRecord): CertIssuanceRecord => ({
 
 // ==================== Approval helpers ====================
 
-export const APPROVAL_TYPE_MAP: Record<string, ApprovalItem['type']> = {
+const APPROVAL_TYPE_MAP: Record<string, ApprovalItem['type']> = {
   question: 'question',
   question_bank: 'questionBank',
   questionBank: 'questionBank',
@@ -126,7 +126,7 @@ export const APPROVAL_TYPE_MAP: Record<string, ApprovalItem['type']> = {
   onlineExam: 'onlineExam',
 }
 
-export const mapApprovalRecord = (record: ApprovalRecord): ApprovalItem => {
+const mapApprovalRecord = (record: ApprovalRecord): ApprovalItem => {
   const type = APPROVAL_TYPE_MAP[record.targetType] || 'question'
   const lastHistory = record.history?.[record.history.length - 1]
   return {

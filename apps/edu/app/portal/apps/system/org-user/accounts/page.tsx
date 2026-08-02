@@ -31,6 +31,7 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { ResetPasswordDialog } from '@/components/shared/reset-password-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { PaginationBar } from '@/components/shared/pagination-bar'
 import {
   Search,
   Trash2,
@@ -39,8 +40,6 @@ import {
   RotateCcw,
   Check,
   X,
-  ChevronLeft,
-  ChevronRight,
   Users,
   KeyRound,
   Power,
@@ -367,27 +366,7 @@ export default function AccountsPage() {
       {total > 0 && (
         <div className="mt-4 flex items-center justify-between">
           <span className="text-sm text-muted-foreground">共 {total} 条记录</span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
 

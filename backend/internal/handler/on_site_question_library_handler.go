@@ -17,11 +17,6 @@ type OnSiteQuestionLibraryHandler struct {
 	Store   *store.OnSiteQuestionLibraryStore
 }
 
-type OnSiteQuestionLibraryListResponse struct {
-	Items []domain.OnSiteQuestionLibraryItem `json:"items"`
-	Total int                                `json:"total"`
-}
-
 type CreateOnSiteQuestionLibraryRequest struct {
 	QuestionText      string   `json:"questionText"`
 	Answer            *string  `json:"answer"`
@@ -59,7 +54,7 @@ func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "查询现场题库列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, OnSiteQuestionLibraryListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.OnSiteQuestionLibraryItem]{Items: items, Total: total})
 }
 
 func (h *OnSiteQuestionLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {

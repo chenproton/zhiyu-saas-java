@@ -13,12 +13,6 @@ import (
 type PositionResponsibilityHandler struct {
 	Service *service.PositionConfigService
 }
-
-type PositionResponsibilityListResponse struct {
-	Items []domain.PositionResponsibility `json:"items"`
-	Total int                             `json:"total"`
-}
-
 type CreatePositionResponsibilityRequest struct {
 	CareerPositionID string  `json:"careerPositionId"`
 	Name             string  `json:"name"`
@@ -51,7 +45,7 @@ func (h *PositionResponsibilityHandler) List(w http.ResponseWriter, r *http.Requ
 		respondServerError(w, r, err, "查询岗位职责失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, PositionResponsibilityListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.PositionResponsibility]{Items: items, Total: total})
 }
 
 func (h *PositionResponsibilityHandler) Get(w http.ResponseWriter, r *http.Request) {

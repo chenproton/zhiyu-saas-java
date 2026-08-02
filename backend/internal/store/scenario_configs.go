@@ -116,11 +116,6 @@ func (s *ScenarioGradeStore) Upsert(ctx context.Context, tenantID string, p *Sce
 }
 
 // Delete 删除等级映射。
-func (s *ScenarioGradeStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM scenario_grade_mappings WHERE id = $1`, id)
-	return err
-}
-
 // ScenarioGradeUpsertParams 等级映射 upsert 参数。
 type ScenarioGradeUpsertParams struct {
 	ID          string

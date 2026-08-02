@@ -14,11 +14,6 @@ type PositionAbilityHandler struct {
 	Service *service.PositionConfigService
 }
 
-type PositionAbilityListResponse struct {
-	Items []domain.PositionAbilityBinding `json:"items"`
-	Total int                             `json:"total"`
-}
-
 type CreatePositionAbilityRequest struct {
 	CareerPositionID  string   `json:"careerPositionId"`
 	ResponsibilityID  string   `json:"responsibilityId"`
@@ -63,7 +58,7 @@ func (h *PositionAbilityHandler) ListBindings(w http.ResponseWriter, r *http.Req
 		respondServerError(w, r, err, "查询绑定失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, PositionAbilityListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.PositionAbilityBinding]{Items: items, Total: total})
 }
 
 func (h *PositionAbilityHandler) CreateBinding(w http.ResponseWriter, r *http.Request) {

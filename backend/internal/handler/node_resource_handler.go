@@ -14,11 +14,6 @@ type NodeResourceHandler struct {
 	Service *service.ResourceBindingService
 }
 
-type NodeResourceListResponse struct {
-	Items []domain.NodeResource `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type CreateNodeResourceRequest struct {
 	NodeID      string  `json:"nodeId"`
 	Name        string  `json:"name"`
@@ -81,7 +76,7 @@ func (h *NodeResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 		res.UploadedAt = row.UploadedAt
 		items = append(items, res)
 	}
-	respondJSON(w, http.StatusOK, NodeResourceListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.NodeResource]{Items: items, Total: total})
 }
 
 func (h *NodeResourceHandler) Create(w http.ResponseWriter, r *http.Request) {

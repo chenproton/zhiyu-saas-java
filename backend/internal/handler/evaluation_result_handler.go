@@ -15,11 +15,6 @@ type EvaluationResultHandler struct {
 	Service *service.EvaluationService
 }
 
-type EvaluationResultListResponse struct {
-	Items []domain.SceneEvaluationResult `json:"items"`
-	Total int                            `json:"total"`
-}
-
 type SubmitResultRequest struct {
 	TaskID            string          `json:"taskId"`
 	SceneID           *string         `json:"sceneId,omitempty"`
@@ -98,7 +93,7 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询评价结果失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, EvaluationResultListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.SceneEvaluationResult]{Items: items, Total: total})
 }
 
 func (h *EvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request) {

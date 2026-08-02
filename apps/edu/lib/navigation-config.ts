@@ -590,33 +590,6 @@ export const systemNavigationConfig: PlatformNavigationConfig = {
 }
 
 /* ============================================================
-   Portal 导航（门户首页 / 应用中心 / 服务台）
-   ============================================================ */
-export const portalNavigationConfig: PlatformNavigationConfig = {
-  brandTitle: '场景化数智教学服务体系',
-  currentPlatformId: 'portal',
-  currentPlatformLabel: '统一门户',
-  brandHref: '/portal',
-  brandIcon: 'home',
-  platformIcon: 'home',
-  sideBackHref: '/portal',
-  currentUserName: '用户',
-  currentUserRoleLabel: '平台用户',
-  showCurrentTime: true,
-  showUserMenu: true,
-  userMenuItems: [
-    { id: 'workspace', label: '我的服务台', href: '/portal/workspace', icon: 'briefcase' },
-    { id: 'apps', label: '应用中心', href: '/portal/apps', icon: 'layoutGrid' },
-    { id: 'logout', label: '退出登录', tone: 'danger' },
-  ],
-  sideNavItems: systemNavigationConfig.sideNavItems,
-  defaultExpandedSideNavIds: systemNavigationConfig.defaultExpandedSideNavIds,
-  platformSwitchItems: [],
-  shellClassName: 'bg-background',
-  mainClassName: 'min-w-0 flex-1',
-}
-
-/* ============================================================
    Library 模块导航（资源共享平台）
    ============================================================ */
 export const libraryNavigationConfig: PlatformNavigationConfig = {

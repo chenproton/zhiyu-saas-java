@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -209,8 +208,6 @@ func ScanAbilityDomainRows(rows pgx.Rows) ([]domain.AbilityDomain, error) {
 	}
 	return items, nil
 }
-
-var _ = time.Now
 
 // ===== 轮播图 =====
 

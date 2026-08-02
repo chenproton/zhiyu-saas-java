@@ -17,11 +17,6 @@ type LearnRoadHandler struct {
 	Store   *store.LearnRoadsStore
 }
 
-type LearnRoadListResponse struct {
-	Items []domain.LearnRoad `json:"items"`
-	Total int                `json:"total"`
-}
-
 type CreateLearnRoadRequest struct {
 	Name        string           `json:"name"`
 	Description *string          `json:"description"`
@@ -66,7 +61,7 @@ func (h *LearnRoadHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, LearnRoadListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.LearnRoad]{Items: items, Total: total})
 }
 
 func (h *LearnRoadHandler) Get(w http.ResponseWriter, r *http.Request) {

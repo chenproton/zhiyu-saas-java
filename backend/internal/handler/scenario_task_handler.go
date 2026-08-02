@@ -13,12 +13,6 @@ import (
 type ScenarioTaskHandler struct {
 	Service *service.ScenarioService
 }
-
-type ScenarioTaskListResponse struct {
-	Items []domain.ScenarioTask `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type CreateScenarioTaskRequest struct {
 	ScenarioID          string         `json:"scenarioId"`
 	Name                string         `json:"name"`
@@ -73,7 +67,7 @@ func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询任务失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ScenarioTaskListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.ScenarioTask]{Items: items, Total: total})
 }
 
 func (h *ScenarioTaskHandler) Get(w http.ResponseWriter, r *http.Request) {

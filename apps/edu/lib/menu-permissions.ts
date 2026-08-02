@@ -310,7 +310,3 @@ export const permissionModuleConfig: PermissionModule[] = [
     ],
   },
 ]
-
-export function getPermissionModuleConfigForRole(): PermissionModule[] {
-  return permissionModuleConfig
-}

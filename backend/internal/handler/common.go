@@ -97,6 +97,12 @@ func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
+// ListResponse 通用列表响应（{items, total}），替代各 handler 重复的 XxxListResponse。
+type ListResponse[T any] struct {
+	Items []T `json:"items"`
+	Total int `json:"total"`
+}
+
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
 }

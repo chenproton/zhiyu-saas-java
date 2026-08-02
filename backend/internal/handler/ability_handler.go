@@ -14,11 +14,6 @@ type AbilityHandler struct {
 	Service *service.PositionService
 }
 
-type AbilityListResponse struct {
-	Items []domain.AbilityPoint `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type CreateAbilityRequest struct {
 	Name        string   `json:"name"`
 	Description *string  `json:"description"`
@@ -69,7 +64,7 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, AbilityListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AbilityPoint]{Items: items, Total: total})
 }
 
 func (h *AbilityHandler) Get(w http.ResponseWriter, r *http.Request) {

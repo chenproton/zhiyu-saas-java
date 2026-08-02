@@ -14,11 +14,6 @@ type ExamUsageHandler struct {
 	Service *service.EvaluationService
 }
 
-type ExamUsageListResponse struct {
-	Items []domain.ExamUsage `json:"items"`
-	Total int                `json:"total"`
-}
-
 type CreateExamUsageRequest struct {
 	ExamID      string   `json:"examId"`
 	Name        string   `json:"name"`
@@ -64,7 +59,7 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询考试安排列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ExamUsageListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.ExamUsage]{Items: items, Total: total})
 }
 
 func (h *ExamUsageHandler) Get(w http.ResponseWriter, r *http.Request) {

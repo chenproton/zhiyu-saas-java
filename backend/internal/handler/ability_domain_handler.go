@@ -14,11 +14,6 @@ type AbilityDomainHandler struct {
 	Service *service.PositionService
 }
 
-type AbilityDomainListResponse struct {
-	Items []domain.AbilityDomain `json:"items"`
-	Total int                    `json:"total"`
-}
-
 type CreateAbilityDomainRequest struct {
 	CareerPositionID string   `json:"careerPositionId"`
 	Name             string   `json:"name"`
@@ -63,7 +58,7 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询能力域失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, AbilityDomainListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AbilityDomain]{Items: items, Total: total})
 }
 
 func (h *AbilityDomainHandler) Create(w http.ResponseWriter, r *http.Request) {

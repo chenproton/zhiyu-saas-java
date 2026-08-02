@@ -1473,7 +1473,7 @@ export default function GradingDetailPage() {
       </div>
 
       {/* 底部操作栏 - 始终固定在视口底部 */}
-      <div className="fixed bottom-0 left-56 right-0 bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-3 z-50">
+      <div className="fixed bottom-0 left-0 right-0 lg:left-56 bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-3 z-50">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
             <span className="text-sm text-gray-500">最终得分</span>

@@ -19,11 +19,6 @@ type CourseHandler struct {
 	Service *service.LessonContentService
 }
 
-type CourseListResponse struct {
-	Items []domain.Course `json:"items"`
-	Total int             `json:"total"`
-}
-
 type CreateCourseRequest struct {
 	Code              string           `json:"code"`
 	Name              string           `json:"name"`
@@ -127,7 +122,7 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, CourseListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Course]{Items: items, Total: total})
 }
 
 func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {

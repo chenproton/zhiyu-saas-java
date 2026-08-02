@@ -15,11 +15,6 @@ type OrgHandler struct {
 	Service *service.OrgService
 }
 
-type OrgListResponse struct {
-	Items []domain.Organization `json:"items"`
-	Total int                   `json:"total"`
-}
-
 type OrgTreeResponse struct {
 	Items []OrgTreeNode `json:"items"`
 }
@@ -75,7 +70,7 @@ func (h *OrgHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询组织失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, OrgListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Organization]{Items: items, Total: total})
 }
 
 func (h *OrgHandler) Tree(w http.ResponseWriter, r *http.Request) {

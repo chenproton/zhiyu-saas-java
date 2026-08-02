@@ -13,12 +13,6 @@ import (
 type WorkflowHandler struct {
 	Service *service.PositionService
 }
-
-type WorkflowListResponse struct {
-	Items []domain.Workflow `json:"items"`
-	Total int               `json:"total"`
-}
-
 type CreateWorkflowRequest struct {
 	Name        string             `json:"name"`
 	Scene       *string            `json:"scene"`
@@ -59,7 +53,7 @@ func (h *WorkflowHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询审批流程失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, WorkflowListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Workflow]{Items: items, Total: total})
 }
 
 func (h *WorkflowHandler) Get(w http.ResponseWriter, r *http.Request) {

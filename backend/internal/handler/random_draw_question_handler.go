@@ -13,12 +13,6 @@ import (
 type RandomDrawQuestionHandler struct {
 	Service *service.EvaluationService
 }
-
-type RandomDrawQuestionListResponse struct {
-	Items []domain.RandomDrawQuestion `json:"items"`
-	Total int                         `json:"total"`
-}
-
 type CreateRandomDrawQuestionRequest struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
@@ -64,7 +58,7 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 		respondServerError(w, r, err, "查询随机抽题失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, RandomDrawQuestionListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.RandomDrawQuestion]{Items: items, Total: total})
 }
 
 func (h *RandomDrawQuestionHandler) Get(w http.ResponseWriter, r *http.Request) {

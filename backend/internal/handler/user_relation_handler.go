@@ -12,12 +12,6 @@ import (
 type UserRelationHandler struct {
 	Service *service.UserRelationService
 }
-
-type UserRelationListResponse struct {
-	Items []store.UserRelationItem `json:"items"`
-	Total int                      `json:"total"`
-}
-
 type CreateUserRelationRequest struct {
 	InitiatorID  string `json:"initiatorId"`
 	TargetID     string `json:"targetId"`
@@ -51,7 +45,7 @@ func (h *UserRelationHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询用户关系失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, UserRelationListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[store.UserRelationItem]{Items: items, Total: total})
 }
 
 func (h *UserRelationHandler) Create(w http.ResponseWriter, r *http.Request) {

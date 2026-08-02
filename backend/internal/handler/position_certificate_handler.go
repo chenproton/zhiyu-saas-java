@@ -14,11 +14,6 @@ type PositionCertificateHandler struct {
 	Service *service.PositionConfigService
 }
 
-type PositionCertificateListResponse struct {
-	Items []domain.PositionCertificate `json:"items"`
-	Total int                          `json:"total"`
-}
-
 type CreatePositionCertificateRequest struct {
 	CareerPositionID string  `json:"careerPositionId"`
 	Name             string  `json:"name"`
@@ -55,7 +50,7 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "查询证书失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, PositionCertificateListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.PositionCertificate]{Items: items, Total: total})
 }
 
 func (h *PositionCertificateHandler) Get(w http.ResponseWriter, r *http.Request) {

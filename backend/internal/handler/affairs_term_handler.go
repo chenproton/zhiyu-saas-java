@@ -14,11 +14,6 @@ type AffairsTermHandler struct {
 	Service *service.PositionService
 }
 
-type TermListResponse struct {
-	Items []domain.Term `json:"items"`
-	Total int           `json:"total"`
-}
-
 type TermRequest struct {
 	Name       string `json:"name"`
 	StartDate  string `json:"startDate"`
@@ -56,7 +51,7 @@ func (h *AffairsTermHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询学期列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, TermListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Term]{Items: items, Total: total})
 }
 
 func (h *AffairsTermHandler) Create(w http.ResponseWriter, r *http.Request) {

@@ -14,12 +14,6 @@ import (
 type QuestionHandler struct {
 	Service *service.EvaluationService
 }
-
-type QuestionListResponse struct {
-	Items []domain.Question `json:"items"`
-	Total int               `json:"total"`
-}
-
 type CreateQuestionRequest struct {
 	BankID          string           `json:"bankId"`
 	Type            string           `json:"type"`
@@ -73,7 +67,7 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询题目列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, QuestionListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Question]{Items: items, Total: total})
 }
 
 func (h *QuestionHandler) Get(w http.ResponseWriter, r *http.Request) {

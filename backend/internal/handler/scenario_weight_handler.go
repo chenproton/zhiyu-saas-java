@@ -14,12 +14,6 @@ import (
 type ScenarioWeightHandler struct {
 	Service *service.ScenarioConfigService
 }
-
-type ScenarioWeightListResponse struct {
-	Items []domain.ScenarioWeightConfig `json:"items"`
-	Total int                           `json:"total"`
-}
-
 type UpsertScenarioWeightRequest struct {
 	ID         string  `json:"id"`
 	ScenarioID string  `json:"scenarioId"`
@@ -61,7 +55,7 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "查询场景权重配置列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ScenarioWeightListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.ScenarioWeightConfig]{Items: items, Total: total})
 }
 
 func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Request) {

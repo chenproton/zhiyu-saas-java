@@ -16,7 +16,7 @@ const COURSE_TYPE_LABEL: Record<string, string> = {
   quiz: '测验',
 }
 
-export const GRAPH_TYPE_META: Record<
+const GRAPH_TYPE_META: Record<
   GraphNode['type'],
   { label: string; color: string; icon: React.ReactNode }
 > = {

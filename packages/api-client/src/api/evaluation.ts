@@ -24,7 +24,6 @@ import type {
   GraduationQueryResult,
   MicroCertTemplate,
   CertIssuanceRecord,
-  AppealRecord,
   EvaluationBatch,
   EvaluationMethodCategory,
   EvaluationMethod,
@@ -541,24 +540,6 @@ export const microCertApi = {
     request<ListResponse<CertIssuanceRecord>>(
       `/evaluation/certificates/history${buildQuery(params || {})}`,
     ),
-}
-
-export const appealApi = {
-  list: (params?: {
-    userId?: string
-    type?: string
-    status?: string
-    limit?: number
-    offset?: number
-  }) => request<ListResponse<AppealRecord>>(`/evaluation/appeals${buildQuery(params || {})}`),
-  get: (id: string) => request<AppealRecord>(`/evaluation/appeals/${id}`),
-  create: (req: Omit<AppealRecord, 'id' | 'status' | 'createdAt'>) =>
-    request<AppealRecord>('/evaluation/appeals', { method: 'POST', body: JSON.stringify(req) }),
-  process: (id: string, req: { status: string; remark?: string }) =>
-    request<AppealRecord>(`/evaluation/appeals/${id}/process`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
 }
 
 export const evaluationBatchApi = {

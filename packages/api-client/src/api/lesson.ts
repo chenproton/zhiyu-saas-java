@@ -2,12 +2,9 @@ import type {
   Course,
   KnowledgePoint,
   SystemCourseNode as BackendSystemCourseNode,
-  NodeQuiz,
   NodeHomework,
   NodeResource,
   LessonBatch,
-  LessonBehaviorRecord,
-  LessonBehaviorAggregate,
 } from '../types/lesson'
 import type { SystemCourseNode } from '../types/lesson-source'
 import { request, buildQuery, ListResponse } from '../api-helpers'
@@ -171,22 +168,6 @@ export const lessonBatchApi = {
       method: 'POST',
       body: JSON.stringify({ status }),
     }),
-}
-
-export const lessonBehaviorApi = {
-  aggregate: (params: { courseId: string; startDate?: string; endDate?: string }) =>
-    request<LessonBehaviorAggregate>(`/lesson/behavior-collection/aggregate${buildQuery(params)}`),
-  create: (req: Omit<LessonBehaviorRecord, 'id' | 'createdAt' | 'updatedAt'>) =>
-    request<LessonBehaviorRecord>('/lesson/behavior-collection/records', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-}
-
-export const nodeQuizApi = {
-  create: (req: Omit<NodeQuiz, 'id'>) =>
-    request<NodeQuiz>('/lesson/quizzes', { method: 'POST', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/lesson/quizzes/${id}`, { method: 'DELETE' }),
 }
 
 export interface NodeHomeworkSubmission {

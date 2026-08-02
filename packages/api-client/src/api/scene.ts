@@ -3,10 +3,6 @@ import type {
   ScenarioTask,
   TaskResource,
   TaskResourceBinding,
-  TaskKnowledgeBinding,
-  TaskAbilityBinding,
-  ScenarioWeightConfig,
-  ScenarioGradeMapping,
   SceneBatch,
   RubricTemplate,
   TaskEvaluationMethod,
@@ -73,23 +69,6 @@ export const taskResourceApi = {
     request<{ id: string }>(`/scene/task-resources/${id}`, { method: 'DELETE' }),
 }
 
-export const taskKnowledgeAbilityApi = {
-  bindKnowledge: (data: { taskId: string; knowledgePointId: string }) =>
-    request<TaskKnowledgeBinding>(`/scene/task-bindings/knowledge`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  unbindKnowledge: (id: string) =>
-    request<{ id: string }>(`/scene/task-bindings/knowledge/${id}`, { method: 'DELETE' }),
-  bindAbility: (data: { taskId: string; abilityPointId: string }) =>
-    request<TaskAbilityBinding>(`/scene/task-bindings/ability`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  unbindAbility: (id: string) =>
-    request<{ id: string }>(`/scene/task-bindings/ability/${id}`, { method: 'DELETE' }),
-}
-
 export const taskEvaluationApi = {
   listMethods: (taskId: string) =>
     request<{ methods: TaskEvaluationMethod[] }>(`/scene/tasks/${taskId}/evaluation-methods`),
@@ -131,37 +110,4 @@ export const taskEvaluationApi = {
     }),
   deleteTemplate: (id: string) =>
     request<{ id: string }>(`/scene/rubric-templates/${id}`, { method: 'DELETE' }),
-}
-
-export const scenarioWeightApi = {
-  listWeights: (params?: {
-    scenarioId?: string
-    taskId?: string
-    limit?: number
-    offset?: number
-  }) =>
-    request<{ items: ScenarioWeightConfig[]; total: number }>(
-      `/scene/weights${buildQuery(params || {})}`,
-    ),
-  upsertWeight: (data: Partial<ScenarioWeightConfig>) =>
-    request<ScenarioWeightConfig>(`/scene/weights`, { method: 'POST', body: JSON.stringify(data) }),
-}
-
-export const scenarioGradeApi = {
-  listGradeMappings: (params?: {
-    scenarioId?: string
-    taskId?: string
-    limit?: number
-    offset?: number
-  }) =>
-    request<{ items: ScenarioGradeMapping[]; total: number }>(
-      `/scene/grade-mappings${buildQuery(params || {})}`,
-    ),
-  upsertGradeMapping: (data: Partial<ScenarioGradeMapping>) =>
-    request<ScenarioGradeMapping>(`/scene/grade-mappings`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  deleteGradeMapping: (id: string) =>
-    request<{ id: string }>(`/scene/grade-mappings/${id}`, { method: 'DELETE' }),
 }

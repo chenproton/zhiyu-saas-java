@@ -15,21 +15,6 @@ type CertificationHandler struct {
 	Service *service.EvaluationService
 }
 
-type CertificationRuleListResponse struct {
-	Items []domain.CertificationRule `json:"items"`
-	Total int                        `json:"total"`
-}
-
-type CertificationItemListResponse struct {
-	Items []domain.CertificationAbilityItem `json:"items"`
-	Total int                               `json:"total"`
-}
-
-type CertificationPointListResponse struct {
-	Items []domain.CertificationAbilityPoint `json:"items"`
-	Total int                                `json:"total"`
-}
-
 type CreateCertificationRuleRequest struct {
 	CareerPositionID string `json:"careerPositionId"`
 	RuleSource       string `json:"ruleSource"`
@@ -125,7 +110,7 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 		respondServerError(w, r, err, "查询认证规则失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, CertificationRuleListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.CertificationRule]{Items: items, Total: total})
 }
 
 func (h *CertificationHandler) GetRule(w http.ResponseWriter, r *http.Request) {
@@ -286,7 +271,7 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 		respondServerError(w, r, err, "查询认证项失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, CertificationItemListResponse{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.CertificationAbilityItem]{Items: items, Total: len(items)})
 }
 
 func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Request) {
@@ -343,7 +328,7 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "查询认证点失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, CertificationPointListResponse{Items: points, Total: len(points)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.CertificationAbilityPoint]{Items: points, Total: len(points)})
 }
 
 func (h *CertificationHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {

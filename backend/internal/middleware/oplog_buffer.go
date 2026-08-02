@@ -62,6 +62,11 @@ func (b *OpLogBuffer) Shutdown() {
 
 func (b *OpLogBuffer) flushLoop() {
 	defer close(b.done)
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error("oplog flush loop panic", "panic", rec)
+		}
+	}()
 	ticker := time.NewTicker(oplogFlushInterval)
 	defer ticker.Stop()
 

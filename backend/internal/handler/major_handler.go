@@ -17,11 +17,6 @@ type MajorHandler struct {
 	Store   *store.MajorsStore
 }
 
-type MajorListResponse struct {
-	Items []domain.Major `json:"items"`
-	Total int            `json:"total"`
-}
-
 type CreateMajorRequest struct {
 	TenantID string  `json:"tenantId"`
 	Code     string  `json:"code"`
@@ -62,7 +57,7 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, MajorListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Major]{Items: items, Total: total})
 }
 
 func (h *MajorHandler) Get(w http.ResponseWriter, r *http.Request) {

@@ -16,12 +16,6 @@ type ScenarioHandler struct {
 	Service *service.ScenarioService
 	DB      *store.Store
 }
-
-type ScenarioListResponse struct {
-	Items []domain.Scenario `json:"items"`
-	Total int               `json:"total"`
-}
-
 type CreateScenarioRequest struct {
 	Name             string   `json:"name"`
 	Code             string   `json:"code"`
@@ -111,7 +105,7 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询场景方案失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ScenarioListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Scenario]{Items: items, Total: total})
 }
 
 func (h *ScenarioHandler) Get(w http.ResponseWriter, r *http.Request) {

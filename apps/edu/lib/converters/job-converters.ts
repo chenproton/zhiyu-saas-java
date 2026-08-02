@@ -2,8 +2,6 @@ import type {
   Batch,
   Position,
   PositionType,
-  Workflow,
-  ApprovalRecord,
   PositionRecommendation,
   Ability,
   PositionResponsibility,
@@ -20,27 +18,7 @@ import type {
   PositionAbilityBinding as ApiPositionAbilityBinding,
   AbilityDomain as ApiAbilityDomain,
 } from '@/lib/types/job'
-import type {
-  Workflow as ApiWorkflow,
-  ApprovalRecord as ApiApprovalRecord,
-} from '@/lib/types/backend'
 import type { AbilityPoint } from '@/lib/types/job'
-
-export function convertApiWorkflowToLocal(w: ApiWorkflow): Workflow {
-  return {
-    id: w.id,
-    name: w.name,
-    description: w.description ?? '',
-    steps: (w.steps || []).map((s, index) => ({
-      name: s.name || '',
-      order: index,
-      approverIds: s.approverIds || [],
-      approvalMode: s.approvalMode || 'any',
-    })),
-    majorIds: w.majorIds || [],
-    createdAt: w.createdAt,
-  }
-}
 
 export function convertCareerPositionToPosition(cp: CareerPosition): Position {
   return {
@@ -88,36 +66,6 @@ export function convertJobBatchToBatch(jb: JobBatch): Batch {
     pendingCount: jb.pendingCount || 0,
     createdAt: jb.createdAt,
     updatedAt: jb.updatedAt,
-  }
-}
-
-export function convertApiApprovalToLocal(
-  ar: ApiApprovalRecord,
-  positionMap: Map<string, CareerPosition>,
-): ApprovalRecord {
-  const position = positionMap.get(ar.targetId)
-  const history = (ar.history || []).map((h, idx) => ({
-    id: h.stepId || `hist-${ar.id}-${idx}`,
-    stepId: h.stepId || String(idx),
-    stepName: h.stepName || `第 ${idx + 1} 步`,
-    reviewerId: h.reviewerId || '',
-    reviewerName: h.reviewerName || h.reviewerId || '',
-    status: (h.status as ApprovalRecord['status']) || 'approved',
-    comment: h.comment || '',
-    createdAt: h.createdAt || ar.updatedAt,
-  }))
-  return {
-    id: ar.id,
-    positionId: ar.targetId,
-    positionName: position?.name || ar.targetId,
-    workflowId: ar.workflowId || '',
-    currentStepIndex: ar.currentStepIdx ?? 0,
-    status: ar.status,
-    submittedBy: ar.submitterId || '',
-    submittedByName: ar.submitterId || '',
-    history,
-    createdAt: ar.createdAt,
-    updatedAt: ar.updatedAt,
   }
 }
 
@@ -173,31 +121,6 @@ export function positionToCreateRequest(
   }
 }
 
-export function positionToUpdateRequest(
-  data: Partial<Position>,
-): Partial<Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'>> {
-  const req: Partial<Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'>> = {}
-  if (data.batchId !== undefined) req.batchId = data.batchId || undefined
-  if (data.name !== undefined) req.name = data.name
-  if (data.shortName !== undefined) req.shortName = data.shortName
-  if (data.industry !== undefined) req.industryId = data.industry || undefined
-  if (data.majors !== undefined) req.majorIds = data.majors
-  if (data.positionType !== undefined) req.positionType = data.positionType
-  if (data.salaryRange !== undefined) {
-    req.salaryMin = data.salaryRange[0]
-    req.salaryMax = data.salaryRange[1]
-  }
-  if (data.coverImage !== undefined) req.coverImage = data.coverImage
-  if (data.description !== undefined) req.description = data.description
-  if (data.requirements !== undefined) req.requirements = data.requirements
-  if (data.careerPath !== undefined) req.careerPath = data.careerPath
-  if (data.version !== undefined) req.version = data.version
-  if (data.status !== undefined) req.status = data.status
-  if (data.createdBy !== undefined) req.createdBy = data.createdBy
-  if (data.collaborators !== undefined) req.collaborators = data.collaborators
-  return req
-}
-
 export function convertApiResponsibilityToLocal(
   r: ApiPositionResponsibility,
 ): PositionResponsibility {
@@ -205,17 +128,6 @@ export function convertApiResponsibilityToLocal(
     id: r.id,
     name: r.name,
     description: r.description ?? '',
-  }
-}
-
-export function convertLocalResponsibilityToApi(
-  r: PositionResponsibility,
-): Omit<ApiPositionResponsibility, 'id'> {
-  return {
-    careerPositionId: '', // filled by caller
-    name: r.name,
-    description: r.description || undefined,
-    sortOrder: 0,
   }
 }
 
@@ -227,19 +139,6 @@ export function convertApiCertificateToLocal(c: ApiPositionCertificate): Positio
     url: c.url ?? '',
     description: c.description ?? '',
     image: c.imageUrl ?? '',
-  }
-}
-
-export function convertLocalCertificateToApi(
-  c: PositionCertificate,
-): Omit<ApiPositionCertificate, 'id'> {
-  return {
-    careerPositionId: '', // filled by caller
-    certificateLibraryId: c.libraryId || '',
-    name: c.name,
-    url: c.url || undefined,
-    description: c.description || undefined,
-    imageUrl: c.image || undefined,
   }
 }
 
@@ -262,37 +161,11 @@ export function convertApiAbilityBindingToLocal(
   }
 }
 
-export function convertLocalAbilityBindingToApi(
-  b: PositionAbilityBinding,
-): Omit<ApiPositionAbilityBinding, 'id'> {
-  return {
-    careerPositionId: '', // filled by caller
-    responsibilityId: b.responsibilityId,
-    abilityPointId: b.abilityPointId || b.publicAbilityId || '',
-    source: b.source,
-    domain: b.domain || undefined,
-    requiredLevel: b.level,
-    rubricDescription: b.rubricDescription || undefined,
-    attributes: b.attributes || [],
-    weight: 0,
-  }
-}
-
 export function convertApiAbilityDomainToLocal(d: ApiAbilityDomain): AbilityDomain {
   return {
     id: d.id,
     name: d.name,
     description: d.description ?? '',
     bindingIds: d.bindingIds || [],
-  }
-}
-
-export function convertLocalAbilityDomainToApi(d: AbilityDomain): Omit<ApiAbilityDomain, 'id'> {
-  return {
-    careerPositionId: '', // filled by caller
-    name: d.name,
-    description: d.description || undefined,
-    bindingIds: d.bindingIds,
-    sortOrder: 0,
   }
 }

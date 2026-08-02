@@ -22,12 +22,6 @@ type SchedulingHandler struct {
 }
 
 // ---------- 场地 ----------
-
-type VenueListResponse struct {
-	Items []domain.Venue `json:"items"`
-	Total int            `json:"total"`
-}
-
 type VenueRequest struct {
 	Name     string `json:"name"`
 	Type     string `json:"type"`
@@ -57,7 +51,7 @@ func (h *SchedulingHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询场地列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, VenueListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.Venue]{Items: items, Total: total})
 }
 
 func (h *SchedulingHandler) CreateVenue(w http.ResponseWriter, r *http.Request) {
@@ -162,12 +156,6 @@ func (h *SchedulingHandler) fetchVenue(ctx context.Context, id, tenantID string)
 }
 
 // ---------- 节次 ----------
-
-type PeriodSlotListResponse struct {
-	Items []domain.PeriodSlot `json:"items"`
-	Total int                 `json:"total"`
-}
-
 type PeriodSlotRequest struct {
 	Name      string  `json:"name"`
 	SortOrder int     `json:"sortOrder"`
@@ -198,7 +186,7 @@ func (h *SchedulingHandler) ListPeriodSlots(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "查询节次列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, PeriodSlotListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.PeriodSlot]{Items: items, Total: total})
 }
 
 func (h *SchedulingHandler) CreatePeriodSlot(w http.ResponseWriter, r *http.Request) {
@@ -317,12 +305,6 @@ func scanPeriodSlotRows(rows pgx.Rows) ([]domain.PeriodSlot, error) {
 }
 
 // ---------- 排课 ----------
-
-type ScheduleEntryListResponse struct {
-	Items []domain.ScheduleEntry `json:"items"`
-	Total int                    `json:"total"`
-}
-
 type ScheduleEntryRequest struct {
 	TermID       string           `json:"termId"`
 	PlanEntryID  *string          `json:"planEntryId"`
@@ -366,7 +348,7 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "查询排课列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ScheduleEntryListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.ScheduleEntry]{Items: items, Total: total})
 }
 
 func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Request) {

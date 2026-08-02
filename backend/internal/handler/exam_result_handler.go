@@ -14,11 +14,6 @@ type ExamResultHandler struct {
 	Service *service.EvaluationService
 }
 
-type ExamResultListResponse struct {
-	Items []domain.ExamResult `json:"items"`
-	Total int                 `json:"total"`
-}
-
 type SubmitExamResultRequest struct {
 	ExamUsageID string                 `json:"examUsageId"`
 	Answers     map[string]interface{} `json:"answers"`
@@ -62,7 +57,7 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	for i := range items {
 		items[i].Score = service.RoundScore(items[i].Score)
 	}
-	respondJSON(w, http.StatusOK, ExamResultListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.ExamResult]{Items: items, Total: total})
 }
 
 func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {

@@ -20,14 +20,6 @@ type DashboardStats struct {
 	PendingWithdrawals  int     `json:"pendingWithdrawals"`
 }
 
-func (h *StatsHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
-	if !requireOperator(r) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	respondJSON(w, http.StatusOK, DashboardStats{})
-}
-
 func (h *StatsHandler) MyStats(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"balance":     0,

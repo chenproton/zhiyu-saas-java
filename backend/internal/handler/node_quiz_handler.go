@@ -14,16 +14,6 @@ type NodeQuizHandler struct {
 	Service *service.LessonContentService
 }
 
-type NodeQuizListResponse struct {
-	Items []domain.NodeQuiz `json:"items"`
-	Total int               `json:"total"`
-}
-
-type NodeQuizQuestionListResponse struct {
-	Items []domain.NodeQuizQuestion `json:"items"`
-	Total int                       `json:"total"`
-}
-
 type CreateNodeQuizRequest struct {
 	NodeID    string `json:"nodeId"`
 	Title     string `json:"title"`
@@ -77,7 +67,7 @@ func (h *NodeQuizHandler) ListQuizzes(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询测验失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, NodeQuizListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.NodeQuiz]{Items: items, Total: total})
 }
 
 func (h *NodeQuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
@@ -181,7 +171,7 @@ func (h *NodeQuizHandler) ListQuestions(w http.ResponseWriter, r *http.Request) 
 		respondServerError(w, r, err, "查询题目失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, NodeQuizQuestionListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.NodeQuizQuestion]{Items: items, Total: total})
 }
 
 func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {

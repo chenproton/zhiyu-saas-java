@@ -14,11 +14,6 @@ type JobBannerHandler struct {
 	Service *service.PositionService
 }
 
-type JobBannerListResponse struct {
-	Items []domain.JobBannerConfig `json:"items"`
-	Total int                      `json:"total"`
-}
-
 type CreateJobBannerRequest struct {
 	Title     string  `json:"title"`
 	ImageURL  string  `json:"imageUrl"`
@@ -63,7 +58,7 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, JobBannerListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.JobBannerConfig]{Items: items, Total: total})
 }
 
 func (h *JobBannerHandler) Get(w http.ResponseWriter, r *http.Request) {

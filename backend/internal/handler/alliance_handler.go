@@ -19,11 +19,6 @@ type AllianceHandler struct {
 
 // ===== 通用响应结构 =====
 
-type allianceListResponse struct {
-	Items interface{} `json:"items"`
-	Total int         `json:"total"`
-}
-
 // ===== 学校信息 =====
 
 func (h *AllianceHandler) GetSchoolInfo(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +130,7 @@ func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *htt
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceEnterpriseAgreement]{Items: items, Total: len(items)})
 }
 
 func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *http.Request) {
@@ -270,7 +265,7 @@ func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request)
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceProjectMilestone]{Items: items, Total: len(items)})
 }
 
 func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request) {
@@ -474,7 +469,7 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "查询权限列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AlliancePermission]{Items: items, Total: total})
 }
 
 func (h *AllianceHandler) GetPermission(w http.ResponseWriter, r *http.Request) {
@@ -580,7 +575,7 @@ func (h *AllianceHandler) ListDictionaryItems(w http.ResponseWriter, r *http.Req
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceDictionary]{Items: items, Total: len(items)})
 }
 
 func (h *AllianceHandler) CreateDictionaryItem(w http.ResponseWriter, r *http.Request) {
