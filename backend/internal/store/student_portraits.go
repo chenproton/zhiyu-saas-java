@@ -24,8 +24,8 @@ func (s *StudentPortraitStore) ListPortraits(ctx context.Context, p ListParams, 
 }
 
 // GetPortrait 查询单个画像。
-func (s *StudentPortraitStore) GetPortrait(ctx context.Context, id string) (*domain.StudentAbilityPortrait, error) {
-	p, err := s.fetchPortrait(ctx, `WHERE id = $1`, id)
+func (s *StudentPortraitStore) GetPortrait(ctx context.Context, id, tenantID string) (*domain.StudentAbilityPortrait, error) {
+	p, err := s.fetchPortrait(ctx, `WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	if err != nil {
 		return nil, err
 	}

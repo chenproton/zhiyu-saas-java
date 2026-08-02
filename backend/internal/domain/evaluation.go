@@ -154,6 +154,7 @@ type EvaluationMethod struct {
 // SceneEvaluationResult represents the result of a scene task evaluation.
 type SceneEvaluationResult struct {
 	ID                string     `json:"id"`
+	TenantID          *string    `json:"-"`
 	TaskID            string     `json:"taskId"`
 	SceneID           *string    `json:"sceneId,omitempty"`
 	MethodKey         string     `json:"methodKey"`

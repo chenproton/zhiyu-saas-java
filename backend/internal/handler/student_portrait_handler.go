@@ -92,7 +92,11 @@ func (h *StudentPortraitHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	portrait, err := h.Service.GetStudentPortrait(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	portrait, err := h.Service.GetStudentPortrait(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "学生画像不存在")
 		return

@@ -661,8 +661,8 @@ func (s *EvaluationService) ListStudentPortraits(ctx context.Context, p store.Li
 }
 
 // GetStudentPortrait 查询单个画像。
-func (s *EvaluationService) GetStudentPortrait(ctx context.Context, id string) (*domain.StudentAbilityPortrait, error) {
-	return s.st.StudentPortraits().GetPortrait(ctx, id)
+func (s *EvaluationService) GetStudentPortrait(ctx context.Context, id, tenantID string) (*domain.StudentAbilityPortrait, error) {
+	return s.st.StudentPortraits().GetPortrait(ctx, id, tenantID)
 }
 
 // GetStudentPortraitByUserPosition 查询用户岗位画像。

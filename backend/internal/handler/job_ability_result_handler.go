@@ -71,7 +71,8 @@ type JobAbilityAggregateLog struct {
 }
 
 func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -86,6 +87,10 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		UserID:           r.URL.Query().Get("userId"),
 		Grade:            r.URL.Query().Get("grade"),
 		Search:           r.URL.Query().Get("search"),
+	}
+	// 学生仅可查看本人的能力汇聚结果
+	if middleware.HasRole(claims, "student") {
+		f.UserID = claims.UserID
 	}
 	page, _ := parseInt(r.URL.Query().Get("page"), 1)
 	if page < 1 {

@@ -113,6 +113,15 @@ func (h *EvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
+	if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {
+		respondError(w, http.StatusNotFound, "评价结果不存在")
+		return
+	}
+	// 学生仅可查看本人的评价结果
+	if middleware.HasRole(claims, "student") && res.EvaluateeID != claims.UserID {
+		respondError(w, http.StatusNotFound, "评价结果不存在")
+		return
+	}
 	respondJSON(w, http.StatusOK, res)
 }
 
@@ -128,6 +137,11 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 	}
 	if req.TaskID == "" || req.MethodKey == "" || req.EvaluateeID == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段（taskId、methodKey、evaluateeId）")
+		return
+	}
+	// 学生仅可提交本人的评价结果，防止替他人提交/伪造成绩
+	if middleware.HasRole(claims, "student") && req.EvaluateeID != claims.UserID {
+		respondError(w, http.StatusForbidden, "仅可提交本人的评价结果")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -184,6 +198,10 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
+	if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {
+		respondError(w, http.StatusNotFound, "评价结果不存在")
+		return
+	}
 	err = h.Service.GradeEvaluationResult(r.Context(), id, claims.UserID, &store.EvaluationResultGradeParams{
 		Score:             req.Score,
 		Comment:           req.Comment,
@@ -212,7 +230,12 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 
 	items := make([]store.EvaluationResultGradeItem, 0, len(req.Items))
 	for _, item := range req.Items {
-		if _, err := h.Service.GetEvaluationResult(r.Context(), item.ID); err != nil {
+		res, err := h.Service.GetEvaluationResult(r.Context(), item.ID)
+		if err != nil {
+			respondError(w, http.StatusNotFound, "评价结果不存在")
+			return
+		}
+		if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {
 			respondError(w, http.StatusNotFound, "评价结果不存在")
 			return
 		}

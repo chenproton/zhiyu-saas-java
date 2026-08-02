@@ -142,22 +142,25 @@ type EvaluationResultGradeItem struct {
 
 func (s *EvaluationResultStore) fetchResult(ctx context.Context, id string) (*domain.SceneEvaluationResult, error) {
 	var res domain.SceneEvaluationResult
-	var sceneID, comment, gradedBy, evaluatorID, evaluatorType pgtype.Text
+	var sceneID, comment, gradedBy, evaluatorID, evaluatorType, tenantID pgtype.Text
 	var totalScore *float64
 	var gradedAt *time.Time
 	var evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions domain.JSONMap
 	err := s.q.QueryRow(ctx, `
-		SELECT id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
+		SELECT id, tenant_id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
 			total_score, max_score, eval_point_scores, objective_answers, subjective_content,
 			drawn_questions, comment, graded_at, graded_by
 		FROM scene_evaluation_results WHERE id = $1
 	`, id).Scan(
-		&res.ID, &res.TaskID, &sceneID, &res.MethodKey, &res.EvaluateeID, &evaluatorID, &evaluatorType, &res.Status,
+		&res.ID, &tenantID, &res.TaskID, &sceneID, &res.MethodKey, &res.EvaluateeID, &evaluatorID, &evaluatorType, &res.Status,
 		&totalScore, &res.MaxScore, &evalPointScores, &objectiveAnswers, &subjectiveContent,
 		&drawnQuestions, &comment, &gradedAt, &gradedBy,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if tenantID.Valid {
+		res.TenantID = &tenantID.String
 	}
 	if sceneID.Valid {
 		res.SceneID = &sceneID.String
