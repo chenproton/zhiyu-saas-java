@@ -198,7 +198,7 @@ export default function AppsPage() {
       <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f7fa] pt-0">
         {/* Quick Access Bar */}
         <div className="bg-background border-b border-border px-4 md:px-6 py-3 sticky top-14 z-10 shadow-sm space-y-2">
-          <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
               <Sparkles className="w-4 h-4 text-amber-500" />
               <span className="font-medium">常用服务</span>
