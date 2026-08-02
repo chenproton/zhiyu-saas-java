@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,7 +51,9 @@ func (s *KnowledgePointStore) Create(ctx context.Context, tx Queryer, tenantID s
 	`, id, tenantID, p.Name, p.Code, p.Description, p.Linked, granularIDs, p.CreatorID, p.SourceType, p.SourceID); err != nil {
 		return nil, err
 	}
-	SyncCourseKnowledgePoints(ctx, tx, tenantID, id, jsonSliceToStringSlice(granularIDs))
+	if err := SyncCourseKnowledgePoints(ctx, tx, tenantID, id, jsonSliceToStringSlice(granularIDs)); err != nil {
+		return nil, err
+	}
 	return s.fetchKP(ctx, id)
 }
 
@@ -67,7 +70,9 @@ func (s *KnowledgePointStore) Update(ctx context.Context, tx Queryer, tenantID, 
 	`, p.Name, p.Code, p.Description, p.Linked, granularIDs, id); err != nil {
 		return nil, err
 	}
-	SyncCourseKnowledgePoints(ctx, tx, tenantID, id, jsonSliceToStringSlice(granularIDs))
+	if err := SyncCourseKnowledgePoints(ctx, tx, tenantID, id, jsonSliceToStringSlice(granularIDs)); err != nil {
+		return nil, err
+	}
 	return s.fetchKP(ctx, id)
 }
 
@@ -129,23 +134,28 @@ func scanKnowledgePointRows(rows pgx.Rows) ([]domain.KnowledgePoint, error) {
 }
 
 // SyncCourseKnowledgePoints 维护颗粒课对知识点的双向引用。
-func SyncCourseKnowledgePoints(ctx context.Context, q Queryer, tenantID, knowledgePointID string, courseIDs []string) {
+func SyncCourseKnowledgePoints(ctx context.Context, q Queryer, tenantID, knowledgePointID string, courseIDs []string) error {
 	if tenantID == "" {
-		return
+		return nil
 	}
-	_, _ = q.Exec(ctx, `
+	if _, err := q.Exec(ctx, `
 		UPDATE courses
 		SET knowledge_point_ids = array_append(knowledge_point_ids, $1),
 		    updated_at = NOW()
 		WHERE tenant_id = $2 AND id = ANY($3::uuid[]) AND NOT $1 = ANY(knowledge_point_ids)
-	`, knowledgePointID, tenantID, courseIDs)
-	_, _ = q.Exec(ctx, `
+	`, knowledgePointID, tenantID, courseIDs); err != nil {
+		return fmt.Errorf("append kp to courses: %w", err)
+	}
+	if _, err := q.Exec(ctx, `
 		UPDATE courses
 		SET knowledge_point_ids = array_remove(knowledge_point_ids, $1),
 		    updated_at = NOW()
 		WHERE tenant_id = $2 AND ($3::uuid[] IS NULL OR id <> ALL($3::uuid[]))
 		  AND $1 = ANY(knowledge_point_ids)
-	`, knowledgePointID, tenantID, courseIDs)
+	`, knowledgePointID, tenantID, courseIDs); err != nil {
+		return fmt.Errorf("remove kp from courses: %w", err)
+	}
+	return nil
 }
 
 func jsonSliceToStringSlice(ids domain.JSONSlice) []string {

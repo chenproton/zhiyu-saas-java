@@ -19,16 +19,6 @@ var AllowedContentTables = []string{"career_positions", "courses", "exams", "que
 // AllowedInviteColumns 内容动作允许更新的协作者列白名单（handler 侧校验共用，单一真相）。
 var AllowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_creator_ids", "collaborators"}
 
-// sanitizeIdentifier 校验标识符必须在白名单内，防止 SQL 注入。
-func sanitizeIdentifier(identifier string, allowed []string) (string, error) {
-	for _, a := range allowed {
-		if identifier == a {
-			return identifier, nil
-		}
-	}
-	return "", fmt.Errorf("invalid identifier: %s", identifier)
-}
-
 // allowedStatusTransitions 定义内容实体允许的状态流转。
 // key 为当前状态，value 为可进入的目标状态集合。
 var allowedStatusTransitions = map[domain.ContentStatus][]domain.ContentStatus{
@@ -54,12 +44,12 @@ func NewContentActionStore(q Queryer, beginner txBeginner) *ContentActionStore {
 
 // tableFor returns the sanitized table name.
 func (s *ContentActionStore) tableFor(table string) (string, error) {
-	return sanitizeIdentifier(table, AllowedContentTables)
+	return SanitizeIdentifier(table, AllowedContentTables)
 }
 
 // inviteColFor returns the sanitized invite column name.
 func (s *ContentActionStore) inviteColFor(inviteCol string) (string, error) {
-	return sanitizeIdentifier(inviteCol, AllowedInviteColumns)
+	return SanitizeIdentifier(inviteCol, AllowedInviteColumns)
 }
 
 func canTransition(from, to domain.ContentStatus) bool {

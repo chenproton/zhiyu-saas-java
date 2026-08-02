@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/google/uuid"
@@ -186,7 +187,9 @@ func (s *CertificationStore) UpdateItem(ctx context.Context, id, name string, so
 
 // DeleteItem 删除能力项（连带点数）。
 func (s *CertificationStore) DeleteItem(ctx context.Context, id string) error {
-	_, _ = s.q.Exec(ctx, `DELETE FROM certification_ability_points WHERE item_id = $1`, id)
+	if _, err := s.q.Exec(ctx, `DELETE FROM certification_ability_points WHERE item_id = $1`, id); err != nil {
+		return fmt.Errorf("delete certification ability points: %w", err)
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM certification_ability_items WHERE id = $1`, id)
 	return err
 }

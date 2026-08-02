@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -18,19 +17,10 @@ func New(st *store.Store) *Service {
 }
 
 // WithTx 开启事务并在事务内执行 fn；fn 返回 error 时自动回滚。
-// 跨 store 的组合操作必须经由 WithTx，保证原子性。
+// 事务模板统一由 store.Store.WithTx 提供，此处仅做委托，
+// 保证"跨 store 组合必须经由同一事务"的唯一入口语义。
 func (s *Service) WithTx(ctx context.Context, fn func(txStore *store.Store) error) error {
-	tx, err := s.store.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("service: begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	txStore := store.NewWithTx(tx)
-	if err := fn(txStore); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return s.store.WithTx(ctx, fn)
 }
 
 // Store 暴露底层 store，供无事务需求的直读场景使用。

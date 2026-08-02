@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -21,6 +22,9 @@ const maxFormMemory = 32 << 20  // 32MB in-memory, rest to temp files
 type FileHandler struct {
 	UploadDir string
 }
+
+// logger 记录文件转换等内部错误（响应体不泄漏进程输出）。
+var logger = slog.Default()
 
 type UploadResponse struct {
 	URL      string `json:"url"`
@@ -140,8 +144,9 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 
 	if format == "png" {
 		cmd := exec.Command("libreoffice", "--headless", "--convert-to", "png", "--outdir", tmpDir, path)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			respondError(w, http.StatusInternalServerError, "文件转换失败："+string(out))
+		if _, err := cmd.CombinedOutput(); err != nil {
+			logger.Error("libreoffice convert failed", "error", err)
+			respondError(w, http.StatusInternalServerError, "文件转换失败")
 			return
 		}
 		entries, _ := os.ReadDir(tmpDir)
@@ -169,8 +174,9 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmd := exec.Command("libreoffice", "--headless", "--convert-to", outExt, "--outdir", tmpDir, path)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		respondError(w, http.StatusInternalServerError, "文件转换失败："+string(out))
+	if _, err := cmd.CombinedOutput(); err != nil {
+		logger.Error("libreoffice convert failed", "error", err)
+		respondError(w, http.StatusInternalServerError, "文件转换失败")
 		return
 	}
 

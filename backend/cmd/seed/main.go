@@ -37,7 +37,8 @@ func main() {
 
 	adminPassword := os.Getenv("SEED_ADMIN_PASSWORD")
 	if adminPassword == "" {
-		adminPassword = "admin123"
+		fmt.Println("SEED_ADMIN_PASSWORD 未设置，跳过种子数据")
+		return
 	}
 
 	// 已有种子数据时，仅重置 admin 密码（支持密码变更后重跑 deploy.sh）
@@ -54,8 +55,7 @@ func main() {
 			fmt.Println("update admin password error:", err)
 			os.Exit(1)
 		}
-		fmt.Println("数据库已有数据，已重置 admin 密码")
-		fmt.Printf("  平台管理员: admin / %s\n", adminPassword)
+		fmt.Println("数据库已有数据，已重置 admin 密码（密码通过 SEED_ADMIN_PASSWORD 提供）")
 		return
 	}
 
@@ -125,5 +125,5 @@ func main() {
 
 	fmt.Println("种子数据初始化完成")
 	fmt.Println("  运营方租户: platform (ID: 00000000-0000-0000-0000-000000000001)")
-	fmt.Printf("  平台管理员: admin / %s\n", adminPassword)
+	fmt.Println("  平台管理员: admin（密码通过 SEED_ADMIN_PASSWORD 提供）")
 }

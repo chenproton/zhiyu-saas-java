@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -128,8 +129,12 @@ func (s *CourseNodeStore) Update(ctx context.Context, tx Queryer, id string, p *
 		p.Duration, p.Difficulty, kpIDs, resIDs, evalData, p.Status, id); err != nil {
 		return nil, err
 	}
-	_, _ = tx.Exec(ctx, `DELETE FROM node_knowledge_point_bindings WHERE node_id = $1`, id)
-	_, _ = tx.Exec(ctx, `DELETE FROM node_resource_bindings WHERE node_id = $1`, id)
+	if _, err := tx.Exec(ctx, `DELETE FROM node_knowledge_point_bindings WHERE node_id = $1`, id); err != nil {
+		return nil, fmt.Errorf("delete node knowledge bindings: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM node_resource_bindings WHERE node_id = $1`, id); err != nil {
+		return nil, fmt.Errorf("delete node resource bindings: %w", err)
+	}
 	for _, kpID := range kpIDs {
 		if _, err := tx.Exec(ctx, `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID); err != nil {
 			return nil, err

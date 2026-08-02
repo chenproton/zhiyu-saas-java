@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -15,6 +17,10 @@ type Queryer interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
+
+// ErrNestedTransaction 表示在事务上下文（pgx.Tx）上再次尝试开启事务。
+// 事务内组合应使用 NewWithTx，而非对同一 Store 再次 Begin。
+var ErrNestedTransaction = errors.New("store: cannot begin a transaction inside another transaction")
 
 // Store 是数据访问层统一入口：持有查询器，提供事务模板。
 // 各领域 store 类型（AllianceStore、RolesStore 等）延续独立类型模式；
@@ -94,165 +100,128 @@ type Store struct {
 	alliance         *AllianceStore
 }
 
+// newStore 装配全部领域 store（连接池模式与事务模式共用，仅查询器不同）。
+func newStore(q Queryer) *Store {
+	// 仅连接池提供独立事务启动能力；事务模式（pgx.Tx）下保持 nil，
+	// 与历史 NewWithTx 行为一致（事务内组合不再次开启事务）。
+	var beginner txBeginner
+	if pool, ok := q.(*pgxpool.Pool); ok {
+		beginner = pool
+	}
+	return &Store{
+		q:                q,
+		resourceLib:      NewResourceLibraryStore(q),
+		tenants:          NewTenantStore(q),
+		tenantAdmins:     NewTenantAdminStore(q),
+		organizations:    NewOrganizationStore(q),
+		userExtFields:    NewUserExtensionFieldStore(q),
+		userRelations:    NewUserRelationStore(q),
+		users:            NewUserStore(q),
+		scenarioWeight:   NewScenarioWeightStore(q),
+		scenarioGrade:    NewScenarioGradeStore(q),
+		taskBindings:     NewTaskKnowledgeAbilityStore(q),
+		knowledgePoint:   NewKnowledgePointStore(q),
+		nodeHomework:     NewNodeHomeworkStore(q),
+		resourceBind:     NewResourceBindingStore(q),
+		positionAbility:  NewPositionAbilityStore(q),
+		positionResp:     NewPositionResponsibilityStore(q),
+		positionCert:     NewPositionCertificateStore(q),
+		positionClone:    NewPositionCloneStore(q),
+		scenarios:        NewScenarioStore(q),
+		scenarioClone:    NewScenarioCloneStore(q),
+		scenarioTasks:    NewScenarioTaskStore(q),
+		nodeQuizzes:      NewNodeQuizStore(q),
+		courseClone:      NewCourseCloneStore(q),
+		courseNodes:      NewCourseNodeStore(q),
+		taskEval:         NewTaskEvaluationStore(q),
+		positions:        NewPositionStore(q),
+		courses:          NewCourseStore(q),
+		courseHomeworks:  NewCourseHomeworkStore(q),
+		courseAssess:     NewCourseAssessmentStore(q),
+		questionBanks:    NewQuestionBankStore(q),
+		questions:        NewQuestionStore(q),
+		exams:            NewExamStore(q),
+		examResults:      NewExamResultStore(q),
+		examUsages:       NewExamUsageStore(q),
+		randomDrawQ:      NewRandomDrawQuestionStore(q),
+		certGrades:       NewCertGradeStore(q),
+		scheduling:       NewSchedulingStore(q),
+		certifications:   NewCertificationStore(q),
+		evalMethods:      NewEvaluationMethodStore(q),
+		appeals:          NewAppealStore(q),
+		evalResults:      NewEvaluationResultStore(q),
+		studentPortrait:  NewStudentPortraitStore(q),
+		jobAbilityRes:    NewJobAbilityResultStore(q),
+		graduations:      NewGraduationStore(q),
+		abilities:        NewAbilityStore(q),
+		abilityDomains:   NewAbilityDomainStore(q),
+		banners:          NewBannerStore(q),
+		terms:            NewTermStore(q),
+		batches:          NewBatchStore(q),
+		workflows:        NewWorkflowStore(q),
+		subscriptions:    NewSubscriptionStore(q),
+		resourceCodes:    NewResourceCodeStore(q),
+		recommends:       NewRecommendStore(q),
+		hybridModules:    NewHybridModuleStore(q),
+		lessonBehaviors:  NewLessonBehaviorStore(q),
+		landing:          NewLandingStore(q),
+		approvals:        NewApprovalStore(q),
+		teachingPlans:    NewTeachingPlanStore(q),
+		portal:           NewPortalStore(q),
+		auth:             NewAuthStore(q),
+		trainingPrograms: NewTrainingProgramStore(q),
+		contentActions:   NewContentActionStore(q, beginner),
+		orgTypes:         NewOrgTypesStore(q),
+		roles:            NewRolesStore(q, beginner),
+		majors:           NewMajorsStore(q),
+		industries:       NewIndustriesStore(q),
+		staffTitles:      NewStaffTitlesStore(q),
+		learnRoads:       NewLearnRoadsStore(q),
+		certLib:          NewCertificateLibraryStore(q),
+		microCerts:       NewMicroCertStore(q, beginner),
+		onSiteQuestions:  NewOnSiteQuestionLibraryStore(q),
+		alliance:         NewAllianceStore(q),
+	}
+}
+
 // New 创建统一 store 入口（连接池模式）。
 func New(db *pgxpool.Pool) *Store {
-	return &Store{
-		q:                db,
-		resourceLib:      NewResourceLibraryStore(db),
-		tenants:          NewTenantStore(db),
-		tenantAdmins:     NewTenantAdminStore(db),
-		organizations:    NewOrganizationStore(db),
-		userExtFields:    NewUserExtensionFieldStore(db),
-		userRelations:    NewUserRelationStore(db),
-		users:            NewUserStore(db),
-		scenarioWeight:   NewScenarioWeightStore(db),
-		scenarioGrade:    NewScenarioGradeStore(db),
-		taskBindings:     NewTaskKnowledgeAbilityStore(db),
-		knowledgePoint:   NewKnowledgePointStore(db),
-		nodeHomework:     NewNodeHomeworkStore(db),
-		resourceBind:     NewResourceBindingStore(db),
-		positionAbility:  NewPositionAbilityStore(db),
-		positionResp:     NewPositionResponsibilityStore(db),
-		positionCert:     NewPositionCertificateStore(db),
-		positionClone:    NewPositionCloneStore(db),
-		scenarios:        NewScenarioStore(db),
-		scenarioClone:    NewScenarioCloneStore(db),
-		scenarioTasks:    NewScenarioTaskStore(db),
-		nodeQuizzes:      NewNodeQuizStore(db),
-		courseClone:      NewCourseCloneStore(db),
-		courseNodes:      NewCourseNodeStore(db),
-		taskEval:         NewTaskEvaluationStore(db),
-		positions:        NewPositionStore(db),
-		courses:          NewCourseStore(db),
-		courseHomeworks:  NewCourseHomeworkStore(db),
-		courseAssess:     NewCourseAssessmentStore(db),
-		questionBanks:    NewQuestionBankStore(db),
-		questions:        NewQuestionStore(db),
-		exams:            NewExamStore(db),
-		examResults:      NewExamResultStore(db),
-		examUsages:       NewExamUsageStore(db),
-		randomDrawQ:      NewRandomDrawQuestionStore(db),
-		certGrades:       NewCertGradeStore(db),
-		scheduling:       NewSchedulingStore(db),
-		certifications:   NewCertificationStore(db),
-		evalMethods:      NewEvaluationMethodStore(db),
-		appeals:          NewAppealStore(db),
-		evalResults:      NewEvaluationResultStore(db),
-		studentPortrait:  NewStudentPortraitStore(db),
-		jobAbilityRes:    NewJobAbilityResultStore(db),
-		graduations:      NewGraduationStore(db),
-		abilities:        NewAbilityStore(db),
-		abilityDomains:   NewAbilityDomainStore(db),
-		banners:          NewBannerStore(db),
-		terms:            NewTermStore(db),
-		batches:          NewBatchStore(db),
-		workflows:        NewWorkflowStore(db),
-		subscriptions:    NewSubscriptionStore(db),
-		resourceCodes:    NewResourceCodeStore(db),
-		recommends:       NewRecommendStore(db),
-		hybridModules:    NewHybridModuleStore(db),
-		lessonBehaviors:  NewLessonBehaviorStore(db),
-		landing:          NewLandingStore(db),
-		approvals:        NewApprovalStore(db),
-		teachingPlans:    NewTeachingPlanStore(db),
-		portal:           NewPortalStore(db),
-		auth:             NewAuthStore(db),
-		trainingPrograms: NewTrainingProgramStore(db),
-		contentActions:   NewContentActionStore(db, db),
-		orgTypes:         NewOrgTypesStore(db),
-		roles:            NewRolesStore(db, db),
-		majors:           NewMajorsStore(db),
-		industries:       NewIndustriesStore(db),
-		staffTitles:      NewStaffTitlesStore(db),
-		learnRoads:       NewLearnRoadsStore(db),
-		certLib:          NewCertificateLibraryStore(db),
-		microCerts:       NewMicroCertStore(db, db),
-		onSiteQuestions:  NewOnSiteQuestionLibraryStore(db),
-		alliance:         NewAllianceStore(db),
-	}
+	return newStore(db)
 }
 
 // NewWithTx 创建基于既有事务的 store 入口（pgx.Tx 满足 Queryer）。
 func NewWithTx(tx pgx.Tx) *Store {
-	return &Store{
-		q:                tx,
-		resourceLib:      NewResourceLibraryStore(tx),
-		tenants:          NewTenantStore(tx),
-		tenantAdmins:     NewTenantAdminStore(tx),
-		organizations:    NewOrganizationStore(tx),
-		userExtFields:    NewUserExtensionFieldStore(tx),
-		userRelations:    NewUserRelationStore(tx),
-		users:            NewUserStore(tx),
-		scenarioWeight:   NewScenarioWeightStore(tx),
-		scenarioGrade:    NewScenarioGradeStore(tx),
-		taskBindings:     NewTaskKnowledgeAbilityStore(tx),
-		knowledgePoint:   NewKnowledgePointStore(tx),
-		nodeHomework:     NewNodeHomeworkStore(tx),
-		resourceBind:     NewResourceBindingStore(tx),
-		positionAbility:  NewPositionAbilityStore(tx),
-		positionResp:     NewPositionResponsibilityStore(tx),
-		positionCert:     NewPositionCertificateStore(tx),
-		positionClone:    NewPositionCloneStore(tx),
-		scenarios:        NewScenarioStore(tx),
-		scenarioClone:    NewScenarioCloneStore(tx),
-		scenarioTasks:    NewScenarioTaskStore(tx),
-		nodeQuizzes:      NewNodeQuizStore(tx),
-		courseClone:      NewCourseCloneStore(tx),
-		courseNodes:      NewCourseNodeStore(tx),
-		taskEval:         NewTaskEvaluationStore(tx),
-		positions:        NewPositionStore(tx),
-		courses:          NewCourseStore(tx),
-		courseHomeworks:  NewCourseHomeworkStore(tx),
-		courseAssess:     NewCourseAssessmentStore(tx),
-		questionBanks:    NewQuestionBankStore(tx),
-		questions:        NewQuestionStore(tx),
-		exams:            NewExamStore(tx),
-		examResults:      NewExamResultStore(tx),
-		examUsages:       NewExamUsageStore(tx),
-		randomDrawQ:      NewRandomDrawQuestionStore(tx),
-		certGrades:       NewCertGradeStore(tx),
-		scheduling:       NewSchedulingStore(tx),
-		certifications:   NewCertificationStore(tx),
-		evalMethods:      NewEvaluationMethodStore(tx),
-		appeals:          NewAppealStore(tx),
-		evalResults:      NewEvaluationResultStore(tx),
-		studentPortrait:  NewStudentPortraitStore(tx),
-		jobAbilityRes:    NewJobAbilityResultStore(tx),
-		graduations:      NewGraduationStore(tx),
-		abilities:        NewAbilityStore(tx),
-		abilityDomains:   NewAbilityDomainStore(tx),
-		banners:          NewBannerStore(tx),
-		terms:            NewTermStore(tx),
-		batches:          NewBatchStore(tx),
-		workflows:        NewWorkflowStore(tx),
-		subscriptions:    NewSubscriptionStore(tx),
-		resourceCodes:    NewResourceCodeStore(tx),
-		recommends:       NewRecommendStore(tx),
-		hybridModules:    NewHybridModuleStore(tx),
-		lessonBehaviors:  NewLessonBehaviorStore(tx),
-		landing:          NewLandingStore(tx),
-		approvals:        NewApprovalStore(tx),
-		teachingPlans:    NewTeachingPlanStore(tx),
-		portal:           NewPortalStore(tx),
-		auth:             NewAuthStore(tx),
-		trainingPrograms: NewTrainingProgramStore(tx),
-		contentActions:   NewContentActionStore(tx, nil),
-		orgTypes:         NewOrgTypesStore(tx),
-		roles:            NewRolesStore(tx, nil),
-		majors:           NewMajorsStore(tx),
-		industries:       NewIndustriesStore(tx),
-		staffTitles:      NewStaffTitlesStore(tx),
-		learnRoads:       NewLearnRoadsStore(tx),
-		certLib:          NewCertificateLibraryStore(tx),
-		microCerts:       NewMicroCertStore(tx, nil),
-		onSiteQuestions:  NewOnSiteQuestionLibraryStore(tx),
-		alliance:         NewAllianceStore(tx),
-	}
+	return newStore(tx)
 }
 
 // Q 暴露查询器，供各领域 store 方法执行 SQL。
 func (s *Store) Q() Queryer {
 	return s.q
+}
+
+// WithTx 开启事务，并在同一事务的 Store 上执行 fn（唯一事务模板）。
+// fn 返回 error 时自动回滚；所有跨 store 的组合操作必须经由 WithTx。
+func (s *Store) WithTx(ctx context.Context, fn func(txStore *Store) error) error {
+	tx, err := s.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err := fn(NewWithTx(tx)); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// Begin 开启事务，供 WithTx 使用。
+// 在事务上下文（pgx.Tx）上调用会返回 ErrNestedTransaction，
+// 事务内应直接使用传入的 txStore，而非再次 Begin。
+func (s *Store) Begin(ctx context.Context) (pgx.Tx, error) {
+	pool, ok := s.q.(*pgxpool.Pool)
+	if !ok {
+		return nil, fmt.Errorf("%w: current queryer is %T", ErrNestedTransaction, s.q)
+	}
+	return pool.Begin(ctx)
 }
 
 // ResourceLibrary 返回资源库 store。
@@ -558,28 +527,6 @@ func (s *Store) TrainingPrograms() *TrainingProgramStore {
 // ContentActions 返回内容型实体共享动作 store。
 func (s *Store) ContentActions() *ContentActionStore {
 	return s.contentActions
-}
-
-// WithTx 在当前 Store 上开启事务，并在同一事务的 Store 上执行 fn。
-func (s *Store) WithTx(ctx context.Context, fn func(txStore *Store) error) error {
-	tx, err := s.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-	if err := fn(NewWithTx(tx)); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
-}
-
-// Begin 开启事务，供 service 层 WithTx 使用。
-func (s *Store) Begin(ctx context.Context) (pgx.Tx, error) {
-	pool, ok := s.q.(*pgxpool.Pool)
-	if !ok {
-		return nil, pgx.ErrTxClosed
-	}
-	return pool.Begin(ctx)
 }
 
 // OrgTypes 返回组织类型 store。

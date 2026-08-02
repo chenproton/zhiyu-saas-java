@@ -81,12 +81,24 @@ func (s *CourseStore) Update(ctx context.Context, id string, p *CourseUpdatePara
 
 // Delete 删除课程（先解绑引用与清理子表）。
 func (s *CourseStore) Delete(ctx context.Context, id string) error {
-	_, _ = s.q.Exec(ctx, `UPDATE training_program_courses SET course_id = NULL WHERE course_id = $1`, id)
-	_, _ = s.q.Exec(ctx, `UPDATE teaching_plan_entries SET course_id = NULL WHERE course_id = $1`, id)
-	_, _ = s.q.Exec(ctx, `UPDATE schedule_entries SET course_id = NULL WHERE course_id = $1`, id)
-	_, _ = s.q.Exec(ctx, `DELETE FROM course_homework_submissions WHERE course_id = $1`, id)
-	_, _ = s.q.Exec(ctx, `DELETE FROM course_homeworks WHERE course_id = $1`, id)
-	_, _ = s.q.Exec(ctx, `DELETE FROM course_evaluation_results WHERE course_id = $1`, id)
+	if _, err := s.q.Exec(ctx, `UPDATE training_program_courses SET course_id = NULL WHERE course_id = $1`, id); err != nil {
+		return fmt.Errorf("unbind course from programs: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `UPDATE teaching_plan_entries SET course_id = NULL WHERE course_id = $1`, id); err != nil {
+		return fmt.Errorf("unbind course from teaching plans: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `UPDATE schedule_entries SET course_id = NULL WHERE course_id = $1`, id); err != nil {
+		return fmt.Errorf("unbind course from schedules: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `DELETE FROM course_homework_submissions WHERE course_id = $1`, id); err != nil {
+		return fmt.Errorf("delete course submissions: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `DELETE FROM course_homeworks WHERE course_id = $1`, id); err != nil {
+		return fmt.Errorf("delete course homeworks: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `DELETE FROM course_evaluation_results WHERE course_id = $1`, id); err != nil {
+		return fmt.Errorf("delete course eval results: %w", err)
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM courses WHERE id = $1`, id)
 	return err
 }

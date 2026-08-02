@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ImportExportHandler struct {
@@ -109,7 +110,7 @@ func (h *ImportExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entity := chi.URLParam(r, "entity")
-	entity, err := sanitizeIdentifier(entity, importExportEntityNames())
+	entity, err := store.SanitizeIdentifier(entity, importExportEntityNames())
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
@@ -366,11 +367,11 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ImportExportHandler) findExistingByKey(ctx context.Context, entity, tenantID, keyCol, key string) (string, bool) {
-	entity, err := sanitizeIdentifier(entity, importExportEntityNames())
+	entity, err := store.SanitizeIdentifier(entity, importExportEntityNames())
 	if err != nil {
 		return "", false
 	}
-	keyCol, err = sanitizeIdentifier(keyCol, importExportKeyColumns())
+	keyCol, err = store.SanitizeIdentifier(keyCol, importExportKeyColumns())
 	if err != nil {
 		return "", false
 	}

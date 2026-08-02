@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // lookupIDByNameTables 是 lookupIDByName 允许查询的表名白名单。
@@ -28,7 +29,7 @@ var lookupIDByNameTables = []string{
 // lookupIDByName 按表名+租户+名称查询记录 ID，不存在时返回空字符串。
 // 仅供 import/export 豁免区使用。
 func lookupIDByName(ctx context.Context, db *pgxpool.Pool, tableName, tenantID, name string) (string, error) {
-	table, err := sanitizeIdentifier(tableName, lookupIDByNameTables)
+	table, err := store.SanitizeIdentifier(tableName, lookupIDByNameTables)
 	if err != nil {
 		return "", fmt.Errorf("不支持的表名: %s", tableName)
 	}

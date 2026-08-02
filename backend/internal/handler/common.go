@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -19,17 +18,6 @@ import (
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
-
-// sanitizeIdentifier validates that identifier is one of the allowed values.
-// It returns the identifier unchanged if valid, otherwise an error.
-func sanitizeIdentifier(identifier string, allowed []string) (string, error) {
-	for _, a := range allowed {
-		if identifier == a {
-			return identifier, nil
-		}
-	}
-	return "", fmt.Errorf("invalid identifier: %s", identifier)
-}
 
 // emptyStrToNil 将空字符串转为 nil，避免将空字符串写入 UUID 列导致 database error。
 func emptyStrToNil(s *string) *string {

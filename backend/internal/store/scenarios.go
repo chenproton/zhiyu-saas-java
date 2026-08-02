@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -107,9 +108,15 @@ func (s *ScenarioStore) Update(ctx context.Context, id string, p *ScenarioUpdate
 
 // Delete 删除场景（先解绑引用）。
 func (s *ScenarioStore) Delete(ctx context.Context, id string) error {
-	_, _ = s.q.Exec(ctx, `UPDATE training_program_courses SET scenario_id = NULL WHERE scenario_id = $1`, id)
-	_, _ = s.q.Exec(ctx, `UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = $1`, id)
-	_, _ = s.q.Exec(ctx, `UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = $1`, id)
+	if _, err := s.q.Exec(ctx, `UPDATE training_program_courses SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
+		return fmt.Errorf("unbind scenario from programs: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
+		return fmt.Errorf("unbind scenario from teaching plans: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
+		return fmt.Errorf("unbind scenario from schedules: %w", err)
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, id)
 	return err
 }

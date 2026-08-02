@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -85,12 +86,14 @@ func (s *CourseHomeworkStore) GradeCourseHomework(ctx context.Context, graderID,
 	if err != nil {
 		return "", 0, err
 	}
-	_, _ = s.q.Exec(ctx, `
+	if _, err := s.q.Exec(ctx, `
 		INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score)
 		VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5)
 		ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
 		DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', graded_at = NOW(), updated_at = NOW()
-	`, tenantID, courseID, studentID, score, totalScore)
+	`, tenantID, courseID, studentID, score, totalScore); err != nil {
+		return "", 0, fmt.Errorf("upsert course eval result: %w", err)
+	}
 	return studentID, totalScore, nil
 }
 
@@ -147,12 +150,14 @@ func (s *CourseHomeworkStore) GradeNodeHomework(ctx context.Context, graderID, t
 	if err != nil {
 		return "", 0, err
 	}
-	_, _ = s.q.Exec(ctx, `
+	if _, err := s.q.Exec(ctx, `
 		INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, status, total_score, max_score, comment, graded_at, graded_by)
 		VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5, $6, NOW(), $7)
 		ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key)
 		DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', comment = EXCLUDED.comment, graded_at = NOW(), graded_by = EXCLUDED.graded_by, updated_at = NOW()
-	`, tenantID, nodeID, studentID, score, totalScore, comment, graderID)
+	`, tenantID, nodeID, studentID, score, totalScore, comment, graderID); err != nil {
+		return "", 0, fmt.Errorf("upsert node eval result: %w", err)
+	}
 	return studentID, totalScore, nil
 }
 

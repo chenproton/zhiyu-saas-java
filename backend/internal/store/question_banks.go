@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -136,31 +137,39 @@ func (s *QuestionBankStore) Update(ctx context.Context, id string, p *QuestionBa
 
 // Delete 删除题库（连带题目与知识点绑定）。
 func (s *QuestionBankStore) Delete(ctx context.Context, id string) error {
-	_, _ = s.q.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id)
-	_, _ = s.q.Exec(ctx, `DELETE FROM questions WHERE bank_id = $1`, id)
+	if _, err := s.q.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id); err != nil {
+		return fmt.Errorf("delete bank knowledge points: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `DELETE FROM questions WHERE bank_id = $1`, id); err != nil {
+		return fmt.Errorf("delete bank questions: %w", err)
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM question_banks WHERE id = $1`, id)
 	return err
 }
 
 // EnsureDraftPool 为用户创建默认草稿池（不存在时）。
-func (s *QuestionBankStore) EnsureDraftPool(ctx context.Context, tenantID, userID string) {
+func (s *QuestionBankStore) EnsureDraftPool(ctx context.Context, tenantID, userID string) error {
 	var count int
 	err := s.q.QueryRow(ctx,
 		`SELECT COUNT(*) FROM question_banks WHERE tenant_id = $1 AND creator_id = $2 AND is_draft_pool = true`,
 		tenantID, userID,
 	).Scan(&count)
-	if err != nil || count > 0 {
-		return
+	if err != nil {
+		return fmt.Errorf("check draft pool: %w", err)
+	}
+	if count > 0 {
+		return nil
 	}
 	code, err := GenerateUniqueEntityCode(ctx, s.q, "TK", "question_banks", tenantID)
 	if err != nil {
 		code = GenerateEntityCode("TK")
 	}
-	_, _ = s.q.Exec(ctx, `
+	_, err = s.q.Exec(ctx, `
 		INSERT INTO question_banks (id, tenant_id, code, name, description, status, question_count, creator_id,
 			collaborator_ids, collaborator_dept_ids, version, owner_type, is_draft_pool)
 		VALUES (gen_random_uuid(), $1, $2, '我的草稿库', '', 'draft', 0, $3, '{}', '{}', 'v1.0', 'mine', true)
 	`, tenantID, code, userID)
+	return err
 }
 
 // QuestionBankCreateParams 创建题库参数。

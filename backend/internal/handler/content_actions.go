@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -68,7 +69,7 @@ func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request
 		return false
 	}
 	tenantID, err := c.st.ContentActions().GetTenantID(r.Context(), table, id)
-	if err == store.ErrNotFound {
+	if errors.Is(err, store.ErrNotFound) {
 		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return false
 	}
@@ -104,7 +105,7 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := c.st.ContentActions().Transition(r.Context(), table, id, status, c.targetType, hook); err != nil {
-		if err == store.ErrNotFound {
+		if errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusNotFound, c.entityName+"不存在")
 			return
 		}
@@ -156,7 +157,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := c.st.ContentActions().Review(r.Context(), table, id, status); err != nil {
-		if err == store.ErrNotFound {
+		if errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusBadRequest, c.entityName+"不存在或不在待处理状态")
 			return
 		}

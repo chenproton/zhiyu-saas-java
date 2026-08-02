@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -76,7 +77,9 @@ func (s *ExamStore) Update(ctx context.Context, id string, p *ExamUpdateParams) 
 
 // Delete 删除试卷。
 func (s *ExamStore) Delete(ctx context.Context, id string) error {
-	_, _ = s.q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1`, id)
+	if _, err := s.q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1`, id); err != nil {
+		return fmt.Errorf("delete exam questions: %w", err)
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM exams WHERE id = $1`, id)
 	return err
 }

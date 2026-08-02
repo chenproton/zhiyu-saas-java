@@ -174,7 +174,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		err := h.Service.ReviewApproval(r.Context(), id, req.Action, record.Status, record.CurrentStepIdx, record.CurrentStepIdx,
 			record.History, record.TargetType, record.TargetID, record.TenantID, true)
 		if err != nil {
-			if err == store.ErrNotFound {
+			if errors.Is(err, store.ErrNotFound) {
 				respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 				return
 			}
@@ -217,7 +217,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	err = h.Service.ReviewApproval(r.Context(), id, req.Action, newStatus, newStepIdx, record.CurrentStepIdx,
 		record.History, record.TargetType, record.TargetID, record.TenantID, syncStatus)
 	if err != nil {
-		if err == store.ErrNotFound {
+		if errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 			return
 		}
