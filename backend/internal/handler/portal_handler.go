@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -50,27 +51,59 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 	}
 
 	if isSchoolAdmin {
-		dash.Stats = h.schoolAdminStats(r.Context(), claims.TenantID)
-		dash.ResourceStats = h.schoolAdminResourceStats(r.Context(), claims.TenantID)
-		dash.PersonnelStats = h.schoolAdminPersonnelStats(r.Context(), claims.TenantID)
-		dash.ResourceGrowth = h.schoolAdminResourceGrowth(r.Context(), claims.TenantID, 12)
-		dash.Todos = h.schoolAdminTodos(r.Context(), claims.TenantID)
+		var wg sync.WaitGroup
+		wg.Add(5)
+		go func() { defer wg.Done(); dash.Stats = h.schoolAdminStats(r.Context(), claims.TenantID) }()
+		go func() { defer wg.Done(); dash.ResourceStats = h.schoolAdminResourceStats(r.Context(), claims.TenantID) }()
+		go func() {
+			defer wg.Done()
+			dash.PersonnelStats = h.schoolAdminPersonnelStats(r.Context(), claims.TenantID)
+		}()
+		go func() {
+			defer wg.Done()
+			dash.ResourceGrowth = h.schoolAdminResourceGrowth(r.Context(), claims.TenantID, 12)
+		}()
+		go func() { defer wg.Done(); dash.Todos = h.schoolAdminTodos(r.Context(), claims.TenantID) }()
+		wg.Wait()
 		dash.Schedule = []domain.WorkspaceScheduleEvent{}
 		respondJSON(w, http.StatusOK, dash)
 		return
 	}
 
-	dash.Stats = h.stats(r.Context(), claims.UserID, claims.TenantID, isTeacher)
+	var wg sync.WaitGroup
+	wg.Add(4)
+	go func() { defer wg.Done(); dash.Announcements = h.listAnnouncements(r.Context(), role, claims.TenantID) }()
+	go func() { defer wg.Done(); dash.Todos = h.listTodos(r.Context(), claims.UserID, claims.TenantID, role) }()
+	go func() {
+		defer wg.Done()
+		dash.Schedule = h.listSchedule(r.Context(), claims.UserID, claims.TenantID, role)
+	}()
+	go func() { defer wg.Done(); dash.Stats = h.stats(r.Context(), claims.UserID, claims.TenantID, isTeacher) }()
 
 	if isTeacher {
-		dash.TeacherCourses = h.listTeacherCourses(r.Context(), claims.UserID, claims.TenantID)
-		dash.ClassPlans, dash.ClassSessions = h.listTeacherClassPlansAndSessions(r.Context(), claims.UserID, claims.TenantID)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			dash.TeacherCourses = h.listTeacherCourses(r.Context(), claims.UserID, claims.TenantID)
+		}()
+		go func() {
+			defer wg.Done()
+			dash.ClassPlans, dash.ClassSessions = h.listTeacherClassPlansAndSessions(r.Context(), claims.UserID, claims.TenantID)
+		}()
 	} else {
-		dash.Courses = h.listStudentCourses(r.Context(), claims.UserID, claims.TenantID)
-		dash.SceneTasks = h.listStudentSceneTasks(r.Context(), claims.UserID, claims.TenantID)
-		dash.Exams = h.listStudentExams(r.Context(), claims.UserID, claims.TenantID)
-		dash.LearningPath = []domain.WorkspaceLearningPath{}
+		wg.Add(3)
+		go func() {
+			defer wg.Done()
+			dash.Courses = h.listStudentCourses(r.Context(), claims.UserID, claims.TenantID)
+		}()
+		go func() {
+			defer wg.Done()
+			dash.SceneTasks = h.listStudentSceneTasks(r.Context(), claims.UserID, claims.TenantID)
+		}()
+		go func() { defer wg.Done(); dash.Exams = h.listStudentExams(r.Context(), claims.UserID, claims.TenantID) }()
 	}
+	wg.Wait()
+	dash.LearningPath = []domain.WorkspaceLearningPath{}
 
 	respondJSON(w, http.StatusOK, dash)
 }
