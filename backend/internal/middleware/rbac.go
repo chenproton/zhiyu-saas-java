@@ -109,9 +109,8 @@ func HasAnyMenuPermission(claims *Claims) bool {
 // system management routes. It mirrors the frontend menu permission model:
 //   - the admin flag grants all permissions.
 //   - a granted menu path under /portal/apps/system allows system access.
-//   - any explicitly granted business menu path also allows system access
-//     (reference-data APIs such as industries/majors are needed by all modules).
 //
+// A business menu grant alone never implies system management access.
 // Users with no permissions configuration are denied; callers such as
 // RequireSystemPermission still admit school_admin/platform_admin by role, so
 // tightening the default here does not affect role-based access.
@@ -137,9 +136,6 @@ func HasSystemPermission(claims *Claims) bool {
 		if val, ok := granted.(bool); ok && val && strings.HasPrefix(path, "/portal/apps/system") {
 			return true
 		}
-	}
-	if HasAnyMenuPermission(claims) {
-		return true
 	}
 	return false
 }

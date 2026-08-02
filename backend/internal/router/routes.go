@@ -175,6 +175,12 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			registerEvaluationRoutes(r, h)
 			registerLibraryRoutes(r, h)
 			registerAffairsRoutes(r, h)
+
+			// 专业/行业参考数据为各业务模块共用，对业务用户开放只读
+			r.Get("/majors", h.majorHandler.List)
+			r.Get("/majors/{id}", h.majorHandler.Get)
+			r.Get("/industries", h.industryHandler.List)
+			r.Get("/industries/{id}", h.industryHandler.Get)
 		})
 	})
 }
@@ -444,14 +450,10 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Delete("/roles/{id}", h.roleHandler.Delete)
 	r.Post("/roles/{id}/assign", h.roleHandler.Assign)
 
-	r.Get("/majors", h.majorHandler.List)
-	r.Get("/majors/{id}", h.majorHandler.Get)
 	r.Post("/majors", h.majorHandler.Create)
 	r.Put("/majors/{id}", h.majorHandler.Update)
 	r.Delete("/majors/{id}", h.majorHandler.Delete)
 
-	r.Get("/industries", h.industryHandler.List)
-	r.Get("/industries/{id}", h.industryHandler.Get)
 	r.Post("/industries", h.industryHandler.Create)
 	r.Put("/industries/{id}", h.industryHandler.Update)
 	r.Delete("/industries/{id}", h.industryHandler.Delete)
