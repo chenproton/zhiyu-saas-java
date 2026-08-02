@@ -210,7 +210,7 @@ export default function PackagePage() {
                         {/* 二级模块列表 */}
                         {isExpanded && (
                           <div className="px-4 pb-4 pt-2 bg-gray-50/50">
-                            <div className="grid grid-cols-5 gap-2">
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                               {module.subModules.map((subModule) => (
                                 <div
                                   key={subModule.name}

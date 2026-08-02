@@ -308,7 +308,8 @@ export function TaskKnowledgeCard({
               </div>
             )}
             {filteredKp.length > 0 && (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[560px]">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">
@@ -400,7 +401,8 @@ export function TaskKnowledgeCard({
                     )
                   })}
                 </tbody>
-              </table>
+                </table>
+              </div>
             )}
           </div>
         </div>
@@ -417,7 +419,7 @@ export function TaskKnowledgeCard({
                 <p className="text-xs">从左侧搜索并选择知识点</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {state.knowledgePoints.map((kpId) => {
                   const kp = knowledgePoints.find((k) => k.id === kpId)
                   if (!kp) return null

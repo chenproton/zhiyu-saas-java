@@ -75,7 +75,7 @@ export default function ProgramsPage() {
         return (
           <div className="rounded-lg border bg-white px-4 py-3">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[900px]">
                 <thead>
                   <tr className="border-b">
                     <th className="w-8 px-2 py-2">

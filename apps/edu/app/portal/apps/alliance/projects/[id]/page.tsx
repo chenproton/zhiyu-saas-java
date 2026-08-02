@@ -289,8 +289,8 @@ export default function AllianceProjectDetailPage() {
               新增里程碑
             </Button>
           </div>
-          <div className="rounded-md border">
-            <table className="w-full text-sm">
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm min-w-[700px]">
               <thead className="bg-muted/50 border-b">
                 <tr>
                   <TableHead>里程碑名称</TableHead>
@@ -367,8 +367,8 @@ export default function AllianceProjectDetailPage() {
               新增协议
             </Button>
           </div>
-          <div className="rounded-md border">
-            <table className="w-full text-sm">
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm min-w-[700px]">
               <thead className="bg-muted/50 border-b">
                 <tr>
                   <TableHead>协议名称</TableHead>
@@ -421,8 +421,8 @@ export default function AllianceProjectDetailPage() {
       label: '关联成果',
       badge: achievements.filter((a) => (a.projectIds || []).includes?.(id)).length,
       content: (
-        <div className="rounded-md border">
-          <table className="w-full text-sm">
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-muted/50 border-b">
               <tr>
                 <TableHead>成果名称</TableHead>

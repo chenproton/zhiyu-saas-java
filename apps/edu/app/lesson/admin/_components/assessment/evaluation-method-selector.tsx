@@ -142,7 +142,7 @@ export function EvaluationMethodSelector({
       </div>
 
       {/* 测评方式网格 */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {filteredMethods.map((method) => {
           const enabled = selectedKeys.includes(method.key)
           return (

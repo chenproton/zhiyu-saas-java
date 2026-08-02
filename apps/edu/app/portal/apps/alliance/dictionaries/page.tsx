@@ -108,8 +108,8 @@ function DictionaryTab({ dictType }: { dictType: string }) {
         </Button>
         <span className="text-sm text-muted-foreground">共 {items.length} 项</span>
       </div>
-      <div className="rounded-md border">
-        <table className="w-full text-sm">
+      <div className="rounded-md border overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-muted/50 border-b">
             <tr>
               <TableHead>编码</TableHead>

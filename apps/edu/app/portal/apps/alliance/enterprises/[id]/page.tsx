@@ -330,8 +330,8 @@ export default function AllianceEnterpriseDetailPage() {
               新增协议
             </Button>
           </div>
-          <div className="rounded-md border">
-            <table className="w-full text-sm">
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm min-w-[700px]">
               <thead className="bg-muted/50 border-b">
                 <tr>
                   <TableHead>协议名称</TableHead>
@@ -381,8 +381,8 @@ export default function AllianceEnterpriseDetailPage() {
       label: '合作项目',
       badge: projects.length,
       content: (
-        <div className="rounded-md border">
-          <table className="w-full text-sm">
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-muted/50 border-b">
               <tr>
                 <TableHead>项目名称</TableHead>
@@ -416,8 +416,8 @@ export default function AllianceEnterpriseDetailPage() {
       label: '合作成果',
       badge: achievements.length,
       content: (
-        <div className="rounded-md border">
-          <table className="w-full text-sm">
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-muted/50 border-b">
               <tr>
                 <TableHead>成果名称</TableHead>

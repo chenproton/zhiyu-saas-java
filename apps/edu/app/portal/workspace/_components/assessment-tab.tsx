@@ -89,7 +89,7 @@ export function AssessmentTab() {
                 </h4>
               </div>
               {/* 四项指标 */}
-              <div className="grid grid-cols-2 gap-3 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
                 {pa.indicators.map((ind) => (
                   <div
                     key={ind.label}

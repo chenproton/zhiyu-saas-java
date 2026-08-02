@@ -655,7 +655,7 @@ export function MethodDialogContent({
               </div>
             </div>
             <div className="overflow-x-auto max-w-full">
-              <table className="w-full text-sm border-collapse table-fixed">
+              <table className="w-full text-sm border-collapse table-fixed min-w-[700px]">
                 <thead>
                   <tr className="border-b bg-gray-50 text-gray-500 text-xs">
                     <th className="py-2.5 px-2 text-left w-[8%]">序号</th>

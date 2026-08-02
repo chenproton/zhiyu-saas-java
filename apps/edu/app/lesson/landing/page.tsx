@@ -78,7 +78,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
           <p className="text-xs text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
             {course.description || '暂无课程描述'}
           </p>
-          <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400 border-t border-slate-50 pt-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-400 border-t border-slate-50 pt-3">
             <span className="flex items-center gap-1">
               <Layers className="w-3 h-3" /> {course.nodeCount} 节点
             </span>

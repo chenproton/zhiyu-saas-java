@@ -571,7 +571,7 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                   <DialogTitle>选择资源类型</DialogTitle>
                   <DialogDescription>请选择要上传的资源类型</DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-3 gap-3 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 py-4">
                   {resourceTypes.map((t) => (
                     <button
                       key={t}
@@ -649,7 +649,7 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                           className="mt-1.5"
                         />
                       </FormFieldRow>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <FormFieldRow label="容纳人数">
                           <Input
                             value={newResCapacity}

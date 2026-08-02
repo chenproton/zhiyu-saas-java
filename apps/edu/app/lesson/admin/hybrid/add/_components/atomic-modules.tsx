@@ -821,7 +821,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
             <DialogTitle>{addMode === 'bank' ? '从题库引用' : '添加提问'}</DialogTitle>
           </DialogHeader>
           {!addMode ? (
-            <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
               <button
                 onClick={() => {
                   onChange({
@@ -1031,7 +1031,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
             </DialogTitle>
           </DialogHeader>
           {!addMode ? (
-            <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
               <button
                 onClick={() => {
                   onChange({
@@ -1103,7 +1103,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
               </div>
 
               {/* Filters */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>所属岗位</Label>
                   <Select

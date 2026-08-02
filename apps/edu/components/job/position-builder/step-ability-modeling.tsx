@@ -920,7 +920,8 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                 )}
               </div>
             ) : (
-              <table className="w-full">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px]">
                 <thead>
                   <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
                     <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[34%]">
@@ -1072,7 +1073,8 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                     )
                   })}
                 </tbody>
-              </table>
+                </table>
+              </div>
             )}
           </div>
         </DialogContent>

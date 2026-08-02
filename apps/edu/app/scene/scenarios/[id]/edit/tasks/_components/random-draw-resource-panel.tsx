@@ -264,7 +264,8 @@ export function RandomDrawResourcePanel({
                 </p>
               </div>
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[560px]">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">
@@ -358,7 +359,8 @@ export function RandomDrawResourcePanel({
                     )
                   })}
                 </tbody>
-              </table>
+                </table>
+              </div>
             )}
           </div>
         </div>
@@ -409,7 +411,7 @@ export function RandomDrawResourcePanel({
       {/* 抽题规则 */}
       <div className="border rounded-xl p-4 mt-4">
         <p className="text-sm font-medium mb-3">抽题规则</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label className="text-xs text-gray-500">抽题方式</Label>
             <Select

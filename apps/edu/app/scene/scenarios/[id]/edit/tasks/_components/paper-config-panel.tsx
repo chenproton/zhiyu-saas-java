@@ -142,7 +142,7 @@ export function PaperConfigPanel({
 
         <div className="border rounded-xl p-4">
           <p className="text-sm font-medium mb-3">考卷设置</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-gray-500">考试时长（分钟）</Label>
               <Input
@@ -200,7 +200,7 @@ export function PaperConfigPanel({
           </div>
           <div className="mt-4 pt-4 border-t">
             <Label className="text-xs text-gray-500 mb-2">试卷启用条件</Label>
-            <div className="grid grid-cols-3 gap-3 mt-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-2">
               {[
                 { key: 'manual', label: '手动启用', desc: '老师手动开启后学生可作答' },
                 {
@@ -240,7 +240,7 @@ export function PaperConfigPanel({
               ))}
             </div>
             {(paperCfg.activationMode ?? 'manual') === 'scheduled' && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs text-gray-500">启用时间</Label>
                   <Input

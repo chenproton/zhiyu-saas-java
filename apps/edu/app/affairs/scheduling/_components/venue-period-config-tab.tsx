@@ -242,7 +242,7 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
                 onChange={(e) => setName(e.target.value)}
               />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel>开始日期 *</FieldLabel>
                 <Input
@@ -722,7 +722,7 @@ function PeriodSlotsSection() {
                 onChange={(e) => setName(e.target.value)}
               />
             </Field>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Field>
                 <FieldLabel>开始时间</FieldLabel>
                 <Input

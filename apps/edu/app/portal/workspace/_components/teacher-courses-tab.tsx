@@ -370,7 +370,7 @@ function AssessmentView() {
 
       <div className="border rounded-xl p-4">
         <h4 className="text-sm font-semibold mb-3">互评互判统计</h4>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
           <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
             <div className="text-xl font-bold text-blue-700">{mockPeerReviewStats.totalGroups}</div>
             <div className="text-[10px] text-blue-500">总小组数</div>
@@ -706,9 +706,9 @@ export function TeacherCoursesTab({
         </Tabs>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 左侧课程/场景导航 */}
-        <div className="col-span-3">
+        <div className="lg:col-span-3">
           <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
             <div className="border-b bg-gradient-to-r from-gray-50 to-white p-3">
               <h3 className="text-sm font-semibold text-gray-900">课程/场景</h3>
@@ -774,7 +774,7 @@ export function TeacherCoursesTab({
         </div>
 
         {/* 右侧节次内容 */}
-        <div className="col-span-9">
+        <div className="lg:col-span-9">
           <SectionCard title="节次列表" icon={Calendar} iconColor="blue">
             {!selectedPlan ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-400">

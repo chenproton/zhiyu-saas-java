@@ -438,7 +438,7 @@ export default function ExamUsagePage() {
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel>开始时间</FieldLabel>
                 <Input

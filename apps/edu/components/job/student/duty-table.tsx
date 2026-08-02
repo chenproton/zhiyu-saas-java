@@ -66,7 +66,8 @@ export function DutyTable({
         </h4>
 
         {responsibilities.length > 0 ? (
-          <table className="w-full border-collapse">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse min-w-[560px]">
             <thead>
               <tr className="bg-[#fafafa]">
                 <th className="text-left p-4 text-sm font-medium text-[#64748b] w-24">编号</th>
@@ -105,7 +106,8 @@ export function DutyTable({
                 )
               })}
             </tbody>
-          </table>
+            </table>
+          </div>
         ) : (
           <div className="text-sm text-[#94a3b8] py-4">暂无岗位职责数据</div>
         )}

@@ -775,7 +775,7 @@ export default function SuperAdminPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>
                   租户标识 <span className="text-destructive">*</span>
@@ -816,7 +816,7 @@ export default function SuperAdminPage() {
                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>联系人</Label>
                 <Input
@@ -834,7 +834,7 @@ export default function SuperAdminPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>绑定域名</Label>
                 <Input
@@ -902,7 +902,7 @@ export default function SuperAdminPage() {
             </div>
           ) : (
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>
                     套餐名称 <span className="text-destructive">*</span>
@@ -943,7 +943,7 @@ export default function SuperAdminPage() {
               </div>
               <div className="grid gap-2">
                 <Label>平台模块</Label>
-                <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 rounded-lg border border-border p-3">
                   {Object.entries(platformModuleDefs).map(([key, def]) => (
                     <label
                       key={key}
