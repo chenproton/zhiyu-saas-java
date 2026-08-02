@@ -82,27 +82,23 @@ func (s *MicroCertStore) DeleteTemplate(ctx context.Context, id string) error {
 }
 
 func (s *MicroCertStore) IssueCerts(ctx context.Context, tenantID, templateID string, userIDs []string) (int, error) {
-	tx, err := s.beginner.Begin(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)
-
 	count := 0
-	for _, userID := range userIDs {
-		recordID := uuid.NewString()
-		tag, err := tx.Exec(ctx,
-			`INSERT INTO cert_issuance_records (id, tenant_id, template_id, user_id, issue_date, status, cert_number) VALUES ($1,$2,$3,$4,$5,'issued',$6)
-			 ON CONFLICT (tenant_id, template_id, user_id) DO NOTHING`,
-			recordID, tenantID, templateID, userID, time.Now(), uuid.NewString(),
-		)
-		if err != nil {
-			return 0, err
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		for _, userID := range userIDs {
+			recordID := uuid.NewString()
+			tag, err := tx.Exec(ctx,
+				`INSERT INTO cert_issuance_records (id, tenant_id, template_id, user_id, issue_date, status, cert_number) VALUES ($1,$2,$3,$4,$5,'issued',$6)
+				 ON CONFLICT (tenant_id, template_id, user_id) DO NOTHING`,
+				recordID, tenantID, templateID, userID, time.Now(), uuid.NewString(),
+			)
+			if err != nil {
+				return err
+			}
+			count += int(tag.RowsAffected())
 		}
-		count += int(tag.RowsAffected())
-	}
-
-	if err := tx.Commit(ctx); err != nil {
+		return nil
+	})
+	if err != nil {
 		return 0, err
 	}
 	return count, nil

@@ -411,8 +411,8 @@ func (h *CourseHandler) Review(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CourseHandler) Publish(w http.ResponseWriter, r *http.Request) {
-	h.actions().transitionWithHook(w, r, domain.StatusPublished, func(tx pgx.Tx, id string) error {
-		return h.Service.GenerateCourseAssessments(r.Context(), store.NewWithTx(tx), id)
+	h.actions().transitionWithHook(w, r, domain.StatusPublished, func(txStore *store.Store, id string) error {
+		return h.Service.GenerateCourseAssessments(r.Context(), txStore, id)
 	})
 }
 

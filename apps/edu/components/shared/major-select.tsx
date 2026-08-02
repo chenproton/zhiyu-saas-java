@@ -14,7 +14,8 @@ import type { Major } from '@/lib/types/backend'
 interface MajorSelectProps {
   tenantId?: string
   value?: string
-  onChange: (value: string | undefined) => void
+  /** 变更回调；第二参为选中专业实体（onChange 签名向后兼容扩展） */
+  onChange: (value: string | undefined, major?: Major) => void
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -56,7 +57,10 @@ export function MajorSelect({
   }, [loadMajors])
 
   const handleChange = (val: string) => {
-    onChange(val || undefined)
+    onChange(
+      val || undefined,
+      majors.find((m) => m.id === val),
+    )
   }
 
   const isDisabled = disabled || loading

@@ -90,8 +90,8 @@ func (s *ContentActionStore) GetStatus(ctx context.Context, table, id string) (d
 }
 
 // Transition 执行状态流转，包含事务与审批记录清理。
-// hook 在事务提交前调用，可用于同时更新关联资源。
-func (s *ContentActionStore) Transition(ctx context.Context, table, id string, to domain.ContentStatus, targetType string, hook func(tx pgx.Tx, id string) error) error {
+// hook 在事务提交前调用，接收基于同一事务的 store 入口，可用于同时更新关联资源。
+func (s *ContentActionStore) Transition(ctx context.Context, table, id string, to domain.ContentStatus, targetType string, hook func(txStore *Store, id string) error) error {
 	tbl, err := s.tableFor(table)
 	if err != nil {
 		return err
@@ -108,41 +108,33 @@ func (s *ContentActionStore) Transition(ctx context.Context, table, id string, t
 	if s.beginner == nil {
 		return fmt.Errorf("content action store requires a transaction beginner")
 	}
-	tx, err := s.beginner.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	// CAS 更新：仅当状态仍为读取时的值才流转，防止并发双发重复触发 hook（如发布时生成测评资源）
-	tag, err := tx.Exec(ctx, `UPDATE `+tbl+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, to, id, current)
-	if err != nil {
-		return fmt.Errorf("update status: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("status changed concurrently")
-	}
-
-	// 从审批中撤回时，同步删除审批中心对应的待审批记录
-	if current == domain.StatusPending && to == domain.StatusDraft && targetType != "" {
-		if _, err := tx.Exec(ctx, `
-			DELETE FROM approval_records
-			WHERE target_type = $1 AND target_id = $2 AND status = $3
-		`, targetType, id, string(domain.ApprovalStatusPending)); err != nil {
-			return fmt.Errorf("delete approval records: %w", err)
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		// CAS 更新：仅当状态仍为读取时的值才流转，防止并发双发重复触发 hook（如发布时生成测评资源）
+		tag, err := tx.Exec(ctx, `UPDATE `+tbl+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, to, id, current)
+		if err != nil {
+			return fmt.Errorf("update status: %w", err)
 		}
-	}
-
-	if hook != nil {
-		if err := hook(tx, id); err != nil {
-			return err
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("status changed concurrently")
 		}
-	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
-	}
-	return nil
+		// 从审批中撤回时，同步删除审批中心对应的待审批记录
+		if current == domain.StatusPending && to == domain.StatusDraft && targetType != "" {
+			if _, err := tx.Exec(ctx, `
+				DELETE FROM approval_records
+				WHERE target_type = $1 AND target_id = $2 AND status = $3
+			`, targetType, id, string(domain.ApprovalStatusPending)); err != nil {
+				return fmt.Errorf("delete approval records: %w", err)
+			}
+		}
+
+		if hook != nil {
+			if err := hook(NewWithTx(tx), id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // Review 审核内容实体（仅允许 pending -> approved/rejected）。

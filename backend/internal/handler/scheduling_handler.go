@@ -548,9 +548,7 @@ func (h *SchedulingHandler) DeleteSchedule(w http.ResponseWriter, r *http.Reques
 	}
 
 	ctx := r.Context()
-	err = h.Service.WithTx(ctx, func(txStore *store.Store) error {
-		return txStore.Scheduling().DeleteScheduleWithRestore(ctx, txStore.Q(), id, tenantID, entry.PlanEntryID)
-	})
+	err = h.Service.DeleteScheduleWithRestore(ctx, id, tenantID, entry.PlanEntryID)
 	if err != nil {
 		respondServerError(w, r, err, "删除排课失败")
 		return

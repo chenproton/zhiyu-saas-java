@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -17,16 +17,9 @@ type IndustryHandler struct {
 	Store   *store.IndustriesStore
 }
 
-type CreateIndustryRequest struct {
+// IndustryRequest 行业创建/更新请求体（更新流程忽略 tenantId）。
+type IndustryRequest struct {
 	TenantID  string  `json:"tenantId"`
-	Code      string  `json:"code"`
-	Name      string  `json:"name"`
-	ParentID  *string `json:"parentId"`
-	Enabled   bool    `json:"enabled"`
-	SortOrder int     `json:"sortOrder"`
-}
-
-type UpdateIndustryRequest struct {
 	Code      string  `json:"code"`
 	Name      string  `json:"name"`
 	ParentID  *string `json:"parentId"`
@@ -67,137 +60,84 @@ func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.Industry]{Items: items, Total: total})
 }
 
+// crud 返回行业 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *IndustryHandler) crud() crudConfig[IndustryRequest, domain.Industry] {
+	return crudConfig[IndustryRequest, domain.Industry]{
+		NotFoundMsg:        "行业不存在",
+		CreateErrMsg:       "创建行业失败",
+		UpdateErrMsg:       "更新行业失败",
+		DeleteErrMsg:       "删除行业失败",
+		DeleteCheckErrMsg:  "检查子行业失败",
+		Permit:             func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		UniqueViolationMsg: "行业代码已存在，请使用其他代码",
+		CheckOwnership:     true,
+		GetOwnership:       true,
+		ValidateCreate: func(t *IndustryRequest) string {
+			if t.TenantID == "" || t.Code == "" || t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *IndustryRequest) (string, bool) {
+			return t.TenantID, verifyRequestTenant(w, r, t.TenantID)
+		},
+		ValidateUpdate: func(t *IndustryRequest) string {
+			if t.Code == "" || t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *IndustryRequest, tenantID, userID string) (string, error) {
+			return h.Store.Create(ctx, store.IndustryCreateParams{
+				TenantID:  tenantID,
+				Code:      t.Code,
+				Name:      t.Name,
+				ParentID:  t.ParentID,
+				Enabled:   t.Enabled,
+				SortOrder: t.SortOrder,
+			})
+		},
+		UpdateFn: func(ctx context.Context, id string, t *IndustryRequest) error {
+			return h.Store.Update(ctx, id, store.IndustryUpdateParams{
+				Code:      t.Code,
+				Name:      t.Name,
+				ParentID:  t.ParentID,
+				Enabled:   t.Enabled,
+				SortOrder: t.SortOrder,
+			})
+		},
+		DeleteFn: h.Store.Delete,
+		GetByIDFn: func(ctx context.Context, id string) (domain.Industry, error) {
+			return h.Store.GetByID(ctx, id)
+		},
+		TenantIDFn: func(t *domain.Industry) string { return t.TenantID },
+		DeleteChecks: []func(ctx context.Context, t *domain.Industry) (string, error){
+			func(ctx context.Context, t *domain.Industry) (string, error) {
+				count, err := h.Store.CountChildren(ctx, t.ID)
+				if err != nil {
+					return "", err
+				}
+				if count > 0 {
+					return "该行业下仍有子行业，请先删除子行业", nil
+				}
+				return "", nil
+			},
+		},
+	}
+}
+
 func (h *IndustryHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	industry, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "行业不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, industry.TenantID) {
-		return
-	}
-	respondJSON(w, http.StatusOK, industry)
+	crudGet(w, r, h.crud())
 }
 
 func (h *IndustryHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	var req CreateIndustryRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-
-	if req.TenantID == "" || req.Code == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	if !verifyRequestTenant(w, r, req.TenantID) {
-		return
-	}
-
-	id, err := h.Store.Create(r.Context(), store.IndustryCreateParams{
-		TenantID:  req.TenantID,
-		Code:      req.Code,
-		Name:      req.Name,
-		ParentID:  req.ParentID,
-		Enabled:   req.Enabled,
-		SortOrder: req.SortOrder,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
-			return
-		}
-		respondServerError(w, r, err, "创建行业失败")
-		return
-	}
-
-	industry, _ := h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusCreated, industry)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	industry, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "行业不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, industry.TenantID) {
-		return
-	}
-
-	var req UpdateIndustryRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-
-	if req.Code == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	err = h.Store.Update(r.Context(), id, store.IndustryUpdateParams{
-		Code:      req.Code,
-		Name:      req.Name,
-		ParentID:  req.ParentID,
-		Enabled:   req.Enabled,
-		SortOrder: req.SortOrder,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
-			return
-		}
-		respondServerError(w, r, err, "更新行业失败")
-		return
-	}
-
-	industry, _ = h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusOK, industry)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	industry, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "行业不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, industry.TenantID) {
-		return
-	}
-
-	childCount, err := h.Store.CountChildren(r.Context(), id)
-	if err != nil {
-		respondServerError(w, r, err, "检查子行业失败")
-		return
-	}
-	if childCount > 0 {
-		respondError(w, http.StatusConflict, "该行业下仍有子行业，请先删除子行业")
-		return
-	}
-
-	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除行业失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

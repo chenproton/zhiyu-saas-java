@@ -119,6 +119,13 @@ func (s *AffairsService) DeleteSchedule(ctx context.Context, id, tenantID string
 	return s.st.Scheduling().DeleteSchedule(ctx, id, tenantID)
 }
 
+// DeleteScheduleWithRestore 删除排课并恢复计划条目为待排（事务内）。
+func (s *AffairsService) DeleteScheduleWithRestore(ctx context.Context, id, tenantID string, planEntryID *string) error {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.Scheduling().DeleteScheduleWithRestore(ctx, txStore.Q(), id, tenantID, planEntryID)
+	})
+}
+
 // CheckScheduleConflicts 校验排课冲突。
 func (s *AffairsService) CheckScheduleConflicts(ctx context.Context, tenantID string, p *store.ScheduleConflictParams, excludeID string) ([]domain.ScheduleConflict, error) {
 	return s.st.Scheduling().CheckScheduleConflicts(ctx, tenantID, p.TermID, p, excludeID)

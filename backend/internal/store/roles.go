@@ -70,44 +70,36 @@ func (s *RolesStore) Update(ctx context.Context, id string, p RoleUpdateParams) 
 }
 
 func (s *RolesStore) Delete(ctx context.Context, id string) error {
-	tx, err := s.beginner.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE role_id = $1`, id); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `DELETE FROM roles WHERE id = $1`, id); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE role_id = $1`, id); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM roles WHERE id = $1`, id); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string) error {
-	tx, err := s.beginner.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	tag, err := tx.Exec(ctx,
-		`INSERT INTO user_roles (role_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-		roleID, userID,
-	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() > 0 {
-		if _, err := tx.Exec(ctx,
-			`UPDATE roles SET user_count = user_count + 1 WHERE id = $1 AND tenant_id = $2`,
-			roleID, tenantID,
-		); err != nil {
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx,
+			`INSERT INTO user_roles (role_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+			roleID, userID,
+		)
+		if err != nil {
 			return err
 		}
-	}
-	return tx.Commit(ctx)
+		if tag.RowsAffected() > 0 {
+			if _, err := tx.Exec(ctx,
+				`UPDATE roles SET user_count = user_count + 1 WHERE id = $1 AND tenant_id = $2`,
+				roleID, tenantID,
+			); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (s *RolesStore) ScanRows(rows pgx.Rows) ([]domain.Role, error) {

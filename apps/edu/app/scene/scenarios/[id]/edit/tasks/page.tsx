@@ -684,6 +684,7 @@ export default function TasksEditPage() {
 
   const [existingScenario, setExistingScenario] = useState<any>(null)
   const [, setDataLoaded] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const [tasks, setTasks] = useState<Task[]>([])
@@ -843,10 +844,17 @@ export default function TasksEditPage() {
         await ensureDatasets(['knowledge', 'ability', 'resources', 'evaluation', 'users'])
 
         setDataLoaded(true)
-      } catch (err) {}
+      } catch (err: any) {
+        setLoadFailed(true)
+        toast({
+          variant: 'destructive',
+          title: '任务数据加载失败',
+          description: err?.message || '请刷新页面重试',
+        })
+      }
     }
     load()
-  }, [scenarioId, user?.id, ensureDatasets])
+  }, [scenarioId, user?.id, ensureDatasets, toast])
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
@@ -1190,6 +1198,7 @@ export default function TasksEditPage() {
 
     // Persist custom ability points added in this session and map their IDs
     const abIdMapping: Record<string, string> = {}
+    const failedAbilityIds: string[] = []
     let nextAbilityPoints = [...datasets.abilityPoints]
     for (const abId of Array.from(datasets.customAbilityPointIds.current)) {
       const ap = nextAbilityPoints.find((a) => (a as { id: string }).id === abId)
@@ -1207,12 +1216,22 @@ export default function TasksEditPage() {
         if (idx >= 0)
           nextAbilityPoints[idx] = { ...(nextAbilityPoints[idx] as object), id: created.id }
         datasets.customAbilityPointIds.current.delete(abId)
-      } catch (err: any) {}
+      } catch (err: any) {
+        failedAbilityIds.push(abId)
+      }
     }
     datasets.setAbilityPoints(nextAbilityPoints)
+    if (failedAbilityIds.length > 0) {
+      toast({
+        variant: 'destructive',
+        title: '部分自定义能力点保存失败',
+        description: `${failedAbilityIds.length} 个能力点未能创建，将从任务中移除`,
+      })
+    }
 
     // Persist custom resources added in this session and map their IDs
     const resourceIdMapping: Record<string, string> = {}
+    const failedResourceIds: string[] = []
     let nextLearningResources = [...datasets.learningResources]
     const nextCustomResourceIds = new Set(datasets.customResourceIds)
     for (const resId of Array.from(datasets.customResourceIds)) {
@@ -1234,10 +1253,19 @@ export default function TasksEditPage() {
         const idx = nextLearningResources.findIndex((r) => r.id === resId)
         if (idx >= 0) nextLearningResources[idx] = { ...nextLearningResources[idx], id: created.id }
         nextCustomResourceIds.delete(resId)
-      } catch (err: any) {}
+      } catch (err: any) {
+        failedResourceIds.push(resId)
+      }
     }
     datasets.setLearningResources(nextLearningResources)
     datasets.setCustomResourceIds(nextCustomResourceIds)
+    if (failedResourceIds.length > 0) {
+      toast({
+        variant: 'destructive',
+        title: '部分自定义资源保存失败',
+        description: `${failedResourceIds.length} 个资源未能创建，将从任务中移除`,
+      })
+    }
 
     // Replace temporary custom IDs with persisted IDs across all task states
     const replaceIds = (ids: string[]) =>
@@ -1385,6 +1413,14 @@ export default function TasksEditPage() {
       submitText="完成配置"
       contentMaxWidth="max-w-[1400px]"
     >
+      {loadFailed && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
+          <span className="text-sm text-destructive">任务数据加载失败，请重试</span>
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            刷新重试
+          </Button>
+        </div>
+      )}
       {/* Scenario Info */}
       <Card className="block">
         <CardHeader className="pb-3">
@@ -1742,69 +1778,69 @@ export default function TasksEditPage() {
             </Tabs>
             <div className="flex-1 overflow-y-auto border rounded-lg">
               <div className="overflow-x-auto">
-              {/* Table Header */}
-              <div className="grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b sticky top-0 min-w-[540px]">
-                <div></div>
-                <div>任务名称</div>
-                <div>任务编码</div>
-                <div>关联场景</div>
-                <div>关联岗位</div>
-              </div>
-              {allTasks
-                .filter((t) => {
-                  if (cloneTab === 'my') return t.scenarioCreatorId === (user?.id || '')
-                  if (cloneTab === 'collab')
+                {/* Table Header */}
+                <div className="grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b sticky top-0 min-w-[540px]">
+                  <div></div>
+                  <div>任务名称</div>
+                  <div>任务编码</div>
+                  <div>关联场景</div>
+                  <div>关联岗位</div>
+                </div>
+                {allTasks
+                  .filter((t) => {
+                    if (cloneTab === 'my') return t.scenarioCreatorId === (user?.id || '')
+                    if (cloneTab === 'collab')
+                      return (
+                        Array.isArray(t.scenarioCoBuilderIds) &&
+                        t.scenarioCoBuilderIds.includes(user?.id || '')
+                      )
+                    if (cloneTab === 'public')
+                      return (
+                        t.scenarioStatus === 'published' && t.scenarioCreatorId !== (user?.id || '')
+                      )
+                    return true
+                  })
+                  .filter(
+                    (t) =>
+                      !cloneSearch ||
+                      t.name.includes(cloneSearch) ||
+                      t.code?.includes(cloneSearch) ||
+                      t.scenarioName?.includes(cloneSearch),
+                  )
+                  .map((t) => {
+                    const selected = selectedClone.includes(t.id)
                     return (
-                      Array.isArray(t.scenarioCoBuilderIds) &&
-                      t.scenarioCoBuilderIds.includes(user?.id || '')
-                    )
-                  if (cloneTab === 'public')
-                    return (
-                      t.scenarioStatus === 'published' && t.scenarioCreatorId !== (user?.id || '')
-                    )
-                  return true
-                })
-                .filter(
-                  (t) =>
-                    !cloneSearch ||
-                    t.name.includes(cloneSearch) ||
-                    t.code?.includes(cloneSearch) ||
-                    t.scenarioName?.includes(cloneSearch),
-                )
-                .map((t) => {
-                  const selected = selectedClone.includes(t.id)
-                  return (
-                    <div
-                      key={t.id}
-                      onClick={() =>
-                        setSelectedClone((prev) =>
-                          prev.includes(t.id) ? prev.filter((x) => x !== t.id) : [...prev, t.id],
-                        )
-                      }
-                      className={cn(
-                        'grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-3 border-b cursor-pointer items-center text-sm hover:bg-gray-50 min-w-[540px]',
-                        selected ? 'bg-primary/5' : '',
-                      )}
-                    >
-                      <div className="flex justify-center">
-                        <div
-                          className={cn(
-                            'w-4 h-4 rounded border flex items-center justify-center',
-                            selected ? 'bg-primary border-primary' : 'border-gray-300',
-                          )}
-                        >
-                          {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                      <div
+                        key={t.id}
+                        onClick={() =>
+                          setSelectedClone((prev) =>
+                            prev.includes(t.id) ? prev.filter((x) => x !== t.id) : [...prev, t.id],
+                          )
+                        }
+                        className={cn(
+                          'grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-3 border-b cursor-pointer items-center text-sm hover:bg-gray-50 min-w-[540px]',
+                          selected ? 'bg-primary/5' : '',
+                        )}
+                      >
+                        <div className="flex justify-center">
+                          <div
+                            className={cn(
+                              'w-4 h-4 rounded border flex items-center justify-center',
+                              selected ? 'bg-primary border-primary' : 'border-gray-300',
+                            )}
+                          >
+                            {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                          </div>
+                        </div>
+                        <div className="font-medium">{t.name}</div>
+                        <div className="text-gray-500 text-xs">{t.code}</div>
+                        <div className="text-gray-500 text-xs truncate">{t.scenarioName}</div>
+                        <div className="text-gray-500 text-xs">
+                          {existingScenario?.positionName || '-'}
                         </div>
                       </div>
-                      <div className="font-medium">{t.name}</div>
-                      <div className="text-gray-500 text-xs">{t.code}</div>
-                      <div className="text-gray-500 text-xs truncate">{t.scenarioName}</div>
-                      <div className="text-gray-500 text-xs">
-                        {existingScenario?.positionName || '-'}
-                      </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
               </div>
             </div>
           </div>

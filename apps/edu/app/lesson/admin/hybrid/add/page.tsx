@@ -33,7 +33,8 @@ import {
   ImageUp,
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
-import { courseApi, majorApi, fileApi, lessonBatchApi } from '@/lib/api'
+import { courseApi, fileApi, lessonBatchApi } from '@/lib/api'
+import { MajorSelect } from '@/components/shared/major-select'
 import type { Course } from '@/lib/types/lesson'
 import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
 import CourseNodeTree from '../../system/add/_components/CourseNodeTree'
@@ -83,8 +84,6 @@ function HybridCourseAddForm() {
   const claimCourse = searchParams.get('claimCourse')
   const claimSessionsParam = searchParams.get('claimSessions')
   const [existing, setExisting] = useState<Course | null>(null)
-  const [majorNames, setMajorNames] = useState<string[]>([])
-  const majorMapRef = useRef<Map<string, string>>(new Map())
   const [batchId, setBatchId] = useState('')
 
   useEffect(() => {
@@ -103,19 +102,6 @@ function HybridCourseAddForm() {
       }
     })()
   }, [editId])
-
-  useEffect(() => {
-    majorApi
-      .list({ limit: 1000 })
-      .then((res) => {
-        const enabled = res.items.filter((m) => m.enabled)
-        setMajorNames(enabled.map((m) => m.name))
-        const map = new Map<string, string>()
-        enabled.forEach((m) => map.set(m.name, m.id))
-        majorMapRef.current = map
-      })
-      .catch(() => {})
-  }, [])
 
   interface ClaimPayload {
     course?: string
@@ -640,23 +626,13 @@ function HybridCourseAddForm() {
                   />
                 </FormFieldRow>
                 <FormFieldRow label="所属专业" labelClassName="text-xs">
-                  <Select
-                    value={rootForm.majorName}
-                    onValueChange={(v) =>
-                      updateRootForm({ majorName: v, majorId: majorMapRef.current.get(v) || '' })
+                  <MajorSelect
+                    value={rootForm.majorId}
+                    onChange={(v, m) =>
+                      updateRootForm({ majorId: v || '', majorName: m?.name || '' })
                     }
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="请选择所属专业" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {majorNames.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="请选择所属专业"
+                  />
                 </FormFieldRow>
                 <FormFieldRow label="课程分类" labelClassName="text-xs">
                   <Select

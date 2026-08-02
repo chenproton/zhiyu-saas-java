@@ -201,13 +201,23 @@ func (s *Store) Q() Queryer {
 
 // WithTx 开启事务，并在同一事务的 Store 上执行 fn（唯一事务模板）。
 // fn 返回 error 时自动回滚；所有跨 store 的组合操作必须经由 WithTx。
+// *Store.Begin 自带嵌套事务防护（事务模式下返回 ErrNestedTransaction）。
 func (s *Store) WithTx(ctx context.Context, fn func(txStore *Store) error) error {
-	tx, err := s.Begin(ctx)
+	return withTxStore(ctx, s, func(tx pgx.Tx) error {
+		return fn(NewWithTx(tx))
+	})
+}
+
+// withTxStore 在 beginner 上开启事务，统一 Begin/Rollback/Commit 模板。
+// 供单个领域 store 内部多语句组合使用（如 RolesStore.Delete）；
+// service 层跨 store 组合请使用 Store.WithTx。
+func withTxStore(ctx context.Context, beginner txBeginner, fn func(tx pgx.Tx) error) error {
+	tx, err := beginner.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if err := fn(NewWithTx(tx)); err != nil {
+	if err := fn(tx); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
