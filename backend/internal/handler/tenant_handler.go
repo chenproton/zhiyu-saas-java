@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -247,8 +246,6 @@ func (h *TenantHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	tenant, _ := h.Service.Get(r.Context(), id)
 	respondJSON(w, http.StatusOK, tenant)
 }
-
-var _ = errors.Is
 
 // fetchTenant 按 ID 查询租户（兼容 tenant_admin_handler 复用，不存在返回错误）。
 func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tenant, error) {

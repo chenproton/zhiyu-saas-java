@@ -2,8 +2,6 @@ package handler
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,15 +53,6 @@ func coalesceStringSlice(s []string) []string {
 		return []string{}
 	}
 	return s
-}
-
-// generateSecurePassword 生成指定长度的随机十六进制密码。
-func generateSecurePassword(length int) (string, error) {
-	b := make([]byte, length)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
 }
 
 // isStrongPassword requires at least 8 characters and at least one letter and one digit.
@@ -159,17 +148,6 @@ func itoa(i int) string {
 	return strconv.Itoa(i)
 }
 
-func parseFloat(s string, defaultVal float64) (float64, error) {
-	if s == "" {
-		return defaultVal, nil
-	}
-	v, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return defaultVal, err
-	}
-	return v, nil
-}
-
 // platformAdminOnly returns true if the caller is a platform admin.
 func platformAdminOnly(claims *middleware.Claims) bool {
 	return middleware.HasRole(claims, "platform_admin")
@@ -199,35 +177,8 @@ func canManageUsers(r *http.Request) bool {
 	return canManagePortal(middleware.CurrentUser(r))
 }
 
-// requireOperator reports whether the request is from a platform operator.
-func requireOperator(r *http.Request) bool {
-	claims := middleware.CurrentUser(r)
-	return claims != nil && canManagePlatform(claims)
-}
-
-// canModifyContent returns true for business-resource write operations.
-func canModifyContent(claims *middleware.Claims) bool {
-	if claims == nil {
-		return false
-	}
-	for _, code := range []string{"teacher", "school_admin", "enterprise_mentor"} {
-		if middleware.HasRole(claims, code) {
-			return true
-		}
-	}
-	return false
-}
-
 // canReadTenantScoped returns true if the caller has a tenant to scope reads to.
 // 教育域数据一律租户内可见，不再为 platform_admin 提供跨租户特权
-// （跨租户运营操作走 superadmin 控制台的独立路径）。
-func canReadTenantScoped(claims *middleware.Claims) bool {
-	if claims == nil {
-		return false
-	}
-	return claims.TenantID != nil && *claims.TenantID != ""
-}
-
 // tenantFilter returns the tenant_id value to filter by. ok=false when the
 // caller has no tenant and cannot access tenant-scoped data.
 func tenantFilter(claims *middleware.Claims) (tenantID string, ok bool) {
@@ -253,20 +204,6 @@ func requireTenant(w http.ResponseWriter, r *http.Request) (string, bool) {
 
 // institutionFilter returns the institution_id value to filter by, or an empty
 // string when the caller is a platform admin. ok=false means the caller has no
-// institution and cannot read institution-scoped lists.
-func institutionFilter(claims *middleware.Claims) (institutionID string, ok bool) {
-	if claims == nil {
-		return "", false
-	}
-	if platformAdminOnly(claims) {
-		return "", true
-	}
-	if claims.InstitutionID == nil || *claims.InstitutionID == "" {
-		return "", false
-	}
-	return *claims.InstitutionID, true
-}
-
 // verifyTenantOwnership checks that the entity's tenantID matches the caller's tenant.
 // Writes a 403 response and returns false when they don't match.
 func verifyTenantOwnership(w http.ResponseWriter, r *http.Request, entityTenantID string) bool {
@@ -300,11 +237,6 @@ func verifyRequestTenant(w http.ResponseWriter, r *http.Request, requestTenantID
 // generateEntityCode returns a human-readable code like "GW-A3B7C9D1".
 func generateEntityCode(prefix string) string {
 	return store.GenerateEntityCode(prefix)
-}
-
-// generateUniqueEntityCode generates a unique tenant-scoped entity code.
-func generateUniqueEntityCode(ctx context.Context, db store.Queryer, prefix, table, tenantID string) (string, error) {
-	return store.GenerateUniqueEntityCode(ctx, db, prefix, table, tenantID)
 }
 
 // executeListQuery adapts store.ExecuteListQuery to the legacy handler signature:
@@ -354,18 +286,6 @@ func executeListQuery[T any](ctx context.Context, db store.ListQueryDB, r *http.
 	return store.ExecuteListQuery(ctx, db, p, cfg, scanRows...)
 }
 
-// recordView inserts a view log entry for the given target.
-func recordView(ctx context.Context, db store.Queryer, targetType, targetID string, claims *middleware.Claims) error {
-	var userID, tenantID any
-	if claims != nil {
-		userID = claims.UserID
-		if claims.TenantID != nil {
-			tenantID = *claims.TenantID
-		}
-	}
-	return store.RecordView(ctx, db, targetType, targetID, userID, tenantID)
-}
-
 // jsonMapBytes 将 JSONMap 序列化为 []byte（nil 返回 "{}"）。
 func jsonMapBytes(m domain.JSONMap) []byte {
 	if m == nil {
@@ -388,19 +308,6 @@ func jsonSliceToUUIDSlice(ids domain.JSONSlice) []string {
 		out = append(out, s)
 	}
 	return out
-}
-
-// jsonRawMessageToJSONSlice 将 json.RawMessage 解析为 JSONSlice。
-func jsonRawMessageToJSONSlice(raw json.RawMessage) domain.JSONSlice {
-	if len(raw) == 0 || string(raw) == "null" {
-		return domain.JSONSlice{}
-	}
-	var s domain.JSONSlice
-	_ = json.Unmarshal(raw, &s)
-	if s == nil {
-		return domain.JSONSlice{}
-	}
-	return s
 }
 
 // jsonRawMessageToJSONMap 将 json.RawMessage 解析为 JSONMap。

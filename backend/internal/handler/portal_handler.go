@@ -423,10 +423,6 @@ func (h *PortalHandler) listTeacherClassPlansAndSessions(ctx context.Context, us
 	return plans, sessions
 }
 
-func (h *PortalHandler) creditHoursRatio(ctx context.Context) float64 {
-	return h.Service.CreditHoursRatio(ctx)
-}
-
 func totalHours(online, offline *float64) int {
 	total := 0.0
 	if online != nil {

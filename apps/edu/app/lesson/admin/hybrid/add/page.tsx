@@ -40,7 +40,6 @@ import CourseNodeTree from '../../system/add/_components/CourseNodeTree'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import { WEB_FRONTEND_SEMESTER_NODES } from './_mock/semester-nodes'
 import {
   ATOMIC_MODULES,
   ATOMIC_MODULES_BY_KEY,
@@ -148,10 +147,6 @@ function HybridCourseAddForm() {
 
   /* ========== course node tree ========== */
   const initialNodes = useMemo<SystemCourseNode[]>(() => {
-    if (editId === 'hybrid-1') {
-      return WEB_FRONTEND_SEMESTER_NODES
-    }
-
     const rootName = claimCourse || existing?.name || '混合课程'
     const rootNode: SystemCourseNode = {
       id: FIRST_NODE_ID,

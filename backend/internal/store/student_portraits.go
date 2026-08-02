@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -193,8 +192,6 @@ func ScanStudentArchiveRows(rows pgx.Rows) ([]domain.StudentAbilityArchive, erro
 	}
 	return items, nil
 }
-
-var _ = errors.Is
 
 // RecommendPosition 画像推荐岗位。
 type RecommendPosition struct {

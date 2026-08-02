@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -354,5 +353,3 @@ func ScanTeachingPlanRows(rows pgx.Rows) ([]domain.TeachingPlan, error) {
 	}
 	return items, nil
 }
-
-var _ = errors.Is

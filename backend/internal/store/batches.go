@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -134,8 +133,6 @@ func ScanAffairsBatchRow(ctx context.Context, row pgx.Row) (any, error) {
 	b.WorkflowID = workflowID
 	return b, nil
 }
-
-var _ = errors.New
 
 // allowedBatchWriteTables 批次写表白名单。
 var allowedBatchWriteTables = []string{

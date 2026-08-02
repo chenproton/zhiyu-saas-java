@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"math"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -511,8 +510,6 @@ func ScanCertificationRuleRows(rows pgx.Rows) ([]domain.CertificationRule, error
 	}
 	return items, nil
 }
-
-var _ = time.Time{}
 
 // PutFullRuleItem 完整规则项。
 type PutFullRuleItem struct {

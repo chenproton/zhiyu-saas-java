@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -282,22 +281,6 @@ func (h *SchedulingHandler) DeletePeriodSlot(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *SchedulingHandler) fetchPeriodSlot(ctx context.Context, id, tenantID string) (*domain.PeriodSlot, error) {
-	return h.Service.GetPeriodSlot(ctx, id, tenantID)
-}
-
-func scanPeriodSlotRows(rows pgx.Rows) ([]domain.PeriodSlot, error) {
-	items := make([]domain.PeriodSlot, 0)
-	for rows.Next() {
-		var s domain.PeriodSlot
-		if err := rows.Scan(&s.ID, &s.Name, &s.SortOrder, &s.StartTime, &s.EndTime); err != nil {
-			return nil, err
-		}
-		items = append(items, s)
-	}
-	return items, nil
 }
 
 // ---------- 排课 ----------

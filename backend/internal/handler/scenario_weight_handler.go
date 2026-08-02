@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 
@@ -89,5 +88,3 @@ func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Requ
 	}
 	respondJSON(w, http.StatusOK, wgt)
 }
-
-var _ = errors.Is
