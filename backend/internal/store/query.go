@@ -88,6 +88,7 @@ type ListQueryFilter func(p ListParams, qb *ListQueryBuilder)
 // ListQueryConfig configures ExecuteListQuery for a specific entity type.
 type ListQueryConfig[T any] struct {
 	Table         string
+	CountTable    string // 轻量 COUNT 用 FROM（无 LATERAL/JOIN 聚合），空则用 Table
 	SelectColumns string
 	TenantScoped  bool
 	TenantColumn  string
@@ -403,7 +404,11 @@ func ExecuteListQuery[T any](ctx context.Context, db ListQueryDB, p ListParams, 
 	}
 
 	where := qb.WhereClause()
-	countQuery := "SELECT COUNT(*) FROM " + cfg.Table + " WHERE " + where
+	countFrom := cfg.CountTable
+	if countFrom == "" {
+		countFrom = cfg.Table
+	}
+	countQuery := "SELECT COUNT(*) FROM " + countFrom + " WHERE " + where
 	var total int
 	if err := db.QueryRow(ctx, countQuery, qb.args...).Scan(&total); err != nil {
 		slog.Error("count query failed", "query", countQuery, "error", err)

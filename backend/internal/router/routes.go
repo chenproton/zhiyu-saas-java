@@ -52,6 +52,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 	cachedLandingExams := cache.Cached(redisClient, 2*time.Minute, cache.LandingExamsKey())
 	cachedPublicPositions := cache.Cached(redisClient, 2*time.Minute, cache.PublicPositionsKey())
+	cachedPublicScenarios := cache.Cached(redisClient, 2*time.Minute, cache.PublicScenariosKey())
+	cachedDashboard := cache.Cached(redisClient, 30*time.Second, cache.DashboardKey())
 
 	r.Group(func(r chi.Router) {
 		r.Use(auth)
@@ -81,7 +83,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 			// 学生场景学习链路只读接口（写操作仍在 businessUser 组）：
 			// 学生从工作台课表进入场景大厅学习并提交测评，需要读取场景/任务/能力点/知识点
-			registerContentReadRoutes(r, "/scene/scenarios", h.scenarioHandler)
+			// 场景列表为重查询（3 个 LATERAL 聚合），挂租户级 2min 缓存（键含查询参数）
+			r.With(cachedPublicScenarios).Get("/scene/scenarios", h.scenarioHandler.List)
+			r.Get("/scene/scenarios/{id}", h.scenarioHandler.Get)
 			r.Get("/scene/tasks", h.scenarioTaskHandler.List)
 			r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
 			r.Get("/scene/tasks/{taskId}/evaluation-methods", h.taskEvaluationHandler.ListMethods)
@@ -141,8 +145,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 		r.Group(func(r chi.Router) {
 			r.Use(portalWorkspace)
-			// dashboard 内容按 userID 查询，缓存键只含 tenant+role 会串数据，故不缓存
-			r.Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
+			// dashboard 内容按 userID 查询，缓存键含 userID（30s TTL），跨用户不串数据
+			r.With(cachedDashboard).Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
 			r.Get("/portal/workspace/my-schedule", h.schedulingHandler.MySchedule)
 		})
 

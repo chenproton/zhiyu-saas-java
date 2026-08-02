@@ -108,12 +108,12 @@ func (s *ApprovalStore) RejectRecord(ctx context.Context, tx Queryer, id string,
 	return tag.RowsAffected() > 0, nil
 }
 
-// AdvanceRecord 推进审批（状态+步骤+历史）。
-func (s *ApprovalStore) AdvanceRecord(ctx context.Context, tx Queryer, id, status string, stepIdx int, history domain.JSONSlice) (bool, error) {
+// AdvanceRecord 推进审批（状态+步骤+历史，CAS 防止并发重复推进）。
+func (s *ApprovalStore) AdvanceRecord(ctx context.Context, tx Queryer, id, status string, stepIdx int, oldStepIdx int, history domain.JSONSlice) (bool, error) {
 	tag, err := tx.Exec(ctx, `
 		UPDATE approval_records SET status = $1, current_step_idx = $2, history = $3, updated_at = NOW()
-		WHERE id = $4 AND status = $5
-	`, status, stepIdx, history, id, string(domain.ApprovalStatusPending))
+		WHERE id = $4 AND status = $5 AND current_step_idx = $6
+	`, status, stepIdx, history, id, string(domain.ApprovalStatusPending), oldStepIdx)
 	if err != nil {
 		return false, err
 	}

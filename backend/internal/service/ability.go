@@ -304,7 +304,7 @@ func (s *PositionService) CreateApproval(ctx context.Context, tenantID *string, 
 }
 
 // ReviewApproval 评审审批（事务：更新记录+同步实体状态）。
-func (s *PositionService) ReviewApproval(ctx context.Context, id, action, newStatus string, stepIdx int, history domain.JSONSlice, targetType, targetID string, tenantID *string, syncStatus bool) error {
+func (s *PositionService) ReviewApproval(ctx context.Context, id, action, newStatus string, stepIdx int, oldStepIdx int, history domain.JSONSlice, targetType, targetID string, tenantID *string, syncStatus bool) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {
 		if action == string(domain.ApprovalStatusRejected) {
 			ok, err := txStore.Approvals().RejectRecord(ctx, txStore.Q(), id, newStatus, history)
@@ -321,7 +321,7 @@ func (s *PositionService) ReviewApproval(ctx context.Context, id, action, newSta
 			}
 			return nil
 		}
-		ok, err := txStore.Approvals().AdvanceRecord(ctx, txStore.Q(), id, newStatus, stepIdx, history)
+		ok, err := txStore.Approvals().AdvanceRecord(ctx, txStore.Q(), id, newStatus, stepIdx, oldStepIdx, history)
 		if err != nil {
 			return err
 		}

@@ -171,7 +171,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 	if req.Action == string(domain.ApprovalStatusRejected) {
 		record.Status = string(domain.ApprovalStatusRejected)
-		err := h.Service.ReviewApproval(r.Context(), id, req.Action, record.Status, record.CurrentStepIdx,
+		err := h.Service.ReviewApproval(r.Context(), id, req.Action, record.Status, record.CurrentStepIdx, record.CurrentStepIdx,
 			record.History, record.TargetType, record.TargetID, record.TenantID, true)
 		if err != nil {
 			if err == store.ErrNotFound {
@@ -214,7 +214,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	newStepIdx := stepIdx + 1
 	syncStatus := newStatus == string(domain.ApprovalStatusApproved)
 
-	err = h.Service.ReviewApproval(r.Context(), id, req.Action, newStatus, newStepIdx,
+	err = h.Service.ReviewApproval(r.Context(), id, req.Action, newStatus, newStepIdx, record.CurrentStepIdx,
 		record.History, record.TargetType, record.TargetID, record.TenantID, syncStatus)
 	if err != nil {
 		if err == store.ErrNotFound {

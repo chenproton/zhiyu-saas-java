@@ -34,6 +34,7 @@ const positionFavoritesFrom = "position_favorites pf JOIN career_positions cp ON
 func (s *PositionStore) AdminListConfig() ListQueryConfig[domain.CareerPosition] {
 	return ListQueryConfig[domain.CareerPosition]{
 		Table:         positionListFrom,
+		CountTable:    "career_positions cp",
 		SelectColumns: positionSelectColumns,
 		TenantScoped:  true,
 		TenantColumn:  "cp.tenant_id",

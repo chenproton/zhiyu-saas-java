@@ -91,14 +91,15 @@ func (s *MicroCertStore) IssueCerts(ctx context.Context, tenantID, templateID st
 	count := 0
 	for _, userID := range userIDs {
 		recordID := uuid.NewString()
-		_, err := tx.Exec(ctx,
-			`INSERT INTO cert_issuance_records (id, tenant_id, template_id, user_id, issue_date, status, cert_number) VALUES ($1,$2,$3,$4,$5,'issued',$6)`,
+		tag, err := tx.Exec(ctx,
+			`INSERT INTO cert_issuance_records (id, tenant_id, template_id, user_id, issue_date, status, cert_number) VALUES ($1,$2,$3,$4,$5,'issued',$6)
+			 ON CONFLICT (tenant_id, template_id, user_id) DO NOTHING`,
 			recordID, tenantID, templateID, userID, time.Now(), uuid.NewString(),
 		)
 		if err != nil {
 			return 0, err
 		}
-		count++
+		count += int(tag.RowsAffected())
 	}
 
 	if err := tx.Commit(ctx); err != nil {
