@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Lock, Mail, Phone, Shield, Smartphone, User, Award } from 'lucide-react'
+import { Bell, Mail, Phone, Shield, Smartphone, User, Award } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'

@@ -150,7 +150,7 @@
 | `BankQuestionSelectorPanel` | `bank-question-selector-panel.tsx` | 题库、随堂测 |
 | `PaperConfigPanel` | `paper-config-panel.tsx` | 试卷 |
 | `RandomDrawResourcePanel` | `random-draw-resource-panel.tsx` | 现场问答 |
-| `ResourceMaterialConfig` | `resource-material-config.tsx` | 现场评审、成果评价、作业 |
+| `ResourceMaterialConfig` | 现场评审、成果评价、作业（配置逻辑已并入 `atomic-modules`，2026-08 删除原文件） |
 | `MethodConfigDialog` | `method-config-dialog.tsx` | 所有方式的评价标准配置 |
 
 **新增测评方式只需：** 创建新面板组件 + 在 `EvalMethodConfigModule` 的 `EVALUATION_METHOD_OPTIONS` 数组中加一行。

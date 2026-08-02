@@ -59,7 +59,7 @@ const TYPE_COLORS: Record<QuestionType, string> = {
   short_answer: 'bg-teal-500',
 }
 import { cn } from '@/lib/utils'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 export default function ExamComposerPage() {
   const params = useParams()
   const router = useRouter()
@@ -189,10 +189,6 @@ export default function ExamComposerPage() {
     })
   }
 
-  const handleAddSingleQuestion = (question: Question) => {
-    addQuestionToExam(examId, question)
-  }
-
   const handleCreateQuestion = async (data: QuestionFormData) => {
     if (!draftPoolBank) return
     const newQuestion = await createQuestion(draftPoolBank.id, data)
@@ -280,13 +276,6 @@ export default function ExamComposerPage() {
       scores[q.questionId] = floored[i]
     })
     updateExamQuestionScores?.(examId, scores)
-  }
-
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) return `${minutes} 分钟`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours} 小时 ${mins} 分钟` : `${hours} 小时`
   }
 
   const getCollaboratorNames = () =>

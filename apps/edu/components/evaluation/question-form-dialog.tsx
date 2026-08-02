@@ -405,7 +405,6 @@ export function QuestionFormDialog({
   )
 
   const renderOptionEditor = (isMultiple: boolean) => {
-    const isSingle = !isMultiple
     return (
       <div className="flex flex-col gap-2">
         <CardTitle

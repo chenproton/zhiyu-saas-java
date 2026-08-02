@@ -85,7 +85,6 @@ export default function AffairsApprovalsPage() {
       emptyPendingText="所有提交都已处理完毕"
       records={records}
       loading={loading}
-      getStepInfo={getStepInfo}
       onApprove={approve}
       onReject={reject}
       onBatchApprove={batchApprove}

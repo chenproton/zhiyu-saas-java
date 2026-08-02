@@ -16,21 +16,8 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { StatusActionBar } from '@/components/shared/status-action-bar'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/components/auth-provider'
 import type { ContentListItem, ListRenderProps } from '@/components/shared/content-list-page'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
-
-interface EvalListItem extends ContentListItem {
-  code: string
-  description: string
-  creatorName: string
-  collaboratorNames: string[]
-  questionCount: number
-  totalScore?: number
-  isDraftPool?: boolean
-  updatedAt: string
-  questions?: any[]
-}
+import { formatDate } from '@/lib/format-utils'
 
 interface EvaluationListTableProps<
   T extends ContentListItem = ContentListItem,
@@ -62,7 +49,6 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
   } = props
 
   const router = useRouter()
-  const { hasPermission } = useAuth()
 
   const allSelectable = items.filter((b: any) => !b.isDraftPool)
   const allSelected =

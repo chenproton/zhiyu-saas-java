@@ -19,7 +19,6 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2, X, Plus } from 'lucide-react'
-import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import type { AllianceEnterprise, AllianceListResponse } from '@/lib/types'
@@ -40,7 +39,6 @@ const SECONDARY_COLLEGES = [
 ]
 
 export default function AllianceExpertNewPage() {
-  const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const router = useRouter()
   const [saving, setSaving] = useState(false)

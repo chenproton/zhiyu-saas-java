@@ -29,7 +29,7 @@ import { teachingPlanApi } from '@/lib/api'
 import type { TeachingPlanDetail, TeachingPlanEntry } from '@/lib/types'
 import { EntryTypeBadge } from './_components/entry-type-badge'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDateTime } from '@/lib/format-utils'
 
 const VENUE_TYPES = ['教室', '机房', '实训室', '实验室', '校外基地']
 
@@ -333,7 +333,6 @@ export default function TeachingPlanDetailPage() {
                                 value={es.classNodeIds}
                                 onChange={(v) => updateEditField(e.id, { classNodeIds: v })}
                                 selectableTypes={['班级']}
-                                placeholder="选择班级"
                                 title="选择授课班级"
                                 maxVisible={2}
                               />

@@ -1,5 +1,5 @@
 import type { PlatformNavigationConfig } from '@/components/platform-shell'
-import { Building, Calendar, Database, History, Rocket, Users, type LucideIcon } from 'lucide-react'
+import { Building, Database, History, Users, type LucideIcon } from 'lucide-react'
 
 /* ============================================================
    统一导航树（数字课程平台）

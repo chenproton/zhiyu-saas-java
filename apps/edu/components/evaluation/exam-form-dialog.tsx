@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { X, Upload, ImageIcon } from 'lucide-react'
+import { X, ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import type { Exam, ExamFormData } from '@/lib/types'
 import { evaluationBatchApi, fileApi } from '@/lib/api'

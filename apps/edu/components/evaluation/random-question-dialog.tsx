@@ -51,13 +51,6 @@ const DIM_LABEL: Record<WeightDimension, string> = {
   knowledge: '按知识点比例',
 }
 
-interface DimOption {
-  key: WeightDimension
-  label: string
-  keys: string[]
-  getKeyLabel: (key: string) => string
-}
-
 export function RandomQuestionDialog({
   open,
   onOpenChange,
@@ -72,7 +65,7 @@ export function RandomQuestionDialog({
   )
 
   const [questions, setQuestions] = useState<Question[]>([])
-  const [loadingQuestions, setLoadingQuestions] = useState(false)
+  const [, setLoadingQuestions] = useState(false)
 
   useEffect(() => {
     if (!open) return

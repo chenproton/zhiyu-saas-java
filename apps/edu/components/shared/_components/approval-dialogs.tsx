@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDateTime } from '@/lib/format-utils'
 
 interface ApprovalHistoryItem {
   action?: string

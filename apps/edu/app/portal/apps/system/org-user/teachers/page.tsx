@@ -83,7 +83,6 @@ export default function TeachersPage() {
   const [formTitleIds, setFormTitleIds] = useState<string[]>([])
 
   useEffect(() => {
-    let cancelled = false
     ;(async () => {
       setTeachers(
         users.map((u) => {
@@ -101,9 +100,6 @@ export default function TeachersPage() {
         }),
       )
     })()
-    return () => {
-      cancelled = true
-    }
   }, [users, institution, orgMap])
 
   useEffect(() => {

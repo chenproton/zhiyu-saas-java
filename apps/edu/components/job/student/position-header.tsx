@@ -19,7 +19,7 @@ import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { positionApi } from '@/lib/api'
 import type { CareerPosition } from '@/lib/types'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 interface PositionHeaderProps {
   position: CareerPosition

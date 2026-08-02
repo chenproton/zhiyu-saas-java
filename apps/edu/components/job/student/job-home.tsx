@@ -11,8 +11,6 @@ import {
   Sparkles,
   Filter,
   X,
-  TrendingUp,
-  GraduationCap,
   ChevronRight,
   Layers,
   ListChecks,
@@ -716,7 +714,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
-                  {favoritePositions.slice(0, 5).map((pos, i) => {
+                  {favoritePositions.slice(0, 5).map((pos) => {
                     const display = pos.shortName || pos.name
                     const category =
                       pos.industryId && industryMap.get(pos.industryId)

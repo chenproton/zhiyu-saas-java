@@ -6,7 +6,6 @@ import {
   Bell,
   BookOpen,
   Briefcase,
-  Calendar,
   CheckSquare,
   ChevronRight,
   Clock,

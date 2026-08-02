@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useAuth } from '@/components/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
 import {
@@ -32,14 +31,11 @@ import {
   Trash2,
   Sparkles,
   Briefcase,
-  Check,
-  ChevronsUpDown,
   ExternalLink,
-  Search,
   Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { PositionType, Position, Batch, PositionRecommendation } from '@/lib/types/job-source'
+import type { Position, Batch, PositionRecommendation } from '@/lib/types/job-source'
 import { POSITION_TYPE_LABELS } from '@/lib/types/job-source'
 import { positionApi, batchApi, recommendApi } from '@/lib/api'
 import { useIndustryMap } from '@/lib/use-resource-maps'
@@ -51,14 +47,14 @@ import {
 import type { PositionRecommendation as ApiPositionRecommendation } from '@/lib/types/job'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@zhiyu/ui'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 export default function PostRecommendPage() {
   const { toast } = useToast()
   const { user } = useAuth()
 
   const [positions, setPositions] = useState<Position[]>([])
-  const [batches, setBatches] = useState<Batch[]>([])
+  const [, setBatches] = useState<Batch[]>([])
   const [recommendations, setRecommendations] = useState<PositionRecommendation[]>([])
   const [loading, setLoading] = useState(false)
   const industryMap = useIndustryMap()

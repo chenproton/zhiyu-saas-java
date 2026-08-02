@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
   publicPositionApi,
-  positionApi,
   positionResponsibilityApi,
   abilityApi,
   positionCertificateApi,
@@ -198,7 +197,6 @@ export default function JobStudentDetailPage() {
       case 'ability':
         return user ? (
           <AbilityTree
-            responsibilities={responsibilities}
             bindings={bindings}
             abilityPoints={abilityPoints}
             abilityDomains={abilityDomains}

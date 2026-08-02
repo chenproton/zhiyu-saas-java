@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   ChevronLeft,
   Plus,
@@ -8,18 +8,13 @@ import {
   Trash2,
   Target,
   CheckCircle2,
-  Info,
   Search,
-  FileText,
-  Pencil,
-  Scale,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -162,7 +157,6 @@ export function MethodDialogContent({
     knowledgePoints,
     abilityPoints,
   } = ctx
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
   const [editingGradeMappingPointId, setEditingGradeMappingPointId] = useState<string | null>(null)
   const [localDraft, setLocalDraft] = useState<{
@@ -1289,7 +1283,7 @@ export function MethodDialogContent({
               const gm = ep.gradeMapping || []
               return (
                 <div className="space-y-3 py-2">
-                  {gm.map((g, i) => (
+                  {gm.map((g) => (
                     <div
                       key={g.id}
                       className="flex items-start gap-2 p-3 rounded-lg border bg-gray-50/50"

@@ -21,8 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { X, Upload, ImageIcon } from 'lucide-react'
+import { X, ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import type { QuestionBank, QuestionBankFormData } from '@/lib/types'
 import { evaluationBatchApi, fileApi } from '@/lib/api'

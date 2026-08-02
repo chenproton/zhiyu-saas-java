@@ -5,11 +5,9 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   ChevronUp,
   Database,
   FileQuestion,
-  FileText,
   Info,
   Lightbulb,
   ListOrdered,
@@ -26,7 +24,6 @@ import {
   X,
   Award,
   BookOpen,
-  ClipboardList,
 } from 'lucide-react'
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
@@ -39,7 +36,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -52,7 +48,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { useToast } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
@@ -65,7 +60,6 @@ import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
 import { BankQuestionSelectorPanel } from '@/app/scene/scenarios/[id]/edit/tasks/_components/bank-question-selector-panel'
 import {
   examApi,
-  examUsageApi,
   randomDrawQuestionApi,
   majorApi,
   taskEvaluationApi,
@@ -82,11 +76,7 @@ import {
   evaluationMethodOptions,
   evalSubTypeLabels,
   evalSubTypeColors,
-  abilityLevels,
   defaultGradeMapping,
-  defaultEvalSubjects,
-  defaultEvalPoints,
-  paperMocks,
   questionBankLabels,
   allQuestions,
   initialRubricLibrary,
@@ -96,12 +86,9 @@ import {
   type EvalSubType,
   type ScoreRuleItem,
   type RubricScheme,
-  type EvalPointField,
   type EvalPoint,
   type EvalRuleSubjectConfig,
   type EvalRuleReviewStepInput,
-  type GradeMapping,
-  type QuestionItem,
 } from './types'
 import { uid } from './utils'
 
@@ -169,12 +156,10 @@ export function EvaluationRulesEditor({
   const [erDialogMethod, setErDialogMethod] = useState<string | null>(null)
   const [isOrderConfigOpen, setIsOrderConfigOpen] = useState(false)
   const [isWeightConfigOpen, setIsWeightConfigOpen] = useState(false)
-  const [methodInstanceCounts, setMethodInstanceCounts] = useState<Record<string, number>>({})
+  const [methodInstanceCounts] = useState<Record<string, number>>({})
 
-  const [questionTab, setQuestionTab] = useState<'my' | 'collab' | 'public'>('public')
-  const [questionSearch, setQuestionSearch] = useState('')
   const [showAddQuestion, setShowAddQuestion] = useState(false)
-  const [selectedQuestionForDetail, setSelectedQuestionForDetail] = useState<string | null>(null)
+  const [selectedQuestionForDetail] = useState<string | null>(null)
   const [questionDetailOpen, setQuestionDetailOpen] = useState(false)
 
   const [rdqSearch, setRdqSearch] = useState('')
@@ -196,12 +181,7 @@ export function EvaluationRulesEditor({
   const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
   const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
 
-  const [paperDetailOpen, setPaperDetailOpen] = useState(false)
-  const [selectedPaperForDetail, setSelectedPaperForDetail] = useState<string | null>(null)
-  const [showCreatePaper, setShowCreatePaper] = useState(false)
-  const [newPaperName, setNewPaperName] = useState('')
-  const [newPaperQuestionCount, setNewPaperQuestionCount] = useState(10)
-  const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
+  const [, setPaperDetailOpen] = useState(false)
 
   const [rubricKpDialogOpen, setRubricKpDialogOpen] = useState(false)
   const [rubricKpTargetPointId, setRubricKpTargetPointId] = useState<string | null>(null)
@@ -328,9 +308,6 @@ export function EvaluationRulesEditor({
 
   // EvalResourceOnlyPanel 状态（从内部组件提升）
   const [rdqMajorTab, setRdqMajorTab] = useState('全部')
-  const [rdqDrawMode, setRdqDrawMode] = useState<'random' | 'manual'>('random')
-  const [rdqDrawCount, setRdqDrawCount] = useState(5)
-  const [paperEndTime, setPaperEndTime] = useState('')
   const [qbDrawMode, setQbDrawMode] = useState<'all' | 'practice'>('all')
   const [qbPassRate, setQbPassRate] = useState(60)
 
@@ -539,20 +516,6 @@ export function EvaluationRulesEditor({
     [updateResourceConfig],
   )
 
-  const mockResPaper = getResourceConfig('paper', {
-    duration: 60,
-    allowRetake: false,
-    retakeCount: 1,
-    shuffleQuestions: true,
-    showResult: true,
-    activationMode: 'manual' as 'manual' | 'scheduled' | 'always',
-    scheduledTime: '',
-  })
-  const setMockResPaper = useCallback(
-    (updates: Partial<typeof mockResPaper>) => updateResourceConfig('paper', updates),
-    [updateResourceConfig],
-  )
-
   const mockResQuestionBank = getResourceConfig('question_bank', {
     timeLimit: 30,
     allowRetake: true,
@@ -671,12 +634,6 @@ export function EvaluationRulesEditor({
       default:
         return { title: '', summary: '', configured: false }
     }
-  }
-
-  const updateEvalSubject = (idx: number, updates: Partial<EvalRuleSubjectConfig>) => {
-    const newSubjects = [...config.evalSubjects]
-    newSubjects[idx] = { ...newSubjects[idx], ...updates }
-    updateConfig({ evalSubjects: newSubjects })
   }
 
   const updateMethodEvalSubject = (
@@ -798,38 +755,6 @@ export function EvaluationRulesEditor({
     else updateConfig({ questionBankQuestions: newArr })
   }
 
-  const addEvalPointFromAbility = (
-    field: EvalPointField,
-    abilityId: string,
-    subType?: EvalSubType,
-  ) => {
-    const ab = abilityPoints.find((a) => a.id === abilityId)
-    if (!ab) return
-    addEvalPoint(field, {
-      name: ab.name,
-      desc: ab.description || '',
-      abilityPointIds: [ab.id],
-      subType,
-      scoringMethod: 'level',
-    })
-  }
-
-  const addEvalPointFromKnowledge = (
-    field: EvalPointField,
-    kpId: string,
-    subType?: EvalSubType,
-  ) => {
-    const kp = knowledgePoints.find((k) => k.id === kpId)
-    if (!kp) return
-    addEvalPoint(field, {
-      name: kp.name,
-      desc: kp.description || '',
-      knowledgePointIds: [kp.id],
-      subType,
-      scoringMethod: 'level',
-    })
-  }
-
   const openDialog = (type: 'object' | 'subject' | 'resource' | 'method', methodKey: string) => {
     setErDialogMethod(methodKey)
     setErDialogOpen(type)
@@ -878,305 +803,6 @@ export function EvaluationRulesEditor({
 
   // ============ Sub components ============
 
-  const LevelRuleEditor = ({
-    gradeMapping,
-    onChange,
-  }: {
-    gradeMapping: GradeMapping[]
-    onChange: (gm: GradeMapping[]) => void
-  }) => {
-    const gradeColors = [
-      { light: 'bg-green-50 border-green-200 text-green-700', dot: 'bg-green-500' },
-      { light: 'bg-blue-50 border-blue-200 text-blue-700', dot: 'bg-blue-500' },
-      { light: 'bg-yellow-50 border-yellow-200 text-yellow-700', dot: 'bg-yellow-500' },
-      { light: 'bg-red-50 border-red-200 text-red-700', dot: 'bg-red-500' },
-    ]
-    return (
-      <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
-        <p className="text-xs font-medium text-gray-600 mb-2">等级转换规则</p>
-        <div className="h-6 bg-gray-200 rounded overflow-hidden flex mb-2">
-          {[...gradeMapping]
-            .sort((a, b) => a.minScore - b.minScore)
-            .map((g) => {
-              const width = g.maxScore - g.minScore + 1
-              return (
-                <div
-                  key={g.id}
-                  className={cn(
-                    'flex items-center justify-center text-white text-[10px] font-medium',
-                    g.color,
-                  )}
-                  style={{ width: `${width}%` }}
-                >
-                  {g.grade}
-                </div>
-              )
-            })}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {[...gradeMapping]
-            .sort((a, b) => b.maxScore - a.maxScore)
-            .map((g, i) => {
-              const c = gradeColors[i % gradeColors.length]
-              return (
-                <div key={g.id} className={cn('rounded border p-2', c.light)}>
-                  <div className="flex items-center justify-between mb-1">
-                    <Input
-                      value={g.grade}
-                      onChange={(e) =>
-                        onChange(
-                          gradeMapping.map((x) =>
-                            x.id === g.id ? { ...x, grade: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      className="w-14 h-6 text-center text-xs font-semibold"
-                    />
-                    <div className={cn('w-3 h-3 rounded-full', c.dot)} />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={g.minScore}
-                      onChange={(e) =>
-                        onChange(
-                          gradeMapping.map((x) =>
-                            x.id === g.id ? { ...x, minScore: parseInt(e.target.value) || 0 } : x,
-                          ),
-                        )
-                      }
-                      className="w-16 h-6 text-center text-xs"
-                      min={0}
-                      max={100}
-                    />
-                    <span className="text-gray-500 text-xs">-</span>
-                    <Input
-                      type="number"
-                      value={g.maxScore}
-                      onChange={(e) =>
-                        onChange(
-                          gradeMapping.map((x) =>
-                            x.id === g.id ? { ...x, maxScore: parseInt(e.target.value) || 0 } : x,
-                          ),
-                        )
-                      }
-                      className="w-16 h-6 text-center text-xs"
-                      min={0}
-                      max={100}
-                    />
-                    <span className="text-xs text-gray-500">分</span>
-                  </div>
-                  <div className="mt-1.5">
-                    <Input
-                      value={g.remark || ''}
-                      onChange={(e) =>
-                        onChange(
-                          gradeMapping.map((x) =>
-                            x.id === g.id ? { ...x, remark: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      className="h-7 text-[10px] bg-white/70"
-                      placeholder="等级备注说明"
-                    />
-                  </div>
-                </div>
-              )
-            })}
-        </div>
-      </div>
-    )
-  }
-
-  const EvalPointCard = ({ ep, field }: { ep: EvalPoint; field: EvalPointField }) => (
-    <div className="p-3 bg-white rounded-lg border">
-      <div className="flex items-center gap-2 mb-2">
-        <Input
-          value={ep.name}
-          onChange={(e) => updateEvalPoint(field, ep.id, { name: e.target.value })}
-          className="flex-1 h-8 text-sm"
-        />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-gray-400 hover:text-red-500"
-          onClick={() => removeEvalPoint(field, ep.id)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="flex items-center gap-2 flex-wrap mb-2">
-        <Badge
-          variant="outline"
-          className={cn('text-[10px]', evalSubTypeColors[ep.subType as EvalSubType])}
-        >
-          {ep.subType ? evalSubTypeLabels[ep.subType as EvalSubType] : '未分类'}
-        </Badge>
-        <Select
-          value={ep.scoringMethod || 'level'}
-          onValueChange={(v) =>
-            updateEvalPoint(field, ep.id, { scoringMethod: v as 'score' | 'level' | 'rubric' })
-          }
-        >
-          <SelectTrigger className="h-7 text-[10px] w-28">
-            <SelectValue placeholder="评分方式" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="score">分值制</SelectItem>
-            <SelectItem value="level">等级制</SelectItem>
-            <SelectItem value="rubric">rubric量表</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="mb-2">
-        <p className="text-xs text-gray-500 mb-1">关联能力点</p>
-        <div className="flex flex-wrap gap-1">
-          {(ep.abilityPointIds || []).map((abId) => {
-            const ab = abilityPoints.find((a) => a.id === abId)
-            return ab ? (
-              <Badge key={abId} variant="secondary" className="text-[10px] font-normal">
-                {ab.name}
-                <button
-                  onClick={() =>
-                    updateEvalPoint(field, ep.id, {
-                      abilityPointIds: (ep.abilityPointIds || []).filter((id) => id !== abId),
-                    })
-                  }
-                  className="ml-1 text-gray-400 hover:text-red-500"
-                >
-                  ×
-                </button>
-              </Badge>
-            ) : null
-          })}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary"
-              >
-                + 添加能力点
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>关联能力点</DialogTitle>
-              </DialogHeader>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="搜索能力点..." className="pl-9" />
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {abilityPoints.map((a) => {
-                  const alreadyLinked = (ep.abilityPointIds || []).includes(a.id)
-                  return (
-                    <div
-                      key={a.id}
-                      onClick={() => {
-                        if (!alreadyLinked)
-                          updateEvalPoint(field, ep.id, {
-                            abilityPointIds: [...(ep.abilityPointIds || []), a.id],
-                          })
-                      }}
-                      className={cn(
-                        'p-2 rounded-lg border cursor-pointer text-sm',
-                        alreadyLinked
-                          ? 'border-primary bg-primary/5 opacity-50'
-                          : 'hover:border-gray-300',
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="flex-1">{a.name}</span>
-                        {alreadyLinked && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-      <div className="mb-2">
-        <p className="text-xs text-gray-500 mb-1">关联知识点</p>
-        <div className="flex flex-wrap gap-1">
-          {(ep.knowledgePointIds || []).map((kpid) => {
-            const kp = knowledgePoints.find((k) => k.id === kpid)
-            return kp ? (
-              <Badge key={kpid} variant="secondary" className="text-[10px] font-normal">
-                {kp.name}
-                <button
-                  onClick={() =>
-                    updateEvalPoint(field, ep.id, {
-                      knowledgePointIds: (ep.knowledgePointIds || []).filter((id) => id !== kpid),
-                    })
-                  }
-                  className="ml-1 text-gray-400 hover:text-red-500"
-                >
-                  ×
-                </button>
-              </Badge>
-            ) : null
-          })}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary"
-              >
-                + 添加知识点
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>关联知识点</DialogTitle>
-              </DialogHeader>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="搜索知识点..." className="pl-9" />
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {knowledgePoints.map((k) => {
-                  const alreadyLinked = (ep.knowledgePointIds || []).includes(k.id)
-                  return (
-                    <div
-                      key={k.id}
-                      onClick={() => {
-                        if (!alreadyLinked)
-                          updateEvalPoint(field, ep.id, {
-                            knowledgePointIds: [...(ep.knowledgePointIds || []), k.id],
-                          })
-                      }}
-                      className={cn(
-                        'p-2 rounded-lg border cursor-pointer text-sm',
-                        alreadyLinked
-                          ? 'border-primary bg-primary/5 opacity-50'
-                          : 'hover:border-gray-300',
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="flex-1">{k.name}</span>
-                        {alreadyLinked && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-      {ep.scoringMethod === 'level' && ep.gradeMapping && (
-        <LevelRuleEditor
-          gradeMapping={ep.gradeMapping}
-          onChange={(gm) => updateEvalPoint(field, ep.id, { gradeMapping: gm })}
-        />
-      )}
-    </div>
-  )
-
   const openRubricKpDialog = (pointId: string, field: EvalPointField) => {
     setRubricKpTargetPointId(pointId)
     setRubricKpTargetField(field)
@@ -1189,655 +815,6 @@ export function EvaluationRulesEditor({
     setRubricAbTargetField(field)
     setRubricAbSearch('')
     setRubricAbDialogOpen(true)
-  }
-
-  const RubricEvalPointCard = ({ ep, field }: { ep: EvalPoint; field: EvalPointField }) => {
-    const [expanded, setExpanded] = useState(false)
-    const pointTypes = ep.types?.length ? ep.types : ep.subType ? [ep.subType] : []
-    return (
-      <div className="bg-white rounded-lg border overflow-hidden">
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-gray-50 transition-colors"
-        >
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
-          )}
-          <div className="flex items-center gap-1 shrink-0">
-            {pointTypes.length > 0 ? (
-              pointTypes.map((t) => (
-                <Badge
-                  key={t}
-                  variant="outline"
-                  className={cn('text-[10px]', evalSubTypeColors[t as EvalSubType])}
-                >
-                  {evalSubTypeLabels[t as EvalSubType]}
-                </Badge>
-              ))
-            ) : (
-              <Badge variant="outline" className="text-[10px]">
-                未分类
-              </Badge>
-            )}
-          </div>
-          <span className="text-sm text-gray-700 flex-1 truncate">{ep.name || '未命名评价点'}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-gray-400 hover:text-red-500 shrink-0"
-            onClick={(e) => {
-              e.stopPropagation()
-              removeEvalPoint(field, ep.id)
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </button>
-        {expanded && (
-          <div className="px-3 pb-3 border-t">
-            <FormFieldRow
-              label="评价点内容"
-              labelClassName="text-xs text-gray-500"
-              className="mt-2"
-            >
-              <Input
-                value={ep.name}
-                onChange={(e) => updateEvalPoint(field, ep.id, { name: e.target.value })}
-                className="h-8 text-sm"
-                placeholder="输入评价点内容"
-              />
-            </FormFieldRow>
-            <div className="mt-2">
-              <Label className="text-xs text-gray-500">量规类型</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {(Object.keys(evalSubTypeLabels) as EvalSubType[]).map((type) => {
-                  const selected = pointTypes.includes(type)
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => {
-                        const current = ep.types || (ep.subType ? [ep.subType] : [])
-                        const has = current.includes(type)
-                        const newTypes = has
-                          ? current.filter((t) => t !== type)
-                          : [...current, type]
-                        updateEvalPoint(field, ep.id, { types: newTypes, subType: undefined })
-                      }}
-                      className={cn(
-                        'px-2 py-0.5 rounded-full text-[10px] border transition-all',
-                        selected
-                          ? cn(evalSubTypeColors[type], 'border-current')
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
-                      )}
-                    >
-                      {evalSubTypeLabels[type]}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-            <div className="mt-2">
-              <Label className="text-xs text-gray-500">关联能力点</Label>
-              <div className="flex items-center gap-2 flex-wrap mt-1">
-                {(ep.abilityPointIds || []).map((abId) => {
-                  const ab = abilityPoints.find((a) => a.id === abId)
-                  return ab ? (
-                    <Badge key={abId} variant="secondary" className="text-[10px] font-normal">
-                      {ab.name}
-                      <button
-                        onClick={() =>
-                          updateEvalPoint(field, ep.id, {
-                            abilityPointIds: (ep.abilityPointIds || []).filter((id) => id !== abId),
-                          })
-                        }
-                        className="ml-1 text-gray-400 hover:text-red-500"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ) : null
-                })}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary"
-                  onClick={() => openRubricAbDialog(ep.id, field)}
-                >
-                  + 关联能力点
-                </Button>
-              </div>
-            </div>
-            <div className="mt-2">
-              <Label className="text-xs text-gray-500">关联知识点</Label>
-              <div className="flex items-center gap-2 flex-wrap mt-1">
-                {(ep.knowledgePointIds || []).map((kpid) => {
-                  const kp = knowledgePoints.find((k) => k.id === kpid)
-                  return kp ? (
-                    <Badge key={kpid} variant="secondary" className="text-[10px] font-normal">
-                      {kp.name}
-                      <button
-                        onClick={() =>
-                          updateEvalPoint(field, ep.id, {
-                            knowledgePointIds: (ep.knowledgePointIds || []).filter(
-                              (id) => id !== kpid,
-                            ),
-                          })
-                        }
-                        className="ml-1 text-gray-400 hover:text-red-500"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ) : null
-                })}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary"
-                  onClick={() => openRubricKpDialog(ep.id, field)}
-                >
-                  + 关联知识点
-                </Button>
-              </div>
-            </div>
-            <div className="mt-2">
-              <Label className="text-xs text-gray-500">评分规则</Label>
-              <div className="flex items-center gap-2 mt-1">
-                <Select
-                  value={ep.scoringMethod || 'level'}
-                  onValueChange={(v) =>
-                    updateEvalPoint(field, ep.id, {
-                      scoringMethod: v as 'score' | 'level' | 'rubric',
-                    })
-                  }
-                >
-                  <SelectTrigger className="h-7 text-[10px] w-32">
-                    <SelectValue placeholder="评分方式" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="score">分值制</SelectItem>
-                    <SelectItem value="level">等级制</SelectItem>
-                    <SelectItem value="rubric">rubric量表</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {ep.scoringMethod === 'level' && ep.gradeMapping && (
-                <LevelRuleEditor
-                  gradeMapping={ep.gradeMapping}
-                  onChange={(gm) => updateEvalPoint(field, ep.id, { gradeMapping: gm })}
-                />
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const EvalPointConfigPanel = ({
-    points,
-    field,
-  }: {
-    points: EvalPoint[]
-    field: EvalPointField
-  }) => {
-    const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({})
-    const grouped = points.reduce(
-      (acc, ep) => {
-        const key = ep.subType || 'uncategorized'
-        if (!acc[key]) acc[key] = []
-        acc[key].push(ep)
-        return acc
-      },
-      {} as Record<string, EvalPoint[]>,
-    )
-    const subTypeKeys = Object.keys(evalSubTypeLabels) as EvalSubType[]
-    const usedSubTypes = subTypeKeys.filter((st) => grouped[st]?.length > 0)
-    const toggleType = (st: string) => setExpandedTypes((prev) => ({ ...prev, [st]: !prev[st] }))
-
-    return (
-      <div className="border rounded-xl p-4">
-        <p className="text-sm font-medium mb-3">评价点配置</p>
-        <div className="mb-4">
-          <p className="text-xs text-gray-500 mb-2">选择细分类型并添加评价点</p>
-          <div className="flex flex-wrap gap-1.5">
-            {subTypeKeys.map((st) => {
-              const count = grouped[st]?.length || 0
-              const active = count > 0
-              return (
-                <button
-                  key={st}
-                  onClick={() => {
-                    if (!active)
-                      addEvalPoint(field, { subType: st, name: `${evalSubTypeLabels[st]}评价点` })
-                    toggleType(st)
-                  }}
-                  className={cn(
-                    'px-2.5 py-1 rounded-full text-xs border transition-all',
-                    active
-                      ? cn(evalSubTypeColors[st], 'border-current')
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
-                  )}
-                >
-                  {evalSubTypeLabels[st]}
-                  {count > 0 && <span className="ml-1 font-medium">({count})</span>}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <div className="space-y-3">
-          {usedSubTypes.map((st) => {
-            const expanded = expandedTypes[st] !== false
-            const eps = grouped[st]
-            return (
-              <div key={st} className="border rounded-lg overflow-hidden">
-                <button
-                  onClick={() => toggleType(st)}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
-                    expanded ? 'bg-gray-50' : 'bg-white hover:bg-gray-50',
-                  )}
-                >
-                  {expanded ? (
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  )}
-                  <Badge variant="outline" className={cn('text-[10px]', evalSubTypeColors[st])}>
-                    {evalSubTypeLabels[st]}
-                  </Badge>
-                  <span className="flex-1 text-left text-gray-600">{eps.length} 个评价点</span>
-                  <div className="flex items-center gap-1">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Award className="h-3 w-3 mr-1" />
-                          能力点
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>从能力点创建 — {evalSubTypeLabels[st]}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
-                          {abilityPoints.map((a) => (
-                            <div
-                              key={a.id}
-                              onClick={() => addEvalPointFromAbility(field, a.id, st)}
-                              className="p-2.5 rounded-lg border cursor-pointer hover:border-gray-300 text-sm"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="flex-1 font-medium">{a.name}</span>
-                                {a.code && (
-                                  <Badge variant="outline" className="text-[10px]">
-                                    {a.code}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                {a.description}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Lightbulb className="h-3 w-3 mr-1" />
-                          知识点
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>从知识点创建 — {evalSubTypeLabels[st]}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
-                          {knowledgePoints.map((k) => (
-                            <div
-                              key={k.id}
-                              onClick={() => addEvalPointFromKnowledge(field, k.id, st)}
-                              className="p-2.5 rounded-lg border cursor-pointer hover:border-gray-300 text-sm"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="flex-1 font-medium">{k.name}</span>
-                                {k.code && (
-                                  <Badge variant="outline" className="text-[10px]">
-                                    {k.code}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                {k.description}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        addEvalPoint(field, { subType: st, name: '' })
-                      }}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      手动添加
-                    </Button>
-                  </div>
-                </button>
-                {expanded && (
-                  <div className="p-3 space-y-2 border-t">
-                    {eps.map((ep) => (
-                      <EvalPointCard key={ep.id} ep={ep} field={field} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-          {grouped['uncategorized']?.length > 0 && (
-            <div className="border rounded-lg overflow-hidden">
-              <button
-                onClick={() => toggleType('uncategorized')}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white hover:bg-gray-50 transition-colors"
-              >
-                {expandedTypes['uncategorized'] !== false ? (
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                )}
-                <span className="text-gray-600">未分类评价点</span>
-                <span className="text-gray-400">({grouped['uncategorized'].length})</span>
-              </button>
-              {expandedTypes['uncategorized'] !== false && (
-                <div className="p-3 space-y-2 border-t">
-                  {grouped['uncategorized'].map((ep) => (
-                    <EvalPointCard key={ep.id} ep={ep} field={field} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  const QuestionSelectorPanel = ({
-    field,
-    selectedIds,
-    showAutoSelect = false,
-    maxCount,
-  }: {
-    field: 'randomDrawQuestions' | 'questionBankQuestions' | 'quizQuestions'
-    selectedIds: string[]
-    showAutoSelect?: boolean
-    maxCount?: number
-  }) => {
-    const filteredQuestions = allQuestions.filter((q) => {
-      const matchTab =
-        questionTab === 'my'
-          ? q.source === 'my'
-          : questionTab === 'collab'
-            ? q.source === 'collab'
-            : q.source === 'public'
-      const matchSearch =
-        !questionSearch || q.name.includes(questionSearch) || q.content.includes(questionSearch)
-      return matchTab && matchSearch
-    })
-
-    return (
-      <div className="flex gap-4 min-h-[320px] max-h-[60vh] max-lg:flex-col">
-        <div className="w-full lg:w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-          <Tabs
-            value={questionTab}
-            onValueChange={(v) => setQuestionTab(v as 'my' | 'collab' | 'public')}
-            className="mb-3"
-          >
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="my">我的</TabsTrigger>
-              <TabsTrigger value="collab">共建</TabsTrigger>
-              <TabsTrigger value="public">公共题库</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                value={questionSearch}
-                onChange={(e) => setQuestionSearch(e.target.value)}
-                placeholder="搜索题目名称..."
-                className="pl-9"
-              />
-            </div>
-            <Button onClick={() => setShowAddQuestion(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              新增题目
-            </Button>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {filteredQuestions.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">暂无题目</p>
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 sticky top-0 z-10">
-                  <tr>
-                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                      题目名称
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">
-                      题目类型
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">
-                      题目难度
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
-                      所属题库
-                    </th>
-                    <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[31%]">
-                      操作
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredQuestions.map((q) => {
-                    const isSelected = selectedIds.includes(q.id)
-                    return (
-                      <tr
-                        key={q.id}
-                        className={cn(
-                          'hover:bg-gray-50 transition-colors cursor-pointer',
-                          isSelected ? 'bg-primary/[0.03]' : '',
-                        )}
-                        onClick={() => toggleQuestion(q.id, field)}
-                      >
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={cn(
-                                'w-4 h-4 rounded border flex items-center justify-center shrink-0',
-                                isSelected ? 'bg-primary border-primary' : 'border-gray-300',
-                              )}
-                            >
-                              {isSelected && <Check className="h-3 w-3 text-white" />}
-                            </div>
-                            <span className="text-sm font-medium text-gray-800 line-clamp-1">
-                              {q.name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {questionTypeLabels[q.type] || q.type}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="text-xs text-gray-500">
-                            {difficultyLabels[q.difficulty] || q.difficulty}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="text-xs text-gray-500">
-                            {questionBankLabels[q.questionBank as string] || q.questionBank || '-'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedQuestionForDetail(q.id)
-                                setQuestionDetailOpen(true)
-                              }}
-                            >
-                              查看详情
-                            </Button>
-                            {isSelected ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-6 text-[11px] px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  toggleQuestion(q.id, field)
-                                }}
-                              >
-                                取消
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                className="h-6 text-[11px] px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  toggleQuestion(q.id, field)
-                                }}
-                              >
-                                使用
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-        <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-gray-700">
-              已选择题目 ({selectedIds.length}
-              {maxCount ? `/${maxCount}` : ''})
-            </p>
-            {showAutoSelect && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-[11px] px-2"
-                disabled
-                title="自动抽题功能开发中"
-              >
-                自动选择
-              </Button>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {selectedIds.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">从左侧搜索并选择题目</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {selectedIds.map((qid) => {
-                  const q = allQuestions.find((aq) => aq.id === qid)
-                  if (!q) return null
-                  return (
-                    <div
-                      key={qid}
-                      className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 relative"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium flex-1 truncate">{q.name}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 text-gray-400 -mr-1 -mt-1"
-                          onClick={() => toggleQuestion(qid, field)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="secondary" className="text-[10px]">
-                          {questionTypeLabels[q.type] || q.type}
-                        </Badge>
-                        <span className="text-[10px] text-gray-400">
-                          {difficultyLabels[q.difficulty] || q.difficulty}
-                        </span>
-                        {field === 'questionBankQuestions' ? (
-                          <div className="flex items-center gap-1 ml-auto">
-                            <span className="text-[10px] text-gray-400">分值</span>
-                            <Input
-                              type="number"
-                              value={mockResQuestionBank.questionScores[qid] ?? q.score}
-                              onChange={(e) => {
-                                const val = Math.max(
-                                  0,
-                                  Math.min(100, parseInt(e.target.value) || 0),
-                                )
-                                setMockResQuestionBank({
-                                  questionScores: {
-                                    ...mockResQuestionBank.questionScores,
-                                    [qid]: val,
-                                  },
-                                })
-                              }}
-                              className="w-14 h-5 text-[10px] px-1 py-0"
-                              min={0}
-                              max={100}
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-gray-400">{q.score}分</span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
   }
 
   const evalResourceOnlyPanel = erDialogMethod
@@ -3394,7 +2371,6 @@ export function EvaluationRulesEditor({
         const view = methodDialogViews[erDialogMethod] || 'list'
         const setView = (v: 'list' | 'edit' | 'template') =>
           setMethodDialogViews((prev) => ({ ...prev, [erDialogMethod]: v }))
-        const currentScheme = rubricLibrary.find((s) => s.id === currentRubricId)
 
         const applyScheme = (schemeId: string) => {
           const scheme = rubricLibrary.find((s) => s.id === schemeId)

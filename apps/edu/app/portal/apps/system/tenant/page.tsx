@@ -37,7 +37,6 @@ import {
   BookOpen,
   Monitor,
   User,
-  Mail,
 } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -326,7 +325,7 @@ export default function TenantPage() {
       )}
       {tenantId && (
         <div className="mt-6">
-          <SchoolAdminManager tenantId={tenantId} fetcher={adminFetcher} />
+          <SchoolAdminManager fetcher={adminFetcher} />
         </div>
       )}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

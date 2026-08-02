@@ -46,13 +46,9 @@ export default function LoginLogsPage() {
   )
 
   useEffect(() => {
-    let cancelled = false
     ;(async () => {
       await loadLogs()
     })()
-    return () => {
-      cancelled = true
-    }
   }, [loadLogs])
 
   const handleRefresh = () => loadLogs()

@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Book,
   CheckCircle2,
-  Clock,
   Copy,
   FileText,
   GripVertical,
@@ -13,76 +12,31 @@ import {
   Plus,
   Scale,
   Search,
-  Settings,
   Star,
-  Target,
   Trash2,
-  Eye,
-  X,
   Check,
-  Play,
-  Upload,
-  Image,
-  Video,
-  Globe,
-  MapPin,
   Package,
   Award,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  List,
-  ListOrdered,
-  Heading1,
-  Heading2,
-  Quote,
   Code,
-  Minus,
-  Link as LinkIcon,
-  Table,
-  Strikethrough,
-  Palette,
-  Type,
-  Rows3,
   Gavel,
   ClipboardList,
   Database,
-  MessageSquare,
-  PenTool,
-  Presentation,
   FileQuestion,
-  MonitorPlay,
-  User,
   Users,
-  Bot,
   FolderCheck,
   Wrench,
-  UserCheck,
   Lock,
   Unlock,
   ChevronDown,
-  ChevronUp,
   AlertCircle,
-  Info,
-  Sparkles,
   ChevronRight,
-  ChevronLeft,
-  File,
   PieChart as PieChartIcon,
-  Headphones,
-  Loader2,
-  Archive,
-  Building2,
-  RotateCcw,
   Shield,
   Server,
-  Layers,
   BookOpen,
-  Pencil,
-  SlidersHorizontal,
 } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffect } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -93,12 +47,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -107,20 +58,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { ScoreConfigDialog } from '@/components/evaluation/score-config-dialog'
-import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
-import {
-  ResourcePreviewModal,
-  usePreviewResources,
-} from '@/components/shared/resource-preview-modal'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   scenarioApi,
@@ -130,19 +69,11 @@ import {
   positionApi,
   industryApi,
   majorApi,
-  userManagementApi,
-  fileApi,
   taskResourceApi,
-  resourceLibraryApi,
-  questionBankApi,
-  questionApi,
+  taskEvaluationApi,
   examApi,
   examUsageApi,
-  taskEvaluationApi,
-  randomDrawQuestionApi,
-  courseApi,
 } from '@/lib/api'
-import type { RandomDrawQuestion } from '@/lib/types'
 import type { ScenarioTask as ApiScenarioTask } from '@/lib/types/scene'
 import type { TaskEvaluationMethod } from '@/lib/types/scene'
 import { methodsToEvalRuleConfig, evalRuleConfigToMethods } from '@/lib/types/evaluation'
@@ -154,54 +85,24 @@ import {
 } from '@/components/evaluation-rules'
 import { useToast } from '@zhiyu/ui'
 import { EditorShell } from '@/components/shared/editor-shell'
-import { MajorSelect } from '@/components/shared/major-select'
-import { KnowledgePointFormDialog } from '@/components/shared/knowledge-point-form-dialog'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { GranularLessonSelectDialog } from '@/components/shared/granular-lesson-select-dialog'
 import { EvalMethodSelector } from '@/components/shared/eval-method-selector'
 import { KnowledgeSelector } from '@/components/shared/knowledge-selector'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 import { ResourceSelector, type ResourceItem } from '@/components/shared/resource-selector'
 import {
   useTaskDatasets,
-  type TaskKnowledgePointItem,
   type TaskResourceItem,
-  type RubricScheme,
   type UseTaskDatasetsResult,
 } from './_components/hooks/use-task-datasets'
 import { TaskInfoCard } from './_components/task-info-card'
 import { TaskDescriptionCard } from './_components/task-description-card'
 import { TaskWeightCard } from './_components/task-weight-card'
-import { TaskKnowledgeCard } from './_components/task-knowledge-card'
-import { BankQuestionSelectorPanel } from './_components/bank-question-selector-panel'
-import { RandomDrawResourcePanel } from './_components/random-draw-resource-panel'
-import { PaperConfigPanel } from './_components/paper-config-panel'
-import { MethodDialogContent, type MethodDialogCtx } from './_components/method-config-dialog'
-import {
-  getLoadedExam,
-  upsertLoadedExam,
-  clearAllCaches,
-  typeColorMap,
-  questionTypeLabels,
-  difficultyLabels,
-  type LoadedExam,
-} from './_components/shared-defs'
+import { clearAllCaches } from './_components/shared-defs'
 import { useAuth } from '@/components/auth-provider'
 import { reportError } from '@/lib/error-handling'
-import type { Task, PositionAbility, GradeMapping } from '@/lib/types/scene-mock'
+import type { Task, GradeMapping } from '@/lib/types/scene-mock'
 import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
-
-// Generate a valid v4 UUID for custom items so they can be stored in backend UUID[] columns
-function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
 
 // ============ Types & Configs ============
 
@@ -225,73 +126,6 @@ const cardConfigs: { type: CardType; title: string; icon: React.ReactNode }[] = 
   { type: 'evaluationRules', title: '配置任务评价规则', icon: <Gavel className="h-4 w-4" /> },
   { type: 'weight', title: '配置任务权重', icon: <Scale className="h-4 w-4" /> },
 ]
-
-const resourceTypeIcons: Record<string, React.ReactNode> = {
-  document: <FileText className="h-4 w-4 text-blue-500" />,
-  spreadsheet: <Table className="h-4 w-4 text-teal-500" />,
-  image: <Image className="h-4 w-4 text-green-500" aria-label="图片" />,
-  link: <Link2 className="h-4 w-4 text-cyan-500" />,
-  audio: <Headphones className="h-4 w-4 text-violet-500" />,
-  video: <Video className="h-4 w-4 text-red-500" />,
-  archive: <Archive className="h-4 w-4 text-amber-500" />,
-  venue: <MapPin className="h-4 w-4 text-orange-500" />,
-  facility: <Building2 className="h-4 w-4 text-rose-500" />,
-  software: <Globe className="h-4 w-4 text-purple-500" />,
-  other: <Package className="h-4 w-4 text-gray-500" />,
-}
-
-const resourceTypeLabels: Record<string, string> = {
-  all: '全部',
-  document: '文档资源',
-  spreadsheet: '表格资源',
-  image: '图片资源',
-  link: '链接资源',
-  audio: '音频资源',
-  video: '视频资源',
-  archive: '压缩包资源',
-  venue: '场地资源',
-  facility: '设施设备资源',
-  software: '软件资源',
-  other: '其他资源',
-}
-
-const resourceTypeColors: Record<string, string> = {
-  document: 'bg-blue-50 text-blue-600 border-blue-200',
-  spreadsheet: 'bg-teal-50 text-teal-600 border-teal-200',
-  image: 'bg-green-50 text-green-600 border-green-200',
-  link: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-  audio: 'bg-violet-50 text-violet-600 border-violet-200',
-  video: 'bg-red-50 text-red-600 border-red-200',
-  archive: 'bg-amber-50 text-amber-600 border-amber-200',
-  venue: 'bg-orange-50 text-orange-600 border-orange-200',
-  facility: 'bg-rose-50 text-rose-600 border-rose-200',
-  software: 'bg-purple-50 text-purple-600 border-purple-200',
-  other: 'bg-gray-50 text-gray-600 border-gray-200',
-}
-
-const resourceTypeAccept: Record<string, string> = {
-  document: '.pdf,.doc,.docx,.txt,.ppt,.pptx,.md',
-  spreadsheet: '.xls,.xlsx,.csv',
-  image: '.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp',
-  audio: '.mp3,.wav,.ogg,.m4a,.flac,.aac',
-  video: '.mp4,.webm,.mov,.avi,.mkv,.flv',
-  archive: '.zip,.rar,.7z,.tar,.gz,.bz2',
-  other: '',
-  software: '.exe,.dmg,.pkg,.deb,.rpm,.zip,.msi,.apk',
-}
-
-const resourceTypeExtensionMap: Record<string, string[]> = {
-  document: ['pdf', 'doc', 'docx', 'txt', 'ppt', 'pptx', 'md'],
-  spreadsheet: ['xls', 'xlsx', 'csv'],
-  image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'],
-  audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'],
-  video: ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'],
-  archive: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'],
-  other: [],
-  software: ['exe', 'dmg', 'pkg', 'deb', 'rpm', 'zip', 'msi', 'apk'],
-}
-
-const RESOURCE_MAX_FILE_SIZE = 100 * 1024 * 1024
 
 const evaluationMethodOptions = [
   // 平台通用 - 知识评价
@@ -421,39 +255,6 @@ const evaluationMethodOptions = [
   },
 ]
 
-const abilityLevels = ['了解', '理解', '掌握', '熟练', '精通']
-
-const defaultDescriptionTemplate = `任务描述
-
-你需要完成[具体任务]。该任务基于[背景/前提],要求你[核/心动作]。执行时请注意[关键约束],确保理解需求后再开始。
-
-任务目标
-
-·核心目标:[一句话概括最终成果]
-·目标一:[具体子目标]
-·目标二:[具体子目标]
-·目标三:[具体子目标]
-·成功标准:[任务完成的具体标志]
-
-任务结果
-
-请提交以下内容:
-
-·主交付物:[如报告/代码/方案]
-格式要求:[如Markdown/JSON/纯文本]
-·附属说明:[假设、来源、取舍等]
-篇幅要求:[如不少于500字/代码100行内]
-
-测评要求
-
-·准确性(30%):内容正确,逻辑清晰,来源可靠
-·完整性(25%):覆盖所有子目标,无遗漏
-清晰度(20%):结构分明,表达简洁
-·实用性(15%):结论可操作,建议可落地
-规范性(10%):符合格式,术语统一,无明显错误
-
-一票否决项:若出现[如抄袭/泄密/核心事实错误],视为未通过。`
-
 const defaultGradeMapping: GradeMapping[] = [
   {
     id: 'grade-1',
@@ -481,14 +282,6 @@ const defaultGradeMapping: GradeMapping[] = [
   },
   { id: 'grade-4', grade: 'D', minScore: 0, maxScore: 59, color: 'bg-red-500', remark: '未达标' },
 ]
-
-const questionBankLabels: Record<string, string> = {
-  frontend: '前端开发题库',
-  backend: '后端开发题库',
-  draft: '草稿库',
-  public: '公共基础题库',
-  professional: '专业技能题库',
-}
 
 type EvalObjectType = 'individual' | 'group'
 
@@ -525,30 +318,6 @@ type EvalSubType =
   | 'innovation'
   | 'adaptability'
 
-const evalSubTypeLabels: Record<EvalSubType, string> = {
-  knowledge_mastery: '知识掌握',
-  operation_standard: '操作规范',
-  task_completion: '任务完成度',
-  result_quality: '成果质量',
-  communication: '沟通表达',
-  collaboration: '协作能力',
-  professionalism: '职业素养',
-  innovation: '创新能力',
-  adaptability: '应变能力',
-}
-
-const evalSubTypeColors: Record<EvalSubType, string> = {
-  knowledge_mastery: 'bg-blue-50 text-blue-600 border-blue-200',
-  operation_standard: 'bg-teal-50 text-teal-600 border-teal-200',
-  task_completion: 'bg-green-50 text-green-600 border-green-200',
-  result_quality: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-  communication: 'bg-violet-50 text-violet-600 border-violet-200',
-  collaboration: 'bg-orange-50 text-orange-600 border-orange-200',
-  professionalism: 'bg-amber-50 text-amber-600 border-amber-200',
-  innovation: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-  adaptability: 'bg-rose-50 text-rose-600 border-rose-200',
-}
-
 interface EvalPoint {
   id: string
   name: string
@@ -561,23 +330,6 @@ interface EvalPoint {
   gradeMapping?: GradeMapping[]
   weight?: number
 }
-
-interface ScoreRuleItem {
-  id: string
-  name: string
-  desc: string
-  rule: string
-  weight: number
-}
-
-type EvalPointField =
-  | 'randomDrawEvalPoints'
-  | 'reviewEvalPoints'
-  | 'paperEvalPoints'
-  | 'questionBankEvalPoints'
-  | 'outcomeEvalPoints'
-  | 'homeworkEvalPoints'
-  | 'quizEvalPoints'
 
 interface ScoringConfig {
   teacherBackground: string
@@ -738,7 +490,7 @@ function evalRuleConfigToTaskStateUpdates(config: EvalRuleConfig): Partial<TaskS
     quizEvalPoints: config.quizEvalPoints as EvalPoint[],
     gradeMapping: config.gradeMapping,
     methodResourceConfigs: config.methodResourceConfigs,
-    reviewSteps: (config.reviewSteps || []).map((rs: EvalRuleReviewStepInput, i: number) => ({
+    reviewSteps: (config.reviewSteps || []).map((rs: EvalRuleReviewStepInput) => ({
       id: (rs as { id?: string }).id || uid('rs'),
       label: rs.label,
       desc: rs.description || '',
@@ -805,7 +557,7 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
   }
 }
 
-function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskState {
+function taskStateFromMethods(methods: TaskEvaluationMethod[]): TaskState {
   const state = makeDefaultTaskState(0, 0)
   if (!methods || methods.length === 0) return state
 
@@ -919,27 +671,6 @@ function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] })
   return methods
 }
 
-function normalizeEvalPoints(points: unknown): EvalPoint[] {
-  if (!Array.isArray(points)) return []
-  return points.filter(
-    (p): p is EvalPoint =>
-      p && typeof p === 'object' && typeof p.id === 'string' && typeof p.name === 'string',
-  )
-}
-
-function normalizeStringArray(arr: unknown): string[] {
-  if (!Array.isArray(arr)) return []
-  return arr.filter((v): v is string => typeof v === 'string')
-}
-
-function normalizeEvalSubjects(subjects: unknown): EvalSubjectConfig[] {
-  if (!Array.isArray(subjects)) return []
-  return subjects.filter(
-    (s): s is EvalSubjectConfig =>
-      s && typeof s === 'object' && typeof s.type === 'string' && typeof s.enabled === 'boolean',
-  )
-}
-
 // ============ Main Page ============
 
 export default function TasksEditPage() {
@@ -947,28 +678,20 @@ export default function TasksEditPage() {
   const router = useRouter()
   const scenarioId = params.id as string
   const { toast } = useToast()
-  const { tenantId, user } = useAuth()
+  const { user } = useAuth()
 
-  const datasets = useTaskDatasets(scenarioId)
+  const datasets = useTaskDatasets()
 
   const [existingScenario, setExistingScenario] = useState<any>(null)
-  const [dataLoaded, setDataLoaded] = useState(false)
+  const [, setDataLoaded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
-  const [positions, setPositions] = useState<any[]>([])
-  const [industries, setIndustries] = useState<any[]>([])
-  const [majors, setMajors] = useState<any[]>([])
+  const [, setPositions] = useState<any[]>([])
+  const [, setIndustries] = useState<any[]>([])
+  const [, setMajors] = useState<any[]>([])
   const [professions, setProfessions] = useState<any[]>([])
-
-  const userNameMap = useMemo(() => {
-    const map: Record<string, string> = {}
-    datasets.users.forEach((u: any) => {
-      map[u.id] = u.name || u.id
-    })
-    return map
-  }, [datasets.users])
 
   const scenarioDataRef = useRef<any>(null)
   const taskStatesRef = useRef(taskStates)
@@ -1069,7 +792,7 @@ export default function TasksEditPage() {
 
         // Convert API tasks to mock Task format
         const apiTasks = tasksRes.items
-        const mockTasks: Task[] = apiTasks.map((at: ApiScenarioTask, idx: number) => ({
+        const mockTasks: Task[] = apiTasks.map((at: ApiScenarioTask) => ({
           id: at.id,
           name: at.name,
           code: at.code,
@@ -1104,7 +827,7 @@ export default function TasksEditPage() {
         const states: Record<string, TaskState> = {}
         mockTasks.forEach((t, i) => {
           const methods = allMethods[i]?.methods || []
-          let ts = taskStateFromMethods(t, methods)
+          let ts = taskStateFromMethods(methods)
           if (t.knowledgePoints) ts.knowledgePoints = t.knowledgePoints
           if (t.abilityPoints) ts.abilityPoints = t.abilityPoints
           if (t.resources) ts.resources = t.resources
@@ -1364,7 +1087,7 @@ export default function TasksEditPage() {
       const newStates: Record<string, TaskState> = {}
       selected.forEach((t, i) => {
         const methods = methodsResults[i]?.methods || []
-        let ts = taskStateFromMethods(t, methods)
+        let ts = taskStateFromMethods(methods)
         if (t.knowledgePointIds) ts.knowledgePoints = [...t.knowledgePointIds]
         if (t.abilityPointIds) ts.abilityPoints = [...t.abilityPointIds]
         if (t.resourceIds) ts.resources = [...t.resourceIds]
@@ -1646,23 +1369,6 @@ export default function TasksEditPage() {
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const distributeWeights = () => {
-    const unlocked = tasks.filter((t) => !getState(t.id).locked)
-    const lockedWeight = tasks
-      .filter((t) => getState(t.id).locked)
-      .reduce((s, t) => s + getState(t.id).weight, 0)
-    const remaining = 100 - lockedWeight
-    const each = Math.floor(remaining / unlocked.length)
-    const newStates = { ...taskStates }
-    unlocked.forEach((t, i) => {
-      newStates[t.id] = {
-        ...newStates[t.id],
-        weight: each + (i < remaining % unlocked.length ? 1 : 0),
-      }
-    })
-    setTaskStates(newStates)
   }
 
   return (
@@ -2114,7 +1820,6 @@ export default function TasksEditPage() {
       {/* Edit Card Dialog */}
       {editingCard && (
         <EditCardDialog
-          allTasks={tasks}
           taskId={editingCard.taskId}
           cardType={editingCard.type}
           task={tasks.find((t) => t.id === editingCard.taskId)!}
@@ -2123,18 +1828,10 @@ export default function TasksEditPage() {
           updateTask={(updates) =>
             setTasks(tasks.map((t) => (t.id === editingCard.taskId ? { ...t, ...updates } : t)))
           }
-          allTaskStates={taskStates}
-          updateAnyState={(id, updates) => updateState(id, updates)}
           onClose={() => setEditingCard(null)}
           positionId={existingScenario?.positionId}
           toast={toast}
           positionAbilityBindings={datasets.positionAbilityBindings}
-          userNameMap={userNameMap}
-          tenantId={tenantId}
-          majors={majors}
-          rubricLibrary={datasets.rubricLibrary}
-          setRubricLibrary={datasets.setRubricLibrary}
-          scenarioId={scenarioId}
           datasets={datasets}
           professions={professions}
         />
@@ -2160,143 +1857,6 @@ export default function TasksEditPage() {
         onConfirm={() => deleteConfirmTask && handleDeleteTask(deleteConfirmTask.id)}
       />
     </EditorShell>
-  )
-}
-
-function PaperDetailWrapper({
-  paperId,
-  open,
-  onOpenChange,
-}: {
-  paperId: string | null
-  open: boolean
-  onOpenChange: (v: boolean) => void
-}) {
-  const [paper, setPaper] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (open && paperId) {
-      const cached = getLoadedExam(paperId)
-      if (cached?.questions?.length) {
-        queueMicrotask(() => setPaper(cached))
-      } else {
-        let cancelled = false
-        ;(async () => {
-          setLoading(true)
-          try {
-            const data = (await examApi.get(paperId)) as LoadedExam
-            if (cancelled) return
-            upsertLoadedExam(paperId, data)
-            setPaper(getLoadedExam(paperId) ?? data)
-          } catch {
-            if (!cancelled) setPaper(cached ?? null)
-          } finally {
-            if (!cancelled) setLoading(false)
-          }
-        })()
-        return () => {
-          cancelled = true
-        }
-      }
-    }
-  }, [open, paperId])
-
-  const questions = paper?.questions || []
-  const typeCounts: Record<string, number> = {}
-  questions.forEach((q: any) => {
-    typeCounts[q.type] = (typeCounts[q.type] || 0) + 1
-  })
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>试卷详情</DialogTitle>
-        </DialogHeader>
-        {loading ? (
-          <div className="text-center py-8 text-gray-400">
-            <Loader2 className="h-6 w-6 mx-auto animate-spin" />
-            <p className="text-sm mt-2">加载中...</p>
-          </div>
-        ) : !paper ? (
-          <div className="text-center py-8 text-gray-400">
-            <p className="text-sm">未找到试卷</p>
-          </div>
-        ) : (
-          <div className="space-y-3 py-2">
-            <div>
-              <Label className="text-xs text-gray-500">试卷名称</Label>
-              <p className="text-sm font-medium mt-1">{paper.name}</p>
-            </div>
-            {paper.description && (
-              <div>
-                <Label className="text-xs text-gray-500">试卷描述</Label>
-                <p className="text-sm mt-1 text-gray-600">{paper.description}</p>
-              </div>
-            )}
-            <div className="flex items-center gap-4">
-              <div>
-                <Label className="text-xs text-gray-500">题目数量</Label>
-                <p className="text-sm mt-1">{questions.length} 题</p>
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">总分</Label>
-                <p className="text-sm mt-1">
-                  {paper.totalScore ??
-                    questions.reduce((s: number, q: any) => s + (q.score || 0), 0)}{' '}
-                  分
-                </p>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-gray-500">包含题型</Label>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {Object.keys(typeCounts).length > 0 ? (
-                  Object.entries(typeCounts).map(([type, count]) => (
-                    <Badge
-                      key={type}
-                      className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[type] || ''}`}
-                    >
-                      {questionTypeLabels[type] || type} ×{count}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-xs text-gray-400">暂无题目</span>
-                )}
-              </div>
-            </div>
-            {questions.length > 0 && (
-              <div>
-                <Label className="text-xs text-gray-500">题目列表</Label>
-                <div className="space-y-1.5 mt-1 max-h-48 overflow-y-auto">
-                  {questions.map((q: any, i: number) => (
-                    <div
-                      key={q.id || i}
-                      className="flex items-center gap-2 text-xs p-1.5 rounded bg-gray-50"
-                    >
-                      <span className="text-gray-400 w-5 text-right">{i + 1}.</span>
-                      <span className="flex-1 truncate">{q.content || '未命名题目'}</span>
-                      <Badge
-                        className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type] || ''}`}
-                      >
-                        {questionTypeLabels[q.type] || q.type}
-                      </Badge>
-                      <span className="text-gray-400">{q.score || 0}分</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            关闭
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -2338,37 +1898,25 @@ const DEFAULT_HOMEWORK_RESOURCE_CONFIG = {
 // ============ Edit Card Dialog ============
 
 function EditCardDialog({
-  allTasks,
   taskId,
   cardType,
   task,
   state,
   updateState,
   updateTask,
-  allTaskStates,
-  updateAnyState,
   onClose,
   positionId,
   toast,
   positionAbilityBindings,
-  userNameMap,
-  tenantId,
-  majors,
-  rubricLibrary,
-  setRubricLibrary,
-  scenarioId,
   datasets,
   professions,
 }: {
-  allTasks: Task[]
   taskId: string
   cardType: CardType
   task: Task
   state: TaskState
   updateState: (u: Partial<TaskState>) => void
   updateTask: (u: Partial<Task>) => void
-  allTaskStates: Record<string, TaskState>
-  updateAnyState: (id: string, u: Partial<TaskState>) => void
   onClose: () => void
   positionId?: string
   toast: (opts: {
@@ -2377,12 +1925,6 @@ function EditCardDialog({
     variant?: 'default' | 'destructive'
   }) => void
   positionAbilityBindings: any[]
-  userNameMap: Record<string, string>
-  tenantId?: string
-  majors: any[]
-  rubricLibrary: RubricScheme[]
-  setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
-  scenarioId: string
   datasets: UseTaskDatasetsResult
   professions: any[]
 }) {
@@ -2394,81 +1936,19 @@ function EditCardDialog({
     hours: task.estimatedHours,
     background: task.background,
   })
-  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
 
-  // For knowledge / ability "create new"
-  const [showAddKnowledge, setShowAddKnowledge] = useState(false)
-  const [newKnowledgeName, setNewKnowledgeName] = useState('')
-  const [newKnowledgeDesc, setNewKnowledgeDesc] = useState('')
-  const [newKnowledgeCategory, setNewKnowledgeCategory] = useState('通用')
-
-  const [showAddAbility, setShowAddAbility] = useState(false)
-  const [newAbilityName, setNewAbilityName] = useState('')
-  const [newAbilityDesc, setNewAbilityDesc] = useState('')
-  const [newAbilityCategory, setNewAbilityCategory] = useState('通用')
-
-  // For evaluation full-screen dialog
-  const [evalDialogOpen, setEvalDialogOpen] = useState(false)
-
-  // For scoring config
-  const [selectedGradeTaskId, setSelectedGradeTaskId] = useState(taskId)
-
-  // For resources filter
-  const [resType, setResType] = useState('all')
-
-  // For ability search
   const [abilitySearch, setAbilitySearch] = useState('')
   const [abilityDetailOpen, setAbilityDetailOpen] = useState(false)
-  const [selectedAbilityForDetail, setSelectedAbilityForDetail] = useState<string | null>(null)
+  const [selectedAbilityForDetail] = useState<string | null>(null)
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
-
-  // For knowledge
-  const [kpSearch, setKpSearch] = useState('')
-  const [kpDetailOpen, setKpDetailOpen] = useState(false)
-  const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
-  const [kpFormOpen, setKpFormOpen] = useState(false)
-  const [kpFormMode, setKpFormMode] = useState<'add' | 'clone' | 'edit'>('add')
-  const [kpFormTarget, setKpFormTarget] = useState<TaskKnowledgePointItem | null>(null)
-  const [kpFormInitial, setKpFormInitial] = useState({
-    name: '',
-    description: '',
-    code: '',
-    granularLessonIds: [] as string[],
-  })
-  const [glSelectOpen, setGlSelectOpen] = useState(false)
-  const [glSelectTargetKp, setGlSelectTargetKp] = useState<string | null>(null)
-
-  // Determine if a knowledge point is reference (original library) or custom (added/cloned)
-  const isReferenceKp = (kpId: string) => !datasets.customKnowledgePointIds.has(kpId)
 
   // For random draw custom questions (现场问答题)
 
   // For resources search & upload
-  const [resSearchName, setResSearchName] = useState('')
-  const [resSearchProvider, setResSearchProvider] = useState('')
-  const [showUploadRes, setShowUploadRes] = useState(false)
-  const [newResName, setNewResName] = useState('')
-  const [newResType, setNewResType] = useState('document')
-  const [newResUrl, setNewResUrl] = useState('')
-  const [newResDescription, setNewResDescription] = useState('')
-  const [newResAddress, setNewResAddress] = useState('')
-  const [newResOpenTime, setNewResOpenTime] = useState('')
-  const [newResCapacity, setNewResCapacity] = useState('')
-  const [newResContact, setNewResContact] = useState('')
-  const [newResLocation, setNewResLocation] = useState('')
-  const [newResQuantity, setNewResQuantity] = useState('')
-  const [newResVersion, setNewResVersion] = useState('')
-  const [newResLicense, setNewResLicense] = useState('')
-  const [newResFile, setNewResFile] = useState<File | null>(null)
-  const [newResUploading, setNewResUploading] = useState(false)
-  const [showUploadTypePicker, setShowUploadTypePicker] = useState(false)
 
   // For question bank config
 
   // For assessment config
-  const [assessActiveTab, setAssessActiveTab] = useState<string | null>(
-    state.evaluationMethods[0] || null,
-  )
 
   const ensureTempExam = async (
     mk: 'question_bank' | 'quiz',
@@ -2665,171 +2145,6 @@ function EditCardDialog({
     onClose()
   }
 
-  const handleAddKnowledge = () => {
-    if (!newKnowledgeName.trim()) return
-    const newId = generateUUID()
-    datasets.markKnowledgePointCustom(newId)
-    datasets.setKnowledgePoints((prev) => [
-      ...prev,
-      {
-        id: newId,
-        name: newKnowledgeName.trim(),
-        description: newKnowledgeDesc.trim(),
-        linked: false,
-        granularLessons: [],
-        category: newKnowledgeCategory,
-      },
-    ])
-    updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
-    setNewKnowledgeName('')
-    setNewKnowledgeDesc('')
-    setShowAddKnowledge(false)
-  }
-
-  const handleAddAbility = () => {
-    if (!newAbilityName.trim()) return
-    const newId = generateUUID()
-    datasets.customAbilityPointIds.current.add(newId)
-    datasets.setAbilityPoints((prev) => [
-      ...prev,
-      {
-        id: newId,
-        name: newAbilityName.trim(),
-        description: newAbilityDesc.trim(),
-        category: newAbilityCategory,
-      },
-    ])
-    updateState({ abilityPoints: [...state.abilityPoints, newId] })
-    setNewAbilityName('')
-    setNewAbilityDesc('')
-    setShowAddAbility(false)
-  }
-
-  const validateResourceFile = (file: File, type: string): string | null => {
-    if (file.size > RESOURCE_MAX_FILE_SIZE) {
-      return '文件大小超过 100MB'
-    }
-    const allowed = resourceTypeExtensionMap[type] || []
-    if (allowed.length === 0) return null
-    const ext = file.name.split('.').pop()?.toLowerCase() || ''
-    if (!allowed.includes(ext)) {
-      return `不支持的文件格式，请上传 ${allowed.map((e) => `.${e}`).join('、')} 文件`
-    }
-    return null
-  }
-
-  const handleUploadResource = async () => {
-    if (!newResName.trim()) return
-
-    const fileTypes = [
-      'document',
-      'spreadsheet',
-      'image',
-      'audio',
-      'video',
-      'archive',
-      'other',
-      'software',
-    ]
-    const isFileType = fileTypes.includes(newResType)
-    let fileUrl = newResUrl.trim()
-    let uploadedSize: number | undefined
-
-    if (isFileType && newResFile) {
-      const err = validateResourceFile(newResFile, newResType)
-      if (err) {
-        toast({ variant: 'destructive', title: '文件校验失败', description: err })
-        return
-      }
-      setNewResUploading(true)
-      try {
-        const res = await fileApi.upload(newResFile)
-        fileUrl = res.url
-        uploadedSize = res.size
-      } catch (err: any) {
-        toast({ variant: 'destructive', title: '上传失败', description: err.message })
-        return
-      } finally {
-        setNewResUploading(false)
-      }
-    }
-
-    if (newResType === 'link' && !fileUrl) {
-      toast({ variant: 'destructive', title: '请填写链接地址' })
-      return
-    }
-
-    const newId = `lr-upload-${Date.now()}`
-    let extraData: Record<string, any> = {}
-    switch (newResType) {
-      case 'link':
-        extraData = { url: fileUrl, description: newResDescription.trim() }
-        break
-      case 'venue':
-        extraData = {
-          address: newResAddress.trim(),
-          openTime: newResOpenTime.trim(),
-          capacity: newResCapacity.trim(),
-          contact: newResContact.trim(),
-          description: newResDescription.trim(),
-        }
-        break
-      case 'facility':
-        extraData = {
-          location: newResLocation.trim(),
-          quantity: newResQuantity.trim(),
-          description: newResDescription.trim(),
-        }
-        break
-      case 'software':
-        extraData = {
-          version: newResVersion.trim(),
-          url: fileUrl,
-          license: newResLicense.trim(),
-          description: newResDescription.trim(),
-        }
-        break
-      default:
-        extraData = { description: newResDescription.trim() }
-        break
-    }
-
-    const thumbnail = newResType === 'image' && fileUrl ? fileUrl : '/placeholder.svg'
-    const newRes = {
-      id: newId,
-      name: newResName.trim(),
-      type: newResType as any,
-      url: fileUrl,
-      description: newResDescription.trim(),
-      knowledgePoints: [],
-      size: uploadedSize !== undefined ? `${uploadedSize}` : undefined,
-      uploadedAt: new Date().toISOString().slice(0, 10),
-      uploadedBy: '当前用户',
-      thumbnail,
-      extraData,
-      ...extraData,
-    }
-    datasets.markResourceCustom(newId)
-    datasets.setLearningResources((prev) => [...prev, newRes as TaskResourceItem])
-    updateState({ resources: [...state.resources, newId] })
-    setNewResName('')
-    setNewResType('document')
-    setNewResUrl('')
-    setNewResFile(null)
-    setNewResUploading(false)
-    setNewResDescription('')
-    setNewResAddress('')
-    setNewResOpenTime('')
-    setNewResCapacity('')
-    setNewResContact('')
-    setNewResLocation('')
-    setNewResQuantity('')
-    setNewResVersion('')
-    setNewResLicense('')
-    setShowUploadRes(false)
-    toast({ title: '资源已上传并选中' })
-  }
-
   const renderContent = () => {
     switch (cardType) {
       case 'info':
@@ -2916,7 +2231,7 @@ function EditCardDialog({
               })
               updateState({ knowledgePoints: ids })
             }}
-            onAddCustom={(name, description) => {}}
+            onAddCustom={() => {}}
           />
         )
       }
@@ -3034,15 +2349,6 @@ function EditCardDialog({
           服务端开发: Server,
           运维部署: Wrench,
           数据分析: BookOpen,
-        }
-
-        const categoryColors: Record<string, string> = {
-          开发能力: 'bg-blue-50 text-blue-600 border-blue-200',
-          设计能力: 'bg-purple-50 text-purple-600 border-purple-200',
-          优化能力: 'bg-green-50 text-green-600 border-green-200',
-          软技能: 'bg-orange-50 text-orange-600 border-orange-200',
-          分析能力: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-          工程能力: 'bg-indigo-50 text-indigo-600 border-indigo-200',
         }
 
         return (

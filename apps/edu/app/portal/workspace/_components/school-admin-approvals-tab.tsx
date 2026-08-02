@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
-import type { WorkspaceDashboard, WorkspaceTodo } from '@/lib/types'
+import type { WorkspaceDashboard } from '@/lib/types'
 
 const approvalHrefMap: Record<string, string> = {
   'pending-course': '/lesson/admin/approvals',

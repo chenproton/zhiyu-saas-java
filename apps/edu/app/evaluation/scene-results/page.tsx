@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock,
   Eye,
   FileText,
   GraduationCap,
@@ -68,8 +67,6 @@ interface ScenarioGroup {
   }[]
 }
 
-type ActivationMode = 'manual' | 'scheduled'
-
 const evalMethodLabels: Record<string, string> = {
   random_draw: '现场问答',
   review: '现场评审',
@@ -84,14 +81,11 @@ export default function GradingPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
-  const [taskActivation, setTaskActivation] = useState<
-    Record<string, { mode: ActivationMode; enabled: boolean }>
-  >({})
 
   const [scenarios, setScenarios] = useState<any[]>([])
   const [results, setResults] = useState<SceneEvaluationResult[]>([])
   const [userMap, setUserMap] = useState<Map<string, any>>(new Map())
-  const [positionMap, setPositionMap] = useState<Map<string, string>>(new Map())
+  const [, setPositionMap] = useState<Map<string, string>>(new Map())
   const [taskNameMap, setTaskNameMap] = useState<Map<string, any>>(new Map())
   const [loading, setLoading] = useState(true)
 

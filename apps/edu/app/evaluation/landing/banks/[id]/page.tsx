@@ -4,13 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   Library,
   FileText,
   Clock,
   Layers,
   Search,
-  Loader2,
   HelpCircle,
   ListChecks,
   PenTool,
@@ -18,14 +16,13 @@ import {
   CheckSquare,
   Type,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { questionBankApi, questionApi, knowledgeApi } from '@/lib/api'
 import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 const coverGradients = [
   'linear-gradient(135deg,#2563eb,#3b82f6)',

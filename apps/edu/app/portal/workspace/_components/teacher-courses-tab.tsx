@@ -4,23 +4,18 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   BookOpen,
   Calendar,
-  Clock,
   MapPin,
-  BarChart3,
   Users,
   ClipboardList,
   GraduationCap,
-  Layers,
   TrendingUp,
   CheckCircle2,
   Zap,
   MessageSquare,
   Trophy,
   FileCheck,
-  AlertCircle,
   ExternalLink,
   PlayCircle,
-  MoreHorizontal,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -38,7 +33,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SectionCard } from './section-card'
-import { StatCard } from './stat-card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PrepAssociateDialog } from './prep-associate-dialog'
 import { GradingIframeDialog } from './grading-iframe-dialog'
@@ -47,16 +41,10 @@ import { portalApi } from '@/lib/api'
 import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type {
   WorkspaceDashboard,
-  WorkspaceTeacherCourse,
   WorkspaceClassPlan,
-  WorkspaceClassSession,
 } from '@/lib/types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import {
-  mockGradeSubmissions,
-  mockTeacherSchedule,
-  type PrepAssociationRecord,
-} from '../_data/mock-teacher-data'
+import { type PrepAssociationRecord } from '../_data/mock-teacher-data'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import {
   mockSignInData,
@@ -73,7 +61,6 @@ import {
   mockSemesterSummary,
   mockAssessmentDimensions,
   mockCompositeDistribution,
-  mockSessionSummary,
   mockStudentRanking,
 } from '../_data/mock-teacher-data'
 import {
@@ -634,8 +621,6 @@ export function TeacherCoursesTab({
   onAssociate,
 }: TeacherCoursesTabProps = {}) {
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
-  const [activeSubTab, setActiveSubTab] = useState('plans')
-  const [courseFilter, setCourseFilter] = useState('all')
   const [selectedTerm, setSelectedTerm] = useState('')
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -648,7 +633,7 @@ export function TeacherCoursesTab({
   const [prepPlanName, setPrepPlanName] = useState('')
   const [prepIsHybrid, setPrepIsHybrid] = useState(true)
   const [prepUrl, setPrepUrl] = useState('')
-  const [prepSessionLabels, setPrepSessionLabels] = useState<Record<string, string>>({})
+  const [, setPrepSessionLabels] = useState<Record<string, string>>({})
 
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false)
   const [gradeSessionTitle, setGradeSessionTitle] = useState('')
@@ -664,7 +649,6 @@ export function TeacherCoursesTab({
       .catch(() => setDashboard(null))
   }, [])
 
-  const teacherCourses = useMemo(() => dashboard?.teacherCourses || [], [dashboard?.teacherCourses])
   const classPlans = useMemo(() => dashboard?.classPlans || [], [dashboard?.classPlans])
   const classSessions = useMemo(() => dashboard?.classSessions || [], [dashboard?.classSessions])
 
@@ -679,15 +663,8 @@ export function TeacherCoursesTab({
     }
   }, [semesters, selectedTerm])
 
-  const filteredCourses = teacherCourses.filter((c) => {
-    if (courseFilter !== 'all' && c.status !== courseFilter) return false
-    return true
-  })
-
   const termPlans = classPlans.filter((p) => p.term === selectedTerm)
   const selectedPlan = termPlans.find((p) => p.id === selectedPlanId) || null
-  const planCourseIds = new Set(termPlans.map((p) => p.id))
-  const termSessions = classSessions.filter((s) => planCourseIds.has(s.courseId))
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -698,17 +675,6 @@ export function TeacherCoursesTab({
       }
     })
   }, [selectedTerm, termPlans])
-
-  const openCourseDialog = (course: WorkspaceTeacherCourse, tab: string) => {
-    setSelectedCourse({
-      id: course.id,
-      name: course.name,
-      className: course.className,
-      students: course.students,
-    })
-    setDialogTab(tab)
-    setDialogOpen(true)
-  }
 
   const openSessionDialog = (plan: WorkspaceClassPlan, tab: string) => {
     setSelectedCourse({

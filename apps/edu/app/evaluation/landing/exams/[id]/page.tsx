@@ -18,7 +18,6 @@ import {
   Info,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
@@ -85,7 +84,7 @@ export default function ExamDetailPage() {
     'not-in-range' | 'not-started' | 'started'
   >('started')
   const [showAudienceDialog, setShowAudienceDialog] = useState(false)
-  const [usages, setUsages] = useState<ExamUsage[]>([])
+  const [, setUsages] = useState<ExamUsage[]>([])
   const [currentUsage, setCurrentUsage] = useState<ExamUsage | null>(null)
   const [submitting, setSubmitting] = useState(false)
 

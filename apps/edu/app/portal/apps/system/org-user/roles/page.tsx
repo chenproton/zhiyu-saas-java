@@ -35,13 +35,11 @@ import {
   Search,
   Upload,
   Download,
-  Eye,
   Settings,
   Users,
   AlertCircle,
   LayoutDashboard,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { roleApi, portalUserManagementApi, type User } from '@/lib/api'
 import type { Role } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -50,7 +48,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from '@/lib/menu-permissions'
-import type { MenuTreeItem, PermissionModule } from '@/lib/menu-permissions'
+import type { MenuTreeItem } from '@/lib/menu-permissions'
 
 const MENU_TREE_PLATFORM_MAP: Record<string, string> = {
   'system-entry': 'system',

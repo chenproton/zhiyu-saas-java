@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Pencil, Trash2, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
-  Table,
-  TableHeader,
-  TableBody,
   TableRow,
   TableHead,
   TableCell,
@@ -68,22 +63,14 @@ export default function KnowledgePointsPage() {
   }
 
   useEffect(() => {
-    let c = false
     ;(async () => {
       await loadItems()
     })()
-    return () => {
-      c = true
-    }
   }, [loadItems])
   useEffect(() => {
-    let c = false
     ;(async () => {
       await loadGranularCourses()
     })()
-    return () => {
-      c = true
-    }
   }, [])
 
   const handleOpenAdd = () => {

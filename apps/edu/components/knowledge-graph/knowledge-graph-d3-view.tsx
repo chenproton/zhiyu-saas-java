@@ -328,7 +328,7 @@ export function KnowledgeGraphD3View({
 
     nodeG
       .on('click', (_event, d) => setSelectedId(d.id))
-      .on('mouseover', (ev, d) => {
+      .on('mouseover', (_ev, d) => {
         tooltip
           .style('display', 'block')
           .html(

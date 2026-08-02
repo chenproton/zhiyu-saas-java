@@ -1,7 +1,7 @@
 'use client'
 
 import { CheckCircle2, AlertCircle } from 'lucide-react'
-import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
+import type { SystemCourseNode } from '@/lib/types/lesson-source'
 
 interface PublishCheckPanelProps {
   node: SystemCourseNode | undefined

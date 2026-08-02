@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FileUp, Clock3, CalendarDays, CheckCircle2, X, MapPin, Users } from 'lucide-react'
+import { FileUp, Clock3, CheckCircle2, X, MapPin, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +25,7 @@ import { ScheduleGrid } from '@/components/shared/schedule-grid'
 import { MultiOrgNodePicker } from '@/components/shared/multi-org-node-picker'
 import { UserSelector } from '@/components/shared/user-selector'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { periodSlotApi, scheduleApi, teachingPlanApi, venueApi } from '@/lib/api'
+import { periodSlotApi, scheduleApi, venueApi } from '@/lib/api'
 import type { PeriodSlot, ScheduleEntry, TeachingPlan, TeachingPlanEntry, Venue } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ScheduleEditDialog } from './schedule-edit-dialog'
@@ -48,7 +48,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const [editTarget, setEditTarget] = useState<ScheduleEntry | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null)
-  const [savingQuick, setSavingQuick] = useState(false)
+  const [savingQuick] = useState(false)
   const [venueFilter, setVenueFilter] = useState<string>('__all')
   const [movingEntry, setMovingEntry] = useState<ScheduleEntry | null>(null)
   const [preConfigEntry, setPreConfigEntry] = useState<TeachingPlanEntry | null>(null)
@@ -427,7 +427,6 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
                 value={preClassIds}
                 onChange={setPreClassIds}
                 selectableTypes={['班级']}
-                placeholder="选择班级"
                 title="选择授课班级"
                 maxVisible={3}
               />

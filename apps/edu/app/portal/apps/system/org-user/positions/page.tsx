@@ -35,7 +35,6 @@ import {
   Search,
   Upload,
   Download,
-  Eye,
   AlertCircle,
   Loader2,
   RotateCcw,
@@ -74,13 +73,9 @@ export default function PositionsPage() {
   }, [tenantId])
 
   useEffect(() => {
-    let cancelled = false
     ;(async () => {
       await fetchPositions()
     })()
-    return () => {
-      cancelled = true
-    }
   }, [fetchPositions])
 
   const filteredPositions = useMemo(

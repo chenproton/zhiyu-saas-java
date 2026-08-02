@@ -4,13 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
@@ -20,7 +13,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import type { AllianceDictionary, AllianceListResponse } from '@/lib/types'
 
-function DictionaryTab({ dictType, label }: { dictType: string; label: string }) {
+function DictionaryTab({ dictType }: { dictType: string }) {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const [items, setItems] = useState<AllianceDictionary[]>([])
@@ -34,8 +27,7 @@ function DictionaryTab({ dictType, label }: { dictType: string; label: string })
   const [editId, setEditId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<AllianceDictionary | null>(null)
-  const [deleting, setDeleting] = useState(false)
-
+  const [, setDeleting] = useState(false)
   const fetchItems = useCallback(async () => {
     if (!tenantId) return
 
@@ -288,7 +280,7 @@ export default function AllianceDictionariesPage() {
           <div key={t.dictType} className="rounded-lg border p-6">
             <h2 className="text-lg font-semibold mb-1">{t.label}字典</h2>
             <p className="text-sm text-muted-foreground mb-4">{t.desc}</p>
-            <DictionaryTab dictType={t.dictType} label={t.label} />
+            <DictionaryTab dictType={t.dictType} />
           </div>
         ))}
     </div>

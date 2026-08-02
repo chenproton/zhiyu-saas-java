@@ -38,7 +38,7 @@ import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type { WorkspaceDashboard, WorkspaceScheduleEvent } from '@/lib/types'
 import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 import { type TeacherScheduleEvent, type PrepAssociationRecord } from '../_data/mock-teacher-data'
 
 const typeIconMap: Record<string, LucideIcon> = {
@@ -96,7 +96,7 @@ export function TeacherDashboardTab({
   const [hybridGradeDialogOpen, setHybridGradeDialogOpen] = useState(false)
   const [hybridGradeSessionTitle, setHybridGradeSessionTitle] = useState('')
   const [hybridGradeClassName, setHybridGradeClassName] = useState('')
-  const [prepSessionLabels, setPrepSessionLabels] = useState<Record<string, string>>({})
+  const [, setPrepSessionLabels] = useState<Record<string, string>>({})
 
   return (
     <div className="space-y-3">
@@ -110,7 +110,6 @@ export function TeacherDashboardTab({
               classPlans={classPlans}
               classSessions={classSessions}
               prepAssociations={prepAssociations}
-              onAssociate={onAssociate}
               onPrepRequest={(planId, sessionId, planName, isHybrid, url, sessionLabel) => {
                 setPrepPlanId(planId)
                 setPrepSessionId(sessionId)
@@ -358,9 +357,6 @@ interface CourseScheduleTableProps {
   classPlans?: WorkspaceClassPlan[]
   classSessions?: WorkspaceClassSession[]
   prepAssociations?: Record<string, PrepAssociationRecord>
-  onAssociate?: (
-    fn: (prev: Record<string, PrepAssociationRecord>) => Record<string, PrepAssociationRecord>,
-  ) => void
   onPrepRequest?: (
     planId: string,
     sessionId: string,
@@ -377,7 +373,6 @@ function CourseScheduleTable({
   classPlans = [],
   classSessions = [],
   prepAssociations = {},
-  onAssociate,
   onPrepRequest,
   onGradeRequest,
 }: CourseScheduleTableProps = {}) {

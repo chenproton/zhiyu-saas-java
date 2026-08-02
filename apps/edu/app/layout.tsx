@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { AuthProvider } from '@/components/auth-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ChunkErrorHandler } from '@/components/chunk-error-handler'
@@ -7,9 +6,6 @@ import { GlobalApiErrorHandler } from '@/components/global-api-error-handler'
 import { DataProvider as EvaluationDataProvider } from '@/components/providers/data-provider'
 import { Toaster } from '@zhiyu/ui'
 import './globals.css'
-
-const _geist = Geist({ subsets: ['latin'] })
-const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: '场景化数智教学服务平台',

@@ -78,7 +78,7 @@ export interface UseTaskDatasetsResult {
   loadDatasets: (keys: string[], ctx?: LoadDatasetsContext) => Promise<void>
 }
 
-export function useTaskDatasets(scenarioId: string): UseTaskDatasetsResult {
+export function useTaskDatasets(): UseTaskDatasetsResult {
   const { user } = useAuth()
   const userId = user?.id
 

@@ -8,7 +8,6 @@ import {
   BookOpen,
   FileText,
   Clock,
-  MonitorPlay,
   Lightbulb,
   FolderOpen,
   ClipboardList,
@@ -16,11 +15,8 @@ import {
   BrainCircuit,
   BarChart3,
   ListChecks,
-  ExternalLink,
   Sparkles,
-  X,
   ArrowLeft,
-  Download,
   Eye,
   Layers,
   PanelLeftClose,
@@ -33,11 +29,8 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -70,7 +63,6 @@ import type {
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/components/auth-provider'
-import { formatFileSize } from '@/lib/utils'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import {
   ResourcePreviewModal,
@@ -195,12 +187,10 @@ export default function SceneLearnPage() {
   const [loading, setLoading] = useState(true)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(targetTaskId || null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
-  const [previewTab, setPreviewTab] = useState<'preview' | 'manual' | 'resources'>('preview')
 
   const [resourceMap, setResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
-  const [showResources, setShowResources] = useState(false)
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const [evalMethods, setEvalMethods] = useState<TaskEvaluationMethod[]>([])
   const [myResults, setMyResults] = useState<SceneEvaluationResult[]>([])
@@ -350,13 +340,6 @@ export default function SceneLearnPage() {
       totalMethods: evalMethods.length,
     }
   }, [evalMethods, myResults])
-
-  const dependencyTasks = useMemo(() => {
-    if (!activeTask?.dependencyIds?.length) return []
-    return activeTask.dependencyIds
-      .map((did) => tasks.find((t) => t.id === did))
-      .filter(Boolean) as ScenarioTask[]
-  }, [activeTask, tasks])
 
   const selectTask = useCallback((taskId: string) => {
     setActiveTaskId(taskId)
@@ -897,7 +880,6 @@ function EvalMethodCard({ method, result, sceneId, taskId }: EvalMethodCardProps
   const actionText = methodActionText[method.methodKey] || '开始测评'
   const description = methodDescMap[method.methodKey] || '进入测评'
   const isExamMethod = ['paper', 'question_bank', 'quiz'].includes(method.methodKey)
-  const isTeacherLed = ['random_draw', 'review'].includes(method.methodKey)
   const isManualSubmit = ['outcome', 'homework'].includes(method.methodKey)
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -1320,250 +1302,3 @@ function EvalMethodSubmitDialog({
   )
 }
 
-function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-40 blur-lg" />
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 opacity-80" />
-        <div className="absolute inset-0 flex items-center justify-center text-gray-300">
-          {icon}
-        </div>
-      </div>
-      <p className="text-sm text-gray-400 font-medium">{text}</p>
-    </div>
-  )
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  color: string
-}) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"
-        style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}
-      >
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] text-gray-400 font-medium mb-0.5">{label}</p>
-        <p className="text-sm font-bold text-gray-800">{value}</p>
-      </div>
-    </div>
-  )
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="p-3 rounded-lg border border-gray-100 bg-gray-50/50">
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="mt-0.5 text-sm font-medium text-gray-700">{value}</p>
-    </div>
-  )
-}
-
-function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
-  const [selectedAbility, setSelectedAbility] = useState<AbilityPoint | null>(null)
-
-  const groupedByAttribute = useMemo(() => {
-    const groups = new Map<string, AbilityPoint[]>()
-    abilityPoints.forEach((ap) => {
-      const attrs = ap.attributes?.length ? ap.attributes : ['未分类']
-      attrs.forEach((attr) => {
-        const list = groups.get(attr) || []
-        list.push(ap)
-        groups.set(attr, list)
-      })
-    })
-    return Array.from(groups.entries())
-      .map(([attr, items]) => ({ attr, items }))
-      .filter((g) => g.items.length > 0)
-  }, [abilityPoints])
-
-  const categoryLabels: Record<string, { color: string; label: string; bg: string }> = {
-    knowledge: { color: '#2563eb', label: '知识', bg: '#eff6ff' },
-    skill: { color: '#16a34a', label: '技能', bg: '#f0fdf4' },
-    quality: { color: '#7c3aed', label: '素养', bg: '#f5f3ff' },
-  }
-
-  return (
-    <div className="space-y-5">
-      <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
-        <CardContent className="p-5">
-          <div
-            className="rounded-xl p-5 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 50%, #faf5ff 100%)' }}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 opacity-[0.06]">
-              <Sparkles className="w-full h-full" />
-            </div>
-            <div className="flex items-center gap-2 text-blue-800 font-bold mb-2 text-sm relative z-10">
-              <Sparkles className="w-4 h-4" />
-              能力模型
-            </div>
-            <p className="text-xs text-gray-600 leading-relaxed relative z-10">
-              本任务按能力属性拆解，共
-              <strong className="text-blue-600 mx-0.5">{groupedByAttribute.length}</strong>
-              个能力属性、
-              <strong className="text-blue-600 mx-0.5">{abilityPoints.length}</strong>
-              个能力点
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {groupedByAttribute.map(({ attr, items }) => (
-          <Card
-            key={attr}
-            className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300"
-          >
-            <div
-              className="px-4 py-3.5 font-semibold text-sm flex items-center gap-2 border-b"
-              style={{
-                background: 'linear-gradient(135deg, #eff6ff, #eef2ff)',
-                color: '#2563eb',
-                borderColor: '#bfdbfe',
-              }}
-            >
-              <Target className="w-4 h-4" />
-              {attr}
-              <span className="ml-auto text-[11px] font-normal opacity-60">{items.length} 项</span>
-            </div>
-            <CardContent className="p-2 max-h-[280px] overflow-y-auto">
-              {items.map((ap) => {
-                const cat = categoryLabels[ap.category] || {
-                  color: '#94a3b8',
-                  label: ap.category,
-                  bg: '#f8fafc',
-                }
-                return (
-                  <button
-                    key={ap.id}
-                    onClick={() => setSelectedAbility(ap)}
-                    className="flex items-center justify-between w-full text-left p-2.5 rounded-lg hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-transparent transition-all duration-200 gap-2 group"
-                  >
-                    <div className="flex flex-col min-w-0 gap-1">
-                      <span className="text-[13px] font-semibold text-gray-700 group-hover:text-blue-600 transition-colors">
-                        {ap.name}
-                      </span>
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full w-fit font-medium border"
-                        style={{
-                          backgroundColor: cat.bg,
-                          color: cat.color,
-                          borderColor: cat.color + '30',
-                        }}
-                      >
-                        {cat.label}
-                      </span>
-                    </div>
-                    <span className="shrink-0 text-gray-300 group-hover:text-blue-400 transition-colors">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </span>
-                  </button>
-                )
-              })}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {selectedAbility && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setSelectedAbility(null)}
-        >
-          <div
-            className="bg-white rounded-2xl w-[540px] max-w-[92vw] shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-                  <Target className="w-4 h-4" />
-                </div>
-                <span className="font-semibold text-gray-800">能力点详情</span>
-              </div>
-              <button
-                className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200"
-                onClick={() => setSelectedAbility(null)}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-6">
-              <div
-                className="relative rounded-xl p-5 overflow-hidden border border-gray-100"
-                style={{ background: 'linear-gradient(135deg, #f8fafc, #fff)' }}
-              >
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
-                <h3 className="text-base font-bold text-gray-800 mb-4">{selectedAbility.name}</h3>
-                <div className="space-y-3 text-sm">
-                  {selectedAbility.code && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400 shrink-0 w-16">编码</span>
-                      <span className="font-mono text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-0.5">
-                        {selectedAbility.code}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-400 shrink-0 w-16">属性</span>
-                    <span className="text-gray-700 font-medium">
-                      {selectedAbility.attributes?.length
-                        ? selectedAbility.attributes.join('、')
-                        : '未配置'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-400 shrink-0 w-16">类别</span>
-                    <span
-                      className="px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor: (
-                          categoryLabels[selectedAbility.category] || categoryLabels.knowledge
-                        ).bg,
-                        color: (
-                          categoryLabels[selectedAbility.category] || categoryLabels.knowledge
-                        ).color,
-                      }}
-                    >
-                      {(categoryLabels[selectedAbility.category] || categoryLabels.knowledge).label}
-                    </span>
-                  </div>
-                  {selectedAbility.description && (
-                    <div className="flex gap-2">
-                      <span className="text-gray-400 shrink-0 w-16">描述</span>
-                      <span className="text-gray-600 leading-relaxed">
-                        {selectedAbility.description}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}

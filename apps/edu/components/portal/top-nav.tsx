@@ -35,7 +35,7 @@ const navItems = [
 
 export function TopNav() {
   const pathname = usePathname()
-  const { user, institution, roles, activeRole, setActiveRole, loading, logout } = useAuth()
+  const { user, institution, roles, activeRole, setActiveRole, logout } = useAuth()
   const isLoggedIn = !!user
   const [currentTime, setCurrentTime] = useState('')
   const [mounted, setMounted] = useState(false)

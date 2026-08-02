@@ -16,8 +16,6 @@ import {
   Users,
   Building2,
   ImageIcon,
-  List,
-  LayoutGrid,
   FolderInput,
   ChevronDown,
   FileDown,
@@ -49,14 +47,6 @@ import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 import type { ImportPreviewResult } from '@/lib/api'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -81,7 +71,7 @@ const TYPE_COLORS: Record<QuestionType, string> = {
   short_answer: 'bg-teal-500',
 }
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 export default function QuestionBankDetailPage() {
   const params = useParams()
@@ -92,7 +82,6 @@ export default function QuestionBankDetailPage() {
   const {
     getQuestionBank,
     updateQuestionBank,
-    deleteQuestionBank,
     questions: allQuestions,
     getQuestionsByBank,
     createQuestion,
@@ -282,11 +271,6 @@ export default function QuestionBankDetailPage() {
 
   const handleBankUpdate = (data: QuestionBankFormData) => {
     updateQuestionBank(bankId, data)
-  }
-
-  const handleBankDelete = () => {
-    deleteQuestionBank(bankId)
-    router.push('/evaluation/question-banks')
   }
 
   const handleQuestionSubmit = (data: QuestionFormData) => {

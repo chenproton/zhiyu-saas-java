@@ -27,7 +27,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { teachingPlanApi } from '@/lib/api'
 import type { TeachingPlan } from '@/lib/types'
 import { GeneratePlanDialog } from './_components/generate-plan-dialog'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDateTime } from '@/lib/format-utils'
 
 type FilterStatus = 'all' | 'draft' | 'confirmed'
 

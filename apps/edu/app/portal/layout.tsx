@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import { TopNav } from '@/components/portal/top-nav'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { YiKnowAssistant } from '@/components/portal/yi-know-assistant'

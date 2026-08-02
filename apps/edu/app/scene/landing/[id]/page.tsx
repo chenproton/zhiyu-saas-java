@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   PlayCircle,
   ListChecks,
   FolderOpen,
@@ -14,14 +13,12 @@ import {
   Layers,
   Clock,
   BarChart3,
-  Calendar,
   BookOpen,
   Users,
   Eye,
   Share2,
   Sparkles,
   X,
-  ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,7 +37,7 @@ import {
   ResourcePreviewModal,
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 const TABS = [
   { value: 'tasks', label: '任务概览', icon: ListChecks },
@@ -492,11 +489,6 @@ export default function SceneDetailPage() {
     tasks.forEach((t) => t.abilityPointIds?.forEach((aid) => ids.add(aid)))
     return ids
   }, [tasks])
-  const uniqueKnowledgeIds = useMemo(() => {
-    const ids = new Set<string>()
-    tasks.forEach((t) => t.knowledgePointIds?.forEach((kid) => ids.add(kid)))
-    return ids
-  }, [tasks])
   const totalEvalConfigs = useMemo(() => {
     let count = 0
     tasks.forEach((t) => {
@@ -514,8 +506,6 @@ export default function SceneDetailPage() {
   }
 
   const diff = difficultyMap[scenario?.difficulty ?? 3] || difficultyMap[3]
-  const industryName =
-    scenario?.industryNames?.[0] || (scenario?.industryIds?.length ? '已关联' : '未分类')
 
   if (loading) {
     return (

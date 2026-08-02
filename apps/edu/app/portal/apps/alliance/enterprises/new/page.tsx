@@ -19,7 +19,6 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 
@@ -39,7 +38,6 @@ const SECONDARY_COLLEGES = [
 ]
 
 export default function AllianceEnterpriseNewPage() {
-  const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const router = useRouter()
   const [saving, setSaving] = useState(false)

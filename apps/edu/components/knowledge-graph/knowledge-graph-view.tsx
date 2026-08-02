@@ -71,14 +71,6 @@ const TYPE_META: Record<
   },
 }
 
-const TYPE_LEVEL: Record<GraphNode['type'], number> = {
-  position: 0,
-  domain: 1,
-  unit: 2,
-  knowledge: 3,
-  course: 4,
-}
-
 const TYPE_ORDER: GraphNode['type'][] = ['position', 'domain', 'unit', 'knowledge', 'course']
 
 const ROW_GAP = 150

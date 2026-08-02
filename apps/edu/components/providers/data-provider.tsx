@@ -17,7 +17,6 @@ import type {
   SceneTask,
   SceneEvaluationResult,
   JobAbilityResult,
-  Position,
   ApprovalItem,
   GraduationProjectTopic,
   GraduationProjectArchive,
@@ -31,7 +30,6 @@ import type {
   CreditConversionRule,
   EvaluationStandard,
   CertIssuanceRecord,
-  EvalAbilityItem,
   ApprovalRecord,
 } from '@/lib/types'
 import { getNextStatus, canPerformAction } from '@/lib/types'
@@ -218,14 +216,8 @@ export interface DataContextValue {
   archiveVersions: StudentAbilityArchive[]
 
   // 毕业设计管理操作
-  updateGraduationProjectArchive: (
-    id: string,
-    data: Partial<GraduationProjectArchive>,
-  ) => Promise<void>
-  updateGraduationProjectEvaluation: (
-    id: string,
-    data: Partial<GraduationProjectEvaluation>,
-  ) => Promise<void>
+  updateGraduationProjectArchive: (data: Partial<GraduationProjectArchive>) => Promise<void>
+  updateGraduationProjectEvaluation: (data: Partial<GraduationProjectEvaluation>) => Promise<void>
 
   // 学生能力画像管理操作
   createStudentAbilityArchive: (data: Record<string, unknown>) => Promise<StudentAbilityArchive>
@@ -911,14 +903,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     studentAbilityArchives,
     studentAbilityPortraits,
 
-    updateGraduationProjectArchive: async (id: string, data: Partial<GraduationProjectArchive>) => {
+    updateGraduationProjectArchive: async (data: Partial<GraduationProjectArchive>) => {
       await graduationApi.upsertArchive(data)
       await loadGraduationArchives()
     },
-    updateGraduationProjectEvaluation: async (
-      id: string,
-      data: Partial<GraduationProjectEvaluation>,
-    ) => {
+    updateGraduationProjectEvaluation: async (data: Partial<GraduationProjectEvaluation>) => {
       await graduationApi.upsertEvaluation({ ...data, status: 'completed' })
       await loadGraduationEvaluations()
     },

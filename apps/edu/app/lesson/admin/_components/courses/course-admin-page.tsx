@@ -7,7 +7,6 @@ import type { Course, CourseType } from '@/lib/types/lesson-source'
 import type { Course as BackendCourse } from '@/lib/types/lesson'
 import {
   ContentListPage,
-  type ContentListItem,
   type ContentBatch,
 } from '@/components/shared/content-list-page'
 import { draftSuffix } from '@/lib/format-utils'

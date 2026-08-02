@@ -43,11 +43,10 @@ interface ListResponse<T> {
 }
 
 interface SchoolAdminManagerProps {
-  tenantId: string
   fetcher: <T>(path: string, options?: RequestInit) => Promise<T>
 }
 
-export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProps) {
+export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
   const [admins, setAdmins] = useState<TenantAdmin[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

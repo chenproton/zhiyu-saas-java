@@ -34,7 +34,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { jobAbilityResultApi } from '@/lib/api'
 import type { JobAbilityResult, JobAbilitySummaryItem } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDateTime } from '@/lib/format-utils'
 
 const PAGE_SIZE = 20
 

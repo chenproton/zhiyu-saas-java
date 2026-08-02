@@ -461,10 +461,7 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
   })
 }
 
-export function distributeEvalRuleWeights(
-  methods: string[],
-  existing: Record<string, number>,
-): Record<string, number> {
+export function distributeEvalRuleWeights(methods: string[]): Record<string, number> {
   const count = methods.length
   if (count === 0) return {}
   const base = Math.floor(100 / count)
@@ -484,8 +481,6 @@ export function mergeEvalRuleMethods(
   const currentDisabled = new Set(config.disabledEvaluationMethods || [])
   const nextMethodsSet = new Set(nextMethods)
   const added = nextMethods.filter((m) => !currentMethods.has(m) && !currentDisabled.has(m))
-  const removed = config.evaluationMethods.filter((m) => !nextMethodsSet.has(m))
-  const reenabled = (config.disabledEvaluationMethods || []).filter((m) => nextMethodsSet.has(m))
 
   const next = clone(config)
   next.evaluationMethods = nextMethods

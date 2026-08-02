@@ -210,7 +210,6 @@ export default function EvaluationApprovalsPage() {
       emptyPendingText="所有提交的测评资源都已处理完毕"
       records={allRecords}
       loading={loading}
-      getStepInfo={getStepInfoFn}
       onApprove={handleApprove}
       onReject={handleReject}
       onBatchApprove={(ids, comment) => handleBatchReview(ids, 'approved', comment)}

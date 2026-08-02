@@ -21,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import {
   Table,
@@ -123,20 +122,6 @@ function OrgTreeRow({
   )
 }
 
-function collectSubtreeIds(
-  orgMap: Map<string, Organization & { children?: Organization[] }>,
-  rootId: string,
-): Set<string> {
-  const ids = new Set<string>()
-  const collect = (node?: Organization & { children?: Organization[] }) => {
-    if (!node || ids.has(node.id)) return
-    ids.add(node.id)
-    node.children?.forEach((child: Organization & { children?: Organization[] }) => collect(child))
-  }
-  collect(orgMap.get(rootId))
-  return ids
-}
-
 export function UserSelector({
   value,
   onChange,
@@ -218,7 +203,6 @@ export function UserSelector({
     try {
       const params: any = { limit: 200, search: userSearch || undefined }
       if (selectedOrgId) {
-        const subtreeIds = collectSubtreeIds(orgMap, selectedOrgId)
         params.orgNodeId = selectedOrgId
       }
       if (tenantId) params.tenantId = tenantId
@@ -242,23 +226,15 @@ export function UserSelector({
   }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, orgMap, mergeUserCache])
 
   useEffect(() => {
-    let cancelled = false
     ;(async () => {
       await loadOrgTree()
     })()
-    return () => {
-      cancelled = true
-    }
   }, [loadOrgTree])
 
   useEffect(() => {
-    let cancelled = false
     ;(async () => {
       if (open) await loadUsers()
     })()
-    return () => {
-      cancelled = true
-    }
   }, [open, loadUsers])
 
   // Resolve names for selected ids that are not in cache yet (e.g. echo on edit),
@@ -315,12 +291,6 @@ export function UserSelector({
   }
 
   const roleLabel = (u: User) => (u.roleNames || []).join('、')
-  const orgName = (userId?: string) => {
-    if (!userId) return ''
-    const u = users.find((x) => x.id === userId)
-    if (!u?.orgNodeId) return ''
-    return orgMap.get(u.orgNodeId)?.name || u.orgNodeId
-  }
 
   const displayName = useCallback(
     (id: string) => {

@@ -125,7 +125,6 @@ export default function SceneApprovalsPage() {
       emptyPendingText="所有提交的场景都已处理完毕"
       records={records}
       loading={loading}
-      getStepInfo={getStepInfo}
       onApprove={approve}
       onReject={reject}
       onBatchApprove={batchApprove}

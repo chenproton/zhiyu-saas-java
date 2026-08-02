@@ -71,7 +71,6 @@ export default function ProgramsPage() {
           onUnpublish,
           onArchive,
           onInviteCoBuild,
-          batchMap,
         } = props
         return (
           <div className="rounded-lg border bg-white px-4 py-3">

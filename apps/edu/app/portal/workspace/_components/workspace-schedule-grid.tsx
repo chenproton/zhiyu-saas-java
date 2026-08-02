@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils'
 import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from '@/lib/external-links'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { allPeriods, days, type ScheduleEvent } from '../_data/mock-student-data'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 interface ScheduleGridProps {
   events: ScheduleEvent[]
@@ -269,7 +269,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
       {/* 视图内容 */}
       {view === 'week' && <WeekView events={events} />}
       {view === 'month' && <MonthView year={year} month={month} events={events} />}
-      {view === 'year' && <YearView year={year} events={events} />}
+      {view === 'year' && <YearView events={events} />}
     </div>
   )
 }
@@ -282,7 +282,6 @@ function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; child
   }
 
   const isCourse = event.type === 'course'
-  const accentClass = isCourse ? 'blue' : 'orange'
   const borderColor = isCourse ? 'border-blue-200' : 'border-orange-200'
   const textColor = isCourse ? 'text-blue-600' : 'text-orange-600'
   const hoverBg = isCourse ? 'hover:bg-blue-50' : 'hover:bg-orange-50'
@@ -517,7 +516,7 @@ function MonthView({
   )
 }
 
-function YearView({ year, events }: { year: number; events: ScheduleEvent[] }) {
+function YearView({ events }: { events: ScheduleEvent[] }) {
   const months = Array.from({ length: 12 }, (_, i) => i + 1)
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

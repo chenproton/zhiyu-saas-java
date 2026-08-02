@@ -5,7 +5,6 @@ import {
   Briefcase,
   Building2,
   MapPin,
-  Star,
   Heart,
   BookOpen,
   Layers,

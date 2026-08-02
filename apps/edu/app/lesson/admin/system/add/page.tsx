@@ -2,18 +2,11 @@
 
 import { useState, useRef, Suspense, useMemo, useCallback, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
-  ArrowLeft,
-  Save,
-  Send,
-  Star,
   BookOpen,
   GraduationCap,
   ClipboardList,
-  Award,
-  Database,
   ChevronDown,
   ChevronRight,
   Info,
@@ -24,7 +17,6 @@ import {
   Search,
   CheckCircle2,
   Sparkles,
-  X,
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
 
@@ -67,11 +59,8 @@ import {
   knowledgeApi,
   abilityApi,
   majorApi,
-  approvalApi,
   lessonBatchApi,
   nodeResourceApi,
-  nodeQuizApi,
-  nodeHomeworkApi,
   resourceLibraryApi,
 } from '@/lib/api'
 
@@ -104,71 +93,6 @@ interface GrainCourseOption {
   difficulty: number
 }
 
-/* ---------- convert preview tree ---------- */
-
-interface PreviewTreeItem {
-  node: SystemCourseNode
-  level: number
-  children: PreviewTreeItem[]
-}
-
-function buildPreviewTree(nodes: SystemCourseNode[]): PreviewTreeItem[] {
-  const map = new Map<string, PreviewTreeItem>()
-  const roots: PreviewTreeItem[] = []
-  const sorted = [...nodes].sort((a, b) => a.order - b.order)
-  sorted.forEach((node) => {
-    map.set(node.id, { node, level: 0, children: [] })
-  })
-  sorted.forEach((node) => {
-    const item = map.get(node.id)!
-    if (node.parentId && map.has(node.parentId)) {
-      const parent = map.get(node.parentId)!
-      item.level = parent.level + 1
-      parent.children.push(item)
-    } else {
-      roots.push(item)
-    }
-  })
-  return roots
-}
-
-function ConvertPreviewTree({
-  nodes,
-  convertedIds,
-}: {
-  nodes: SystemCourseNode[]
-  convertedIds: Set<string>
-}) {
-  const tree = useMemo(() => buildPreviewTree(nodes), [nodes])
-
-  const renderItem = (item: PreviewTreeItem) => {
-    const { node, level, children } = item
-    const isConverted = convertedIds.has(node.id)
-    const isOriginal = node.type === 'original'
-    return (
-      <div key={node.id} style={{ paddingLeft: `${level * 16}px` }}>
-        <div className="flex items-center justify-between gap-2 py-1.5">
-          <span className="text-sm text-gray-700 truncate">{node.name}</span>
-          {isConverted || isOriginal ? (
-            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-          ) : (
-            <X className="w-4 h-4 text-red-500 shrink-0" />
-          )}
-        </div>
-        {children.length > 0 && (
-          <div className="border-l border-gray-100 ml-1">{children.map(renderItem)}</div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="mt-3 max-h-[260px] overflow-y-auto border border-gray-200 rounded-lg p-3 bg-white">
-      {tree.map(renderItem)}
-    </div>
-  )
-}
-
 /* ---------- main component ---------- */
 
 function AddSystemPageInner() {
@@ -192,7 +116,7 @@ function AddSystemPageInner() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const hasSavedRef = useRef(false)
-  const [loadingEdit, setLoadingEdit] = useState(false)
+  const [, setLoadingEdit] = useState(false)
 
   /* ========== course node tree ========== */
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
@@ -660,24 +584,6 @@ function AddSystemPageInner() {
     setNodeModes,
     knowledgePool,
   ])
-
-  /* ---------- submit: convert complete nodes to grain ---------- */
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false)
-  const [convertedNodeIds, setConvertedNodeIds] = useState<Set<string>>(new Set())
-  const [convertedNodeNames, setConvertedNodeNames] = useState<string[]>([])
-
-  const checkNodeComplete = useCallback(
-    (node: SystemCourseNode): boolean => {
-      const name = node.id === selectedNodeId ? (selectedNode?.name || '').trim() : node.name.trim()
-      const goals =
-        node.id === selectedNodeId ? learningGoal.trim() : (node.teachingGoals || '').trim()
-      const duration = node.id === selectedNodeId ? parseInt(hours) || 0 : node.duration || 0
-      const resourceCount =
-        node.id === selectedNodeId ? selectedResourceIds.length : node.resources?.length || 0
-      return !!name && !!goals && duration > 0 && resourceCount > 0
-    },
-    [selectedNodeId, selectedNode, learningGoal, hours, selectedResourceIds],
-  )
 
   const [saving, setSaving] = useState(false)
 

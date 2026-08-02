@@ -11,7 +11,6 @@ import {
   ClipboardList,
   Database,
   FileText,
-  GraduationCap,
   Layers,
   LayoutGrid,
   Library,

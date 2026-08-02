@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { MapPin, Flame } from 'lucide-react'
 import type { CareerPosition } from '@/lib/types'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 interface JobCardProps {
   position: CareerPosition

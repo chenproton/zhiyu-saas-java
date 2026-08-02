@@ -42,7 +42,6 @@ import {
   AreaChart,
 } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard } from '@/lib/types'

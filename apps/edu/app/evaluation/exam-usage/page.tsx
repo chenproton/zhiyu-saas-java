@@ -29,7 +29,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { useData } from '@/components/providers/data-provider'
@@ -39,7 +38,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { examUsageApi } from '@/lib/api'
 import type { ExamUsage } from '@/lib/types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage['targetType']>, string> = {
   class: '班级',

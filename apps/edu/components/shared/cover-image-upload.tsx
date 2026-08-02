@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { ImageIcon, Loader2, Upload } from 'lucide-react'
+import { Loader2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 

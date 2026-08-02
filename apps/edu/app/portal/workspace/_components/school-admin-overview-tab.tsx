@@ -1,16 +1,14 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   Bell,
   BookOpen,
-  Briefcase,
   CheckSquare,
   ChevronRight,
   Clock,
   ClipboardList,
-  GraduationCap,
   Layers,
   TrendingUp,
   Users,
@@ -20,14 +18,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
-import type { WorkspaceDashboard, WorkspaceResourceGrowth } from '@/lib/types'
+import type { WorkspaceDashboard } from '@/lib/types'
 import {
   Line,
   LineChart,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   Legend,
   ResponsiveContainer,
 } from 'recharts'

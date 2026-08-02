@@ -129,7 +129,6 @@ export function ScheduleEditDialog({
                 value={classNodeIds}
                 onChange={setClassNodeIds}
                 selectableTypes={['班级']}
-                placeholder="选择班级"
                 title="选择授课班级"
                 maxVisible={3}
               />

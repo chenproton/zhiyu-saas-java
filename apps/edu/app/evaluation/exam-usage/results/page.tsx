@@ -29,7 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { examUsageApi, examResultApi } from '@/lib/api'
 import { useMajorMap } from '@/lib/use-resource-maps'
 import type { ExamUsage } from '@/lib/types'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDateTime } from '@/lib/format-utils'
 
 interface ExamStudentResult {
   id: string

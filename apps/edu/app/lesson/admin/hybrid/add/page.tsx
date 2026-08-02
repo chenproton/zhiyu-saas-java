@@ -27,33 +27,13 @@ import {
   X,
   BookOpen,
   Layers,
-  BookMarked,
-  Microscope,
-  Briefcase,
-  Database,
-  FileStack,
-  Monitor,
-  CheckCircle2,
-  BarChart3,
   ClipboardList,
-  Zap,
-  Shuffle,
-  MessageSquare,
-  HelpCircle,
   ChevronDown,
   ChevronRight,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  Image as ImageIcon,
   ImageUp,
-  Link as LinkIcon,
-  AlignLeft,
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
-import { courseApi, approvalApi, majorApi, fileApi, lessonBatchApi } from '@/lib/api'
+import { courseApi, majorApi, fileApi, lessonBatchApi } from '@/lib/api'
 import type { Course } from '@/lib/types/lesson'
 import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
 import CourseNodeTree from '../../system/add/_components/CourseNodeTree'

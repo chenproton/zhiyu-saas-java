@@ -182,7 +182,7 @@ export function BankQuestionSelectorPanel({
     if (onUpdateQuestionScores) {
       onUpdateQuestionScores(scores)
     } else if (onUpdateQuestionScore) {
-      selectedIds.forEach((qid, idx) => {
+      selectedIds.forEach((qid) => {
         onUpdateQuestionScore(qid, scores[qid])
       })
     }

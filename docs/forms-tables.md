@@ -67,7 +67,7 @@
 | `FormFieldRow` / `FormFieldGrid`（新增） | 57 | 全部系统 | **默认选择**，新表单一律用它 |
 | `Field` 家族（FieldGroup/Field/FieldLabel…） | 10 | 教务排课/计划/方案、测评题库/试卷/评分 | **冻结保留**（container-query 响应式，服务复杂布局），不迁移不扩散 |
 | 手写裸字段 | 少量 | 复杂结构 | **合理例外**，不强求抽象 |
-| `form.tsx`（react-hook-form 封装） | 0 | — | **弃用**：无任何使用，禁止新代码引入；如未来需要统一校验再评估删除/启用 |
+| `form.tsx`（react-hook-form 封装） | 0 | — | **已删除**（2026-08）：零引用死代码，勿再引入 |
 
 ## 四、复用评估结论（2026-08-02）
 
@@ -76,7 +76,7 @@
 1. `FormFieldRow` 已覆盖约 90% 场景（341 处替换落地），剩余手写均为"合理例外"（flex 开关行、多控件复合字段、双 Label 嵌套选择器），强行抽象收益低、风险高
 2. 两套字段封装（FormFieldRow 与 Field 家族）并存是**有意保留**：FormFieldRow 通用简单、Field 家族服务复杂响应式布局，各自冻结边界，不做互相迁移
 3. **不建议**引入更高层抽象（schema 驱动自动表单 / react-hook-form 重构）：当前 useState 受控 + FormFieldRow 已满足全部需求，引入新范式违背"简单优先"原则
-4. `form.tsx`（react-hook-form）为死代码：**禁止新代码使用**，后续清理可整体删除
+4. `form.tsx`（react-hook-form）已删除（2026-08 死代码清理），`@/components/ui/form` 不可用
 
 ## 五、表单开发规范（新增/修改表单时）
 
@@ -86,7 +86,7 @@
 4. **说明文字**：用 `hint` prop；**错误提示**：用 `error` prop
 5. **保留手写的例外**（不强制替换）：flex 开关行（Label+Switch 左右布局）、一个 Label 对应多个控件的复合字段、选择器组件内部自带 Label 的嵌套结构
 6. **复杂布局表单**（排课/教学计划/培养方案/题库试卷评分）：可继续使用 `Field` 家族，但**不要**在普通表单中混用两套
-7. **禁止**使用 `@/components/ui/form`（react-hook-form 封装，死代码）
+7. `@/components/ui/form`（react-hook-form 封装）已删除，禁止使用
 
 ## 六、表格开发规范（新增列表页时）
 

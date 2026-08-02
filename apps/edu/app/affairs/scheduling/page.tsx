@@ -34,7 +34,7 @@ function SchedulingPageInner() {
   const [plans, setPlans] = useState<TeachingPlan[]>([])
   const [planId, setPlanId] = useState('')
   const [planDetail, setPlanDetail] = useState<TeachingPlanDetail | null>(null)
-  const [loadingPlan, setLoadingPlan] = useState(false)
+  const [, setLoadingPlan] = useState(false)
 
   const loadPlans = useCallback(async () => {
     try {

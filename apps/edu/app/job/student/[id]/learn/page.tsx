@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { publicPositionApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
-import { useIndustryMap } from '@/lib/use-resource-maps'
 import type { CareerPosition, LearnRoad, Scenario, ScenarioTask } from '@/lib/types'
 import { LearningPath } from '@/components/job/student/learning-path'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
@@ -16,7 +15,6 @@ export default function JobStudentLearnPage() {
   const params = useParams()
   const id = params.id as string
   const { user } = useAuth()
-  const industryMap = useIndustryMap()
 
   const [position, setPosition] = useState<CareerPosition | null>(null)
   const [loading, setLoading] = useState(true)
@@ -76,11 +74,6 @@ export default function JobStudentLearnPage() {
       })
       .catch(() => {})
   }, [id, position, user])
-
-  const industryName = useMemo(() => {
-    if (!position?.industryId) return undefined
-    return industryMap.get(position.industryId)
-  }, [position, industryMap])
 
   if (loading) {
     return (

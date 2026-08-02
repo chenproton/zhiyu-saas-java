@@ -35,18 +35,11 @@ const ABILITY_DOMAINS = ['岗位与行业认知', '专业知识', '职业素养/
 interface Step3ResultTableProps {
   position: Position
   onUpdate: (data: Partial<Position>) => void
-  onPrev: () => void
-  showAiFill?: boolean
 }
 
-export function Step3ResultTable({
-  position,
-  onUpdate,
-  onPrev,
-  showAiFill = true,
-}: Step3ResultTableProps) {
+export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) {
   const bindings = position.abilityBindings
-  const [aiNotice, setAiNotice] = useState<string | null>(null)
+  const [aiNotice] = useState<string | null>(null)
 
   const handleUpdateBinding = (bindingId: string, updates: Partial<PositionAbilityBinding>) => {
     onUpdate({

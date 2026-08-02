@@ -18,7 +18,6 @@ import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import type { AllianceEnterprise, AllianceProject, AllianceListResponse } from '@/lib/types'
@@ -38,9 +37,7 @@ const SECONDARY_COLLEGES = [
   '马克思主义学院',
 ]
 
-export default function AllianceAchievementNewPage() {
-  const { tenantId } = usePortalAuth()
-  const { toast } = useToast()
+export default function AllianceAchievementNewPage() {  const { toast } = useToast()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])

@@ -2,23 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Video,
-  FileText,
-  Table,
-  Image,
-  LinkIcon,
-  Music,
-  MapPin,
-  Cpu,
-  Monitor,
-  Ellipsis,
   Eye,
   Search,
   Sparkles,
   RotateCcw,
   Flame,
   Filter,
-  Archive,
   Calendar,
   Building2,
   Tag,
@@ -36,7 +25,6 @@ import {
   onSiteQuestionLibraryApi,
 } from '@/lib/api'
 import type { ResourceLibraryItem } from '@/lib/types/library'
-import { useToast } from '@zhiyu/ui'
 import { formatSize } from '@/lib/resource-type-constants'
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -154,7 +142,6 @@ function buildKkFileViewUrl(fileUrl: string): string {
 }
 
 export default function LibraryLandingPage() {
-  const { toast } = useToast()
   const [resources, setResources] = useState<ResourceLibraryItem[]>([])
   const [knowledgeCount, setKnowledgeCount] = useState(0)
   const [abilityCount, setAbilityCount] = useState(0)

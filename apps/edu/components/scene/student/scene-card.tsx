@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
 import type { Scenario } from '@/lib/types'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 interface SceneCardProps {
   scenario: Scenario

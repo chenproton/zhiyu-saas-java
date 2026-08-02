@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
-  ArrowLeft,
   ListChecks,
   FolderOpen,
   GitBranch,
@@ -48,11 +47,10 @@ import type {
   NodeHomework,
   NodeHomeworkSubmission,
   NodeEvaluationResult,
-  NodeQuiz,
 } from '@zhiyu/api-client'
 import { useAuth } from '@/components/auth-provider'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 const TABS = [
   { value: 'nodes', label: '课程目录', icon: ListChecks },

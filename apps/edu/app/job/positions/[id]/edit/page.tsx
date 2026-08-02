@@ -2,17 +2,9 @@
 
 import { Suspense, useState, useEffect, use, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info'
 import { StepAbilityModeling } from '@/components/job/position-builder/step-ability-modeling'
@@ -57,19 +49,17 @@ function PositionEditPageContent({ params }: PageProps) {
     ? { id: user.id, name: user.name || user.username || user.id }
     : { id: '', name: '' }
   const [positions, setPositions] = useState<Position[]>([])
-  const [batches, setBatches] = useState<Batch[]>([])
-  const [majorMap, setMajorMap] = useState<Map<string, string>>(new Map())
-  const [industryMap, setIndustryMap] = useState<Map<string, string>>(new Map())
+  const [, setBatches] = useState<Batch[]>([])
+  const [, setMajorMap] = useState<Map<string, string>>(new Map())
+  const [, setIndustryMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [activeStep, setActiveStep] = useState('basic')
   const [isSaving, setIsSaving] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isPreviewConfirmOpen, setIsPreviewConfirmOpen] = useState(false)
   const [detailsLoaded, setDetailsLoaded] = useState(false)
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
-  const coverInputRef = useRef<HTMLInputElement>(null)
   const hasSavedRef = useRef(false)
   const isNewPosition = searchParams.get('new') === 'true'
 
@@ -216,8 +206,6 @@ function PositionEditPageContent({ params }: PageProps) {
     )
   }
 
-  const batch = batches.find((b) => b.id === position.batchId)
-
   const handleSave = async () => {
     if (!position) return
     setIsSaving(true)
@@ -274,10 +262,6 @@ function PositionEditPageContent({ params }: PageProps) {
     } finally {
       setCoverUploading(false)
     }
-  }
-
-  const triggerCoverUpload = () => {
-    coverInputRef.current?.click()
   }
 
   const updatePositionData = (data: Partial<Position>) => {
@@ -396,8 +380,6 @@ function PositionEditPageContent({ params }: PageProps) {
             <Step3ResultTable
               position={position}
               onUpdate={updatePositionData}
-              onPrev={handlePrev}
-              showAiFill={false}
             />
           )}
         </div>

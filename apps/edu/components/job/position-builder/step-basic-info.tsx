@@ -75,7 +75,7 @@ export function StepBasicInfo({
 
   // 证书库相关状态
   const [certificateLibrary, setCertificateLibrary] = useState<Certificate[]>([])
-  const [libraryLoading, setLibraryLoading] = useState(false)
+  const [, setLibraryLoading] = useState(false)
 
   // 加载真实行业/专业数据
   useEffect(() => {

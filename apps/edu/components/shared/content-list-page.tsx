@@ -39,7 +39,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -158,7 +157,6 @@ export interface ContentListPageConfig<T extends ContentListItem> {
   importEntityName: string
   exportEntityName: string
   importExcelEntity?: string
-  importTemplateUrl?: string
 
   statusFilterOptions: { value: string; label: string }[]
 
@@ -232,7 +230,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     afterLoad,
     coBuilderField = 'coCreatorIds',
     importExcelEntity,
-    importTemplateUrl,
   } = config
 
   const router = useRouter()
@@ -240,7 +237,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const currentUserId = user?.id ?? ''
   const { toast } = useToast()
 
-  const [items, setItems] = useState<any[]>([])
+  const [, setItems] = useState<any[]>([])
   const [frontItems, setFrontItems] = useState<T[]>([])
   const [batches, setBatches] = useState<ContentBatch[]>([])
   const [majors, setMajors] = useState<Major[]>([])
@@ -259,7 +256,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   // Dialogs
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [, setIsExportDialogOpen] = useState(false)
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
   const [moveTargetBatchId, setMoveTargetBatchId] = useState('')
   const [moveSelectedMajorId, setMoveSelectedMajorId] = useState('all')
@@ -272,7 +269,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
   const [cloneRenameValue, setCloneRenameValue] = useState('')
   const cloneRenameValueRef = useRef('')
-  const [cloneTarget, setCloneTarget] = useState<T | null>(null)
+  const [, setCloneTarget] = useState<T | null>(null)
   const cloneTargetRef = useRef<T | null>(null)
   const [isRejectReasonDialogOpen, setIsRejectReasonDialogOpen] = useState(false)
   const [rejectReasonItem, setRejectReasonItem] = useState<T | null>(null)
@@ -545,7 +542,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     batchSubmitLock.current = true
     try {
       for (const { id, batchId } of submitItems) {
-        const item = frontItems.find((i) => i.id === id)
         const batch = batches.find((b) => b.id === batchId)
         if (!batch) {
           continue

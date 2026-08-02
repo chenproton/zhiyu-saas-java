@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Plus, X, FileQuestion, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, Plus, X, FileQuestion } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { randomDrawQuestionApi } from '@/lib/api'
 import type { RandomDrawQuestion } from '@/lib/types'

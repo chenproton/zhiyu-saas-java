@@ -24,7 +24,6 @@ interface MultiOrgNodePickerProps {
   value: string[]
   onChange: (value: string[]) => void
   selectableTypes?: string[]
-  placeholder?: string
   disabled?: boolean
   title?: string
   maxVisible?: number
@@ -177,7 +176,6 @@ export function MultiOrgNodePicker({
   value,
   onChange,
   selectableTypes,
-  placeholder = '选择班级',
   disabled,
   title = '选择班级',
   maxVisible = 5,
@@ -275,13 +273,6 @@ export function MultiOrgNodePicker({
     }
     setOpen(v)
   }
-
-  const displayText =
-    value.length === 0
-      ? placeholder
-      : value.length <= 3
-        ? value.map((id) => getNodeName(id)).join('、')
-        : `已选 ${value.length} 个班级`
 
   return (
     <>

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
-import type { WorkspaceDashboard, WorkspacePersonnelStat } from '@/lib/types'
+import type { WorkspaceDashboard } from '@/lib/types'
 
 const iconMap: Record<string, LucideIcon> = {
   学生: GraduationCap,

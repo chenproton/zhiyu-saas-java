@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Upload, File, Loader2, X, ExternalLink } from 'lucide-react'
+import { Upload, File, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { resourceTypeAccept } from '@/lib/resource-type-constants'

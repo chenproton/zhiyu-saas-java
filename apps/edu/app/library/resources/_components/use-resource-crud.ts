@@ -47,13 +47,9 @@ export function useResourceCrud(resourceType?: string) {
   }, [resourceType, toast])
 
   useEffect(() => {
-    let cancelled = false
     ;(async () => {
       await loadItems()
     })()
-    return () => {
-      cancelled = true
-    }
   }, [loadItems])
 
   const resetDialog = () => {

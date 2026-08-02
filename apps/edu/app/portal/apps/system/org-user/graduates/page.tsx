@@ -29,7 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { usePortalUsers } from '@/hooks/use-portal-users'
 import { useOrgTree, findOrgAncestor } from '@/hooks/use-org-tree'
@@ -62,7 +61,7 @@ function getOrgTypeName(
 }
 
 export default function GraduatesPage() {
-  const { institution, institutionId, tenantId } = usePortalAuth()
+  const { institution, tenantId } = usePortalAuth()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const { users, loading, error, refetch } = usePortalUsers({
@@ -70,7 +69,7 @@ export default function GraduatesPage() {
     status: 'graduated',
     search: searchTerm || undefined,
   })
-  const { orgs, orgMap, orgTypeMap, loading: orgLoading } = useOrgTree(tenantId)
+  const { orgMap, orgTypeMap } = useOrgTree(tenantId)
 
   const [graduates, setGraduates] = useState<DisplayGraduate[]>([])
   const [yearFilter, setYearFilter] = useState('all')

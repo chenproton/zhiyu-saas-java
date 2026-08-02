@@ -5,7 +5,6 @@ import {
   Database,
   ClipboardList,
   BookOpen,
-  FileText,
   FileQuestion,
   FolderCheck,
   Gavel,

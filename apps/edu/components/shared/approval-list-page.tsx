@@ -36,7 +36,6 @@ export interface ApprovalListPageProps<
 
   records: any[]
   loading: boolean
-  getStepInfo: (record: any) => ApprovalStepInfo | undefined
   onApprove: (id: string, comment: string) => Promise<void>
   onReject: (id: string, comment: string) => Promise<void>
   onBatchApprove: (ids: string[], comment: string) => Promise<void>
@@ -56,7 +55,6 @@ export function ApprovalListPage<
   emptyProcessedText = '暂无已处理记录',
   records,
   loading,
-  getStepInfo,
   onApprove,
   onReject,
   onBatchApprove,

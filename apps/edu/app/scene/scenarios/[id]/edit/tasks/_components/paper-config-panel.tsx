@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { examApi } from '@/lib/api'
 import { getLoadedExams } from './shared-defs'
 
 interface PaperConfigPanelProps {
@@ -44,11 +43,8 @@ export function PaperConfigPanel({
   setPSearch,
   configPaperId,
   setConfigPaperId,
-  showCreatePaper,
   setShowCreatePaper,
-  selectedPaperForDetail,
   setSelectedPaperForDetail,
-  paperDetailOpen,
   setPaperDetailOpen,
 }: PaperConfigPanelProps) {
   return (

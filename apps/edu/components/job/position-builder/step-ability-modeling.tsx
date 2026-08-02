@@ -5,16 +5,8 @@ import { Button } from '@/components/ui/button'
 import { HoverActionBar } from '@zhiyu/ui'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { FormFieldRow } from '@/components/shared/form-field-row'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -31,10 +23,8 @@ import {
   Brain,
   AlertCircle,
   Check,
-  X,
   Pencil,
   Library,
-  ChevronsUpDown,
 } from 'lucide-react'
 import { abilityApi, positionApi } from '@/lib/api'
 import { convertApiAbilityToLocal } from '@/lib/converters/job-converters'
@@ -49,7 +39,6 @@ import { toast } from '@zhiyu/ui'
 interface StepAbilityModelingProps {
   position: Position
   onUpdate: (data: Partial<Position>) => void
-  aiMode?: boolean
 }
 
 const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string; description: string }[] = [
@@ -59,8 +48,6 @@ const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string; description: s
   { value: 'proficient', label: '熟练', description: '能处理复杂任务，指导他人，优化流程' },
   { value: 'expert', label: '精通', description: '行业专家水平，能创新和引领发展方向' },
 ]
-
-const ABILITY_DOMAINS = ['岗位与行业认知', '专业知识', '职业素养/价值观', '专业技能', '通用能力']
 
 const ABILITY_ATTRIBUTES = ['知识', '素养', '技能']
 
@@ -90,18 +77,14 @@ function arrayEquals(a: string[], b: string[]): boolean {
   return sortedA.every((v, i) => v === sortedB[i])
 }
 
-export function StepAbilityModeling({
-  position,
-  onUpdate,
-  aiMode = false,
-}: StepAbilityModelingProps) {
+export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingProps) {
   const [abilities, setAbilities] = useState<Ability[]>([])
   const [selectedRespId, setSelectedRespId] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newAbilityName, setNewAbilityName] = useState('')
-  const [newAbilityCategory, setNewAbilityCategory] = useState('专业技能')
-  const [aiNotice, setAiNotice] = useState<string | null>(null)
+  const [newAbilityCategory] = useState('专业技能')
+  const [aiNotice] = useState<string | null>(null)
   const [editingRespId, setEditingRespId] = useState<string | null>(null)
   const [editRespName, setEditRespName] = useState('')
   const [editingAbilityId, setEditingAbilityId] = useState<string | null>(null)

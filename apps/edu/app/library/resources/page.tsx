@@ -90,7 +90,6 @@ export default function ResourcesPage() {
     uploading,
     deleteTarget,
     setDeleteTarget,
-    isFileType,
     handleOpenAdd: _handleOpenAdd,
     handleOpenEdit: _handleOpenEdit,
     confirmDelete,

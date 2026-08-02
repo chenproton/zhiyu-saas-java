@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useEffect, useState, useRef, Suspense, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Star, BookOpen, GraduationCap, ImageUp, Plus, X } from 'lucide-react'
+import { BookOpen, GraduationCap, ImageUp, Plus, X } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,7 +35,6 @@ import {
   courseApi,
   knowledgeApi,
   fileApi,
-  approvalApi,
   majorApi,
   lessonBatchApi,
   courseResourceApi,
@@ -69,10 +68,10 @@ function AddGranularPageInner() {
   const [courseName, setCourseName] = useState('')
   const [hours, setHours] = useState('')
   const [learningGoal, setLearningGoal] = useState('')
-  const [detailedDescription, setDetailedDescription] = useState('')
-  const [background, setBackground] = useState('')
+  const [detailedDescription] = useState('')
+  const [background] = useState('')
   const [learningGoalPdf, setLearningGoalPdf] = useState<string | null>(null)
-  const [estimatedHours, setEstimatedHours] = useState('')
+  const [estimatedHours] = useState('')
   const [major, setMajor] = useState('')
   const [majorId, setMajorId] = useState('')
   const [majorNames, setMajorNames] = useState<string[]>([])
@@ -86,7 +85,6 @@ function AddGranularPageInner() {
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
 
   /* module 3: resources */
-  const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
 
@@ -129,7 +127,7 @@ function AddGranularPageInner() {
         })
 
         if (editId) {
-          const [c, resRes] = await Promise.all([
+          const [c] = await Promise.all([
             courseApi.get(editId),
             courseResourceApi.list({ courseId: editId, limit: 200 }),
           ])

@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import { Layers, Sparkles, Target, X } from 'lucide-react'
 import type {
-  PositionResponsibility,
   PositionAbilityBinding,
   AbilityPoint,
   AbilityDomain,
@@ -17,18 +16,12 @@ const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
 }
 
 interface AbilityTreeProps {
-  responsibilities: PositionResponsibility[]
   bindings: PositionAbilityBinding[]
   abilityPoints: AbilityPoint[]
   abilityDomains?: AbilityDomain[]
 }
 
-export function AbilityTree({
-  responsibilities,
-  bindings,
-  abilityPoints,
-  abilityDomains,
-}: AbilityTreeProps) {
+export function AbilityTree({ bindings, abilityPoints, abilityDomains }: AbilityTreeProps) {
   const [selectedAbility, setSelectedAbility] = useState<{
     binding: PositionAbilityBinding
     abilityPoint?: AbilityPoint

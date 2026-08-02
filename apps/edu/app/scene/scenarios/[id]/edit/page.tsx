@@ -1,10 +1,8 @@
 'use client'
 
-import { ChevronDown, ChevronRight, List, ListOrdered, Star, X } from 'lucide-react'
+import { Star, X } from 'lucide-react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,13 +44,13 @@ export default function ScenarioEditPage() {
   const scenarioId = params.id as string
   const hasSavedRef = useRef(false)
   const isNewScenario = searchParams.get('new') === 'true'
-  const { user: currentUser, tenantId } = useAuth()
+  const { tenantId } = useAuth()
 
   const [allPositions, setAllPositions] = useState<CareerPosition[]>([])
   const [industries, setIndustries] = useState<Industry[]>([])
   const [majors, setMajors] = useState<Major[]>([])
   const [batches, setBatches] = useState<SceneBatch[]>([])
-  const [users, setUsers] = useState<User[]>([])
+  const [, setUsers] = useState<User[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -63,16 +61,14 @@ export default function ScenarioEditPage() {
   const [industryIds, setIndustryIds] = useState<string[]>([])
   const [difficulty, setDifficulty] = useState<number>(3)
   const [background, setBackground] = useState('')
-  const [creatorName, setCreatorName] = useState('当前用户')
+  const [creatorName] = useState('当前用户')
   const [creatorId, setCreatorId] = useState<string>('')
   const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
   const [version, setVersion] = useState('v1.0')
   const [coverImage, setCoverImage] = useState('')
   const [coverUploading, setCoverUploading] = useState(false)
-  const coverInputRef = useRef<HTMLInputElement>(null)
   const [scenarioStatus, setScenarioStatus] = useState<string>('draft')
 
-  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
   const [isPreviewConfirmOpen, setIsPreviewConfirmOpen] = useState(false)
 
   useEffect(() => {
@@ -124,15 +120,6 @@ export default function ScenarioEditPage() {
     })
     return groups
   }, [allPositions, industries])
-
-  const selectedPosition = allPositions.find((p) => p.id === positionId)
-
-  const batch = batches.find((b) => b.id === batchId)
-  const coBuilderNameMap = useMemo(() => {
-    const map = new Map<string, string>()
-    users.forEach((u) => map.set(u.id, u.name || u.username))
-    return map
-  }, [users])
 
   const buildPayload = () => {
     return {
@@ -194,10 +181,6 @@ export default function ScenarioEditPage() {
     } finally {
       setCoverUploading(false)
     }
-  }
-
-  const triggerCoverUpload = () => {
-    coverInputRef.current?.click()
   }
 
   return (

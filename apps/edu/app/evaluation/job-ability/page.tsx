@@ -30,7 +30,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { certApi, positionApi } from '@/lib/api'
 import type { CareerPosition, CertificationRule } from '@/lib/types'
-import { formatDate, formatDateTime } from '@/lib/format-utils'
+import { formatDate } from '@/lib/format-utils'
 
 export default function JobAbilityPage() {
   const router = useRouter()

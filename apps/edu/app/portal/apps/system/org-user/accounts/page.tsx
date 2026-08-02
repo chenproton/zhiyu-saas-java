@@ -38,7 +38,6 @@ import {
   AlertCircle,
   RotateCcw,
   Check,
-  ChevronDown,
   X,
   ChevronLeft,
   ChevronRight,
