@@ -223,7 +223,7 @@ export function UserSelector({
     } finally {
       setUsersLoading(false)
     }
-  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, orgMap, mergeUserCache])
+  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, mergeUserCache])
 
   useEffect(() => {
     ;(async () => {
