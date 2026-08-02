@@ -1741,8 +1741,9 @@ export default function TasksEditPage() {
               </TabsList>
             </Tabs>
             <div className="flex-1 overflow-y-auto border rounded-lg">
+              <div className="overflow-x-auto">
               {/* Table Header */}
-              <div className="grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b sticky top-0">
+              <div className="grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b sticky top-0 min-w-[540px]">
                 <div></div>
                 <div>任务名称</div>
                 <div>任务编码</div>
@@ -1781,7 +1782,7 @@ export default function TasksEditPage() {
                         )
                       }
                       className={cn(
-                        'grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-3 border-b cursor-pointer items-center text-sm hover:bg-gray-50',
+                        'grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-3 border-b cursor-pointer items-center text-sm hover:bg-gray-50 min-w-[540px]',
                         selected ? 'bg-primary/5' : '',
                       )}
                     >
@@ -1804,6 +1805,7 @@ export default function TasksEditPage() {
                     </div>
                   )
                 })}
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -2761,7 +2763,7 @@ function WeightConfigDialog({
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Pie Chart */}
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">

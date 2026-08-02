@@ -242,8 +242,8 @@ export function TeacherPortraitsTab() {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-3">
             <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
               <div className="border-b bg-gradient-to-r from-gray-50 to-white p-3">
                 <div className="relative">
@@ -316,7 +316,7 @@ export function TeacherPortraitsTab() {
             </div>
           </div>
 
-          <div className="col-span-9">
+          <div className="lg:col-span-9">
             <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input

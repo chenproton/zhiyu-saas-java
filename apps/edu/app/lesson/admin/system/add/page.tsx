@@ -987,7 +987,7 @@ function AddSystemPageInner() {
       </Collapsible>
 
       {/* ========== Three-column layout ========== */}
-      <div className="grid grid-cols-[260px_1fr_260px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_260px] gap-6">
         {/* Left: Course Node Tree */}
         <CourseNodeTree
           nodes={nodes}

@@ -370,7 +370,7 @@ function AddGranularPageInner() {
       submitText="完成配置"
       title={editId ? '编辑颗粒课' : '新建颗粒课'}
     >
-      <div className="grid grid-cols-[1fr_260px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6">
         <main className="space-y-5 min-w-0">
           {/* Module 1: Basic Info */}
           <Card className="border-0 shadow-sm">

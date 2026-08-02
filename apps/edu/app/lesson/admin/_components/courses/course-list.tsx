@@ -3,6 +3,14 @@
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { StatusBadge } from '@zhiyu/ui'
 import { StatusActionBar } from '@/components/shared/status-action-bar'
@@ -60,92 +68,105 @@ export function CourseList({
 
   return (
     <div className={cn('rounded-lg border border-slate-200 bg-white overflow-hidden', className)}>
-      {/* Header */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-50 text-xs font-medium text-slate-500 border-b border-slate-100 items-center">
-        <div className="col-span-1 flex justify-center">
-          <Checkbox
-            checked={someSelected ? 'indeterminate' : allSelected}
-            onCheckedChange={(checked) => onSelectAll?.(checked === true)}
-            aria-label="全选"
-          />
-        </div>
-        <div className="col-span-2">课程名称</div>
-        <div className="col-span-1">课程编码</div>
-        <div className="col-span-1 text-center">版本</div>
-        <div className="col-span-1">所属行业</div>
-        <div className="col-span-1">适用专业</div>
-        <div className="col-span-1">所属批次分组</div>
-        <div className="col-span-1">创建人</div>
-        <div className="col-span-1 text-center">状态</div>
-        <div className="col-span-1 text-right">操作</div>
-      </div>
-
-      {/* Body */}
-      <div className="divide-y divide-slate-100">
-        {courses.map((course) => {
-          const isSelected = selectedIds.includes(course.id)
-
-          return (
-            <div
-              key={course.id}
-              className={cn(
-                'grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-50 transition-colors group relative',
-                isSelected && 'bg-primary/5',
-              )}
-            >
-              <div className="col-span-1 flex justify-center">
+      <div className="overflow-x-auto">
+        <Table className="min-w-[900px]">
+          <TableHeader>
+            <TableRow className="bg-slate-50 border-b border-slate-100 hover:bg-slate-50">
+              <TableHead className="w-10 px-3">
                 <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={(checked) => onSelectId?.(course.id, checked === true)}
-                  aria-label={`选择 ${course.name}`}
+                  checked={someSelected ? 'indeterminate' : allSelected}
+                  onCheckedChange={(checked) => onSelectAll?.(checked === true)}
+                  aria-label="全选"
                 />
-              </div>
-              <div className="col-span-2">
-                <Link href={editPath(course.id)} className="block">
-                  <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">
-                    {course.name}
-                  </p>
-                </Link>
-                <StatusBadge status={course.status} />
-              </div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">{course.code}</div>
-              <div className="col-span-1 text-center text-sm text-slate-600">{course.version}</div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">
-                {course.industry || '-'}
-              </div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">
-                {course.major || '-'}
-              </div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">
-                {course.batchName || '-'}
-              </div>
-              <div className="col-span-1 text-xs text-slate-500 truncate">
-                {course.creator || '-'}
-              </div>
-              <div className="col-span-1 text-center">
-                <StatusBadge status={course.status} />
-              </div>
-              <div className="col-span-1 text-right relative">
-                <StatusActionBar
-                  status={course.status}
-                  onView={() => router.push(viewHref?.(course) || editPath(course.id))}
-                  onEdit={() => router.push(editPath(course.id))}
-                  onClone={onClone ? () => onClone(course) : undefined}
-                  onSubmit={onSubmitApproval ? () => onSubmitApproval(course) : undefined}
-                  onWithdraw={onWithdrawApproval ? () => onWithdrawApproval(course) : undefined}
-                  onPublish={onPublish ? () => onPublish(course) : undefined}
-                  onUnpublish={onUnpublish ? () => onUnpublish(course) : undefined}
-                  onArchive={onArchive ? () => onArchive(course) : undefined}
-                  onDelete={onDelete ? () => onDelete(course) : undefined}
-                  onInvite={onInviteCoBuild ? () => onInviteCoBuild(course) : undefined}
-                  onViewRejectReason={
-                    onViewRejectReason ? () => onViewRejectReason(course) : undefined
-                  }
-                />
-              </div>
-            </div>
-          )
-        })}
+              </TableHead>
+              <TableHead className="w-40 text-xs font-medium text-slate-500">课程名称</TableHead>
+              <TableHead className="w-24 text-xs font-medium text-slate-500">课程编码</TableHead>
+              <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
+                版本
+              </TableHead>
+              <TableHead className="w-28 text-xs font-medium text-slate-500">所属行业</TableHead>
+              <TableHead className="w-28 text-xs font-medium text-slate-500">适用专业</TableHead>
+              <TableHead className="w-32 text-xs font-medium text-slate-500">
+                所属批次分组
+              </TableHead>
+              <TableHead className="w-24 text-xs font-medium text-slate-500">创建人</TableHead>
+              <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
+                状态
+              </TableHead>
+              <TableHead className="text-right text-xs font-medium text-slate-500">操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {courses.map((course) => {
+              const isSelected = selectedIds.includes(course.id)
+
+              return (
+                <TableRow
+                  key={course.id}
+                  className={cn(
+                    'group border-slate-100 hover:bg-slate-50 transition-colors',
+                    isSelected && 'bg-primary/5 hover:bg-primary/5',
+                  )}
+                >
+                  <TableCell className="px-3">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => onSelectId?.(course.id, checked === true)}
+                      aria-label={`选择 ${course.name}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Link href={editPath(course.id)} className="block">
+                      <p className="text-sm font-medium text-slate-900 line-clamp-1 max-w-40 hover:text-primary">
+                        {course.name}
+                      </p>
+                    </Link>
+                    <StatusBadge status={course.status} />
+                  </TableCell>
+                  <TableCell className="text-sm text-slate-600 truncate max-w-24">
+                    {course.code}
+                  </TableCell>
+                  <TableCell className="text-center text-sm text-slate-600">
+                    {course.version}
+                  </TableCell>
+                  <TableCell className="text-sm text-slate-600 truncate max-w-28">
+                    {course.industry || '-'}
+                  </TableCell>
+                  <TableCell className="text-sm text-slate-600 truncate max-w-28">
+                    {course.major || '-'}
+                  </TableCell>
+                  <TableCell className="text-sm text-slate-600 truncate max-w-32">
+                    {course.batchName || '-'}
+                  </TableCell>
+                  <TableCell className="text-xs text-slate-500 truncate max-w-24">
+                    {course.creator || '-'}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <StatusBadge status={course.status} />
+                  </TableCell>
+                  <TableCell className="text-right relative">
+                    <StatusActionBar
+                      status={course.status}
+                      onView={() => router.push(viewHref?.(course) || editPath(course.id))}
+                      onEdit={() => router.push(editPath(course.id))}
+                      onClone={onClone ? () => onClone(course) : undefined}
+                      onSubmit={onSubmitApproval ? () => onSubmitApproval(course) : undefined}
+                      onWithdraw={onWithdrawApproval ? () => onWithdrawApproval(course) : undefined}
+                      onPublish={onPublish ? () => onPublish(course) : undefined}
+                      onUnpublish={onUnpublish ? () => onUnpublish(course) : undefined}
+                      onArchive={onArchive ? () => onArchive(course) : undefined}
+                      onDelete={onDelete ? () => onDelete(course) : undefined}
+                      onInvite={onInviteCoBuild ? () => onInviteCoBuild(course) : undefined}
+                      onViewRejectReason={
+                        onViewRejectReason ? () => onViewRejectReason(course) : undefined
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
       </div>
     </div>
   )

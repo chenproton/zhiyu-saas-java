@@ -775,7 +775,7 @@ function HybridCourseAddForm() {
       </Collapsible>
 
       {/* ========== Two-column layout ========== */}
-      <div className="grid grid-cols-[260px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
         {/* Left: Course Node Tree */}
         <CourseNodeTree
           nodes={nodes}
