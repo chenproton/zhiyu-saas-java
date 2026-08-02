@@ -427,18 +427,6 @@ func (h *PortalHandler) creditHoursRatio(ctx context.Context) float64 {
 	return h.Service.CreditHoursRatio(ctx)
 }
 
-func (h *PortalHandler) batchCourseProgress(ctx context.Context, courseIDs []string, userID string) map[string]int {
-	return h.Service.BatchCourseProgress(ctx, courseIDs, userID)
-}
-
-func (h *PortalHandler) batchCourseStudentCounts(ctx context.Context, courseIDs []string) map[string]int {
-	return h.Service.BatchCourseStudentCounts(ctx, courseIDs)
-}
-
-func (h *PortalHandler) batchSceneTaskStatus(ctx context.Context, taskIDs []string, userID string) map[string]string {
-	return h.Service.BatchSceneTaskStatus(ctx, taskIDs, userID)
-}
-
 func totalHours(online, offline *float64) int {
 	total := 0.0
 	if online != nil {

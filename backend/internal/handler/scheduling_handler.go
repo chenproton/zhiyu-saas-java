@@ -151,10 +151,6 @@ func (h *SchedulingHandler) DeleteVenue(w http.ResponseWriter, r *http.Request) 
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *SchedulingHandler) fetchVenue(ctx context.Context, id, tenantID string) (*domain.Venue, error) {
-	return h.Service.GetVenue(ctx, id, tenantID)
-}
-
 // ---------- 节次 ----------
 type PeriodSlotRequest struct {
 	Name      string  `json:"name"`

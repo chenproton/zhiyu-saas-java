@@ -95,20 +95,10 @@ export const importExportApi = {
     }
     return res.json()
   },
-  importExcelPreview: async (
+  importExcelPreview: (
     entity: string,
     files: File | File[],
-  ): Promise<ImportPreviewResult> => {
-    const form = new FormData()
-    const fileArr = Array.isArray(files) ? files : [files]
-    fileArr.forEach((f) => form.append('file', f))
-    const res = await authedFetch(`/import/${entity}/preview`, { method: 'POST', body: form })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.error || `HTTP ${res.status}`)
-    }
-    return res.json()
-  },
+  ): Promise<ImportPreviewResult> => importExportApi.importPreview(entity, files),
   downloadTemplate: (
     entity:
       | 'positions'

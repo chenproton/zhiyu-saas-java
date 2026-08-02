@@ -369,20 +369,6 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 
 // ===== Cache =====
 
-func (h *ExamHandler) clearLandingExamsCacheFromRequest(r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var tenantID string
-	if h.Service == nil {
-		return
-	}
-	t, err := h.Service.ExamTenantID(r.Context(), id)
-	if err != nil {
-		return
-	}
-	tenantID = t
-	h.clearLandingExamsCache(r, tenantID)
-}
-
 func (h *ExamHandler) clearLandingExamsCache(r *http.Request, tenantID string) {
 	if h.RedisClient == nil {
 		return

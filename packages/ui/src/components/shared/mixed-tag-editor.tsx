@@ -163,7 +163,29 @@ export function MixedTagEditor({
       .map((n) => n.textContent)
       .join('')
     const textChanged = domText !== (text || '')
-    if (!kpChanged && !abChanged && !textChanged) return
+
+    // 异步数据（knowledgePoints/abilityPoints）到达后，补渲染已登记但未生成 span 的标签
+    const kpSpanIds = new Set(
+      Array.from(el.children)
+        .filter((n) => (n as HTMLElement).dataset.tag === 'kp' && (n as HTMLElement).dataset.id)
+        .map((n) => (n as HTMLElement).dataset.id as string),
+    )
+    const abSpanIds = new Set(
+      Array.from(el.children)
+        .filter((n) => (n as HTMLElement).dataset.tag === 'ab' && (n as HTMLElement).dataset.id)
+        .map((n) => (n as HTMLElement).dataset.id as string),
+    )
+    const missingKpIds = knowledgePointIds.filter((id) => !kpSpanIds.has(id))
+    const missingAbIds = abilityPointIds.filter((id) => !abSpanIds.has(id))
+
+    if (
+      !kpChanged &&
+      !abChanged &&
+      !textChanged &&
+      missingKpIds.length === 0 &&
+      missingAbIds.length === 0
+    )
+      return
 
     if (el !== document.activeElement) {
       const newKpIds = knowledgePointIds.filter((id) => !prevTags.current.kp.includes(id))
@@ -192,6 +214,14 @@ export function MixedTagEditor({
         const span = createTagSpan('ab', id)
         if (span) el.appendChild(span)
       })
+      missingKpIds.forEach((id) => {
+        const span = createTagSpan('kp', id)
+        if (span) el.appendChild(span)
+      })
+      missingAbIds.forEach((id) => {
+        const span = createTagSpan('ab', id)
+        if (span) el.appendChild(span)
+      })
 
       prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
       return
@@ -200,13 +230,27 @@ export function MixedTagEditor({
     // 聚焦时保留光标位置，仅追加到末尾（外部新增标签场景）
     const newKpIds = knowledgePointIds.filter((id) => !prevTags.current.kp.includes(id))
     const newAbIds = abilityPointIds.filter((id) => !prevTags.current.ab.includes(id))
-    if (newKpIds.length === 0 && newAbIds.length === 0) return
+    if (
+      newKpIds.length === 0 &&
+      newAbIds.length === 0 &&
+      missingKpIds.length === 0 &&
+      missingAbIds.length === 0
+    )
+      return
 
     newKpIds.forEach((id) => {
       const span = createTagSpan('kp', id)
       if (span) el.appendChild(span)
     })
     newAbIds.forEach((id) => {
+      const span = createTagSpan('ab', id)
+      if (span) el.appendChild(span)
+    })
+    missingKpIds.forEach((id) => {
+      const span = createTagSpan('kp', id)
+      if (span) el.appendChild(span)
+    })
+    missingAbIds.forEach((id) => {
       const span = createTagSpan('ab', id)
       if (span) el.appendChild(span)
     })

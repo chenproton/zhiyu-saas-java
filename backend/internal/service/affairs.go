@@ -213,7 +213,10 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 			for _, periodName := range periodNames {
 				for _, venue := range candidateVenues {
 					// 运行内已放置的排课也参与冲突检查（防止同一次自动排课内部重复占用）
-					checkSet := append(existing, createdBriefs(creates)...)
+					// 全新切片避免 append 复用 existing 底层数组（其 cap 可能大于 len）
+					checkSet := make([]store.TermScheduleBrief, 0, len(existing)+len(creates))
+					checkSet = append(checkSet, existing...)
+					checkSet = append(checkSet, createdBriefs(creates)...)
 					if hasScheduleConflict(checkSet, &store.ScheduleConflictParams{
 						PlanEntryID: strPtrIfNonEmpty(e.ID),
 						ClassNodeID: e.ClassNodeID,

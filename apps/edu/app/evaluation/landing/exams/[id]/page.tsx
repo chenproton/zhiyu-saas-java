@@ -324,7 +324,7 @@ export default function ExamDetailPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 24 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {questions.map((q, idx) => (
               <div
@@ -671,7 +671,7 @@ export default function ExamDetailPage() {
       </div>
 
       {/* 考试概览 + 考试须知 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div
           style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e6eb', padding: 24 }}
         >

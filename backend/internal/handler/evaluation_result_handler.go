@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -205,6 +206,10 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		SubjectiveContent: jsonRawMessageToJSONMap(req.SubjectiveContent),
 	}, res.TaskID, res.MethodKey, res.EvaluateeID)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			respondError(w, http.StatusConflict, "评价结果已评分或不存在，请刷新后重试")
+			return
+		}
 		respondServerError(w, r, err, "评分失败")
 		return
 	}

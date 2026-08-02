@@ -282,9 +282,9 @@ function JobAbilityResultsContent() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-3.5rem)]">
       {/* 左侧岗位导航 */}
-      <div className="flex w-[260px] shrink-0 flex-col border-r bg-white">
+      <div className="flex w-full md:w-[260px] shrink-0 flex-col border-r bg-white max-h-[50vh] md:max-h-none">
         <div className="border-b p-4">
           <h2 className="text-sm font-semibold">岗位列表</h2>
           <p className="text-xs text-muted-foreground">点击岗位查看认定结果</p>

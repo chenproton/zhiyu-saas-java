@@ -346,14 +346,6 @@ func (h *AuthHandler) fetchInstitution(ctx context.Context, id string) (*domain.
 	return h.Service.GetInstitution(ctx, id)
 }
 
-func (h *AuthHandler) fetchInstitutionTags(ctx context.Context, institutionID string) ([]string, error) {
-	inst, err := h.Service.GetInstitution(ctx, institutionID)
-	if err != nil {
-		return nil, err
-	}
-	return inst.ExpertiseTags, nil
-}
-
 func (h *AuthHandler) fetchTenantByID(ctx context.Context, id string) *domain.Tenant {
 	return h.Service.GetTenantByID(ctx, id)
 }

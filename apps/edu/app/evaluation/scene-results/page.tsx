@@ -139,7 +139,9 @@ export default function GradingPage() {
   const scenarioGroups = useMemo<ScenarioGroup[]>(() => {
     const map = new Map<string, ScenarioGroup>()
     for (const scenario of scenarios) {
-      const subs = results.filter((s) => s.taskId)
+      // results 只包含当前选中场景的数据，非选中场景无法获得统计，置空避免串数据
+      const subs =
+        scenario.id === selectedScenarioId ? results.filter((s) => s.taskId) : []
       const pending = subs.filter((s) => s.status === 'pending').length
       const graded = subs.filter((s) => s.status === 'evaluated').length
 
@@ -160,7 +162,7 @@ export default function GradingPage() {
       map.get(pos)!.scenarios.push(item)
     }
     return Array.from(map.values())
-  }, [scenarios, results])
+  }, [scenarios, results, selectedScenarioId])
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return scenarioGroups
@@ -434,8 +436,8 @@ export default function GradingPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden max-w-[1600px] mx-auto w-full">
-        <div className="w-80 shrink-0 bg-white border-r border-gray-200 flex flex-col">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden max-w-[1600px] mx-auto w-full">
+        <div className="w-full md:w-80 shrink-0 bg-white border-r border-gray-200 flex flex-col max-h-[50vh] md:max-h-none">
           <div className="p-4 border-b border-gray-100">
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />

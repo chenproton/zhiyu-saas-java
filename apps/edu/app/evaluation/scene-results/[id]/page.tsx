@@ -582,7 +582,7 @@ function EvalPointGradingCard({
               placeholder="请输入评分说明或改进建议..."
               value={localComment}
               onChange={(e) => setLocalComment(e.target.value)}
-              onBlur={() => onChange(evalPoint.id, parseFloat(localScore) || 0, localComment)}
+              onBlur={() => onChange(evalPoint.id, score, localComment)}
               disabled={isGraded}
               rows={2}
               className="text-sm resize-none bg-white border-slate-300 focus-visible:ring-primary"
