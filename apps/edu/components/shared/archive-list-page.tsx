@@ -15,7 +15,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import { Search, GraduationCap, Eye, RotateCcw, Trash2 } from 'lucide-react'
+import { Search, GraduationCap, Eye, RotateCcw, Trash2, FolderTree, ChevronDown } from 'lucide-react'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
@@ -80,6 +80,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
 }: ArchiveListPageProps<T>) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const hasBatchOps = !!(onBatchRestore || onBatchDelete)
 
@@ -133,8 +134,26 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
         <p className="text-muted-foreground mt-1">{pageDescription}</p>
       </div>
 
-      <div className="flex gap-4 items-start">
-        <div className="w-64 shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4">
+      <div className="flex flex-col md:flex-row gap-4 items-start">
+        {/* 移动端侧栏折叠开关 */}
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((v) => !v)}
+          className="md:hidden w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-gray-100 bg-white shadow-sm text-muted-foreground hover:text-foreground"
+        >
+          <FolderTree className="h-4 w-4 text-primary" />
+          {sidebarTitle}
+          <ChevronDown
+            className={cn('h-4 w-4 ml-auto transition-transform', sidebarOpen && 'rotate-180')}
+          />
+        </button>
+
+        <div
+          className={cn(
+            'w-full md:w-64 md:block shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4',
+            sidebarOpen ? 'block' : 'hidden',
+          )}
+        >
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
             <GraduationCap className="h-4 w-4 text-primary" />
             {sidebarTitle}

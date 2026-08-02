@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
@@ -105,24 +106,21 @@ export default function AllianceEnterpriseNewPage() {
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>企业名称 *</Label>
+              <FormFieldRow label="企业名称" required>
                 <Input
                   value={item.name}
                   onChange={(e) => setField('name', e.target.value)}
                   placeholder="请输入企业名称"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>统一社会信用代码</Label>
+              </FormFieldRow>
+              <FormFieldRow label="统一社会信用代码">
                 <Input
                   value={item.unifiedSocialCreditCode}
                   onChange={(e) => setField('unifiedSocialCreditCode', e.target.value)}
                   placeholder="如：91320594MA1P7XXXX1"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>企业类型</Label>
+              </FormFieldRow>
+              <FormFieldRow label="企业类型">
                 <Select
                   value={item.enterpriseType}
                   onValueChange={(v) => setField('enterpriseType', v)}
@@ -135,25 +133,22 @@ export default function AllianceEnterpriseNewPage() {
                     <SelectItem value="third-party">第三方雇主企业</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>所属行业</Label>
+              </FormFieldRow>
+              <FormFieldRow label="所属行业">
                 <Input
                   value={item.industry}
                   onChange={(e) => setField('industry', e.target.value)}
                   placeholder="如：信息技术"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>所在地区</Label>
+              </FormFieldRow>
+              <FormFieldRow label="所在地区">
                 <Input
                   value={item.region}
                   onChange={(e) => setField('region', e.target.value)}
                   placeholder="如：深圳"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>合作状态</Label>
+              </FormFieldRow>
+              <FormFieldRow label="合作状态">
                 <Select value={item.status} onValueChange={(v) => setField('status', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -165,9 +160,8 @@ export default function AllianceEnterpriseNewPage() {
                     <SelectItem value="terminated">已终止</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>合作评级</Label>
+              </FormFieldRow>
+              <FormFieldRow label="合作评级">
                 <Select value={item.rating} onValueChange={(v) => setField('rating', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -178,9 +172,8 @@ export default function AllianceEnterpriseNewPage() {
                     <SelectItem value="general">一般合作</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>成立年份</Label>
+              </FormFieldRow>
+              <FormFieldRow label="成立年份">
                 <Input
                   type="number"
                   value={item.establishedYear ?? ''}
@@ -189,9 +182,8 @@ export default function AllianceEnterpriseNewPage() {
                   }
                   placeholder="如：2010"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>企业规模（人数）</Label>
+              </FormFieldRow>
+              <FormFieldRow label="企业规模（人数）">
                 <Input
                   type="number"
                   value={item.employeeCount ?? ''}
@@ -200,7 +192,7 @@ export default function AllianceEnterpriseNewPage() {
                   }
                   placeholder="如：500"
                 />
-              </div>
+              </FormFieldRow>
             </CardContent>
           </Card>
 
@@ -250,31 +242,27 @@ export default function AllianceEnterpriseNewPage() {
               <CardTitle>联系信息</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>联系人</Label>
+              <FormFieldRow label="联系人">
                 <Input
                   value={item.contactPerson}
                   onChange={(e) => setField('contactPerson', e.target.value)}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>联系电话</Label>
+              </FormFieldRow>
+              <FormFieldRow label="联系电话">
                 <Input
                   value={item.contactPhone}
                   onChange={(e) => setField('contactPhone', e.target.value)}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>联系邮箱</Label>
+              </FormFieldRow>
+              <FormFieldRow label="联系邮箱">
                 <Input
                   value={item.contactEmail}
                   onChange={(e) => setField('contactEmail', e.target.value)}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>详细地址</Label>
+              </FormFieldRow>
+              <FormFieldRow label="详细地址">
                 <Input value={item.address} onChange={(e) => setField('address', e.target.value)} />
-              </div>
+              </FormFieldRow>
             </CardContent>
           </Card>
 

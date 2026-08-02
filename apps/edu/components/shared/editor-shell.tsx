@@ -1,9 +1,17 @@
 'use client'
 
 import React from 'react'
-import { X, ArrowLeft, ArrowRight, Save, Eye, Check, Send, Loader2 } from 'lucide-react'
+import { X, ArrowLeft, ArrowRight, Save, Eye, Check, Send, Loader2, MoreVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { TopNav } from '@/components/portal/top-nav'
 
 export interface EditorShellProps {
@@ -79,68 +87,125 @@ export function EditorShell({
     <div
       className={`bg-white border-b border-gray-100 ${stickyClass} ${mode === 'fullscreen' ? 'mt-14' : ''}`}
     >
-      <div className={`${mxWidth} mx-auto px-6 py-4 flex items-center justify-between`}>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack}>
+      <div className={`${mxWidth} mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-3`}>
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+          <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0">
             {backIcon}
             {backText}
           </Button>
-          {headerTitle && <h1 className="text-lg font-semibold text-gray-900">{headerTitle}</h1>}
+          {headerTitle && (
+            <h1 className="text-base md:text-lg font-semibold text-gray-900 truncate">
+              {headerTitle}
+            </h1>
+          )}
           {step !== undefined && (
             <>
-              <div className="h-5 w-px bg-gray-200" />
+              <div className="h-5 w-px bg-gray-200 hidden md:block" />
               <div className="flex items-center gap-2">
                 <Badge className="bg-primary text-primary-foreground">步骤 {step}</Badge>
                 {stepLabel && (
-                  <span className="text-sm font-medium text-gray-800">{stepLabel}</span>
+                  <span className="text-sm font-medium text-gray-800 hidden md:inline">
+                    {stepLabel}
+                  </span>
                 )}
               </div>
             </>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          {loadingText && (
-            <span className="text-xs text-muted-foreground flex items-center">
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              {loadingText}
-            </span>
-          )}
-          {onSaveDraft && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSaveDraft}
-              disabled={isSaving || saveDisabled}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saveText || defaultSaveText}
-            </Button>
-          )}
-          {onPreview && (
-            <Button variant="outline" size="sm" onClick={onPreview}>
-              <Eye className="mr-2 h-4 w-4" />
-              预览
-            </Button>
-          )}
-          {onPrev && (
-            <Button variant="outline" size="sm" onClick={onPrev}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              上一步
-            </Button>
-          )}
-          {onNext && (
-            <Button size="sm" onClick={onNext} disabled={nextDisabled}>
-              {nextText}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          )}
-          {!onNext && onSubmit && (
-            <Button size="sm" onClick={onSubmit} disabled={submitDisabled}>
-              {mode === 'inline' && <Send className="mr-2 h-4 w-4" />}
-              {mode === 'fullscreen' && <Check className="mr-2 h-4 w-4" />}
-              {submitText}
-            </Button>
-          )}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="hidden md:flex items-center gap-3">
+            {loadingText && (
+              <span className="text-xs text-muted-foreground flex items-center">
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                {loadingText}
+              </span>
+            )}
+            {onSaveDraft && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSaveDraft}
+                disabled={isSaving || saveDisabled}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {saveText || defaultSaveText}
+              </Button>
+            )}
+            {onPreview && (
+              <Button variant="outline" size="sm" onClick={onPreview}>
+                <Eye className="mr-2 h-4 w-4" />
+                预览
+              </Button>
+            )}
+            {onPrev && (
+              <Button variant="outline" size="sm" onClick={onPrev}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                上一步
+              </Button>
+            )}
+            {onNext && (
+              <Button size="sm" onClick={onNext} disabled={nextDisabled}>
+                {nextText}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+            {!onNext && onSubmit && (
+              <Button size="sm" onClick={onSubmit} disabled={submitDisabled}>
+                {mode === 'inline' && <Send className="mr-2 h-4 w-4" />}
+                {mode === 'fullscreen' && <Check className="mr-2 h-4 w-4" />}
+                {submitText}
+              </Button>
+            )}
+          </div>
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" aria-label="更多操作">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-40">
+                {loadingText && (
+                  <>
+                    <DropdownMenuLabel className="flex items-center gap-1.5 text-xs">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {loadingText}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {onSaveDraft && (
+                  <DropdownMenuItem onClick={onSaveDraft} disabled={isSaving || saveDisabled}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {saveText || defaultSaveText}
+                  </DropdownMenuItem>
+                )}
+                {onPreview && (
+                  <DropdownMenuItem onClick={onPreview}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    预览
+                  </DropdownMenuItem>
+                )}
+                {onPrev && (
+                  <DropdownMenuItem onClick={onPrev}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    上一步
+                  </DropdownMenuItem>
+                )}
+                {onNext && (
+                  <DropdownMenuItem onClick={onNext} disabled={nextDisabled}>
+                    {nextText}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </DropdownMenuItem>
+                )}
+                {!onNext && onSubmit && (
+                  <DropdownMenuItem onClick={onSubmit} disabled={submitDisabled}>
+                    {submitText}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </div>

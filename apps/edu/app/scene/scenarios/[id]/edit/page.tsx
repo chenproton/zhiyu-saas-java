@@ -228,8 +228,8 @@ export default function ScenarioEditPage() {
           <p className="text-gray-500">加载中...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardContent className="pt-6 space-y-5">
                 <div className="grid gap-2">
@@ -244,7 +244,7 @@ export default function ScenarioEditPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>面向行业</Label>
                     <MultiSelect
