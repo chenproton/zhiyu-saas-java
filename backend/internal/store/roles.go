@@ -5,16 +5,21 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type RolesStore struct {
-	DB *pgxpool.Pool
+	q        Queryer
+	beginner txBeginner
 }
 
-func NewRolesStore(db *pgxpool.Pool) *RolesStore {
-	return &RolesStore{DB: db}
+// Q 返回底层查询器。
+func (s *RolesStore) Q() Queryer {
+	return s.q
+}
+
+func NewRolesStore(q Queryer, beginner txBeginner) *RolesStore {
+	return &RolesStore{q: q, beginner: beginner}
 }
 
 type RoleCreateParams struct {
@@ -34,7 +39,7 @@ type RoleUpdateParams struct {
 func (s *RolesStore) GetByID(ctx context.Context, id string) (domain.Role, error) {
 	var r domain.Role
 	var desc *string
-	err := s.DB.QueryRow(ctx,
+	err := s.q.QueryRow(ctx,
 		`SELECT id, tenant_id, code, name, description, permissions, user_count, status, created_at FROM roles WHERE id = $1`, id,
 	).Scan(&r.ID, &r.TenantID, &r.Code, &r.Name, &desc, &r.Permissions, &r.UserCount, &r.Status, &r.CreatedAt)
 	if err != nil {
@@ -46,7 +51,7 @@ func (s *RolesStore) GetByID(ctx context.Context, id string) (domain.Role, error
 
 func (s *RolesStore) Create(ctx context.Context, p RoleCreateParams) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx,
+	_, err := s.q.Exec(ctx,
 		`INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status) VALUES ($1,$2,$3,$4,$5,$6,0,'active')`,
 		id, p.TenantID, p.Code, p.Name, p.Description, p.Permissions,
 	)
@@ -57,7 +62,7 @@ func (s *RolesStore) Create(ctx context.Context, p RoleCreateParams) (string, er
 }
 
 func (s *RolesStore) Update(ctx context.Context, id string, p RoleUpdateParams) error {
-	_, err := s.DB.Exec(ctx,
+	_, err := s.q.Exec(ctx,
 		`UPDATE roles SET name=$1, description=$2, permissions=$3 WHERE id=$4`,
 		p.Name, p.Description, p.Permissions, id,
 	)
@@ -65,7 +70,7 @@ func (s *RolesStore) Update(ctx context.Context, id string, p RoleUpdateParams) 
 }
 
 func (s *RolesStore) Delete(ctx context.Context, id string) error {
-	tx, err := s.DB.Begin(ctx)
+	tx, err := s.beginner.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -81,7 +86,7 @@ func (s *RolesStore) Delete(ctx context.Context, id string) error {
 }
 
 func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string) error {
-	tx, err := s.DB.Begin(ctx)
+	tx, err := s.beginner.Begin(ctx)
 	if err != nil {
 		return err
 	}

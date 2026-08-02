@@ -6,16 +6,21 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type MicroCertStore struct {
-	DB *pgxpool.Pool
+	q        Queryer
+	beginner txBeginner
 }
 
-func NewMicroCertStore(db *pgxpool.Pool) *MicroCertStore {
-	return &MicroCertStore{DB: db}
+// Q 返回底层查询器。
+func (s *MicroCertStore) Q() Queryer {
+	return s.q
+}
+
+func NewMicroCertStore(q Queryer, beginner txBeginner) *MicroCertStore {
+	return &MicroCertStore{q: q, beginner: beginner}
 }
 
 type MicroCertTemplateCreateParams struct {
@@ -38,7 +43,7 @@ type MicroCertTemplateUpdateParams struct {
 func (s *MicroCertStore) GetTemplate(ctx context.Context, id string) (domain.MicroCertTemplate, error) {
 	var t domain.MicroCertTemplate
 	var cover *string
-	err := s.DB.QueryRow(ctx,
+	err := s.q.QueryRow(ctx,
 		`SELECT id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at FROM micro_cert_templates WHERE id = $1`, id,
 	).Scan(&t.ID, &t.Title, &t.CertTypeID, &t.CertTypeName, &t.Content, &cover, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
@@ -50,7 +55,7 @@ func (s *MicroCertStore) GetTemplate(ctx context.Context, id string) (domain.Mic
 
 func (s *MicroCertStore) CreateTemplate(ctx context.Context, p MicroCertTemplateCreateParams) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx,
+	_, err := s.q.Exec(ctx,
 		`INSERT INTO micro_cert_templates (id, tenant_id, title, cert_type_id, cert_type_name, content, cover_image) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
 		id, p.TenantID, p.Title, p.CertTypeID, p.CertTypeName, p.Content, p.CoverImage,
 	)
@@ -61,7 +66,7 @@ func (s *MicroCertStore) CreateTemplate(ctx context.Context, p MicroCertTemplate
 }
 
 func (s *MicroCertStore) UpdateTemplate(ctx context.Context, id string, p MicroCertTemplateUpdateParams) error {
-	_, err := s.DB.Exec(ctx,
+	_, err := s.q.Exec(ctx,
 		`UPDATE micro_cert_templates SET title=$1, cert_type_id=$2, cert_type_name=$3, content=$4, cover_image=$5, updated_at=NOW() WHERE id=$6`,
 		p.Title, p.CertTypeID, p.CertTypeName, p.Content, p.CoverImage, id,
 	)
@@ -69,15 +74,15 @@ func (s *MicroCertStore) UpdateTemplate(ctx context.Context, id string, p MicroC
 }
 
 func (s *MicroCertStore) DeleteTemplate(ctx context.Context, id string) error {
-	if _, err := s.DB.Exec(ctx, `DELETE FROM cert_issuance_records WHERE template_id = $1`, id); err != nil {
+	if _, err := s.q.Exec(ctx, `DELETE FROM cert_issuance_records WHERE template_id = $1`, id); err != nil {
 		return err
 	}
-	_, err := s.DB.Exec(ctx, `DELETE FROM micro_cert_templates WHERE id = $1`, id)
+	_, err := s.q.Exec(ctx, `DELETE FROM micro_cert_templates WHERE id = $1`, id)
 	return err
 }
 
 func (s *MicroCertStore) IssueCerts(ctx context.Context, tenantID, templateID string, userIDs []string) (int, error) {
-	tx, err := s.DB.Begin(ctx)
+	tx, err := s.beginner.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}

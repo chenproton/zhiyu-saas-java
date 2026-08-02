@@ -5,16 +5,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type OrgTypesStore struct {
-	DB *pgxpool.Pool
+	q Queryer
 }
 
-func NewOrgTypesStore(db *pgxpool.Pool) *OrgTypesStore {
-	return &OrgTypesStore{DB: db}
+// Q 返回底层查询器。
+func (s *OrgTypesStore) Q() Queryer {
+	return s.q
+}
+
+func NewOrgTypesStore(q Queryer) *OrgTypesStore {
+	return &OrgTypesStore{q: q}
 }
 
 type OrgTypeCreateParams struct {
@@ -33,7 +37,7 @@ type OrgTypeUpdateParams struct {
 func (s *OrgTypesStore) GetByID(ctx context.Context, id string) (domain.OrgType, error) {
 	var o domain.OrgType
 	var desc *string
-	err := s.DB.QueryRow(ctx,
+	err := s.q.QueryRow(ctx,
 		`SELECT id, tenant_id, name, category, description, is_default, created_at FROM org_types WHERE id = $1`, id,
 	).Scan(&o.ID, &o.TenantID, &o.Name, &o.Category, &desc, &o.IsDefault, &o.CreatedAt)
 	if err != nil {
@@ -45,7 +49,7 @@ func (s *OrgTypesStore) GetByID(ctx context.Context, id string) (domain.OrgType,
 
 func (s *OrgTypesStore) Create(ctx context.Context, p OrgTypeCreateParams) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx,
+	_, err := s.q.Exec(ctx,
 		`INSERT INTO org_types (id, tenant_id, name, category, description) VALUES ($1,$2,$3,$4,$5)`,
 		id, p.TenantID, p.Name, p.Category, p.Description,
 	)
@@ -56,7 +60,7 @@ func (s *OrgTypesStore) Create(ctx context.Context, p OrgTypeCreateParams) (stri
 }
 
 func (s *OrgTypesStore) Update(ctx context.Context, id string, p OrgTypeUpdateParams) error {
-	_, err := s.DB.Exec(ctx,
+	_, err := s.q.Exec(ctx,
 		`UPDATE org_types SET name=$1, category=$2, description=$3 WHERE id=$4`,
 		p.Name, p.Category, p.Description, id,
 	)
@@ -64,13 +68,13 @@ func (s *OrgTypesStore) Update(ctx context.Context, id string, p OrgTypeUpdatePa
 }
 
 func (s *OrgTypesStore) Delete(ctx context.Context, id string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM org_types WHERE id = $1`, id)
+	_, err := s.q.Exec(ctx, `DELETE FROM org_types WHERE id = $1`, id)
 	return err
 }
 
 func (s *OrgTypesStore) CountOrgRefs(ctx context.Context, orgTypeID string) (int, error) {
 	var count int
-	err := s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM organizations WHERE type_id = $1`, orgTypeID).Scan(&count)
+	err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM organizations WHERE type_id = $1`, orgTypeID).Scan(&count)
 	return count, err
 }
 

@@ -5,16 +5,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type IndustriesStore struct {
-	DB *pgxpool.Pool
+	q Queryer
 }
 
-func NewIndustriesStore(db *pgxpool.Pool) *IndustriesStore {
-	return &IndustriesStore{DB: db}
+// Q 返回底层查询器。
+func (s *IndustriesStore) Q() Queryer {
+	return s.q
+}
+
+func NewIndustriesStore(q Queryer) *IndustriesStore {
+	return &IndustriesStore{q: q}
 }
 
 type IndustryCreateParams struct {
@@ -38,7 +42,7 @@ func (s *IndustriesStore) GetByID(ctx context.Context, id string) (domain.Indust
 	var i domain.Industry
 	var parentID *string
 
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at
 		FROM industries WHERE id = $1
 	`, id).Scan(&i.ID, &i.TenantID, &i.Code, &i.Name, &parentID, &i.Enabled, &i.SortOrder, &i.CreatedAt, &i.UpdatedAt)
@@ -51,7 +55,7 @@ func (s *IndustriesStore) GetByID(ctx context.Context, id string) (domain.Indust
 
 func (s *IndustriesStore) Create(ctx context.Context, p IndustryCreateParams) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO industries (id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 	`, id, p.TenantID, p.Code, p.Name, p.ParentID, p.Enabled, p.SortOrder)
@@ -62,7 +66,7 @@ func (s *IndustriesStore) Create(ctx context.Context, p IndustryCreateParams) (s
 }
 
 func (s *IndustriesStore) Update(ctx context.Context, id string, p IndustryUpdateParams) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE industries SET code = $1, name = $2, parent_id = $3, enabled = $4, sort_order = $5, updated_at = NOW()
 		WHERE id = $6
 	`, p.Code, p.Name, p.ParentID, p.Enabled, p.SortOrder, id)
@@ -70,13 +74,13 @@ func (s *IndustriesStore) Update(ctx context.Context, id string, p IndustryUpdat
 }
 
 func (s *IndustriesStore) Delete(ctx context.Context, id string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM industries WHERE id = $1`, id)
+	_, err := s.q.Exec(ctx, `DELETE FROM industries WHERE id = $1`, id)
 	return err
 }
 
 func (s *IndustriesStore) CountChildren(ctx context.Context, parentID string) (int, error) {
 	var count int
-	err := s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM industries WHERE parent_id = $1`, parentID).Scan(&count)
+	err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM industries WHERE parent_id = $1`, parentID).Scan(&count)
 	return count, err
 }
 

@@ -7,16 +7,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type AllianceStore struct {
-	DB *pgxpool.Pool
+	q Queryer
 }
 
-func NewAllianceStore(db *pgxpool.Pool) *AllianceStore {
-	return &AllianceStore{DB: db}
+// Q 返回底层查询器。
+func (s *AllianceStore) Q() Queryer {
+	return s.q
+}
+
+func NewAllianceStore(q Queryer) *AllianceStore {
+	return &AllianceStore{q: q}
 }
 
 // ===== 学校信息 =====
@@ -52,7 +56,7 @@ func (s *AllianceStore) GetSchoolInfo(ctx context.Context, tenantID string) (*do
 	var i domain.AllianceSchoolInfo
 	var shortName, schoolType, province, city, address, website, contactPhone, description, logoURL *string
 	var scaleData, secondaryColleges json.RawMessage
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, short_name, school_type, province, city, address,
 		       website, contact_phone, description, logo_url, scale_data, secondary_colleges,
 		       created_at, updated_at
@@ -78,7 +82,7 @@ func (s *AllianceStore) GetSchoolInfo(ctx context.Context, tenantID string) (*do
 }
 
 func (s *AllianceStore) UpsertSchoolInfo(ctx context.Context, info *domain.AllianceSchoolInfo) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_school_info (id, tenant_id, name, short_name, school_type, province, city,
 			address, website, contact_phone, description, logo_url, scale_data, secondary_colleges,
 			created_at, updated_at)
@@ -211,7 +215,7 @@ func (s *AllianceStore) GetEnterpriseByID(ctx context.Context, id, tenantID stri
 	var establishedYear, employeeCount *int
 	var coopTypes, bizPhotos, qualPhotos, ipPhotos, coverPhotos, colleges, ratingRecord json.RawMessage
 	var createdBy *string
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, enterprise_type, industry, region, description,
 			logo_url, cover_image, status, rating, cooperation_types, contact_person,
 			contact_phone, contact_email, address, unified_social_credit_code,
@@ -253,7 +257,7 @@ func (s *AllianceStore) GetEnterpriseByID(ctx context.Context, id, tenantID stri
 
 func (s *AllianceStore) CreateEnterprise(ctx context.Context, p *AllianceEnterpriseCreateParams) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_enterprises (id, tenant_id, name, enterprise_type, industry, region,
 			description, logo_url, cover_image, status, rating, cooperation_types, contact_person,
 			contact_phone, contact_email, address, unified_social_credit_code, established_year,
@@ -273,7 +277,7 @@ func (s *AllianceStore) CreateEnterprise(ctx context.Context, p *AllianceEnterpr
 }
 
 func (s *AllianceStore) UpdateEnterprise(ctx context.Context, id string, p *AllianceEnterpriseUpdateParams) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_enterprises SET
 			name = $1, enterprise_type = $2, industry = $3, region = $4, description = $5,
 			logo_url = $6, cover_image = $7, status = $8, rating = $9, cooperation_types = $10,
@@ -292,7 +296,7 @@ func (s *AllianceStore) UpdateEnterprise(ctx context.Context, id string, p *Alli
 }
 
 func (s *AllianceStore) DeleteEnterprise(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_enterprises WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_enterprises WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -346,7 +350,7 @@ func (s *AllianceStore) GetEnterpriseAgreementByID(ctx context.Context, id, tena
 	var typ, content *string
 	var startDate, endDate *time.Time
 	var attachments json.RawMessage
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, enterprise_id, name, type, start_date, end_date, status,
 			content, attachments, created_at, updated_at
 		FROM alliance_enterprise_agreements WHERE id = $1 AND tenant_id = $2
@@ -365,7 +369,7 @@ func (s *AllianceStore) GetEnterpriseAgreementByID(ctx context.Context, id, tena
 
 func (s *AllianceStore) CreateEnterpriseAgreement(ctx context.Context, p *AllianceEnterpriseAgreementCreateParams) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_enterprise_agreements (id, tenant_id, enterprise_id, name, type,
 			start_date, end_date, status, content, attachments, created_at, updated_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())
@@ -377,7 +381,7 @@ func (s *AllianceStore) CreateEnterpriseAgreement(ctx context.Context, p *Allian
 }
 
 func (s *AllianceStore) UpdateEnterpriseAgreement(ctx context.Context, id string, p *AllianceEnterpriseAgreementUpdateParams) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_enterprise_agreements SET
 			name = $1, type = $2, start_date = $3, end_date = $4, status = $5,
 			content = $6, attachments = $7, updated_at = NOW()
@@ -387,7 +391,7 @@ func (s *AllianceStore) UpdateEnterpriseAgreement(ctx context.Context, id string
 }
 
 func (s *AllianceStore) DeleteEnterpriseAgreement(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_enterprise_agreements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_enterprise_agreements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -435,7 +439,7 @@ func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string)
 	var startDate, endDate *time.Time
 	var enterpriseIDs, agreementIDs, colleges json.RawMessage
 	var createdBy *string
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
 			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_by, created_at, updated_at
@@ -461,7 +465,7 @@ func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string)
 
 func (s *AllianceStore) CreateProject(ctx context.Context, p *domain.AllianceProject) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_projects (id, tenant_id, name, type, description, phase, publish_status,
 			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_by, created_at, updated_at)
@@ -476,7 +480,7 @@ func (s *AllianceStore) CreateProject(ctx context.Context, p *domain.AlliancePro
 }
 
 func (s *AllianceStore) UpdateProject(ctx context.Context, id string, p *domain.AllianceProject) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_projects SET
 			name = $1, type = $2, description = $3, phase = $4, publish_status = $5,
 			start_date = $6, end_date = $7, budget = $8, cover_image = $9, enterprise_ids = $10,
@@ -489,7 +493,7 @@ func (s *AllianceStore) UpdateProject(ctx context.Context, id string, p *domain.
 }
 
 func (s *AllianceStore) DeleteProject(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_projects WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_projects WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -516,7 +520,7 @@ func (s *AllianceStore) ScanMilestoneRows(rows pgx.Rows) ([]domain.AllianceProje
 
 func (s *AllianceStore) CreateMilestone(ctx context.Context, m *domain.AllianceProjectMilestone) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_project_milestones (id, tenant_id, project_id, name, description,
 			due_date, completed_date, is_completed, sort_order, created_at, updated_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())
@@ -529,7 +533,7 @@ func (s *AllianceStore) CreateMilestone(ctx context.Context, m *domain.AllianceP
 }
 
 func (s *AllianceStore) UpdateMilestone(ctx context.Context, id string, m *domain.AllianceProjectMilestone) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_project_milestones SET
 			name = $1, description = $2, due_date = $3, completed_date = $4,
 			is_completed = $5, sort_order = $6, updated_at = NOW()
@@ -539,7 +543,7 @@ func (s *AllianceStore) UpdateMilestone(ctx context.Context, id string, m *domai
 }
 
 func (s *AllianceStore) DeleteMilestone(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_project_milestones WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_project_milestones WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -582,7 +586,7 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 
 func (s *AllianceStore) CreateAchievement(ctx context.Context, a *domain.AllianceAchievement) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_achievements (id, tenant_id, title, type, description, achievement_date,
 			cover_image, attachments, citation_reason, images, owner_persons, co_builders,
 			enterprise_ids, project_ids, related_positions, related_scenes,
@@ -600,7 +604,7 @@ func (s *AllianceStore) CreateAchievement(ctx context.Context, a *domain.Allianc
 }
 
 func (s *AllianceStore) UpdateAchievement(ctx context.Context, id string, a *domain.AllianceAchievement) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_achievements SET
 			title = $1, type = $2, description = $3, achievement_date = $4, cover_image = $5,
 			attachments = $6, citation_reason = $7, images = $8, owner_persons = $9, co_builders = $10,
@@ -617,7 +621,7 @@ func (s *AllianceStore) UpdateAchievement(ctx context.Context, id string, a *dom
 }
 
 func (s *AllianceStore) DeleteAchievement(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_achievements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_achievements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -627,7 +631,7 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 	var achievementDate *time.Time
 	var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 	var createdBy *string
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
 			attachments, citation_reason, images, owner_persons, co_builders,
 			enterprise_ids, project_ids, related_positions, related_scenes,
@@ -707,7 +711,7 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 
 func (s *AllianceStore) CreateExpert(ctx context.Context, e *domain.AllianceExpert) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_experts (id, tenant_id, name, gender, age, title, position,
 			expert_type, industry, professional_fields, specialties, experience_years,
 			education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments,
@@ -725,7 +729,7 @@ func (s *AllianceStore) CreateExpert(ctx context.Context, e *domain.AllianceExpe
 }
 
 func (s *AllianceStore) UpdateExpert(ctx context.Context, id string, e *domain.AllianceExpert) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_experts SET
 			name = $1, gender = $2, age = $3, title = $4, position = $5, expert_type = $6,
 			industry = $7, professional_fields = $8, specialties = $9, experience_years = $10,
@@ -743,7 +747,7 @@ func (s *AllianceStore) UpdateExpert(ctx context.Context, id string, e *domain.A
 }
 
 func (s *AllianceStore) DeleteExpert(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_experts WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -755,7 +759,7 @@ func (s *AllianceStore) GetExpertByID(ctx context.Context, id, tenantID string) 
 	var rating, enterpriseID, coverImage, partnerSource, positionDirection, organization *string
 	var colleges json.RawMessage
 	var createdBy *string
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
 			professional_fields, specialties, experience_years, education, introduction,
 			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
@@ -825,7 +829,7 @@ func (s *AllianceStore) ScanAgreementRows(rows pgx.Rows) ([]domain.AllianceAgree
 
 func (s *AllianceStore) CreateAgreement(ctx context.Context, a *domain.AllianceAgreement) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_agreements (id, tenant_id, name, type, content, start_date,
 			end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
@@ -838,7 +842,7 @@ func (s *AllianceStore) CreateAgreement(ctx context.Context, a *domain.AllianceA
 }
 
 func (s *AllianceStore) UpdateAgreement(ctx context.Context, id string, a *domain.AllianceAgreement) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_agreements SET
 			name = $1, type = $2, content = $3, start_date = $4, end_date = $5,
 			status = $6, enterprise_ids = $7, project_ids = $8, attachments = $9, updated_at = NOW()
@@ -849,7 +853,7 @@ func (s *AllianceStore) UpdateAgreement(ctx context.Context, id string, a *domai
 }
 
 func (s *AllianceStore) DeleteAgreement(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_agreements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_agreements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -859,7 +863,7 @@ func (s *AllianceStore) GetAgreementByID(ctx context.Context, id, tenantID strin
 	var startDate, endDate *time.Time
 	var enterpriseIDs, projectIDs, attachments json.RawMessage
 	var createdBy *string
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, type, content, start_date, end_date, status,
 			enterprise_ids, project_ids, attachments, created_by, created_at, updated_at
 		FROM alliance_agreements WHERE id = $1 AND tenant_id = $2
@@ -903,7 +907,7 @@ func (s *AllianceStore) ScanPermissionRows(rows pgx.Rows) ([]domain.AlliancePerm
 
 func (s *AllianceStore) CreatePermission(ctx context.Context, p *domain.AlliancePermission) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_permissions (id, tenant_id, account_name, account_type,
 			enterprise_id, expert_id, is_enabled, resource_permissions, platform_permissions,
 			created_at, updated_at)
@@ -917,7 +921,7 @@ func (s *AllianceStore) CreatePermission(ctx context.Context, p *domain.Alliance
 }
 
 func (s *AllianceStore) UpdatePermission(ctx context.Context, id string, p *domain.AlliancePermission) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_permissions SET
 			account_name = $1, account_type = $2, enterprise_id = $3, expert_id = $4,
 			is_enabled = $5, resource_permissions = $6, platform_permissions = $7, updated_at = NOW()
@@ -928,7 +932,7 @@ func (s *AllianceStore) UpdatePermission(ctx context.Context, id string, p *doma
 }
 
 func (s *AllianceStore) DeletePermission(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_permissions WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_permissions WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -948,7 +952,7 @@ func (s *AllianceStore) ScanDictionaryRows(rows pgx.Rows) ([]domain.AllianceDict
 
 func (s *AllianceStore) CreateDictionary(ctx context.Context, d *domain.AllianceDictionary) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_dictionaries (id, tenant_id, dict_type, code, name, sort_order, created_at)
 		VALUES ($1,$2,$3,$4,$5,$6,NOW())
 	`, id, d.TenantID, d.DictType, d.Code, d.Name, d.SortOrder)
@@ -959,14 +963,14 @@ func (s *AllianceStore) CreateDictionary(ctx context.Context, d *domain.Alliance
 }
 
 func (s *AllianceStore) UpdateDictionary(ctx context.Context, id string, d *domain.AllianceDictionary) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_dictionaries SET name = $1, sort_order = $2 WHERE id = $3
 	`, d.Name, d.SortOrder, id)
 	return err
 }
 
 func (s *AllianceStore) DeleteDictionary(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_dictionaries WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_dictionaries WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -1002,7 +1006,7 @@ func (s *AllianceStore) ScanBrandRows(rows pgx.Rows) ([]domain.AllianceBrand, er
 
 func (s *AllianceStore) CreateBrand(ctx context.Context, b *domain.AllianceBrand) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_brands (id, tenant_id, brand_type, name, status, is_public,
 			is_featured, cover_image, cover_video, description, data,
 			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
@@ -1019,7 +1023,7 @@ func (s *AllianceStore) CreateBrand(ctx context.Context, b *domain.AllianceBrand
 }
 
 func (s *AllianceStore) UpdateBrand(ctx context.Context, id string, b *domain.AllianceBrand) error {
-	_, err := s.DB.Exec(ctx, `
+	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_brands SET
 			name = $1, status = $2, is_public = $3, is_featured = $4, cover_image = $5,
 			cover_video = $6, description = $7, data = $8,
@@ -1034,7 +1038,7 @@ func (s *AllianceStore) UpdateBrand(ctx context.Context, id string, b *domain.Al
 }
 
 func (s *AllianceStore) DeleteBrand(ctx context.Context, id, tenantID string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM alliance_brands WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.q.Exec(ctx, `DELETE FROM alliance_brands WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -1042,7 +1046,7 @@ func (s *AllianceStore) GetBrandByID(ctx context.Context, id, tenantID string) (
 	var b domain.AllianceBrand
 	var coverImage, coverVideo, description *string
 	var data json.RawMessage
-	err := s.DB.QueryRow(ctx, `
+	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
 			cover_image, cover_video, description, data,
 			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
@@ -1065,7 +1069,7 @@ func (s *AllianceStore) GetBrandByID(ctx context.Context, id, tenantID string) (
 // ===== handler 直写 DB 收编 =====
 
 // queryList 执行查询并用 scan 扫描全部行；扫描错误被忽略（与公开列表原行为一致）。
-func queryList[T any](ctx context.Context, db *pgxpool.Pool, scan func(pgx.Rows) ([]T, error), query string, args ...any) ([]T, error) {
+func queryList[T any](ctx context.Context, db Queryer, scan func(pgx.Rows) ([]T, error), query string, args ...any) ([]T, error) {
 	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -1076,7 +1080,7 @@ func queryList[T any](ctx context.Context, db *pgxpool.Pool, scan func(pgx.Rows)
 }
 
 // queryOne 执行查询并返回第一行；无行时返回 pgx.ErrNoRows。
-func queryOne[T any](ctx context.Context, db *pgxpool.Pool, scan func(pgx.Rows) ([]T, error), query string, args ...any) (*T, error) {
+func queryOne[T any](ctx context.Context, db Queryer, scan func(pgx.Rows) ([]T, error), query string, args ...any) (*T, error) {
 	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -1093,7 +1097,7 @@ func queryOne[T any](ctx context.Context, db *pgxpool.Pool, scan func(pgx.Rows) 
 }
 
 func (s *AllianceStore) ListEnterpriseAgreements(ctx context.Context, enterpriseID string) ([]domain.AllianceEnterpriseAgreement, error) {
-	rows, err := s.DB.Query(ctx, `
+	rows, err := s.q.Query(ctx, `
 		SELECT id, tenant_id, enterprise_id, name, type, start_date, end_date,
 			status, content, attachments, created_at, updated_at
 		FROM alliance_enterprise_agreements
@@ -1108,7 +1112,7 @@ func (s *AllianceStore) ListEnterpriseAgreements(ctx context.Context, enterprise
 }
 
 func (s *AllianceStore) ListMilestones(ctx context.Context, projectID string) ([]domain.AllianceProjectMilestone, error) {
-	return queryList(ctx, s.DB, s.ScanMilestoneRows, `
+	return queryList(ctx, s.q, s.ScanMilestoneRows, `
 		SELECT id, tenant_id, project_id, name, description, due_date, completed_date,
 			is_completed, sort_order, created_at, updated_at
 		FROM alliance_project_milestones WHERE project_id = $1 ORDER BY sort_order ASC
@@ -1116,7 +1120,7 @@ func (s *AllianceStore) ListMilestones(ctx context.Context, projectID string) ([
 }
 
 func (s *AllianceStore) GetPermissionByID(ctx context.Context, id, tenantID string) (*domain.AlliancePermission, error) {
-	return queryOne(ctx, s.DB, s.ScanPermissionRows, `
+	return queryOne(ctx, s.q, s.ScanPermissionRows, `
 		SELECT id, tenant_id, account_name, account_type, enterprise_id, expert_id,
 			is_enabled, resource_permissions, platform_permissions, created_at, updated_at
 		FROM alliance_permissions WHERE id = $1 AND tenant_id = $2
@@ -1124,7 +1128,7 @@ func (s *AllianceStore) GetPermissionByID(ctx context.Context, id, tenantID stri
 }
 
 func (s *AllianceStore) ListDictionaries(ctx context.Context, dictType, tenantID string) ([]domain.AllianceDictionary, error) {
-	return queryList(ctx, s.DB, s.ScanDictionaryRows, `
+	return queryList(ctx, s.q, s.ScanDictionaryRows, `
 		SELECT id, tenant_id, dict_type, code, name, sort_order, created_at
 		FROM alliance_dictionaries WHERE dict_type = $1 AND tenant_id = $2 ORDER BY sort_order ASC
 	`, dictType, tenantID)
@@ -1133,7 +1137,7 @@ func (s *AllianceStore) ListDictionaries(ctx context.Context, dictType, tenantID
 // ===== 公开查询（门户前台） =====
 
 func (s *AllianceStore) ListPublicEnterprises(ctx context.Context) ([]domain.AllianceEnterprise, error) {
-	return queryList(ctx, s.DB, s.ScanEnterpriseRows, `
+	return queryList(ctx, s.q, s.ScanEnterpriseRows, `
 		SELECT id, tenant_id, name, enterprise_type, industry, region, description, logo_url,
 			cover_image, status, rating, cooperation_types, contact_person, contact_phone,
 			contact_email, address, unified_social_credit_code, established_year, employee_count,
@@ -1145,7 +1149,7 @@ func (s *AllianceStore) ListPublicEnterprises(ctx context.Context) ([]domain.All
 }
 
 func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id string) (*domain.AllianceEnterprise, error) {
-	return queryOne(ctx, s.DB, s.ScanEnterpriseRows, `
+	return queryOne(ctx, s.q, s.ScanEnterpriseRows, `
 		SELECT id, tenant_id, name, enterprise_type, industry, region, description,
 			logo_url, cover_image, status, rating, cooperation_types, contact_person,
 			contact_phone, contact_email, address, unified_social_credit_code,
@@ -1157,7 +1161,7 @@ func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id string) 
 }
 
 func (s *AllianceStore) ListPublicProjects(ctx context.Context) ([]domain.AllianceProject, error) {
-	return queryList(ctx, s.DB, s.ScanProjectRows, `
+	return queryList(ctx, s.q, s.ScanProjectRows, `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
 			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_by, created_at, updated_at
@@ -1167,7 +1171,7 @@ func (s *AllianceStore) ListPublicProjects(ctx context.Context) ([]domain.Allian
 }
 
 func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id string) (*domain.AllianceProject, error) {
-	return queryOne(ctx, s.DB, s.ScanProjectRows, `
+	return queryOne(ctx, s.q, s.ScanProjectRows, `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
 			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_by, created_at, updated_at
@@ -1176,7 +1180,7 @@ func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id string) (*d
 }
 
 func (s *AllianceStore) ListPublicAchievements(ctx context.Context) ([]domain.AllianceAchievement, error) {
-	return queryList(ctx, s.DB, s.ScanAchievementRows, `
+	return queryList(ctx, s.q, s.ScanAchievementRows, `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
 			attachments, citation_reason, images, owner_persons, co_builders,
 			enterprise_ids, project_ids, related_positions, related_scenes,
@@ -1187,7 +1191,7 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context) ([]domain.Al
 }
 
 func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id string) (*domain.AllianceAchievement, error) {
-	return queryOne(ctx, s.DB, s.ScanAchievementRows, `
+	return queryOne(ctx, s.q, s.ScanAchievementRows, `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
 			attachments, citation_reason, images, owner_persons, co_builders,
 			enterprise_ids, project_ids, related_positions, related_scenes,
@@ -1197,7 +1201,7 @@ func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id string)
 }
 
 func (s *AllianceStore) ListPublicExperts(ctx context.Context) ([]domain.AllianceExpert, error) {
-	return queryList(ctx, s.DB, s.ScanExpertRows, `
+	return queryList(ctx, s.q, s.ScanExpertRows, `
 		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
 			professional_fields, specialties, experience_years, education, introduction,
 			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
@@ -1208,7 +1212,7 @@ func (s *AllianceStore) ListPublicExperts(ctx context.Context) ([]domain.Allianc
 }
 
 func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id string) (*domain.AllianceExpert, error) {
-	return queryOne(ctx, s.DB, s.ScanExpertRows, `
+	return queryOne(ctx, s.q, s.ScanExpertRows, `
 		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
 			professional_fields, specialties, experience_years, education, introduction,
 			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
@@ -1229,11 +1233,11 @@ func (s *AllianceStore) ListPublicBrands(ctx context.Context, brandType string) 
 		args = append(args, brandType)
 	}
 	query += " ORDER BY sort_order ASC, created_at DESC"
-	return queryList(ctx, s.DB, s.ScanBrandRows, query, args...)
+	return queryList(ctx, s.q, s.ScanBrandRows, query, args...)
 }
 
 func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.AllianceBrand, error) {
-	return queryOne(ctx, s.DB, s.ScanBrandRows, `
+	return queryOne(ctx, s.q, s.ScanBrandRows, `
 		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
 			cover_image, cover_video, description, data,
 			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
@@ -1253,10 +1257,10 @@ type AlliancePublicStats struct {
 
 func (s *AllianceStore) GetPublicStats(ctx context.Context) AlliancePublicStats {
 	var st AlliancePublicStats
-	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_enterprises WHERE is_public = true AND status = 'active'`).Scan(&st.EnterpriseCount)
-	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_projects WHERE is_public = true AND publish_status = 'published'`).Scan(&st.ProjectCount)
-	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_experts WHERE is_public = true AND status = 'active'`).Scan(&st.ExpertCount)
-	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_achievements WHERE is_public = true AND status = 'published'`).Scan(&st.AchievementCount)
-	s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`).Scan(&st.BrandCount)
+	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_enterprises WHERE is_public = true AND status = 'active'`).Scan(&st.EnterpriseCount)
+	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_projects WHERE is_public = true AND publish_status = 'published'`).Scan(&st.ProjectCount)
+	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_experts WHERE is_public = true AND status = 'active'`).Scan(&st.ExpertCount)
+	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_achievements WHERE is_public = true AND status = 'published'`).Scan(&st.AchievementCount)
+	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`).Scan(&st.BrandCount)
 	return st
 }

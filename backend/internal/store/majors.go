@@ -5,16 +5,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type MajorsStore struct {
-	DB *pgxpool.Pool
+	q Queryer
 }
 
-func NewMajorsStore(db *pgxpool.Pool) *MajorsStore {
-	return &MajorsStore{DB: db}
+// Q 返回底层查询器。
+func (s *MajorsStore) Q() Queryer {
+	return s.q
+}
+
+func NewMajorsStore(q Queryer) *MajorsStore {
+	return &MajorsStore{q: q}
 }
 
 type MajorCreateParams struct {
@@ -35,7 +39,7 @@ type MajorUpdateParams struct {
 func (s *MajorsStore) GetByID(ctx context.Context, id string) (domain.Major, error) {
 	var m domain.Major
 	var alias *string
-	err := s.DB.QueryRow(ctx,
+	err := s.q.QueryRow(ctx,
 		`SELECT id, tenant_id, code, name, alias, enabled, created_at, updated_at FROM majors WHERE id = $1`, id,
 	).Scan(&m.ID, &m.TenantID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
@@ -47,7 +51,7 @@ func (s *MajorsStore) GetByID(ctx context.Context, id string) (domain.Major, err
 
 func (s *MajorsStore) Create(ctx context.Context, p MajorCreateParams) (string, error) {
 	id := uuid.NewString()
-	_, err := s.DB.Exec(ctx,
+	_, err := s.q.Exec(ctx,
 		`INSERT INTO majors (id, tenant_id, code, name, alias, enabled, created_at, updated_at) VALUES ($1,$2,$3,normalize($4,NFKC),normalize($5,NFKC),$6,NOW(),NOW())`,
 		id, p.TenantID, p.Code, p.Name, p.Alias, p.Enabled,
 	)
@@ -58,7 +62,7 @@ func (s *MajorsStore) Create(ctx context.Context, p MajorCreateParams) (string, 
 }
 
 func (s *MajorsStore) Update(ctx context.Context, id string, p MajorUpdateParams) error {
-	_, err := s.DB.Exec(ctx,
+	_, err := s.q.Exec(ctx,
 		`UPDATE majors SET code=$1, name=normalize($2,NFKC), alias=normalize($3,NFKC), enabled=$4, updated_at=NOW() WHERE id=$5`,
 		p.Code, p.Name, p.Alias, p.Enabled, id,
 	)
@@ -67,12 +71,12 @@ func (s *MajorsStore) Update(ctx context.Context, id string, p MajorUpdateParams
 
 func (s *MajorsStore) CountUserRefs(ctx context.Context, majorID string) (int, error) {
 	var count int
-	err := s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE major_id = $1`, majorID).Scan(&count)
+	err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE major_id = $1`, majorID).Scan(&count)
 	return count, err
 }
 
 func (s *MajorsStore) Delete(ctx context.Context, id string) error {
-	_, err := s.DB.Exec(ctx, `DELETE FROM majors WHERE id = $1`, id)
+	_, err := s.q.Exec(ctx, `DELETE FROM majors WHERE id = $1`, id)
 	return err
 }
 

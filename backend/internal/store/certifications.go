@@ -23,7 +23,7 @@ func NewCertificationStore(q Queryer) *CertificationStore {
 
 // PublishedTarget 已发布认证规则对应的租户+岗位组合。
 type PublishedTarget struct {
-	TenantID  string
+	TenantID   string
 	PositionID string
 }
 

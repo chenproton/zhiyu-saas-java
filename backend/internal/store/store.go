@@ -82,6 +82,16 @@ type Store struct {
 	auth             *AuthStore
 	trainingPrograms *TrainingProgramStore
 	contentActions   *ContentActionStore
+	orgTypes         *OrgTypesStore
+	roles            *RolesStore
+	majors           *MajorsStore
+	industries       *IndustriesStore
+	staffTitles      *StaffTitlesStore
+	learnRoads       *LearnRoadsStore
+	certLib          *CertificateLibraryStore
+	microCerts       *MicroCertStore
+	onSiteQuestions  *OnSiteQuestionLibraryStore
+	alliance         *AllianceStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -149,6 +159,16 @@ func New(db *pgxpool.Pool) *Store {
 		auth:             NewAuthStore(db),
 		trainingPrograms: NewTrainingProgramStore(db),
 		contentActions:   NewContentActionStore(db, db),
+		orgTypes:         NewOrgTypesStore(db),
+		roles:            NewRolesStore(db, db),
+		majors:           NewMajorsStore(db),
+		industries:       NewIndustriesStore(db),
+		staffTitles:      NewStaffTitlesStore(db),
+		learnRoads:       NewLearnRoadsStore(db),
+		certLib:          NewCertificateLibraryStore(db),
+		microCerts:       NewMicroCertStore(db, db),
+		onSiteQuestions:  NewOnSiteQuestionLibraryStore(db),
+		alliance:         NewAllianceStore(db),
 	}
 }
 
@@ -217,6 +237,16 @@ func NewWithTx(tx pgx.Tx) *Store {
 		auth:             NewAuthStore(tx),
 		trainingPrograms: NewTrainingProgramStore(tx),
 		contentActions:   NewContentActionStore(tx, nil),
+		orgTypes:         NewOrgTypesStore(tx),
+		roles:            NewRolesStore(tx, nil),
+		majors:           NewMajorsStore(tx),
+		industries:       NewIndustriesStore(tx),
+		staffTitles:      NewStaffTitlesStore(tx),
+		learnRoads:       NewLearnRoadsStore(tx),
+		certLib:          NewCertificateLibraryStore(tx),
+		microCerts:       NewMicroCertStore(tx, nil),
+		onSiteQuestions:  NewOnSiteQuestionLibraryStore(tx),
+		alliance:         NewAllianceStore(tx),
 	}
 }
 
@@ -550,4 +580,54 @@ func (s *Store) Begin(ctx context.Context) (pgx.Tx, error) {
 		return nil, pgx.ErrTxClosed
 	}
 	return pool.Begin(ctx)
+}
+
+// OrgTypes 返回组织类型 store。
+func (s *Store) OrgTypes() *OrgTypesStore {
+	return s.orgTypes
+}
+
+// Roles 返回角色 store。
+func (s *Store) Roles() *RolesStore {
+	return s.roles
+}
+
+// Majors 返回专业 store。
+func (s *Store) Majors() *MajorsStore {
+	return s.majors
+}
+
+// Industries 返回行业 store。
+func (s *Store) Industries() *IndustriesStore {
+	return s.industries
+}
+
+// StaffTitles 返回职称 store。
+func (s *Store) StaffTitles() *StaffTitlesStore {
+	return s.staffTitles
+}
+
+// LearnRoads 返回学习路径 store。
+func (s *Store) LearnRoads() *LearnRoadsStore {
+	return s.learnRoads
+}
+
+// CertificateLibrary 返回证书库 store。
+func (s *Store) CertificateLibrary() *CertificateLibraryStore {
+	return s.certLib
+}
+
+// MicroCerts 返回微证书 store。
+func (s *Store) MicroCerts() *MicroCertStore {
+	return s.microCerts
+}
+
+// OnSiteQuestions 返回现场问答库 store。
+func (s *Store) OnSiteQuestions() *OnSiteQuestionLibraryStore {
+	return s.onSiteQuestions
+}
+
+// Alliance 返回联盟 store。
+func (s *Store) Alliance() *AllianceStore {
+	return s.alliance
 }
