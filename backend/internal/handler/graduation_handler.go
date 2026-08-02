@@ -235,9 +235,17 @@ func (h *GraduationHandler) ApplyTopic(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "课题已满员")
 		return
 	}
-	applied, err := h.Service.ApplyGraduationTopic(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	isNew, applied, err := h.Service.ApplyGraduationTopic(r.Context(), tenantID, id, claims.UserID, "initial")
 	if err != nil {
 		respondServerError(w, r, err, "申请课题失败")
+		return
+	}
+	if !isNew {
+		respondError(w, http.StatusBadRequest, "已申请过该课题")
 		return
 	}
 	if !applied {

@@ -78,16 +78,36 @@ func (s *GraduationStore) DeleteTopic(ctx context.Context, tx Queryer, id string
 	return err
 }
 
-// ApplyTopic 申请课题（原子递增，防超员）。
-func (s *GraduationStore) ApplyTopic(ctx context.Context, id string) (bool, error) {
+// ApplyTopic 申请课题：先记录申请人（唯一约束防重复报名），再原子递增防超员。
+// 返回 (是否新报名, 是否成功)。已报名过则 (false, true)。
+func (s *GraduationStore) ApplyTopic(ctx context.Context, tenantID, topicID, userID, phase string) (bool, bool, error) {
+	var applied bool
+	err := s.q.QueryRow(ctx, `
+		INSERT INTO graduation_project_archives (tenant_id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification)
+		VALUES ($1, $2, $3, $4, 'making', 0, NOW(), false)
+		ON CONFLICT (topic_id, user_id) DO NOTHING
+		RETURNING user_id
+	`, tenantID, topicID, userID, phase).Scan(&userID)
+	if err == pgx.ErrNoRows {
+		// 已报名过，不再占用名额
+		return false, true, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
 	tag, err := s.q.Exec(ctx, `
 		UPDATE graduation_project_topics SET applied_count = applied_count + 1 
 		WHERE id = $1 AND applied_count < capacity
-	`, id)
+	`, topicID)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
-	return tag.RowsAffected() > 0, nil
+	applied = tag.RowsAffected() > 0
+	if !applied {
+		// 满员回滚报名记录
+		_, _ = s.q.Exec(ctx, `DELETE FROM graduation_project_archives WHERE topic_id = $1 AND user_id = $2`, topicID, userID)
+	}
+	return true, applied, nil
 }
 
 // GraduationTopicParams 课题参数。

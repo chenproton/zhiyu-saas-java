@@ -731,8 +731,8 @@ func (s *EvaluationService) DeleteGraduationTopic(ctx context.Context, id string
 }
 
 // ApplyGraduationTopic 申请课题。
-func (s *EvaluationService) ApplyGraduationTopic(ctx context.Context, id string) (bool, error) {
-	return s.st.Graduations().ApplyTopic(ctx, id)
+func (s *EvaluationService) ApplyGraduationTopic(ctx context.Context, tenantID, topicID, userID, phase string) (bool, bool, error) {
+	return s.st.Graduations().ApplyTopic(ctx, tenantID, topicID, userID, phase)
 }
 
 // ListGraduationArchives 查询档案列表。
