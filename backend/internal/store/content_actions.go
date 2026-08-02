@@ -124,8 +124,13 @@ func (s *ContentActionStore) Transition(ctx context.Context, table, id string, t
 	}
 	defer tx.Rollback(ctx)
 
-	if _, err := tx.Exec(ctx, `UPDATE `+tbl+` SET status = $1, updated_at = NOW() WHERE id = $2`, to, id); err != nil {
+	// CAS 更新：仅当状态仍为读取时的值才流转，防止并发双发重复触发 hook（如发布时生成测评资源）
+	tag, err := tx.Exec(ctx, `UPDATE `+tbl+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, to, id, current)
+	if err != nil {
 		return fmt.Errorf("update status: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("status changed concurrently")
 	}
 
 	// 从审批中撤回时，同步删除审批中心对应的待审批记录
