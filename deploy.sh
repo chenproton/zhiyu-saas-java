@@ -903,7 +903,8 @@ if [[ -f "$NGINX_CONF" ]]; then
 
   # ── Nginx 重载/启动（分层降级，兼容无 systemd 的容器/沙箱环境）──
   # 1. systemctl 可用 → 正常 reload/start
-  # 2. systemctl 不可用或失败 → 信号重载（nginx -s reload）/ 直接启动
+  # 2. systemctl 不可用（无 systemd / system bus 受限，如沙箱）→ 直接走信号重载，
+  #    不再输出"启动失败"式告警
   # 3. 仍失败但 nginx 已在目标端口提供服务 → 降级为 warn 跳过（配置已通过 nginx -t，
   #    新配置将在下次进程重启时生效），不中断部署、不阻塞后续自动合并
   nginx_is_serving() {
@@ -915,13 +916,24 @@ if [[ -f "$NGINX_CONF" ]]; then
     return 0
   }
 
+  # systemctl 是否可用：命令存在 且 system bus 可达
+  # （Permission denied / Failed to connect 时输出为空，判定为不可用）
+  systemctl_usable() {
+    command -v systemctl >/dev/null 2>&1 || return 1
+    [[ -n "$(systemctl is-system-running 2>/dev/null)" ]]
+  }
+
   reload_or_start_nginx() {
-    if systemctl is-active nginx >/dev/null 2>&1; then
-      systemctl reload nginx 2>/dev/null && { log "Nginx 重载成功"; return 0; }
-      warn "systemctl 重载失败，尝试信号重载"
+    if systemctl_usable; then
+      if systemctl is-active nginx >/dev/null 2>&1; then
+        systemctl reload nginx 2>/dev/null && { log "Nginx 重载成功"; return 0; }
+        warn "systemctl 重载失败，尝试信号重载"
+      else
+        systemctl start nginx 2>/dev/null && { log "Nginx 启动成功"; return 0; }
+        warn "systemctl 启动失败，尝试信号重载"
+      fi
     else
-      systemctl start nginx 2>/dev/null && { log "Nginx 启动成功"; return 0; }
-      warn "systemctl 不可用或启动失败，尝试直接启动"
+      log "systemctl 不可用，直接使用信号方式重载 Nginx"
     fi
 
     if { pidof nginx >/dev/null 2>&1 || pgrep -x nginx >/dev/null 2>&1; }; then
