@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -17,14 +17,9 @@ type OrgTypeHandler struct {
 	Store   *store.OrgTypesStore
 }
 
-type CreateOrgTypeRequest struct {
+// OrgTypeRequest 组织类型创建/更新请求体（更新流程忽略 tenantId）。
+type OrgTypeRequest struct {
 	TenantID    string                 `json:"tenantId"`
-	Name        string                 `json:"name"`
-	Category    domain.OrgTypeCategory `json:"category"`
-	Description *string                `json:"description"`
-}
-
-type UpdateOrgTypeRequest struct {
 	Name        string                 `json:"name"`
 	Category    domain.OrgTypeCategory `json:"category"`
 	Description *string                `json:"description"`
@@ -59,147 +54,91 @@ func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.OrgType]{Items: items, Total: total})
 }
 
+// crud 返回组织类型 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *OrgTypeHandler) crud() crudConfig[OrgTypeRequest, domain.OrgType] {
+	return crudConfig[OrgTypeRequest, domain.OrgType]{
+		NotFoundMsg:        "组织类型不存在",
+		CreateErrMsg:       "创建组织类型失败",
+		UpdateErrMsg:       "更新组织类型失败",
+		DeleteErrMsg:       "删除组织类型失败",
+		DeleteCheckErrMsg:  "检查组织类型引用失败",
+		Permit:             func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		UniqueViolationMsg: "组织类型名称已存在，请使用其他名称",
+		CheckOwnership:     true,
+		GetOwnership:       true,
+		ValidateCreate: func(t *OrgTypeRequest) string {
+			if t.TenantID == "" || t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *OrgTypeRequest) (string, bool) {
+			return t.TenantID, verifyRequestTenant(w, r, t.TenantID)
+		},
+		PrepareCreate: func(t *OrgTypeRequest, tenantID, userID string) {
+			if t.Category != domain.OrgTypeCategoryInternal && t.Category != domain.OrgTypeCategoryBusiness && t.Category != domain.OrgTypeCategoryExternal {
+				t.Category = domain.OrgTypeCategoryInternal
+			}
+		},
+		ValidateUpdate: func(t *OrgTypeRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			if t.Category != domain.OrgTypeCategoryInternal && t.Category != domain.OrgTypeCategoryBusiness && t.Category != domain.OrgTypeCategoryExternal {
+				return "无效分类"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *OrgTypeRequest, tenantID, userID string) (string, error) {
+			return h.Store.Create(ctx, store.OrgTypeCreateParams{
+				TenantID:    tenantID,
+				Name:        t.Name,
+				Category:    string(t.Category),
+				Description: t.Description,
+			})
+		},
+		UpdateFn: func(ctx context.Context, id string, t *OrgTypeRequest) error {
+			return h.Store.Update(ctx, id, store.OrgTypeUpdateParams{
+				Name:        t.Name,
+				Category:    string(t.Category),
+				Description: t.Description,
+			})
+		},
+		DeleteFn: h.Store.Delete,
+		GetByIDFn: func(ctx context.Context, id string) (domain.OrgType, error) {
+			return h.Store.GetByID(ctx, id)
+		},
+		TenantIDFn: func(t *domain.OrgType) string { return t.TenantID },
+		DeleteChecks: []func(ctx context.Context, t *domain.OrgType) (string, error){
+			func(ctx context.Context, t *domain.OrgType) (string, error) {
+				if t.IsDefault {
+					return "系统默认组织类型不可删除", nil
+				}
+				count, err := h.Store.CountOrgRefs(ctx, t.ID)
+				if err != nil {
+					return "", err
+				}
+				if count > 0 {
+					return "该组织类型仍被组织使用，不可删除", nil
+				}
+				return "", nil
+			},
+		},
+	}
+}
+
 func (h *OrgTypeHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	orgType, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "组织类型不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, orgType.TenantID) {
-		return
-	}
-	respondJSON(w, http.StatusOK, orgType)
+	crudGet(w, r, h.crud())
 }
 
 func (h *OrgTypeHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	var req CreateOrgTypeRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-
-	if req.TenantID == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	if !verifyRequestTenant(w, r, req.TenantID) {
-		return
-	}
-
-	if req.Category != domain.OrgTypeCategoryInternal && req.Category != domain.OrgTypeCategoryBusiness && req.Category != domain.OrgTypeCategoryExternal {
-		req.Category = domain.OrgTypeCategoryInternal
-	}
-
-	id, err := h.Store.Create(r.Context(), store.OrgTypeCreateParams{
-		TenantID:    req.TenantID,
-		Name:        req.Name,
-		Category:    string(req.Category),
-		Description: req.Description,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
-			return
-		}
-		respondServerError(w, r, err, "创建组织类型失败")
-		return
-	}
-
-	orgType, _ := h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusCreated, orgType)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	orgType, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "组织类型不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, orgType.TenantID) {
-		return
-	}
-
-	var req UpdateOrgTypeRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	if req.Category != domain.OrgTypeCategoryInternal && req.Category != domain.OrgTypeCategoryBusiness && req.Category != domain.OrgTypeCategoryExternal {
-		respondError(w, http.StatusBadRequest, "无效分类")
-		return
-	}
-
-	err = h.Store.Update(r.Context(), id, store.OrgTypeUpdateParams{
-		Name:        req.Name,
-		Category:    string(req.Category),
-		Description: req.Description,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
-			return
-		}
-		respondServerError(w, r, err, "更新组织类型失败")
-		return
-	}
-
-	orgType, _ = h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusOK, orgType)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	orgType, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "组织类型不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, orgType.TenantID) {
-		return
-	}
-
-	if orgType.IsDefault {
-		respondError(w, http.StatusConflict, "系统默认组织类型不可删除")
-		return
-	}
-
-	refCount, err := h.Store.CountOrgRefs(r.Context(), id)
-	if err != nil {
-		respondServerError(w, r, err, "检查组织类型引用失败")
-		return
-	}
-	if refCount > 0 {
-		respondError(w, http.StatusConflict, "该组织类型仍被组织使用，不可删除")
-		return
-	}
-
-	if err := h.Store.Delete(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除组织类型失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

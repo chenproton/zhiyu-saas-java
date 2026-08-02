@@ -1,15 +1,10 @@
 /**
- * @deprecated This file contains legacy/alternative type definitions that duplicate
- * the canonical types in `job.ts`. The canonical names are:
- *   Position → CareerPosition
- *   Ability → AbilityPoint
- *   Batch → JobBatch
- *   PositionResponsibility → PositionResponsibility (canonical in job.ts)
- *   PositionAbilityBinding → PositionAbilityBinding (canonical in job.ts)
- *   PositionRecommendation → PositionRecommendation (canonical in job.ts)
- *   AbilityModel/AbilityGraphNode → removed from canonical model
- *   COMPETENCY_LEVEL_LABELS → use getStatusConfig() from status.ts
- * When adding new code, import from `job.ts` instead.
+ * 本地工作模型（编辑态视图）：岗位构建器/管理端列表使用的嵌套结构
+ * （Position 内嵌 responsibilities/certificates/abilityBindings/abilityDomains），
+ * 与 `job.ts` 的 API 扁平模型（CareerPosition 及独立子列表）互为两种视图，
+ * 通过 `apps/edu/lib/converters/job-converters.ts` 在页面消费处显式互转。
+ * 新增代码按视图语义选择：消费后端响应用 `job.ts`，构建器内部状态用本文件；
+ * 不要在本文件新增与 job.ts 同名同义的实体，避免两视图边界模糊。
  */
 
 // 用户角色类型

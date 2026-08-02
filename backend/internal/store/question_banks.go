@@ -101,35 +101,32 @@ func (s *QuestionBankStore) Update(ctx context.Context, id string, p *QuestionBa
 	if s.beginner == nil {
 		return nil, errors.New("question bank store: queryer does not support transactions")
 	}
-	tx, err := s.beginner.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	if _, err := tx.Exec(ctx, `
-		UPDATE question_banks SET name = $1, description = $2, cover_image = $3,
-			collaborator_ids = $4, collaborator_dept_ids = $5, batch_id = $6, updated_at = NOW()
-		WHERE id = $7
-	`, p.Name, p.Description, p.CoverImage, p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID, id); err != nil {
-		return nil, err
-	}
-	if _, err := tx.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id); err != nil {
-		return nil, err
-	}
-	for _, kpID := range p.KnowledgePointIDs {
-		if kpID == "" {
-			continue
-		}
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
-			VALUES (gen_random_uuid(), $1, $2, $3)
-			ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
-		`, p.TenantID, id, kpID); err != nil {
-			return nil, err
+			UPDATE question_banks SET name = $1, description = $2, cover_image = $3,
+				collaborator_ids = $4, collaborator_dept_ids = $5, batch_id = $6, updated_at = NOW()
+			WHERE id = $7
+		`, p.Name, p.Description, p.CoverImage, p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID, id); err != nil {
+			return err
 		}
-	}
-	if err := tx.Commit(ctx); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id); err != nil {
+			return err
+		}
+		for _, kpID := range p.KnowledgePointIDs {
+			if kpID == "" {
+				continue
+			}
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
+				VALUES (gen_random_uuid(), $1, $2, $3)
+				ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
+			`, p.TenantID, id, kpID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return s.Get(ctx, id)

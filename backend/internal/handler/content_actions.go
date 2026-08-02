@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -90,7 +89,7 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 
 // transitionWithHook 与 transition 相同，但在事务提交前调用 hook。
 // hook 可用于在状态流转的同时创建/更新关联资源，保持原子性。
-func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Request, status domain.ContentStatus, hook func(tx pgx.Tx, id string) error) {
+func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Request, status domain.ContentStatus, hook func(txStore *store.Store, id string) error) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return

@@ -1,13 +1,12 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -17,14 +16,8 @@ type CertificateLibraryHandler struct {
 	Store   *store.CertificateLibraryStore
 }
 
-type CreateCertificateLibraryRequest struct {
-	Name        string  `json:"name"`
-	URL         *string `json:"url"`
-	Description *string `json:"description"`
-	ImageURL    *string `json:"imageUrl"`
-}
-
-type UpdateCertificateLibraryRequest struct {
+// CertificateLibraryRequest 证书创建/更新请求体（均为可选字段，更新时按需合并）。
+type CertificateLibraryRequest struct {
 	Name        *string `json:"name"`
 	URL         *string `json:"url"`
 	Description *string `json:"description"`
@@ -59,133 +52,85 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, ListResponse[domain.CertificateLibraryItem]{Items: items, Total: total})
 }
 
-func (h *CertificateLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
+// crud 返回证书库 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *CertificateLibraryHandler) crud() crudConfig[CertificateLibraryRequest, domain.CertificateLibraryItem] {
+	return crudConfig[CertificateLibraryRequest, domain.CertificateLibraryItem]{
+		NotFoundMsg:  "证书不存在",
+		CreateErrMsg: "创建证书失败",
+		UpdateErrMsg: "更新证书失败",
+		DeleteErrMsg: "删除证书失败",
+		// 仅需登录即可查看/创建，更新/删除校验租户归属
+		CheckOwnership: true,
+		GetOwnership:   false,
+		ValidateCreate: func(t *CertificateLibraryRequest) string {
+			if t.Name == nil || *t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *CertificateLibraryRequest) (string, bool) {
+			return requireTenant(w, r)
+		},
+		CreateFn: func(ctx context.Context, t *CertificateLibraryRequest, tenantID, userID string) (string, error) {
+			return h.Store.Create(ctx, store.CertificateLibraryCreateParams{
+				TenantID:    tenantID,
+				Name:        *t.Name,
+				URL:         t.URL,
+				Description: t.Description,
+				ImageURL:    t.ImageURL,
+				CreatorID:   userID,
+			})
+		},
+		UpdateFn: func(ctx context.Context, id string, t *CertificateLibraryRequest) error {
+			existing, err := h.Store.GetByID(ctx, id)
+			if err != nil {
+				return err
+			}
+			updateName := existing.Name
+			if t.Name != nil {
+				updateName = *t.Name
+			}
+			updateURL := ""
+			if t.URL != nil {
+				updateURL = *t.URL
+			} else if existing.URL != nil {
+				updateURL = *existing.URL
+			}
+			updateDesc := t.Description
+			if updateDesc == nil {
+				updateDesc = existing.Description
+			}
+			updateImg := t.ImageURL
+			if updateImg == nil {
+				updateImg = existing.ImageURL
+			}
+			return h.Store.Update(ctx, id, store.CertificateLibraryUpdateParams{
+				Name:        updateName,
+				URL:         updateURL,
+				Description: updateDesc,
+				ImageURL:    updateImg,
+			})
+		},
+		DeleteFn: h.Store.Delete,
+		GetByIDFn: func(ctx context.Context, id string) (domain.CertificateLibraryItem, error) {
+			return h.Store.GetByID(ctx, id)
+		},
+		TenantIDFn: func(t *domain.CertificateLibraryItem) string { return t.TenantID },
 	}
+}
 
-	id := chi.URLParam(r, "id")
-	item, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "证书不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, item)
+func (h *CertificateLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
+	crudGet(w, r, h.crud())
 }
 
 func (h *CertificateLibraryHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	var req CreateCertificateLibraryRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	id, err := h.Store.Create(r.Context(), store.CertificateLibraryCreateParams{
-		TenantID:    tenantID,
-		Name:        req.Name,
-		URL:         req.URL,
-		Description: req.Description,
-		ImageURL:    req.ImageURL,
-		CreatorID:   claims.UserID,
-	})
-	if err != nil {
-		slog.Error("创建证书失败", "error", err)
-		respondServerError(w, r, err, "创建证书失败")
-		return
-	}
-
-	item, _ := h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusCreated, item)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	existing, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "证书不存在")
-		return
-	}
-
-	if !verifyTenantOwnership(w, r, existing.TenantID) {
-		return
-	}
-
-	var req UpdateCertificateLibraryRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-
-	updateName := existing.Name
-	if req.Name != nil {
-		updateName = *req.Name
-	}
-	updateURL := ""
-	if req.URL != nil {
-		updateURL = *req.URL
-	} else if existing.URL != nil {
-		updateURL = *existing.URL
-	}
-	updateDesc := req.Description
-	if updateDesc == nil {
-		updateDesc = existing.Description
-	}
-	updateImg := req.ImageURL
-	if updateImg == nil {
-		updateImg = existing.ImageURL
-	}
-
-	err = h.Store.Update(r.Context(), id, store.CertificateLibraryUpdateParams{
-		Name:        updateName,
-		URL:         updateURL,
-		Description: updateDesc,
-		ImageURL:    updateImg,
-	})
-	if err != nil {
-		slog.Error("更新证书失败", "error", err)
-		respondServerError(w, r, err, "更新证书失败")
-		return
-	}
-
-	item, _ := h.Store.GetByID(r.Context(), id)
-	respondJSON(w, http.StatusOK, item)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	existing, err := h.Store.GetByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "证书不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, existing.TenantID) {
-		return
-	}
-
-	if err := h.Store.Delete(r.Context(), id); err != nil {
-		slog.Error("删除证书失败", "error", err)
-		respondServerError(w, r, err, "删除证书失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

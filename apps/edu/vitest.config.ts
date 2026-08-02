@@ -8,8 +8,24 @@ export default defineConfig({
     include: ['lib/**/*.test.ts'],
   },
   resolve: {
-    alias: {
-      '@/*': path.resolve(__dirname, './*'),
-    },
+    alias: [
+      // 与 tsconfig.json paths 保持一致（更具体的路径在前，否则会被 @/ 前缀吞掉）
+      {
+        find: /^@\/lib\/types$/,
+        replacement: path.resolve(__dirname, '../../packages/shared-types/src/index.ts'),
+      },
+      {
+        find: /^@\/lib\/types\/(.*)$/,
+        replacement: path.resolve(__dirname, '../../packages/shared-types/src/$1'),
+      },
+      {
+        find: /^@\/lib\/utils$/,
+        replacement: path.resolve(__dirname, '../../packages/ui/src/lib/utils.ts'),
+      },
+      {
+        find: /^@\/(.*)$/,
+        replacement: path.resolve(__dirname, './$1'),
+      },
+    ],
   },
 })

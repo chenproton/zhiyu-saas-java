@@ -21,13 +21,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FormFieldRow } from '@/components/shared/form-field-row'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { MajorSelect } from '@/components/shared/major-select'
 
 import type { SystemCourseNode, NodeResource } from '@/lib/types/lesson-source'
 import type { Course, KnowledgePointItem } from '@/lib/types/lesson'
@@ -35,7 +29,6 @@ import {
   courseApi,
   knowledgeApi,
   fileApi,
-  majorApi,
   lessonBatchApi,
   courseResourceApi,
   resourceLibraryApi,
@@ -75,8 +68,6 @@ function AddGranularPageInner() {
   const [estimatedHours] = useState('')
   const [major, setMajor] = useState('')
   const [majorId, setMajorId] = useState('')
-  const [majorNames, setMajorNames] = useState<string[]>([])
-  const majorMapRef = useRef<Map<string, string>>(new Map())
   const [difficulty, setDifficulty] = useState<number>(0)
   const [coverImage, setCoverImage] = useState('')
   const [batchId, setBatchId] = useState('')
@@ -161,19 +152,6 @@ function AddGranularPageInner() {
     }
     load()
   }, [editId])
-
-  useEffect(() => {
-    majorApi
-      .list({ limit: 1000 })
-      .then((res) => {
-        const enabled = res.items.filter((m) => m.enabled)
-        setMajorNames(enabled.map((m) => m.name))
-        const map = new Map<string, string>()
-        enabled.forEach((m) => map.set(m.name, m.id))
-        majorMapRef.current = map
-      })
-      .catch(() => {})
-  }, [])
 
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
     const kpForCheck = knowledgePoints.map((kp) => ({
@@ -394,24 +372,14 @@ function AddGranularPageInner() {
                   />
                 </FormFieldRow>
                 <FormFieldRow label="所属专业" labelClassName="text-xs">
-                  <Select
-                    value={major}
-                    onValueChange={(v) => {
-                      setMajor(v)
-                      setMajorId(majorMapRef.current.get(v) || '')
+                  <MajorSelect
+                    value={majorId}
+                    onChange={(v, m) => {
+                      setMajorId(v || '')
+                      setMajor(m?.name || '')
                     }}
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="请选择适用专业" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {majorNames.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="请选择适用专业"
+                  />
                 </FormFieldRow>
                 <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
                 <div className="md:col-span-2">

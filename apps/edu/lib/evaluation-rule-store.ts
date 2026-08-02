@@ -101,7 +101,7 @@ export type EvalRuleAction =
   | { type: 'SET_CUSTOM_QUESTIONS'; questions: EvalRuleConfig['randomDrawCustomQuestions'] }
   | { type: 'SET_SELECTED_QUESTION_IDS'; ids: string[] }
 
-function reducer(state: EvalRuleState, action: EvalRuleAction): EvalRuleState {
+export function reducer(state: EvalRuleState, action: EvalRuleAction): EvalRuleState {
   // 浅拷贝顶层状态，各分支按需 spread 嵌套层级，避免每次 action 全量 JSON 序列化
   const next: EvalRuleState = { ...state }
 
