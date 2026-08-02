@@ -44,7 +44,7 @@ import type {
   WorkspaceClassPlan,
 } from '@/lib/types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import { type PrepAssociationRecord } from '../_data/mock-teacher-data'
+import { type PrepAssociationRecord } from '../_data/workspace-teacher-types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import {
   mockSignInData,
@@ -62,7 +62,7 @@ import {
   mockAssessmentDimensions,
   mockCompositeDistribution,
   mockStudentRanking,
-} from '../_data/mock-teacher-data'
+} from '../_data/workspace-teacher-types'
 import {
   BarChart,
   Bar,

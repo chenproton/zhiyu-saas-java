@@ -26,7 +26,7 @@ type AuthHandler struct {
 
 func NewAuthHandler(svc *service.AuthService, jwtSecret string) *AuthHandler {
 	h := &AuthHandler{Service: svc, JWTSecret: jwtSecret, stopCh: make(chan struct{})}
-	go func() {
+	goAsync(nil, func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
 		for {
@@ -42,7 +42,7 @@ func NewAuthHandler(svc *service.AuthService, jwtSecret string) *AuthHandler {
 				return
 			}
 		}
-	}()
+	})
 	return h
 }
 

@@ -56,7 +56,7 @@ import { ProfileTab } from './_components/profile-tab'
 import { MyScheduleTab } from './_components/my-schedule-tab'
 
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import type { PrepAssociationRecord } from './_data/mock-teacher-data'
+import type { PrepAssociationRecord } from './_data/workspace-teacher-types'
 import { TeacherDashboardTab } from './_components/teacher-dashboard-tab'
 import { TeacherCoursesTab } from './_components/teacher-courses-tab'
 import { TeacherPortraitsTab } from './_components/teacher-portraits-tab'

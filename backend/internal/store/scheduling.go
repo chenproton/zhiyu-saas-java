@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -422,20 +423,29 @@ func (s *SchedulingStore) ResolveCourseIDByCode(ctx context.Context, q Queryer, 
 // PlanEntryCourseID 查询教学计划条目的课程 ID。
 func (s *SchedulingStore) PlanEntryCourseID(ctx context.Context, q Queryer, entryID string) *string {
 	var courseID *string
-	_ = q.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, entryID).Scan(&courseID)
+	if err := q.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, entryID).Scan(&courseID); err != nil {
+		slog.Warn("plan entry course id query failed", "entryID", entryID, "error", err)
+		return nil
+	}
 	return courseID
 }
 
 // FallbackClassID 查询教学计划条目的班级（多班级优先）。
 func (s *SchedulingStore) FallbackClassID(ctx context.Context, entryID string) *string {
 	var fallbackClassID *string
-	_ = s.q.QueryRow(ctx, `
+	if err := s.q.QueryRow(ctx, `
 		SELECT ec.class_node_id FROM teaching_plan_entry_classes ec WHERE ec.entry_id = $1 LIMIT 1
-	`, entryID).Scan(&fallbackClassID)
+	`, entryID).Scan(&fallbackClassID); err != nil {
+		slog.Warn("fallback class id query failed", "entryID", entryID, "error", err)
+		return nil
+	}
 	if fallbackClassID == nil {
-		_ = s.q.QueryRow(ctx, `
+		if err := s.q.QueryRow(ctx, `
 			SELECT class_node_id FROM teaching_plan_entries WHERE id = $1
-		`, entryID).Scan(&fallbackClassID)
+		`, entryID).Scan(&fallbackClassID); err != nil {
+			slog.Warn("fallback class id (entry field) query failed", "entryID", entryID, "error", err)
+			return nil
+		}
 	}
 	return fallbackClassID
 }

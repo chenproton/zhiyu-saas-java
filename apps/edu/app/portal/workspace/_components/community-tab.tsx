@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SectionCard } from './section-card'
 import { StatCard } from './stat-card'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import { mockTopics } from '../_data/mock-student-data'
+import { mockTopics } from '../_data/workspace-student-types'
 
 const studyGroups = [
   { id: 'g1', name: '网络技术学习小组', members: 28, active: true },

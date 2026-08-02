@@ -156,16 +156,44 @@ func (s *BatchStore) TenantOf(ctx context.Context, table, id string) (string, er
 	return tenantID, err
 }
 
-// Create 创建批次（动态列）。
-func (s *BatchStore) Create(ctx context.Context, table string, cols []string, vals []any) error {
+// BatchCreateFields 创建批次字段（handler 只传数据，列名由 store 白名单拼接）。
+type BatchCreateFields struct {
+	Name       string
+	Code       *string
+	OrgNodeID  *string
+	MajorID    *string
+	WorkflowID *string
+	Status     string
+}
+
+// BatchUpdateFields 更新批次字段。
+type BatchUpdateFields struct {
+	Name       string
+	Code       *string
+	OrgNodeID  *string
+	MajorID    *string
+	WorkflowID *string
+	Status     *string
+}
+
+// CreateFields 创建批次（列名由 store 内置白名单拼接）。
+func (s *BatchStore) CreateFields(ctx context.Context, table string, fields BatchCreateFields, id string, tenantID *string, tenantScoped bool, extraCols []string, extraVals []any) error {
 	if _, err := SanitizeIdentifier(table, allowedBatchWriteTables); err != nil {
 		return err
 	}
-	for _, col := range cols {
+	cols := []string{"id", "name", "code", "org_node_id", "major_id", "workflow_id", "status"}
+	vals := []any{id, fields.Name, fields.Code, fields.OrgNodeID, fields.MajorID, fields.WorkflowID, fields.Status}
+	if tenantScoped {
+		cols = append(cols, "tenant_id")
+		vals = append(vals, tenantID)
+	}
+	for _, col := range extraCols {
 		if _, err := SanitizeIdentifier(col, allowedBatchWriteCols); err != nil {
 			return err
 		}
 	}
+	cols = append(cols, extraCols...)
+	vals = append(vals, extraVals...)
 	placeholders := make([]string, len(cols))
 	for i := range cols {
 		placeholders[i] = "$" + itoa(i+1)
@@ -175,18 +203,20 @@ func (s *BatchStore) Create(ctx context.Context, table string, cols []string, va
 	return err
 }
 
-// Update 更新批次（动态列）。
-func (s *BatchStore) Update(ctx context.Context, table string, setClauses []string, args []any) error {
+// UpdateFields 更新批次（列名由 store 内置白名单拼接）。
+func (s *BatchStore) UpdateFields(ctx context.Context, table string, fields BatchUpdateFields, id string) error {
 	if _, err := SanitizeIdentifier(table, allowedBatchWriteTables); err != nil {
 		return err
 	}
-	for _, clause := range setClauses {
-		col := clause[:strings.IndexByte(clause, ' ')]
-		if _, err := SanitizeIdentifier(col, allowedBatchWriteCols); err != nil {
-			return err
-		}
+	setClauses := []string{"name = $1", "code = $2", "org_node_id = $3", "major_id = $4", "workflow_id = $5", "updated_at = NOW()"}
+	args := []any{fields.Name, fields.Code, fields.OrgNodeID, fields.MajorID, fields.WorkflowID}
+	argIdx := 6
+	if fields.Status != nil {
+		setClauses = append(setClauses, "status = $"+itoa(argIdx))
+		args = append(args, *fields.Status)
+		argIdx++
 	}
-	argIdx := len(args)
+	args = append(args, id)
 	query := "UPDATE " + table + " SET " + strings.Join(setClauses, ", ") + " WHERE id = $" + itoa(argIdx)
 	_, err := s.q.Exec(ctx, query, args...)
 	return err
@@ -213,5 +243,5 @@ func (s *BatchStore) UpdateStatus(ctx context.Context, table, id, status string)
 // allowedBatchWriteCols 批次写列白名单。
 var allowedBatchWriteCols = []string{
 	"id", "name", "code", "org_node_id", "major_id", "workflow_id", "status", "tenant_id",
-	"created_at", "updated_at",
+	"course_count", "created_at", "updated_at",
 }

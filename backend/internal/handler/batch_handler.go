@@ -19,8 +19,8 @@ import (
 type batchService interface {
 	BatchQueryer() store.Queryer
 	BatchTenantOf(ctx context.Context, table, id string) (string, error)
-	BatchCreate(ctx context.Context, table string, cols []string, vals []any) error
-	BatchUpdate(ctx context.Context, table string, setClauses []string, args []any) error
+	BatchCreate(ctx context.Context, table string, fields store.BatchCreateFields, id string, tenantID *string, tenantScoped bool, extraCols []string, extraVals []any) error
+	BatchUpdate(ctx context.Context, table string, fields store.BatchUpdateFields, id string) error
 	BatchDelete(ctx context.Context, table, id string) error
 	BatchUpdateStatus(ctx context.Context, table, id, status string) error
 	BatchGetByTable(ctx context.Context, table, selectColumns, id string) (pgx.Row, error)
@@ -200,16 +200,15 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 		tenantID = claims.TenantID
 	}
 
-	cols := []string{"id", "name", "code", "org_node_id", "major_id", "workflow_id", "status"}
-	vals := []any{id, req.Name, req.Code, req.OrgNodeID, req.MajorID, req.WorkflowID, status}
-	if h.Config.TenantScoped {
-		cols = append(cols, "tenant_id")
-		vals = append(vals, tenantID)
+	fields := store.BatchCreateFields{
+		Name:       req.Name,
+		Code:       req.Code,
+		OrgNodeID:  req.OrgNodeID,
+		MajorID:    req.MajorID,
+		WorkflowID: req.WorkflowID,
+		Status:     status,
 	}
-	cols = append(cols, h.Config.CreateExtraCols...)
-	vals = append(vals, h.Config.CreateExtraVals...)
-
-	if err := h.Service.BatchCreate(r.Context(), h.Config.WriteTableName, cols, vals); err != nil {
+	if err := h.Service.BatchCreate(r.Context(), h.Config.WriteTableName, fields, id, tenantID, h.Config.TenantScoped, h.Config.CreateExtraCols, h.Config.CreateExtraVals); err != nil {
 		respondServerError(w, r, err, "创建"+h.Config.EntityName+"失败")
 		return
 	}
@@ -243,21 +242,22 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setClauses := []string{"name = $1", "code = $2", "org_node_id = $3", "major_id = $4", "workflow_id = $5", "updated_at = NOW()"}
-	args := []any{req.Name, req.Code, req.OrgNodeID, req.MajorID, req.WorkflowID}
-	argIdx := 6
+	fields := store.BatchUpdateFields{
+		Name:       req.Name,
+		Code:       req.Code,
+		OrgNodeID:  req.OrgNodeID,
+		MajorID:    req.MajorID,
+		WorkflowID: req.WorkflowID,
+	}
 	if h.Config.UpdateWithStatus {
 		status := h.Config.StatusOpen
 		if req.Status != "" {
 			status = req.Status
 		}
-		setClauses = append(setClauses, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
+		fields.Status = &status
 	}
-	args = append(args, id)
 
-	if err := h.Service.BatchUpdate(r.Context(), h.Config.WriteTableName, setClauses, args); err != nil {
+	if err := h.Service.BatchUpdate(r.Context(), h.Config.WriteTableName, fields, id); err != nil {
 		respondServerError(w, r, err, "更新"+h.Config.EntityName+"失败")
 		return
 	}

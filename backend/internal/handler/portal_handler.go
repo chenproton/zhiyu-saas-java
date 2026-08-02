@@ -53,17 +53,11 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 	if isSchoolAdmin {
 		var wg sync.WaitGroup
 		wg.Add(5)
-		go func() { defer wg.Done(); dash.Stats = h.schoolAdminStats(r.Context(), claims.TenantID) }()
-		go func() { defer wg.Done(); dash.ResourceStats = h.schoolAdminResourceStats(r.Context(), claims.TenantID) }()
-		go func() {
-			defer wg.Done()
-			dash.PersonnelStats = h.schoolAdminPersonnelStats(r.Context(), claims.TenantID)
-		}()
-		go func() {
-			defer wg.Done()
-			dash.ResourceGrowth = h.schoolAdminResourceGrowth(r.Context(), claims.TenantID, 12)
-		}()
-		go func() { defer wg.Done(); dash.Todos = h.schoolAdminTodos(r.Context(), claims.TenantID) }()
+		goAsync(&wg, func() { dash.Stats = h.schoolAdminStats(r.Context(), claims.TenantID) })
+		goAsync(&wg, func() { dash.ResourceStats = h.schoolAdminResourceStats(r.Context(), claims.TenantID) })
+		goAsync(&wg, func() { dash.PersonnelStats = h.schoolAdminPersonnelStats(r.Context(), claims.TenantID) })
+		goAsync(&wg, func() { dash.ResourceGrowth = h.schoolAdminResourceGrowth(r.Context(), claims.TenantID, 12) })
+		goAsync(&wg, func() { dash.Todos = h.schoolAdminTodos(r.Context(), claims.TenantID) })
 		wg.Wait()
 		dash.Schedule = []domain.WorkspaceScheduleEvent{}
 		respondJSON(w, http.StatusOK, dash)
@@ -72,35 +66,22 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 
 	var wg sync.WaitGroup
 	wg.Add(4)
-	go func() { defer wg.Done(); dash.Announcements = h.listAnnouncements(r.Context(), role, claims.TenantID) }()
-	go func() { defer wg.Done(); dash.Todos = h.listTodos(r.Context(), claims.UserID, claims.TenantID, role) }()
-	go func() {
-		defer wg.Done()
-		dash.Schedule = h.listSchedule(r.Context(), claims.UserID, claims.TenantID, role)
-	}()
-	go func() { defer wg.Done(); dash.Stats = h.stats(r.Context(), claims.UserID, claims.TenantID, isTeacher) }()
+	goAsync(&wg, func() { dash.Announcements = h.listAnnouncements(r.Context(), role, claims.TenantID) })
+	goAsync(&wg, func() { dash.Todos = h.listTodos(r.Context(), claims.UserID, claims.TenantID, role) })
+	goAsync(&wg, func() { dash.Schedule = h.listSchedule(r.Context(), claims.UserID, claims.TenantID, role) })
+	goAsync(&wg, func() { dash.Stats = h.stats(r.Context(), claims.UserID, claims.TenantID, isTeacher) })
 
 	if isTeacher {
 		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			dash.TeacherCourses = h.listTeacherCourses(r.Context(), claims.UserID, claims.TenantID)
-		}()
-		go func() {
-			defer wg.Done()
+		goAsync(&wg, func() { dash.TeacherCourses = h.listTeacherCourses(r.Context(), claims.UserID, claims.TenantID) })
+		goAsync(&wg, func() {
 			dash.ClassPlans, dash.ClassSessions = h.listTeacherClassPlansAndSessions(r.Context(), claims.UserID, claims.TenantID)
-		}()
+		})
 	} else {
 		wg.Add(3)
-		go func() {
-			defer wg.Done()
-			dash.Courses = h.listStudentCourses(r.Context(), claims.UserID, claims.TenantID)
-		}()
-		go func() {
-			defer wg.Done()
-			dash.SceneTasks = h.listStudentSceneTasks(r.Context(), claims.UserID, claims.TenantID)
-		}()
-		go func() { defer wg.Done(); dash.Exams = h.listStudentExams(r.Context(), claims.UserID, claims.TenantID) }()
+		goAsync(&wg, func() { dash.Courses = h.listStudentCourses(r.Context(), claims.UserID, claims.TenantID) })
+		goAsync(&wg, func() { dash.SceneTasks = h.listStudentSceneTasks(r.Context(), claims.UserID, claims.TenantID) })
+		goAsync(&wg, func() { dash.Exams = h.listStudentExams(r.Context(), claims.UserID, claims.TenantID) })
 	}
 	wg.Wait()
 	dash.LearningPath = []domain.WorkspaceLearningPath{}

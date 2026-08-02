@@ -141,13 +141,13 @@ func (s *ScenarioService) BatchTenantOf(ctx context.Context, table, id string) (
 }
 
 // BatchCreate 创建批次。
-func (s *ScenarioService) BatchCreate(ctx context.Context, table string, cols []string, vals []any) error {
-	return s.st.Batches().Create(ctx, table, cols, vals)
+func (s *ScenarioService) BatchCreate(ctx context.Context, table string, fields store.BatchCreateFields, id string, tenantID *string, tenantScoped bool, extraCols []string, extraVals []any) error {
+	return s.st.Batches().CreateFields(ctx, table, fields, id, tenantID, tenantScoped, extraCols, extraVals)
 }
 
 // BatchUpdate 更新批次。
-func (s *ScenarioService) BatchUpdate(ctx context.Context, table string, setClauses []string, args []any) error {
-	return s.st.Batches().Update(ctx, table, setClauses, args)
+func (s *ScenarioService) BatchUpdate(ctx context.Context, table string, fields store.BatchUpdateFields, id string) error {
+	return s.st.Batches().UpdateFields(ctx, table, fields, id)
 }
 
 // BatchDelete 删除批次。

@@ -27,12 +27,10 @@ type allianceListResponse struct {
 // ===== 学校信息 =====
 
 func (h *AllianceHandler) GetSchoolInfo(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
-	_ = claims
 
 	info, err := h.Store.GetSchoolInfo(r.Context(), tenantID)
 	if err != nil {
@@ -309,10 +307,6 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	tenantID := ""
-	if c := middleware.CurrentUser(r); c != nil && c.TenantID != nil {
-		tenantID = *c.TenantID
-	}
 
 	id := chi.URLParam(r, "id")
 	var m domain.AllianceProjectMilestone
@@ -324,7 +318,6 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "更新失败")
 		return
 	}
-	_ = tenantID
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
@@ -539,8 +532,7 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
+	if _, ok := requireTenant(w, r); !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -548,7 +540,6 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 	if !decodeBody(w, r, &p) {
 		return
 	}
-	_ = tenantID
 	if err := h.Store.UpdatePermission(r.Context(), id, &p); err != nil {
 		slog.Error("更新权限失败", "error", err)
 		respondServerError(w, r, err, "更新失败")

@@ -713,18 +713,20 @@ func TestGraduation(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("list archives: expected 200, got %d", w.Code)
 	}
-
-	w = env.Do("POST", "/api/v1/evaluation/graduation/archives", map[string]interface{}{
-		"topicId": topic.ID,
-		"userId":  testhelper.TestOperatorID,
-		"phase":   "proposal",
-	})
-	if w.Code != http.StatusCreated {
-		t.Fatalf("create archive: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
-	}
-	archive, err := testhelper.Unmarshal[domain.GraduationProjectArchive](w)
+	// apply 已自动创建档案（doc_status=making），此处验证而非重复创建
+	archives, _, err := testhelper.UnmarshalList[domain.GraduationProjectArchive](w)
 	if err != nil {
-		t.Fatalf("unmarshal archive: %v", err)
+		t.Fatalf("unmarshal archives: %v", err)
+	}
+	var archive *domain.GraduationProjectArchive
+	for i := range archives {
+		if archives[i].TopicID == topic.ID && archives[i].UserID == testhelper.TestOperatorID {
+			archive = &archives[i]
+			break
+		}
+	}
+	if archive == nil {
+		t.Fatal("expected archive auto-created by apply")
 	}
 	defer env.DB.Exec(ctx, "DELETE FROM graduation_project_archives WHERE id = $1", archive.ID)
 

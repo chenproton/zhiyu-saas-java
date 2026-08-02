@@ -471,7 +471,9 @@ func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {
 	ctx := context.Background()
 
 	// 清理旧测试数据，避免 UNIQUE 约束冲突
+	// 注意：先删引用方（archives/evaluations 的 FK 指向 topics），否则 topics 删除会因 FK 失败
 	tables := []string{
+		"graduation_project_archives", "graduation_project_evaluations", "graduation_query_results",
 		"learn_roads", "graduation_project_topics", "workflows",
 		"career_positions", "ability_points", "knowledge_points",
 		"exams", "question_banks", "scenarios", "courses",

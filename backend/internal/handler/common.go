@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -428,6 +429,21 @@ func getStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
 		return out
 	}
 	return nil
+}
+
+// goAsync 启动安全后台 goroutine：panic 记录日志不崩进程；wg 非空时自动 Done。
+func goAsync(wg *sync.WaitGroup, fn func()) {
+	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				slog.Error("background goroutine panic", "panic", rec)
+			}
+		}()
+		if wg != nil {
+			defer wg.Done()
+		}
+		fn()
+	}()
 }
 
 // recordViewAsync 异步记录视图计数，不阻塞详情读取；失败仅记日志。
