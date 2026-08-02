@@ -48,7 +48,9 @@ func (s *CourseHomeworkStore) SubmitCourseHomework(ctx context.Context, tenantID
 		INSERT INTO course_homework_submissions (tenant_id, course_id, homework_id, student_id, content, attachment_urls, status)
 		VALUES ($1, $2, $3, $4, $5, $6, 'submitted')
 		ON CONFLICT (homework_id, student_id)
-		DO UPDATE SET content = EXCLUDED.content, attachment_urls = EXCLUDED.attachment_urls, status = 'submitted', updated_at = NOW()
+		DO UPDATE SET content = EXCLUDED.content, attachment_urls = EXCLUDED.attachment_urls,
+			status = CASE WHEN course_homework_submissions.status = 'graded' THEN 'graded' ELSE 'submitted' END,
+			updated_at = NOW()
 		RETURNING id
 	`, tenantID, courseID, homeworkID, studentID, content, attachmentURLs).Scan(&submissionID)
 	return submissionID, err
@@ -108,7 +110,9 @@ func (s *CourseHomeworkStore) SubmitNodeHomework(ctx context.Context, tenantID, 
 		INSERT INTO node_homework_submissions (tenant_id, node_id, homework_id, student_id, content, attachment_urls, status)
 		VALUES ($1, $2, $3, $4, $5, $6, 'submitted')
 		ON CONFLICT (homework_id, student_id)
-		DO UPDATE SET content = EXCLUDED.content, attachment_urls = EXCLUDED.attachment_urls, status = 'submitted', updated_at = NOW()
+		DO UPDATE SET content = EXCLUDED.content, attachment_urls = EXCLUDED.attachment_urls,
+			status = CASE WHEN node_homework_submissions.status = 'graded' THEN 'graded' ELSE 'submitted' END,
+			updated_at = NOW()
 		RETURNING id
 	`, tenantID, nodeID, homeworkID, studentID, content, attachmentURLs).Scan(&submissionID)
 	return submissionID, err

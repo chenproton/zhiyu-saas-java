@@ -35,7 +35,7 @@ func (s *ExamResultStore) UsageExamInfo(ctx context.Context, usageID string) (st
 				NULLIF((SELECT total_score FROM exams WHERE id = exam_usages.exam_id), 0),
 				(SELECT COALESCE(SUM(score), 0) FROM exam_questions WHERE exam_id = exam_usages.exam_id)
 			)
-		FROM exam_usages WHERE id = $1
+		FROM exam_usages WHERE id = $1 AND status <> 'draft'
 	`, usageID).Scan(&examID, &totalScore)
 	return examID, totalScore, err
 }
