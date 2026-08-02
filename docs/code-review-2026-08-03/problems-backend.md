@@ -37,8 +37,8 @@
 | `store/scenarios.go:111` `Delete` | 引用已被 migration 102 删除的 `training_program_courses.scenario_id` 列 → 场景删除必炸 |
 | `store/node_evaluation_results.go:30` | nodeId 空字符串绑定 uuid 列 → 缺参时列表 500 |
 | `store/batch_configs.go` 各 SearchColumns | JOIN majors 后裸列 `name` 歧义 → 带搜索参数即报错 |
-| 前端 `rich-text-editor.tsx:46` | `toast.error` 不存在（toast 是函数非对象）→ 任何上传动作抛 TypeError |
-| 前端 `system/add/page.tsx:365` | 编辑模式 `contentCode` 硬编码 `CNT-SQL001` → 保存批量污染真实节点编码 |
+| 前端 `rich-text-editor.tsx:46` | `toast.error` 不存在（toast 是函数非对象）→ 任何上传动作抛 TypeError ✅ 已修复 |
+| 前端 `system/add/page.tsx:365` | 编辑模式 `contentCode` 硬编码 `CNT-SQL001` → 保存批量污染真实节点编码 ✅ 已修复 |
 
 ### 0.3 统计
 

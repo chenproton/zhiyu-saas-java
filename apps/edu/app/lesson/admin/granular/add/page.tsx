@@ -406,7 +406,6 @@ function AddGranularPageInner() {
                     minHeight={280}
                     pdfUrl={learningGoalPdf}
                     onPdfChange={setLearningGoalPdf}
-                    toast={toast}
                   />
                 </div>
                 <div className="md:col-span-2 space-y-1.5">

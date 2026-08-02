@@ -183,6 +183,7 @@ function AddSystemPageInner() {
         if (cancelled) return
         setCourseId(course.id)
         setCourseName(course.name || '')
+        if (course.code) setContentCode(course.code)
         if (course.description) setCourseDescription(course.description)
         setCourseDescriptionPdf((course as any).evalData?.descriptionPdf || null)
         if (course.coverImage) setCoverImage(course.coverImage)
@@ -361,8 +362,8 @@ function AddSystemPageInner() {
   }, [nodeDrafts, nodes])
 
   /* module 1: basic info */
-  const [contentCode] = useState(() =>
-    isEdit ? 'CNT-SQL001' : `CNT-${Date.now().toString(36).toUpperCase()}`,
+  const [contentCode, setContentCode] = useState(() =>
+    `CNT-${Date.now().toString(36).toUpperCase()}`,
   )
   const [hours, setHours] = useState('')
   const [learningGoal, setLearningGoal] = useState('')
@@ -973,7 +974,6 @@ function AddSystemPageInner() {
                     minHeight={280}
                     pdfUrl={courseDescriptionPdf}
                     onPdfChange={setCourseDescriptionPdf}
-                    toast={toast}
                   />
                 </div>
                 <div className="md:col-span-4 space-y-1.5">
@@ -1173,7 +1173,6 @@ function AddSystemPageInner() {
                                   minHeight={280}
                                   pdfUrl={learningGoalPdf}
                                   onPdfChange={setLearningGoalPdf}
-                                  toast={toast}
                                 />
                               </div>
                             </div>
