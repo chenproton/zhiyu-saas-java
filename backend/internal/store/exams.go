@@ -120,6 +120,9 @@ func (s *ExamStore) AddQuestion(ctx context.Context, tenantID, examID string, q 
 	_, err := s.q.Exec(ctx, `
 		INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exam_questions WHERE exam_id = $3))
+		ON CONFLICT (exam_id, question_id) DO UPDATE SET
+			type = EXCLUDED.type, content = EXCLUDED.content, options = EXCLUDED.options,
+			answer = EXCLUDED.answer, analysis = EXCLUDED.analysis, score = EXCLUDED.score
 	`, uuid.NewString(), tenantID, examID, q.ID, q.Type, q.Content, string(q.Options), string(q.Answer), q.Analysis, score)
 	return err
 }
