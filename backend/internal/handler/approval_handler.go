@@ -167,7 +167,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 	var workflow *domain.Workflow
 	if record.WorkflowID != nil {
-		wf, wfErr := h.Service.GetWorkflow(r.Context(), *record.WorkflowID)
+		wf, wfErr := h.Service.GetWorkflow(r.Context(), *record.WorkflowID, *record.TenantID)
 		if wfErr == nil {
 			workflow = wf
 		}
@@ -211,7 +211,7 @@ func (h *ApprovalHandler) isUserApproverForStep(ctx context.Context, record *dom
 	if record.WorkflowID == nil {
 		return true
 	}
-	wf, err := h.Service.GetWorkflow(ctx, *record.WorkflowID)
+	wf, err := h.Service.GetWorkflow(ctx, *record.WorkflowID, *record.TenantID)
 	if err != nil || len(wf.Steps) == 0 || record.CurrentStepIdx >= len(wf.Steps) {
 		return true
 	}

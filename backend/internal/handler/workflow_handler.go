@@ -54,8 +54,12 @@ func (h *WorkflowHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	workflow, err := h.Service.GetWorkflow(r.Context(), id)
+	workflow, err := h.Service.GetWorkflow(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "审批流程不存在")
 		return
@@ -103,8 +107,12 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	existing, err := h.Service.GetWorkflow(r.Context(), id)
+	existing, err := h.Service.GetWorkflow(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "审批流程不存在")
 		return
@@ -133,7 +141,7 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.MajorIds == nil {
 		req.MajorIds = domain.StringSlice{}
 	}
-	workflow, err := h.Service.UpdateWorkflow(r.Context(), id, &store.WorkflowParams{
+	workflow, err := h.Service.UpdateWorkflow(r.Context(), id, tenantID, &store.WorkflowParams{
 		Name: req.Name, Scene: req.Scene, Description: req.Description,
 		Steps: req.Steps, MajorIds: req.MajorIds, Status: domain.WorkflowStatus(req.Status),
 	})
@@ -153,8 +161,12 @@ func (h *WorkflowHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	existing, err := h.Service.GetWorkflow(r.Context(), id)
+	existing, err := h.Service.GetWorkflow(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "审批流程不存在")
 		return
@@ -162,7 +174,7 @@ func (h *WorkflowHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
 		return
 	}
-	if err := h.Service.DeleteWorkflow(r.Context(), id); err != nil {
+	if err := h.Service.DeleteWorkflow(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除审批流程失败")
 		return
 	}

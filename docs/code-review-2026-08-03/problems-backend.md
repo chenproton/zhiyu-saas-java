@@ -92,9 +92,9 @@
 | `handler/evaluation_method_handler.go:55-75` | Toggle | 跨租户切换测评方式启用状态 |
 | `handler/role_handler.go:140-146` | POST /roles/{id}/assign | 不校验 req.UserID 租户归属，可跨租户分配角色（提权面） |
 | `handler/job_banner_handler.go:46-101` | banners CRUD | crud 配置无 ownership，store 无租户，跨租户读写删 ✅ 已修复（store Get/Update/Delete 补 tenant_id 过滤；顺带修复 Create 占位符 7 列 vs 8 值错配） |
-| `handler/recommend_handler.go:87-125` | recommendations | Update/Delete 跨租户 |
+| `handler/recommend_handler.go:87-125` | recommendations | Update/Delete 跨租户 ✅ 已修复（store Get/Update/Delete/fetchRecommend 补 tenant_id 过滤，handler requireTenant 传租户） |
 | `handler/micro_cert_handler.go:85-207` | 证书模板/发放 | Get/Update/DeleteTemplate、IssueCerts 全跨租户（可给他租户用户发证） |
-| `handler/workflow_handler.go:58` | GET /workflows/{id} | Get 无归属校验（Update/Delete 有） |
+| `handler/workflow_handler.go:58` | GET /workflows/{id} | Get 无归属校验（Update/Delete 有） ✅ 已修复（store Get/Update/Delete 补 tenant_id IS NOT DISTINCT FROM 过滤，兼容 NULL 租户全局流程） |
 | `handler/lesson_behavior_handler.go:108-142` | behavior-collection | Aggregate 跨租户读（含学生姓名/考勤/成绩）；Create 信任请求体伪造 |
 | `handler/student_portrait_handler.go:85-127` | POST /evaluation/portraits/generate | req.UserID 信任请求体 + store 无租户过滤 → 跨租户聚合学生画像 |
 | `handler/approval_handler.go:210-229,168-197` | POST /approvals/{id}/review | `isUserApproverForStep` fail-open（错误即放行）；GetWorkflow 失败时一步点击即 approved + 同步发布 |

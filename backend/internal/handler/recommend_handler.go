@@ -84,8 +84,12 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetRecommend(r.Context(), id); err != nil {
+	if _, err := h.Service.GetRecommend(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "推荐不存在")
 		return
 	}
@@ -97,7 +101,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-	rec, err := h.Service.UpdateRecommend(r.Context(), id, &store.RecommendParams{
+	rec, err := h.Service.UpdateRecommend(r.Context(), id, tenantID, &store.RecommendParams{
 		MajorID: req.MajorID, CareerPositionID: req.CareerPositionID, PositionType: req.PositionType,
 		Reason: req.Reason, SortOrder: req.SortOrder, IsEnabled: req.IsEnabled,
 	})
@@ -113,12 +117,16 @@ func (h *RecommendHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetRecommend(r.Context(), id); err != nil {
+	if _, err := h.Service.GetRecommend(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "推荐不存在")
 		return
 	}
-	if err := h.Service.DeleteRecommend(r.Context(), id); err != nil {
+	if err := h.Service.DeleteRecommend(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除推荐失败")
 		return
 	}
