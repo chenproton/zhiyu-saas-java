@@ -7,45 +7,19 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@/components/ui/*": [
-        "../../packages/ui/src/components/ui/*"
-      ],
-      "@/lib/utils": [
-        "../../packages/ui/src/lib/utils.ts"
-      ],
-      "@/lib/api": [
-        "../../packages/api-client/src/index.ts"
-      ],
-      "@/lib/api-factory": [
-        "../../packages/api-client/src/api-factory.ts"
-      ],
-      "@/lib/types": [
-        "../../packages/shared-types/src/index.ts"
-      ],
-      "@/lib/types/*": [
-        "../../packages/shared-types/src/*"
-      ],
-      "@/hooks/use-toast": [
-        "../../packages/ui/src/hooks/use-toast.ts"
-      ],
-      "@/hooks/use-mobile": [
-        "../../packages/ui/src/hooks/use-mobile.ts"
-      ],
-      "@zhiyu/ui": [
-        "../../packages/ui/src/index.ts"
-      ],
-      "@zhiyu/ui/*": [
-        "../../packages/ui/src/*"
-      ],
-      "@zhiyu/shared-types": [
-        "../../packages/shared-types/src/index.ts"
-      ],
-      "@zhiyu/shared-types/*": [
-        "../../packages/shared-types/src/*"
-      ]
+      "@/*": ["./*"],
+      "@/components/ui/*": ["../../packages/ui/src/components/ui/*"],
+      "@/lib/utils": ["../../packages/ui/src/lib/utils.ts"],
+      "@/lib/api": ["../../packages/api-client/src/index.ts"],
+      "@/lib/api-factory": ["../../packages/api-client/src/api-factory.ts"],
+      "@/lib/types": ["../../packages/shared-types/src/index.ts"],
+      "@/lib/types/*": ["../../packages/shared-types/src/*"],
+      "@/hooks/use-toast": ["../../packages/ui/src/hooks/use-toast.ts"],
+      "@/hooks/use-mobile": ["../../packages/ui/src/hooks/use-mobile.ts"],
+      "@zhiyu/ui": ["../../packages/ui/src/index.ts"],
+      "@zhiyu/ui/*": ["../../packages/ui/src/*"],
+      "@zhiyu/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@zhiyu/shared-types/*": ["../../packages/shared-types/src/*"]
     }
   },
   "include": [
@@ -55,9 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".next"
-  ],
+  "exclude": ["node_modules", ".next"],
   "extends": "../../tsconfig.base.json"
 }

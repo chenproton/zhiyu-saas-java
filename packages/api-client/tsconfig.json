@@ -2,22 +2,12 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@zhiyu/shared-types": [
-        "../shared-types/src/index.ts"
-      ],
-      "@zhiyu/shared-types/*": [
-        "../shared-types/src/*"
-      ]
+      "@/*": ["./src/*"],
+      "@zhiyu/shared-types": ["../shared-types/src/index.ts"],
+      "@zhiyu/shared-types/*": ["../shared-types/src/*"]
     }
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ],
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"],
   "extends": "../../tsconfig.base.json"
 }
