@@ -394,7 +394,7 @@ func (s *LessonContentService) GenerateCourseAssessments(ctx context.Context, tx
 		if ruleConfig == nil {
 			continue
 		}
-		methods := getStringSliceFromJSONMap(ruleConfig, "evaluationMethods")
+		methods := store.GetStringSliceFromJSONMap(ruleConfig, "evaluationMethods")
 		methodResourceConfigs, _ := ruleConfig["methodResourceConfigs"].(map[string]interface{})
 		if methodResourceConfigs == nil {
 			methodResourceConfigs = make(map[string]interface{})
@@ -442,7 +442,7 @@ func (s *LessonContentService) GenerateCourseAssessments(ctx context.Context, tx
 
 // ensureNodePaperUsage 生成节点试卷安排。
 func (s *LessonContentService) ensureNodePaperUsage(ctx context.Context, q store.Queryer, n store.NodeEvalRow, info *store.CourseInfo, rc map[string]interface{}, ruleConfig map[string]interface{}) (map[string]interface{}, error) {
-	paperIDs := getStringSliceFromJSONMap(ruleConfig, "paperIds")
+	paperIDs := store.GetStringSliceFromJSONMap(ruleConfig, "paperIds")
 	if len(paperIDs) == 0 {
 		return rc, nil
 	}
@@ -475,7 +475,7 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 		"question_bank": "questionBankQuestions",
 		"quiz":          "quizQuestions",
 	}[methodKey]
-	questionIDs := getStringSliceFromJSONMap(ruleConfig, field)
+	questionIDs := store.GetStringSliceFromJSONMap(ruleConfig, field)
 	if len(questionIDs) == 0 {
 		return rc, nil
 	}
@@ -536,27 +536,6 @@ func extractEvalRuleConfig(evalData map[string]interface{}) map[string]interface
 	}
 	if rc, ok := evalData["evalRuleConfig"].(map[string]interface{}); ok {
 		return rc
-	}
-	return nil
-}
-
-// getStringSliceFromJSONMap 从 JSONMap 提取字符串数组（service 层本地实现）。
-func getStringSliceFromJSONMap(m map[string]interface{}, key string) []string {
-	raw, ok := m[key]
-	if !ok || raw == nil {
-		return nil
-	}
-	switch v := raw.(type) {
-	case []string:
-		return v
-	case []interface{}:
-		out := make([]string, 0, len(v))
-		for _, x := range v {
-			if s, ok := x.(string); ok {
-				out = append(out, s)
-			}
-		}
-		return out
 	}
 	return nil
 }

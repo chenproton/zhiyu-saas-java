@@ -297,7 +297,7 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 	usageID, _ := resourceConfig["usageId"].(string)
 
 	if methodKey == "question_bank" || methodKey == "quiz" {
-		questionIDs := getStringSliceFromJSONMap(resourceConfig, "questionIds")
+		questionIDs := GetStringSliceFromJSONMap(resourceConfig, "questionIds")
 		if len(questionIDs) == 0 {
 			return resourceConfig, nil
 		}
@@ -481,7 +481,8 @@ func jsonRawMessageToJSONMap(raw json.RawMessage) domain.JSONMap {
 	return m
 }
 
-func getStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
+// GetStringSliceFromJSONMap 从 JSONMap 提取字符串数组（store/service 共用，单一实现）。
+func GetStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
 	raw, ok := m[key]
 	if !ok || raw == nil {
 		return nil
