@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { publicPositionApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
+import { reportError } from '@/lib/error-handling'
+import { useToast } from '@zhiyu/ui'
 import type { CareerPosition, LearnRoad, Scenario, ScenarioTask } from '@/lib/types'
 import { LearningPath } from '@/components/job/student/learning-path'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
@@ -14,6 +16,7 @@ import { ArrowLeft, Briefcase } from 'lucide-react'
 export default function JobStudentLearnPage() {
   const params = useParams()
   const id = params.id as string
+  const { toast } = useToast()
   const { user } = useAuth()
 
   const [position, setPosition] = useState<CareerPosition | null>(null)
@@ -72,8 +75,11 @@ export default function JobStudentLearnPage() {
         )
         setRoads(relatedRoads)
       })
-      .catch(() => {})
-  }, [id, position, user])
+      .catch((err) => {
+        reportError(err, '加载学习路径数据')
+        toast({ title: '部分数据加载失败', variant: 'destructive' })
+      })
+  }, [id, position, user, toast])
 
   if (loading) {
     return (

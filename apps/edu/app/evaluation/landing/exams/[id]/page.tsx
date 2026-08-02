@@ -32,6 +32,7 @@ import { useData } from '@/components/providers/data-provider'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import type { Exam, ExamUsage } from '@/lib/types'
 import { examApi, examUsageApi, examResultApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import { useToast, StatusBadge } from '@zhiyu/ui'
 /* ─── 题型标签映射 ─── */
 const typeLabelMap: Record<string, string> = {
@@ -136,8 +137,11 @@ export default function ExamDetailPage() {
           setCurrentUsage(usage)
         }
       })
-      .catch(() => {})
-  }, [examId, currentUsage, isSceneTask, usageIdFromQuery])
+      .catch((err) => {
+        reportError(err, '加载考试记录')
+        toast({ title: '考试记录加载失败', variant: 'destructive' })
+      })
+  }, [examId, currentUsage, isSceneTask, usageIdFromQuery, toast])
 
   const handleSubmit = useCallback(async () => {
     if (!currentUsage) return

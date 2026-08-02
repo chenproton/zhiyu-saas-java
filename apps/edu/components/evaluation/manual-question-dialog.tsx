@@ -26,6 +26,7 @@ import { useData } from '@/components/providers/data-provider'
 import type { Question, QuestionType, EvalKnowledgePoint } from '@/lib/types'
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { knowledgeApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import { cn } from '@/lib/utils'
 
 const TYPE_COLORS = QUESTION_TYPE_BADGE_CLASSES
@@ -87,7 +88,7 @@ export function ManualQuestionDialog({
       .then((res) => {
         if (!cancelled) setKnowledgePoints(res.items.map((kp) => ({ id: kp.id, name: kp.name })))
       })
-      .catch(() => {})
+      .catch((err) => reportError(err, '加载知识点列表'))
     return () => {
       cancelled = true
     }

@@ -20,6 +20,7 @@ import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
 
 const SECONDARY_COLLEGES = [
@@ -71,8 +72,15 @@ export default function AllianceProjectNewPage() {
     allianceEnterpriseApi
       .list({ limit: 1000 })
       .then((res) => setEnterprises((res.items || []).map((e) => ({ label: e.name, value: e.id }))))
-      .catch(() => {})
-  }, [])
+      .catch((err) => {
+        reportError(err, '加载企业下拉数据')
+        toast({
+          title: '企业列表加载失败',
+          description: '可稍后重试',
+          variant: 'destructive',
+        })
+      })
+  }, [toast])
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 

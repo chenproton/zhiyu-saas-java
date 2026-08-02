@@ -188,7 +188,7 @@ function PositionEditPageContent({ params }: PageProps) {
         industryRes.items.forEach((i) => industryMap.set(i.id, i.name))
         setIndustryMap(industryMap)
       })
-      .catch(() => {})
+      .catch((err) => reportError(err, '加载专业/行业字典数据'))
   }, [])
 
   if (loading) {

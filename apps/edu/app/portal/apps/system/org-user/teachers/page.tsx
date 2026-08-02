@@ -19,6 +19,7 @@ import {
   importExportApi,
   downloadBlob,
 } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import type { StaffTitle } from '@/lib/types/backend'
 import { MultiSelectSearch } from '@/components/ui/multi-select-search'
 import { useToast } from '@zhiyu/ui'
@@ -109,7 +110,7 @@ export default function TeachersPage() {
       .then((res) => {
         setStaffTitles(res.items)
       })
-      .catch(() => {})
+      .catch((err) => reportError(err, '加载教师职称列表'))
   }, [tenantId])
 
   const titleNameMap = useMemo(() => {

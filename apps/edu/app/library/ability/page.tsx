@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pencil, Trash2, Lightbulb } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,7 @@ import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { abilityApi } from '@/lib/api'
 import type { AbilityPoint } from '@/lib/types/job'
 import { useToast } from '@zhiyu/ui'
+import { useLibraryCrud } from '../_components/use-library-crud'
 import { LibraryPageShell } from '../_components/library-page-shell'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -41,10 +42,17 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function AbilityPointsPage() {
   const { toast } = useToast()
-  const [items, setItems] = useState<AbilityPoint[]>([])
-  const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
+    abilityApi.list,
+    {
+      getParams: () => (categoryFilter ? { category: categoryFilter } : {}),
+      autoLoad: false,
+    },
+  )
+  useEffect(() => {
+    void loadItems()
+  }, [loadItems, categoryFilter])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<AbilityPoint | null>(null)
   const [name, setName] = useState('')
@@ -53,26 +61,6 @@ export default function AbilityPointsPage() {
   const [isPublic, setIsPublic] = useState(false)
   const [attributes, setAttributes] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
-
-  const loadItems = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params: any = { limit: 500 }
-      if (searchQuery) params.search = searchQuery
-      if (categoryFilter) params.category = categoryFilter
-      const res = await abilityApi.list(params)
-      setItems(res.items)
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载失败', description: err.message })
-    } finally {
-      setLoading(false)
-    }
-  }, [searchQuery, categoryFilter, toast])
-  useEffect(() => {
-    ;(async () => {
-      await loadItems()
-    })()
-  }, [loadItems])
 
   const handleOpenAdd = () => {
     setEditingItem(null)

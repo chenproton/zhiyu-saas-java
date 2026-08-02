@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { courseApi, lessonBatchApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import type { Course } from '@/lib/types/lesson'
 import type { LessonBatch } from '@/lib/types/lesson'
 import { useApprovals } from '@/hooks/use-approvals'
@@ -46,7 +47,7 @@ export default function CourseApprovalsPage() {
         setCourseMap(new Map(courseRes.items.map((c) => [c.id, c])))
         setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
       })
-      .catch(() => {})
+      .catch((err) => reportError(err, '加载课程/批次字典数据'))
   }, [])
 
   const columns: ApprovalColumn<ApprovalView>[] = [

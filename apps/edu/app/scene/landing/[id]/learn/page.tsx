@@ -62,6 +62,8 @@ import type {
   SceneEvaluationResult,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { reportError } from '@/lib/error-handling'
+import { useToast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import {
@@ -180,6 +182,7 @@ export default function SceneLearnPage() {
   const searchParams = useSearchParams()
   const id = params.id as string
   const targetTaskId = searchParams.get('task')
+  const { toast } = useToast()
   const { user } = useAuth()
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
@@ -259,8 +262,11 @@ export default function SceneLearnPage() {
         ;(aRes.items || []).forEach((a) => aMap.set(a.id, a))
         setAbilityMap(aMap)
       })
-      .catch(() => {})
-  }, [id, scenario])
+      .catch((err) => {
+        reportError(err, '加载知识点/能力点数据')
+        toast({ title: '部分数据加载失败', variant: 'destructive' })
+      })
+  }, [id, scenario, toast])
 
   useEffect(() => {
     ;(async () => {
@@ -282,8 +288,11 @@ export default function SceneLearnPage() {
     evaluationResultApi
       .list({ taskId: activeTaskId, evaluateeId: user?.id, limit: 50 })
       .then((res) => setMyResults(res.items || []))
-      .catch(() => {})
-  }, [activeTaskId, user?.id])
+      .catch((err) => {
+        reportError(err, '加载我的评估结果')
+        toast({ title: '评估结果加载失败', variant: 'destructive' })
+      })
+  }, [activeTaskId, user?.id, toast])
 
   const activeTask = useMemo(() => tasks.find((t) => t.id === activeTaskId), [tasks, activeTaskId])
   const totalHours = useMemo(() => tasks.reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])

@@ -95,6 +95,7 @@
 | `useOrgTree` | 组织树数据（orgs、orgTree、orgMap、orgTypeMap、typeNameMap、loading、refetch） |
 | `usePortalUsers` | Portal 用户列表（users、roles、roleMap、total、loading、refetch），支持 `roleCode` 筛选 |
 | `useSubscriptionModules` | 租户订阅模块开关，返回 `Record<string, boolean>` |
+| `useLibraryCrud` | library 列表页统一数据加载（search+limit+loading+失败 toast+首载），见 `app/library/_components/use-library-crud.ts`；需要随页面 state 联动筛选时 `autoLoad: false` + 自行 `useEffect` 触发 `loadItems` |
 
 ### 通用 UI Hooks（`@zhiyu/ui`）
 

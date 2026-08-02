@@ -29,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { portalApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
 
 interface HybridGradingDialogProps {
@@ -114,7 +115,7 @@ export function HybridGradingDialog({
         setClassPlans(res.classPlans || [])
         setClassSessions(res.classSessions || [])
       })
-      .catch(() => {})
+      .catch((err) => reportError(err, '加载工作台班级/课时数据'))
   }, [])
 
   const courseGroups = useMemo(

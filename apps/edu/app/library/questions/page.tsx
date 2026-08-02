@@ -24,14 +24,16 @@ import { Textarea } from '@/components/ui/textarea'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { randomDrawQuestionApi, majorApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
+import { useLibraryCrud } from '../_components/use-library-crud'
 import { LibraryPageShell } from '../_components/library-page-shell'
 
 export default function QuestionsPage() {
   const { toast } = useToast()
 
-  const [items, setItems] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
+    randomDrawQuestionApi.list,
+    { limit: 9999 },
+  )
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<any | null>(null)
   const [name, setName] = useState('')
@@ -45,20 +47,6 @@ export default function QuestionsPage() {
     majorNameMap[m.id] = m.name
   })
 
-  const loadItems = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params: any = { limit: 9999 }
-      if (searchQuery) params.search = searchQuery
-      const res = await randomDrawQuestionApi.list(params)
-      setItems(res.items || [])
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载失败', description: err.message })
-    } finally {
-      setLoading(false)
-    }
-  }, [searchQuery, toast])
-
   const loadMajors = useCallback(async () => {
     try {
       const res = await majorApi.list({ limit: 1000 })
@@ -71,8 +59,7 @@ export default function QuestionsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 首次加载数据需要同步 setState
     loadMajors()
-    loadItems()
-  }, [loadItems, loadMajors])
+  }, [loadMajors])
 
   const handleAdd = () => {
     setEditing(null)

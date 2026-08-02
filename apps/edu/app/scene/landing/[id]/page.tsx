@@ -23,6 +23,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFileSize } from '@/lib/utils'
+import { reportError } from '@/lib/error-handling'
+import { useToast } from '@zhiyu/ui'
 import { scenarioApi, taskApi, resourceLibraryApi, knowledgeApi, abilityApi } from '@/lib/api'
 import type {
   Scenario,
@@ -379,6 +381,7 @@ export default function SceneDetailPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const { toast } = useToast()
   const tabsRef = useRef<HTMLDivElement>(null)
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
@@ -445,8 +448,11 @@ export default function SceneDetailPage() {
         ;(aRes.items || []).forEach((a) => aMap.set(a.id, a))
         setAbilityMap(aMap)
       })
-      .catch(() => {})
-  }, [id, scenario])
+      .catch((err) => {
+        reportError(err, '加载知识点/能力点数据')
+        toast({ title: '部分数据加载失败', variant: 'destructive' })
+      })
+  }, [id, scenario, toast])
 
   useEffect(() => {
     if (!scenario?.careerPositionId) return

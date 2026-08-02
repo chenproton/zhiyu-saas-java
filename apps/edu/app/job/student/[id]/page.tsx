@@ -13,6 +13,8 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
 import { useIndustryMap } from '@/lib/use-resource-maps'
+import { reportError } from '@/lib/error-handling'
+import { useToast } from '@zhiyu/ui'
 import type {
   CareerPosition,
   PositionResponsibility,
@@ -59,6 +61,7 @@ export default function JobStudentDetailPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const { toast } = useToast()
   const { user } = useAuth()
   const industryMap = useIndustryMap()
 
@@ -137,8 +140,11 @@ export default function JobStudentDetailPage() {
         setAbilityDomains(domainRes.items || [])
         setCertificates(certRes.items || [])
       })
-      .catch(() => {})
-  }, [id, position, user])
+      .catch((err) => {
+        reportError(err, '加载岗位详情数据')
+        toast({ title: '部分数据加载失败', variant: 'destructive' })
+      })
+  }, [id, position, user, toast])
 
   const industryName = useMemo(() => {
     if (!position?.industryId) return undefined

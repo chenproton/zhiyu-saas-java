@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { portalRequest } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import type { AllianceListResponse } from '@/lib/types'
 
 interface Option {
@@ -48,7 +49,7 @@ export function BrandRelationSelect({
           .filter((o: Option) => o.label)
         setOptions(opts)
       })
-      .catch(() => {})
+      .catch((err) => reportError(err, `加载关联对象选项（${fetchUrl}）`))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true

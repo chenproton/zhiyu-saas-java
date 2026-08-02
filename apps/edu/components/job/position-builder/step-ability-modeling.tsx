@@ -27,6 +27,7 @@ import {
   Library,
 } from 'lucide-react'
 import { abilityApi, positionApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import { convertApiAbilityToLocal } from '@/lib/converters/job-converters'
 import type {
   Position,
@@ -110,11 +111,11 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
     abilityApi
       .list({ limit: 1000, isPublic: true })
       .then((res) => setAbilities(res.items.map(convertApiAbilityToLocal)))
-      .catch(() => {})
+      .catch((err) => reportError(err, '加载能力点列表'))
     positionApi
       .list({ limit: 1000 })
       .then((res) => setAbilityPoolPositions(res.items.map((p) => ({ id: p.id, name: p.name }))))
-      .catch(() => {})
+      .catch((err) => reportError(err, '加载岗位列表'))
   }, [])
 
   useEffect(() => {

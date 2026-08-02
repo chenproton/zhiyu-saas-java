@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Pencil, Trash2, Award, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,12 +18,13 @@ import type { CertificateLibraryItem } from '@/lib/types/job'
 import { useToast } from '@zhiyu/ui'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { LibraryPageShell } from '../_components/library-page-shell'
+import { useLibraryCrud } from '../_components/use-library-crud'
 
 export default function CertificatesPage() {
   const { toast } = useToast()
-  const [items, setItems] = useState<CertificateLibraryItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
+    certificateLibraryApi.list,
+  )
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<CertificateLibraryItem | null>(null)
   const [name, setName] = useState('')
@@ -32,25 +33,6 @@ export default function CertificatesPage() {
   const [imageUrl, setImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
-
-  const loadItems = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params: any = { limit: 500 }
-      if (searchQuery) params.search = searchQuery
-      const res = await certificateLibraryApi.list(params)
-      setItems(res.items)
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载失败', description: err.message })
-    } finally {
-      setLoading(false)
-    }
-  }, [searchQuery, toast])
-  useEffect(() => {
-    ;(async () => {
-      await loadItems()
-    })()
-  }, [loadItems])
 
   const resetForm = () => {
     setName('')

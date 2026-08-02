@@ -1,4 +1,5 @@
 'use client'
+import { toast } from '@zhiyu/ui'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -1055,7 +1056,7 @@ export default function CourseDetailPage() {
                   })
                   setSubmitOpen(false)
                 } catch {
-                  alert('提交失败')
+                  toast({ variant: 'destructive', title: '提交失败', description: '请稍后重试' })
                 } finally {
                   setSubmitting(false)
                 }
@@ -1172,7 +1173,7 @@ export default function CourseDetailPage() {
                       const res = await courseHomeworkApi.listSubmissions(id, activeHomework.id)
                       setSubmissions(res.items || [])
                     } catch {
-                      alert('批改失败')
+                      toast({ variant: 'destructive', title: '批改失败', description: '请稍后重试' })
                     } finally {
                       setGrading(false)
                     }
@@ -1243,7 +1244,7 @@ export default function CourseDetailPage() {
                   })
                   setNodeSubmitOpen(false)
                 } catch {
-                  alert('提交失败')
+                  toast({ variant: 'destructive', title: '提交失败', description: '请稍后重试' })
                 } finally {
                   setNodeSubmitting(false)
                 }
@@ -1369,7 +1370,7 @@ export default function CourseDetailPage() {
                       )
                       setNodeSubmissions(res.items || [])
                     } catch {
-                      alert('批改失败')
+                      toast({ variant: 'destructive', title: '批改失败', description: '请稍后重试' })
                     } finally {
                       setNodeGrading(false)
                     }

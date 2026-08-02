@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pencil, Trash2, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,12 +18,13 @@ import {
   type KnowledgePointFormValues,
 } from '@/components/shared/knowledge-point-form-dialog'
 import type { GranularLessonOption } from '@/components/shared/granular-lesson-select-dialog'
+import { useLibraryCrud } from '../_components/use-library-crud'
 
 export default function KnowledgePointsPage() {
   const { toast } = useToast()
-  const [items, setItems] = useState<KnowledgePoint[]>([])
-  const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
+    knowledgeApi.list,
+  )
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<KnowledgePoint | null>(null)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add')
@@ -31,20 +32,6 @@ export default function KnowledgePointsPage() {
   const [granularCourses, setGranularCourses] = useState<GranularLessonOption[]>([])
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [navigateCourseId, setNavigateCourseId] = useState<string | null>(null)
-
-  const loadItems = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params: any = { limit: 500 }
-      if (searchQuery) params.search = searchQuery
-      const res = await knowledgeApi.list(params)
-      setItems(res.items)
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载失败', description: err.message })
-    } finally {
-      setLoading(false)
-    }
-  }, [searchQuery, toast])
 
   const loadGranularCourses = async () => {
     try {
@@ -62,11 +49,6 @@ export default function KnowledgePointsPage() {
     }
   }
 
-  useEffect(() => {
-    ;(async () => {
-      await loadItems()
-    })()
-  }, [loadItems])
   useEffect(() => {
     ;(async () => {
       await loadGranularCourses()

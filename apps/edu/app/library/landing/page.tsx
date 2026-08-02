@@ -24,6 +24,7 @@ import {
   certificateLibraryApi,
   onSiteQuestionLibraryApi,
 } from '@/lib/api'
+import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceLibraryItem } from '@/lib/types/library'
 import { formatSize } from '@/lib/resource-type-constants'
 
@@ -58,19 +59,8 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   )
 }
 
-const RESOURCE_TYPE_LABELS: Record<string, string> = {
-  document: '文档资源',
-  spreadsheet: '表格资源',
-  image: '图片资源',
-  link: '链接资源',
-  audio: '音频资源',
-  video: '视频资源',
-  archive: '压缩包资源',
-  venue: '场地资源',
-  facility: '设施设备资源',
-  software: '软件资源',
-  other: '其他资源',
-}
+// 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
+const ALL_TYPES = Object.keys(RESOURCE_TYPE_LABELS) as (keyof typeof RESOURCE_TYPE_LABELS)[]
 
 const TYPE_EMOJI: Record<string, string> = {
   video: '🎬',
@@ -113,20 +103,6 @@ const TYPE_COLORS: Record<string, string> = {
   archive: '#14b8a6',
   other: '#78716c',
 }
-
-const ALL_TYPES = [
-  'video',
-  'document',
-  'spreadsheet',
-  'image',
-  'link',
-  'audio',
-  'venue',
-  'facility',
-  'software',
-  'archive',
-  'other',
-]
 
 const TIME_RANGES = [
   { value: 'all', label: '全部时间' },

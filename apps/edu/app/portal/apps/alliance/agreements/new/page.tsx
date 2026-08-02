@@ -18,6 +18,7 @@ import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
 
 const AGREEMENT_TYPES = [
@@ -57,8 +58,15 @@ export default function AllianceAgreementNewPage() {
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
         setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
       })
-      .catch(() => {})
-  }, [])
+      .catch((err) => {
+        reportError(err, '加载企业/项目下拉数据')
+        toast({
+          title: '部分数据加载失败',
+          description: '企业或项目列表加载失败，可稍后重试',
+          variant: 'destructive',
+        })
+      })
+  }, [toast])
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 

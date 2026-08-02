@@ -19,6 +19,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { questionBankApi, questionApi, knowledgeApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
@@ -123,7 +124,7 @@ export default function BankDetailPage() {
               })
               setKnowledgePointMap(map)
             })
-            .catch(() => {}),
+            .catch((err) => reportError(err, '加载知识点字典')),
         ])
       } finally {
         setLoading(false)
