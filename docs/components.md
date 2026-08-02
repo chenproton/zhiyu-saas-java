@@ -1,5 +1,7 @@
 # 前端公共组件速查
 
+> **表格/表单架构盘点与开发规范见 [`docs/forms-tables.md`](forms-tables.md)**（系统模块划分、表格壳组件选型、表单字段封装规范、复用评估结论）。
+
 > **页面级共享壳**与**业务组件**位于 `apps/edu/components/shared/`。
 > **通用 UI/交互组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用，`apps/edu/components/shared/` 保留 re-export 薄封装）：`ComboboxSelect`/`MixedTagEditor`/`ImportWizardDialog`/`ImportConfirmDialog`/`ConfirmDialog`/`StatusBadge`/`TableRowActions`/`HoverActionBar`。
 > **评测配置组件**位于 `apps/edu/app/lesson/admin/_components/assessment/`（`course-evaluation-rules-dialog.tsx`）与 `apps/edu/components/shared/eval-method-config-module.tsx`，仅课程编辑器使用；任务编辑器经 `method-config-dialog.tsx` 复用共享组件。
