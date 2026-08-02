@@ -138,6 +138,14 @@ func (h *CertificationHandler) CreateRule(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), req.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
+		return
+	}
 	// 同一租户同一岗位只允许一条规则
 	if existing, err := h.Service.FindRuleByPosition(r.Context(), tenantID, req.CareerPositionID); err == nil && existing != nil {
 		respondJSON(w, http.StatusOK, existing)

@@ -63,6 +63,14 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	methodTenantID, err := h.Service.Store().EvaluationMethods().TenantID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "测评方式不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, methodTenantID) {
+		return
+	}
 	if _, err := h.Service.GetEvaluationMethod(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "测评方式不存在")
 		return

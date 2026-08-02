@@ -166,14 +166,14 @@ type JobAbilityAggregateLog struct {
 	FinishedAt       *time.Time
 }
 
-// GetAggregateLogByID 查询汇聚日志。
-func (s *JobAbilityResultStore) GetAggregateLogByID(ctx context.Context, logID string) (*JobAbilityAggregateLog, error) {
+// GetAggregateLogByID 查询汇聚日志（租户限定）。
+func (s *JobAbilityResultStore) GetAggregateLogByID(ctx context.Context, logID, tenantID string) (*JobAbilityAggregateLog, error) {
 	var log JobAbilityAggregateLog
 	err := s.q.QueryRow(ctx, `
 		SELECT id, career_position_id, status, student_count, updated_count, error_message, started_at, finished_at
 		FROM job_ability_aggregate_logs
-		WHERE id = $1
-	`, logID).Scan(&log.ID, &log.CareerPositionID, &log.Status, &log.StudentCount, &log.UpdatedCount, &log.ErrorMessage, &log.StartedAt, &log.FinishedAt)
+		WHERE id = $1 AND tenant_id = $2
+	`, logID, tenantID).Scan(&log.ID, &log.CareerPositionID, &log.Status, &log.StudentCount, &log.UpdatedCount, &log.ErrorMessage, &log.StartedAt, &log.FinishedAt)
 	if err != nil {
 		return nil, err
 	}

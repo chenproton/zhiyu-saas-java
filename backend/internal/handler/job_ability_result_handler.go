@@ -235,7 +235,7 @@ func (h *JobAbilityResultHandler) AggregateStatus(w http.ResponseWriter, r *http
 	var log *store.JobAbilityAggregateLog
 	var err error
 	if logID != "" {
-		log, err = h.Service.GetAggregateLog(r.Context(), logID)
+		log, err = h.Service.GetAggregateLog(r.Context(), logID, tenantID)
 	} else {
 		log, err = h.Service.GetRecentAggregateLog(r.Context(), tenantID, positionID)
 	}

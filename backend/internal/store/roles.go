@@ -81,6 +81,13 @@ func (s *RolesStore) Delete(ctx context.Context, id string) error {
 	})
 }
 
+// UserTenantID 查询用户所属租户（分配角色前的归属校验用）。
+func (s *RolesStore) UserTenantID(ctx context.Context, userID string) (string, error) {
+	var tenantID string
+	err := s.q.QueryRow(ctx, `SELECT tenant_id FROM users WHERE id = $1`, userID).Scan(&tenantID)
+	return tenantID, err
+}
+
 func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string) error {
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,

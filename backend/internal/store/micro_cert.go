@@ -67,6 +67,13 @@ type MicroCertTemplateUpdateParams struct {
 	CoverImage   *string
 }
 
+// TemplateTenantID 查询微证书模板所属租户（租户归属校验用）。
+func (s *MicroCertStore) TemplateTenantID(ctx context.Context, id string) (string, error) {
+	var tenantID string
+	err := s.q.QueryRow(ctx, `SELECT tenant_id FROM micro_cert_templates WHERE id = $1`, id).Scan(&tenantID)
+	return tenantID, err
+}
+
 func (s *MicroCertStore) GetTemplate(ctx context.Context, id string) (domain.MicroCertTemplate, error) {
 	var t domain.MicroCertTemplate
 	var cover *string

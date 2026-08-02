@@ -88,28 +88,28 @@
 | `handler/scenario_grade_handler.go:54-81` | PUT /scene/grade-mappings/{id} | body 带 id 跨租户覆盖；URL id 从未读取 ✅ 已修复（补齐 URL id 读取 + 租户校验） |
 | `handler/task_knowledge_ability_handler.go:52-105` | UnbindKnowledge/UnbindAbility | 跨租户删除绑定 ✅ 已修复 |
 | `handler/ability_domain_handler.go:94+` | ability-domains | store Get/Update/Delete 无租户（NULL 租户行绕过校验） |
-| `handler/appeal_handler.go:47-109` | appeals | Get/Process 跨租户（含个人信息），Process 接受任意状态字符串 |
-| `handler/evaluation_method_handler.go:55-75` | Toggle | 跨租户切换测评方式启用状态 |
-| `handler/role_handler.go:140-146` | POST /roles/{id}/assign | 不校验 req.UserID 租户归属，可跨租户分配角色（提权面） |
+| `handler/appeal_handler.go:47-109` | appeals | Get/Process 跨租户（含个人信息），Process 接受任意状态字符串 ✅ 已修复（租户比对 + 状态机限制 approved/rejected） |
+| `handler/evaluation_method_handler.go:55-75` | Toggle | 跨租户切换测评方式启用状态 ✅ 已修复 |
+| `handler/role_handler.go:140-146` | POST /roles/{id}/assign | 不校验 req.UserID 租户归属，可跨租户分配角色（提权面） ✅ 已修复（校验 users.tenant_id 归属） |
 | `handler/job_banner_handler.go:46-101` | banners CRUD | crud 配置无 ownership，store 无租户，跨租户读写删 ✅ 已修复（store Get/Update/Delete 补 tenant_id 过滤；顺带修复 Create 占位符 7 列 vs 8 值错配） |
 | `handler/recommend_handler.go:87-125` | recommendations | Update/Delete 跨租户 ✅ 已修复（store Get/Update/Delete/fetchRecommend 补 tenant_id 过滤，handler requireTenant 传租户） |
-| `handler/micro_cert_handler.go:85-207` | 证书模板/发放 | Get/Update/DeleteTemplate、IssueCerts 全跨租户（可给他租户用户发证） |
+| `handler/micro_cert_handler.go:85-207` | 证书模板/发放 | Get/Update/DeleteTemplate、IssueCerts 全跨租户（可给他租户用户发证） ✅ 已修复 |
 | `handler/workflow_handler.go:58` | GET /workflows/{id} | Get 无归属校验（Update/Delete 有） ✅ 已修复（store Get/Update/Delete 补 tenant_id IS NOT DISTINCT FROM 过滤，兼容 NULL 租户全局流程） |
 | `handler/lesson_behavior_handler.go:108-142` | behavior-collection | Aggregate 跨租户读（含学生姓名/考勤/成绩）；Create 信任请求体伪造 |
-| `handler/student_portrait_handler.go:85-127` | POST /evaluation/portraits/generate | req.UserID 信任请求体 + store 无租户过滤 → 跨租户聚合学生画像 |
+| `handler/student_portrait_handler.go:85-127` | POST /evaluation/portraits/generate | req.UserID 信任请求体 + store 无租户过滤 → 跨租户聚合学生画像 ✅ 已修复（校验 users.tenant_id，学生只能生成本人） |
 | `handler/approval_handler.go:210-229,168-197` | POST /approvals/{id}/review | `isUserApproverForStep` fail-open（错误即放行）；GetWorkflow 失败时一步点击即 approved + 同步发布 ✅ 已修复（isUserApproverForStep/isStepComplete/isLastStep 全部 fail-closed） |
 | `handler/portal_handler.go:29-35` | GET /portal/workspace/dashboard?role=x | role 参数完全信任前端，学生带 ?role=school_admin 获取全校统计 ✅ 已修复（role 仅允许切换到用户自己绑定的角色） |
-| `handler/job_ability_result_handler.go:237-254` | GET aggregate/status?logId | 汇聚日志按 id 直查无租户 |
+| `handler/job_ability_result_handler.go:237-254` | GET aggregate/status?logId | 汇聚日志按 id 直查无租户 ✅ 已修复 |
 | `handler/program_course_import_handler.go:61-98` | POST /import/program-courses/excel | 任意 programId 直接 DELETE 重建，跨租户清空他方案课程 |
 | `handler/position_export_handler.go:60-64` | POST /export/positions/excel | 按 ids 导出他租户岗位数据（无租户过滤） |
-| `handler/certification_model_handler.go:118` | PutWeights | positionID 归属未校验，可在他租户岗位名下建规则 |
-| `handler/exam_result_handler.go:67-72` | POST /evaluation/exam-results | usageID 未校验归属/资格，可引用他租户考试提交判分 |
-| `handler/user_relation_handler.go:15-20` | POST /user-relations | initiatorId/targetId 信任请求体 |
-| `handler/evaluation_result_handler.go:129-136` | POST /evaluation/results | EvaluatorID 信任请求体可伪造评估人 |
+| `handler/certification_model_handler.go:118` | PutWeights | positionID 归属未校验，可在他租户岗位名下建规则 ✅ 已修复 |
+| `handler/exam_result_handler.go:67-72` | POST /evaluation/exam-results | usageID 未校验归属/资格，可引用他租户考试提交判分 ✅ 已修复 |
+| `handler/user_relation_handler.go:15-20` | POST /user-relations | initiatorId/targetId 信任请求体 ✅ 已修复（initiator 必须为当前用户） |
+| `handler/evaluation_result_handler.go:129-136` | POST /evaluation/results | EvaluatorID 信任请求体可伪造评估人 ✅ 已修复（校验评估人租户，学生只能本人） |
 | `handler/student_portrait_handler.go` / `micro_cert` | — | 同源问题 |
-| `handler/certification_handler.go:138` | CreateRule | req.CareerPositionID 未校验归属，指向他租户岗位 |
+| `handler/certification_handler.go:138` | CreateRule | req.CareerPositionID 未校验归属，指向他租户岗位 ✅ 已修复 |
 | `handler/alliance_handler.go:105-282,440-564` | 联盟协议/里程碑/权限/字典 | List/Create/Update 跨租户（enterprise/project/milestone/permission/dictionary） |
-| `handler/course_node_handler.go:136-188,268-287` | Create/Reorder | CourseID 未校验归属，可挂节点到任意租户课程 |
+| `handler/course_node_handler.go:136-188,268-287` | Create/Reorder | CourseID 未校验归属，可挂节点到任意租户课程 ✅ 已修复 |
 | `handler/exam_handler.go:235-279` | AddQuestion | FetchExamQuestion 无租户/题库过滤，可快照他租户题目（含答案） |
 | `handler/graduation_handler.go:330` | GET /evaluation/graduation/query | `*claims.TenantID` 无 nil 检查直接解引用 → panic ✅ 已修复（TenantID nil 时返回 403） |
 

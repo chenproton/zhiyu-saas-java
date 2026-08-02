@@ -73,6 +73,15 @@ func (h *CertificationModelHandler) PutWeights(w http.ResponseWriter, r *http.Re
 	}
 	positionID := chi.URLParam(r, "positionId")
 
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), positionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
+		return
+	}
+
 	var req putCertificationWeightsRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -115,7 +124,7 @@ func (h *CertificationModelHandler) PutWeights(w http.ResponseWriter, r *http.Re
 		taskWeights = append(taskWeights, store.CertificationWeightItem{AbilityPointID: tw.AbilityPointID, TaskID: strPtr(tw.TaskID), Weight: tw.Weight})
 	}
 
-	err := h.Service.PutCertificationWeights(r.Context(), tenantID, positionID, pointWeights, taskWeights)
+	err = h.Service.PutCertificationWeights(r.Context(), tenantID, positionID, pointWeights, taskWeights)
 	if err != nil {
 		respondServerError(w, r, err, "保存权重失败")
 		return

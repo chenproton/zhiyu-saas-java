@@ -72,6 +72,11 @@ func (h *UserRelationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "发起者和目标不能是同一用户")
 		return
 	}
+	// 仅允许以本人为发起者，防止代他人创建关系
+	if req.InitiatorID != claims.UserID {
+		respondError(w, http.StatusForbidden, "仅可发起与本人的用户关系")
+		return
+	}
 
 	var description *string
 	if req.Description != "" {

@@ -137,6 +137,15 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userTenantID, err := h.Store.UserTenantID(r.Context(), req.UserID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "用户不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, userTenantID) {
+		return
+	}
+
 	if err := h.Store.Assign(r.Context(), role.TenantID, id, req.UserID); err != nil {
 		slog.Error("assign role failed", "error", err)
 		respondServerError(w, r, err, "分配角色失败")

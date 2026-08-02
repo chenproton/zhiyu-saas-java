@@ -105,6 +105,17 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// 学生本人只能生成自己的画像；请求体中的 userId 必须属于当前租户
+	if middleware.HasRole(claims, "student") && req.UserID != claims.UserID {
+		respondError(w, http.StatusForbidden, "仅可生成本人的画像")
+		return
+	}
+	user, err := h.Service.Store().Users().Get(r.Context(), req.UserID)
+	if err != nil || user.TenantID == nil || *user.TenantID != tenantID {
+		respondError(w, http.StatusForbidden, "无权操作：用户不属于您的租户")
+		return
+	}
+
 	// 先对该 (user, careerPosition) 执行岗位能力汇聚，同步生成/更新画像
 	aggCtx, aggCancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer aggCancel()

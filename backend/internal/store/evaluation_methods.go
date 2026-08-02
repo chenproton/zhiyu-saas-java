@@ -58,6 +58,13 @@ func (s *EvaluationMethodStore) ListConfig() ListQueryConfig[domain.EvaluationMe
 	}
 }
 
+// TenantID 查询评价方法所属租户（租户归属校验用）。
+func (s *EvaluationMethodStore) TenantID(ctx context.Context, id string) (string, error) {
+	var tenantID string
+	err := s.q.QueryRow(ctx, `SELECT tenant_id FROM evaluation_methods WHERE id = $1`, id).Scan(&tenantID)
+	return tenantID, err
+}
+
 // Get 查询单个评价方法。
 func (s *EvaluationMethodStore) Get(ctx context.Context, id string) (*domain.EvaluationMethod, error) {
 	var m domain.EvaluationMethod
@@ -149,6 +156,13 @@ func (s *AppealStore) Get(ctx context.Context, id string) (*domain.AppealRecord,
 		return nil, err
 	}
 	return &a, nil
+}
+
+// TenantID 查询申诉所属租户（租户归属校验用）。
+func (s *AppealStore) TenantID(ctx context.Context, id string) (string, error) {
+	var tenantID string
+	err := s.q.QueryRow(ctx, `SELECT tenant_id FROM appeal_records WHERE id = $1`, id).Scan(&tenantID)
+	return tenantID, err
 }
 
 // Create 创建申诉。

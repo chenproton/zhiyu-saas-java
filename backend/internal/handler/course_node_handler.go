@@ -156,6 +156,11 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, err := h.Service.Store().Courses().Get(r.Context(), req.CourseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
+		return
+	}
+
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
 
@@ -289,6 +294,14 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.CourseID == "" || len(req.NodeIDs) == 0 {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.Store().Courses().Get(r.Context(), req.CourseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
 	if err := h.Service.ReorderNodes(r.Context(), req.CourseID, req.NodeIDs); err != nil {
