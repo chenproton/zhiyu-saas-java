@@ -196,7 +196,7 @@ type ExamUpdateParams struct {
 
 func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, error) {
 	var e domain.Exam
-	var coverImage, creatorID, batchID *string
+	var coverImage, creatorID, batchID, tenantID *string
 	err := s.q.QueryRow(ctx, `
 		SELECT e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
 		e.is_temp,
@@ -207,11 +207,11 @@ func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, err
 				FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord)
 				JOIN users u ON u.id = c.id
 			), '{}') AS collaborator_names,
-			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at
+			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at, e.tenant_id
 		FROM exams e WHERE e.id = $1
 	`, id).Scan(
 		&e.ID, &e.Code, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
-		&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
+		&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt, &tenantID,
 	)
 	if err != nil {
 		return nil, err
@@ -219,6 +219,7 @@ func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, err
 	e.CoverImage = coverImage
 	e.CreatorID = creatorID
 	e.BatchID = batchID
+	e.TenantID = tenantID
 	questions, err := s.fetchExamQuestions(ctx, id)
 	if err == nil {
 		e.Questions = questions

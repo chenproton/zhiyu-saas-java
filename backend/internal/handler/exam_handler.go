@@ -73,6 +73,17 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
+	if exam.TenantID != nil && (claims.TenantID == nil || *exam.TenantID != *claims.TenantID) {
+		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	// 学生作答由服务端判分，不返回答案与解析
+	if middleware.HasRole(claims, "student") {
+		for i := range exam.Questions {
+			exam.Questions[i].Answer = nil
+			exam.Questions[i].Analysis = nil
+		}
+	}
 	respondJSON(w, http.StatusOK, exam)
 }
 

@@ -81,6 +81,7 @@ type Exam struct {
 	Status              string         `json:"status"`
 	TotalScore          float64        `json:"totalScore"`
 	Duration            int            `json:"duration"`
+	TenantID            *string        `json:"-"`
 	Questions           []ExamQuestion `json:"questions,omitempty"`
 	CoverImage          *string        `json:"coverImage,omitempty"`
 	CollaboratorIDs     []string       `json:"collaboratorIds,omitempty"`
