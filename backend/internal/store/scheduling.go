@@ -552,6 +552,51 @@ func (s *SchedulingStore) ListPendingPlanEntries(ctx context.Context, tenantID, 
 	return items, rows.Err()
 }
 
+// TermScheduleBrief 学期已排条目概要（自动排课内存冲突判断用）。
+type TermScheduleBrief struct {
+	ID           string
+	PlanEntryID  *string
+	ClassNodeID  string
+	ClassNodeIDs []string
+	TeacherID    *string
+	DayOfWeek    int
+	Periods      []string
+	StartWeek    int
+	EndWeek      int
+	WeekPattern  string
+	VenueID      *string
+}
+
+// ListTermScheduleBriefs 加载某学期全部已排条目（轻量字段，供自动排课批量冲突判断）。
+func (s *SchedulingStore) ListTermScheduleBriefs(ctx context.Context, tenantID, termID string) ([]TermScheduleBrief, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT se.id, se.plan_entry_id, COALESCE(se.class_node_id::text, ''), COALESCE(se.class_node_ids, '{}'),
+			se.teacher_id, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id
+		FROM schedule_entries se
+		WHERE se.tenant_id = $1 AND se.term_id = $2
+	`, tenantID, termID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TermScheduleBrief
+	for rows.Next() {
+		var b TermScheduleBrief
+		var planEntryID, teacherID, venueID *string
+		var periods []string
+		if err := rows.Scan(&b.ID, &planEntryID, &b.ClassNodeID, &b.ClassNodeIDs, &teacherID,
+			&b.DayOfWeek, &periods, &b.StartWeek, &b.EndWeek, &b.WeekPattern, &venueID); err != nil {
+			return nil, err
+		}
+		b.PlanEntryID = planEntryID
+		b.TeacherID = teacherID
+		b.VenueID = venueID
+		b.Periods = periods
+		items = append(items, b)
+	}
+	return items, rows.Err()
+}
+
 // MarkPlanEntryScheduled 标记教学计划条目已排。
 func (s *SchedulingStore) MarkPlanEntryScheduled(ctx context.Context, entryID string) {
 	_, _ = s.q.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, entryID)

@@ -154,7 +154,7 @@ func (s *AffairsService) ListTimetableEntries(ctx context.Context, tenantID, ter
 	return s.st.Scheduling().ListTimetableEntries(ctx, tenantID, termID, classNodeID, teacherID, status)
 }
 
-// AutoSchedule 编排：加载节次/场地/待排条目 + 逐条尝试排课（事务内逐条插入）。
+// AutoSchedule 编排：加载节次/场地/待排条目 + 内存冲突判断 + 单事务批量插入。
 func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, planID string) (int, int, []string, error) {
 	periodNames, err := s.st.Scheduling().PeriodSlotNames(ctx, tenantID)
 	if err != nil {
@@ -174,10 +174,15 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 	if err != nil {
 		return 0, 0, nil, err
 	}
+	existing, err := s.st.Scheduling().ListTermScheduleBriefs(ctx, tenantID, termID)
+	if err != nil {
+		return 0, 0, nil, err
+	}
 
 	success := 0
 	failed := 0
 	failures := make([]string, 0)
+	creates := make([]*store.ScheduleCreateParams, 0)
 
 	for _, e := range pending {
 		candidateVenues := venues
@@ -198,13 +203,16 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 		if entryType == "theory" || entryType == "practice" {
 			entryType = "traditional"
 		}
+		weekPattern := e.WeekPattern
+		if weekPattern == "" {
+			weekPattern = "all"
+		}
 
 	dayLoop:
 		for day := 1; day <= 7; day++ {
 			for _, periodName := range periodNames {
 				for _, venue := range candidateVenues {
-					conflictParams := &store.ScheduleConflictParams{
-						TermID:      termID,
+					if hasScheduleConflict(existing, &store.ScheduleConflictParams{
 						PlanEntryID: strPtrIfNonEmpty(e.ID),
 						ClassNodeID: e.ClassNodeID,
 						TeacherID:   strPtrIfNonEmpty(e.TeacherID),
@@ -212,18 +220,12 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 						Periods:     domain.JSONSlice{periodName},
 						StartWeek:   e.StartWeek,
 						EndWeek:     e.EndWeek,
-						WeekPattern: e.WeekPattern,
+						WeekPattern: weekPattern,
 						VenueID:     &venue.ID,
-					}
-					conflicts, err := s.st.Scheduling().CheckScheduleConflicts(ctx, tenantID, termID, conflictParams, "")
-					if err != nil || len(conflicts) > 0 {
+					}) {
 						continue
 					}
-					weekPattern := e.WeekPattern
-					if weekPattern == "" {
-						weekPattern = "all"
-					}
-					createParams := &store.ScheduleCreateParams{
+					creates = append(creates, &store.ScheduleCreateParams{
 						TenantID:    tenantID,
 						TermID:      termID,
 						PlanEntryID: &e.ID,
@@ -241,18 +243,7 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 						VenueID:     &venue.ID,
 						ScenarioID:  strPtrIfNonEmpty(e.ScenarioID),
 						Source:      "auto",
-					}
-					var insertErr error
-					_ = s.WithTx(ctx, func(txStore *store.Store) error {
-						_, err := txStore.Scheduling().CreateSchedule(ctx, txStore.Q(), createParams)
-						if err != nil {
-							insertErr = err
-						}
-						return err
 					})
-					if insertErr != nil {
-						continue
-					}
 					success++
 					placed = true
 					break dayLoop
@@ -265,7 +256,93 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 			failures = append(failures, fmt.Sprintf("%s：未找到可用时段", e.CourseName))
 		}
 	}
+
+	if len(creates) == 0 {
+		return success, failed, failures, nil
+	}
+	err = s.WithTx(ctx, func(txStore *store.Store) error {
+		for _, p := range creates {
+			if _, err := txStore.Scheduling().CreateSchedule(ctx, txStore.Q(), p); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, 0, nil, err
+	}
 	return success, failed, failures, nil
+}
+
+// hasScheduleConflict 内存判断排课冲突（语义与 CheckScheduleConflicts 一致）：
+// 同教学计划条目多班级同时上课不算冲突；教师/班级/场地任一重叠即冲突。
+func hasScheduleConflict(existing []store.TermScheduleBrief, p *store.ScheduleConflictParams) bool {
+	reqClasses := p.ClassNodeIDs
+	if len(reqClasses) == 0 && p.ClassNodeID != "" {
+		reqClasses = []string{p.ClassNodeID}
+	}
+	for _, ex := range existing {
+		if ex.DayOfWeek != p.DayOfWeek {
+			continue
+		}
+		if ex.EndWeek < p.StartWeek || ex.StartWeek > p.EndWeek {
+			continue
+		}
+		exPattern := ex.WeekPattern
+		if exPattern == "" {
+			exPattern = "all"
+		}
+		if exPattern != "all" && p.WeekPattern != "all" && exPattern != p.WeekPattern {
+			continue
+		}
+		if !periodsOverlap(ex.Periods, schedulePeriodStrings(p.Periods)) {
+			continue
+		}
+		if p.PlanEntryID != nil && ex.PlanEntryID != nil && *ex.PlanEntryID == *p.PlanEntryID {
+			continue
+		}
+		if p.TeacherID != nil && *p.TeacherID != "" && ex.TeacherID != nil && *ex.TeacherID == *p.TeacherID {
+			return true
+		}
+		existingClasses := ex.ClassNodeIDs
+		if len(existingClasses) == 0 && ex.ClassNodeID != "" {
+			existingClasses = []string{ex.ClassNodeID}
+		}
+		for _, ec := range existingClasses {
+			for _, rc := range reqClasses {
+				if ec == rc {
+					return true
+				}
+			}
+		}
+		if p.VenueID != nil && *p.VenueID != "" && ex.VenueID != nil && *ex.VenueID == *p.VenueID {
+			return true
+		}
+	}
+	return false
+}
+
+// periodsOverlap 判断两个节次列表是否有交集。
+func periodsOverlap(a, b []string) bool {
+	for _, x := range a {
+		for _, y := range b {
+			if x == y {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// schedulePeriodStrings 提取节次字符串列表。
+func schedulePeriodStrings(s domain.JSONSlice) []string {
+	out := make([]string, 0, len(s))
+	for _, v := range s {
+		if str, ok := v.(string); ok {
+			out = append(out, str)
+		}
+	}
+	return out
 }
 
 // PublishSchedules 批量发布排课。
