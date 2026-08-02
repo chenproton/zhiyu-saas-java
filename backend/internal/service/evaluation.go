@@ -763,8 +763,8 @@ func (s *EvaluationService) CreateGraduationEvaluation(ctx context.Context, p *s
 }
 
 // QueryGraduationResults 查询毕业结果。
-func (s *EvaluationService) QueryGraduationResults(ctx context.Context, limit, offset int) ([]domain.GraduationQueryResult, int, error) {
-	return s.st.Graduations().QueryGraduationResults(ctx, limit, offset)
+func (s *EvaluationService) QueryGraduationResults(ctx context.Context, tenantID string, limit, offset int) ([]domain.GraduationQueryResult, int, error) {
+	return s.st.Graduations().QueryGraduationResults(ctx, tenantID, limit, offset)
 }
 
 // FindPositionRule 查询岗位最新认证规则。

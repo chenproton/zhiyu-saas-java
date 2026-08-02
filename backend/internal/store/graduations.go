@@ -191,17 +191,18 @@ type GraduationEvaluationParams struct {
 }
 
 // QueryGraduationResults 查询毕业结果（分页）。
-func (s *GraduationStore) QueryGraduationResults(ctx context.Context, limit, offset int) ([]domain.GraduationQueryResult, int, error) {
+func (s *GraduationStore) QueryGraduationResults(ctx context.Context, tenantID string, limit, offset int) ([]domain.GraduationQueryResult, int, error) {
 	var total int
-	_ = s.q.QueryRow(ctx, "SELECT COUNT(*) FROM graduation_query_results gr").Scan(&total)
+	_ = s.q.QueryRow(ctx, "SELECT COUNT(*) FROM graduation_query_results gr WHERE gr.tenant_id = $1", tenantID).Scan(&total)
 	rows, err := s.q.Query(ctx, `
 		SELECT gr.id, gr.user_id, gr.class_name, COALESCE(m.name, '') AS major_name, gr.credit_completed, gr.credit_required,
 			gr.scene_passed, gr.scene_required, gr.project_grade, gr.graduation_status, gr.ability_cert_status, gr.rectification_count, gr.updated_at
 		FROM graduation_query_results gr
 		LEFT JOIN majors m ON m.id = gr.major_id
+		WHERE gr.tenant_id = $1
 		ORDER BY gr.updated_at DESC
-		LIMIT $1 OFFSET $2
-	`, limit, offset)
+		LIMIT $2 OFFSET $3
+	`, tenantID, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

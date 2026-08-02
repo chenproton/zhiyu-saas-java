@@ -373,7 +373,7 @@ func (h *GraduationHandler) QueryResults(w http.ResponseWriter, r *http.Request)
 	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
 		offset = v
 	}
-	items, total, err := h.Service.QueryGraduationResults(r.Context(), limit, offset)
+	items, total, err := h.Service.QueryGraduationResults(r.Context(), *claims.TenantID, limit, offset)
 	if err != nil {
 		respondServerError(w, r, err, "查询毕业查询结果失败")
 		return
