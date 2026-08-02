@@ -138,6 +138,12 @@ func (s *UserStore) Update(ctx context.Context, p *UserUpdateParams) error {
 	return err
 }
 
+// UpdateSelfName 用户自助修改本人姓名。
+func (s *UserStore) UpdateSelfName(ctx context.Context, id, name string) error {
+	_, err := s.q.Exec(ctx, `UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2`, name, id)
+	return err
+}
+
 // UpdateStatus 更新用户状态。
 func (s *UserStore) UpdateStatus(ctx context.Context, id, status string) error {
 	_, err := s.q.Exec(ctx, `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, status, id)

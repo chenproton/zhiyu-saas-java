@@ -2,23 +2,17 @@
 
 import { Bell, Mail, Phone, Shield, Smartphone, User, Award } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { FormFieldRow } from '@/components/shared/form-field-row'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SectionCard } from './section-card'
-// 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
-import { mockStudentInfo } from '../_data/workspace-student-types'
+import { AccountInfoForm } from './account-info-form'
+import { ChangePasswordForm } from './change-password-form'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 
 export function ProfileTab() {
-  const formData = {
-    name: mockStudentInfo.name,
-    studentNo: mockStudentInfo.studentNo,
-    phone: '138****8888',
-    email: 'liming@example.edu.cn',
-    major: mockStudentInfo.major,
-    className: mockStudentInfo.className,
-  }
+  const { user, major, orgNode } = usePortalAuth()
 
   const honors = [
     { id: '1', name: '国家励志奖学金', issuer: '教育部', date: '2025-11', fileName: '' },
@@ -60,12 +54,26 @@ export function ProfileTab() {
     {
       label: '手机绑定',
       status: 'bound',
-      statusText: '138****8888',
-      action: '更换',
+      statusText: user?.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : '未绑定',
+      action: user?.phone ? '更换' : '绑定',
       icon: Smartphone,
     },
-    { label: '邮箱绑定', status: 'bound', statusText: '已绑定', action: '更换', icon: Mail },
+    {
+      label: '邮箱绑定',
+      status: user?.email ? 'bound' : 'unbound',
+      statusText: user?.email ? '已绑定' : '未绑定',
+      action: user?.email ? '更换' : '绑定',
+      icon: Mail,
+    },
     { label: '微信绑定', status: 'unbound', statusText: '未绑定', action: '绑定', icon: Phone },
+  ]
+
+  const readOnlyFields = [
+    { label: '学号', value: user?.studentNo || '—' },
+    { label: '手机号', value: user?.phone || '—' },
+    { label: '邮箱', value: user?.email || '—' },
+    { label: '专业', value: major?.name || '—' },
+    { label: '班级', value: orgNode?.name || '—' },
   ]
 
   return (
@@ -103,66 +111,34 @@ export function ProfileTab() {
             <div className="flex items-center gap-4 mb-6">
               <Avatar className="w-20 h-20">
                 <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold">
-                  {mockStudentInfo.avatar}
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">{mockStudentInfo.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{user?.name || '—'}</h3>
                 <p className="text-sm text-gray-500">
-                  {mockStudentInfo.grade} · {mockStudentInfo.major}
+                  {[major?.name, orgNode?.name].filter(Boolean).join(' · ') || '暂无身份信息'}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <FormFieldRow label="姓名" htmlFor="name" labelClassName="text-gray-700">
-                <Input
-                  id="name"
-                  value={formData.name}
-                  disabled
-                  className="bg-gray-50 border-gray-100"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="学号" htmlFor="studentNo" labelClassName="text-gray-700">
-                <Input
-                  id="studentNo"
-                  value={formData.studentNo}
-                  disabled
-                  className="bg-gray-50 border-gray-100"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="手机号" htmlFor="phone" labelClassName="text-gray-700">
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  disabled
-                  className="bg-gray-50 border-gray-100"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="邮箱" htmlFor="email" labelClassName="text-gray-700">
-                <Input
-                  id="email"
-                  value={formData.email}
-                  disabled
-                  className="bg-gray-50 border-gray-100"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="专业" htmlFor="major" labelClassName="text-gray-700">
-                <Input
-                  id="major"
-                  value={formData.major}
-                  disabled
-                  className="bg-gray-50 border-gray-100"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="班级" htmlFor="className" labelClassName="text-gray-700">
-                <Input
-                  id="className"
-                  value={formData.className}
-                  disabled
-                  className="bg-gray-50 border-gray-100"
-                />
-              </FormFieldRow>
+            <div className="space-y-6">
+              <AccountInfoForm />
+
+              <div className="border-t border-gray-100 pt-5">
+                <p className="text-sm font-medium text-gray-900 mb-3">其它信息（不可修改）</p>
+                <FormFieldGrid>
+                  {readOnlyFields.map((field) => (
+                    <FormFieldRow key={field.label} label={field.label} labelClassName="text-gray-700">
+                      <Input
+                        value={field.value}
+                        disabled
+                        className="bg-gray-50 border-gray-100"
+                      />
+                    </FormFieldRow>
+                  ))}
+                </FormFieldGrid>
+              </div>
             </div>
           </SectionCard>
         </TabsContent>
@@ -199,44 +175,50 @@ export function ProfileTab() {
 
         <TabsContent value="security" className="mt-0">
           <SectionCard title="账号安全" icon={Shield} iconColor="rose">
-            <div className="space-y-3">
-              {securityItems.map((item, index) => {
-                const Icon = item.icon
-                return (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-gray-500" />
+            <div className="space-y-5">
+              <div className="p-4 rounded-xl border border-gray-100 bg-white">
+                <p className="text-sm font-medium text-gray-900 mb-3">修改密码</p>
+                <ChangePasswordForm />
+              </div>
+              <div className="space-y-3">
+                {securityItems.map((item, index) => {
+                  const Icon = item.icon
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
+                          <Icon className="w-5 h-5 text-gray-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                          <p
+                            className={`text-xs ${
+                              item.status === 'strong' || item.status === 'bound'
+                                ? 'text-emerald-600'
+                                : 'text-gray-400'
+                            }`}
+                          >
+                            {item.statusText}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                        <p
-                          className={`text-xs ${
-                            item.status === 'strong' || item.status === 'bound'
-                              ? 'text-emerald-600'
-                              : 'text-gray-400'
-                          }`}
-                        >
-                          {item.statusText}
-                        </p>
-                      </div>
+                      <span className="text-xs text-gray-400">{item.action}</span>
                     </div>
-                    <span className="text-xs text-gray-400">{item.action}</span>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="mt-4 p-4 rounded-xl bg-rose-50 border border-rose-100">
-              <p className="text-sm text-gray-900 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-rose-500" />
-                <strong>安全建议</strong>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                建议定期修改登录密码，开启二次验证，不要在公共设备上保存登录状态。
-              </p>
+                  )
+                })}
+              </div>
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-100">
+                <p className="text-sm text-gray-900 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-rose-500" />
+                  <strong>安全建议</strong>
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  建议定期修改登录密码，开启二次验证，不要在公共设备上保存登录状态。
+                </p>
+              </div>
             </div>
           </SectionCard>
         </TabsContent>

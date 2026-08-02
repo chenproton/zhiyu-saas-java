@@ -141,6 +141,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/users/{id}", userManagementHandler.Delete)
 			r.Post("/users/{id}/status", userManagementHandler.UpdateStatus)
 			r.Post("/users/batch", userManagementHandler.BatchCreate)
+			r.Put("/portal/workspace/me", userManagementHandler.UpdateMe)
+			r.Post("/portal/workspace/me/password", userManagementHandler.ChangeMyPassword)
 
 			roleHandler := &handler.RoleHandler{Service: service.NewRoleService(svc2), Store: st2.Roles()}
 			r.Get("/roles", roleHandler.List)

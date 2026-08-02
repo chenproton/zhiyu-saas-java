@@ -148,6 +148,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			// dashboard 内容按 userID 查询，缓存键含 userID（30s TTL），跨用户不串数据
 			r.With(cachedDashboard).Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
 			r.Get("/portal/workspace/my-schedule", h.schedulingHandler.MySchedule)
+			// 个人中心自助接口：修改本人姓名/密码（学生/教师/学校管理员）
+			r.Put("/portal/workspace/me", h.userManagementHandler.UpdateMe)
+			r.Post("/portal/workspace/me/password", h.userManagementHandler.ChangeMyPassword)
 		})
 
 		// 学生画像查询对全部业务角色开放（含学生本人），generate/archives 仍限业务用户

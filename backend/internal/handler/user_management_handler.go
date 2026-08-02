@@ -86,6 +86,73 @@ type BindUserRolesRequest struct {
 	RoleIDs []string `json:"roleIds"`
 }
 
+type UpdateMeRequest struct {
+	Name string `json:"name"`
+}
+
+type ChangeMyPasswordRequest struct {
+	NewPassword string `json:"newPassword"`
+}
+
+// UpdateMe 用户自助修改本人姓名（个人中心），仅允许修改当前登录用户自身。
+func (h *UserManagementHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.UserID == "" {
+		respondError(w, http.StatusUnauthorized, "未登录或登录已过期")
+		return
+	}
+
+	var req UpdateMeRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.Name == "" {
+		respondError(w, http.StatusBadRequest, "姓名不能为空")
+		return
+	}
+
+	if err := h.Service.UpdateSelfName(r.Context(), claims.UserID, req.Name); err != nil {
+		respondServerError(w, r, err, "更新姓名失败")
+		return
+	}
+
+	user, err := h.Service.Get(r.Context(), claims.UserID)
+	if err != nil {
+		respondServerError(w, r, err, "更新后查询用户失败")
+		return
+	}
+	user.PasswordHash = ""
+	respondJSON(w, http.StatusOK, user)
+}
+
+// ChangeMyPassword 用户自助修改本人密码（个人中心），无需校验旧密码。
+func (h *UserManagementHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.UserID == "" {
+		respondError(w, http.StatusUnauthorized, "未登录或登录已过期")
+		return
+	}
+
+	var req ChangeMyPasswordRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.NewPassword == "" {
+		respondError(w, http.StatusBadRequest, "密码不能为空")
+		return
+	}
+	if !isStrongPassword(req.NewPassword) {
+		respondError(w, http.StatusBadRequest, "密码长度至少 8 位，且需同时包含字母和数字")
+		return
+	}
+
+	if err := h.Service.ResetPassword(r.Context(), claims.UserID, req.NewPassword); err != nil {
+		respondServerError(w, r, err, "修改密码失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"id": claims.UserID})
+}
+
 func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 	cfg := h.Service.Store().Users().ListConfig()
 	params, ok := listParamsFromRequest(r, true)

@@ -109,6 +109,11 @@ func (s *UserService) UpdateStatus(ctx context.Context, id, status string) error
 	return s.st.Users().UpdateStatus(ctx, id, status)
 }
 
+// UpdateSelfName 用户自助修改本人姓名。
+func (s *UserService) UpdateSelfName(ctx context.Context, id, name string) error {
+	return s.st.Users().UpdateSelfName(ctx, id, name)
+}
+
 // ResetPassword 重置密码。
 func (s *UserService) ResetPassword(ctx context.Context, id, plainPassword string) error {
 	return s.st.Users().ResetPassword(ctx, id, plainPassword)

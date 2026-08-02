@@ -166,3 +166,15 @@ export const portalApi = {
   workspaceDashboard: (params?: { role?: string }) =>
     request<WorkspaceDashboard>(`/portal/workspace/dashboard${buildQuery(params || {})}`),
 }
+
+export const portalMeApi = {
+  /** 个人中心：修改本人姓名 */
+  updateName: (name: string) =>
+    portalRequest<User>('/portal/workspace/me', { method: 'PUT', body: JSON.stringify({ name }) }),
+  /** 个人中心：修改本人密码（无需旧密码） */
+  changePassword: (newPassword: string) =>
+    portalRequest<{ id: string }>('/portal/workspace/me/password', {
+      method: 'POST',
+      body: JSON.stringify({ newPassword }),
+    }),
+}
