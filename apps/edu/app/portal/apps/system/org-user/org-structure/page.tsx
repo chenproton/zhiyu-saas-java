@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 import { Input } from '@/components/ui/input'
-import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -17,7 +16,6 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Plus,
   ChevronRight,
@@ -25,11 +23,9 @@ import {
   Pencil,
   Trash2,
   Users,
-  Upload,
   Download,
   GraduationCap,
   LayoutList,
-  AlertCircle,
   Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -42,12 +38,10 @@ import {
   downloadBlob,
 } from '@/lib/api'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
-import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useToast } from '@zhiyu/ui'
-import { useImportFlow } from '@/hooks/use-import-flow'
 import { typeMetaFor } from '@/lib/org-type-icons'
 
 type OrgNodeType = string
@@ -236,9 +230,6 @@ export default function OrgStructurePage() {
   const [graduateLoading, setGraduateLoading] = useState(false)
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
-  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
-
   useEffect(() => {
     ;(async () => {
       setMounted(true)
@@ -287,33 +278,6 @@ export default function OrgStructurePage() {
     }
   }, [fetchData])
 
-  const {
-    importFiles,
-    importPreview,
-    isImporting,
-    isDownloading,
-    setImportFiles,
-    handleAddFiles,
-    handleRemoveFile,
-    handleDownloadTemplate,
-    handleImport,
-    executeImport,
-  } = useImportFlow({
-    importType: 'organizations',
-    entityLabel: '组织',
-    templateFileName: '组织批量导入模板.xlsx',
-    onSuccess: fetchData,
-  })
-
-  const doImport = async (overwrite = false) => {
-    const ok = await executeImport(overwrite)
-    if (ok) {
-      setIsImportDialogOpen(false)
-      setIsImportConfirmOpen(false)
-      setImportFiles([])
-    }
-  }
-
   const stats = useMemo(() => {
     const knownTypes = Object.values(typeNames)
     const statMap: Record<string, number> = { members: totalMembers(orgData) }
@@ -322,6 +286,10 @@ export default function OrgStructurePage() {
     })
     return statMap
   }, [orgData, typeNames])
+
+  const statEntries = useMemo(() => {
+    return Object.entries(typeNames).map(([, name]) => ({ name, count: stats[name] || 0 }))
+  }, [typeNames, stats])
 
   const toggleNode = (id: string) => {
     const toggle = (nodes: OrgNode[]): OrgNode[] => {
@@ -528,10 +496,6 @@ export default function OrgStructurePage() {
     }
   }
 
-  const statEntries = useMemo(() => {
-    return Object.entries(typeNames).map(([, name]) => ({ name, count: stats[name] || 0 }))
-  }, [typeNames, stats])
-
   const handleExport = async () => {
     try {
       const res = await importExportApi.exportOrganizationsExcel([])
@@ -552,19 +516,28 @@ export default function OrgStructurePage() {
   }
 
   return (
-    <div className="min-h-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">组织架构管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            管理学校组织架构树，同时维护学生线与教师线的组织归属
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" />
-            批量导入
-          </Button>
+    <PortalCrudPage
+      title="组织架构管理"
+      description="管理学校组织架构树，同时维护学生线与教师线的组织归属"
+      entityLabel="组织节点"
+      items={orgData}
+      loading={isLoading}
+      error={error}
+      onRetry={fetchData}
+      colSpan={1}
+      search={false}
+      stats={[
+        ...statEntries.slice(0, 5).map((entry) => ({ label: entry.name, value: entry.count })),
+        { label: '总人数', value: stats.members },
+      ]}
+      importConfig={{
+        importType: 'organizations',
+        entityLabel: '组织',
+        templateFileName: '组织批量导入模板.xlsx',
+      }}
+      hideCreate
+      headerActions={
+        <>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1" />
             批量导出
@@ -573,69 +546,40 @@ export default function OrgStructurePage() {
             <Plus className="h-4 w-4 mr-1" />
             新增节点
           </Button>
-        </div>
-      </div>
-
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>加载失败</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {isLoading ? (
-        <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
-          <Spinner className="h-5 w-5" />
-          加载中...
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
-            {statEntries.slice(0, 5).map((entry) => (
-              <div key={entry.name} className="rounded-lg border bg-white p-3 shadow-sm">
-                <div className="text-xs text-muted-foreground">{entry.name}</div>
-                <div className="mt-1 text-xl font-semibold text-foreground">{entry.count}</div>
-              </div>
-            ))}
-            <div className="rounded-lg border bg-white p-3 shadow-sm">
-              <div className="text-xs text-muted-foreground">总人数</div>
-              <div className="mt-1 text-xl font-semibold text-foreground">{stats.members}</div>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <LayoutList className="w-4 h-4 text-muted-foreground" />
-                组织架构树
-              </div>
-            </div>
-            <ScrollArea className="h-[600px] p-4">
-              {orgData.length === 0 ? (
-                <Empty className="h-full">
-                  <EmptyHeader>
-                    <EmptyTitle>暂无组织架构</EmptyTitle>
-                    <EmptyDescription>当前租户下尚未创建组织架构节点</EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              ) : (
-                orgData.map((node) => (
-                  <TreeNode
-                    key={node.id}
-                    node={node}
-                    onToggle={toggleNode}
-                    onAction={handleAction}
-                    highlightedId={highlightedId}
-                    registerRef={registerNodeRef}
-                  />
-                ))
-              )}
-            </ScrollArea>
-          </div>
         </>
-      )}
-
+      }
+      body={
+        <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <LayoutList className="w-4 h-4 text-muted-foreground" />
+              组织架构树
+            </div>
+          </div>
+          <ScrollArea className="h-[600px] p-4">
+            {orgData.length === 0 ? (
+              <Empty className="h-full">
+                <EmptyHeader>
+                  <EmptyTitle>暂无组织架构</EmptyTitle>
+                  <EmptyDescription>当前租户下尚未创建组织架构节点</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              orgData.map((node) => (
+                <TreeNode
+                  key={node.id}
+                  node={node}
+                  onToggle={toggleNode}
+                  onAction={handleAction}
+                  highlightedId={highlightedId}
+                  registerRef={registerNodeRef}
+                />
+              ))
+            )}
+          </ScrollArea>
+        </div>
+      }
+    >
       {isDialogOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -655,13 +599,14 @@ export default function OrgStructurePage() {
               <p className="text-muted-foreground text-sm">配置组织节点信息</p>
             </div>
             <div className="grid gap-4 py-4">
-              <FormFieldRow label="节点组织名称">
+              <div className="space-y-2">
+                <Label>节点组织名称</Label>
                 <Input
                   placeholder="如：信息学院"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                 />
-              </FormFieldRow>
+              </div>
               <div className="grid gap-2">
                 <Label>组织类型</Label>
                 <div className="grid grid-cols-4 gap-2">
@@ -688,7 +633,15 @@ export default function OrgStructurePage() {
                   })}
                 </div>
               </div>
-              <FormFieldRow label="父节点" hint={dialogMode === 'edit' ? '更改父节点后，当前节点及其全部子节点将迁移到新父节点下' : undefined}>
+              <div className="space-y-2">
+                <Label>
+                  父节点
+                  {dialogMode === 'edit' && (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      更改父节点后，当前节点及其全部子节点将迁移到新父节点下
+                    </span>
+                  )}
+                </Label>
                 <Select value={formParentId} onValueChange={setFormParentId}>
                   <SelectTrigger>
                     <SelectValue placeholder="选择父节点" />
@@ -702,21 +655,20 @@ export default function OrgStructurePage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </FormFieldRow>
-              <FormFieldRow label="排序序号">
+              </div>
+              <div className="space-y-2">
+                <Label>排序序号</Label>
                 <Input
                   type="number"
                   placeholder="1"
                   value={formSortOrder}
                   onChange={(e) => setFormSortOrder(e.target.value)}
                 />
-              </FormFieldRow>
+              </div>
               {formError && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>保存失败</AlertTitle>
-                  <AlertDescription>{formError}</AlertDescription>
-                </Alert>
+                <div className="rounded border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                  {formError}
+                </div>
               )}
             </div>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-4">
@@ -730,45 +682,6 @@ export default function OrgStructurePage() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* 导入组织架构 */}
-      <ImportWizardDialog
-        open={isImportDialogOpen}
-        onOpenChange={(open) => {
-          setIsImportDialogOpen(open)
-          if (!open) setImportFiles([])
-        }}
-        title="批量导入组织架构"
-        guideItems={[
-          <>点击下方按钮下载最新的导入模板（含系统字典数据）</>,
-          <>参照模板中各 Sheet 的填写说明，填入组织架构数据</>,
-          <>完成后点击&quot;下一步&quot;上传文件</>,
-        ]}
-        downloadLabel="下载组织架构批量导入模板"
-        onDownload={handleDownloadTemplate}
-        uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-        importLabel={() => '开始导入'}
-        onImport={handleImport}
-        files={importFiles}
-        onAddFiles={handleAddFiles}
-        onRemoveFile={handleRemoveFile}
-        importing={isImporting}
-        downloading={isDownloading}
-      />
-
-      {importPreview && (
-        <ImportConfirmDialog
-          open={isImportConfirmOpen}
-          onOpenChange={setIsImportConfirmOpen}
-          entityLabel="组织架构"
-          created={importPreview.created}
-          duplicates={importPreview.duplicates}
-          failed={importPreview.failed}
-          duplicateItems={importPreview.duplicateItems}
-          onConfirmOverwrite={() => doImport(true)}
-          onConfirmSkip={() => doImport(false)}
-        />
       )}
 
       <ConfirmDialog
@@ -790,6 +703,6 @@ export default function OrgStructurePage() {
         variant="destructive"
         onConfirm={confirmGraduate}
       />
-    </div>
+    </PortalCrudPage>
   )
 }
