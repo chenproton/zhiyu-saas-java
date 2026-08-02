@@ -302,7 +302,10 @@ export default function LibraryLandingPage() {
           }}
         />
         <div style={{ maxWidth: 720, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: 40, fontWeight: 'bold', marginBottom: 12, letterSpacing: 1 }}>
+          <h1
+            className="text-[26px] sm:text-[32px] lg:text-[40px]"
+            style={{ fontWeight: 'bold', marginBottom: 12, letterSpacing: 1 }}
+          >
             教学资产共享中心
           </h1>
           <p style={{ fontSize: 15, opacity: 0.9, marginBottom: 28 }}>
@@ -356,7 +359,7 @@ export default function LibraryLandingPage() {
               搜索
             </button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 48 }}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-4">
             {[
               { num: totalCount, label: '资源总量' },
               { num: resources.length, label: '教学资源' },
@@ -692,6 +695,8 @@ export default function LibraryLandingPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 8,
                 }}
               >
                 <span style={{ fontSize: 13, color: '#64748b' }}>
@@ -744,6 +749,8 @@ export default function LibraryLandingPage() {
               justifyContent: 'space-between',
               alignItems: 'center',
               marginBottom: 20,
+              flexWrap: 'wrap',
+              gap: 8,
             }}
           >
             <h2
@@ -832,7 +839,7 @@ export default function LibraryLandingPage() {
               <div>{loading ? '加载中...' : '暂无符合条件的资源'}</div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {filteredResources.map((resource) => {
                 const color = TYPE_COLORS[resource.resourceType] || '#78716c'
                 const hasPreview = !!resource.url
@@ -1118,7 +1125,7 @@ export default function LibraryLandingPage() {
         />
         <div style={{ padding: '48px 5% 32px' }}>
           <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '0 0 12px 0' }}>
                   场景化数智教学服务平台
