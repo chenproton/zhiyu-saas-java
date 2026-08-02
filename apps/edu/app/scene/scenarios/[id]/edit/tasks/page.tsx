@@ -115,7 +115,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { createTagElement } from '@/lib/dom-utils'
 import { ScoreConfigDialog } from '@/components/evaluation/score-config-dialog'
 import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
 import {

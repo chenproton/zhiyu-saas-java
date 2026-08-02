@@ -4,6 +4,7 @@ export { useToast, toast, reducer } from './hooks/use-toast'
 export { useImportFlow } from './hooks/use-import-flow'
 export type { UseImportFlowOptions } from './hooks/use-import-flow'
 export { cn } from './lib/utils'
+export { createTagElement } from './lib/dom-utils'
 
 export { ConfirmDialog } from './components/shared/confirm-dialog'
 export { StatusBadge, EmptyState, LoadingView } from './components/shared/status-badge'
