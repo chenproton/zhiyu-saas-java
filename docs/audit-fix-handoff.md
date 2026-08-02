@@ -1,12 +1,12 @@
 # 审计修复交接文档
 
 > 撰写时间：2026-08-01
-> 最后更新：2026-08-02（P1/P2/P4 全部完成，仅剩部署验证）
+> 最后更新：2026-08-02（P0–P4 全部完成并已部署合入 master）
 > 分支：`fix/eval-rules-runtime-error`
 > 工作目录：`/tmp/fix-eval-runtime`
 > 目标：修复审计报告中除「大文件拆分」外的所有 P0–P4 问题
 
-本文档用于交接给下一个 Agent。除「部署验证」与「手工冒烟」外，P0–P4 已全部完成。
+本文档为历史交接记录。P0–P4 已全部完成，部署验证通过，修复均已合入 master。后续质量迭代见 `docs/refactor-layering.md` 与 `docs/components.md`。
 
 ---
 
@@ -14,9 +14,9 @@
 
 - **前端**：`pnpm lint` 0 error 0 warning，`pnpm typecheck` 通过。
 - **后端**：`go vet ./...` 通过，`go build ./...` 通过，`gofmt -l .` 为空。
-- **后端测试**：`go test ./...` **已全绿**。`.env` 中 `sslmode=require` 与本地容器不符会报 TLS 错误，用 `TEST_DATABASE_URL`/`DATABASE_URL` 覆盖为 `?sslmode=disable` 即可运行；期间发现并修复 6 处此前从未暴露的真实 SQL bug（见提交 `82e75dbf`）。
+- **后端测试**：`go test ./...` **已全绿**。`.env` 中 `sslmode=require` 与本地容器不符会报 TLS 错误，用 `TEST_DATABASE_URL`/`DATABASE_URL` 覆盖为 `?sslmode=disable` 即可运行；期间发现并修复 6 处此前从未暴露的真实 SQL bug（见提交 `9f9b0cb9`）。
 - **单测**：`pnpm test` 全绿（api-client 3 / ui 5 / edu 4 / shared-types 2）。
-- **部署**：尚未执行 `./deploy.sh --branch fix/eval-rules-runtime-error` 验证，需要下一个 Agent 在环境就绪后补跑。
+- **部署**：已完成并通过（见「六」）；修复已合入 master（`161a8456`），分支 `fix/eval-rules-runtime-error` 已删除。
 - **大文件拆分**：明确不在本次修复范围内（见 `docs/components.md` 对 `EvaluationRulesEditor` 的约定）。
 
 ---

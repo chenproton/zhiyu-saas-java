@@ -76,7 +76,7 @@ internal/
 ### P3 清理（进行中）
 - `common.go` → 保留响应/租户/权限 helper，`withTx`（死代码）已删除、`lookupIDByName` 已迁至 `import_common.go` ✅
 - **非豁免 Handler 列表 SQL 下沉** ✅：exam/position/question_bank/scenario/scheduling（含 venue/period_slots）/teaching_plan/training_program/user 的 `ListQueryConfig` 配置（Table/SelectColumns/ExtraFilter/扫描器）全部沉淀到对应 store 的 `ListConfig()`/`AdminListConfig()`/`PublicListConfig()`/`FavoritesListConfig()`/`ListSchedulesConfig()` 等
-- 巨型文件拆分：scheduling(1486)/template(1621)/resource_import(1503)/course(1329) — **明确不做**（`docs/components.md` 约定大文件不拆分）
+- 巨型文件拆分：template(1621)/resource_import(1503) — **明确不做**（`docs/components.md` 约定大文件不拆分）
 - store 查询构建器单测：`query_test.go` 已存在，`status.test.ts`/`api-helpers.test.ts`/`format-utils.test.ts` 补齐 ✅
 - 格式化债务：Prettier（根目录 `format`/`format:check`）+ gofmt 全量清零 ✅
 

@@ -2,7 +2,7 @@
 
 > **页面级共享壳**与**业务组件**位于 `apps/edu/components/shared/`。
 > **通用 UI/交互组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用，`apps/edu/components/shared/` 保留 re-export 薄封装）：`ComboboxSelect`/`MixedTagEditor`/`ImportWizardDialog`/`ImportConfirmDialog`/`ConfirmDialog`/`StatusBadge`/`TableRowActions`/`HoverActionBar`。
-> **评测配置组件**位于 `apps/edu/app/lesson/admin/_components/eval/`，同时被课程和任务编辑器复用。
+> **评测配置组件**位于 `apps/edu/app/lesson/admin/_components/assessment/`（`course-evaluation-rules-dialog.tsx`）与 `apps/edu/components/shared/eval-method-config-module.tsx`，仅课程编辑器使用；任务编辑器经 `method-config-dialog.tsx` 复用共享组件。
 > **任务步骤卡片**位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
 > **评测专用组件**位于 `apps/edu/components/evaluation/`。
 > **通用 Hooks** 位于 `@/hooks/`（`apps/edu/hooks/`）和 `packages/ui/src/hooks/`。
@@ -135,8 +135,8 @@
 
 **包含功能：**
 - 测评方式选择网格（平台通用/行业专属 Tab 分类）
-- 已选方法的 4 步卡片（①测评对象 → ②评价主体 → ③测评资源 → ④评价标准）
-- 4 个独立 Dialog 配置各项
+- 已选方法的多步配置卡片（测评对象/评价主体/测评资源/评价标准等）
+- 各项配置委托 `CourseEvaluationRulesDialog` 完成
 - 评价量规/评分规则双模式 + 等级映射（A/B/C/D）
 
 ### 第二层：测评方式面板（每种一个独立组件）
