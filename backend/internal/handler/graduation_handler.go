@@ -267,6 +267,8 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 	cfg := store.ListQueryConfig[domain.GraduationProjectArchive]{
 		Table:         "graduation_project_archives",
 		SelectColumns: "id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification",
+		TenantScoped:  true,
+		TenantColumn:  "tenant_id",
 		OrderBy:       "last_updated DESC",
 		ScanRows:      store.ScanGraduationArchiveRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
@@ -275,7 +277,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 			}
 		},
 	}
-	params, ok := listParamsFromRequest(r, false)
+	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
@@ -323,6 +325,8 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 	cfg := store.ListQueryConfig[domain.GraduationProjectEvaluation]{
 		Table:         "graduation_project_evaluations",
 		SelectColumns: "id, topic_id, user_id, advisor_score, enterprise_score, defense_score, comprehensive_grade, is_excellent, status, evaluated_at",
+		TenantScoped:  true,
+		TenantColumn:  "tenant_id",
 		OrderBy:       "evaluated_at DESC",
 		ScanRows:      store.ScanGraduationEvaluationRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
@@ -334,7 +338,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 			}
 		},
 	}
-	params, ok := listParamsFromRequest(r, false)
+	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return

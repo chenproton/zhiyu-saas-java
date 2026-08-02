@@ -124,6 +124,13 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 	var candidates []candidate
 	for _, row := range rows {
 		u := candidate{user: row.User, tenant: row.Tenant}
+		// 停用用户 / 停用租户不允许登录
+		if u.user.Status != "" && u.user.Status != "active" {
+			continue
+		}
+		if u.tenant.Status != "" && string(u.tenant.Status) != string(domain.TenantStatusActive) {
+			continue
+		}
 		if err := bcrypt.CompareHashAndPassword([]byte(u.user.PasswordHash), []byte(req.Password)); err == nil {
 			candidates = append(candidates, u)
 		}
@@ -224,6 +231,10 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 	user, err := h.fetchUserByID(r.Context(), targetUserID)
 	if err != nil || user.ID == "" {
 		respondServerError(w, r, err, "查询用户信息失败")
+		return
+	}
+	if user.Status != "" && user.Status != "active" {
+		respondError(w, http.StatusUnauthorized, "账号已停用")
 		return
 	}
 	h.issueTokenForUser(w, r, &user)

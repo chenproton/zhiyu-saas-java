@@ -212,7 +212,9 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 		for day := 1; day <= 7; day++ {
 			for _, periodName := range periodNames {
 				for _, venue := range candidateVenues {
-					if hasScheduleConflict(existing, &store.ScheduleConflictParams{
+					// 运行内已放置的排课也参与冲突检查（防止同一次自动排课内部重复占用）
+					checkSet := append(existing, createdBriefs(creates)...)
+					if hasScheduleConflict(checkSet, &store.ScheduleConflictParams{
 						PlanEntryID: strPtrIfNonEmpty(e.ID),
 						ClassNodeID: e.ClassNodeID,
 						TeacherID:   strPtrIfNonEmpty(e.TeacherID),
@@ -272,6 +274,31 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 		return 0, 0, nil, err
 	}
 	return success, failed, failures, nil
+}
+
+// createdBriefs 把本次自动排课已生成的参数转成冲突检查用 brief。
+func createdBriefs(creates []*store.ScheduleCreateParams) []store.TermScheduleBrief {
+	briefs := make([]store.TermScheduleBrief, 0, len(creates))
+	for _, c := range creates {
+		periods := make([]string, 0, len(c.Periods))
+		for _, p := range c.Periods {
+			if s, ok := p.(string); ok {
+				periods = append(periods, s)
+			}
+		}
+		briefs = append(briefs, store.TermScheduleBrief{
+			PlanEntryID: c.PlanEntryID,
+			ClassNodeID: c.ClassNodeID,
+			TeacherID:   c.TeacherID,
+			DayOfWeek:   c.DayOfWeek,
+			Periods:     periods,
+			StartWeek:   c.StartWeek,
+			EndWeek:     c.EndWeek,
+			WeekPattern: c.WeekPattern,
+			VenueID:     c.VenueID,
+		})
+	}
+	return briefs
 }
 
 // hasScheduleConflict 内存判断排课冲突（语义与 CheckScheduleConflicts 一致）：

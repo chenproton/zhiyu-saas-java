@@ -274,7 +274,7 @@ func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usa
 					ELSE NULL
 				END,
 				updated_at = NOW()
-		`, tenantID, t.scenarioID, t.taskID, methodKey, userID, status, score, maxScore, objectiveAnswers); err != nil {
+		`, tenantID, t.taskID, t.scenarioID, methodKey, userID, status, score, maxScore, objectiveAnswers); err != nil {
 			return err
 		}
 	}

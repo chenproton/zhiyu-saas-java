@@ -372,6 +372,9 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 		if u.InstitutionID == nil && claims != nil && claims.InstitutionID != nil {
 			u.InstitutionID = claims.InstitutionID
 		}
+		if !verifyRequestTenant(w, r, u.TenantID) {
+			return
+		}
 		params = append(params, &store.UserCreateParams{
 			TenantID:      u.TenantID,
 			InstitutionID: u.InstitutionID,

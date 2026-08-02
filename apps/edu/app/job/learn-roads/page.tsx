@@ -173,7 +173,6 @@ interface EditViewProps {
   editLoading: boolean
   saving: boolean
   saved: boolean
-  learnRoadId: string | null
   onBack: () => void
   onSave: () => void
   setSaved: React.Dispatch<React.SetStateAction<boolean>>
@@ -192,7 +191,6 @@ function EditView({
   editLoading,
   saving,
   saved,
-  learnRoadId,
   onBack,
   onSave,
   setSaved,
@@ -266,7 +264,7 @@ function EditView({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={onSave} disabled={editLoading || saving || !learnRoadId}>
+          <Button onClick={onSave} disabled={editLoading || saving}>
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -616,25 +614,12 @@ export default function LearnRoadsPage() {
         if (existing?.id) {
           setLearnRoadId(existing.id)
           loadedScenes = stepsToScenes(existing.steps || [], scenarios, tasks)
-        } else if (scenarios.length) {
-          const steps = scenesToSteps(scenarios.map((s) => scenarioToScene(s, tasks)))
-          const created = await learnRoadApi.create({
-            name: `${position.name}学习路径`,
-            positionIds: [position.id],
-            steps,
-          })
-          setLearnRoads((prev) => [created, ...prev])
-          setLearnRoadId(created.id)
-          loadedScenes = stepsToScenes(created.steps || [], scenarios, tasks)
         } else {
-          const created = await learnRoadApi.create({
-            name: `${position.name}学习路径`,
-            positionIds: [position.id],
-            steps: [],
-          })
-          setLearnRoads((prev) => [created, ...prev])
-          setLearnRoadId(created.id)
-          loadedScenes = []
+          // 无已有路径时不立即写库，进入本地编辑态，保存时才创建
+          setLearnRoadId(null)
+          loadedScenes = scenarios.length
+            ? scenarios.map((s) => scenarioToScene(s, tasks))
+            : []
         }
         setScenes(loadedScenes)
         setSelectedSceneId(loadedScenes[0]?.id || null)
@@ -678,13 +663,26 @@ export default function LearnRoadsPage() {
   }
 
   const handleSave = async () => {
-    if (!learnRoadId || !editingPosition) return
+    if (!editingPosition) return
     setSaving(true)
     try {
-      const updated = await learnRoadApi.update(learnRoadId, {
+      const steps = scenesToSteps(scenes)
+      let id = learnRoadId
+      // 本地编辑态下尚无路径记录，先创建再更新
+      if (!id) {
+        const created = await learnRoadApi.create({
+          name: `${editingPosition.name}学习路径`,
+          positionIds: [editingPosition.id],
+          steps,
+        })
+        id = created.id
+        setLearnRoads((prev) => [created, ...prev])
+        setLearnRoadId(id)
+      }
+      const updated = await learnRoadApi.update(id, {
         name: `${editingPosition.name}学习路径`,
         positionIds: [editingPosition.id],
-        steps: scenesToSteps(scenes),
+        steps,
       })
       setLearnRoads((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
       setSaved(true)
@@ -838,7 +836,6 @@ export default function LearnRoadsPage() {
           editLoading={editLoading}
           saving={saving}
           saved={saved}
-          learnRoadId={learnRoadId}
           onBack={handleBack}
           onSave={handleSave}
           setSaved={setSaved}

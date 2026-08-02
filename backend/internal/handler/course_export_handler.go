@@ -113,9 +113,16 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 		var nodes []nodeInfo
 		for nodeRows.Next() {
 			var n nodeInfo
-			nodeRows.Scan(&n.id, &n.name, &n.parentID, &n.refType, &n.sortOrder, &n.teachingGoals, &n.duration, &n.difficulty)
+			if err := nodeRows.Scan(&n.id, &n.name, &n.parentID, &n.refType, &n.sortOrder, &n.teachingGoals, &n.duration, &n.difficulty); err != nil {
+				nodeRows.Close()
+				return err
+			}
 			nodeNameByID[n.id] = n.name
 			nodes = append(nodes, n)
+		}
+		if err := nodeRows.Err(); err != nil {
+			nodeRows.Close()
+			return err
 		}
 		nodeRows.Close()
 

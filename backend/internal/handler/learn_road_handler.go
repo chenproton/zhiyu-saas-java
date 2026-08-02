@@ -135,17 +135,39 @@ func (h *LearnRoadHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	existing, err := h.Store.GetByID(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询学习路径失败")
+		return
+	}
+	// 部分更新：未传的字段回填现有值，避免清空
+	description := req.Description
+	if description == nil {
+		description = existing.Description
+	}
+	positionIDs := req.PositionIDs
+	if positionIDs == nil {
+		positionIDs = existing.PositionIDs
+	}
+	steps := req.Steps
+	if steps == nil {
+		steps = existing.Steps
+	}
 	if err := h.Store.Update(r.Context(), id, store.LearnRoadUpdateParams{
 		Name:        req.Name,
-		Description: req.Description,
-		PositionIDs: req.PositionIDs,
-		Steps:       req.Steps,
+		Description: description,
+		PositionIDs: positionIDs,
+		Steps:       steps,
 	}); err != nil {
 		respondServerError(w, r, err, "更新学习路径失败")
 		return
 	}
 
-	road, _ := h.Store.GetByID(r.Context(), id)
+	road, err := h.Store.GetByID(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "更新后查询学习路径失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, road)
 }
 

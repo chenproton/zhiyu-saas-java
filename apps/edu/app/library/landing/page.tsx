@@ -237,8 +237,11 @@ export default function LibraryLandingPage() {
       )
     }
     if (sortBy === 'popular') {
+      // 资源条目暂无收藏/浏览计数字段，优先按 metadata 中的浏览数排序，缺失时回退到最新
       list = [...list].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        (a, b) =>
+          (b.metadata?.viewCount ?? 0) - (a.metadata?.viewCount ?? 0) ||
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )
     } else {
       list = [...list].sort(

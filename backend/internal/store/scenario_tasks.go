@@ -52,15 +52,23 @@ func (s *ScenarioTaskStore) ScenarioTenantID(ctx context.Context, scenarioID str
 
 // Create 创建任务。
 func (s *ScenarioTaskStore) Create(ctx context.Context, p *ScenarioTaskParams) (*domain.ScenarioTask, error) {
-	if _, err := s.q.Exec(ctx, `INSERT INTO scenario_tasks (`+TaskInsertColumns+`)
+	var t domain.ScenarioTask
+	err := s.q.QueryRow(ctx, `INSERT INTO scenario_tasks (`+TaskInsertColumns+`)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+		RETURNING `+TaskSelectColumns+`
 	`, p.ScenarioID, p.Name, p.Code, p.SortOrder, p.Description, p.DetailedDescription, p.DescriptionPdf,
 		p.EstimatedHours, p.TaskType, p.Difficulty, p.Background,
 		p.DependencyIDs, p.IsReferenced, p.SourceScenarioID,
-		p.KnowledgePointIDs, p.AbilityPointIDs, p.ResourceIDs, p.EvalData, p.TenantID); err != nil {
+		p.KnowledgePointIDs, p.AbilityPointIDs, p.ResourceIDs, p.EvalData, p.TenantID).Scan(
+		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription, &t.DescriptionPdf,
+		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
+		&t.IsReferenced, &t.SourceScenarioID,
+		&t.KnowledgePointIDs, &t.AbilityPointIDs, &t.ResourceIDs, &t.EvalData, &t.TenantID,
+	)
+	if err != nil {
 		return nil, err
 	}
-	return s.fetchTaskByCode(ctx, p.Code)
+	return &t, nil
 }
 
 // Update 更新任务（限定租户）。
@@ -178,20 +186,6 @@ type ScenarioTaskParams struct {
 func (s *ScenarioTaskStore) fetchTask(ctx context.Context, id string) (*domain.ScenarioTask, error) {
 	var t domain.ScenarioTask
 	err := s.q.QueryRow(ctx, `SELECT `+TaskSelectColumns+` FROM scenario_tasks WHERE id = $1`, id).Scan(
-		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription, &t.DescriptionPdf,
-		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
-		&t.IsReferenced, &t.SourceScenarioID,
-		&t.KnowledgePointIDs, &t.AbilityPointIDs, &t.ResourceIDs, &t.EvalData, &t.TenantID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
-}
-
-func (s *ScenarioTaskStore) fetchTaskByCode(ctx context.Context, code string) (*domain.ScenarioTask, error) {
-	var t domain.ScenarioTask
-	err := s.q.QueryRow(ctx, `SELECT `+TaskSelectColumns+` FROM scenario_tasks WHERE code = $1`, code).Scan(
 		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription, &t.DescriptionPdf,
 		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
 		&t.IsReferenced, &t.SourceScenarioID,

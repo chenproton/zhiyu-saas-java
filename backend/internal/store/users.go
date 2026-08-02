@@ -107,14 +107,19 @@ func (s *UserStore) Create(ctx context.Context, tx Queryer, p *UserCreateParams)
 		if !validRole {
 			return nil, fmt.Errorf("invalid roleId: role not in tenant")
 		}
-		if _, err := tx.Exec(ctx, `
+		tag, err := tx.Exec(ctx, `
 			INSERT INTO user_roles (id, user_id, role_id)
 			VALUES ($1, $2, $3)
 			ON CONFLICT (user_id, role_id) DO NOTHING
-		`, uuid.NewString(), id, p.RoleID); err != nil {
+		`, uuid.NewString(), id, p.RoleID)
+		if err != nil {
 			return nil, err
 		}
-		_, _ = tx.Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, p.RoleID)
+		if tag.RowsAffected() > 0 {
+			if _, err := tx.Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, p.RoleID); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return s.fetchUser(ctx, tx, id)
@@ -230,19 +235,28 @@ func (s *UserStore) BindRoles(ctx context.Context, tx Queryer, userID string, ro
 	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
 		return err
 	}
+	inserted := make([]string, 0, len(roleIDs))
 	for _, roleID := range roleIDs {
-		if _, err := tx.Exec(ctx, `
+		tag, err := tx.Exec(ctx, `
 			INSERT INTO user_roles (id, user_id, role_id)
 			VALUES ($1, $2, $3)
 			ON CONFLICT (user_id, role_id) DO NOTHING
-		`, uuid.NewString(), userID, roleID); err != nil {
+		`, uuid.NewString(), userID, roleID)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() > 0 {
+			inserted = append(inserted, roleID)
+		}
+	}
+	if len(inserted) > 0 {
+		if _, err := tx.Exec(ctx,
+			`UPDATE roles SET user_count = user_count + 1 WHERE id = ANY($1::uuid[])`,
+			inserted); err != nil {
 			return err
 		}
 	}
-	_, err := tx.Exec(ctx,
-		`UPDATE roles SET user_count = user_count + 1 WHERE id = ANY($1::uuid[])`,
-		roleIDs)
-	return err
+	return nil
 }
 
 // RebindUserRole 替换为单个角色（用于 Update 时的 roleId 变更）。

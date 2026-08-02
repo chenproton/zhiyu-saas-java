@@ -96,10 +96,14 @@ func (s *CourseNodeStore) Create(ctx context.Context, tx Queryer, tenantID strin
 		return nil, err
 	}
 	for _, kpID := range kpIDs {
-		_, _ = tx.Exec(ctx, `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID)
+		if _, err := tx.Exec(ctx, `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID); err != nil {
+			return nil, err
+		}
 	}
 	for _, resID := range resIDs {
-		_, _ = tx.Exec(ctx, `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID)
+		if _, err := tx.Exec(ctx, `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID); err != nil {
+			return nil, err
+		}
 	}
 	return s.fetchNode(ctx, id)
 }
@@ -127,10 +131,14 @@ func (s *CourseNodeStore) Update(ctx context.Context, tx Queryer, id string, p *
 	_, _ = tx.Exec(ctx, `DELETE FROM node_knowledge_point_bindings WHERE node_id = $1`, id)
 	_, _ = tx.Exec(ctx, `DELETE FROM node_resource_bindings WHERE node_id = $1`, id)
 	for _, kpID := range kpIDs {
-		_, _ = tx.Exec(ctx, `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID)
+		if _, err := tx.Exec(ctx, `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID); err != nil {
+			return nil, err
+		}
 	}
 	for _, resID := range resIDs {
-		_, _ = tx.Exec(ctx, `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID)
+		if _, err := tx.Exec(ctx, `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID); err != nil {
+			return nil, err
+		}
 	}
 	return s.fetchNode(ctx, id)
 }

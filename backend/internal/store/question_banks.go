@@ -10,7 +10,8 @@ import (
 
 // QuestionBankStore 题库持久化。
 type QuestionBankStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // ListConfig 返回题库列表查询配置，SQL 片段沉淀在 store 层。
@@ -35,7 +36,8 @@ func (s *QuestionBankStore) ListConfig() ListQueryConfig[domain.QuestionBank] {
 
 // NewQuestionBankStore 创建题库 store。
 func NewQuestionBankStore(q Queryer) *QuestionBankStore {
-	return &QuestionBankStore{q: q}
+	b, _ := q.(txBeginner)
+	return &QuestionBankStore{q: q, beginner: b}
 }
 
 // List 查询题库列表。
@@ -95,25 +97,39 @@ func (s *QuestionBankStore) Update(ctx context.Context, id string, p *QuestionBa
 	if _, err := s.fetchBank(ctx, id); err != nil {
 		return nil, err
 	}
-	if _, err := s.q.Exec(ctx, `
+	if s.beginner == nil {
+		return nil, errors.New("question bank store: queryer does not support transactions")
+	}
+	tx, err := s.beginner.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `
 		UPDATE question_banks SET name = $1, description = $2, cover_image = $3,
 			collaborator_ids = $4, collaborator_dept_ids = $5, batch_id = $6, updated_at = NOW()
 		WHERE id = $7
 	`, p.Name, p.Description, p.CoverImage, p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID, id); err != nil {
 		return nil, err
 	}
-	_, _ = s.q.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id)
+	if _, err := tx.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id); err != nil {
+		return nil, err
+	}
 	for _, kpID := range p.KnowledgePointIDs {
 		if kpID == "" {
 			continue
 		}
-		if _, err := s.q.Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
 			VALUES (gen_random_uuid(), $1, $2, $3)
 			ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
 		`, p.TenantID, id, kpID); err != nil {
 			return nil, err
 		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 	return s.Get(ctx, id)
 }

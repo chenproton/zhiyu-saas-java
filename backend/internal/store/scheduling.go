@@ -639,15 +639,15 @@ func (s *SchedulingStore) ListTimetableEntries(ctx context.Context, tenantID, te
 		WHERE se.tenant_id = $1 AND se.term_id = $2`
 	args := []any{tenantID, termID}
 	if classNodeID != "" {
-		query += ` AND ($3 = ANY(se.class_node_ids) OR se.class_node_id = $3)`
+		query += ` AND ($` + itoa(len(args)+1) + ` = ANY(se.class_node_ids) OR se.class_node_id = $` + itoa(len(args)+1) + `)`
 		args = append(args, classNodeID)
 	}
 	if teacherID != "" {
-		query += ` AND se.teacher_id = $4`
+		query += ` AND se.teacher_id = $` + itoa(len(args)+1)
 		args = append(args, teacherID)
 	}
 	if status != "" {
-		query += ` AND se.status = $5`
+		query += ` AND se.status = $` + itoa(len(args)+1)
 		args = append(args, status)
 	}
 	query += ` ORDER BY se.day_of_week, se.periods`

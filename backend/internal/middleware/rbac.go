@@ -48,13 +48,25 @@ func RequireRoleOrMenu(allowedCodes ...string) func(http.Handler) http.Handler {
 					return
 				}
 			}
-			if HasAnyMenuPermission(claims) {
+			// 菜单豁免仅放行只读请求（GET/HEAD/OPTIONS）：
+			// 菜单权限桥接的是前端页面可见性，写操作（POST/PUT/DELETE）必须走角色绑定，
+			// 防止"有任意菜单即可操作全量 CRUD/审批"的授权绕过。
+			if isReadOnlyMethod(r.Method) && HasAnyMenuPermission(claims) {
 				next.ServeHTTP(w, r)
 				return
 			}
 			http.Error(w, `{"error":"permission denied"}`, http.StatusForbidden)
 		})
 	}
+}
+
+// isReadOnlyMethod 判断 HTTP 方法是否为只读。
+func isReadOnlyMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	}
+	return false
 }
 
 // HasRole reports whether the user is bound to a role with the given code.

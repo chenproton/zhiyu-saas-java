@@ -64,11 +64,17 @@ func (s *EvaluationResultStore) Submit(ctx context.Context, p *EvaluationResultS
 
 // Grade 评分（pending→evaluated）。
 func (s *EvaluationResultStore) Grade(ctx context.Context, id, graderID string, p *EvaluationResultGradeParams) error {
-	_, err := s.q.Exec(ctx, `
+	tag, err := s.q.Exec(ctx, `
 		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, drawn_questions = $4, subjective_content = $5, status = 'evaluated', graded_at = NOW(), graded_by = $6, updated_at = NOW()
 		WHERE id = $7 AND status = 'pending'
 	`, p.Score, p.Comment, p.EvalPointScores, p.DrawnQuestions, p.SubjectiveContent, graderID, id)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // BatchGrade 事务内批量评分。

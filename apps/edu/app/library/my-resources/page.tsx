@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   BookOpen,
   Lightbulb,
@@ -124,6 +124,9 @@ export default function MyResourcesPage() {
   const [loadingQuestions, setLoadingQuestions] = useState(false)
   const [loadingResourceKind, setLoadingResourceKind] = useState<ResourceKind | null>(null)
 
+  // 记录已成功加载过的资源类型，避免空数据时 effect 反复触发加载
+  const loadedResourceKinds = useRef<Set<ResourceKind>>(new Set())
+
   const userId = user?.id
 
   const loadKnowledge = useCallback(async () => {
@@ -184,6 +187,7 @@ export default function MyResourcesPage() {
           limit: 500,
         })
         setResourceItemsMap((prev) => ({ ...prev, [kind]: res.items }))
+        loadedResourceKinds.current.add(kind)
       } catch (err: any) {
         toast({ variant: 'destructive', title: '加载资源失败', description: err.message })
       } finally {
@@ -208,7 +212,7 @@ export default function MyResourcesPage() {
         loadQuestions()
       } else if (activeTab.startsWith('resource:')) {
         const kind = activeTab.replace('resource:', '') as ResourceKind
-        if (resourceItemsMap[kind].length === 0) {
+        if (!loadedResourceKinds.current.has(kind)) {
           loadResourceKind(kind)
         }
       }
@@ -220,7 +224,6 @@ export default function MyResourcesPage() {
     abilityItems.length,
     certificateItems.length,
     questionItems.length,
-    resourceItemsMap,
     loadKnowledge,
     loadAbilities,
     loadCertificates,

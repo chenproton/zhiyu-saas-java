@@ -92,17 +92,20 @@ func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string
 	}
 	defer tx.Rollback(ctx)
 
-	if _, err := tx.Exec(ctx,
+	tag, err := tx.Exec(ctx,
 		`INSERT INTO user_roles (role_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
 		roleID, userID,
-	); err != nil {
+	)
+	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx,
-		`UPDATE roles SET user_count = user_count + 1 WHERE id = $1 AND tenant_id = $2`,
-		roleID, tenantID,
-	); err != nil {
-		return err
+	if tag.RowsAffected() > 0 {
+		if _, err := tx.Exec(ctx,
+			`UPDATE roles SET user_count = user_count + 1 WHERE id = $1 AND tenant_id = $2`,
+			roleID, tenantID,
+		); err != nil {
+			return err
+		}
 	}
 	return tx.Commit(ctx)
 }

@@ -89,6 +89,7 @@ export default function GradingPage() {
   const [taskNameMap, setTaskNameMap] = useState<Map<string, any>>(new Map())
   const [loading, setLoading] = useState(true)
 
+  // 场景列表、用户、岗位、任务等基础数据只加载一次，与选中场景无关
   useEffect(() => {
     const load = async () => {
       try {
@@ -110,9 +111,7 @@ export default function GradingPage() {
             positionName: pMap.get(s.careerPositionId) || '未分类',
           }))
         setScenarios(loadedScenarios)
-        if (!selectedScenarioId && loadedScenarios.length > 0) {
-          setSelectedScenarioId(loadedScenarios[0].id)
-        }
+        setSelectedScenarioId((prev) => prev ?? loadedScenarios[0]?.id ?? null)
 
         const uMap = new Map<string, any>()
         ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
@@ -127,7 +126,7 @@ export default function GradingPage() {
       setLoading(false)
     }
     load()
-  }, [selectedScenarioId])
+  }, [])
 
   useEffect(() => {
     if (!selectedScenarioId) return

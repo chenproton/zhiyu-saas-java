@@ -25,7 +25,9 @@ export function useResourceCrud(resourceType?: string) {
   const [uploading, setUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const isFileType = fileTypesWithUpload.includes(resourceType || '')
+  const isFileType =
+    fileTypesWithUpload.includes(resourceType || '') ||
+    (editingItem ? fileTypesWithUpload.includes(editingItem.resourceType) : false)
 
   const loadItems = useCallback(async () => {
     setLoading(true)
@@ -132,7 +134,10 @@ export function useResourceCrud(resourceType?: string) {
     let finalUrl = url.trim()
     let finalSize: number | undefined = editingItem?.fileSize ?? undefined
 
-    if (isFileType && uploadFile) {
+    // 通用资源页未传 resourceType 时，按提交的类型（submitType）推断是否为文件类型
+    const willUploadFile = isFileType || fileTypesWithUpload.includes(submitType)
+
+    if (willUploadFile && uploadFile) {
       setUploading(true)
       try {
         const res = await fileApi.upload(uploadFile)

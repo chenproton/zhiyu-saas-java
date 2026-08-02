@@ -167,6 +167,8 @@ export default function ExamDetailPage() {
     handleSubmitRef.current = handleSubmit
   }, [handleSubmit])
 
+  const submittedRef = useRef(false)
+
   const handleStart = () => {
     setStarted(true)
     if (exam) {
@@ -176,20 +178,20 @@ export default function ExamDetailPage() {
 
   useEffect(() => {
     if (started && exam && !submitted) {
-      let submittedByTimer = false
       const timer = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1 && !submittedByTimer) {
-            submittedByTimer = true
-            clearInterval(timer)
-            handleSubmitRef.current()
-          }
-          return prev > 0 ? prev - 1 : 0
-        })
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
       }, 1000)
       return () => clearInterval(timer)
     }
   }, [started, exam, submitted])
+
+  // 倒计时归零时自动提交（通过 ref 防止重复提交）
+  useEffect(() => {
+    if (started && exam && !submitted && !submittedRef.current && timeLeft <= 0) {
+      submittedRef.current = true
+      handleSubmitRef.current()
+    }
+  }, [started, exam, submitted, timeLeft])
 
   if (examLoading) {
     return (

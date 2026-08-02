@@ -314,7 +314,10 @@ function QuestionGradingCard({
 
   const handleScoreInput = (val: string) => {
     setLocalScore(val)
-    commitIfValid(val)
+    // 仅当达到满分（含“一键满分”按钮）时同步提交，其余输入在失焦时提交
+    if (val === String(question.score || 0)) {
+      commitIfValid(val)
+    }
   }
 
   const handleBlur = () => {
@@ -536,7 +539,10 @@ function EvalPointGradingCard({
 
   const handleScoreInput = (val: string) => {
     setLocalScore(val)
-    commitIfValid(val)
+    // 仅当达到满分（含“一键满分”按钮）时同步提交，其余输入在失焦时提交
+    if (val === String(evalPoint.weight || 100)) {
+      commitIfValid(val)
+    }
   }
 
   const handleScoreBlur = () => {
@@ -1291,7 +1297,7 @@ export default function GradingDetailPage() {
           {evalPoints.length > 0 ? (
             evalPoints.map((ep) => (
               <EvalPointGradingCard
-                key={`${ep.id}-${pointScores[ep.id] ?? 0}`}
+                key={ep.id}
                 evalPoint={ep}
                 score={pointScores[ep.id] ?? 0}
                 comment={pointComments[ep.id] ?? ''}
@@ -1444,7 +1450,7 @@ export default function GradingDetailPage() {
                 <div className="space-y-2">
                   {displayedQuestions.map((q: any, idx: number) => (
                     <QuestionGradingCard
-                      key={`${q.id}-${pointScores[q.id] ?? 0}`}
+                      key={q.id}
                       question={q}
                       index={questionFilter === 'all' ? idx : examQuestions.indexOf(q)}
                       answer={objectiveAnswers[q.id]}

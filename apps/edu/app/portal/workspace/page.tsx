@@ -420,6 +420,14 @@ export default function WorkspacePage() {
 
   const currentRole = activeRole?.code || 'teacher'
 
+  const today = new Date()
+  const todayLabel = today.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  })
+
   // 学生角色展示全新的学生工作台
   if (currentRole === 'student') {
     return (
@@ -428,7 +436,7 @@ export default function WorkspacePage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">学生工作台</h1>
             <p className="text-sm text-gray-500 mt-1">
-              欢迎回来，同学。今天是2026年4月14日，星期二。管理你的学习、岗位、测评与成长。
+              欢迎回来，同学。今天是{todayLabel}。管理你的学习、岗位、测评与成长。
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -451,7 +459,7 @@ export default function WorkspacePage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">教师工作台</h1>
             <p className="text-sm text-gray-500 mt-1">
-              欢迎回来，张老师。今天是2026年4月14日，星期二。管理你的课程、教学跟踪与测评。
+              欢迎回来，张老师。今天是{todayLabel}。管理你的课程、教学跟踪与测评。
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -510,13 +518,6 @@ export default function WorkspacePage() {
   }))
   const totalTodo = todosWithColor.reduce((acc, item) => acc + item.count, 0)
 
-  const today = new Date()
-  const todayLabel = today.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  })
   const calendarDays = generateCalendarDays(today.getFullYear(), today.getMonth())
   const weekDays = ['日', '一', '二', '三', '四', '五', '六']
   const calendarEvents: { id: number; title: string; time: string; date: number; color: string }[] =
@@ -653,7 +654,9 @@ export default function WorkspacePage() {
                 <Button variant="ghost" size="icon" className="h-6 w-6">
                   <ChevronLeft className="w-3 h-3" />
                 </Button>
-                <span className="text-sm font-medium text-foreground">2026年4月</span>
+                <span className="text-sm font-medium text-foreground">
+                  {today.getFullYear()}年{today.getMonth() + 1}月
+                </span>
                 <Button variant="ghost" size="icon" className="h-6 w-6">
                   <ChevronRight className="w-3 h-3" />
                 </Button>
@@ -669,7 +672,7 @@ export default function WorkspacePage() {
               ))}
               {calendarDays.map((day, index) => {
                 const hasEvent = day && calendarEvents.some((e) => e.date === day)
-                const isToday = day === 14
+                const isToday = day === today.getDate()
                 return (
                   <div
                     key={index}

@@ -40,6 +40,7 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
   const refetch = useCallback(() => setRefetchKey((k) => k + 1), [])
 
   useEffect(() => {
+    let cancelled = false
     ;(async () => {
       if (!tenantId) {
         setOrgs([])
@@ -47,7 +48,6 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
         return
       }
 
-      let cancelled = false
       setLoading(true)
       setError(undefined)
 
@@ -65,11 +65,10 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
       } finally {
         if (!cancelled) setLoading(false)
       }
-
-      return () => {
-        cancelled = true
-      }
     })()
+    return () => {
+      cancelled = true
+    }
   }, [tenantId, refetchKey])
 
   const orgTree = useMemo(() => {
