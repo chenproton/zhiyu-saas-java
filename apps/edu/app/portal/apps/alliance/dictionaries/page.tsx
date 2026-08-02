@@ -12,6 +12,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import type { AllianceDictionary, AllianceListResponse } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
 
 function DictionaryTab({ dictType }: { dictType: string }) {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -36,7 +37,8 @@ function DictionaryTab({ dictType }: { dictType: string }) {
         `/alliance/dictionaries/${dictType}`,
       )
       setItems(data.items || [])
-    } catch {
+    } catch (err) {
+      reportError(err, '加载联盟字典列表')
     } finally {
       setLoading(false)
     }

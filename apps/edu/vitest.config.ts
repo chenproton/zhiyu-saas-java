@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['lib/**/*.test.ts'],
+    include: ['lib/**/*.test.ts', 'app/scene/scenarios/[id]/edit/tasks/_components/**/*.test.ts'],
   },
   resolve: {
     alias: [
@@ -17,6 +17,14 @@ export default defineConfig({
       {
         find: /^@\/lib\/types\/(.*)$/,
         replacement: path.resolve(__dirname, '../../packages/shared-types/src/$1'),
+      },
+      {
+        find: /^@\/lib\/utils$/,
+        replacement: path.resolve(__dirname, '../../packages/ui/src/lib/utils.ts'),
+      },
+      {
+        find: /^@\/components\/ui\/(.*)$/,
+        replacement: path.resolve(__dirname, '../../packages/ui/src/components/ui/$1'),
       },
       {
         find: /^@\/lib\/utils$/,

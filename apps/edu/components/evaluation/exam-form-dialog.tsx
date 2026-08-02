@@ -28,6 +28,7 @@ import { evaluationBatchApi, fileApi } from '@/lib/api'
 import { UserSelector } from '@/components/shared/user-selector'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
+import { reportError } from '@/lib/error-handling'
 interface ExamFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -55,7 +56,8 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
       try {
         const res = await evaluationBatchApi.list({ limit: 1000 })
         if (!cancelled) setBatches(res.items.map((b) => ({ id: b.id, name: b.name })))
-      } catch {
+      } catch (err) {
+        reportError(err, '加载考试批次')
       } finally {
         if (!cancelled) setLoadingBatches(false)
       }

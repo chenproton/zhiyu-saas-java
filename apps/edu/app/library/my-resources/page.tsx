@@ -46,19 +46,8 @@ import { RESOURCE_TYPE_LABELS, type ResourceKind } from '@/lib/types/library'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 
-const RESOURCE_KINDS: ResourceKind[] = [
-  'document',
-  'spreadsheet',
-  'image',
-  'link',
-  'audio',
-  'video',
-  'archive',
-  'venue',
-  'facility',
-  'software',
-  'other',
-]
+// 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
+const RESOURCE_KINDS: ResourceKind[] = Object.keys(RESOURCE_TYPE_LABELS) as ResourceKind[]
 
 const RESOURCE_ICONS: Record<ResourceKind, React.ReactNode> = {
   document: <FileText className="size-4" />,

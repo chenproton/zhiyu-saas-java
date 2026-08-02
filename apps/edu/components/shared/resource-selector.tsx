@@ -46,6 +46,7 @@ import {
   ResourcePreviewModal,
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
+import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceKind } from '@/lib/types/library'
 
 export interface ResourceItem {
@@ -73,20 +74,8 @@ interface ResourceSelectorProps {
   onRemovePreviewResource?: (id: string) => void
 }
 
-const ALL_TYPES = [
-  'all',
-  'document',
-  'spreadsheet',
-  'image',
-  'link',
-  'audio',
-  'video',
-  'archive',
-  'venue',
-  'facility',
-  'software',
-  'other',
-]
+// 'all' 为"全部"选项，其余与共享 RESOURCE_TYPE_LABELS 对应
+const ALL_TYPES = ['all', ...Object.keys(RESOURCE_TYPE_LABELS)]
 
 const resourceTypeIcons: Record<string, React.ReactNode> = {
   document: <FileText className="h-4 w-4 text-blue-500" />,

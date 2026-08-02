@@ -62,19 +62,8 @@ import { useResourceCrud } from './use-resource-crud'
 import { ResourceUploadZone } from './resource-upload-zone'
 
 const TYPE_LABEL_MAP: Record<string, string> = RESOURCE_TYPE_LABELS
-const ALL_TYPES = [
-  'document',
-  'spreadsheet',
-  'image',
-  'link',
-  'audio',
-  'video',
-  'archive',
-  'venue',
-  'facility',
-  'software',
-  'other',
-]
+// 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
+const ALL_TYPES: string[] = Object.keys(RESOURCE_TYPE_LABELS)
 
 /**
  * 教学资源库列表页（通用总览 / 单类型视图共用）。

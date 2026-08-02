@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 type EvalMethodKey =
   'question_bank' | 'paper' | 'quiz' | 'random_draw' | 'review' | 'outcome' | 'homework'
 
-interface EvaluationMethodOption {
+export interface EvaluationMethodOption {
   key: EvalMethodKey | string
   label: string
   icon: React.ReactNode
@@ -29,7 +29,7 @@ interface EvaluationMethodOption {
   secondaryCategory: string
 }
 
-const EVALUATION_METHOD_OPTIONS: EvaluationMethodOption[] = [
+export const EVALUATION_METHOD_OPTIONS: EvaluationMethodOption[] = [
   {
     key: 'question_bank',
     label: '题库',

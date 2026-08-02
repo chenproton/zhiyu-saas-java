@@ -27,6 +27,7 @@ import {
 import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceLibraryItem } from '@/lib/types/library'
 import { formatSize } from '@/lib/resource-type-constants'
+import { reportError } from '@/lib/error-handling'
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -150,7 +151,8 @@ export default function LibraryLandingPage() {
         if (aRes.status === 'fulfilled') setAbilityCount(aRes.value.total)
         if (cRes.status === 'fulfilled') setCertCount(cRes.value.total)
         if (qRes.status === 'fulfilled') setQuestionCount(qRes.value.total)
-      } catch {
+      } catch (err) {
+        reportError(err, '加载 landing 资源统计')
       } finally {
         setLoading(false)
       }
