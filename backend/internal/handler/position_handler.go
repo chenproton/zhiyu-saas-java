@@ -77,7 +77,8 @@ func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if claims.TenantID != nil {
 		tenantID = *claims.TenantID
 	}
-	_ = h.Service.IncrementView(r.Context(), id, claims.UserID, tenantID)
+	// 视图计数异步记录，不阻塞详情读取
+	recordViewAsync(h.Service.IncrementView, id, claims.UserID, tenantID)
 	pos, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
@@ -593,12 +594,10 @@ func (h *PositionHandler) clearPublicPositionsCacheByTenantID(r *http.Request, t
 	if h.RedisClient == nil {
 		return
 	}
+	// SCAN 游标循环删除，避免超过单批数量时残留陈旧缓存
 	prefix := "zhiyu:" + tenantID + ":public:positions"
-	keys, _, err := h.RedisClient.Scan(r.Context(), 0, prefix+"*", 100).Result()
-	if err != nil {
-		return
-	}
-	if len(keys) > 0 {
-		_ = h.RedisClient.Del(r.Context(), keys...).Err()
+	iter := h.RedisClient.Scan(r.Context(), 0, prefix+"*", 100).Iterator()
+	for iter.Next(r.Context()) {
+		_ = h.RedisClient.Del(r.Context(), iter.Val()).Err()
 	}
 }

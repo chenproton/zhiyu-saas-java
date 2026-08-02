@@ -44,7 +44,7 @@ func JWT(secret string) func(http.Handler) http.Handler {
 
 			token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 				return []byte(secret), nil
-			})
+			}, jwt.WithValidMethods([]string{"HS256"}))
 			if err != nil || !token.Valid {
 				http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
 				return

@@ -392,12 +392,10 @@ func (h *ExamHandler) clearLandingExamsCache(r *http.Request, tenantID string) {
 	if h.RedisClient == nil {
 		return
 	}
-	keys, _, err := h.RedisClient.Scan(r.Context(), 0, "zhiyu:"+tenantID+":landing:exams*", 100).Result()
-	if err != nil {
-		return
-	}
-	if len(keys) > 0 {
-		_ = h.RedisClient.Del(r.Context(), keys...).Err()
+	// SCAN 游标循环删除，避免超过单批数量时残留陈旧缓存
+	iter := h.RedisClient.Scan(r.Context(), 0, "zhiyu:"+tenantID+":landing:exams*", 100).Iterator()
+	for iter.Next(r.Context()) {
+		_ = h.RedisClient.Del(r.Context(), iter.Val()).Err()
 	}
 }
 

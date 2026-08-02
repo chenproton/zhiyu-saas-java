@@ -129,7 +129,8 @@ func (h *ScenarioHandler) Get(w http.ResponseWriter, r *http.Request) {
 			tenantID = *claims.TenantID
 		}
 	}
-	_ = h.Service.IncrementView(r.Context(), id, userID, tenantID)
+	// 视图计数异步记录，不阻塞详情读取
+	recordViewAsync(h.Service.IncrementView, id, userID, tenantID)
 	scenario, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "场景方案不存在")

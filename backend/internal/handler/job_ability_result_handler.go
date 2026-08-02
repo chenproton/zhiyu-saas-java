@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -206,6 +207,11 @@ func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				slog.Error("job ability aggregate panic", "logId", logID, "panic", rec)
+			}
+		}()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
 		_ = h.Agg.RunAggregate(ctx, logID, tenantID, req.CareerPositionID, req.UserIDs)

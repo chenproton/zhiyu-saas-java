@@ -2,6 +2,7 @@ package cache
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -38,7 +39,10 @@ func Cached(client *redis.Client, ttl time.Duration, keyFunc KeyFunc) func(http.
 			next.ServeHTTP(crw, r)
 
 			if crw.status >= 200 && crw.status < 300 && crw.body.Len() > 0 {
-				client.Set(r.Context(), key, crw.body.Bytes(), ttl)
+				// 使用独立超时上下文写入缓存，避免客户端断开导致缓存永不写入
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				client.Set(ctx, key, crw.body.Bytes(), ttl)
+				cancel()
 			}
 		})
 	}
@@ -93,7 +97,10 @@ func RateLimit(client *redis.Client, limit int, window time.Duration) func(http.
 				return
 			}
 			if current == 1 {
-				client.Expire(ctx, key, window)
+				// 设置过期失败时回滚，避免 key 永久存在导致该 IP 被永久限流
+				if err := client.Expire(ctx, key, window).Err(); err != nil {
+					client.Del(ctx, key)
+				}
 			}
 
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))

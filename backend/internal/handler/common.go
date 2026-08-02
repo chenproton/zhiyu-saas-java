@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/jackc/pgx/v5"
@@ -427,4 +428,20 @@ func getStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
 		return out
 	}
 	return nil
+}
+
+// recordViewAsync 异步记录视图计数，不阻塞详情读取；失败仅记日志。
+func recordViewAsync(increment func(ctx context.Context, targetID string, userID, tenantID any) error, targetID string, userID, tenantID any) {
+	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				slog.Error("record view panic", "targetID", targetID, "panic", rec)
+			}
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := increment(ctx, targetID, userID, tenantID); err != nil {
+			slog.Error("record view failed", "targetID", targetID, "error", err)
+		}
+	}()
 }
