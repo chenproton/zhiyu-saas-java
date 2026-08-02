@@ -391,11 +391,6 @@ func (s *PositionService) GenerateTeachingPlan(ctx context.Context, p *store.Gen
 	return planID, err
 }
 
-// TeachingPlanQueryer 暴露查询器。
-func (s *PositionService) TeachingPlanQueryer() store.Queryer {
-	return s.st.Q()
-}
-
 // FetchTeachingPlanProgramBrief 查询人培方案简要。
 func (s *PositionService) FetchTeachingPlanProgramBrief(ctx context.Context, id, tenantID string) (*store.ProgramBrief, error) {
 	return s.st.TeachingPlans().FetchProgramBrief(ctx, id, tenantID)

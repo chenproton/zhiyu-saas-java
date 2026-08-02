@@ -95,10 +95,6 @@ func (s *PositionCertificateStore) Create(ctx context.Context, tenantID string, 
 
 // Update 更新岗位证书（提供名称时 find-or-create 证书库并重绑）。
 func (s *PositionCertificateStore) Update(ctx context.Context, tenantID string, p *PositionCertificateUpdateParams) (*domain.PositionCertificate, error) {
-	existing, err := s.fetchCert(ctx, p.ID)
-	if err != nil {
-		return nil, err
-	}
 	if p.Name != "" {
 		libraryID, err := s.findOrCreateLibrary(ctx, tenantID, p.Name, p.URL, p.Description, p.ImageURL)
 		if err != nil {
@@ -119,7 +115,6 @@ func (s *PositionCertificateStore) Update(ctx context.Context, tenantID string, 
 			return nil, err
 		}
 	}
-	_ = existing
 	return s.fetchCert(ctx, p.ID)
 }
 

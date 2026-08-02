@@ -25,33 +25,6 @@ func NewAllianceStore(q Queryer) *AllianceStore {
 
 // ===== 学校信息 =====
 
-func (s *AllianceStore) ScanSchoolInfoRows(rows pgx.Rows) ([]domain.AllianceSchoolInfo, error) {
-	items := make([]domain.AllianceSchoolInfo, 0)
-	for rows.Next() {
-		var i domain.AllianceSchoolInfo
-		var shortName, schoolType, province, city, address, website, contactPhone, description, logoURL *string
-		var scaleData, secondaryColleges json.RawMessage
-		if err := rows.Scan(&i.ID, &i.TenantID, &i.Name, &shortName, &schoolType, &province, &city,
-			&address, &website, &contactPhone, &description, &logoURL, &scaleData, &secondaryColleges,
-			&i.CreatedAt, &i.UpdatedAt); err != nil {
-			return nil, err
-		}
-		i.ShortName = shortName
-		i.SchoolType = schoolType
-		i.Province = province
-		i.City = city
-		i.Address = address
-		i.Website = website
-		i.ContactPhone = contactPhone
-		i.Description = description
-		i.LogoURL = logoURL
-		i.ScaleData = scaleData
-		i.SecondaryColleges = secondaryColleges
-		items = append(items, i)
-	}
-	return items, nil
-}
-
 func (s *AllianceStore) GetSchoolInfo(ctx context.Context, tenantID string) (*domain.AllianceSchoolInfo, error) {
 	var i domain.AllianceSchoolInfo
 	var shortName, schoolType, province, city, address, website, contactPhone, description, logoURL *string

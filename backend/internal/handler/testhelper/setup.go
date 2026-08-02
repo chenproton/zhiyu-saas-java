@@ -90,10 +90,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		r.Post("/auth/login", authHandler.Login)
 		r.Post("/auth/portal/login", authHandler.PortalLogin)
 
-		resourceHandler := &handler.ResourceHandler{}
-		r.Get("/resources", resourceHandler.List)
-		r.Get("/resources/{id}", resourceHandler.Get)
-
 		tenantHandler := &handler.TenantHandler{Service: service.NewTenantService(svc2), AdminService: service.NewTenantAdminService(svc2)}
 		r.Get("/admin/tenants", tenantHandler.AdminList)
 		r.Post("/admin/tenants", tenantHandler.AdminCreate)
@@ -115,13 +111,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			statsHandler := &handler.StatsHandler{}
 			r.Get("/stats/dashboard", statsHandler.Dashboard)
 			r.Get("/stats/me", statsHandler.MyStats)
-
-			r.Post("/resources", resourceHandler.Create)
-			r.Put("/resources/{id}", resourceHandler.Update)
-			r.Delete("/resources/{id}", resourceHandler.Delete)
-			r.Post("/resources/{id}/submit", resourceHandler.SubmitForReview)
-			r.Post("/resources/{id}/review", resourceHandler.Review)
-			r.Post("/resources/{id}/publish", resourceHandler.Publish)
 
 			tenantHandler := &handler.TenantHandler{Service: service.NewTenantService(svc2), AdminService: service.NewTenantAdminService(svc2)}
 			r.Get("/tenants", tenantHandler.List)

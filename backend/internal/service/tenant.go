@@ -53,12 +53,6 @@ func (s *TenantService) UpdateStatus(ctx context.Context, id string, status doma
 	return s.st.Tenants().UpdateStatus(ctx, id, status)
 }
 
-// IsCodeExists 判断租户标识冲突。
-func (s *TenantService) IsCodeExists(ctx context.Context, code string) bool {
-	exists, _ := s.st.Tenants().CodeExists(ctx, code)
-	return exists
-}
-
 // IsConflict 判断是否业务冲突错误（租户代码/管理员用户名已存在）。
 func IsConflict(err error) bool {
 	return errors.Is(err, store.ErrCodeExists) || errors.Is(err, store.ErrLoginNameExists)

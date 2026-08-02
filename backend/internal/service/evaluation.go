@@ -488,11 +488,6 @@ func (s *EvaluationService) DeleteCertificationPoint(ctx context.Context, id str
 	return s.st.Certifications().DeletePoint(ctx, id)
 }
 
-// GetCertificationTask 查询关联任务。
-func (s *EvaluationService) GetCertificationTask(ctx context.Context, id string) (*domain.CertificationRelatedTask, error) {
-	return s.st.Certifications().GetTask(ctx, id)
-}
-
 // CreateCertificationTask 创建关联任务。
 func (s *EvaluationService) CreateCertificationTask(ctx context.Context, tenantID, certPointID, taskID string, maxScore, weight float64) (*domain.CertificationRelatedTask, error) {
 	return s.st.Certifications().CreateTask(ctx, tenantID, certPointID, taskID, maxScore, weight)

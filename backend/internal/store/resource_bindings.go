@@ -172,22 +172,6 @@ func bindColOf(table string) string {
 	}
 }
 
-// FetchBinding 查询绑定记录。
-func (s *ResourceBindingStore) FetchBinding(ctx context.Context, bindTable, bindCol, id string) (any, error) {
-	var b struct {
-		ID         string
-		TargetID   string
-		ResourceID string
-	}
-	err := s.q.QueryRow(ctx, `SELECT id, `+bindCol+`, resource_id FROM `+bindTable+` WHERE id = $1`, id).Scan(
-		&b.ID, &b.TargetID, &b.ResourceID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &b, nil
-}
-
 // ResourceCreateSimpleParams 创建资源参数。
 type ResourceCreateSimpleParams struct {
 	Name        string

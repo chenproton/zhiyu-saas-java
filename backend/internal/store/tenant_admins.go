@@ -137,17 +137,6 @@ func (s *TenantAdminStore) ResetPassword(ctx context.Context, adminID, plainPass
 	return err
 }
 
-// PasswordMatches 校验管理员密码。
-func (s *TenantAdminStore) PasswordMatches(ctx context.Context, adminID, plainPassword string) (bool, error) {
-	var hash string
-	err := s.q.QueryRow(ctx, `SELECT password_hash FROM users WHERE id = $1`, adminID).Scan(&hash)
-	if err != nil {
-		return false, err
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(plainPassword))
-	return err == nil, nil
-}
-
 func (s *TenantAdminStore) fetchAdmin(ctx context.Context, tenantID, adminID string) (*TenantAdminItem, error) {
 	var admin TenantAdminItem
 	var loginName *string

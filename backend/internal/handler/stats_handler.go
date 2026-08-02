@@ -28,22 +28,6 @@ func (h *StatsHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, DashboardStats{})
 }
 
-func (h *StatsHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
-	respondJSON(w, http.StatusOK, map[string]float64{
-		"platformFeeRate":     0.15,
-		"minWithdrawalAmount": 100,
-		"creditHoursRatio":    16,
-	})
-}
-
-func (h *StatsHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
-	if !requireOperator(r) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]bool{"ok": true})
-}
-
 func (h *StatsHandler) MyStats(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"balance":     0,

@@ -14,10 +14,6 @@ func tenantFromRequest(r *http.Request) string {
 	return "global"
 }
 
-func StaticKey(key string) KeyFunc {
-	return func(r *http.Request) string { return key }
-}
-
 func PublicPositionsKey() KeyFunc {
 	return func(r *http.Request) string {
 		tenant := tenantFromRequest(r)

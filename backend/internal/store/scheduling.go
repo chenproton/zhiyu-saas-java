@@ -597,11 +597,6 @@ func (s *SchedulingStore) ListTermScheduleBriefs(ctx context.Context, tenantID, 
 	return items, rows.Err()
 }
 
-// MarkPlanEntryScheduled 标记教学计划条目已排。
-func (s *SchedulingStore) MarkPlanEntryScheduled(ctx context.Context, entryID string) {
-	_, _ = s.q.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, entryID)
-}
-
 // PublishScheduleEntries 批量发布排课，返回发布数与新版本。
 func (s *SchedulingStore) PublishScheduleEntries(ctx context.Context, tenantID, termID string) (int64, int, error) {
 	tag, err := s.q.Exec(ctx, `
@@ -1001,10 +996,4 @@ func (s *SchedulingStore) ListClassNames(ctx context.Context, tenantID string) (
 		}
 	}
 	return items, rows.Err()
-}
-
-// ImportReplaceSchedules 导入时清空学期排课并重建。
-func (s *SchedulingStore) ImportReplaceSchedules(ctx context.Context, tx Queryer, tenantID, termID string) error {
-	_, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2`, tenantID, termID)
-	return err
 }

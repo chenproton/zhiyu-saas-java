@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { createTagElement } from '@/lib/dom-utils'
+import { createTagElement } from '../../lib/dom-utils'
 
 export interface MixedTagEditorProps {
   text: string

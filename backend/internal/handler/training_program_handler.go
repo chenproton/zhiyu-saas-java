@@ -331,9 +331,6 @@ func (h *TrainingProgramHandler) Submit(w http.ResponseWriter, r *http.Request) 
 func (h *TrainingProgramHandler) Review(w http.ResponseWriter, r *http.Request) {
 	h.actions().review(w, r)
 }
-func (h *TrainingProgramHandler) PublishAction(w http.ResponseWriter, r *http.Request) {
-	h.actions().transition(w, r, domain.StatusPublished)
-}
 func (h *TrainingProgramHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
 }

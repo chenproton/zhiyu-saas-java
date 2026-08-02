@@ -70,17 +70,6 @@ func HasRole(claims *Claims, code string) bool {
 	return false
 }
 
-// IsPlatformAdmin is a convenience helper for handlers that need a quick
-// role check.
-func IsPlatformAdmin(claims *Claims) bool {
-	return HasRole(claims, "platform_admin")
-}
-
-// IsSchoolAdmin is a convenience helper for portal system management routes.
-func IsSchoolAdmin(claims *Claims) bool {
-	return HasRole(claims, "school_admin")
-}
-
 // HasAnyMenuPermission reports whether the user has at least one explicitly
 // granted menu path in their permissions. Returns false when no menus key
 // exists or no entry is set to true (empty menus = backward compat → full
