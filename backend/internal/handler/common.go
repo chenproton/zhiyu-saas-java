@@ -77,11 +77,15 @@ func respondError(w http.ResponseWriter, status int, message string) {
 
 // respondServerError 统一返回 500 并记录原始错误，便于线上排查。
 func respondServerError(w http.ResponseWriter, r *http.Request, err error, message string) {
+	errDetail := "<nil>"
+	if err != nil {
+		errDetail = err.Error()
+	}
 	slog.Error("handler server error",
 		slog.String("method", r.Method),
 		slog.String("path", r.URL.Path),
 		slog.String("message", message),
-		slog.String("error", err.Error()),
+		slog.String("error", errDetail),
 	)
 	respondError(w, http.StatusInternalServerError, message)
 }

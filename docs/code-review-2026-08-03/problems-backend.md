@@ -171,13 +171,13 @@
 
 | 文件:行号 | 问题 |
 |-----------|------|
-| `handler/import_export_handler.go:339` | overwrite 分支参数错位：`courses` updateSQL 为 `SET code=$1, name=$2`，实际传参 code=row.name、name=row.code 互换 |
-| `service/scenario.go:104` | `PopulateEvalData(ctx, []domain.ScenarioTask{*t})` 传值副本 → 评估方法摘要永不回写，GetTask 数据缺失 |
-| `service/user.go:161-165` | `AttachRoles` 传值副本 → 角色信息不回写，接口响应缺角色 |
+| `handler/import_export_handler.go:339` | overwrite 分支参数错位：`courses` updateSQL 为 `SET code=$1, name=$2`，实际传参 code=row.name、name=row.code 互换 ✅ 已修复（updateSQL 语义对齐 $1=name/$2=code，无 code 列的表只更新 name，调用点按占位符数传参） |
+| `service/scenario.go:104` | `PopulateEvalData(ctx, []domain.ScenarioTask{*t})` 传值副本 → 评估方法摘要永不回写，GetTask 数据缺失 ✅ 已修复（从 slice 回读 items[0]） |
+| `service/user.go:161-165` | `AttachRoles` 传值副本 → 角色信息不回写，接口响应缺角色 ❌ 误报（已有 `*user = items[0]` 回写，就地修改生效） |
 | `service/lesson_content.go:449-468` | ensureNodePaperUsage 多试卷时 `rc["usageId"]` 只保留最后一篇 → 其余 usage 变孤儿 |
 | `handler/course_import_handler.go:179-191,451-455` | overwrite 先清空课程节点（错误全吞），节点 Sheet 缺失即静默删除全部节点（含作业/测验） |
 | `handler/exam_import_handler.go:155-171` | overwrite 先 DELETE exam_questions 再逐条插入，无事务，中途失败考试被清空 |
-| `handler/schedule_import_handler.go:155-262` | `overwrite` 参数从未使用：无论是否选择覆盖，只要含课程列表 Sheet 即无条件 DELETE 该学期全部排课 |
+| `handler/schedule_import_handler.go:155-262` | `overwrite` 参数从未使用：无论是否选择覆盖，只要含课程列表 Sheet 即无条件 DELETE 该学期全部排课 ⚠️ 设计取舍保留（代码注释与模板说明明确「清空重排」：回传文件代表该学期完整排课快照） |
 | `handler/position_import_handler.go:139-192` | overwrite 4 个 DELETE + 逐条 INSERT 无事务、错误全吞 → 半覆盖状态 |
 | `store/course_homeworks.go:77-98,141-162` | Grade 作业的 UPDATE + INSERT 评价双语句无事务 |
 | `store/graduations.go:99-127` | ApplyTopic 报名写 archive 与递增计数非事务 |
@@ -194,12 +194,12 @@
 |-----------|------|
 | `handler/approval_handler.go:168-197,210-229` | Review 在 workflow 加载失败时 fail-open 直接通过并发布 |
 | `handler/appeal_handler.go:99-102` | 任意状态字符串可写入（未限制 approved/rejected） |
-| `handler/batch_handler.go:162-164` | Create/Update 任意状态字符串直接入库 |
-| `handler/exam_usage_handler.go:134-168` | Start/Finish 无状态流转校验 |
+| `handler/batch_handler.go:162-164` | Create/Update 任意状态字符串直接入库 ✅ 已修复（状态仅允许 StatusOpen/StatusClosed） |
+| `handler/exam_usage_handler.go:134-168` | Start/Finish 无状态流转校验 ✅ 已修复（仅 scheduled→in_progress→finished） |
 | `handler/evaluation_result_handler.go:125-127` | MaxScore==0 静默改写为 100 |
 | `handler/scenario_grade_handler.go:48-81` | PUT 的 URL id 从未读取，body 无 ID 时退化为 INSERT |
 | `store/evaluation_results.go:77-96` | Submit ON CONFLICT 不更新 evaluator 字段、不清理 graded_at → 重新提交残留旧评分 |
-| `handler/certification_model_handler.go:124-127` | rule==nil && err==nil 时 respondServerError 收到 nil err → panic |
+| `handler/certification_model_handler.go:124-127` | rule==nil && err==nil 时 respondServerError 收到 nil err → panic ✅ 已修复（respondServerError 对 nil err 全局防护） |
 
 ### 2.4 迁移工具
 
