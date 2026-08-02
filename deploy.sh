@@ -657,9 +657,9 @@ if $BUILD_BACKEND; then
   (cd "$BACKEND_DIR" && go vet ./...) || die "go vet ./... 失败"
   # go test 集成测试会向数据库执行 migration/DELETE，仅允许在 TEST_DATABASE_URL
   # 指定的专用测试库上运行，避免误伤生产数据。
-  TEST_DB_URL="${TEST_DATABASE_URL:-$DATABASE_URL}"
-  if [[ -n "$TEST_DATABASE_URL" ]] && command -v pg_isready >/dev/null 2>&1 && pg_isready "$TEST_DATABASE_URL" >/dev/null 2>&1; then
-    (cd "$BACKEND_DIR" && TEST_DATABASE_URL="$TEST_DATABASE_URL" go test ./...) || die "go test ./... 失败"
+  TEST_DB_URL="${TEST_DATABASE_URL:-}"
+  if [[ -n "$TEST_DB_URL" ]] && command -v pg_isready >/dev/null 2>&1 && pg_isready "$TEST_DB_URL" >/dev/null 2>&1; then
+    (cd "$BACKEND_DIR" && TEST_DATABASE_URL="$TEST_DB_URL" go test ./...) || die "go test ./... 失败"
   else
     warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
   fi
