@@ -262,7 +262,7 @@ func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usa
 		if _, err := s.q.Exec(ctx, `
 			INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-			ON CONFLICT (task_id, evaluatee_id, method_key)
+			ON CONFLICT (tenant_id, task_id, evaluatee_id, method_key)
 			DO UPDATE SET
 				total_score = EXCLUDED.total_score,
 				max_score = EXCLUDED.max_score,
