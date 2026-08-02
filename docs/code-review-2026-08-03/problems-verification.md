@@ -7,7 +7,7 @@
 
 ## A. 后端必炸 SQL（全部 ✅ 已逐一打开代码核实）
 
-### A1. `store/certifications.go:360-368` — ListFullItems GROUP BY 错误
+### A1. `store/certifications.go:360-368` — ListFullItems GROUP BY 错误 ✅ 已修复（改用相关子查询按 sort_order 取首条能力名，实测 SQL 通过）
 确认：SELECT 子查询内引用 `p.ability_point_id`（LEFT JOIN 表的非分组列），`GROUP BY i.id, i.name, i.sort_order` → PG 报 `subquery uses ungrouped column`。认证规则编辑页调此函数必然 500。
 **最佳实践**：改用相关子查询（不依赖 GROUP BY）：
 ```sql
@@ -21,7 +21,7 @@ ORDER BY i.sort_order
 ```
 并补一条单测覆盖该 SQL（当前 store 测试无此用例）。
 
-### A2. `store/resource_codes.go:34-45` — Create 占位符错配
+### A2. `store/resource_codes.go:34-45` — Create 占位符错配 ✅ 已修复（删除多余 $6 占位符）
 确认：INSERT 6 列（id, tenant_id, code, name, description, type），VALUES 7 个表达式（gen_random_uuid() + $1..$6），实参只传 5 个 → `bind message supplies 5 parameters, but prepared statement requires 6`。
 **最佳实践**：删除多余的 `$6` 或列清单补 `updated_at`：
 ```go
@@ -29,7 +29,7 @@ INSERT INTO resource_codes (id, tenant_id, code, name, description, type, update
 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW())
 ```
 
-### A3. `store/teaching_plans.go:59-79` — FetchProgramCourses 引用不存在表
+### A3. `store/teaching_plans.go:59-79` — FetchProgramCourses 引用不存在表 ✅ 已修复（改查 training_program_courses，career_position_id → position_id）
 确认：`FROM program_courses pc`，migrations 中只有 `training_program_courses`（092 迁移建表），且 `pc.career_position_id` 在 102 迁移已改名 `position_id`。
 **最佳实践**：
 ```go
@@ -40,11 +40,11 @@ ORDER BY pc.sort_order, pc.id
 ```
 另需全局 grep `career_position_id` 确认 training_program_courses 相关其它查询（`store/training_programs.go` PutCourses 已用 position_id 则正常）。
 
-### A4. `store/scenarios.go:110-122` — Delete 引用已删除列
+### A4. `store/scenarios.go:110-122` — Delete 引用已删除列 ✅ 已修复（移除已失效的 training_program_courses 解绑语句）
 确认：`UPDATE training_program_courses SET scenario_id = NULL WHERE scenario_id = $1`，`scenario_id` 已被 `102_program_course_position.up.sql` DROP 且未加回 → 场景删除必炸。
 **最佳实践**：删除该语句（training_program_courses 已不再关联 scenario），或若业务需要反查方案-场景关系，改查 `training_program_courses.position_id → career_positions` 链路。修复后务必实测 `DELETE /scene/scenarios/{id}`。
 
-### A5. `store/node_evaluation_results.go:30` — nodeId 空串绑 uuid 列
+### A5. `store/node_evaluation_results.go:30` — nodeId 空串绑 uuid 列 ✅ 已修复（nodeId 判空后才加条件）
 确认：`qb.AddCondition("node_id = " + qb.NextArg(p.Values["nodeId"]))` 无判空，缺参/空串时 `invalid input syntax for type uuid` → 列表 500。
 **最佳实践**：
 ```go
@@ -54,7 +54,7 @@ if nodeID, ok := p.Values["nodeId"]; ok && nodeID != "" {
 ```
 同类模式全库排查（`exam_results.go` ListConfig 的 usageId 等）。
 
-### A6. `store/batch_configs.go:46-134` — 搜索列歧义
+### A6. `store/batch_configs.go:46-134` — 搜索列歧义 ✅ 已修复（SearchColumns 加表前缀 b./sb./lb./eb./ab. 并补白名单）
 确认：`TableName: "batches b LEFT JOIN majors m ..."` + `SearchColumns: []string{"name"}` → `ExecuteListQuery` 生成裸 `name ILIKE $x`，batches 与 majors 均有 name → `column reference "name" is ambiguous`。
 **最佳实践**：SearchColumns 用带前缀列名并加入白名单：
 ```go

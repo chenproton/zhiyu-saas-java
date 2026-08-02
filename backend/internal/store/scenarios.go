@@ -108,9 +108,7 @@ func (s *ScenarioStore) Update(ctx context.Context, id string, p *ScenarioUpdate
 
 // Delete 删除场景（先解绑引用）。
 func (s *ScenarioStore) Delete(ctx context.Context, id string) error {
-	if _, err := s.q.Exec(ctx, `UPDATE training_program_courses SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
-		return fmt.Errorf("unbind scenario from programs: %w", err)
-	}
+	// training_program_courses.scenario_id 已于 102 迁移删除，方案-场景关联改经 position_id 链路，无需解绑
 	if _, err := s.q.Exec(ctx, `UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
 		return fmt.Errorf("unbind scenario from teaching plans: %w", err)
 	}

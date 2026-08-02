@@ -58,8 +58,8 @@ type PlanCourse struct {
 // FetchProgramCourses 查询方案课程。
 func (s *TeachingPlanStore) FetchProgramCourses(ctx context.Context, programID string) ([]PlanCourse, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT pc.course_id, pc.name, pc.code, pc.career_position_id, pc.nature, pc.credits, pc.hours
-		FROM program_courses pc
+		SELECT pc.course_id, pc.name, pc.code, pc.position_id, pc.nature, pc.credits, pc.hours
+		FROM training_program_courses pc
 		WHERE pc.program_id = $1
 		ORDER BY pc.sort_order, pc.id
 	`, programID)

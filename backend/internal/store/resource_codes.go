@@ -35,7 +35,7 @@ func (s *ResourceCodeStore) Create(ctx context.Context, p *ResourceCodeParams) (
 	var id string
 	err := s.q.QueryRow(ctx, `
 		INSERT INTO resource_codes (id, tenant_id, code, name, description, type)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
 		RETURNING id
 	`, p.TenantID, p.Code, p.Name, p.Description, p.Type).Scan(&id)
 	if err != nil {

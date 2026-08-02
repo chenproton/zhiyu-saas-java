@@ -160,12 +160,12 @@
 
 | 文件:行号 | 问题 |
 |-----------|------|
-| `store/certifications.go:360-368` | ListFullItems GROUP BY 未分组列 `p.ability_point_id` → 认证编辑页 500 |
-| `store/resource_codes.go:34-45` | Create 的 INSERT 列(6) 与 VALUES(7) 数量不匹配 → 资源代码创建必失败 |
-| `store/teaching_plans.go:59-79` | FetchProgramCourses 引用不存在的表 `program_courses`（应为 training_program_courses，列名 position_id 非 career_position_id）→ 生成教学计划必炸 |
-| `store/scenarios.go:111` | Delete 引用已删除列 `training_program_courses.scenario_id` → 场景删除必炸 |
-| `store/node_evaluation_results.go:30` | ExtraFilter 无条件绑定 nodeId，空串绑 uuid 列报错 → 缺 nodeId 参数列表 500 |
-| `store/batch_configs.go:52-129` | 各批次 SearchColumns 裸列 `name` 与 JOIN majors 歧义 → 带 search 参数必报 ambiguous |
+| `store/certifications.go:360-368` | ListFullItems GROUP BY 未分组列 `p.ability_point_id` → 认证编辑页 500 ✅ 已修复 |
+| `store/resource_codes.go:34-45` | Create 的 INSERT 列(6) 与 VALUES(7) 数量不匹配 → 资源代码创建必失败 ✅ 已修复 |
+| `store/teaching_plans.go:59-79` | FetchProgramCourses 引用不存在的表 `program_courses`（应为 training_program_courses，列名 position_id 非 career_position_id）→ 生成教学计划必炸 ✅ 已修复 |
+| `store/scenarios.go:111` | Delete 引用已删除列 `training_program_courses.scenario_id` → 场景删除必炸 ✅ 已修复 |
+| `store/node_evaluation_results.go:30` | ExtraFilter 无条件绑定 nodeId，空串绑 uuid 列报错 → 缺 nodeId 参数列表 500 ✅ 已修复 |
+| `store/batch_configs.go:52-129` | 各批次 SearchColumns 裸列 `name` 与 JOIN majors 歧义 → 带 search 参数必报 ambiguous ✅ 已修复 |
 
 ### 2.2 数据丢失/覆盖
 

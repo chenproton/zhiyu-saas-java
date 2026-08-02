@@ -355,15 +355,19 @@ type FullPoint struct {
 	Weight             float64
 }
 
-// ListFullItems 查询完整项（含能力名）。
+// ListFullItems 查询完整项（含能力名，取该条目下排序最前的能力点名称）。
 func (s *CertificationStore) ListFullItems(ctx context.Context, ruleID string) ([]FullItem, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT i.id, i.name, i.sort_order,
-			COALESCE((SELECT name FROM ability_points WHERE id = p.ability_point_id LIMIT 1), '')
+			COALESCE((
+				SELECT ap.name FROM certification_ability_points p
+				JOIN ability_points ap ON ap.id = p.ability_point_id
+				WHERE p.item_id = i.id
+				ORDER BY p.sort_order, p.id
+				LIMIT 1
+			), '')
 		FROM certification_ability_items i
-		LEFT JOIN certification_ability_points p ON p.item_id = i.id
 		WHERE i.rule_id = $1
-		GROUP BY i.id, i.name, i.sort_order
 		ORDER BY i.sort_order
 	`, ruleID)
 	if err != nil {
