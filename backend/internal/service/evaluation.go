@@ -611,36 +611,29 @@ func (s *EvaluationService) GradeEvaluationResult(ctx context.Context, id, grade
 }
 
 // BatchGradeEvaluationResults 批量评分（事务）并同步考试分数。
-func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, graderID string, items []store.EvaluationResultGradeItem) ([]GradeTarget, error) {
-	var targets []GradeTarget
+func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, graderID string, items []store.EvaluationResultGradeItem) error {
+	ids := make([]string, 0, len(items))
+	scoreByID := make(map[string]float64, len(items))
+	for _, item := range items {
+		ids = append(ids, item.ID)
+		scoreByID[item.ID] = item.Score
+	}
+	var targets []store.EvaluationResultGradeTarget
 	err := s.WithTx(ctx, func(txStore *store.Store) error {
 		if err := txStore.EvaluationResults().BatchGrade(ctx, txStore.Q(), graderID, items); err != nil {
 			return err
 		}
-		for _, item := range items {
-			res, err := txStore.EvaluationResults().Get(ctx, item.ID)
-			if err != nil {
-				continue
-			}
-			targets = append(targets, GradeTarget{TaskID: res.TaskID, MethodKey: res.MethodKey, EvaluateeID: res.EvaluateeID, Score: item.Score})
-		}
-		return nil
+		var err2 error
+		targets, err2 = txStore.EvaluationResults().BatchGetGradeTargets(ctx, txStore.Q(), ids)
+		return err2
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, t := range targets {
-		s.syncExamResultScore(ctx, t.TaskID, t.MethodKey, t.EvaluateeID, t.Score)
+		s.syncExamResultScore(ctx, t.TaskID, t.MethodKey, t.EvaluateeID, scoreByID[t.ID])
 	}
-	return targets, nil
-}
-
-// GradeTarget 评分目标。
-type GradeTarget struct {
-	TaskID      string
-	MethodKey   string
-	EvaluateeID string
-	Score       float64
+	return nil
 }
 
 // syncExamResultScore 同步考试结果分数。

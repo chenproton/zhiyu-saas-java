@@ -107,6 +107,36 @@ func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examR
 	_, _ = s.q.Exec(ctx, `UPDATE exam_results SET score = $1, updated_at = NOW() WHERE id = $2`, score, examResultID)
 }
 
+// EvaluationResultGradeTarget 评分目标（task/method/evaluatee）。
+type EvaluationResultGradeTarget struct {
+	ID          string
+	TaskID      string
+	MethodKey   string
+	EvaluateeID string
+}
+
+// BatchGetGradeTargets 批量查询评价结果的评分目标。
+func (s *EvaluationResultStore) BatchGetGradeTargets(ctx context.Context, tx Queryer, ids []string) ([]EvaluationResultGradeTarget, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT id, task_id, method_key, evaluatee_id
+		FROM scene_evaluation_results
+		WHERE id = ANY($1::uuid[])
+	`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var targets []EvaluationResultGradeTarget
+	for rows.Next() {
+		var t EvaluationResultGradeTarget
+		if err := rows.Scan(&t.ID, &t.TaskID, &t.MethodKey, &t.EvaluateeID); err != nil {
+			return nil, err
+		}
+		targets = append(targets, t)
+	}
+	return targets, rows.Err()
+}
+
 // EvaluationResultSubmitParams 提交参数。
 type EvaluationResultSubmitParams struct {
 	TenantID          string

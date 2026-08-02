@@ -247,7 +247,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 		})
 	}
 
-	_, err := h.Service.BatchGradeEvaluationResults(r.Context(), claims.UserID, items)
+	err := h.Service.BatchGradeEvaluationResults(r.Context(), claims.UserID, items)
 	if err != nil {
 		respondServerError(w, r, err, "批量评分失败")
 		return
