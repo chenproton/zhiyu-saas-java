@@ -52,13 +52,13 @@ type LearnRoadUpdateParams struct {
 	Steps       domain.JSONSlice
 }
 
-func (s *LearnRoadsStore) GetByID(ctx context.Context, id string) (domain.LearnRoad, error) {
+func (s *LearnRoadsStore) GetByID(ctx context.Context, id, tenantID string) (domain.LearnRoad, error) {
 	var r domain.LearnRoad
 	var desc *string
 	var posIDs []string
 	var steps domain.JSONSlice
 	err := s.q.QueryRow(ctx,
-		`SELECT id, name, description, position_ids, steps, created_at, updated_at FROM learn_roads WHERE id = $1`, id,
+		`SELECT id, name, description, position_ids, steps, created_at, updated_at FROM learn_roads WHERE id = $1 AND tenant_id = $2`, id, tenantID,
 	).Scan(&r.ID, &r.Name, &desc, &posIDs, &steps, &r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		return r, err
@@ -93,16 +93,16 @@ func (s *LearnRoadsStore) Create(ctx context.Context, p LearnRoadCreateParams) (
 	return id, nil
 }
 
-func (s *LearnRoadsStore) Update(ctx context.Context, id string, p LearnRoadUpdateParams) error {
+func (s *LearnRoadsStore) Update(ctx context.Context, id, tenantID string, p LearnRoadUpdateParams) error {
 	_, err := s.q.Exec(ctx,
-		`UPDATE learn_roads SET name=$1, description=$2, position_ids=$3, steps=$4, updated_at=NOW() WHERE id=$5`,
-		p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps, id,
+		`UPDATE learn_roads SET name=$1, description=$2, position_ids=$3, steps=$4, updated_at=NOW() WHERE id=$5 AND tenant_id=$6`,
+		p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps, id, tenantID,
 	)
 	return err
 }
 
-func (s *LearnRoadsStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM learn_roads WHERE id = $1`, id)
+func (s *LearnRoadsStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM learn_roads WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 

@@ -58,6 +58,9 @@ func (h *JobBannerHandler) crud() crudConfig[JobBannerRequest, domain.JobBannerC
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *JobBannerRequest) (string, bool) {
 			return requireTenant(w, r)
 		},
+		TenantFn: func(w http.ResponseWriter, r *http.Request) (string, bool) {
+			return requireTenant(w, r)
+		},
 		ValidateUpdate: func(t *JobBannerRequest) string {
 			if t.Title == "" || t.ImageURL == "" {
 				return "缺少必填字段"
@@ -77,8 +80,8 @@ func (h *JobBannerHandler) crud() crudConfig[JobBannerRequest, domain.JobBannerC
 			}
 			return b.ID, nil
 		},
-		UpdateFn: func(ctx context.Context, id, _ string, t *JobBannerRequest) error {
-			_, err := h.Service.UpdateBanner(ctx, id, &store.BannerParams{
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *JobBannerRequest) error {
+			_, err := h.Service.UpdateBanner(ctx, id, tenantID, &store.BannerParams{
 				Title:     t.Title,
 				ImageURL:  t.ImageURL,
 				LinkURL:   t.LinkURL,
@@ -87,11 +90,11 @@ func (h *JobBannerHandler) crud() crudConfig[JobBannerRequest, domain.JobBannerC
 			})
 			return err
 		},
-		DeleteFn: func(ctx context.Context, id, _ string) error {
-			return h.Service.DeleteBanner(ctx, id)
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Service.DeleteBanner(ctx, id, tenantID)
 		},
-		GetByIDFn: func(ctx context.Context, id, _ string) (domain.JobBannerConfig, error) {
-			b, err := h.Service.GetBanner(ctx, id)
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.JobBannerConfig, error) {
+			b, err := h.Service.GetBanner(ctx, id, tenantID)
 			if err != nil {
 				return domain.JobBannerConfig{}, err
 			}

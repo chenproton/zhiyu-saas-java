@@ -75,7 +75,7 @@
 | `handler/question_handler.go:64-179` | GET/PUT/DELETE /evaluation/questions | 全部跨租户（含答案读取） |
 | `handler/question_bank_handler.go:119-208` | PUT/DELETE /evaluation/question-banks/{id} | 跨租户改/删题库（级联删题目） |
 | `handler/certification_handler.go:104-625` | 认证规则全部接口 | GetRule/UpdateRule/DeleteRule/ConfigItems/ConfigPoints/UpdateItem/DeletePoint/GetFullRule 全链路无租户校验 |
-| `handler/learn_road_handler.go:48-113` | learn-roads CRUD | crud 配置未设 CheckOwnership，store 也无租户过滤，双层失守 |
+| `handler/learn_road_handler.go:48-113` | learn-roads CRUD | crud 配置未设 CheckOwnership，store 也无租户过滤，双层失守 ✅ 已修复（store GetByID/Update/Delete 补 tenant_id 过滤，handler 经 TenantFn 传租户） |
 | `handler/hybrid_module_handler.go:44-86` | hybrid-modules | Upsert（body 可带 id）/Delete 跨租户 |
 | `handler/node_quiz_handler.go:93-257` | node-quizzes 全部操作 | 全链路无租户校验 |
 | `handler/task_evaluation_handler.go:86-164` | PUT /scene/tasks/{taskId}/evaluation-methods | 跨租户覆写方法行（乐观锁绕过）+ 为他租户任务建临时考试 |
@@ -91,7 +91,7 @@
 | `handler/appeal_handler.go:47-109` | appeals | Get/Process 跨租户（含个人信息），Process 接受任意状态字符串 |
 | `handler/evaluation_method_handler.go:55-75` | Toggle | 跨租户切换测评方式启用状态 |
 | `handler/role_handler.go:140-146` | POST /roles/{id}/assign | 不校验 req.UserID 租户归属，可跨租户分配角色（提权面） |
-| `handler/job_banner_handler.go:46-101` | banners CRUD | crud 配置无 ownership，store 无租户，跨租户读写删 |
+| `handler/job_banner_handler.go:46-101` | banners CRUD | crud 配置无 ownership，store 无租户，跨租户读写删 ✅ 已修复（store Get/Update/Delete 补 tenant_id 过滤；顺带修复 Create 占位符 7 列 vs 8 值错配） |
 | `handler/recommend_handler.go:87-125` | recommendations | Update/Delete 跨租户 |
 | `handler/micro_cert_handler.go:85-207` | 证书模板/发放 | Get/Update/DeleteTemplate、IssueCerts 全跨租户（可给他租户用户发证） |
 | `handler/workflow_handler.go:58` | GET /workflows/{id} | Get 无归属校验（Update/Delete 有） |

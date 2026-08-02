@@ -63,6 +63,9 @@ func (h *LearnRoadHandler) crud() crudConfig[CreateLearnRoadRequest, domain.Lear
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *CreateLearnRoadRequest) (string, bool) {
 			return requireTenant(w, r)
 		},
+		TenantFn: func(w http.ResponseWriter, r *http.Request) (string, bool) {
+			return requireTenant(w, r)
+		},
 		ValidateUpdate: func(t *CreateLearnRoadRequest) string {
 			if t.Name == "" {
 				return "缺少必填字段"
@@ -78,9 +81,9 @@ func (h *LearnRoadHandler) crud() crudConfig[CreateLearnRoadRequest, domain.Lear
 				Steps:       t.Steps,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id, _ string, t *CreateLearnRoadRequest) error {
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *CreateLearnRoadRequest) error {
 			// 部分更新：未传的字段回填现有值，避免清空
-			existing, err := h.Store.GetByID(ctx, id)
+			existing, err := h.Store.GetByID(ctx, id, tenantID)
 			if err != nil {
 				return err
 			}
@@ -96,18 +99,18 @@ func (h *LearnRoadHandler) crud() crudConfig[CreateLearnRoadRequest, domain.Lear
 			if steps == nil {
 				steps = existing.Steps
 			}
-			return h.Store.Update(ctx, id, store.LearnRoadUpdateParams{
+			return h.Store.Update(ctx, id, tenantID, store.LearnRoadUpdateParams{
 				Name:        t.Name,
 				Description: description,
 				PositionIDs: positionIDs,
 				Steps:       steps,
 			})
 		},
-		DeleteFn: func(ctx context.Context, id, _ string) error {
-			return h.Store.Delete(ctx, id)
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Store.Delete(ctx, id, tenantID)
 		},
-		GetByIDFn: func(ctx context.Context, id, _ string) (domain.LearnRoad, error) {
-			return h.Store.GetByID(ctx, id)
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.LearnRoad, error) {
+			return h.Store.GetByID(ctx, id, tenantID)
 		},
 	}
 }

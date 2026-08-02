@@ -22,13 +22,13 @@ func (s *BannerStore) List(ctx context.Context, p ListParams, cfg ListQueryConfi
 }
 
 // Get 查询单个轮播图。
-func (s *BannerStore) Get(ctx context.Context, id string) (*domain.JobBannerConfig, error) {
+func (s *BannerStore) Get(ctx context.Context, id, tenantID string) (*domain.JobBannerConfig, error) {
 	var b domain.JobBannerConfig
 	var linkURL *string
 	err := s.q.QueryRow(ctx, `
 		SELECT id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at
-		FROM banner_configs WHERE id = $1
-	`, id).Scan(&b.ID, &b.Title, &b.ImageURL, &linkURL, &b.SortOrder, &b.IsEnabled, &b.CreatedAt, &b.UpdatedAt)
+		FROM banner_configs WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&b.ID, &b.Title, &b.ImageURL, &linkURL, &b.SortOrder, &b.IsEnabled, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -41,33 +41,33 @@ func (s *BannerStore) Create(ctx context.Context, tenantID string, p *BannerPara
 	var id string
 	err := s.q.QueryRow(ctx, `
 		INSERT INTO banner_configs (id, tenant_id, title, image_url, link_url, sort_order, is_enabled)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
 		RETURNING id
 	`, tenantID, p.Title, p.ImageURL, p.LinkURL, p.SortOrder, p.IsEnabled).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Update 更新轮播图。
-func (s *BannerStore) Update(ctx context.Context, id string, p *BannerParams) (*domain.JobBannerConfig, error) {
-	if _, err := s.Get(ctx, id); err != nil {
+func (s *BannerStore) Update(ctx context.Context, id, tenantID string, p *BannerParams) (*domain.JobBannerConfig, error) {
+	if _, err := s.Get(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE banner_configs SET
 			title = $1, image_url = $2, link_url = $3, sort_order = $4, is_enabled = $5, updated_at = NOW()
-		WHERE id = $6
-	`, p.Title, p.ImageURL, p.LinkURL, p.SortOrder, p.IsEnabled, id); err != nil {
+		WHERE id = $6 AND tenant_id = $7
+	`, p.Title, p.ImageURL, p.LinkURL, p.SortOrder, p.IsEnabled, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Delete 删除轮播图。
-func (s *BannerStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM banner_configs WHERE id = $1`, id)
+func (s *BannerStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM banner_configs WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
