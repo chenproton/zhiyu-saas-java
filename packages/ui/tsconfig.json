@@ -1,27 +1,32 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "target": "ES6",
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@zhiyu/shared-types": ["../shared-types/src/index.ts"],
-      "@zhiyu/shared-types/*": ["../shared-types/src/*"],
-      "@/lib/utils": ["./src/lib/utils.ts"],
-      "@/hooks/use-mobile": ["./src/hooks/use-mobile.ts"],
-      "@/hooks/use-toast": ["./src/hooks/use-toast.ts"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@zhiyu/shared-types": [
+        "../shared-types/src/index.ts"
+      ],
+      "@zhiyu/shared-types/*": [
+        "../shared-types/src/*"
+      ],
+      "@/lib/utils": [
+        "./src/lib/utils.ts"
+      ],
+      "@/hooks/use-mobile": [
+        "./src/hooks/use-mobile.ts"
+      ],
+      "@/hooks/use-toast": [
+        "./src/hooks/use-toast.ts"
+      ]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "extends": "../../tsconfig.base.json"
 }

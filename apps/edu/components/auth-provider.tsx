@@ -167,32 +167,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [permissions, subscriptionModules],
   )
 
+  const contextValue = useMemo(
+    () => ({
+      user,
+      institution: state.me?.institution,
+      role,
+      institutionId: user?.institutionId,
+      tenantId: user?.tenantId,
+      orgNodeId: user?.orgNodeId,
+      orgNode: state.me?.orgNode,
+      majorId: user?.majorId,
+      major: state.me?.major,
+      permissions,
+      roles,
+      activeRole,
+      activeRoleCode: activeRole?.code,
+      setActiveRole,
+      loading: state.loading,
+      error: state.error,
+      refresh,
+      logout,
+      hasPermission,
+      hasMenuPermission,
+      subscriptionModules,
+    }),
+    [
+      user,
+      state,
+      role,
+      permissions,
+      roles,
+      activeRole,
+      setActiveRole,
+      refresh,
+      logout,
+      hasPermission,
+      hasMenuPermission,
+      subscriptionModules,
+    ],
+  )
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        institution: state.me?.institution,
-        role,
-        institutionId: user?.institutionId,
-        tenantId: user?.tenantId,
-        orgNodeId: user?.orgNodeId,
-        orgNode: state.me?.orgNode,
-        majorId: user?.majorId,
-        major: state.me?.major,
-        permissions,
-        roles,
-        activeRole,
-        activeRoleCode: activeRole?.code,
-        setActiveRole,
-        loading: state.loading,
-        error: state.error,
-        refresh,
-        logout,
-        hasPermission,
-        hasMenuPermission,
-        subscriptionModules,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

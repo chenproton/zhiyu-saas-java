@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { useAuth as useSaasAuth } from '@/components/auth-provider'
 import type { UserRole } from '@/components/auth-provider'
 
@@ -81,21 +81,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Role switching is handled by the global auth system; this is a compatibility shim.
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoggedIn: !!user,
-        isLoading: saasAuth.loading,
-        availableTenants: user ? [user.tenant] : [],
-        login,
-        logout,
-        switchRole,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      user,
+      isLoggedIn: !!user,
+      isLoading: saasAuth.loading,
+      availableTenants: user ? [user.tenant] : [],
+      login,
+      logout,
+      switchRole,
+    }),
+    [user, saasAuth.loading, login, logout],
   )
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

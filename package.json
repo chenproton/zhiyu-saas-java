@@ -2,6 +2,10 @@
   "name": "zhiyu-saas",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev:edu": "pnpm --filter @zhiyu/edu dev",
     "build:edu": "pnpm --filter @zhiyu/edu build",
