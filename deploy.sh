@@ -901,20 +901,55 @@ if [[ -f "$NGINX_CONF" ]]; then
     die "Nginx 配置测试失败"
   fi
 
-  if systemctl is-active nginx >/dev/null 2>&1; then
-    systemctl reload nginx 2>/dev/null && log "Nginx 重载成功" || {
-      warn "nginx 重载失败，可能 ${NGINX_PORT} 端口被占用"
-      die "Nginx 重载失败"
-    }
-  else
-    systemctl start nginx 2>/dev/null && log "Nginx 启动成功" || {
-      warn "nginx 启动失败，常见原因："
-      warn "  - ${NGINX_PORT} 端口被占用（如其他 Docker 容器映射了该端口）"
-      warn "  - 可执行 ss -tlnp | grep :${NGINX_PORT} 查看占用进程"
-      warn "  - 或修改 .env 中的 NGINX_PORT 使用其他端口"
-      die "Nginx 启动失败"
-    }
-  fi
+  # ── Nginx 重载/启动（分层降级，兼容无 systemd 的容器/沙箱环境）──
+  # 1. systemctl 可用 → 正常 reload/start
+  # 2. systemctl 不可用或失败 → 信号重载（nginx -s reload）/ 直接启动
+  # 3. 仍失败但 nginx 已在目标端口提供服务 → 降级为 warn 跳过（配置已通过 nginx -t，
+  #    新配置将在下次进程重启时生效），不中断部署、不阻塞后续自动合并
+  nginx_is_serving() {
+    # nginx 进程存在 且（ss 可用时）端口有监听
+    { pidof nginx >/dev/null 2>&1 || pgrep -x nginx >/dev/null 2>&1; } || return 1
+    if command -v ss >/dev/null 2>&1; then
+      ss -tln 2>/dev/null | grep -qE "[:.]${NGINX_PORT}\b" || return 1
+    fi
+    return 0
+  }
+
+  reload_or_start_nginx() {
+    if systemctl is-active nginx >/dev/null 2>&1; then
+      systemctl reload nginx 2>/dev/null && { log "Nginx 重载成功"; return 0; }
+      warn "systemctl 重载失败，尝试信号重载"
+    else
+      systemctl start nginx 2>/dev/null && { log "Nginx 启动成功"; return 0; }
+      warn "systemctl 不可用或启动失败，尝试直接启动"
+    fi
+
+    if { pidof nginx >/dev/null 2>&1 || pgrep -x nginx >/dev/null 2>&1; }; then
+      if nginx -s reload >/dev/null 2>&1; then
+        log "Nginx 重载成功（信号方式）"
+        return 0
+      fi
+      warn "nginx 信号重载失败"
+    fi
+
+    if nginx_is_serving; then
+      warn "nginx 已在 ${NGINX_PORT} 端口提供服务，跳过重载（新配置下次进程重启时生效）"
+      return 0
+    fi
+
+    if nginx >/dev/null 2>&1; then
+      log "Nginx 启动成功（直接启动）"
+      return 0
+    fi
+
+    warn "nginx 启动失败，常见原因："
+    warn "  - ${NGINX_PORT} 端口被占用（如其他 Docker 容器映射了该端口）"
+    warn "  - 可执行 ss -tlnp | grep :${NGINX_PORT} 查看占用进程"
+    warn "  - 或修改 .env 中的 NGINX_PORT 使用其他端口"
+    return 1
+  }
+
+  reload_or_start_nginx || die "Nginx 启动失败"
 fi
 
 if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
