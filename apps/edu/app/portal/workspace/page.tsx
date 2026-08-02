@@ -287,7 +287,7 @@ function SchoolAdminWorkspace() {
       case 'personnel':
         return <SchoolAdminPersonnelTab />
       case 'profile':
-        return <ProfileTab />
+        return <ProfileTab variant="staff" />
       default:
         return <SchoolAdminOverviewTab onTabChange={setActiveTab} />
     }

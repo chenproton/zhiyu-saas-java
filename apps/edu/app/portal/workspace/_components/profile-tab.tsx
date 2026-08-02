@@ -11,8 +11,14 @@ import { AccountInfoForm } from './account-info-form'
 import { ChangePasswordForm } from './change-password-form'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 
-export function ProfileTab() {
-  const { user, major, orgNode } = usePortalAuth()
+interface ProfileTabProps {
+  /** student：学生个人中心（含荣誉奖励）；staff：学校管理员（无荣誉奖励，展示机构/工号） */
+  variant?: 'student' | 'staff'
+}
+
+export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
+  const { user, major, orgNode, institution } = usePortalAuth()
+  const isStaff = variant === 'staff'
 
   const honors = [
     { id: '1', name: '国家励志奖学金', issuer: '教育部', date: '2025-11', fileName: '' },
@@ -68,13 +74,20 @@ export function ProfileTab() {
     { label: '微信绑定', status: 'unbound', statusText: '未绑定', action: '绑定', icon: Phone },
   ]
 
-  const readOnlyFields = [
-    { label: '学号', value: user?.studentNo || '—' },
-    { label: '手机号', value: user?.phone || '—' },
-    { label: '邮箱', value: user?.email || '—' },
-    { label: '专业', value: major?.name || '—' },
-    { label: '班级', value: orgNode?.name || '—' },
-  ]
+  const readOnlyFields = isStaff
+    ? [
+        { label: '工号', value: user?.workId || '—' },
+        { label: '所属机构', value: institution?.name || '—' },
+        { label: '手机号', value: user?.phone || '—' },
+        { label: '邮箱', value: user?.email || '—' },
+      ]
+    : [
+        { label: '学号', value: user?.studentNo || '—' },
+        { label: '手机号', value: user?.phone || '—' },
+        { label: '邮箱', value: user?.email || '—' },
+        { label: '专业', value: major?.name || '—' },
+        { label: '班级', value: orgNode?.name || '—' },
+      ]
 
   return (
     <div className="space-y-5">
@@ -86,12 +99,14 @@ export function ProfileTab() {
           >
             个人资料
           </TabsTrigger>
-          <TabsTrigger
-            value="archive"
-            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-          >
-            我的荣誉奖励
-          </TabsTrigger>
+          {!isStaff && (
+            <TabsTrigger
+              value="archive"
+              className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            >
+              我的荣誉奖励
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="security"
             className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
@@ -117,7 +132,10 @@ export function ProfileTab() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">{user?.name || '—'}</h3>
                 <p className="text-sm text-gray-500">
-                  {[major?.name, orgNode?.name].filter(Boolean).join(' · ') || '暂无身份信息'}
+                  {isStaff
+                    ? [orgNode?.name, institution?.name].filter(Boolean).join(' · ') ||
+                      '暂无身份信息'
+                    : [major?.name, orgNode?.name].filter(Boolean).join(' · ') || '暂无身份信息'}
                 </p>
               </div>
             </div>
@@ -129,12 +147,12 @@ export function ProfileTab() {
                 <p className="text-sm font-medium text-gray-900 mb-3">其它信息（不可修改）</p>
                 <FormFieldGrid>
                   {readOnlyFields.map((field) => (
-                    <FormFieldRow key={field.label} label={field.label} labelClassName="text-gray-700">
-                      <Input
-                        value={field.value}
-                        disabled
-                        className="bg-gray-50 border-gray-100"
-                      />
+                    <FormFieldRow
+                      key={field.label}
+                      label={field.label}
+                      labelClassName="text-gray-700"
+                    >
+                      <Input value={field.value} disabled className="bg-gray-50 border-gray-100" />
                     </FormFieldRow>
                   ))}
                 </FormFieldGrid>
@@ -143,35 +161,37 @@ export function ProfileTab() {
           </SectionCard>
         </TabsContent>
 
-        <TabsContent value="archive" className="mt-0">
-          <SectionCard title="我的荣誉奖励" icon={Award} iconColor="purple">
-            <div className="space-y-4">
-              <p className="text-xs text-gray-500">共 {honors.length} 项荣誉与证书</p>
-              <div className="space-y-2">
-                {honors.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
-                  >
-                    <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                      <Award className="w-4 h-4 text-amber-500" />
+        {!isStaff && (
+          <TabsContent value="archive" className="mt-0">
+            <SectionCard title="我的荣誉奖励" icon={Award} iconColor="purple">
+              <div className="space-y-4">
+                <p className="text-xs text-gray-500">共 {honors.length} 项荣誉与证书</p>
+                <div className="space-y-2">
+                  {honors.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                        <Award className="w-4 h-4 text-amber-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {item.issuer} · {item.date}
+                          {item.fileName ? ` · 附件：${item.fileName}` : ''}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {item.issuer} · {item.date}
-                        {item.fileName ? ` · 附件：${item.fileName}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {honors.length === 0 && (
-                  <div className="py-8 text-center text-xs text-gray-400">暂无荣誉记录</div>
-                )}
+                  ))}
+                  {honors.length === 0 && (
+                    <div className="py-8 text-center text-xs text-gray-400">暂无荣誉记录</div>
+                  )}
+                </div>
               </div>
-            </div>
-          </SectionCard>
-        </TabsContent>
+            </SectionCard>
+          </TabsContent>
+        )}
 
         <TabsContent value="security" className="mt-0">
           <SectionCard title="账号安全" icon={Shield} iconColor="rose">
