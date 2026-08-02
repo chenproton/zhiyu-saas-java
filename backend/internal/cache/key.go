@@ -23,7 +23,7 @@ func PublicPositionsKey() KeyFunc {
 		tenant := tenantFromRequest(r)
 		key := "zhiyu:" + tenant + ":public:positions"
 		v := r.URL.Query()
-		for _, p := range []string{"page", "pageSize", "search", "positionType"} {
+		for _, p := range []string{"search", "positionType", "limit", "offset"} {
 			if val := v.Get(p); val != "" {
 				key += ":" + p + ":" + val
 			}
@@ -35,13 +35,6 @@ func PublicPositionsKey() KeyFunc {
 func LandingExamsKey() KeyFunc {
 	return func(r *http.Request) string {
 		tenant := tenantFromRequest(r)
-		key := "zhiyu:" + tenant + ":landing:exams"
-		v := r.URL.Query()
-		for _, p := range []string{"search", "batchId", "page", "pageSize"} {
-			if val := v.Get(p); val != "" {
-				key += ":" + p + ":" + val
-			}
-		}
-		return key
+		return "zhiyu:" + tenant + ":landing:exams"
 	}
 }
