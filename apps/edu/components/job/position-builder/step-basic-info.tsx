@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -308,49 +309,44 @@ export function StepBasicInfo({
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Row 1: Name + Short Name */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">岗位名称</Label>
+          <FormFieldGrid cols={2}>
+            <FormFieldRow label="岗位名称" htmlFor="name">
               <Input
                 id="name"
                 value={position.name}
                 onChange={(e) => onUpdate({ name: e.target.value })}
                 placeholder="例如：Java 后端开发工程师"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="shortName">岗位简称</Label>
+            </FormFieldRow>
+            <FormFieldRow label="岗位简称" htmlFor="shortName">
               <Input
                 id="shortName"
                 value={position.shortName}
                 onChange={(e) => onUpdate({ shortName: e.target.value })}
                 placeholder="例如：Java开发"
               />
-            </div>
-          </div>
+            </FormFieldRow>
+          </FormFieldGrid>
 
           {/* Row 2: Industry + Major + Position Type */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="industry">面向行业</Label>
+          <FormFieldGrid cols={3}>
+            <FormFieldRow label="面向行业" htmlFor="industry">
               <MultiSelect
                 options={industries.map((i) => ({ label: i.name, value: i.id }))}
                 value={position.industry ? [position.industry] : []}
                 onChange={(values) => onUpdate({ industry: values[values.length - 1] || '' })}
                 placeholder={optionsLoading ? '加载中...' : '选择行业'}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="major">适用专业</Label>
+            </FormFieldRow>
+            <FormFieldRow label="适用专业" htmlFor="major">
               <MultiSelect
                 options={majors.map((m) => ({ label: m.name, value: m.id }))}
                 value={position.majors}
                 onChange={(values) => onUpdate({ majors: values })}
                 placeholder={optionsLoading ? '加载中...' : '选择专业'}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="positionType">岗位类型</Label>
+            </FormFieldRow>
+            <FormFieldRow label="岗位类型" htmlFor="positionType">
               <Select
                 value={position.positionType}
                 onValueChange={(v) => onUpdate({ positionType: v as Position['positionType'] })}
@@ -363,8 +359,8 @@ export function StepBasicInfo({
                   <SelectItem value="teaching">教学岗位</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
+            </FormFieldRow>
+          </FormFieldGrid>
 
           {/* Row 3: Salary Range */}
           <div className="grid gap-2">
@@ -734,31 +730,28 @@ export function StepBasicInfo({
             <DialogDescription>添加一个新的职业资格证书</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid gap-2">
-              <Label>证书名称</Label>
+            <FormFieldRow label="证书名称">
               <Input
                 value={newCert.name}
                 onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
                 placeholder="例如：AWS 云从业者认证"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>相关网址</Label>
+            </FormFieldRow>
+            <FormFieldRow label="相关网址">
               <Input
                 value={newCert.url}
                 onChange={(e) => setNewCert({ ...newCert, url: e.target.value })}
                 placeholder="https://..."
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>证书介绍</Label>
+            </FormFieldRow>
+            <FormFieldRow label="证书介绍">
               <Textarea
                 value={newCert.description}
                 onChange={(e) => setNewCert({ ...newCert, description: e.target.value })}
                 placeholder="简要描述该证书..."
                 rows={3}
               />
-            </div>
+            </FormFieldRow>
             <div className="grid gap-2">
               <Label>证书图片</Label>
               <div

@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -333,24 +333,20 @@ export default function PositionsPage() {
             <DialogDescription>职位用于用户身份标识</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>
-                职位名称 <span className="text-destructive">*</span>
-              </Label>
+            <FormFieldRow label="职位名称" required>
               <Input
                 placeholder="如：教授"
                 value={dialogName}
                 onChange={(e) => setDialogName(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>描述</Label>
+            </FormFieldRow>
+            <FormFieldRow label="描述">
               <Input
                 placeholder="可选描述"
                 value={dialogDescription}
                 onChange={(e) => setDialogDescription(e.target.value)}
               />
-            </div>
+            </FormFieldRow>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>

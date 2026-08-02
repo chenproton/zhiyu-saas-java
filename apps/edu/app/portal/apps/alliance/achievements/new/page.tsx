@@ -16,6 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
@@ -101,17 +102,15 @@ export default function AllianceAchievementNewPage() {
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>成果名称 *</Label>
+            <FormFieldGrid>
+              <FormFieldRow label="成果名称" required>
                 <Input
                   value={item.title}
                   onChange={(e) => setField('title', e.target.value)}
                   placeholder="请输入成果名称"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>成果类型</Label>
+              </FormFieldRow>
+              <FormFieldRow label="成果类型">
                 <Select value={item.type} onValueChange={(v) => setField('type', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -123,16 +122,15 @@ export default function AllianceAchievementNewPage() {
                     <SelectItem value="custom">自定义</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>成果日期</Label>
+              </FormFieldRow>
+              <FormFieldRow label="成果日期">
                 <Input
                   value={item.achievementDate}
                   onChange={(e) => setField('achievementDate', e.target.value)}
                   type="date"
                 />
-              </div>
-            </CardContent>
+              </FormFieldRow>
+            </FormFieldGrid>
           </Card>
 
           <Card>

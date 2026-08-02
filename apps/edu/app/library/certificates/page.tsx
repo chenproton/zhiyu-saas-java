@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { certificateLibraryApi, fileApi } from '@/lib/api'
 import type { CertificateLibraryItem } from '@/lib/types/job'
 import { useToast } from '@zhiyu/ui'
@@ -213,14 +213,13 @@ export default function CertificatesPage() {
               <DialogTitle>{editingItem ? '编辑证书' : '新增证书'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label>名称 *</Label>
+              <FormFieldRow label="名称" required>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="证书名称"
                 />
-              </div>
+              </FormFieldRow>
               <div>
                 <CoverImageUpload
                   imageUrl={imageUrl}
@@ -231,22 +230,20 @@ export default function CertificatesPage() {
                   onRemove={handleImageRemove}
                 />
               </div>
-              <div>
-                <Label>链接</Label>
+              <FormFieldRow label="链接">
                 <Input
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="官方链接"
                 />
-              </div>
-              <div>
-                <Label>描述</Label>
+              </FormFieldRow>
+              <FormFieldRow label="描述">
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="简要描述"
                 />
-              </div>
+              </FormFieldRow>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

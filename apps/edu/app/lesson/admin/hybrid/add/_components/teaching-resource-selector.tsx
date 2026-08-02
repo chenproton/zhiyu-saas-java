@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -616,69 +616,63 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
-                  <div>
-                    <Label>资源名称</Label>
+                  <FormFieldRow label="资源名称">
                     <Input
                       value={newResName}
                       onChange={(e) => setNewResName(e.target.value)}
                       placeholder="输入资源名称"
                       className="mt-1.5"
                     />
-                  </div>
+                  </FormFieldRow>
 
                   {/* Link type: URL */}
                   {newResType === 'link' && (
-                    <div>
-                      <Label>URL 地址</Label>
+                    <FormFieldRow label="URL 地址">
                       <Input
                         value={newResUrl}
                         onChange={(e) => setNewResUrl(e.target.value)}
                         placeholder="https://..."
                         className="mt-1.5"
                       />
-                    </div>
+                    </FormFieldRow>
                   )}
 
                   {/* Venue type */}
                   {newResType === 'venue' && (
                     <>
-                      <div>
-                        <Label>场地地址</Label>
+                      <FormFieldRow label="场地地址">
                         <Input
                           value={newResAddress}
                           onChange={(e) => setNewResAddress(e.target.value)}
                           placeholder="输入场地详细地址"
                           className="mt-1.5"
                         />
-                      </div>
-                      <div>
-                        <Label>开放时间</Label>
+                      </FormFieldRow>
+                      <FormFieldRow label="开放时间">
                         <Input
                           value={newResOpenTime}
                           onChange={(e) => setNewResOpenTime(e.target.value)}
                           placeholder="例如：周一至周五 09:00-18:00"
                           className="mt-1.5"
                         />
-                      </div>
+                      </FormFieldRow>
                       <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label>容纳人数</Label>
+                        <FormFieldRow label="容纳人数">
                           <Input
                             value={newResCapacity}
                             onChange={(e) => setNewResCapacity(e.target.value)}
                             placeholder="例如：50人"
                             className="mt-1.5"
                           />
-                        </div>
-                        <div>
-                          <Label>联系人/电话</Label>
+                        </FormFieldRow>
+                        <FormFieldRow label="联系人/电话">
                           <Input
                             value={newResContact}
                             onChange={(e) => setNewResContact(e.target.value)}
                             placeholder="输入联系人或电话"
                             className="mt-1.5"
                           />
-                        </div>
+                        </FormFieldRow>
                       </div>
                     </>
                   )}
@@ -686,63 +680,57 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                   {/* Facility type */}
                   {newResType === 'facility' && (
                     <>
-                      <div>
-                        <Label>所在位置</Label>
+                      <FormFieldRow label="所在位置">
                         <Input
                           value={newResLocation}
                           onChange={(e) => setNewResLocation(e.target.value)}
                           placeholder="输入设施所在位置"
                           className="mt-1.5"
                         />
-                      </div>
-                      <div>
-                        <Label>数量</Label>
+                      </FormFieldRow>
+                      <FormFieldRow label="数量">
                         <Input
                           value={newResQuantity}
                           onChange={(e) => setNewResQuantity(e.target.value)}
                           placeholder="输入设施数量"
                           className="mt-1.5"
                         />
-                      </div>
+                      </FormFieldRow>
                     </>
                   )}
 
                   {/* Software type */}
                   {newResType === 'software' && (
                     <>
-                      <div>
-                        <Label>版本号</Label>
+                      <FormFieldRow label="版本号">
                         <Input
                           value={newResVersion}
                           onChange={(e) => setNewResVersion(e.target.value)}
                           placeholder="例如：v2.1.0"
                           className="mt-1.5"
                         />
-                      </div>
-                      <div>
-                        <Label>下载链接</Label>
+                      </FormFieldRow>
+                      <FormFieldRow label="下载链接">
                         <Input
                           value={newResUrl}
                           onChange={(e) => setNewResUrl(e.target.value)}
                           placeholder="https://..."
                           className="mt-1.5"
                         />
-                      </div>
-                      <div>
-                        <Label>授权信息</Label>
+                      </FormFieldRow>
+                      <FormFieldRow label="授权信息">
                         <Input
                           value={newResLicense}
                           onChange={(e) => setNewResLicense(e.target.value)}
                           placeholder="例如：MIT / 商业授权 / 校内授权"
                           className="mt-1.5"
                         />
-                      </div>
+                      </FormFieldRow>
                     </>
                   )}
 
                   {/* Description for all types */}
-                  <div>
-                    <Label>资源描述</Label>
+                  <FormFieldRow label="资源描述">
                     <Textarea
                       value={newResDescription}
                       onChange={(e) => setNewResDescription(e.target.value)}
@@ -750,7 +738,7 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                       className="mt-1.5"
                       rows={2}
                     />
-                  </div>
+                  </FormFieldRow>
 
                   {/* File upload */}
                   {[

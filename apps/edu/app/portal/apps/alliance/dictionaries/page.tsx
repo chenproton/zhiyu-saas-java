@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -18,6 +17,7 @@ import { portalRequest } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import type { AllianceDictionary, AllianceListResponse } from '@/lib/types'
 
 function DictionaryTab({ dictType, label }: { dictType: string; label: string }) {
@@ -187,23 +187,20 @@ function DictionaryTab({ dictType, label }: { dictType: string; label: string })
           >
             <h2 className="text-lg font-semibold mb-4">{editId ? '编辑字典项' : '新增字典项'}</h2>
             <div className="space-y-4">
-              <div className="grid gap-2">
-                <Label>编码 *</Label>
+              <FormFieldRow label="编码" required>
                 <Input
                   value={formItem.code}
                   onChange={(e) => setFormItem({ ...formItem, code: e.target.value })}
                   disabled={!!editId}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>名称 *</Label>
+              </FormFieldRow>
+              <FormFieldRow label="名称" required>
                 <Input
                   value={formItem.name}
                   onChange={(e) => setFormItem({ ...formItem, name: e.target.value })}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>排序</Label>
+              </FormFieldRow>
+              <FormFieldRow label="排序">
                 <Input
                   type="number"
                   value={formItem.sortOrder}
@@ -211,7 +208,7 @@ function DictionaryTab({ dictType, label }: { dictType: string; label: string })
                     setFormItem({ ...formItem, sortOrder: parseInt(e.target.value) || 0 })
                   }
                 />
-              </div>
+              </FormFieldRow>
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>

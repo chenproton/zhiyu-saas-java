@@ -22,6 +22,7 @@ import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import type {
   AllianceEnterprise,
   AllianceProject,
@@ -213,15 +214,13 @@ export default function AllianceEnterprisesPage() {
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>企业名称 *</Label>
+            <FormFieldRow label="企业名称" required>
               <Input
                 value={item.name || ''}
                 onChange={(e: any) => setItem({ ...item, name: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>企业类型</Label>
+            </FormFieldRow>
+            <FormFieldRow label="企业类型">
               <Select
                 value={item.enterpriseType || 'cooperation'}
                 onValueChange={(v: any) => setItem({ ...item, enterpriseType: v })}
@@ -234,23 +233,20 @@ export default function AllianceEnterprisesPage() {
                   <SelectItem value="third-party">第三方雇主企业</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>所属行业</Label>
+            </FormFieldRow>
+            <FormFieldRow label="所属行业">
               <Input
                 value={item.industry || ''}
                 onChange={(e: any) => setItem({ ...item, industry: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>所在地区</Label>
+            </FormFieldRow>
+            <FormFieldRow label="所在地区">
               <Input
                 value={item.region || ''}
                 onChange={(e: any) => setItem({ ...item, region: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>合作状态</Label>
+            </FormFieldRow>
+            <FormFieldRow label="合作状态">
               <Select
                 value={item.status || 'negotiating'}
                 onValueChange={(v: any) => setItem({ ...item, status: v })}
@@ -265,9 +261,8 @@ export default function AllianceEnterprisesPage() {
                   <SelectItem value="terminated">已终止</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>合作评级</Label>
+            </FormFieldRow>
+            <FormFieldRow label="合作评级">
               <Select
                 value={item.rating || 'general'}
                 onValueChange={(v: any) => setItem({ ...item, rating: v })}
@@ -281,43 +276,38 @@ export default function AllianceEnterprisesPage() {
                   <SelectItem value="general">一般合作</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>联系人</Label>
+            </FormFieldRow>
+            <FormFieldRow label="联系人">
               <Input
                 value={item.contactPerson || ''}
                 onChange={(e: any) => setItem({ ...item, contactPerson: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>联系电话</Label>
+            </FormFieldRow>
+            <FormFieldRow label="联系电话">
               <Input
                 value={item.contactPhone || ''}
                 onChange={(e: any) => setItem({ ...item, contactPhone: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>联系邮箱</Label>
+            </FormFieldRow>
+            <FormFieldRow label="联系邮箱">
               <Input
                 value={item.contactEmail || ''}
                 onChange={(e: any) => setItem({ ...item, contactEmail: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>Logo URL</Label>
+            </FormFieldRow>
+            <FormFieldRow label="Logo URL">
               <Input
                 value={item.logoUrl || ''}
                 onChange={(e: any) => setItem({ ...item, logoUrl: e.target.value })}
                 placeholder="https://..."
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>企业地址</Label>
+            </FormFieldRow>
+            <FormFieldRow label="企业地址">
               <Input
                 value={item.address || ''}
                 onChange={(e: any) => setItem({ ...item, address: e.target.value })}
               />
-            </div>
+            </FormFieldRow>
             <div className="flex items-center gap-2 pt-6">
               <Switch
                 checked={item.isPublic || false}
@@ -326,14 +316,13 @@ export default function AllianceEnterprisesPage() {
               <Label>公开显示</Label>
             </div>
           </div>
-          <div className="grid gap-2">
-            <Label>企业描述</Label>
+          <FormFieldRow label="企业描述">
             <Textarea
               value={item.description || ''}
               onChange={(e: any) => setItem({ ...item, description: e.target.value })}
               rows={4}
             />
-          </div>
+          </FormFieldRow>
         </div>
       )}
       getDeleteDescription={(item: any) => (

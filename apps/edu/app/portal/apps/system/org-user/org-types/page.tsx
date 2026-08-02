@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -256,16 +256,14 @@ export default function OrgTypesPage() {
             <DialogDescription>组织类型用于组织架构节点分类</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>类型名称</Label>
+            <FormFieldRow label="类型名称">
               <Input
                 placeholder="如：二级学院"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>类型分类</Label>
+            </FormFieldRow>
+            <FormFieldRow label="类型分类">
               <Select value={formCategory} onValueChange={setFormCategory}>
                 <SelectTrigger>
                   <SelectValue />
@@ -276,7 +274,7 @@ export default function OrgTypesPage() {
                   <SelectItem value="external">外部协作组织</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </FormFieldRow>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>

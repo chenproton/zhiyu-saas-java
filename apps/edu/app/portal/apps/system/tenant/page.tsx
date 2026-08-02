@@ -45,6 +45,7 @@ import { portalRequest } from '@/lib/api'
 import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { Spinner } from '@/components/ui/spinner'
 import { SchoolAdminManager } from './_components/school-admin-manager'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 
 interface Tenant {
   id: string
@@ -335,57 +336,49 @@ export default function TenantPage() {
             <DialogDescription>修改租户与学校信息</DialogDescription>
           </DialogHeader>
           <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>租户标识</Label>
+            <FormFieldGrid cols={2}>
+              <FormFieldRow label="租户标识">
                 <Input disabled className="bg-muted font-mono" value={tenant?.code || ''} />
-              </div>
-              <div className="grid gap-2">
-                <Label>状态</Label>
+              </FormFieldRow>
+              <FormFieldRow label="状态">
                 <Input
                   disabled
                   className="bg-muted"
                   value={tenant?.status === 'active' ? '启用' : '停用'}
                 />
-              </div>
-            </div>
+              </FormFieldRow>
+            </FormFieldGrid>
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
                 基础信息
               </Label>
               <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label>
-                    学校名称 <span className="text-destructive">*</span>
-                  </Label>
+                <FormFieldRow label="学校名称" required>
                   <IconInput
                     icon={Building}
                     value={formData.name || ''}
                     onChange={(e) => setF('name', e.target.value)}
                   />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>学校代码</Label>
+                </FormFieldRow>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label="学校代码">
                     <IconInput
                       icon={Hash}
                       value={formData.enterpriseCode || ''}
                       onChange={(e) => setF('enterpriseCode', e.target.value)}
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>学校简称</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label="学校简称">
                     <IconInput
                       icon={School}
                       value={formData.shortName || ''}
                       onChange={(e) => setF('shortName', e.target.value)}
                     />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>办学层次</Label>
+                  </FormFieldRow>
+                </FormFieldGrid>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label="办学层次">
                     <Select
                       value={formData.educationLevel || ''}
                       onValueChange={(v) => setF('educationLevel', v)}
@@ -402,9 +395,8 @@ export default function TenantPage() {
                         <SelectItem value="技工学校">技工学校</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>办学性质</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label="办学性质">
                     <Select
                       value={formData.educationNature || ''}
                       onValueChange={(v) => setF('educationNature', v)}
@@ -417,11 +409,10 @@ export default function TenantPage() {
                         <SelectItem value="民办">民办</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>省份</Label>
+                  </FormFieldRow>
+                </FormFieldGrid>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label="省份">
                     <Select
                       value={formData.province || ''}
                       onValueChange={(v) => setF('province', v)}
@@ -437,9 +428,8 @@ export default function TenantPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>城市</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label="城市">
                     <Select
                       value={formData.city || ''}
                       onValueChange={(v) => setF('city', v)}
@@ -458,16 +448,15 @@ export default function TenantPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>学校简介</Label>
+                  </FormFieldRow>
+                </FormFieldGrid>
+                <FormFieldRow label="学校简介">
                   <Textarea
                     value={formData.description || ''}
                     onChange={(e) => setF('description', e.target.value)}
                     rows={3}
                   />
-                </div>
+                </FormFieldRow>
               </div>
             </div>
             <Separator />
@@ -476,17 +465,15 @@ export default function TenantPage() {
                 联系信息
               </Label>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>联系人</Label>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label="联系人">
                     <IconInput
                       icon={User}
                       value={formData.contact || ''}
                       onChange={(e) => setF('contact', e.target.value)}
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>联系电话</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label="联系电话">
                     <IconInput
                       icon={Phone}
                       value={formData.contactPhone || formData.phone || ''}
@@ -495,16 +482,15 @@ export default function TenantPage() {
                         setF('contactPhone', e.target.value)
                       }}
                     />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>学校地址</Label>
+                  </FormFieldRow>
+                </FormFieldGrid>
+                <FormFieldRow label="学校地址">
                   <IconInput
                     icon={MapPin}
                     value={formData.address || ''}
                     onChange={(e) => setF('address', e.target.value)}
                   />
-                </div>
+                </FormFieldRow>
               </div>
             </div>
             <Separator />
@@ -513,25 +499,23 @@ export default function TenantPage() {
                 网络信息
               </Label>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>官网</Label>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label="官网">
                     <IconInput
                       icon={Globe}
                       value={formData.website || ''}
                       onChange={(e) => handleWebsiteChange(e.target.value)}
                       placeholder="https://www.example.edu.cn"
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>绑定域名</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label="绑定域名">
                     <IconInput
                       icon={Monitor}
                       value={formData.domain || ''}
                       onChange={(e) => setF('domain', e.target.value)}
                     />
-                  </div>
-                </div>
+                  </FormFieldRow>
+                </FormFieldGrid>
               </div>
             </div>
           </div>

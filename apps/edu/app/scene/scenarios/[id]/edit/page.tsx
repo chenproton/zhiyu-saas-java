@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { cn } from '@/lib/utils'
 import {
   positionApi,
@@ -232,30 +233,25 @@ export default function ScenarioEditPage() {
           <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardContent className="pt-6 space-y-5">
-                <div className="grid gap-2">
-                  <Label htmlFor="name" className="block">
-                    场景名称 <span className="text-red-500">*</span>
-                  </Label>
+                <FormFieldRow label="场景名称" required htmlFor="name">
                   <Input
                     id="name"
                     value={scenarioName}
                     onChange={(e) => setScenarioName(e.target.value)}
                     placeholder="请输入场景名称"
                   />
-                </div>
+                </FormFieldRow>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>面向行业</Label>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label="面向行业">
                     <MultiSelect
                       options={industries.map((i) => ({ label: i.name, value: i.id }))}
                       value={industryIds}
                       onChange={setIndustryIds}
                       placeholder="选择行业"
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>适用专业</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label="适用专业">
                     <MultiSelect
                       options={majors.map((m) => ({
                         label: `${m.name}${m.code ? ` (${m.code})` : ''}`,
@@ -265,8 +261,8 @@ export default function ScenarioEditPage() {
                       onChange={setProfessionIds}
                       placeholder="选择适用专业"
                     />
-                  </div>
-                </div>
+                  </FormFieldRow>
+                </FormFieldGrid>
 
                 <div className="grid gap-2">
                   <Label>难度等级</Label>

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select'
 import { MultiSelectSearch } from '@/components/ui/multi-select-search'
 import { UserSelector } from '@/components/shared/user-selector'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 
 export interface WorkflowStepEditor {
   name: string
@@ -79,17 +80,15 @@ export function WorkflowEditor({
 
   return (
     <div className="grid gap-4 py-4">
-      <div className="grid gap-2">
-        <Label htmlFor="workflowName">流程名称</Label>
+      <FormFieldRow label="流程名称" htmlFor="workflowName">
         <Input
           id="workflowName"
           placeholder="例如：校级审批流程"
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
         />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="description">流程说明</Label>
+      </FormFieldRow>
+      <FormFieldRow label="流程说明" htmlFor="description">
         <Textarea
           id="description"
           placeholder="描述该流程的适用场景和审批规则..."
@@ -97,10 +96,9 @@ export function WorkflowEditor({
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
         />
-      </div>
+      </FormFieldRow>
       {majors.length > 0 && (
-        <div className="grid gap-2">
-          <Label>适用专业</Label>
+        <FormFieldRow label="适用专业">
           <MultiSelectSearch
             options={majors.map((m) => ({ label: m.name, value: m.id }))}
             selected={majorIds}
@@ -109,7 +107,7 @@ export function WorkflowEditor({
             searchPlaceholder="搜索专业名称..."
             emptyText="暂无专业"
           />
-        </div>
+        </FormFieldRow>
       )}
       <div className="grid gap-2">
         <Label className="flex items-center gap-2">

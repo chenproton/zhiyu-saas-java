@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -992,15 +993,14 @@ function AddSystemPageInner() {
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">课程名称</Label>
+                <FormFieldRow label="课程名称" labelClassName="text-xs">
                   <Input
                     value={courseName}
                     onChange={(e) => setCourseName(e.target.value)}
                     placeholder="请输入课程名称"
                     className="h-9 text-sm"
                   />
-                </div>
+                </FormFieldRow>
                 <div className="space-y-1.5">
                   <Label className="text-xs">适用专业</Label>
                   <MajorSelect
@@ -1213,8 +1213,7 @@ function AddSystemPageInner() {
                             className={isQuoteMode ? 'opacity-70' : ''}
                           >
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">内容名称</Label>
+                              <FormFieldRow label="内容名称" labelClassName="text-xs">
                                 <Input
                                   value={selectedNode?.name || ''}
                                   onChange={(e) => {
@@ -1225,7 +1224,7 @@ function AddSystemPageInner() {
                                   placeholder="请输入内容名称"
                                   className="h-9 text-sm"
                                 />
-                              </div>
+                              </FormFieldRow>
                               <div className="space-y-1.5">
                                 <Label className="text-xs">节点编码</Label>
                                 <Input

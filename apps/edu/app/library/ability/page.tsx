@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -240,16 +241,14 @@ export default function AbilityPointsPage() {
               <DialogTitle>{editingItem ? '编辑能力点' : '新增能力点'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label>名称 *</Label>
+              <FormFieldRow label="名称" required>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="能力点名称"
                 />
-              </div>
-              <div>
-                <Label>类别 *</Label>
+              </FormFieldRow>
+              <FormFieldRow label="类别" required>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
                     <SelectValue />
@@ -262,23 +261,21 @@ export default function AbilityPointsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label>描述</Label>
+              </FormFieldRow>
+              <FormFieldRow label="描述">
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="简要描述"
                 />
-              </div>
-              <div>
-                <Label>属性标签（逗号分隔）</Label>
+              </FormFieldRow>
+              <FormFieldRow label="属性标签（逗号分隔）">
                 <Input
                   value={attributes}
                   onChange={(e) => setAttributes(e.target.value)}
                   placeholder="沟通, 协作, 领导力"
                 />
-              </div>
+              </FormFieldRow>
               <div className="flex items-center space-x-2">
                 <Switch checked={isPublic} onCheckedChange={setIsPublic} />
                 <Label>公开</Label>

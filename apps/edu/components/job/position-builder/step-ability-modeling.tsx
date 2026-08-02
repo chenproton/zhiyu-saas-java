@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -773,17 +774,18 @@ export function StepAbilityModeling({
           ) : (
             <>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label className="text-sm text-gray-600">
-                    能力点名称 <span className="text-red-400">*</span>
-                  </Label>
+                <FormFieldRow
+                  label="能力点名称"
+                  required
+                  labelClassName="text-sm text-gray-600"
+                >
                   <Input
                     value={newAbilityName}
                     onChange={(e) => setNewAbilityName(e.target.value)}
                     placeholder="例如：微服务架构设计"
                     className="border-gray-200 focus:border-gray-400"
                   />
-                </div>
+                </FormFieldRow>
                 <div className="space-y-2">
                   <Label className="text-sm text-gray-600">能力属性</Label>
                   <div className="flex gap-2">

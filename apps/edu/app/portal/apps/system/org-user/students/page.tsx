@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { usePortalUsers } from '@/hooks/use-portal-users'
 import { useOrgTree, findOrgAncestor } from '@/hooks/use-org-tree'
@@ -365,43 +365,31 @@ export default function StudentsPage() {
         }
         renderForm={() => (
           <>
-            <div className="grid gap-2">
-              <Label>
-                姓名 <span className="text-destructive">*</span>
-              </Label>
+            <FormFieldRow label="姓名" required>
               <Input
                 placeholder="请输入姓名"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>
-                登录账号（学号） <span className="text-destructive">*</span>
-              </Label>
+            </FormFieldRow>
+            <FormFieldRow label="登录账号（学号）" required>
               <Input
                 placeholder="如：S2024001"
                 value={formUsername}
                 onChange={(e) => setFormUsername(e.target.value)}
               />
-            </div>
+            </FormFieldRow>
             {!selectedStudent && (
-              <div className="grid gap-2">
-                <Label>
-                  密码 <span className="text-destructive">*</span>
-                </Label>
+              <FormFieldRow label="密码" required>
                 <Input
                   type="text"
                   placeholder="请输入密码"
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
                 />
-              </div>
+              </FormFieldRow>
             )}
-            <div className="grid gap-2">
-              <Label>
-                班级 <span className="text-destructive">*</span>
-              </Label>
+            <FormFieldRow label="班级" required>
               <OrgNodePicker
                 tenantId={tenantId}
                 value={formClassNodeId}
@@ -410,7 +398,7 @@ export default function StudentsPage() {
                 placeholder="选择班级"
                 title="选择班级"
               />
-            </div>
+            </FormFieldRow>
           </>
         )}
         formValid={!!formValid}

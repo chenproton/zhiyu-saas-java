@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { usePortalUsers } from '@/hooks/use-portal-users'
 import { useOrgTree } from '@/hooks/use-org-tree'
@@ -346,41 +346,31 @@ export default function TeachersPage() {
         editDialogDescription={selectedTeacher ? '修改教职工基本信息' : '填写教职工基本信息'}
         renderForm={() => (
           <>
-            <div className="grid gap-2">
-              <Label>
-                姓名 <span className="text-destructive">*</span>
-              </Label>
+            <FormFieldRow label="姓名" required>
               <Input
                 placeholder="请输入姓名"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>
-                登录账号（工号） <span className="text-destructive">*</span>
-              </Label>
+            </FormFieldRow>
+            <FormFieldRow label="登录账号（工号）" required>
               <Input
                 placeholder="如：T001"
                 value={formUsername}
                 onChange={(e) => setFormUsername(e.target.value)}
               />
-            </div>
+            </FormFieldRow>
             {!selectedTeacher && (
-              <div className="grid gap-2">
-                <Label>
-                  密码 <span className="text-destructive">*</span>
-                </Label>
+              <FormFieldRow label="密码" required>
                 <Input
                   type="text"
                   placeholder="请输入密码"
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
                 />
-              </div>
+              </FormFieldRow>
             )}
-            <div className="grid gap-2">
-              <Label>所属组织节点</Label>
+            <FormFieldRow label="所属组织节点">
               <OrgNodePicker
                 tenantId={tenantId}
                 value={formOrgNodeId}
@@ -388,9 +378,8 @@ export default function TeachersPage() {
                 placeholder="选择所属组织节点"
                 title="选择所属组织节点"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>职位</Label>
+            </FormFieldRow>
+            <FormFieldRow label="职位">
               <MultiSelectSearch
                 options={staffTitles.map((t) => ({ label: t.name, value: t.id }))}
                 selected={formTitleIds}
@@ -399,7 +388,7 @@ export default function TeachersPage() {
                 searchPlaceholder="搜索职位..."
                 emptyText="未找到匹配的职位"
               />
-            </div>
+            </FormFieldRow>
           </>
         )}
         formValid={!!formValid}

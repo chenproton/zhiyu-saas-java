@@ -22,6 +22,7 @@ import { useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
 import type { AllianceBrand, AllianceListResponse } from '@/lib/types'
 
@@ -135,15 +136,13 @@ export default function AllianceCultureBrandPage() {
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div className="grid gap-2">
-            <Label>名称 *</Label>
+          <FormFieldRow label="名称" required>
             <Input
               value={item.name || ''}
               onChange={(e: any) => setItem({ ...item, name: e.target.value })}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label>状态</Label>
+          </FormFieldRow>
+          <FormFieldRow label="状态">
             <Select
               value={item.status || 'draft'}
               onValueChange={(v: any) => setItem({ ...item, status: v })}
@@ -157,23 +156,21 @@ export default function AllianceCultureBrandPage() {
                 <SelectItem value="archived">已归档</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label>描述</Label>
+          </FormFieldRow>
+          <FormFieldRow label="描述">
             <Textarea
               value={item.description || ''}
               onChange={(e: any) => setItem({ ...item, description: e.target.value })}
               rows={3}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label>封面图 URL</Label>
+          </FormFieldRow>
+          <FormFieldRow label="封面图 URL">
             <Input
               value={item.coverImage || ''}
               onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })}
               placeholder="https://..."
             />
-          </div>
+          </FormFieldRow>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Switch

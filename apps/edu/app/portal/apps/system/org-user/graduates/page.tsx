@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -327,30 +327,21 @@ export default function GraduatesPage() {
             <DialogDescription>修改学生基本信息与班级归属</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>
-                姓名 <span className="text-destructive">*</span>
-              </Label>
+            <FormFieldRow label="姓名" required>
               <Input
                 placeholder="请输入姓名"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>
-                登录账号（学号） <span className="text-destructive">*</span>
-              </Label>
+            </FormFieldRow>
+            <FormFieldRow label="登录账号（学号）" required>
               <Input
                 placeholder="如：S2024001"
                 value={formUsername}
                 onChange={(e) => setFormUsername(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>
-                班级 <span className="text-destructive">*</span>
-              </Label>
+            </FormFieldRow>
+            <FormFieldRow label="班级" required>
               <OrgNodePicker
                 tenantId={tenantId}
                 value={formClassNodeId}
@@ -361,7 +352,7 @@ export default function GraduatesPage() {
                 placeholder="选择班级"
                 title="选择班级"
               />
-            </div>
+            </FormFieldRow>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>

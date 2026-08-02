@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -582,22 +582,20 @@ export default function RolesPage() {
             <DialogDescription>角色编码由系统自动生成</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>角色编码</Label>
+            <FormFieldRow label="角色编码">
               <Input
                 value={selectedRole?.code || generateRoleCode()}
                 disabled
                 className="bg-muted font-mono"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>角色名称</Label>
+            </FormFieldRow>
+            <FormFieldRow label="角色名称">
               <Input
                 placeholder="如：学校管理员"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
               />
-            </div>
+            </FormFieldRow>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

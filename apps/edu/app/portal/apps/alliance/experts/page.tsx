@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -21,6 +20,7 @@ import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import type { AllianceExpert, AllianceListResponse } from '@/lib/types'
 
 export default function AllianceExpertsPage() {
@@ -136,44 +136,38 @@ export default function AllianceExpertsPage() {
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>姓名 *</Label>
+          <FormFieldGrid>
+            <FormFieldRow label="姓名" required>
               <Input
                 value={item.name || ''}
                 onChange={(e: any) => setItem({ ...item, name: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>头衔</Label>
+            </FormFieldRow>
+            <FormFieldRow label="头衔">
               <Input
                 value={item.title || ''}
                 onChange={(e: any) => setItem({ ...item, title: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>职位</Label>
+            </FormFieldRow>
+            <FormFieldRow label="职位">
               <Input
                 value={item.position || ''}
                 onChange={(e: any) => setItem({ ...item, position: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>行业</Label>
+            </FormFieldRow>
+            <FormFieldRow label="行业">
               <Input
                 value={item.industry || ''}
                 onChange={(e: any) => setItem({ ...item, industry: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>城市</Label>
+            </FormFieldRow>
+            <FormFieldRow label="城市">
               <Input
                 value={item.city || ''}
                 onChange={(e: any) => setItem({ ...item, city: e.target.value })}
               />
-            </div>
-            <div>
-              <Label>评级</Label>
+            </FormFieldRow>
+            <FormFieldRow label="评级">
               <Select
                 value={item.rating || 'copper'}
                 onValueChange={(v: any) => setItem({ ...item, rating: v })}
@@ -187,16 +181,15 @@ export default function AllianceExpertsPage() {
                   <SelectItem value="copper">铜牌</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Label>简介</Label>
+            </FormFieldRow>
+          </FormFieldGrid>
+          <FormFieldRow label="简介">
             <Textarea
               value={item.introduction || ''}
               onChange={(e: any) => setItem({ ...item, introduction: e.target.value })}
               rows={3}
             />
-          </div>
+          </FormFieldRow>
         </div>
       )}
       getDeleteDescription={(item: any) => (

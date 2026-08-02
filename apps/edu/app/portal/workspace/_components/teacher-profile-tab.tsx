@@ -3,6 +3,7 @@
 import { Bell, Lock, Mail, Phone, Shield, Smartphone, User } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -83,46 +84,41 @@ export function TeacherProfileTab() {
 
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-500">姓名</Label>
+                <FormFieldRow label="姓名" labelClassName="text-xs text-gray-500">
                   <Input
                     value={formData.name}
                     disabled
                     className="bg-gray-50 border-gray-200 h-9"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-500">工号</Label>
+                </FormFieldRow>
+                <FormFieldRow label="工号" labelClassName="text-xs text-gray-500">
                   <Input
                     value={formData.teacherNo}
                     disabled
                     className="bg-gray-50 border-gray-200 h-9"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-500">所属部门</Label>
+                </FormFieldRow>
+                <FormFieldRow label="所属部门" labelClassName="text-xs text-gray-500">
                   <Input
                     value={formData.department}
                     disabled
                     className="bg-gray-50 border-gray-200 h-9"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-500">状态</Label>
+                </FormFieldRow>
+                <FormFieldRow label="状态" labelClassName="text-xs text-gray-500">
                   <Input
                     value={formData.status}
                     disabled
                     className="bg-gray-50 border-gray-200 h-9"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-500">职位</Label>
+                </FormFieldRow>
+                <FormFieldRow label="职位" labelClassName="text-xs text-gray-500">
                   <Input
                     value={formData.position}
                     disabled
                     className="bg-gray-50 border-gray-200 h-9"
                   />
-                </div>
+                </FormFieldRow>
                 <div className="space-y-1.5">
                   <Label className="text-xs text-gray-500">关联角色</Label>
                   <div className="flex items-center gap-1.5 flex-wrap min-h-[36px]">

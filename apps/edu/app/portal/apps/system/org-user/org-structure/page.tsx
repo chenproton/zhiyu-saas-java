@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 
 import { Input } from '@/components/ui/input'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -663,14 +664,13 @@ export default function OrgStructurePage() {
               <p className="text-muted-foreground text-sm">配置组织节点信息</p>
             </div>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>节点组织名称</Label>
+              <FormFieldRow label="节点组织名称">
                 <Input
                   placeholder="如：信息学院"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                 />
-              </div>
+              </FormFieldRow>
               <div className="grid gap-2">
                 <Label>组织类型</Label>
                 <div className="grid grid-cols-4 gap-2">
@@ -697,8 +697,7 @@ export default function OrgStructurePage() {
                   })}
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label>父节点</Label>
+              <FormFieldRow label="父节点" hint={dialogMode === 'edit' ? '更改父节点后，当前节点及其全部子节点将迁移到新父节点下' : undefined}>
                 <Select value={formParentId} onValueChange={setFormParentId}>
                   <SelectTrigger>
                     <SelectValue placeholder="选择父节点" />
@@ -712,21 +711,15 @@ export default function OrgStructurePage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {dialogMode === 'edit' && (
-                  <p className="text-xs text-muted-foreground">
-                    更改父节点后，当前节点及其全部子节点将迁移到新父节点下
-                  </p>
-                )}
-              </div>
-              <div className="grid gap-2">
-                <Label>排序序号</Label>
+              </FormFieldRow>
+              <FormFieldRow label="排序序号">
                 <Input
                   type="number"
                   placeholder="1"
                   value={formSortOrder}
                   onChange={(e) => setFormSortOrder(e.target.value)}
                 />
-              </div>
+              </FormFieldRow>
               {formError && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />

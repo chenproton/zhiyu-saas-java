@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -23,6 +22,7 @@ import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import type {
   AllianceProject,
   AllianceEnterprise,
@@ -178,15 +178,13 @@ export default function AllianceProjectsPage() {
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div className="grid gap-2">
-            <Label>项目名称 *</Label>
+          <FormFieldRow label="项目名称" required>
             <Input
               value={item.name || ''}
               onChange={(e: any) => setItem({ ...item, name: e.target.value })}
             />
-          </div>
-          <div>
-            <Label>阶段</Label>
+          </FormFieldRow>
+          <FormFieldRow label="阶段">
             <Select
               value={item.phase || ''}
               onValueChange={(v: any) => setItem({ ...item, phase: v })}
@@ -204,33 +202,30 @@ export default function AllianceProjectsPage() {
                 )}
               </SelectContent>
             </Select>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>开始日期</Label>
+          </FormFieldRow>
+          <FormFieldGrid>
+            <FormFieldRow label="开始日期">
               <Input
                 type="date"
                 value={item.startDate || ''}
                 onChange={(e: any) => setItem({ ...item, startDate: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>结束日期</Label>
+            </FormFieldRow>
+            <FormFieldRow label="结束日期">
               <Input
                 type="date"
                 value={item.endDate || ''}
                 onChange={(e: any) => setItem({ ...item, endDate: e.target.value })}
               />
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Label>描述</Label>
+            </FormFieldRow>
+          </FormFieldGrid>
+          <FormFieldRow label="描述">
             <Textarea
               value={item.description || ''}
               onChange={(e: any) => setItem({ ...item, description: e.target.value })}
               rows={3}
             />
-          </div>
+          </FormFieldRow>
         </div>
       )}
       getDeleteDescription={(item: any) => (

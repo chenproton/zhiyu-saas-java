@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -319,14 +320,15 @@ export default function CourseNodeTree({
             <DialogTitle>编辑节点名称</DialogTitle>
           </DialogHeader>
           <div className="py-2">
-            <Label>节点名称</Label>
-            <Input
-              value={editNodeName}
-              onChange={(e) => setEditNodeName(e.target.value)}
-              placeholder="请输入节点名称"
-              maxLength={50}
-              className="mt-1"
-            />
+            <FormFieldRow label="节点名称">
+              <Input
+                value={editNodeName}
+                onChange={(e) => setEditNodeName(e.target.value)}
+                placeholder="请输入节点名称"
+                maxLength={50}
+                className="mt-1"
+              />
+            </FormFieldRow>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>

@@ -10,9 +10,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { portalUserManagementApi } from '@/lib/api'
 
@@ -91,8 +91,7 @@ export function ResetPasswordDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="reset-password">新密码</Label>
+          <FormFieldRow label="新密码" htmlFor="reset-password">
             <Input
               id="reset-password"
               type="password"
@@ -100,9 +99,8 @@ export function ResetPasswordDialog({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="reset-confirm-password">确认新密码</Label>
+          </FormFieldRow>
+          <FormFieldRow label="确认新密码" htmlFor="reset-confirm-password">
             <Input
               id="reset-confirm-password"
               type="password"
@@ -110,7 +108,7 @@ export function ResetPasswordDialog({
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
-          </div>
+          </FormFieldRow>
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />

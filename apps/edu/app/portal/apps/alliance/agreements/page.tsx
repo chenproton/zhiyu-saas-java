@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -21,6 +20,7 @@ import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import type {
   AllianceAgreement,
   AllianceEnterprise,
@@ -172,22 +172,19 @@ export default function AllianceAgreementsPage() {
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div className="grid gap-2">
-            <Label>协议名称 *</Label>
+          <FormFieldRow label="协议名称" required>
             <Input
               value={item.name || ''}
               onChange={(e: any) => setItem({ ...item, name: e.target.value })}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label>协议类型</Label>
+          </FormFieldRow>
+          <FormFieldRow label="协议类型">
             <Input
               value={item.type || ''}
               onChange={(e: any) => setItem({ ...item, type: e.target.value })}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label>状态</Label>
+          </FormFieldRow>
+          <FormFieldRow label="状态">
             <Select
               value={item.status || 'draft'}
               onValueChange={(v: any) => setItem({ ...item, status: v })}
@@ -203,33 +200,30 @@ export default function AllianceAgreementsPage() {
                 <SelectItem value="terminated">已终止</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>开始日期</Label>
+          </FormFieldRow>
+          <FormFieldGrid>
+            <FormFieldRow label="开始日期">
               <Input
                 type="date"
                 value={item.startDate || ''}
                 onChange={(e: any) => setItem({ ...item, startDate: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>结束日期</Label>
+            </FormFieldRow>
+            <FormFieldRow label="结束日期">
               <Input
                 type="date"
                 value={item.endDate || ''}
                 onChange={(e: any) => setItem({ ...item, endDate: e.target.value })}
               />
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Label>协议内容</Label>
+            </FormFieldRow>
+          </FormFieldGrid>
+          <FormFieldRow label="协议内容">
             <Textarea
               value={item.content || ''}
               onChange={(e: any) => setItem({ ...item, content: e.target.value })}
               rows={4}
             />
-          </div>
+          </FormFieldRow>
         </div>
       )}
       getDeleteDescription={(item: any) => <>确定要删除协议「{item.name}」吗？</>}

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -150,29 +150,22 @@ export default function IndustriesPage() {
         const set = (patch: Partial<Industry>) => setItem({ ...item, ...patch })
         return (
           <>
-            <div className="grid gap-2">
-              <Label>
-                行业代码 <span className="text-destructive">*</span>
-              </Label>
+            <FormFieldRow label="行业代码" required>
               <Input
                 placeholder="如：IT"
                 value={item.code}
                 onChange={(e) => set({ code: e.target.value })}
                 disabled={!!item.id}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>
-                行业名称 <span className="text-destructive">*</span>
-              </Label>
+            </FormFieldRow>
+            <FormFieldRow label="行业名称" required>
               <Input
                 placeholder="如：信息技术"
                 value={item.name}
                 onChange={(e) => set({ name: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>上级行业</Label>
+            </FormFieldRow>
+            <FormFieldRow label="上级行业">
               <Select
                 value={item.parentId || '__none__'}
                 onValueChange={(val) => set({ parentId: val === '__none__' ? '' : val })}
@@ -191,16 +184,15 @@ export default function IndustriesPage() {
                     ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>排序</Label>
+            </FormFieldRow>
+            <FormFieldRow label="排序">
               <Input
                 type="number"
                 placeholder="0"
                 value={item.sortOrder}
                 onChange={(e) => set({ sortOrder: Number(e.target.value) || 0 })}
               />
-            </div>
+            </FormFieldRow>
           </>
         )
       }}

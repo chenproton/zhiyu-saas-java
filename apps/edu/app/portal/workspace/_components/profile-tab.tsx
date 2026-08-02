@@ -2,7 +2,7 @@
 
 import { Bell, Lock, Mail, Phone, Shield, Smartphone, User, Award } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -115,72 +115,54 @@ export function ProfileTab() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-700">
-                  姓名
-                </Label>
+              <FormFieldRow label="姓名" htmlFor="name" labelClassName="text-gray-700">
                 <Input
                   id="name"
                   value={formData.name}
                   disabled
                   className="bg-gray-50 border-gray-100"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="studentNo" className="text-gray-700">
-                  学号
-                </Label>
+              </FormFieldRow>
+              <FormFieldRow label="学号" htmlFor="studentNo" labelClassName="text-gray-700">
                 <Input
                   id="studentNo"
                   value={formData.studentNo}
                   disabled
                   className="bg-gray-50 border-gray-100"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-gray-700">
-                  手机号
-                </Label>
+              </FormFieldRow>
+              <FormFieldRow label="手机号" htmlFor="phone" labelClassName="text-gray-700">
                 <Input
                   id="phone"
                   value={formData.phone}
                   disabled
                   className="bg-gray-50 border-gray-100"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700">
-                  邮箱
-                </Label>
+              </FormFieldRow>
+              <FormFieldRow label="邮箱" htmlFor="email" labelClassName="text-gray-700">
                 <Input
                   id="email"
                   value={formData.email}
                   disabled
                   className="bg-gray-50 border-gray-100"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="major" className="text-gray-700">
-                  专业
-                </Label>
+              </FormFieldRow>
+              <FormFieldRow label="专业" htmlFor="major" labelClassName="text-gray-700">
                 <Input
                   id="major"
                   value={formData.major}
                   disabled
                   className="bg-gray-50 border-gray-100"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="className" className="text-gray-700">
-                  班级
-                </Label>
+              </FormFieldRow>
+              <FormFieldRow label="班级" htmlFor="className" labelClassName="text-gray-700">
                 <Input
                   id="className"
                   value={formData.className}
                   disabled
                   className="bg-gray-50 border-gray-100"
                 />
-              </div>
+              </FormFieldRow>
             </div>
           </SectionCard>
         </TabsContent>

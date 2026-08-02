@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Textarea } from '@/components/ui/textarea'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -642,26 +643,23 @@ function HybridCourseAddForm() {
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">课程名称</Label>
+                <FormFieldRow label="课程名称" labelClassName="text-xs">
                   <Input
                     value={rootForm.name}
                     onChange={(e) => updateRootForm({ name: e.target.value })}
                     placeholder="请输入课程名称"
                     className="h-9 text-sm"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">课程编码</Label>
+                </FormFieldRow>
+                <FormFieldRow label="课程编码" labelClassName="text-xs">
                   <Input
                     value={rootForm.code}
                     onChange={(e) => updateRootForm({ code: e.target.value })}
                     placeholder="请输入课程编码"
                     className="h-9 text-sm"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">所属专业</Label>
+                </FormFieldRow>
+                <FormFieldRow label="所属专业" labelClassName="text-xs">
                   <Select
                     value={rootForm.majorName}
                     onValueChange={(v) =>
@@ -679,9 +677,8 @@ function HybridCourseAddForm() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">课程分类</Label>
+                </FormFieldRow>
+                <FormFieldRow label="课程分类" labelClassName="text-xs">
                   <Select
                     value={rootForm.category}
                     onValueChange={(v) =>
@@ -699,16 +696,15 @@ function HybridCourseAddForm() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">学期</Label>
+                </FormFieldRow>
+                <FormFieldRow label="学期" labelClassName="text-xs">
                   <Input
                     value={rootForm.semester}
                     onChange={(e) => updateRootForm({ semester: e.target.value })}
                     placeholder="如：2026-2027-1"
                     className="h-9 text-sm"
                   />
-                </div>
+                </FormFieldRow>
                 <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
               </div>
               <div className="mt-5 space-y-1.5">
@@ -727,18 +723,16 @@ function HybridCourseAddForm() {
                   placeholder="请输入课程详细描述"
                 />
               </div>
-              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">任务背景</Label>
+              <FormFieldGrid cols={2} className="mt-5">
+                <FormFieldRow label="任务背景" labelClassName="text-xs">
                   <Input
                     value={rootForm.background}
                     onChange={(e) => updateRootForm({ background: e.target.value })}
                     placeholder="任务背景说明"
                     className="h-9 text-sm"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">预计学时</Label>
+                </FormFieldRow>
+                <FormFieldRow label="预计学时" labelClassName="text-xs">
                   <Input
                     type="number"
                     value={rootForm.estimatedHours}
@@ -746,8 +740,8 @@ function HybridCourseAddForm() {
                     placeholder="预计完成学时"
                     className="h-9 text-sm"
                   />
-                </div>
-              </div>
+                </FormFieldRow>
+              </FormFieldGrid>
               <div className="mt-5 space-y-1.5">
                 <Label className="text-xs">封面图片</Label>
                 <div className="flex items-start gap-4">

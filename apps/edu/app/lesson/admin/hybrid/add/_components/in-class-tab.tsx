@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -117,8 +118,7 @@ export function RollCallPanel({ onBack }: { onBack?: () => void }) {
                 ))}
               </div>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">抽取人数</Label>
+            <FormFieldRow label="抽取人数" labelClassName="text-xs text-muted-foreground">
               <Input
                 type="number"
                 value={count}
@@ -126,9 +126,8 @@ export function RollCallPanel({ onBack }: { onBack?: () => void }) {
                 className="mt-1 text-sm"
                 min={1}
               />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">倒计时（秒）</Label>
+            </FormFieldRow>
+            <FormFieldRow label="倒计时（秒）" labelClassName="text-xs text-muted-foreground">
               <Input
                 type="number"
                 value={duration}
@@ -136,7 +135,7 @@ export function RollCallPanel({ onBack }: { onBack?: () => void }) {
                 className="mt-1 text-sm"
                 min={5}
               />
-            </div>
+            </FormFieldRow>
           </div>
           <div className="flex items-center gap-3">
             {isActive ? (
@@ -267,25 +266,23 @@ export function CheckInPanel({ onBack }: { onBack?: () => void }) {
             </div>
           </div>
           {mode === 'password' && (
-            <div>
-              <Label className="text-xs text-muted-foreground">签到口令</Label>
+            <FormFieldRow label="签到口令" labelClassName="text-xs text-muted-foreground">
               <Input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="mt-1 text-sm max-w-xs"
               />
-            </div>
+            </FormFieldRow>
           )}
           {mode === 'gps' && (
-            <div>
-              <Label className="text-xs text-muted-foreground">定位半径（米）</Label>
+            <FormFieldRow label="定位半径（米）" labelClassName="text-xs text-muted-foreground">
               <Input
                 type="number"
                 value={gpsRadius}
                 onChange={(e) => setGpsRadius(Math.max(10, parseInt(e.target.value) || 10))}
                 className="mt-1 text-sm max-w-xs"
               />
-            </div>
+            </FormFieldRow>
           )}
           <div className="flex items-center gap-3">
             {isActive ? (
@@ -360,14 +357,13 @@ export function VotePanel({ onBack }: { onBack?: () => void }) {
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div>
-            <Label className="text-xs text-muted-foreground">投票主题</Label>
+          <FormFieldRow label="投票主题" labelClassName="text-xs text-muted-foreground">
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="mt-1 text-sm"
             />
-          </div>
+          </FormFieldRow>
           <div className="flex items-center gap-2">
             <Switch checked={allowMultiple} onCheckedChange={setAllowMultiple} />
             <span className="text-xs text-muted-foreground">允许多选</span>
@@ -467,14 +463,13 @@ export function SurveyPanel({ onBack }: { onBack?: () => void }) {
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div>
-            <Label className="text-xs text-muted-foreground">问卷标题</Label>
+          <FormFieldRow label="问卷标题" labelClassName="text-xs text-muted-foreground">
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="mt-1 text-sm"
             />
-          </div>
+          </FormFieldRow>
           <div className="flex items-center gap-3">
             {isActive ? (
               <Button variant="destructive" onClick={() => setIsActive(false)}>
@@ -646,8 +641,7 @@ export function GroupingPanel({ onBack }: { onBack?: () => void }) {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">每组人数</Label>
+            <FormFieldRow label="每组人数" labelClassName="text-xs text-muted-foreground">
               <Input
                 type="number"
                 value={groupSize}
@@ -655,7 +649,7 @@ export function GroupingPanel({ onBack }: { onBack?: () => void }) {
                 className="mt-1 text-sm"
                 min={2}
               />
-            </div>
+            </FormFieldRow>
             <div>
               <Label className="text-xs text-muted-foreground">分组方式</Label>
               <div className="flex gap-1 mt-1.5">

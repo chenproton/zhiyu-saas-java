@@ -19,6 +19,7 @@ import { portalRequest } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
 import type { AlliancePermission, AllianceListResponse } from '@/lib/types'
 
@@ -122,15 +123,13 @@ export default function AlliancePermissionsPage() {
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div className="grid gap-2">
-            <Label>账号名称 *</Label>
+          <FormFieldRow label="账号名称" required>
             <Input
               value={item.accountName || ''}
               onChange={(e: any) => setItem({ ...item, accountName: e.target.value })}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label>账号类型</Label>
+          </FormFieldRow>
+          <FormFieldRow label="账号类型">
             <Select
               value={item.accountType || 'enterprise'}
               onValueChange={(v: any) => setItem({ ...item, accountType: v })}
@@ -143,7 +142,7 @@ export default function AlliancePermissionsPage() {
                 <SelectItem value="expert">专家账号</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormFieldRow>
           {item.accountType === 'enterprise' ? (
             <BrandRelationSelect
               label="所属企业"

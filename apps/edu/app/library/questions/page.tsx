@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -202,16 +202,14 @@ export default function QuestionsPage() {
               <DialogTitle>{editing ? '编辑现场问答题' : '新增现场问答题'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label>题目名称 *</Label>
+              <FormFieldRow label="题目名称" required>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="输入题目名称"
                 />
-              </div>
-              <div>
-                <Label>适用专业</Label>
+              </FormFieldRow>
+              <FormFieldRow label="适用专业">
                 <Select value={majorId} onValueChange={setMajorId}>
                   <SelectTrigger>
                     <SelectValue placeholder="选择适用专业" />
@@ -224,25 +222,23 @@ export default function QuestionsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label>题目描述</Label>
+              </FormFieldRow>
+              <FormFieldRow label="题目描述">
                 <Textarea
                   value={desc}
                   onChange={(e) => setDesc(e.target.value)}
                   placeholder="输入题目描述"
                   rows={3}
                 />
-              </div>
-              <div>
-                <Label>题目答案</Label>
+              </FormFieldRow>
+              <FormFieldRow label="题目答案">
                 <Textarea
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   placeholder="输入题目答案"
                   rows={3}
                 />
-              </div>
+              </FormFieldRow>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>

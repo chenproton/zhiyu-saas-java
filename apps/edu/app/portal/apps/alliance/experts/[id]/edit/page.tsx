@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2, X, Plus } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
@@ -160,13 +161,11 @@ export default function AllianceExpertEditPage() {
             <CardHeader>
               <CardTitle>基础信息</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>姓名 *</Label>
+            <FormFieldGrid>
+              <FormFieldRow label="姓名" required>
                 <Input value={item.name} onChange={(e) => setField('name', e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>性别</Label>
+              </FormFieldRow>
+              <FormFieldRow label="性别">
                 <Select value={item.gender} onValueChange={(v) => setField('gender', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -176,9 +175,8 @@ export default function AllianceExpertEditPage() {
                     <SelectItem value="female">女</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>年龄</Label>
+              </FormFieldRow>
+              <FormFieldRow label="年龄">
                 <Input
                   type="number"
                   value={item.age ?? ''}
@@ -186,28 +184,24 @@ export default function AllianceExpertEditPage() {
                     setField('age', e.target.value ? Number(e.target.value) : undefined)
                   }
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>所在城市</Label>
+              </FormFieldRow>
+              <FormFieldRow label="所在城市">
                 <Input value={item.city} onChange={(e) => setField('city', e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>职称/职位</Label>
+              </FormFieldRow>
+              <FormFieldRow label="职称/职位">
                 <Input
                   value={item.title}
                   onChange={(e) => setField('title', e.target.value)}
                   placeholder="如：高级工程师"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>任职岗位</Label>
+              </FormFieldRow>
+              <FormFieldRow label="任职岗位">
                 <Input
                   value={item.position}
                   onChange={(e) => setField('position', e.target.value)}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>从业年限</Label>
+              </FormFieldRow>
+              <FormFieldRow label="从业年限">
                 <Input
                   type="number"
                   value={item.experienceYears ?? ''}
@@ -215,24 +209,22 @@ export default function AllianceExpertEditPage() {
                     setField('experienceYears', e.target.value ? Number(e.target.value) : undefined)
                   }
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>教育背景</Label>
+              </FormFieldRow>
+              <FormFieldRow label="教育背景">
                 <Input
                   value={item.education}
                   onChange={(e) => setField('education', e.target.value)}
                   placeholder="如：XX大学 硕士"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>行业方向</Label>
+              </FormFieldRow>
+              <FormFieldRow label="行业方向">
                 <Input
                   value={item.industry}
                   onChange={(e) => setField('industry', e.target.value)}
                   placeholder="如：智能制造"
                 />
-              </div>
-            </CardContent>
+              </FormFieldRow>
+            </FormFieldGrid>
           </Card>
 
           <Card>
@@ -348,8 +340,7 @@ export default function AllianceExpertEditPage() {
               <CardTitle>所属机构来源</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid gap-2">
-                <Label>来源</Label>
+              <FormFieldRow label="来源">
                 <Select
                   value={item.partnerSource}
                   onValueChange={(v) => setField('partnerSource', v)}
@@ -362,10 +353,9 @@ export default function AllianceExpertEditPage() {
                     <SelectItem value="third-party">第三方机构</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </FormFieldRow>
               {item.partnerSource === 'cooperation' ? (
-                <div className="grid gap-2">
-                  <Label>选择企业</Label>
+                <FormFieldRow label="选择企业">
                   <Select
                     value={item.enterpriseId}
                     onValueChange={(v) => setField('enterpriseId', v)}
@@ -381,16 +371,15 @@ export default function AllianceExpertEditPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </FormFieldRow>
               ) : (
-                <div className="grid gap-2">
-                  <Label>机构名称</Label>
+                <FormFieldRow label="机构名称">
                   <Input
                     value={item.organization}
                     onChange={(e) => setField('organization', e.target.value)}
                     placeholder="输入第三方机构名称"
                   />
-                </div>
+                </FormFieldRow>
               )}
             </CardContent>
           </Card>
@@ -414,8 +403,7 @@ export default function AllianceExpertEditPage() {
               <CardTitle>设置</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label>状态</Label>
+              <FormFieldRow label="状态">
                 <Select value={item.status} onValueChange={(v) => setField('status', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -425,7 +413,7 @@ export default function AllianceExpertEditPage() {
                     <SelectItem value="inactive">禁用</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </FormFieldRow>
               <div className="flex items-center justify-between">
                 <Label>前台展示</Label>
                 <Switch checked={item.isPublic} onCheckedChange={(v) => setField('isPublic', v)} />

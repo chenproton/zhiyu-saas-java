@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Pencil, Trash2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest, buildQuery, type ListResponse } from '@/lib/api'
@@ -117,35 +117,28 @@ export default function MajorsPage() {
         const set = (patch: Partial<Major>) => setItem({ ...item, ...patch })
         return (
           <>
-            <div className="grid gap-2">
-              <Label>
-                专业代码 <span className="text-destructive">*</span>
-              </Label>
+            <FormFieldRow label="专业代码" required>
               <Input
                 placeholder="如：CS101"
                 value={item.code}
                 onChange={(e) => set({ code: e.target.value })}
                 disabled={!!item.id}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>
-                专业名称 <span className="text-destructive">*</span>
-              </Label>
+            </FormFieldRow>
+            <FormFieldRow label="专业名称" required>
               <Input
                 placeholder="如：计算机科学与技术"
                 value={item.name}
                 onChange={(e) => set({ name: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>别名（备注）</Label>
+            </FormFieldRow>
+            <FormFieldRow label="别名（备注）">
               <Input
                 placeholder="输入专业别名或备注"
                 value={item.alias || ''}
                 onChange={(e) => set({ alias: e.target.value })}
               />
-            </div>
+            </FormFieldRow>
           </>
         )
       }}

@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -121,8 +121,7 @@ export function ResourceUploader({
             <DialogDescription>添加学习资料、参考文档或外部链接</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>资源类型</Label>
+            <FormFieldRow label="资源类型">
               <Select
                 value={newResource.type}
                 onValueChange={(value) =>
@@ -139,23 +138,21 @@ export function ResourceUploader({
                   <SelectItem value="file">文件</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>资源名称</Label>
+            </FormFieldRow>
+            <FormFieldRow label="资源名称">
               <Input
                 value={newResource.name}
                 onChange={(e) => setNewResource({ ...newResource, name: e.target.value })}
                 placeholder="例如：React 官方文档"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>资源地址</Label>
+            </FormFieldRow>
+            <FormFieldRow label="资源地址">
               <Input
                 value={newResource.url}
                 onChange={(e) => setNewResource({ ...newResource, url: e.target.value })}
                 placeholder="https://..."
               />
-            </div>
+            </FormFieldRow>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

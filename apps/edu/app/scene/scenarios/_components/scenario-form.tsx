@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { industryApi, positionApi, sceneBatchApi, scenarioApi, userManagementApi } from '@/lib/api'
 import type { Scenario } from '@/lib/types/scene'
 import type { CareerPosition } from '@/lib/types/job'
@@ -216,27 +217,22 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
 
       <Card>
         <CardContent className="pt-6 space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">
-                场景名称 <span className="text-red-500">*</span>
-              </Label>
+          <FormFieldGrid cols={2}>
+            <FormFieldRow label="场景名称" required htmlFor="name">
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="请输入场景名称"
               />
-            </div>
-          </div>
+            </FormFieldRow>
+          </FormFieldGrid>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="version">版本</Label>
+          <FormFieldGrid cols={3}>
+            <FormFieldRow label="版本" htmlFor="version">
               <Input id="version" value={version} onChange={(e) => setVersion(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="difficulty">难度</Label>
+            </FormFieldRow>
+            <FormFieldRow label="难度" htmlFor="difficulty">
               <Select value={String(difficulty)} onValueChange={(v) => setDifficulty(Number(v))}>
                 <SelectTrigger id="difficulty">
                   <SelectValue />
@@ -249,9 +245,8 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="batch">所属批次</Label>
+            </FormFieldRow>
+            <FormFieldRow label="所属批次" htmlFor="batch">
               <Select
                 value={batchId || '__none__'}
                 onValueChange={(v) => setBatchId(v === '__none__' ? '' : v)}
@@ -268,21 +263,19 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
+            </FormFieldRow>
+          </FormFieldGrid>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="industry">所属行业</Label>
+          <FormFieldGrid cols={2}>
+            <FormFieldRow label="所属行业" htmlFor="industry">
               <MultiSelect
                 options={industries.map((ind) => ({ label: ind.name, value: ind.id }))}
                 value={industryIds}
                 onChange={setIndustryIds}
                 placeholder="请选择行业"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="position">目标岗位</Label>
+            </FormFieldRow>
+            <FormFieldRow label="目标岗位" htmlFor="position">
               <Select
                 value={careerPositionId || '__none__'}
                 onValueChange={(v) => setCareerPositionId(v === '__none__' ? '' : v)}
@@ -306,11 +299,10 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
+            </FormFieldRow>
+          </FormFieldGrid>
 
-          <div className="grid gap-2">
-            <Label htmlFor="background">场景背景</Label>
+          <FormFieldRow label="场景背景" htmlFor="background">
             <Textarea
               id="background"
               value={background}
@@ -318,10 +310,9 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
               placeholder="描述场景的业务背景和学习目标..."
               rows={3}
             />
-          </div>
+          </FormFieldRow>
 
-          <div className="grid gap-2">
-            <Label htmlFor="deliveryGoal">交付目标</Label>
+          <FormFieldRow label="交付目标" htmlFor="deliveryGoal">
             <Textarea
               id="deliveryGoal"
               value={deliveryGoal}
@@ -329,7 +320,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
               placeholder="描述学生完成场景后需要达到的交付成果..."
               rows={3}
             />
-          </div>
+          </FormFieldRow>
 
           <div className="grid gap-2">
             <Label>共建人</Label>

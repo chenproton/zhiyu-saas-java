@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import {
   Table,
   TableBody,
@@ -120,26 +120,28 @@ export default function QuizConfigModal({ open, onOpenChange, onConfirm }: QuizC
         </DialogHeader>
 
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="col-span-2">
-              <Label className="text-xs text-gray-500">测验标题</Label>
+          <FormFieldGrid cols={3} className="mb-4">
+            <FormFieldRow
+              label="测验标题"
+              labelClassName="text-xs text-gray-500"
+              className="col-span-2"
+            >
               <Input
                 value={quizTitle}
                 onChange={(e) => setQuizTitle(e.target.value)}
                 placeholder="请输入测验标题"
                 className="mt-1"
               />
-            </div>
-            <div>
-              <Label className="text-xs text-gray-500">作答限时（秒）</Label>
+            </FormFieldRow>
+            <FormFieldRow label="作答限时（秒）" labelClassName="text-xs text-gray-500">
               <Input
                 type="number"
                 value={timeLimit}
                 onChange={(e) => setTimeLimit(Number(e.target.value))}
                 className="mt-1"
               />
-            </div>
-          </div>
+            </FormFieldRow>
+          </FormFieldGrid>
 
           <div className="flex gap-4 flex-1 min-h-0">
             <div className="flex-1 flex flex-col min-h-0">

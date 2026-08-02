@@ -57,6 +57,7 @@ import { cn } from '@/lib/utils'
 import { useToast } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
 import { MixedTagEditor } from '@/components/shared/mixed-tag-editor'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
 import { useEvalRuleStore } from '@/lib/evaluation-rule-store'
@@ -1236,15 +1237,18 @@ export function EvaluationRulesEditor({
         </button>
         {expanded && (
           <div className="px-3 pb-3 border-t">
-            <div className="mt-2">
-              <Label className="text-xs text-gray-500">评价点内容</Label>
+            <FormFieldRow
+              label="评价点内容"
+              labelClassName="text-xs text-gray-500"
+              className="mt-2"
+            >
               <Input
                 value={ep.name}
                 onChange={(e) => updateEvalPoint(field, ep.id, { name: e.target.value })}
-                className="mt-1 h-8 text-sm"
+                className="h-8 text-sm"
                 placeholder="输入评价点内容"
               />
-            </div>
+            </FormFieldRow>
             <div className="mt-2">
               <Label className="text-xs text-gray-500">量规类型</Label>
               <div className="flex flex-wrap gap-2 mt-1">
@@ -2093,13 +2097,12 @@ export function EvaluationRulesEditor({
               <div className="border rounded-xl p-4 mt-4">
                 <p className="text-sm font-medium mb-3">抽题规则</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-gray-500">抽题方式</Label>
+                  <FormFieldRow label="抽题方式" labelClassName="text-xs text-gray-500">
                     <Select
                       value={(getResourceConfig('random_draw', {}) as any).drawMode ?? 'random'}
                       onValueChange={(v) => updateResourceConfig('random_draw', { drawMode: v })}
                     >
-                      <SelectTrigger className="mt-1 text-sm h-9">
+                      <SelectTrigger className="text-sm h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2107,9 +2110,8 @@ export function EvaluationRulesEditor({
                         <SelectItem value="manual">老师手动选择</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500">抽题数量</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label="抽题数量" labelClassName="text-xs text-gray-500">
                     <Input
                       type="number"
                       value={(getResourceConfig('random_draw', {}) as any).drawCount ?? 5}
@@ -2118,17 +2120,16 @@ export function EvaluationRulesEditor({
                           drawCount: Math.max(1, parseInt(e.target.value) || 1),
                         })
                       }
-                      className="mt-1 text-sm"
+                      className="text-sm"
                       min={1}
                     />
-                  </div>
+                  </FormFieldRow>
                 </div>
               </div>
               <div className="border rounded-xl p-4 mt-4">
                 <p className="text-sm font-medium mb-3">现场要求</p>
                 <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
+                  <FormFieldRow label="提交材料要求" labelClassName="text-xs text-gray-500">
                     <Textarea
                       value={submitFormatDesc}
                       onChange={(e) =>
@@ -2138,9 +2139,11 @@ export function EvaluationRulesEditor({
                       rows={4}
                       className="text-sm"
                     />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500 mb-1.5">现场场地/环境资源准备</Label>
+                  </FormFieldRow>
+                  <FormFieldRow
+                    label="现场场地/环境资源准备"
+                    labelClassName="text-xs text-gray-500"
+                  >
                     <Textarea
                       value={venueResources}
                       onChange={(e) =>
@@ -2150,7 +2153,7 @@ export function EvaluationRulesEditor({
                       rows={4}
                       className="text-sm"
                     />
-                  </div>
+                  </FormFieldRow>
                 </div>
               </div>
               <Dialog open={rdqActionOpen} onOpenChange={setRdqActionOpen}>
@@ -2164,22 +2167,19 @@ export function EvaluationRulesEditor({
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <div>
-                      <Label>题目名称</Label>
+                    <FormFieldRow label="题目名称">
                       <Input
                         value={newRdqForm.name}
                         onChange={(e) => setNewRdqForm({ ...newRdqForm, name: e.target.value })}
                         placeholder="输入题目名称"
-                        className="mt-1.5"
                       />
-                    </div>
-                    <div>
-                      <Label>适用专业</Label>
+                    </FormFieldRow>
+                    <FormFieldRow label="适用专业">
                       <Select
                         value={newRdqForm.majorId}
                         onValueChange={(v) => setNewRdqForm({ ...newRdqForm, majorId: v })}
                       >
-                        <SelectTrigger className="mt-1.5">
+                        <SelectTrigger>
                           <SelectValue placeholder="选择适用专业" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2190,29 +2190,25 @@ export function EvaluationRulesEditor({
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
-                      <Label>题目描述</Label>
+                    </FormFieldRow>
+                    <FormFieldRow label="题目描述">
                       <Textarea
                         value={newRdqForm.description}
                         onChange={(e) =>
                           setNewRdqForm({ ...newRdqForm, description: e.target.value })
                         }
                         placeholder="输入题目描述"
-                        className="mt-1.5"
                         rows={3}
                       />
-                    </div>
-                    <div>
-                      <Label>题目答案</Label>
+                    </FormFieldRow>
+                    <FormFieldRow label="题目答案">
                       <Textarea
                         value={newRdqForm.answer}
                         onChange={(e) => setNewRdqForm({ ...newRdqForm, answer: e.target.value })}
                         placeholder="输入题目答案"
-                        className="mt-1.5"
                         rows={3}
                       />
-                    </div>
+                    </FormFieldRow>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setRdqActionOpen(false)}>
@@ -2297,8 +2293,7 @@ export function EvaluationRulesEditor({
                 {mockResReview.requiresMaterial && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-gray-500">预估提交天数</Label>
+                      <FormFieldRow label="预估提交天数" labelClassName="text-xs text-gray-500">
                         <Input
                           type="number"
                           value={mockResReview.deadlineDays}
@@ -2308,13 +2303,16 @@ export function EvaluationRulesEditor({
                               deadlineDays: Math.max(1, parseInt(e.target.value) || 1),
                             })
                           }
-                          className="mt-1 text-sm"
+                          className="text-sm"
                           min={1}
                         />
-                      </div>
+                      </FormFieldRow>
                     </div>
-                    <div className="mt-3">
-                      <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
+                    <FormFieldRow
+                      label="提交材料要求"
+                      labelClassName="text-xs text-gray-500"
+                      className="mt-3"
+                    >
                       <Textarea
                         value={mockResReview.submitFormatDesc}
                         onChange={(e) =>
@@ -2324,11 +2322,14 @@ export function EvaluationRulesEditor({
                         rows={2}
                         className="text-sm"
                       />
-                    </div>
+                    </FormFieldRow>
                   </>
                 )}
-                <div className="mt-3">
-                  <Label className="text-xs text-gray-500 mb-1.5">评审场地/环境资源准备</Label>
+                <FormFieldRow
+                  label="评审场地/环境资源准备"
+                  labelClassName="text-xs text-gray-500"
+                  className="mt-3"
+                >
                   <Textarea
                     value={mockResReview.venueResources}
                     onChange={(e) =>
@@ -2338,7 +2339,7 @@ export function EvaluationRulesEditor({
                     rows={2}
                     className="text-sm"
                   />
-                </div>
+                </FormFieldRow>
                 <div className="mt-3">
                   <div className="flex items-center gap-2">
                     <Switch
@@ -2776,18 +2777,17 @@ export function EvaluationRulesEditor({
               <div className="border rounded-xl p-4">
                 <p className="text-sm font-medium mb-3">考卷设置</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-gray-500">考试时长（分钟）</Label>
+                  <FormFieldRow label="考试时长（分钟）" labelClassName="text-xs text-gray-500">
                     <Input
                       type="number"
                       value={paperCfg.duration ?? 60}
                       onChange={(e) =>
                         setPaperCfg({ duration: Math.max(0, parseInt(e.target.value) || 0) })
                       }
-                      className="mt-1 text-sm"
+                      className="text-sm"
                       min={0}
                     />
-                  </div>
+                  </FormFieldRow>
                   <div>
                     <Label className="text-xs text-gray-500">允许重考</Label>
                     <div className="mt-2 flex items-center gap-2">
@@ -2801,18 +2801,17 @@ export function EvaluationRulesEditor({
                     </div>
                   </div>
                   {(paperCfg.allowRetake ?? false) && (
-                    <div>
-                      <Label className="text-xs text-gray-500">最多重考次数</Label>
+                    <FormFieldRow label="最多重考次数" labelClassName="text-xs text-gray-500">
                       <Input
                         type="number"
                         value={paperCfg.retakeCount ?? 1}
                         onChange={(e) =>
                           setPaperCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })
                         }
-                        className="mt-1 text-sm"
+                        className="text-sm"
                         min={1}
                       />
-                    </div>
+                    </FormFieldRow>
                   )}
                 </div>
                 <div className="mt-3 flex items-center gap-4">
@@ -2878,26 +2877,24 @@ export function EvaluationRulesEditor({
                   </div>
                   {(paperCfg.activationMode ?? 'manual') === 'scheduled' && (
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-gray-500">启用时间</Label>
+                      <FormFieldRow label="启用时间" labelClassName="text-xs text-gray-500">
                         <Input
                           type="datetime-local"
                           value={paperCfg.scheduledTime ?? ''}
                           onChange={(e) => setPaperCfg({ scheduledTime: e.target.value })}
                           onFocus={(e) => e.currentTarget.showPicker?.()}
-                          className="mt-1 text-sm"
+                          className="text-sm"
                         />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-500">停用时间</Label>
+                      </FormFieldRow>
+                      <FormFieldRow label="停用时间" labelClassName="text-xs text-gray-500">
                         <Input
                           type="datetime-local"
                           value={paperCfg.scheduledEndTime ?? ''}
                           onChange={(e) => setPaperCfg({ scheduledEndTime: e.target.value })}
                           onFocus={(e) => e.currentTarget.showPicker?.()}
-                          className="mt-1 text-sm"
+                          className="text-sm"
                         />
-                      </div>
+                      </FormFieldRow>
                     </div>
                   )}
                 </div>
@@ -2976,13 +2973,12 @@ export function EvaluationRulesEditor({
               <div className="border rounded-xl p-4">
                 <p className="text-sm font-medium mb-3">答题规则</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-gray-500">答题方式</Label>
+                  <FormFieldRow label="答题方式" labelClassName="text-xs text-gray-500">
                     <Select
                       value={qbDrawMode}
                       onValueChange={(v) => setQbDrawMode(v as 'all' | 'practice')}
                     >
-                      <SelectTrigger className="mt-1 text-sm h-9">
+                      <SelectTrigger className="text-sm h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2990,27 +2986,26 @@ export function EvaluationRulesEditor({
                         <SelectItem value="practice">自由刷题</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </FormFieldRow>
                   {qbDrawMode === 'practice' && (
-                    <div>
-                      <Label className="text-xs text-gray-500">正确率（%）</Label>
+                    <FormFieldRow
+                      label="正确率（%）"
+                      labelClassName="text-xs text-gray-500"
+                      hint="超过正确率则得分 100，低于正确率得分 0"
+                    >
                       <Input
                         type="number"
                         value={qbPassRate}
                         onChange={(e) =>
                           setQbPassRate(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))
                         }
-                        className="mt-1 text-sm"
+                        className="text-sm"
                         min={0}
                         max={100}
                       />
-                      <p className="text-[10px] text-gray-400 mt-1">
-                        超过正确率则得分 100，低于正确率得分 0
-                      </p>
-                    </div>
+                    </FormFieldRow>
                   )}
-                  <div>
-                    <Label className="text-xs text-gray-500">时间限制（分钟）</Label>
+                  <FormFieldRow label="时间限制（分钟）" labelClassName="text-xs text-gray-500">
                     <Input
                       type="number"
                       value={mockResQuestionBank.timeLimit}
@@ -3020,10 +3015,10 @@ export function EvaluationRulesEditor({
                           timeLimit: Math.max(5, parseInt(e.target.value) || 5),
                         })
                       }
-                      className="mt-1 text-sm"
+                      className="text-sm"
                       min={5}
                     />
-                  </div>
+                  </FormFieldRow>
                 </div>
                 <div className="mt-3 flex items-center gap-4">
                   <div className="flex items-center gap-2">
@@ -3056,8 +3051,7 @@ export function EvaluationRulesEditor({
                 </div>
                 {mockResQuestionBank.allowRetake && (
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-gray-500">最多重考次数</Label>
+                    <FormFieldRow label="最多重考次数" labelClassName="text-xs text-gray-500">
                       <Input
                         type="number"
                         value={mockResQuestionBank.retakeCount}
@@ -3067,10 +3061,10 @@ export function EvaluationRulesEditor({
                             retakeCount: Math.max(1, parseInt(e.target.value) || 1),
                           })
                         }
-                        className="mt-1 text-sm"
+                        className="text-sm"
                         min={1}
                       />
-                    </div>
+                    </FormFieldRow>
                   </div>
                 )}
               </div>
@@ -3105,8 +3099,7 @@ export function EvaluationRulesEditor({
                 {mockResOutcome.requiresMaterial && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-gray-500">预估提交天数</Label>
+                      <FormFieldRow label="预估提交天数" labelClassName="text-xs text-gray-500">
                         <Input
                           type="number"
                           value={mockResOutcome.deadlineDays}
@@ -3116,13 +3109,16 @@ export function EvaluationRulesEditor({
                               deadlineDays: Math.max(1, parseInt(e.target.value) || 1),
                             })
                           }
-                          className="mt-1 text-sm"
+                          className="text-sm"
                           min={1}
                         />
-                      </div>
+                      </FormFieldRow>
                     </div>
-                    <div className="mt-3">
-                      <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
+                    <FormFieldRow
+                      label="提交材料要求"
+                      labelClassName="text-xs text-gray-500"
+                      className="mt-3"
+                    >
                       <Textarea
                         value={mockResOutcome.submitFormatDesc}
                         onChange={(e) =>
@@ -3132,11 +3128,14 @@ export function EvaluationRulesEditor({
                         rows={2}
                         className="text-sm"
                       />
-                    </div>
+                    </FormFieldRow>
                   </>
                 )}
-                <div className="mt-3">
-                  <Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label>
+                <FormFieldRow
+                  label="评价场地/环境资源准备"
+                  labelClassName="text-xs text-gray-500"
+                  className="mt-3"
+                >
                   <Textarea
                     value={mockResOutcome.venueResources}
                     onChange={(e) =>
@@ -3146,7 +3145,7 @@ export function EvaluationRulesEditor({
                     rows={2}
                     className="text-sm"
                   />
-                </div>
+                </FormFieldRow>
                 <div className="mt-3">
                   <div className="flex items-center gap-2">
                     <Switch
@@ -3190,8 +3189,7 @@ export function EvaluationRulesEditor({
                 {mockResHomework.requiresMaterial && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-gray-500">预估提交天数</Label>
+                      <FormFieldRow label="预估提交天数" labelClassName="text-xs text-gray-500">
                         <Input
                           type="number"
                           value={mockResHomework.deadlineDays}
@@ -3201,13 +3199,16 @@ export function EvaluationRulesEditor({
                               deadlineDays: Math.max(1, parseInt(e.target.value) || 1),
                             })
                           }
-                          className="mt-1 text-sm"
+                          className="text-sm"
                           min={1}
                         />
-                      </div>
+                      </FormFieldRow>
                     </div>
-                    <div className="mt-3">
-                      <Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label>
+                    <FormFieldRow
+                      label="作业格式要求"
+                      labelClassName="text-xs text-gray-500"
+                      className="mt-3"
+                    >
                       <Textarea
                         value={mockResHomework.submitFormatDesc}
                         onChange={(e) =>
@@ -3220,7 +3221,7 @@ export function EvaluationRulesEditor({
                         rows={2}
                         className="text-sm"
                       />
-                    </div>
+                    </FormFieldRow>
                   </>
                 )}
                 <div className="mt-3">
@@ -3540,8 +3541,10 @@ export function EvaluationRulesEditor({
               <div className="border rounded-xl p-4 bg-gray-50/50">
                 <p className="text-sm font-medium mb-3">评价标准信息</p>
                 <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-gray-500">评价标准名称</Label>
+                  <FormFieldRow
+                    label="评价标准名称"
+                    labelClassName="text-xs text-gray-500"
+                  >
                     <Input
                       value={draftScheme.name}
                       onChange={(e) => {
@@ -3553,10 +3556,10 @@ export function EvaluationRulesEditor({
                           )
                         else setLocalDraft((prev) => ({ ...prev, name: e.target.value }))
                       }}
-                      className="mt-1 text-sm"
+                      className="text-sm"
                       placeholder="输入评价标准名称"
                     />
-                  </div>
+                  </FormFieldRow>
                   <div>
                     <Label className="text-xs text-gray-500">评价标准类型</Label>
                     <div className="flex gap-3 mt-1">
@@ -4171,8 +4174,10 @@ export function EvaluationRulesEditor({
                       </button>
                     </div>
                     {saveTemplateMode === 'new' ? (
-                      <div>
-                        <Label className="text-xs text-gray-500">模板名称</Label>
+                      <FormFieldRow
+                        label="模板名称"
+                        labelClassName="text-xs text-gray-500"
+                      >
                         <Input
                           value={draftScheme.name}
                           onChange={(e) => {
@@ -4184,10 +4189,10 @@ export function EvaluationRulesEditor({
                               )
                             else setLocalDraft((prev) => ({ ...prev, name: e.target.value }))
                           }}
-                          className="mt-1 text-sm"
+                          className="text-sm"
                           placeholder="输入模板名称"
                         />
-                      </div>
+                      </FormFieldRow>
                     ) : (
                       <div className="space-y-2">
                         <Label className="text-xs text-gray-500">选择要替换的模板</Label>
@@ -4913,8 +4918,10 @@ export function EvaluationRulesEditor({
                     <div className="pl-8 space-y-2">
                       {subject.type === 'teacher' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-[11px] text-gray-500">专业背景要求</Label>
+                          <FormFieldRow
+                            label="专业背景要求"
+                            labelClassName="text-[11px] text-gray-500"
+                          >
                             <Input
                               value={subject.params?.teacherBackground || ''}
                               onChange={(e) =>
@@ -4923,11 +4930,10 @@ export function EvaluationRulesEditor({
                                 })
                               }
                               placeholder="计算机/软件工程相关专业"
-                              className="mt-0.5 text-xs h-8"
+                              className="text-xs h-8"
                             />
-                          </div>
-                          <div>
-                            <Label className="text-[11px] text-gray-500">评分人数</Label>
+                          </FormFieldRow>
+                          <FormFieldRow label="评分人数" labelClassName="text-[11px] text-gray-500">
                             <Input
                               type="number"
                               value={subject.params?.scorerCount || 1}
@@ -4939,12 +4945,15 @@ export function EvaluationRulesEditor({
                                   },
                                 })
                               }
-                              className="mt-0.5 text-xs h-8"
+                              className="text-xs h-8"
                               min={1}
                             />
                             {(subject.params?.scorerCount || 1) > 1 && (
-                              <div className="mt-1">
-                                <Label className="text-[11px] text-gray-500">统计规则</Label>
+                              <FormFieldRow
+                                label="统计规则"
+                                labelClassName="text-[11px] text-gray-500"
+                                className="mt-1"
+                              >
                                 <Select
                                   value={subject.params?.aggregationRule || 'average'}
                                   onValueChange={(v) =>
@@ -4956,7 +4965,7 @@ export function EvaluationRulesEditor({
                                     })
                                   }
                                 >
-                                  <SelectTrigger className="mt-0.5 text-xs h-8">
+                                  <SelectTrigger className="text-xs h-8">
                                     <SelectValue placeholder="选择统计规则" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -4966,11 +4975,10 @@ export function EvaluationRulesEditor({
                                     <SelectItem value="min">最低分</SelectItem>
                                   </SelectContent>
                                 </Select>
-                              </div>
+                              </FormFieldRow>
                             )}
-                          </div>
-                          <div>
-                            <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
+                          </FormFieldRow>
+                          <FormFieldRow label="评分权重 (%)" labelClassName="text-[11px] text-gray-500">
                             <Input
                               type="number"
                               value={subject.params?.weightPercent || 0}
@@ -4985,13 +4993,12 @@ export function EvaluationRulesEditor({
                                   },
                                 })
                               }
-                              className="mt-0.5 text-xs h-8"
+                              className="text-xs h-8"
                               min={0}
                               max={100}
                             />
-                          </div>
-                          <div>
-                            <Label className="text-[11px] text-gray-500">最低教龄 (年)</Label>
+                          </FormFieldRow>
+                          <FormFieldRow label="最低教龄 (年)" labelClassName="text-[11px] text-gray-500">
                             <Input
                               type="number"
                               value={subject.params?.minTeachingYears || 0}
@@ -5003,17 +5010,16 @@ export function EvaluationRulesEditor({
                                   },
                                 })
                               }
-                              className="mt-0.5 text-xs h-8"
+                              className="text-xs h-8"
                               min={0}
                             />
-                          </div>
+                          </FormFieldRow>
                         </div>
                       )}
                       {subject.type === 'enterprise_mentor' && (
                         <>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-[11px] text-gray-500">专业领域</Label>
+                            <FormFieldRow label="专业领域" labelClassName="text-[11px] text-gray-500">
                               <Input
                                 value={subject.params?.expertise || ''}
                                 onChange={(e) =>
@@ -5022,11 +5028,13 @@ export function EvaluationRulesEditor({
                                   })
                                 }
                                 placeholder="网络安全 / 渗透测试"
-                                className="mt-0.5 text-xs h-8"
+                                className="text-xs h-8"
                               />
-                            </div>
-                            <div>
-                              <Label className="text-[11px] text-gray-500">工作年限要求 (年)</Label>
+                            </FormFieldRow>
+                            <FormFieldRow
+                              label="工作年限要求 (年)"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Input
                                 type="number"
                                 value={subject.params?.minYears || 0}
@@ -5038,12 +5046,11 @@ export function EvaluationRulesEditor({
                                     },
                                   })
                                 }
-                                className="mt-0.5 text-xs h-8"
+                                className="text-xs h-8"
                                 min={0}
                               />
-                            </div>
-                            <div>
-                              <Label className="text-[11px] text-gray-500">评分人数</Label>
+                            </FormFieldRow>
+                            <FormFieldRow label="评分人数" labelClassName="text-[11px] text-gray-500">
                               <Input
                                 type="number"
                                 value={subject.params?.scorerCount || 1}
@@ -5055,12 +5062,15 @@ export function EvaluationRulesEditor({
                                     },
                                   })
                                 }
-                                className="mt-0.5 text-xs h-8"
+                                className="text-xs h-8"
                                 min={1}
                               />
                               {(subject.params?.scorerCount || 1) > 1 && (
-                                <div className="mt-1">
-                                  <Label className="text-[11px] text-gray-500">统计规则</Label>
+                                <FormFieldRow
+                                  label="统计规则"
+                                  labelClassName="text-[11px] text-gray-500"
+                                  className="mt-1"
+                                >
                                   <Select
                                     value={subject.params?.aggregationRule || 'average'}
                                     onValueChange={(v) =>
@@ -5073,7 +5083,7 @@ export function EvaluationRulesEditor({
                                       })
                                     }
                                   >
-                                    <SelectTrigger className="mt-0.5 text-xs h-8">
+                                    <SelectTrigger className="text-xs h-8">
                                       <SelectValue placeholder="选择统计规则" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -5083,11 +5093,13 @@ export function EvaluationRulesEditor({
                                       <SelectItem value="min">最低分</SelectItem>
                                     </SelectContent>
                                   </Select>
-                                </div>
+                                </FormFieldRow>
                               )}
-                            </div>
-                            <div>
-                              <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
+                            </FormFieldRow>
+                            <FormFieldRow
+                              label="评分权重 (%)"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Input
                                 type="number"
                                 value={subject.params?.weightPercent || 0}
@@ -5102,14 +5114,16 @@ export function EvaluationRulesEditor({
                                     },
                                   })
                                 }
-                                className="mt-0.5 text-xs h-8"
+                                className="text-xs h-8"
                                 min={0}
                                 max={100}
                               />
-                            </div>
+                            </FormFieldRow>
                           </div>
-                          <div>
-                            <Label className="text-[11px] text-gray-500">岗位工作经历</Label>
+                          <FormFieldRow
+                            label="岗位工作经历"
+                            labelClassName="text-[11px] text-gray-500"
+                          >
                             <Input
                               value={subject.params?.jobExperience || ''}
                               onChange={(e) =>
@@ -5118,16 +5132,15 @@ export function EvaluationRulesEditor({
                                 })
                               }
                               placeholder="请填写岗位工作经历要求"
-                              className="mt-0.5 text-xs h-8"
+                              className="text-xs h-8"
                             />
-                          </div>
+                          </FormFieldRow>
                         </>
                       )}
                       {subject.type === 'peer' && (
                         <>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-[11px] text-gray-500">互评人数</Label>
+                            <FormFieldRow label="互评人数" labelClassName="text-[11px] text-gray-500">
                               <Input
                                 type="number"
                                 value={subject.params?.peerCount || 3}
@@ -5139,12 +5152,15 @@ export function EvaluationRulesEditor({
                                     },
                                   })
                                 }
-                                className="mt-0.5 text-xs h-8"
+                                className="text-xs h-8"
                                 min={1}
                               />
                               {(subject.params?.peerCount || 3) > 1 && (
-                                <div className="mt-1">
-                                  <Label className="text-[11px] text-gray-500">统计规则</Label>
+                                <FormFieldRow
+                                  label="统计规则"
+                                  labelClassName="text-[11px] text-gray-500"
+                                  className="mt-1"
+                                >
                                   <Select
                                     value={subject.params?.aggregationRule || 'average'}
                                     onValueChange={(v) =>
@@ -5157,7 +5173,7 @@ export function EvaluationRulesEditor({
                                       })
                                     }
                                   >
-                                    <SelectTrigger className="mt-0.5 text-xs h-8">
+                                    <SelectTrigger className="text-xs h-8">
                                       <SelectValue placeholder="选择统计规则" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -5167,11 +5183,13 @@ export function EvaluationRulesEditor({
                                       <SelectItem value="min">最低分</SelectItem>
                                     </SelectContent>
                                   </Select>
-                                </div>
+                                </FormFieldRow>
                               )}
-                            </div>
-                            <div>
-                              <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
+                            </FormFieldRow>
+                            <FormFieldRow
+                              label="评分权重 (%)"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Input
                                 type="number"
                                 value={subject.params?.weightPercent || 0}
@@ -5186,15 +5204,14 @@ export function EvaluationRulesEditor({
                                     },
                                   })
                                 }
-                                className="mt-0.5 text-xs h-8"
+                                className="text-xs h-8"
                                 min={0}
                                 max={100}
                               />
-                            </div>
+                            </FormFieldRow>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-[11px] text-gray-500">互评规则</Label>
+                            <FormFieldRow label="互评规则" labelClassName="text-[11px] text-gray-500">
                               <Select
                                 value={subject.params?.peerRule || ''}
                                 onValueChange={(v) =>
@@ -5203,7 +5220,7 @@ export function EvaluationRulesEditor({
                                   })
                                 }
                               >
-                                <SelectTrigger className="mt-0.5 text-xs h-8">
+                                <SelectTrigger className="text-xs h-8">
                                   <SelectValue placeholder="选择互评规则" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -5213,7 +5230,7 @@ export function EvaluationRulesEditor({
                                   <SelectItem value="指定分组">指定分组</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </div>
+                            </FormFieldRow>
                             <div className="flex items-end pb-1">
                               <div className="flex items-center gap-1.5">
                                 <Switch
@@ -5233,8 +5250,10 @@ export function EvaluationRulesEditor({
                       {subject.type === 'self' && (
                         <>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
+                            <FormFieldRow
+                              label="评分权重 (%)"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Input
                                 type="number"
                                 value={subject.params?.weightPercent || 0}
@@ -5249,11 +5268,11 @@ export function EvaluationRulesEditor({
                                     },
                                   })
                                 }
-                                className="mt-0.5 text-xs h-8"
+                                className="text-xs h-8"
                                 min={0}
                                 max={100}
                               />
-                            </div>
+                            </FormFieldRow>
                             <div className="flex items-end pb-1">
                               <div className="flex items-center gap-1.5">
                                 <Switch
@@ -5269,8 +5288,10 @@ export function EvaluationRulesEditor({
                             </div>
                           </div>
                           {subject.params?.requiresReflection && (
-                            <div>
-                              <Label className="text-[11px] text-gray-500">反思报告最少字数</Label>
+                            <FormFieldRow
+                              label="反思报告最少字数"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Input
                                 type="number"
                                 value={subject.params?.reflectionMinLength || 300}
@@ -5285,10 +5306,10 @@ export function EvaluationRulesEditor({
                                     },
                                   })
                                 }
-                                className="mt-0.5 text-xs h-8 w-28"
+                                className="text-xs h-8 w-28"
                                 min={100}
                               />
-                            </div>
+                            </FormFieldRow>
                           )}
                         </>
                       )}

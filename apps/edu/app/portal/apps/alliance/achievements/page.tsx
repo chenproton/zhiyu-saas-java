@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -21,6 +20,7 @@ import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'
 import type {
   AllianceAchievement,
@@ -166,15 +166,13 @@ export default function AllianceAchievementsPage() {
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div className="grid gap-2">
-            <Label>成果标题 *</Label>
+          <FormFieldRow label="成果标题" required>
             <Input
               value={item.title || ''}
               onChange={(e: any) => setItem({ ...item, title: e.target.value })}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label>成果类型</Label>
+          </FormFieldRow>
+          <FormFieldRow label="成果类型">
             <Select
               value={item.type || 'custom'}
               onValueChange={(v: any) => setItem({ ...item, type: v })}
@@ -189,9 +187,8 @@ export default function AllianceAchievementsPage() {
                 <SelectItem value="custom">自定义</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label>状态</Label>
+          </FormFieldRow>
+          <FormFieldRow label="状态">
             <Select
               value={item.status || 'draft'}
               onValueChange={(v: any) => setItem({ ...item, status: v })}
@@ -205,23 +202,21 @@ export default function AllianceAchievementsPage() {
                 <SelectItem value="archived">已归档</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label>描述</Label>
+          </FormFieldRow>
+          <FormFieldRow label="描述">
             <Textarea
               value={item.description || ''}
               onChange={(e: any) => setItem({ ...item, description: e.target.value })}
               rows={4}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label>封面图 URL</Label>
+          </FormFieldRow>
+          <FormFieldRow label="封面图 URL">
             <Input
               value={item.coverImage || ''}
               onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })}
               placeholder="https://..."
             />
-          </div>
+          </FormFieldRow>
         </div>
       )}
       getDeleteDescription={(item: any) => <>确定要删除成果「{item.title}」吗？</>}

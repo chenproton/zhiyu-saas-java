@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -16,6 +15,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { ImageListUpload } from '@/components/shared/image-list-upload'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
@@ -101,17 +101,15 @@ export default function AllianceAgreementNewPage() {
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>协议名称 *</Label>
+            <FormFieldGrid>
+              <FormFieldRow label="协议名称" required>
                 <Input
                   value={item.name}
                   onChange={(e) => setField('name', e.target.value)}
                   placeholder="请输入协议名称"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>协议类型</Label>
+              </FormFieldRow>
+              <FormFieldRow label="协议类型">
                 <Select value={item.type} onValueChange={(v) => setField('type', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -124,9 +122,8 @@ export default function AllianceAgreementNewPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>协议状态</Label>
+              </FormFieldRow>
+              <FormFieldRow label="协议状态">
                 <Select value={item.status} onValueChange={(v) => setField('status', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -139,24 +136,22 @@ export default function AllianceAgreementNewPage() {
                     <SelectItem value="terminated">已终止</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>生效日期 *</Label>
+              </FormFieldRow>
+              <FormFieldRow label="生效日期" required>
                 <Input
                   type="date"
                   value={item.startDate}
                   onChange={(e) => setField('startDate', e.target.value)}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>到期日期 *</Label>
+              </FormFieldRow>
+              <FormFieldRow label="到期日期" required>
                 <Input
                   type="date"
                   value={item.endDate}
                   onChange={(e) => setField('endDate', e.target.value)}
                 />
-              </div>
-            </CardContent>
+              </FormFieldRow>
+            </FormFieldGrid>
           </Card>
 
           <Card>

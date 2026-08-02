@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Select,
   SelectContent,
@@ -383,17 +384,15 @@ function AddGranularPageInner() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">课程名称</Label>
+                <FormFieldRow label="课程名称" labelClassName="text-xs">
                   <Input
                     value={courseName}
                     onChange={(e) => setCourseName(e.target.value)}
                     placeholder="请输入课程名称"
                     className="h-9 text-sm"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">所属专业</Label>
+                </FormFieldRow>
+                <FormFieldRow label="所属专业" labelClassName="text-xs">
                   <Select
                     value={major}
                     onValueChange={(v) => {
@@ -412,7 +411,7 @@ function AddGranularPageInner() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </FormFieldRow>
                 <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
                 <div className="md:col-span-2">
                   <TaskInfoCard

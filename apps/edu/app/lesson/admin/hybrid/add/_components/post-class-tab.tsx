@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -115,33 +115,30 @@ function RandomQuizPanel({
           <CardTitle className="text-base">题库管理</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs text-muted-foreground">题目标题</Label>
+          <FormFieldRow label="题目标题" labelClassName="text-xs text-muted-foreground">
             <Input
               value={newQuestion.name}
               onChange={(e) => setNewQuestion({ ...newQuestion, name: e.target.value })}
               className="mt-1 text-sm"
               placeholder="请输入题目标题"
             />
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">题目描述</Label>
+          </FormFieldRow>
+          <FormFieldRow label="题目描述" labelClassName="text-xs text-muted-foreground">
             <Input
               value={newQuestion.description}
               onChange={(e) => setNewQuestion({ ...newQuestion, description: e.target.value })}
               className="mt-1 text-sm"
               placeholder="请输入题目内容"
             />
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">参考答案</Label>
+          </FormFieldRow>
+          <FormFieldRow label="参考答案" labelClassName="text-xs text-muted-foreground">
             <Input
               value={newQuestion.answer}
               onChange={(e) => setNewQuestion({ ...newQuestion, answer: e.target.value })}
               className="mt-1 text-sm"
               placeholder="请输入参考答案"
             />
-          </div>
+          </FormFieldRow>
           <Button size="sm" onClick={addQuestion}>
             <Plus className="h-3.5 w-3.5 mr-1" />
             添加题目
@@ -253,18 +250,16 @@ function PeerReviewPanel({
           <CardTitle className="text-base">互评环节配置</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-1">
-              <Label className="text-xs text-muted-foreground">环节名称</Label>
+          <FormFieldGrid cols={3} className="mb-3">
+            <FormFieldRow label="环节名称" labelClassName="text-xs text-muted-foreground">
               <Input
                 value={newStep.label}
                 onChange={(e) => setNewStep({ ...newStep, label: e.target.value })}
                 className="mt-1 text-sm"
                 placeholder="如：小组互评"
               />
-            </div>
-            <div className="col-span-1">
-              <Label className="text-xs text-muted-foreground">评价主体</Label>
+            </FormFieldRow>
+            <FormFieldRow label="评价主体" labelClassName="text-xs text-muted-foreground">
               <select
                 className="w-full mt-1 h-9 px-2 rounded-md border border-input bg-background text-sm"
                 value={newStep.subjectType}
@@ -274,9 +269,8 @@ function PeerReviewPanel({
                 <option value="group">小组互评</option>
                 <option value="teacher">教师评价</option>
               </select>
-            </div>
-            <div className="col-span-1">
-              <Label className="text-xs text-muted-foreground">权重 (%)</Label>
+            </FormFieldRow>
+            <FormFieldRow label="权重 (%)" labelClassName="text-xs text-muted-foreground">
               <Input
                 type="number"
                 value={newStep.weight}
@@ -287,17 +281,16 @@ function PeerReviewPanel({
                 min={0}
                 max={100}
               />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">环节说明</Label>
+            </FormFieldRow>
+          </FormFieldGrid>
+          <FormFieldRow label="环节说明" labelClassName="text-xs text-muted-foreground">
             <Input
               value={newStep.desc}
               onChange={(e) => setNewStep({ ...newStep, desc: e.target.value })}
               className="mt-1 text-sm"
               placeholder="描述该评价环节的具体要求"
             />
-          </div>
+          </FormFieldRow>
           <Button size="sm" onClick={addStep}>
             <Plus className="h-3.5 w-3.5 mr-1" />
             添加环节

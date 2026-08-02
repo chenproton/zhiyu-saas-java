@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalUserExtensionFieldApi, roleApi } from '@/lib/api'
@@ -246,16 +246,14 @@ export default function UserFieldsPage() {
             <DialogTitle>编辑扩展字段</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>字段名称</Label>
+            <FormFieldRow label="字段名称">
               <Input
                 placeholder="请输入字段名称"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>适用角色（可多选）</Label>
+            </FormFieldRow>
+            <FormFieldRow label="适用角色（可多选）" hint="选择此字段适用的角色，不选则表示所有角色均可使用">
               <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30">
                 {roles.map((r) => (
                   <button
@@ -272,10 +270,7 @@ export default function UserFieldsPage() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">
-                选择此字段适用的角色，不选则表示所有角色均可使用
-              </p>
-            </div>
+            </FormFieldRow>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)} disabled={saving}>

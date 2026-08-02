@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
@@ -109,17 +110,15 @@ export default function AllianceProjectNewPage() {
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>项目名称 *</Label>
+            <FormFieldGrid>
+              <FormFieldRow label="项目名称" required>
                 <Input
                   value={item.name}
                   onChange={(e) => setField('name', e.target.value)}
                   placeholder="请输入项目名称"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>合作类型</Label>
+              </FormFieldRow>
+              <FormFieldRow label="合作类型">
                 <Select value={item.type} onValueChange={(v) => setField('type', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -132,9 +131,8 @@ export default function AllianceProjectNewPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>项目阶段</Label>
+              </FormFieldRow>
+              <FormFieldRow label="项目阶段">
                 <Select value={item.phase} onValueChange={(v) => setField('phase', v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -146,32 +144,29 @@ export default function AllianceProjectNewPage() {
                     <SelectItem value="closure">关闭</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>预算</Label>
+              </FormFieldRow>
+              <FormFieldRow label="预算">
                 <Input
                   value={item.budget}
                   onChange={(e) => setField('budget', e.target.value)}
                   placeholder="如：50万"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>开始日期</Label>
+              </FormFieldRow>
+              <FormFieldRow label="开始日期">
                 <Input
                   value={item.startDate}
                   onChange={(e) => setField('startDate', e.target.value)}
                   type="date"
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>结束日期</Label>
+              </FormFieldRow>
+              <FormFieldRow label="结束日期">
                 <Input
                   value={item.endDate}
                   onChange={(e) => setField('endDate', e.target.value)}
                   type="date"
                 />
-              </div>
-            </CardContent>
+              </FormFieldRow>
+            </FormFieldGrid>
           </Card>
 
           <Card>

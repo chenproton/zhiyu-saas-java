@@ -23,6 +23,7 @@ import { CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -650,8 +651,7 @@ function QuizListEditor({
           </DialogHeader>
           {editing && (
             <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>题型</Label>
+              <FormFieldRow label="题型">
                 <Select
                   value={editing.type}
                   onValueChange={(v) =>
@@ -669,16 +669,15 @@ function QuizListEditor({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </FormFieldRow>
 
-              <div className="space-y-2">
-                <Label>题干</Label>
+              <FormFieldRow label="题干">
                 <Textarea
                   value={editing.stem}
                   onChange={(e) => updateEditing({ stem: e.target.value })}
                   placeholder="请输入题干"
                 />
-              </div>
+              </FormFieldRow>
 
               {(editing.type === 'single' || editing.type === 'multiple') && (
                 <div className="space-y-3">
@@ -729,8 +728,7 @@ function QuizListEditor({
               )}
 
               {editing.type === 'judge' && (
-                <div className="space-y-2">
-                  <Label>正确答案</Label>
+                <FormFieldRow label="正确答案">
                   <Select
                     value={editing.answer || '正确'}
                     onValueChange={(v) => updateEditing({ answer: v })}
@@ -743,18 +741,17 @@ function QuizListEditor({
                       <SelectItem value="错误">错误</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </FormFieldRow>
               )}
 
               {editing.type === 'essay' && (
-                <div className="space-y-2">
-                  <Label>参考答案</Label>
+                <FormFieldRow label="参考答案">
                   <Textarea
                     value={editing.answer}
                     onChange={(e) => updateEditing({ answer: e.target.value })}
                     placeholder="请输入参考答案"
                   />
-                </div>
+                </FormFieldRow>
               )}
 
               <div className="flex justify-end gap-2 pt-2">
@@ -951,14 +948,13 @@ function HomeworkListEditor({
               </Label>
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">截止时间</Label>
+          <FormFieldRow label="截止时间" labelClassName="text-xs">
             <Input
               type="datetime-local"
               value={item.deadline}
               onChange={(e) => update(idx, { deadline: e.target.value })}
             />
-          </div>
+          </FormFieldRow>
         </div>
       ))}
       <Button
