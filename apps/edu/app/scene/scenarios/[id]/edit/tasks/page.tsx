@@ -181,6 +181,9 @@ import {
   getLoadedExam,
   upsertLoadedExam,
   clearAllCaches,
+  typeColorMap,
+  questionTypeLabels,
+  difficultyLabels,
   type LoadedExam,
 } from './_components/shared-defs'
 import { useAuth } from '@/components/auth-provider'
@@ -2175,23 +2178,6 @@ export default function TasksEditPage() {
   )
 }
 
-const questionTypeLabels: Record<string, string> = {
-  single: '单选',
-  multiple: '多选',
-  judgment: '判断',
-  judge: '判断',
-  short_answer: '简答',
-  essay: '论述',
-  fill_blank: '填空',
-  fill: '填空',
-}
-
-const difficultyLabels: Record<string, string> = {
-  easy: '简单',
-  medium: '中等',
-  hard: '困难',
-}
-
 function PaperDetailWrapper({
   paperId,
   open,
@@ -2327,17 +2313,6 @@ function PaperDetailWrapper({
       </DialogContent>
     </Dialog>
   )
-}
-
-const typeColorMap: Record<string, string> = {
-  single: 'bg-blue-500',
-  multiple: 'bg-indigo-500',
-  judgment: 'bg-amber-500',
-  judge: 'bg-amber-500',
-  fill_blank: 'bg-purple-500',
-  fill: 'bg-purple-500',
-  essay: 'bg-rose-500',
-  short_answer: 'bg-teal-500',
 }
 
 const DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG = {

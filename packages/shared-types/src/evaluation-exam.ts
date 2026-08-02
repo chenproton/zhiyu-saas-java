@@ -3,7 +3,7 @@ import type { Status } from './content-status'
 // 难度等级
 export type Difficulty = 'easy' | 'medium' | 'hard'
 
-export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+export const DIFFICULTY_LABELS: Record<string, string> = {
   easy: '简单',
   medium: '中等',
   hard: '困难',
@@ -12,14 +12,40 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 // 题目类型枚举
 export type QuestionType = 'single' | 'multiple' | 'judge' | 'fill' | 'essay' | 'short_answer'
 
-// 题目类型中文映射
-export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
+// 题目类型中文映射（完整版：含"题"后缀，用于前台展示）
+export const QUESTION_TYPE_LABELS: Record<string, string> = {
   single: '单选题',
   multiple: '多选题',
   judge: '判断题',
+  judgment: '判断题',
   fill: '填空题',
+  fill_blank: '填空题',
   essay: '问答题',
   short_answer: '简答题',
+}
+
+// 题目类型中文映射（紧凑版：用于徽标/表格等紧凑场景）
+export const QUESTION_TYPE_LABELS_SHORT: Record<string, string> = {
+  single: '单选',
+  multiple: '多选',
+  judge: '判断',
+  judgment: '判断',
+  fill: '填空',
+  fill_blank: '填空',
+  essay: '论述',
+  short_answer: '简答',
+}
+
+// 题目类型徽标颜色（Badge 用）
+export const QUESTION_TYPE_BADGE_CLASSES: Record<string, string> = {
+  single: 'bg-blue-500',
+  multiple: 'bg-indigo-500',
+  judgment: 'bg-amber-500',
+  judge: 'bg-amber-500',
+  fill_blank: 'bg-purple-500',
+  fill: 'bg-purple-500',
+  essay: 'bg-rose-500',
+  short_answer: 'bg-teal-500',
 }
 
 // 题库接口

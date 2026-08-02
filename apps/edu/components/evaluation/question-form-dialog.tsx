@@ -49,7 +49,7 @@ import type {
   Difficulty,
   EvalKnowledgePoint,
 } from '@/lib/types'
-import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
+import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { knowledgeApi } from '@/lib/api'
 
 interface QuestionFormDialogProps {
@@ -72,14 +72,7 @@ const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   short_answer: <AlignLeft className="size-3.5" />,
 }
 
-const TYPE_COLORS: Record<QuestionType, string> = {
-  single: 'bg-blue-500',
-  multiple: 'bg-indigo-500',
-  judge: 'bg-amber-500',
-  fill: 'bg-purple-500',
-  essay: 'bg-rose-500',
-  short_answer: 'bg-teal-500',
-}
+const TYPE_COLORS = QUESTION_TYPE_BADGE_CLASSES
 
 export function QuestionFormDialog({
   open,

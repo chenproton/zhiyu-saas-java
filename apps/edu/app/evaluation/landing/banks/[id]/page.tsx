@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { questionBankApi, questionApi, knowledgeApi } from '@/lib/api'
 import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate, formatDateTime } from '@/lib/format-utils'
 
 const coverGradients = [
@@ -34,14 +35,7 @@ const coverGradients = [
   'linear-gradient(135deg,#ea580c,#f97316)',
 ]
 
-const questionTypeLabels: Record<string, string> = {
-  single: '单选题',
-  multiple: '多选题',
-  judge: '判断题',
-  fill: '填空题',
-  essay: '论述题',
-  short_answer: '简答题',
-}
+const questionTypeLabels = QUESTION_TYPE_LABELS
 
 const questionTypeIcons: Record<string, React.ComponentType<any>> = {
   single: ListChecks,

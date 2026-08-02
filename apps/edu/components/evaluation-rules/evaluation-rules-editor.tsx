@@ -73,6 +73,8 @@ import {
   getLoadedExams,
   setLoadedExams,
   addLoadedExam,
+  questionTypeLabels,
+  difficultyLabels,
   type LoadedExam,
 } from '@/app/scene/scenarios/[id]/edit/tasks/_components/shared-defs'
 import {
@@ -1574,16 +1576,6 @@ export function EvaluationRulesEditor({
       </div>
     )
   }
-
-  const questionTypeLabels: Record<string, string> = {
-    single: '单选',
-    multiple: '多选',
-    judgment: '判断',
-    short_answer: '简答',
-    essay: '论述',
-    fill_blank: '填空',
-  }
-  const difficultyLabels: Record<string, string> = { easy: '简单', medium: '中等', hard: '困难' }
 
   const QuestionSelectorPanel = ({
     field,

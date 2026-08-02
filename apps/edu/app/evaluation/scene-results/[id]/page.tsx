@@ -23,6 +23,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@zhiyu/ui'
+import { QUESTION_TYPE_LABELS_SHORT } from '@zhiyu/shared-types'
 import { HoverActionBar } from '@/components/shared/hover-action-bar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -65,15 +66,7 @@ const evalMethodColors: Record<string, string> = {
   quiz: 'bg-rose-50 text-rose-600 border-rose-200',
 }
 
-const questionTypeLabels: Record<string, string> = {
-  single: '单选',
-  multiple: '多选',
-  judge: '判断',
-  judgment: '判断',
-  fill: '填空',
-  essay: '问答',
-  short_answer: '简答',
-}
+const questionTypeLabels = QUESTION_TYPE_LABELS_SHORT
 
 function toStringArray(v: any): string[] {
   if (Array.isArray(v)) return v.map((x) => String(x).toLowerCase())
