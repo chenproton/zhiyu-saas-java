@@ -2,16 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { TableCell, TableHead } from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -31,19 +22,8 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { ResetPasswordDialog } from '@/components/shared/reset-password-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import { PaginationBar } from '@/components/shared/pagination-bar'
-import {
-  Search,
-  Trash2,
-  Loader2,
-  AlertCircle,
-  RotateCcw,
-  Check,
-  X,
-  Users,
-  KeyRound,
-  Power,
-} from 'lucide-react'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { Trash2, Loader2, Check, X, Users, KeyRound, Power } from 'lucide-react'
 
 export default function AccountsPage() {
   const { toast } = useToast()
@@ -57,7 +37,6 @@ export default function AccountsPage() {
 
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
   const [batchDeleting, setBatchDeleting] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
   const [bindTarget, setBindTarget] = useState<{ id: string; name: string } | null>(null)
@@ -109,45 +88,6 @@ export default function AccountsPage() {
     }
   }
 
-  const handleDelete = (id: string, name: string) => {
-    setDeleteTarget({ id, name })
-  }
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return
-    try {
-      await portalUserManagementApi.delete(deleteTarget.id)
-      toast({ title: '删除成功' })
-      await refetch()
-      setDeleteTarget(null)
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
-      })
-    }
-  }
-
-  const toggleSelectAccount = (id: string) => {
-    setSelectedAccounts((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    )
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedAccounts.length === accounts.length && accounts.length > 0) {
-      setSelectedAccounts([])
-    } else {
-      setSelectedAccounts(accounts.map((a) => a.id))
-    }
-  }
-
-  const handleBatchDelete = () => {
-    if (selectedAccounts.length === 0) return
-    setBatchDeleteTarget([...selectedAccounts])
-  }
-
   const confirmBatchDelete = async () => {
     if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
     setBatchDeleting(true)
@@ -179,202 +119,155 @@ export default function AccountsPage() {
       orgNodeName: orgNode?.name || '—',
       orgTypeName: orgTypeName || undefined,
       loginName: user.username || user.loginName || '',
-      rawLoginName: user.loginName || '',
       status: user.status,
       lastLogin: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('zh-CN') : '—',
     }
   })
 
   return (
-    <div className="min-h-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">账户管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">管理系统登录账户，绑定角色并维护账户状态</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {selectedAccounts.length > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={batchDeleting}
-              onClick={handleBatchDelete}
-            >
-              {batchDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-1" />
-              )}
-              批量删除({selectedAccounts.length})
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="搜索姓名或账户..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-4 rounded border border-destructive/20 bg-destructive/10 p-4 text-destructive flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-medium">加载失败</p>
-            <p className="text-sm opacity-90">{error}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={refetch}>
-            <RotateCcw className="h-4 w-4 mr-1" />
-            重试
-          </Button>
-        </div>
-      )}
-
-      <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedAccounts.length === accounts.length && accounts.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                />
-              </TableHead>
-              <TableHead>姓名</TableHead>
-              <TableHead>角色</TableHead>
-              <TableHead>所属组织</TableHead>
-              <TableHead>账户登录名</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>最后登录时间</TableHead>
-              <TableHead className="w-24 text-center">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">加载中...</p>
-                </TableCell>
-              </TableRow>
-            ) : accounts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-12">
-                  {searchText ? '未找到匹配的账户' : '暂无账户数据'}
-                </TableCell>
-              </TableRow>
+    <PortalCrudPage
+      title="账户管理"
+      description="管理系统登录账户，绑定角色并维护账户状态"
+      entityLabel="账户"
+      items={accounts}
+      loading={loading}
+      error={error ?? null}
+      onRetry={refetch}
+      colSpan={7}
+      searchPlaceholder="搜索姓名或账户..."
+      searchValue={searchText}
+      onSearchChange={setSearchText}
+      hideImport
+      hideCreate
+      emptyContent={searchText ? '未找到匹配的账户' : '暂无账户数据'}
+      pagination={{ page, total, totalPages, onPageChange: setPage }}
+      rowSelection={{
+        selectedIds: selectedAccounts,
+        onToggle: (id, checked) =>
+          setSelectedAccounts((prev) =>
+            checked ? [...prev, id] : prev.filter((i) => i !== id),
+          ),
+        onToggleAll: (checked) =>
+          setSelectedAccounts(checked ? accounts.map((a) => a.id) : []),
+      }}
+      headerActions={
+        selectedAccounts.length > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={batchDeleting}
+            onClick={() => setBatchDeleteTarget([...selectedAccounts])}
+          >
+            {batchDeleting ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
             ) : (
-              accounts.map((account) => (
-                <TableRow key={account.id} className="group">
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedAccounts.includes(account.id)}
-                      onCheckedChange={() => toggleSelectAccount(account.id)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{account.name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {account.roleNames.length > 0 ? (
-                        account.roleNames.map((rn) => (
-                          <span
-                            key={rn}
-                            className="px-2 py-1 rounded text-xs bg-primary/10 text-primary"
-                          >
-                            {rn}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
-                      <span>{account.orgNodeName}</span>
-                      {account.orgTypeName && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
-                          {account.orgTypeName}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{account.loginName}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={account.status} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{account.lastLogin}</TableCell>
-                  <TableRowActions>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => openBindDialog(account)}
-                    >
-                      <Users className="mr-1 h-3 w-3" />
-                      绑定角色
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => handleResetPassword(account.id, account.name)}
-                    >
-                      <KeyRound className="mr-1 h-3 w-3" />
-                      重置密码
-                    </Button>
-                    {account.status === 'active' ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => handleToggleStatus(account.id, account.status)}
-                      >
-                        <Power className="mr-1 h-3 w-3" />
-                        禁用账户
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                        onClick={() => handleToggleStatus(account.id, account.status)}
-                      >
-                        <Power className="mr-1 h-3 w-3" />
-                        启用账户
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                      onClick={() => handleDelete(account.id, account.name)}
-                    >
-                      <Trash2 className="mr-1 h-3 w-3" />
-                      删除
-                    </Button>
-                  </TableRowActions>
-                </TableRow>
-              ))
+              <Trash2 className="h-4 w-4 mr-1" />
             )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {total > 0 && (
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">共 {total} 条记录</span>
-          <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
-        </div>
+            批量删除({selectedAccounts.length})
+          </Button>
+        )
+      }
+      renderTableHeader={() => (
+        <>
+          <TableHead>姓名</TableHead>
+          <TableHead>角色</TableHead>
+          <TableHead>所属组织</TableHead>
+          <TableHead>账户登录名</TableHead>
+          <TableHead>状态</TableHead>
+          <TableHead>最后登录时间</TableHead>
+          <TableHead className="w-24 text-center">操作</TableHead>
+        </>
       )}
-
+      renderTableRow={(account, actions) => (
+        <>
+          <TableCell className="font-medium">{account.name}</TableCell>
+          <TableCell>
+            <div className="flex flex-wrap gap-1">
+              {account.roleNames.length > 0 ? (
+                account.roleNames.map((rn) => (
+                  <span key={rn} className="px-2 py-1 rounded text-xs bg-primary/10 text-primary">
+                    {rn}
+                  </span>
+                ))
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </div>
+          </TableCell>
+          <TableCell>
+            <div className="flex items-center gap-1.5">
+              <span>{account.orgNodeName}</span>
+              {account.orgTypeName && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
+                  {account.orgTypeName}
+                </span>
+              )}
+            </div>
+          </TableCell>
+          <TableCell>{account.loginName}</TableCell>
+          <TableCell>
+            <StatusBadge status={account.status} />
+          </TableCell>
+          <TableCell className="text-muted-foreground">{account.lastLogin}</TableCell>
+          <TableRowActions>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => openBindDialog(account)}
+            >
+              <Users className="mr-1 h-3 w-3" />
+              绑定角色
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => handleResetPassword(account.id, account.name)}
+            >
+              <KeyRound className="mr-1 h-3 w-3" />
+              重置密码
+            </Button>
+            {account.status === 'active' ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                onClick={() => handleToggleStatus(account.id, account.status)}
+              >
+                <Power className="mr-1 h-3 w-3" />
+                禁用账户
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                onClick={() => handleToggleStatus(account.id, account.status)}
+              >
+                <Power className="mr-1 h-3 w-3" />
+                启用账户
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+              onClick={actions.delete}
+            >
+              <Trash2 className="mr-1 h-3 w-3" />
+              删除
+            </Button>
+          </TableRowActions>
+        </>
+      )}
+      getDeleteDescription={(account) => (
+        <>确定要删除账户「{account.name}」吗？此操作不可撤销。</>
+      )}
+      onDelete={async (account) => {
+        await portalUserManagementApi.delete(account.id)
+      }}
+    >
       <Dialog
         open={!!bindTarget}
         onOpenChange={(open) => {
@@ -457,17 +350,6 @@ export default function AccountsPage() {
       />
 
       <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null)
-        }}
-        title="确认删除"
-        description={`确定要删除账户「${deleteTarget?.name}」吗？此操作不可撤销。`}
-        variant="destructive"
-        onConfirm={confirmDelete}
-      />
-
-      <ConfirmDialog
         open={batchDeleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setBatchDeleteTarget(null)
@@ -477,6 +359,6 @@ export default function AccountsPage() {
         variant="destructive"
         onConfirm={confirmBatchDelete}
       />
-    </div>
+    </PortalCrudPage>
   )
 }

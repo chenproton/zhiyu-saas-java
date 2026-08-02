@@ -3,24 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { FormFieldRow } from '@/components/shared/form-field-row'
+import { TableCell, TableHead } from '@/components/ui/table'
 import {
   Select,
   SelectContent,
@@ -28,13 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Spinner } from '@/components/ui/spinner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Plus, Pencil, Trash2, Search, Upload, Download, AlertCircle } from 'lucide-react'
+import { Pencil, Trash2, Upload, Download } from 'lucide-react'
 import { orgTypeApi } from '@/lib/api'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import type { OrgType } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useToast } from '@zhiyu/ui'
@@ -52,13 +34,7 @@ export default function OrgTypesPage() {
   const [orgTypes, setOrgTypes] = useState<OrgType[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedType, setSelectedType] = useState<OrgType | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [formName, setFormName] = useState('')
-  const [formCategory, setFormCategory] = useState<string>('internal')
-  const [isSaving, setIsSaving] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<OrgType | null>(null)
 
   const fetchData = useCallback(async () => {
     if (!tenantId) {
@@ -69,14 +45,14 @@ export default function OrgTypesPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await orgTypeApi.list({ tenantId, search: searchTerm || undefined, limit: 1000 })
+      const res = await orgTypeApi.list({ tenantId, limit: 1000 })
       setOrgTypes(res.items)
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载组织类型失败')
     } finally {
       setIsLoading(false)
     }
-  }, [tenantId, searchTerm])
+  }, [tenantId])
 
   useEffect(() => {
     let cancelled = false
@@ -88,31 +64,48 @@ export default function OrgTypesPage() {
     }
   }, [fetchData])
 
-  const filteredTypes = orgTypes.filter((type) => type.name.includes(searchTerm))
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return
-    try {
-      await orgTypeApi.delete(deleteTarget.id)
-      setOrgTypes((prev) => prev.filter((t) => t.id !== deleteTarget.id))
-      setDeleteTarget(null)
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '删除组织类型失败',
+  const handleSave = async (item: OrgType, isEdit: boolean) => {
+    if (!tenantId) return
+    if (isEdit) {
+      const updated = await orgTypeApi.update(item.id, {
+        name: item.name.trim(),
+        category: item.category,
+        tenantId,
       })
+      toast({ title: '保存成功', description: `「${updated.name}」已更新` })
+    } else {
+      const created = await orgTypeApi.create({
+        name: item.name.trim(),
+        category: item.category,
+        tenantId,
+      })
+      toast({ title: '创建成功', description: `「${created.name}」已添加` })
     }
   }
 
+  const handleDelete = async (item: OrgType) => {
+    await orgTypeApi.delete(item.id)
+  }
+
   return (
-    <div className="min-h-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">组织类型管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">管理组织架构中的节点类型</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <PortalCrudPage
+      title="组织类型管理"
+      description="管理组织架构中的节点类型"
+      entityLabel="组织类型"
+      items={orgTypes}
+      loading={isLoading}
+      error={error}
+      onRetry={fetchData}
+      colSpan={4}
+      searchPlaceholder="搜索类型名称..."
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+      filterItems={(items, search) =>
+        items.filter((t) => !search || t.name.includes(search))
+      }
+      hideImport
+      headerActions={
+        <>
           <Button variant="outline" size="sm" disabled title="即将上线">
             <Upload className="h-4 w-4 mr-1" />
             批量导入
@@ -121,212 +114,113 @@ export default function OrgTypesPage() {
             <Download className="h-4 w-4 mr-1" />
             批量导出
           </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              setSelectedType(null)
-              setFormName('')
-              setFormCategory('internal')
-              setIsDialogOpen(true)
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            新增类型
-          </Button>
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="搜索类型名称..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>加载失败</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {isLoading ? (
-        <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
-          <Spinner className="h-5 w-5" />
-          加载中...
-        </div>
-      ) : (
-        <>
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border">
-                  <TableHead>类型名称</TableHead>
-                  <TableHead>类型分类</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTypes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-48 text-center">
-                      <Empty className="h-full">
-                        <EmptyHeader>
-                          <EmptyTitle>暂无组织类型</EmptyTitle>
-                          <EmptyDescription>
-                            {searchTerm ? '未找到匹配的组织类型' : '当前租户下尚未创建组织类型'}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredTypes.map((type) => (
-                    <TableRow key={type.id} className="border-border group">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {type.name}
-                          {type.isDefault && (
-                            <Badge variant="outline" className="text-xs">
-                              系统默认
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={categoryColors[type.category]}>
-                          {categoryLabels[type.category]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{type.createdAt}</TableCell>
-                      <TableRowActions>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => {
-                            setSelectedType(type)
-                            setFormName(type.name)
-                            setFormCategory(type.category)
-                            setIsDialogOpen(true)
-                          }}
-                        >
-                          <Pencil className="mr-1 h-3 w-3" />
-                          编辑
-                        </Button>
-                        {!type.isDefault ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                            onClick={() => setDeleteTarget(type)}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" />
-                            删除
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled>
-                            <Trash2 className="mr-1 h-3 w-3" />
-                            系统默认类型不可删除
-                          </Button>
-                        )}
-                      </TableRowActions>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+        </>
+      }
+      createButtonLabel="新增类型"
+      createDefault={() =>
+        ({
+          id: '',
+          tenantId: '',
+          name: '',
+          category: 'internal',
+          createdAt: '',
+        }) as OrgType
+      }
+      renderForm={(item, setItem) => (
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">类型名称</label>
+            <Input
+              placeholder="如：二级学院"
+              value={item.name}
+              onChange={(e) => setItem({ ...item, name: e.target.value })}
+            />
           </div>
-
-          <div className="mt-4 text-sm text-muted-foreground">共 {filteredTypes.length} 条记录</div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">类型分类</label>
+            <Select value={item.category} onValueChange={(v) => setItem({ ...item, category: v as OrgType['category'] })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="internal">内部组织</SelectItem>
+                <SelectItem value="business">业务组织</SelectItem>
+                <SelectItem value="external">外部协作组织</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+      onSave={handleSave}
+      renderTableHeader={() => (
+        <>
+          <TableHead>类型名称</TableHead>
+          <TableHead>类型分类</TableHead>
+          <TableHead>创建时间</TableHead>
+          <TableHead className="text-right">操作</TableHead>
         </>
       )}
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedType ? '编辑类型' : '新增类型'}</DialogTitle>
-            <DialogDescription>组织类型用于组织架构节点分类</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <FormFieldRow label="类型名称">
-              <Input
-                placeholder="如：二级学院"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
-            </FormFieldRow>
-            <FormFieldRow label="类型分类">
-              <Select value={formCategory} onValueChange={setFormCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="internal">内部组织</SelectItem>
-                  <SelectItem value="business">业务组织</SelectItem>
-                  <SelectItem value="external">外部协作组织</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormFieldRow>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>
-              取消
-            </Button>
+      renderTableRow={(type, actions) => (
+        <>
+          <TableCell className="font-medium">
+            <div className="flex items-center gap-2">
+              {type.name}
+              {type.isDefault && (
+                <Badge variant="outline" className="text-xs">
+                  系统默认
+                </Badge>
+              )}
+            </div>
+          </TableCell>
+          <TableCell>
+            <Badge className={categoryColors[type.category]}>
+              {categoryLabels[type.category]}
+            </Badge>
+          </TableCell>
+          <TableCell className="text-muted-foreground">{type.createdAt}</TableCell>
+          <TableRowActions>
             <Button
-              disabled={isSaving || !formName.trim()}
-              onClick={async () => {
-                setIsSaving(true)
-                try {
-                  if (selectedType) {
-                    const updated = await orgTypeApi.update(selectedType.id, {
-                      name: formName.trim(),
-                      category: formCategory as OrgType['category'],
-                      tenantId: tenantId!,
-                    })
-                    setOrgTypes((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-                  } else {
-                    const created = await orgTypeApi.create({
-                      name: formName.trim(),
-                      category: formCategory as OrgType['category'],
-                      tenantId: tenantId!,
-                    })
-                    setOrgTypes((prev) => [...prev, created])
-                  }
-                  setIsDialogOpen(false)
-                } catch (err) {
-                  toast({
-                    variant: 'destructive',
-                    title: selectedType ? '保存失败' : '创建失败',
-                    description: err instanceof Error ? err.message : '保存组织类型失败',
-                  })
-                } finally {
-                  setIsSaving(false)
-                }
-              }}
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={actions.edit}
             >
-              {isSaving ? '保存中...' : '保存'}
+              <Pencil className="mr-1 h-3 w-3" />
+              编辑
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="确认删除"
-        description={`确定删除组织类型「${deleteTarget?.name}」吗？如果该类型仍被组织使用，删除可能会失败。`}
-        confirmText="删除"
-        variant="destructive"
-        onConfirm={confirmDelete}
-      />
-    </div>
+            {!type.isDefault ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                onClick={actions.delete}
+              >
+                <Trash2 className="mr-1 h-3 w-3" />
+                删除
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled>
+                <Trash2 className="mr-1 h-3 w-3" />
+                系统默认类型不可删除
+              </Button>
+            )}
+          </TableRowActions>
+        </>
+      )}
+      getDeleteDescription={(type) => (
+        <>确定删除组织类型「{type.name}」吗？如果该类型仍被组织使用，删除可能会失败。</>
+      )}
+      onDelete={handleDelete}
+      emptyContent={
+        <Empty className="py-6">
+          <EmptyHeader>
+            <EmptyTitle>暂无组织类型</EmptyTitle>
+            <EmptyDescription>
+              {searchTerm ? '未找到匹配的组织类型' : '当前租户下尚未创建组织类型'}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      }
+    />
   )
 }

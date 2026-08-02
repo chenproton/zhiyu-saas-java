@@ -19,25 +19,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-
 import { Input } from '@/components/ui/input'
-import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Spinner } from '@/components/ui/spinner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
-  Plus,
   Pencil,
   Trash2,
-  Search,
   Upload,
   Download,
   Settings,
   Users,
-  AlertCircle,
   LayoutDashboard,
 } from 'lucide-react'
 import { roleApi, portalUserManagementApi, type User } from '@/lib/api'
@@ -45,8 +38,8 @@ import type { Role } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from '@/lib/menu-permissions'
 import type { MenuTreeItem } from '@/lib/menu-permissions'
 
@@ -142,19 +135,28 @@ function SystemCard({
   )
 }
 
+interface RoleItem {
+  id: string
+  code: string
+  name: string
+  description?: string
+  permissions?: Record<string, any>
+  status?: string
+  userCount: number
+  createdAt: string
+}
+
 export default function RolesPage() {
   const { tenantId, subscriptionModules } = usePortalAuth()
   const { toast } = useToast()
   const [roles, setRoles] = useState<Role[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isPermDialogOpen, setIsPermDialogOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<Role | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [checkedMenus, setCheckedMenus] = useState<Set<string>>(new Set())
   const [checkedActions, setCheckedActions] = useState<Set<string>>(new Set())
-  const [editName, setEditName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
   const menuTree = useMemo(() => {
@@ -179,25 +181,20 @@ export default function RolesPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await roleApi.list({ tenantId, search: searchTerm || undefined, limit: 1000 })
+      const res = await roleApi.list({ tenantId, limit: 1000 })
       setRoles(res.items)
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载角色失败')
     } finally {
       setIsLoading(false)
     }
-  }, [tenantId, searchTerm])
+  }, [tenantId])
 
   useEffect(() => {
     ;(async () => {
       await fetchData()
     })()
   }, [fetchData])
-
-  const filteredRoles = useMemo(
-    () => roles.filter((role) => role.name.includes(searchTerm) || role.code.includes(searchTerm)),
-    [roles, searchTerm],
-  )
 
   const generateRoleCode = () => {
     const maxSuffix = roles.reduce((max, r) => {
@@ -346,7 +343,7 @@ export default function RolesPage() {
     }
   }
 
-  const saveRole = async () => {
+  const saveRole = async (item: RoleItem, isEdit: boolean) => {
     if (!tenantId) {
       toast({
         variant: 'destructive',
@@ -355,37 +352,25 @@ export default function RolesPage() {
       })
       return
     }
-    setIsSaving(true)
-    try {
-      if (selectedRole) {
-        await roleApi.update(selectedRole.id, { ...selectedRole, name: editName })
-      } else {
-        await roleApi.create({
-          tenantId,
-          code: generateRoleCode(),
-          name: editName,
-          description: '',
-          permissions: {},
-          status: 'active',
-        })
-      }
-      await fetchData()
-      setIsDialogOpen(false)
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: selectedRole ? '保存失败' : '创建失败',
-        description: err instanceof Error ? err.message : '保存角色失败',
+    if (isEdit) {
+      await roleApi.update(item.id, { ...(item as unknown as Role), name: item.name.trim() })
+      toast({ title: '保存成功' })
+    } else {
+      await roleApi.create({
+        tenantId,
+        code: generateRoleCode(),
+        name: item.name.trim(),
+        description: '',
+        permissions: {},
+        status: 'active',
       })
-    } finally {
-      setIsSaving(false)
+      toast({ title: '创建成功' })
     }
   }
 
   const [usersRole, setUsersRole] = useState<Role | null>(null)
   const [roleUsers, setRoleUsers] = useState<User[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
-  const [deleteRoleTarget, setDeleteRoleTarget] = useState<Role | null>(null)
 
   const openUsersDialog = async (role: Role) => {
     setUsersRole(role)
@@ -402,28 +387,31 @@ export default function RolesPage() {
   }
 
   const deleteRole = async (role: Role) => {
-    setDeleteRoleTarget(role)
-  }
-
-  const executeDeleteRole = async () => {
-    if (!deleteRoleTarget) return
-    try {
-      await roleApi.delete(deleteRoleTarget.id)
-      setDeleteRoleTarget(null)
-      await fetchData()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '删除角色失败')
-    }
+    await roleApi.delete(role.id)
   }
 
   return (
-    <div className="min-h-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">角色权限管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">管理系统角色及权限配置</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <PortalCrudPage
+      title="角色权限管理"
+      description="管理系统角色及权限配置"
+      entityLabel="角色"
+      items={roles}
+      loading={isLoading}
+      error={error}
+      onRetry={fetchData}
+      colSpan={6}
+      searchPlaceholder="搜索角色名称或编码..."
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+      filterItems={(items, search) =>
+        items.filter(
+          (role) =>
+            !search || role.name.includes(search) || role.code.includes(search),
+        )
+      }
+      hideImport
+      headerActions={
+        <>
           <Button variant="outline" size="sm" disabled title="即将上线">
             <Upload className="h-4 w-4 mr-1" />
             导入
@@ -432,180 +420,109 @@ export default function RolesPage() {
             <Download className="h-4 w-4 mr-1" />
             导出
           </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              setSelectedRole(null)
-              setEditName('')
-              setIsDialogOpen(true)
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            新增角色
-          </Button>
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="搜索角色名称或编码..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>操作失败</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {isLoading ? (
-        <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
-          <Spinner className="h-5 w-5" />
-          加载中...
-        </div>
-      ) : (
-        <>
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border">
-                  <TableHead>角色编码</TableHead>
-                  <TableHead>角色名称</TableHead>
-                  <TableHead>关联用户</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRoles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-48 text-center">
-                      <Empty className="h-full">
-                        <EmptyHeader>
-                          <EmptyTitle>暂无角色</EmptyTitle>
-                          <EmptyDescription>
-                            {searchTerm ? '未找到匹配的角色' : '当前租户下尚未创建角色'}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredRoles.map((role) => {
-                    const status = roleStatus(role)
-                    return (
-                      <TableRow key={role.id} className="border-border group">
-                        <TableCell className="font-mono text-sm text-muted-foreground">
-                          {role.code}
-                        </TableCell>
-                        <TableCell className="font-medium">{role.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{role.userCount} 人</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge
-                            status={status}
-                            label={status === 'active' ? '启用' : '停用'}
-                          />
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{role.createdAt}</TableCell>
-                        <TableRowActions>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => {
-                              setSelectedRole(role)
-                              setEditName(role.name)
-                              setIsDialogOpen(true)
-                            }}
-                          >
-                            <Pencil className="mr-1 h-3 w-3" />
-                            编辑
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => openPermDialog(role)}
-                          >
-                            <Settings className="mr-1 h-3 w-3" />
-                            权限配置
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => openUsersDialog(role)}
-                          >
-                            <Users className="mr-1 h-3 w-3" />
-                            查看用户
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                            onClick={() => deleteRole(role)}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" />
-                            删除
-                          </Button>
-                        </TableRowActions>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
+        </>
+      }
+      createButtonLabel="新增角色"
+      createDefault={() => ({
+        id: '',
+        code: generateRoleCode(),
+        name: '',
+        userCount: 0,
+        createdAt: '',
+      })}
+      renderForm={(item, setItem) => (
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">角色编码</label>
+            <Input value={item.code || generateRoleCode()} disabled className="bg-muted font-mono" />
           </div>
-
-          <div className="mt-4 text-sm text-muted-foreground">共 {filteredRoles.length} 条记录</div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              角色名称 <span className="text-destructive">*</span>
+            </label>
+            <Input
+              placeholder="如：学校管理员"
+              value={item.name}
+              onChange={(e) => setItem({ ...item, name: e.target.value })}
+            />
+          </div>
+        </div>
+      )}
+      onSave={saveRole}
+      renderTableHeader={() => (
+        <>
+          <TableHead>角色编码</TableHead>
+          <TableHead>角色名称</TableHead>
+          <TableHead>关联用户</TableHead>
+          <TableHead>状态</TableHead>
+          <TableHead>创建时间</TableHead>
+          <TableHead className="text-right">操作</TableHead>
         </>
       )}
-
-      {/* 新增/编辑角色 */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedRole ? '编辑角色' : '新增角色'}</DialogTitle>
-            <DialogDescription>角色编码由系统自动生成</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <FormFieldRow label="角色编码">
-              <Input
-                value={selectedRole?.code || generateRoleCode()}
-                disabled
-                className="bg-muted font-mono"
-              />
-            </FormFieldRow>
-            <FormFieldRow label="角色名称">
-              <Input
-                placeholder="如：学校管理员"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </FormFieldRow>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={saveRole} disabled={!editName.trim() || isSaving}>
-              {isSaving ? '保存中...' : '保存'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      renderTableRow={(role, actions) => {
+        const status = roleStatus(role as Role)
+        return (
+          <>
+            <TableCell className="font-mono text-sm text-muted-foreground">{role.code}</TableCell>
+            <TableCell className="font-medium">{role.name}</TableCell>
+            <TableCell>
+              <Badge variant="secondary">{role.userCount} 人</Badge>
+            </TableCell>
+            <TableCell>
+              <StatusBadge status={status} label={status === 'active' ? '启用' : '停用'} />
+            </TableCell>
+            <TableCell className="text-muted-foreground">{role.createdAt}</TableCell>
+            <TableRowActions>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
+                <Pencil className="mr-1 h-3 w-3" />
+                编辑
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => openPermDialog(role as Role)}
+              >
+                <Settings className="mr-1 h-3 w-3" />
+                权限配置
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => openUsersDialog(role as Role)}
+              >
+                <Users className="mr-1 h-3 w-3" />
+                查看用户
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                onClick={actions.delete}
+              >
+                <Trash2 className="mr-1 h-3 w-3" />
+                删除
+              </Button>
+            </TableRowActions>
+          </>
+        )
+      }}
+      getDeleteDescription={(role) => <>确定要删除角色「{role.name}」吗？</>}
+      onDelete={async (role) => {
+        await deleteRole(role as Role)
+      }}
+      emptyContent={
+        <Empty className="py-6">
+          <EmptyHeader>
+            <EmptyTitle>暂无角色</EmptyTitle>
+            <EmptyDescription>
+              {searchTerm ? '未找到匹配的角色' : '当前租户下尚未创建角色'}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      }
+    >
       {/* 角色绑定用户列表 */}
       <Dialog
         open={!!usersRole}
@@ -622,8 +539,7 @@ export default function RolesPage() {
           </DialogHeader>
           {usersLoading ? (
             <div className="flex h-40 items-center justify-center gap-2 text-muted-foreground">
-              <Spinner className="h-5 w-5" />
-              加载中...
+              <span>加载中...</span>
             </div>
           ) : roleUsers.length === 0 ? (
             <Empty className="h-40">
@@ -635,47 +551,49 @@ export default function RolesPage() {
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>姓名</TableHead>
-                  <TableHead>登录账号</TableHead>
-                  <TableHead>全部角色</TableHead>
-                  <TableHead>状态</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {roleUsers.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.name}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {u.username || u.loginName}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {(u.roleNames ?? []).map((rn) => (
-                          <Badge key={rn} variant="secondary">
-                            {rn}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        status={u.status}
-                        label={
-                          u.status === 'active'
-                            ? '正常'
-                            : u.status === 'graduated'
-                              ? '已毕业'
-                              : '禁用'
-                        }
-                      />
-                    </TableCell>
+            <div className="rounded-lg border border-gray-100 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>姓名</TableHead>
+                    <TableHead>登录账号</TableHead>
+                    <TableHead>全部角色</TableHead>
+                    <TableHead>状态</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {roleUsers.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium">{u.name}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {u.username || u.loginName}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {(u.roleNames ?? []).map((rn) => (
+                            <Badge key={rn} variant="secondary">
+                              {rn}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge
+                          status={u.status}
+                          label={
+                            u.status === 'active'
+                              ? '正常'
+                              : u.status === 'graduated'
+                                ? '已毕业'
+                                : '禁用'
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -767,17 +685,6 @@ export default function RolesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <ConfirmDialog
-        open={deleteRoleTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteRoleTarget(null)
-        }}
-        title="删除角色"
-        description={deleteRoleTarget ? `确定要删除角色「${deleteRoleTarget.name}」吗？` : ''}
-        variant="destructive"
-        onConfirm={executeDeleteRole}
-      />
-    </div>
+    </PortalCrudPage>
   )
 }

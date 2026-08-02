@@ -45,6 +45,7 @@ import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { Spinner } from '@/components/ui/spinner'
 import { SchoolAdminManager } from './_components/school-admin-manager'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 
 interface Tenant {
   id: string
@@ -257,13 +258,20 @@ export default function TenantPage() {
     )
 
   return (
-    <div className="min-h-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">租户信息管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">查看和编辑当前租户及学校信息</p>
-        </div>
-        {tenant && (
+    <PortalCrudPage
+      title="租户信息管理"
+      description="查看和编辑当前租户及学校信息"
+      entityLabel="租户"
+      items={[]}
+      loading={false}
+      error={null}
+      onRetry={fetchTenant}
+      colSpan={1}
+      search={false}
+      hideImport
+      hideCreate
+      headerActions={
+        tenant && (
           <Button
             size="sm"
             onClick={() => {
@@ -274,60 +282,65 @@ export default function TenantPage() {
             <Pencil className="h-4 w-4 mr-1" />
             编辑
           </Button>
-        )}
-      </div>
-      {tenant && (
-        <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-          <div className="px-6 py-5 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Building className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">{tenant.enterpriseName}</h2>
-                <p className="text-sm text-muted-foreground font-mono">{tenant.code}</p>
-              </div>
-              <StatusBadge
-                status={tenant.status}
-                label={tenant.status === 'active' ? '启用' : '停用'}
-                className="ml-auto"
-              />
-            </div>
-          </div>
-          <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <F
-              icon={Phone}
-              label="联系人"
-              v={`${tenant.contact} / ${tenant.contactPhone !== '-' ? tenant.contactPhone : tenant.phone}`}
-            />
-            <F icon={School} label="学校简称" v={tenant.shortName} />
-            <F icon={BookOpen} label="办学层次" v={tenant.educationLevel} />
-            <F icon={MapPin} label="省份/城市" v={`${tenant.province} ${tenant.city}`} />
-            <F icon={Globe} label="官网" v={tenant.website} />
-            <F icon={Globe} label="绑定域名" v={tenant.domain} />
-            <F icon={MapPin} label="学校地址" v={tenant.address} />
-            <F icon={Hash} label="学校代码" v={tenant.enterpriseCode} />
-            <F icon={Calendar} label="创建时间" v={tenant.createdAt} />
-            <F icon={Shield} label="管理员" v={`${tenant.adminCount} 人`} />
-          </div>
-          {tenant.description && tenant.description !== '-' && (
-            <div className="px-6 py-4 border-t border-gray-100">
-              <div className="flex items-start gap-3">
-                <FileText className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs text-muted-foreground">学校简介</p>
-                  <p className="text-sm mt-1 leading-relaxed">{tenant.description}</p>
+        )
+      }
+      body={
+        tenant && (
+          <div>
+            <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
+              <div className="px-6 py-5 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Building className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold">{tenant.enterpriseName}</h2>
+                    <p className="text-sm text-muted-foreground font-mono">{tenant.code}</p>
+                  </div>
+                  <StatusBadge
+                    status={tenant.status}
+                    label={tenant.status === 'active' ? '启用' : '停用'}
+                    className="ml-auto"
+                  />
                 </div>
               </div>
+              <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <F
+                  icon={Phone}
+                  label="联系人"
+                  v={`${tenant.contact} / ${tenant.contactPhone !== '-' ? tenant.contactPhone : tenant.phone}`}
+                />
+                <F icon={School} label="学校简称" v={tenant.shortName} />
+                <F icon={BookOpen} label="办学层次" v={tenant.educationLevel} />
+                <F icon={MapPin} label="省份/城市" v={`${tenant.province} ${tenant.city}`} />
+                <F icon={Globe} label="官网" v={tenant.website} />
+                <F icon={Globe} label="绑定域名" v={tenant.domain} />
+                <F icon={MapPin} label="学校地址" v={tenant.address} />
+                <F icon={Hash} label="学校代码" v={tenant.enterpriseCode} />
+                <F icon={Calendar} label="创建时间" v={tenant.createdAt} />
+                <F icon={Shield} label="管理员" v={`${tenant.adminCount} 人`} />
+              </div>
+              {tenant.description && tenant.description !== '-' && (
+                <div className="px-6 py-4 border-t border-gray-100">
+                  <div className="flex items-start gap-3">
+                    <FileText className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">学校简介</p>
+                      <p className="text-sm mt-1 leading-relaxed">{tenant.description}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
-      {tenantId && (
-        <div className="mt-6">
-          <SchoolAdminManager fetcher={adminFetcher} />
-        </div>
-      )}
+            {tenantId && (
+              <div className="mt-6">
+                <SchoolAdminManager fetcher={adminFetcher} />
+              </div>
+            )}
+          </div>
+        )
+      }
+    >
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
           <DialogHeader>
@@ -537,7 +550,7 @@ export default function TenantPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PortalCrudPage>
   )
 }
 
