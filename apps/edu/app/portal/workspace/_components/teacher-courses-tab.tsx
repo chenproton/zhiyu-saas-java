@@ -137,7 +137,7 @@ function TrackingView() {
             <Zap className="h-4 w-4 text-amber-600" />
             <div>
               <p className="text-xs text-gray-500">抢答参与率</p>
-              <p className="text-lg font-bold">76%</p>
+              <p className="text-lg font-bold">0%</p>
             </div>
           </div>
         </div>

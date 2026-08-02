@@ -8,8 +8,6 @@ import {
   CheckSquare,
   Shield,
   Users,
-  ChevronRight,
-  ChevronLeft,
   TrendingUp,
   BarChart3,
   PieChart,
@@ -66,76 +64,18 @@ import { SchoolAdminResourcesTab } from './_components/school-admin-resources-ta
 import { SchoolAdminApprovalsTab } from './_components/school-admin-approvals-tab'
 import { SchoolAdminPersonnelTab } from './_components/school-admin-personnel-tab'
 
-// 不同身份的服务台内容（非学生角色保留原展示）
+// 不同身份的服务台内容（非学生角色保留原展示；公告/待办/日历事件均由后端接口提供）
 const roleConfigs = {
   teacher: {
     welcomeText: '欢迎回来，张老师。',
-    announcements: [
-      {
-        id: 1,
-        title: '关于2026年春季学期教学安排的通知',
-        date: '2026-04-10',
-        isNew: true,
-        type: '重要',
-      },
-      { id: 2, title: '教务系统升级维护公告', date: '2026-04-08', isNew: true, type: '通知' },
-      {
-        id: 3,
-        title: '关于开展教学质量评估工作的通知',
-        date: '2026-04-05',
-        isNew: false,
-        type: '通知',
-      },
-      { id: 4, title: '2026年度教师培训计划发布', date: '2026-04-01', isNew: false, type: '公告' },
-    ],
-    todoItems: [
-      { id: 1, title: '审批学生请假申请', count: 3, urgent: true, color: '#ef4444' },
-      { id: 2, title: '批改作业', count: 28, urgent: false, color: '#3b82f6' },
-      { id: 3, title: '课程资源审核', count: 5, urgent: false, color: '#10b981' },
-      { id: 4, title: '填写教学日志', count: 1, urgent: true, color: '#f59e0b' },
-    ],
-    calendarEvents: [
-      { id: 1, title: '教研组会议', time: '09:00', date: 14, color: 'bg-primary' },
-      { id: 2, title: '课程设计评审', time: '14:00', date: 14, color: 'bg-amber-500' },
-      { id: 3, title: '学生答疑', time: '10:00', date: 15, color: 'bg-emerald-500' },
-    ],
     stats: { label1: '授课课程', value1: 8, label2: '学生人数', value2: 256 },
   },
   enterprise: {
     welcomeText: '欢迎回来，企业用户。',
-    announcements: [
-      { id: 1, title: '校企合作项目申报通知', date: '2026-04-10', isNew: true, type: '重要' },
-      { id: 2, title: '实习生招聘平台上线', date: '2026-04-08', isNew: true, type: '通知' },
-      { id: 3, title: '产学研合作洽谈会', date: '2026-04-05', isNew: false, type: '公告' },
-    ],
-    todoItems: [
-      { id: 1, title: '待审核简历', count: 15, urgent: false, color: '#3b82f6' },
-      { id: 2, title: '待安排面试', count: 8, urgent: true, color: '#ef4444' },
-      { id: 3, title: '待签订协议', count: 3, urgent: false, color: '#10b981' },
-    ],
-    calendarEvents: [
-      { id: 1, title: '宣讲会', time: '14:00', date: 14, color: 'bg-primary' },
-      { id: 2, title: '面试安排', time: '09:00', date: 16, color: 'bg-amber-500' },
-    ],
     stats: { label1: '合作项目', value1: 5, label2: '实习学生', value2: 23 },
   },
   admin: {
     welcomeText: '欢迎回来，管理员。',
-    announcements: [
-      { id: 1, title: '系统安全检查通知', date: '2026-04-10', isNew: true, type: '重要' },
-      { id: 2, title: '数据备份完成通知', date: '2026-04-08', isNew: true, type: '通知' },
-      { id: 3, title: '权限审计报告', date: '2026-04-05', isNew: false, type: '报告' },
-    ],
-    todoItems: [
-      { id: 1, title: '待审批账号', count: 12, urgent: true, color: '#ef4444' },
-      { id: 2, title: '待处理工单', count: 8, urgent: false, color: '#3b82f6' },
-      { id: 3, title: '待审核权限', count: 5, urgent: false, color: '#10b981' },
-      { id: 4, title: '系统告警', count: 2, urgent: true, color: '#f59e0b' },
-    ],
-    calendarEvents: [
-      { id: 1, title: '系统维护', time: '22:00', date: 14, color: 'bg-primary' },
-      { id: 2, title: '安全审计', time: '10:00', date: 18, color: 'bg-amber-500' },
-    ],
     stats: { label1: '在线用户', value1: 1256, label2: '总用户数', value2: 8500 },
   },
 }
@@ -392,7 +332,8 @@ export default function WorkspacePage() {
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
-    if (!activeRole?.code) return
+    // 学生/教师/学校管理员工作台由各自 Tab 自行拉取数据，此处仅兜底视图（企业导师）需要
+    if (activeRole?.code !== 'enterprise_mentor') return
     portalApi
       .workspaceDashboard({ role: activeRole.code })
       .then(setDashboard)
@@ -497,10 +438,8 @@ export default function WorkspacePage() {
     )
   }
 
-  // 非学生角色保持原有通用工作台（企业用户等共用 enterprise/admin 配置）
-  const roleConfigKey: keyof typeof roleConfigs =
-    currentRole === 'student' ? 'teacher' : currentRole === 'teacher' ? 'teacher' : 'admin'
-  const config = roleConfigs[roleConfigKey] || roleConfigs.teacher
+  // 非学生角色保持原有通用工作台（企业导师等共用企业配置）
+  const config = roleConfigs.enterprise
 
   // 从后端仪表盘接口取真实数据，原静态假数据仅作为兜底空值
   const announcements = dashboard?.announcements || []
@@ -522,7 +461,7 @@ export default function WorkspacePage() {
   const weekDays = ['日', '一', '二', '三', '四', '五', '六']
   const calendarEvents: { id: number; title: string; time: string; date: number; color: string }[] =
     []
-  const RoleIcon = roleIcons[roleConfigKey] || GraduationCap
+  const RoleIcon = roleIcons.enterprise
 
   return (
     <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
@@ -600,14 +539,6 @@ export default function WorkspacePage() {
                 </div>
                 通知公告
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-primary h-auto p-0 hover:bg-transparent"
-              >
-                查看全部
-                <ChevronRight className="w-3 h-3 ml-1" />
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -650,17 +581,9 @@ export default function WorkspacePage() {
                 </div>
                 校园日历
               </CardTitle>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <ChevronLeft className="w-3 h-3" />
-                </Button>
-                <span className="text-sm font-medium text-foreground">
-                  {today.getFullYear()}年{today.getMonth() + 1}月
-                </span>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <ChevronRight className="w-3 h-3" />
-                </Button>
-              </div>
+              <span className="text-sm font-medium text-foreground">
+                {today.getFullYear()}年{today.getMonth() + 1}月
+              </span>
             </div>
           </CardHeader>
           <CardContent className="pt-2">
@@ -717,14 +640,6 @@ export default function WorkspacePage() {
                 待办事项
                 <Badge className="ml-1 text-xs px-1.5 py-0 bg-rose-500">{totalTodo}</Badge>
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-primary h-auto p-0 hover:bg-transparent"
-              >
-                查看全部
-                <ChevronRight className="w-3 h-3 ml-1" />
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -784,14 +699,6 @@ export default function WorkspacePage() {
                 </div>
                 账号安全中心
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-primary h-auto p-0 hover:bg-transparent"
-              >
-                安全设置
-                <ChevronRight className="w-3 h-3 ml-1" />
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -947,14 +854,6 @@ export default function WorkspacePage() {
                 </div>
                 校园通讯录
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-primary h-auto p-0 hover:bg-transparent"
-              >
-                查看全部
-                <ChevronRight className="w-3 h-3 ml-1" />
-              </Button>
             </div>
           </CardHeader>
           <CardContent>

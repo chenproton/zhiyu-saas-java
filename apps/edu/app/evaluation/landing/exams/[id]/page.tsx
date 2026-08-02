@@ -22,13 +22,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -80,9 +73,6 @@ export default function ExamDetailPage() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [submitted, setSubmitted] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
-  const [examAccessState, setExamAccessState] = useState<
-    'not-in-range' | 'not-started' | 'started'
-  >('started')
   const [showAudienceDialog, setShowAudienceDialog] = useState(false)
   const [, setUsages] = useState<ExamUsage[]>([])
   const [currentUsage, setCurrentUsage] = useState<ExamUsage | null>(null)
@@ -223,8 +213,8 @@ export default function ExamDetailPage() {
   const totalScore = questions.reduce((s, q) => s + (q.score || 0), 0)
   const answeredCount = Object.keys(answers).length
   const targetAudience = getTargetAudience()
-  const canStart =
-    examAccessState === 'started' && (isSceneTask || exam.status === 'published') && currentUsage
+  // canStart 由服务端真实数据校验：考试已发布（或场景任务）且存在考试安排
+  const canStart = (isSceneTask || exam.status === 'published') && currentUsage
 
   const handleSingle = (qid: string, val: string) => setAnswers((p) => ({ ...p, [qid]: val }))
   const handleMultiple = (qid: string, opt: string, checked: boolean) => {
@@ -609,7 +599,7 @@ export default function ExamDetailPage() {
               icon: <Users style={{ width: 18, height: 18 }} />,
               label: '考试对象',
               value: `${targetAudience.type}（${targetAudience.detail}）`,
-              clickable: examAccessState === 'not-in-range',
+              clickable: false,
               key: 'audience',
             },
           ].map((item, i) => (
@@ -780,22 +770,6 @@ export default function ExamDetailPage() {
             >
               <BookOpen style={{ width: 18, height: 18, color: '#3370ff' }} /> 考试须知
             </h3>
-            <Select
-              value={examAccessState}
-              onValueChange={(v) => setExamAccessState(v as typeof examAccessState)}
-            >
-              <SelectTrigger
-                className="w-[140px] h-8 text-xs"
-                style={{ background: '#f5f6f7', border: '1px solid #e5e6eb' }}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="not-in-range">不在范围</SelectItem>
-                <SelectItem value="not-started">考试未开始</SelectItem>
-                <SelectItem value="started">考试已开始</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <div
             style={{
@@ -822,17 +796,13 @@ export default function ExamDetailPage() {
                 <PlayCircle style={{ width: 20, height: 20 }} />
                 {!currentUsage
                   ? '暂无考试安排'
-                  : examAccessState === 'not-in-range'
-                    ? '您不在本次考试范围内'
-                    : examAccessState === 'not-started'
-                      ? '考试尚未开始'
-                      : !isSceneTask &&
-                          (exam.status === 'draft' ||
-                            exam.status === 'pending' ||
-                            exam.status === 'rejected' ||
-                            exam.status === 'approved')
-                        ? '考试未发布'
-                        : '考试已结束'}
+                  : !isSceneTask &&
+                      (exam.status === 'draft' ||
+                        exam.status === 'pending' ||
+                        exam.status === 'rejected' ||
+                        exam.status === 'approved')
+                    ? '考试未发布'
+                    : '考试已结束'}
               </Button>
             )}
           </div>

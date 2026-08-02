@@ -40,13 +40,6 @@ func (s *TenantStore) Get(ctx context.Context, id string) (*domain.Tenant, error
 	return t, nil
 }
 
-// CodeExists 检查租户标识是否已存在。
-func (s *TenantStore) CodeExists(ctx context.Context, code string) (bool, error) {
-	var exists bool
-	err := s.q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenants WHERE code = $1)`, code).Scan(&exists)
-	return exists, err
-}
-
 // Update 更新租户基础信息与教育字段。
 func (s *TenantStore) Update(ctx context.Context, id string, p *TenantUpdateParams) error {
 	_, err := s.q.Exec(ctx, `

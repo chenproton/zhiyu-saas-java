@@ -152,7 +152,7 @@ function collectHrefs(items: MenuTreeItem[], acc: string[]): string[] {
 // 菜单路径集合完全来自静态导航配置，模块加载时计算一次即可，无需可变缓存
 const knownMenuPaths: ReadonlySet<string> = new Set(collectHrefs(buildMenuTree(), []))
 
-export function getKnownMenuPaths(): ReadonlySet<string> {
+function getKnownMenuPaths(): ReadonlySet<string> {
   return knownMenuPaths
 }
 

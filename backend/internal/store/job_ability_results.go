@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
@@ -195,8 +194,6 @@ func (s *JobAbilityResultStore) GetRecentAggregateLog(ctx context.Context, tenan
 	}
 	return &log, nil
 }
-
-var _ = pgx.ErrNoRows
 
 // CreateAggregateLog 写入一条 running 状态的汇聚日志并返回 id。
 func (s *JobAbilityResultStore) CreateAggregateLog(ctx context.Context, tenantID, careerPositionID string) (string, error) {
