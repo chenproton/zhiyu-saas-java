@@ -213,11 +213,12 @@ func (h *ApprovalHandler) isUserApproverForStep(ctx context.Context, record *dom
 	}
 	wf, err := h.Service.GetWorkflow(ctx, *record.WorkflowID, *record.TenantID)
 	if err != nil || len(wf.Steps) == 0 || record.CurrentStepIdx >= len(wf.Steps) {
-		return true
+		// fail-closed：工作流加载失败/步骤缺失时拒绝审批，避免绕过审批链
+		return false
 	}
 	stepMap, ok := wf.Steps[record.CurrentStepIdx].(map[string]interface{})
 	if !ok {
-		return true
+		return false
 	}
 	approverIdsRaw, _ := stepMap["approverIds"].([]interface{})
 	for _, a := range approverIdsRaw {
@@ -230,7 +231,8 @@ func (h *ApprovalHandler) isUserApproverForStep(ctx context.Context, record *dom
 
 func (h *ApprovalHandler) isStepComplete(workflow *domain.Workflow, record *domain.ApprovalRecord, stepIdx int) bool {
 	if workflow == nil || len(workflow.Steps) == 0 || stepIdx >= len(workflow.Steps) {
-		return true
+		// fail-closed：流程加载失败/步骤缺失时不视为完成，避免一步直达通过并发布
+		return false
 	}
 	stepMap, ok := workflow.Steps[stepIdx].(map[string]interface{})
 	if !ok {
@@ -272,7 +274,8 @@ func (h *ApprovalHandler) isStepComplete(workflow *domain.Workflow, record *doma
 
 func (h *ApprovalHandler) isLastStep(workflow *domain.Workflow, stepIdx int) bool {
 	if workflow == nil || len(workflow.Steps) == 0 {
-		return true
+		// fail-closed：流程缺失时不视为最后一步，避免直接进入发布
+		return false
 	}
 	return stepIdx >= len(workflow.Steps)-1
 }

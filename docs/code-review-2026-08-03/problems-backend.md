@@ -97,8 +97,8 @@
 | `handler/workflow_handler.go:58` | GET /workflows/{id} | Get 无归属校验（Update/Delete 有） ✅ 已修复（store Get/Update/Delete 补 tenant_id IS NOT DISTINCT FROM 过滤，兼容 NULL 租户全局流程） |
 | `handler/lesson_behavior_handler.go:108-142` | behavior-collection | Aggregate 跨租户读（含学生姓名/考勤/成绩）；Create 信任请求体伪造 |
 | `handler/student_portrait_handler.go:85-127` | POST /evaluation/portraits/generate | req.UserID 信任请求体 + store 无租户过滤 → 跨租户聚合学生画像 |
-| `handler/approval_handler.go:210-229,168-197` | POST /approvals/{id}/review | `isUserApproverForStep` fail-open（错误即放行）；GetWorkflow 失败时一步点击即 approved + 同步发布 |
-| `handler/portal_handler.go:29-35` | GET /portal/workspace/dashboard?role=x | role 参数完全信任前端，学生带 ?role=school_admin 获取全校统计 |
+| `handler/approval_handler.go:210-229,168-197` | POST /approvals/{id}/review | `isUserApproverForStep` fail-open（错误即放行）；GetWorkflow 失败时一步点击即 approved + 同步发布 ✅ 已修复（isUserApproverForStep/isStepComplete/isLastStep 全部 fail-closed） |
+| `handler/portal_handler.go:29-35` | GET /portal/workspace/dashboard?role=x | role 参数完全信任前端，学生带 ?role=school_admin 获取全校统计 ✅ 已修复（role 仅允许切换到用户自己绑定的角色） |
 | `handler/job_ability_result_handler.go:237-254` | GET aggregate/status?logId | 汇聚日志按 id 直查无租户 |
 | `handler/program_course_import_handler.go:61-98` | POST /import/program-courses/excel | 任意 programId 直接 DELETE 重建，跨租户清空他方案课程 |
 | `handler/position_export_handler.go:60-64` | POST /export/positions/excel | 按 ids 导出他租户岗位数据（无租户过滤） |
@@ -111,7 +111,7 @@
 | `handler/alliance_handler.go:105-282,440-564` | 联盟协议/里程碑/权限/字典 | List/Create/Update 跨租户（enterprise/project/milestone/permission/dictionary） |
 | `handler/course_node_handler.go:136-188,268-287` | Create/Reorder | CourseID 未校验归属，可挂节点到任意租户课程 |
 | `handler/exam_handler.go:235-279` | AddQuestion | FetchExamQuestion 无租户/题库过滤，可快照他租户题目（含答案） |
-| `handler/graduation_handler.go:330` | GET /evaluation/graduation/query | `*claims.TenantID` 无 nil 检查直接解引用 → panic |
+| `handler/graduation_handler.go:330` | GET /evaluation/graduation/query | `*claims.TenantID` 无 nil 检查直接解引用 → panic ✅ 已修复（TenantID nil 时返回 403） |
 
 **store 层（handler 已缓解但 TOCTOU / 签名无隔离，纵深防御缺失）**：
 `store/{abilities,courses,questions,question_banks,exams,exam_usages,certifications,micro_cert,node_quizzes,lesson_content,course_nodes,hybrid_modules,recommends,random_draw_questions,on_site_question_library,position_bindings,position_certificates,scenario_configs,banners,student_portraits,graduations,approvals,evaluation_methods,evaluation_results,resource_bindings,landing,alliance_*_store,terms,subscriptions,teaching_plans,organizations,industries,majors,org_types,resource_codes,task_evaluation,user_extension_fields,staff_titles,roles,tenant_admins,users,batches,scheduling,logs}.go` 的 `Get/Update/Delete` 普遍 `WHERE id=$1` 无 tenant 条件（约 60+ 处），其中 handler 已完全缓解的属于纵深缺陷，未缓解的即活漏洞（1.1 节已列）。

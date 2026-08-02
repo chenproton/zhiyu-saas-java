@@ -25,13 +25,22 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// 当前角色由前端传入（角色切换后端无状态），未传时取用户绑定的第一个角色
+	// 当前角色由前端传入（角色切换后端无状态），但只允许切换到用户自己绑定的角色，
+	// 防止学生带 ?role=school_admin 越权查看管理员视图
 	role := r.URL.Query().Get("role")
-	if role == "" && len(claims.RoleCodes) > 0 {
-		role = claims.RoleCodes[0]
+	roleAllowed := false
+	for _, c := range claims.RoleCodes {
+		if c == role {
+			roleAllowed = true
+			break
+		}
 	}
-	if role == "" {
-		role = "student"
+	if !roleAllowed {
+		if len(claims.RoleCodes) > 0 {
+			role = claims.RoleCodes[0]
+		} else {
+			role = "student"
+		}
 	}
 
 	isTeacher := role == "teacher" || role == "school" || role == "school_admin"
