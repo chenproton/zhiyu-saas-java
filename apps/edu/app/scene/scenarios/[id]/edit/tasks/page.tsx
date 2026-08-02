@@ -156,6 +156,7 @@ import { useToast } from '@zhiyu/ui'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { MajorSelect } from '@/components/shared/major-select'
 import { KnowledgePointFormDialog } from '@/components/shared/knowledge-point-form-dialog'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { GranularLessonSelectDialog } from '@/components/shared/granular-lesson-select-dialog'
 import { EvalMethodSelector } from '@/components/shared/eval-method-selector'
 import { KnowledgeSelector } from '@/components/shared/knowledge-selector'
@@ -2149,30 +2150,15 @@ export default function TasksEditPage() {
       />
 
       {/* Delete Confirm Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={!!deleteConfirmTask}
         onOpenChange={(open) => !open && setDeleteConfirmTask(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>确认删除</DialogTitle>
-            <DialogDescription>
-              确定要删除任务「{deleteConfirmTask?.name}」吗？删除后不可恢复。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmTask(null)}>
-              取消
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteConfirmTask && handleDeleteTask(deleteConfirmTask.id)}
-            >
-              确认删除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="确认删除"
+        description={`确定要删除任务「${deleteConfirmTask?.name}」吗？删除后不可恢复。`}
+        variant="destructive"
+        confirmText="确认删除"
+        onConfirm={() => deleteConfirmTask && handleDeleteTask(deleteConfirmTask.id)}
+      />
     </EditorShell>
   )
 }
