@@ -7,7 +7,7 @@ function storageKey(userId: string) {
   return STORAGE_PREFIX + userId
 }
 
-export function pickDefaultRole(roles?: Role[]): Role | undefined {
+function pickDefaultRole(roles?: Role[]): Role | undefined {
   if (!roles || roles.length === 0) return undefined
   for (const code of ROLE_PRIORITY) {
     const found = roles.find((r) => r.code === code)

@@ -20,8 +20,6 @@ export {
   EmptyHeader,
   EmptyTitle,
   EmptyDescription,
-  EmptyContent,
-  EmptyMedia,
 } from './components/ui/empty'
 
 export { PlatformSideNav } from './components/platform-shell'

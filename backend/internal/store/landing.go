@@ -3,8 +3,6 @@ package store
 import (
 	"context"
 	"time"
-
-	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 // LandingExam 落地考试（聚合 org/college）。
@@ -66,5 +64,3 @@ func (s *LandingStore) ListExams(ctx context.Context, tenantID string) ([]Landin
 	}
 	return items, rows.Err()
 }
-
-var _ = domain.JSONMap{}
