@@ -73,12 +73,16 @@ func (h *HybridModuleHandler) DeleteModule(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetHybridModule(r.Context(), id); err != nil {
+	if _, err := h.Service.GetHybridModule(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "混合模块不存在")
 		return
 	}
-	if err := h.Service.DeleteHybridModule(r.Context(), id); err != nil {
+	if err := h.Service.DeleteHybridModule(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除混合模块失败")
 		return
 	}

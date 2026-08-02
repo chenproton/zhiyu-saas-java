@@ -40,9 +40,9 @@ func (s *NodeQuizStore) ListConfig() ListQueryConfig[domain.NodeQuiz] {
 	}
 }
 
-// GetQuiz 查询单个测验。
-func (s *NodeQuizStore) GetQuiz(ctx context.Context, id string) (*domain.NodeQuiz, error) {
-	q, err := s.fetchQuiz(ctx, id)
+// GetQuiz 查询单个测验（限定租户）。
+func (s *NodeQuizStore) GetQuiz(ctx context.Context, id, tenantID string) (*domain.NodeQuiz, error) {
+	q, err := s.fetchQuiz(ctx, id, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -61,44 +61,47 @@ func (s *NodeQuizStore) CreateQuiz(ctx context.Context, tenantID string, p *Node
 	`, id, tenantID, p.NodeID, p.Title, p.Type, p.TimeLimit); err != nil {
 		return nil, err
 	}
-	return s.fetchQuiz(ctx, id)
+	return s.fetchQuiz(ctx, id, tenantID)
 }
 
-// UpdateQuiz 更新测验。
-func (s *NodeQuizStore) UpdateQuiz(ctx context.Context, id string, p *NodeQuizUpdateParams) (*domain.NodeQuiz, error) {
-	if _, err := s.fetchQuiz(ctx, id); err != nil {
+// UpdateQuiz 更新测验（限定租户）。
+func (s *NodeQuizStore) UpdateQuiz(ctx context.Context, id, tenantID string, p *NodeQuizUpdateParams) (*domain.NodeQuiz, error) {
+	if _, err := s.fetchQuiz(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE node_quizzes SET title = $1, type = $2, time_limit = $3
-		WHERE id = $4
-	`, p.Title, p.Type, p.TimeLimit, id); err != nil {
+		WHERE id = $4 AND tenant_id = $5
+	`, p.Title, p.Type, p.TimeLimit, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.fetchQuiz(ctx, id)
+	return s.fetchQuiz(ctx, id, tenantID)
 }
 
-// DeleteQuiz 在事务内删除测验及其题目。
-func (s *NodeQuizStore) DeleteQuiz(ctx context.Context, tx Queryer, id string) error {
-	if _, err := tx.Exec(ctx, `DELETE FROM node_quiz_questions WHERE quiz_id = $1`, id); err != nil {
+// DeleteQuiz 在事务内删除测验及其题目（限定租户）。
+func (s *NodeQuizStore) DeleteQuiz(ctx context.Context, tx Queryer, id, tenantID string) error {
+	if _, err := s.fetchQuiz(ctx, id, tenantID); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `DELETE FROM node_quizzes WHERE id = $1`, id)
+	if _, err := tx.Exec(ctx, `DELETE FROM node_quiz_questions WHERE quiz_id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `DELETE FROM node_quizzes WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
-// ListQuestions 查询测验题目。
-func (s *NodeQuizStore) ListQuestions(ctx context.Context, quizID string) ([]domain.NodeQuizQuestion, int, error) {
+// ListQuestions 查询测验题目（限定租户）。
+func (s *NodeQuizStore) ListQuestions(ctx context.Context, quizID, tenantID string) ([]domain.NodeQuizQuestion, int, error) {
 	var total int
-	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM node_quiz_questions WHERE quiz_id = $1`, quizID).Scan(&total); err != nil {
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM node_quiz_questions WHERE quiz_id = $1 AND tenant_id = $2`, quizID, tenantID).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	rows, err := s.q.Query(ctx, `
 		SELECT id, quiz_id, type, question, options, answer, score, sort_order
 		FROM node_quiz_questions
-		WHERE quiz_id = $1
+		WHERE quiz_id = $1 AND tenant_id = $2
 		ORDER BY sort_order ASC
-	`, quizID)
+	`, quizID, tenantID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -107,7 +110,7 @@ func (s *NodeQuizStore) ListQuestions(ctx context.Context, quizID string) ([]dom
 	return items, total, err
 }
 
-// AddQuestion 添加题目。
+// AddQuestion 添加题目（调用方已校验 quiz 归属）。
 func (s *NodeQuizStore) AddQuestion(ctx context.Context, tenantID, quizID string, p *NodeQuizQuestionParams) (*domain.NodeQuizQuestion, error) {
 	id := uuid.NewString()
 	if _, err := s.q.Exec(ctx, `
@@ -116,27 +119,27 @@ func (s *NodeQuizStore) AddQuestion(ctx context.Context, tenantID, quizID string
 	`, id, tenantID, quizID, p.Type, p.Question, p.Options, p.Answer, p.Score, p.SortOrder); err != nil {
 		return nil, err
 	}
-	return s.fetchQuestion(ctx, id)
+	return s.fetchQuestion(ctx, id, tenantID)
 }
 
-// UpdateQuestion 更新题目。
-func (s *NodeQuizStore) UpdateQuestion(ctx context.Context, questionID string, p *NodeQuizQuestionParams) (*domain.NodeQuizQuestion, error) {
-	if _, err := s.fetchQuestion(ctx, questionID); err != nil {
+// UpdateQuestion 更新题目（限定租户）。
+func (s *NodeQuizStore) UpdateQuestion(ctx context.Context, questionID, tenantID string, p *NodeQuizQuestionParams) (*domain.NodeQuizQuestion, error) {
+	if _, err := s.fetchQuestion(ctx, questionID, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE node_quiz_questions SET type = $1, question = $2, options = $3, answer = $4,
 			score = $5, sort_order = $6
-		WHERE id = $7
-	`, p.Type, p.Question, p.Options, p.Answer, p.Score, p.SortOrder, questionID); err != nil {
+		WHERE id = $7 AND tenant_id = $8
+	`, p.Type, p.Question, p.Options, p.Answer, p.Score, p.SortOrder, questionID, tenantID); err != nil {
 		return nil, err
 	}
-	return s.fetchQuestion(ctx, questionID)
+	return s.fetchQuestion(ctx, questionID, tenantID)
 }
 
-// GetQuestion 查询单个题目（校验存在）。
-func (s *NodeQuizStore) GetQuestion(ctx context.Context, questionID string) (*domain.NodeQuizQuestion, error) {
-	q, err := s.fetchQuestion(ctx, questionID)
+// GetQuestion 查询单个题目（校验存在，限定租户）。
+func (s *NodeQuizStore) GetQuestion(ctx context.Context, questionID, tenantID string) (*domain.NodeQuizQuestion, error) {
+	q, err := s.fetchQuestion(ctx, questionID, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -146,9 +149,9 @@ func (s *NodeQuizStore) GetQuestion(ctx context.Context, questionID string) (*do
 	return q, nil
 }
 
-// DeleteQuestion 删除题目。
-func (s *NodeQuizStore) DeleteQuestion(ctx context.Context, questionID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM node_quiz_questions WHERE id = $1`, questionID)
+// DeleteQuestion 删除题目（限定租户）。
+func (s *NodeQuizStore) DeleteQuestion(ctx context.Context, questionID, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM node_quiz_questions WHERE id = $1 AND tenant_id = $2`, questionID, tenantID)
 	return err
 }
 
@@ -177,23 +180,23 @@ type NodeQuizQuestionParams struct {
 	SortOrder int
 }
 
-func (s *NodeQuizStore) fetchQuiz(ctx context.Context, id string) (*domain.NodeQuiz, error) {
+func (s *NodeQuizStore) fetchQuiz(ctx context.Context, id, tenantID string) (*domain.NodeQuiz, error) {
 	var q domain.NodeQuiz
 	err := s.q.QueryRow(ctx, `
-		SELECT id, node_id, title, type, time_limit FROM node_quizzes WHERE id = $1
-	`, id).Scan(&q.ID, &q.NodeID, &q.Title, &q.Type, &q.TimeLimit)
+		SELECT id, node_id, title, type, time_limit FROM node_quizzes WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&q.ID, &q.NodeID, &q.Title, &q.Type, &q.TimeLimit)
 	if err != nil {
 		return nil, err
 	}
 	return &q, nil
 }
 
-func (s *NodeQuizStore) fetchQuestion(ctx context.Context, id string) (*domain.NodeQuizQuestion, error) {
+func (s *NodeQuizStore) fetchQuestion(ctx context.Context, id, tenantID string) (*domain.NodeQuizQuestion, error) {
 	var q domain.NodeQuizQuestion
 	err := s.q.QueryRow(ctx, `
 		SELECT id, quiz_id, type, question, options, answer, score, sort_order
-		FROM node_quiz_questions WHERE id = $1
-	`, id).Scan(&q.ID, &q.QuizID, &q.Type, &q.Question, &q.Options, &q.Answer, &q.Score, &q.SortOrder)
+		FROM node_quiz_questions WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&q.ID, &q.QuizID, &q.Type, &q.Question, &q.Options, &q.Answer, &q.Score, &q.SortOrder)
 	if err != nil {
 		return nil, err
 	}

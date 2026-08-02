@@ -56,37 +56,37 @@
 
 | 文件:行号 | 接口 | 问题 |
 |-----------|------|------|
-| `handler/scenario_handler.go:111-134` | GET /scene/scenarios/{id} | 无租户校验，学生可读他租户场景详情（含草稿） |
-| `handler/course_node_handler.go:116-134` | GET /lesson/nodes/{id} | 无租户校验，学生可读他租户节点全量内容 |
-| `handler/ability_handler.go:57-63` | GET /job/abilities/{id} | 无租户校验，学生可读他租户能力点 |
-| `handler/knowledge_point_handler.go:55-68` | GET /lesson/knowledge-points/{id} | 同上 |
+| `handler/scenario_handler.go:111-134` | GET /scene/scenarios/{id} | 无租户校验，学生可读他租户场景详情（含草稿） ✅ 已修复 |
+| `handler/course_node_handler.go:116-134` | GET /lesson/nodes/{id} | 无租户校验，学生可读他租户节点全量内容 ✅ 已修复 |
+| `handler/ability_handler.go:57-63` | GET /job/abilities/{id} | 无租户校验，学生可读他租户能力点 ✅ 已修复 |
+| `handler/knowledge_point_handler.go:55-68` | GET /lesson/knowledge-points/{id} | 同上 ✅ 已修复 |
 | `handler/position_certificate_handler.go:33-54` | GET /job/position-certificates | List 无租户过滤，泄露全平台岗位证书 |
 | `handler/random_draw_question_handler.go:30-48` | GET /evaluation/random-draw-questions | List TenantScoped=false + SelectColumns 含 answer → 全租户答案泄露 |
-| `handler/node_homework_handler.go:53-66` | GET /lesson/nodes/.../homeworks | 无租户校验 |
-| `handler/on_site_question_library_handler.go:53-61` | GET /library/on-site-questions/{id} | **完全无鉴权**（未登录可读，含答案） |
+| `handler/node_homework_handler.go:53-66` | GET /lesson/nodes/.../homeworks | 无租户校验 ✅ 已修复 |
+| `handler/on_site_question_library_handler.go:53-61` | GET /library/on-site-questions/{id} | **完全无鉴权**（未登录可读，含答案） ✅ 已修复（GetOwnership=true，登录+租户校验） |
 
 **businessUser / 其它角色组（跨租户读写删）**：
 
 | 文件:行号 | 接口 | 问题 |
 |-----------|------|------|
-| `handler/course_handler.go:202-358` | PUT/DELETE /lesson/courses/{id} | Update/Delete 无租户校验，可跨租户改写/级联删除课程 |
-| `handler/exam_handler.go:143-368` | exam 全部写接口 | Update/Delete/AddQuestion/RemoveQuestion/UpdateScore/BulkUpdateScores 全部跨租户 |
-| `handler/position_handler.go:172-452` | PUT/DELETE/SaveFull /job/positions/{id} | Update/Delete/SaveFull 无归属校验（Delete 取回 tenantID 仅用于清缓存，从未比对） |
-| `handler/question_handler.go:64-179` | GET/PUT/DELETE /evaluation/questions | 全部跨租户（含答案读取） |
-| `handler/question_bank_handler.go:119-208` | PUT/DELETE /evaluation/question-banks/{id} | 跨租户改/删题库（级联删题目） |
-| `handler/certification_handler.go:104-625` | 认证规则全部接口 | GetRule/UpdateRule/DeleteRule/ConfigItems/ConfigPoints/UpdateItem/DeletePoint/GetFullRule 全链路无租户校验 |
+| `handler/course_handler.go:202-358` | PUT/DELETE /lesson/courses/{id} | Update/Delete 无租户校验，可跨租户改写/级联删除课程 ✅ 已修复 |
+| `handler/exam_handler.go:143-368` | exam 全部写接口 | Update/Delete/AddQuestion/RemoveQuestion/UpdateScore/BulkUpdateScores 全部跨租户 ✅ 已修复（含题目侧租户过滤） |
+| `handler/position_handler.go:172-452` | PUT/DELETE/SaveFull /job/positions/{id} | Update/Delete/SaveFull 无归属校验（Delete 取回 tenantID 仅用于清缓存，从未比对） ✅ 已修复（Delete 补 verifyTenantOwnership 比对） |
+| `handler/question_handler.go:64-179` | GET/PUT/DELETE /evaluation/questions | 全部跨租户（含答案读取） ✅ 已修复 |
+| `handler/question_bank_handler.go:119-208` | PUT/DELETE /evaluation/question-banks/{id} | 跨租户改/删题库（级联删题目） ✅ 已修复 |
+| `handler/certification_handler.go:104-625` | 认证规则全部接口 | GetRule/UpdateRule/DeleteRule/ConfigItems/ConfigPoints/UpdateItem/DeletePoint/GetFullRule 全链路无租户校验 ✅ 已修复（统一 requireTenant + GetCertificationRuleByTenant） |
 | `handler/learn_road_handler.go:48-113` | learn-roads CRUD | crud 配置未设 CheckOwnership，store 也无租户过滤，双层失守 ✅ 已修复（store GetByID/Update/Delete 补 tenant_id 过滤，handler 经 TenantFn 传租户） |
-| `handler/hybrid_module_handler.go:44-86` | hybrid-modules | Upsert（body 可带 id）/Delete 跨租户 |
-| `handler/node_quiz_handler.go:93-257` | node-quizzes 全部操作 | 全链路无租户校验 |
-| `handler/task_evaluation_handler.go:86-164` | PUT /scene/tasks/{taskId}/evaluation-methods | 跨租户覆写方法行（乐观锁绕过）+ 为他租户任务建临时考试 |
-| `handler/course_resource_handler.go:117-160` | Bind/UnbindResource | 可绑定/解绑他租户课程资源，同步污染他租户 course.resource_ids |
-| `handler/node_resource_handler.go:160-171` | UnbindResource | 跨租户解绑任意绑定行 |
-| `handler/task_resource_handler.go:179-184` | UnbindResource | 同上 |
-| `handler/position_ability_handler.go:97-140` | position-ability-bindings | Update/Delete 跨租户 |
-| `handler/position_responsibility_handler.go:41-134` | position-responsibilities | 全部跨租户（实体 tenant_id 为 NULL） |
-| `handler/scenario_weight_handler.go:44-73` | PUT /scene/weights/{id} | body 带 id 跨租户覆盖 |
-| `handler/scenario_grade_handler.go:54-81` | PUT /scene/grade-mappings/{id} | body 带 id 跨租户覆盖；URL id 从未读取 |
-| `handler/task_knowledge_ability_handler.go:52-105` | UnbindKnowledge/UnbindAbility | 跨租户删除绑定 |
+| `handler/hybrid_module_handler.go:44-86` | hybrid-modules | Upsert（body 可带 id）/Delete 跨租户 ✅ 已修复 |
+| `handler/node_quiz_handler.go:93-257` | node-quizzes 全部操作 | 全链路无租户校验 ✅ 已修复 |
+| `handler/task_evaluation_handler.go:86-164` | PUT /scene/tasks/{taskId}/evaluation-methods | 跨租户覆写方法行（乐观锁绕过）+ 为他租户任务建临时考试 ✅ 已修复（新增 TaskTenantID 归属校验） |
+| `handler/course_resource_handler.go:117-160` | Bind/UnbindResource | 可绑定/解绑他租户课程资源，同步污染他租户 course.resource_ids ✅ 已修复 |
+| `handler/node_resource_handler.go:160-171` | UnbindResource | 跨租户解绑任意绑定行 ✅ 已修复 |
+| `handler/task_resource_handler.go:179-184` | UnbindResource | 同上 ✅ 已修复 |
+| `handler/position_ability_handler.go:97-140` | position-ability-bindings | Update/Delete 跨租户 ✅ 已修复 |
+| `handler/position_responsibility_handler.go:41-134` | position-responsibilities | 全部跨租户（实体 tenant_id 为 NULL） ✅ 已修复（校验关联岗位租户） |
+| `handler/scenario_weight_handler.go:44-73` | PUT /scene/weights/{id} | body 带 id 跨租户覆盖 ✅ 已修复（URL id 优先 + 双重租户校验） |
+| `handler/scenario_grade_handler.go:54-81` | PUT /scene/grade-mappings/{id} | body 带 id 跨租户覆盖；URL id 从未读取 ✅ 已修复（补齐 URL id 读取 + 租户校验） |
+| `handler/task_knowledge_ability_handler.go:52-105` | UnbindKnowledge/UnbindAbility | 跨租户删除绑定 ✅ 已修复 |
 | `handler/ability_domain_handler.go:94+` | ability-domains | store Get/Update/Delete 无租户（NULL 租户行绕过校验） |
 | `handler/appeal_handler.go:47-109` | appeals | Get/Process 跨租户（含个人信息），Process 接受任意状态字符串 |
 | `handler/evaluation_method_handler.go:55-75` | Toggle | 跨租户切换测评方式启用状态 |

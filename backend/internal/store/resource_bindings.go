@@ -160,6 +160,13 @@ func (s *ResourceBindingStore) Unbind(ctx context.Context, bindTable, id string,
 	return nil
 }
 
+// BindTargetID 查询绑定行关联的主实体 ID（租户归属校验用）。
+func (s *ResourceBindingStore) BindTargetID(ctx context.Context, bindTable, id string) (string, error) {
+	var bindID string
+	err := s.q.QueryRow(ctx, `SELECT `+bindColOf(bindTable)+` FROM `+bindTable+` WHERE id = $1`, id).Scan(&bindID)
+	return bindID, err
+}
+
 // bindColOf 绑定表的目标列名。
 func bindColOf(table string) string {
 	switch table {

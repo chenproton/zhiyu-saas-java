@@ -107,8 +107,12 @@ func (h *CertificationHandler) GetRule(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	rule, err := h.Service.GetCertificationRule(r.Context(), id)
+	rule, err := h.Service.GetCertificationRuleByTenant(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
@@ -181,8 +185,12 @@ func (h *CertificationHandler) UpdateRule(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificationRule(r.Context(), id); err != nil {
+	if _, err := h.Service.GetCertificationRuleByTenant(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
 	}
@@ -194,7 +202,7 @@ func (h *CertificationHandler) UpdateRule(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-	rule, err := h.Service.UpdateCertificationRule(r.Context(), id, req.CareerPositionID, req.RuleSource)
+	rule, err := h.Service.UpdateCertificationRule(r.Context(), id, tenantID, req.CareerPositionID, req.RuleSource)
 	if err != nil {
 		respondServerError(w, r, err, "更新认证规则失败")
 		return
@@ -208,12 +216,16 @@ func (h *CertificationHandler) DeleteRule(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificationRule(r.Context(), id); err != nil {
+	if _, err := h.Service.GetCertificationRuleByTenant(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
 	}
-	if err := h.Service.DeleteCertificationRule(r.Context(), id); err != nil {
+	if err := h.Service.DeleteCertificationRule(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除认证规则失败")
 		return
 	}
@@ -226,8 +238,12 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	ruleID := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificationRule(r.Context(), ruleID); err != nil {
+	if _, err := h.Service.GetCertificationRuleByTenant(r.Context(), ruleID, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
 	}
@@ -239,10 +255,6 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 		}
 		if req.Name == "" {
 			respondError(w, http.StatusBadRequest, "缺少必填字段")
-			return
-		}
-		tenantID, ok := requireTenant(w, r)
-		if !ok {
 			return
 		}
 		item, err := h.Service.CreateCertificationItem(r.Context(), tenantID, ruleID, req.Name, req.SortOrder)
@@ -268,8 +280,12 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	itemID := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificationItem(r.Context(), itemID); err != nil {
+	if _, err := h.Service.GetCertificationItemByTenant(r.Context(), itemID, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "认证项不存在")
 		return
 	}
@@ -281,10 +297,6 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 		}
 		if req.AbilityPointID == "" || req.RequiredLevel == "" {
 			respondError(w, http.StatusBadRequest, "缺少必填字段")
-			return
-		}
-		tenantID, ok := requireTenant(w, r)
-		if !ok {
 			return
 		}
 		if req.CustomLevelMapping == nil {
@@ -325,12 +337,16 @@ func (h *CertificationHandler) DeleteItem(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificationItem(r.Context(), id); err != nil {
+	if _, err := h.Service.GetCertificationItemByTenant(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "认证项不存在")
 		return
 	}
-	if err := h.Service.DeleteCertificationItem(r.Context(), id); err != nil {
+	if err := h.Service.DeleteCertificationItem(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除认证项失败")
 		return
 	}
@@ -343,12 +359,16 @@ func (h *CertificationHandler) DeletePoint(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificationPoint(r.Context(), id); err != nil {
+	if _, err := h.Service.GetCertificationPointByTenant(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "认证点不存在")
 		return
 	}
-	if err := h.Service.DeleteCertificationPoint(r.Context(), id); err != nil {
+	if err := h.Service.DeleteCertificationPoint(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除认证点失败")
 		return
 	}
@@ -449,8 +469,12 @@ func (h *CertificationHandler) UpdateItem(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetCertificationItem(r.Context(), id); err != nil {
+	if _, err := h.Service.GetCertificationItemByTenant(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "认证项不存在")
 		return
 	}
@@ -462,7 +486,7 @@ func (h *CertificationHandler) UpdateItem(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-	item, err := h.Service.UpdateCertificationItem(r.Context(), id, req.Name, req.SortOrder)
+	item, err := h.Service.UpdateCertificationItem(r.Context(), id, tenantID, req.Name, req.SortOrder)
 	if err != nil {
 		respondServerError(w, r, err, "更新认证项失败")
 		return
@@ -579,8 +603,12 @@ func (h *CertificationHandler) GetFullRule(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	ruleID := chi.URLParam(r, "id")
-	rule, err := h.Service.GetCertificationRule(r.Context(), ruleID)
+	rule, err := h.Service.GetCertificationRuleByTenant(r.Context(), ruleID, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return

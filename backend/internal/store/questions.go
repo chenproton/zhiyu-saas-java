@@ -25,9 +25,9 @@ func (s *QuestionStore) List(ctx context.Context, p ListParams, cfg ListQueryCon
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanQuestionRows)
 }
 
-// Get 查询单个题目。
-func (s *QuestionStore) Get(ctx context.Context, id string) (*domain.Question, error) {
-	q, err := s.fetchQuestion(ctx, id)
+// Get 查询单个题目（限定租户）。
+func (s *QuestionStore) Get(ctx context.Context, id, tenantID string) (*domain.Question, error) {
+	q, err := s.fetchQuestion(ctx, id, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -47,12 +47,12 @@ func (s *QuestionStore) Create(ctx context.Context, tenantID string, p *Question
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
-// Update 更新题目（bank_id 可选更新）。
-func (s *QuestionStore) Update(ctx context.Context, id string, p *QuestionUpdateParams) (*domain.Question, error) {
-	if _, err := s.fetchQuestion(ctx, id); err != nil {
+// Update 更新题目（bank_id 可选更新，限定租户）。
+func (s *QuestionStore) Update(ctx context.Context, id, tenantID string, p *QuestionUpdateParams) (*domain.Question, error) {
+	if _, err := s.fetchQuestion(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	setClauses := []string{
@@ -73,20 +73,20 @@ func (s *QuestionStore) Update(ctx context.Context, id string, p *QuestionUpdate
 		args = append(args, p.BankID)
 		argIdx++
 	}
-	args = append(args, id)
+	args = append(args, id, tenantID)
 	_, err := s.q.Exec(ctx, `
 		UPDATE questions SET `+joinSQL(setClauses, ", ")+`
-		WHERE id = $`+Itoa(argIdx)+`
+		WHERE id = $`+Itoa(argIdx)+` AND tenant_id = $`+Itoa(argIdx+1)+`
 	`, args...)
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
-// Delete 删除题目。
-func (s *QuestionStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM questions WHERE id = $1`, id)
+// Delete 删除题目（限定租户）。
+func (s *QuestionStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM questions WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -138,13 +138,13 @@ type QuestionUpdateParams struct {
 	Source          *string
 }
 
-func (s *QuestionStore) fetchQuestion(ctx context.Context, id string) (*domain.Question, error) {
+func (s *QuestionStore) fetchQuestion(ctx context.Context, id, tenantID string) (*domain.Question, error) {
 	var q domain.Question
 	var analysis, difficulty, creatorID, source, answerStr, optionsStr *string
 	err := s.q.QueryRow(ctx, `
 		SELECT id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at
-		FROM questions WHERE id = $1
-	`, id).Scan(
+		FROM questions WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(
 		&q.ID, &q.Code, &q.BankID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis,
 		&q.Score, &difficulty, &q.KnowledgePoints, &creatorID, &source, &q.Status, &q.CreatedAt,
 	)

@@ -59,9 +59,13 @@ func (h *QuestionHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := chi.URLParam(r, "id")
-	q, err := h.Service.GetQuestion(r.Context(), id)
+	q, err := h.Service.GetQuestion(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
@@ -131,8 +135,13 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetQuestion(r.Context(), id); err != nil {
+	if _, err := h.Service.GetQuestion(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
@@ -149,7 +158,7 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Answer = domain.JSONSlice{}
 	}
 
-	q, err := h.Service.UpdateQuestion(r.Context(), id, &store.QuestionUpdateParams{
+	q, err := h.Service.UpdateQuestion(r.Context(), id, tenantID, &store.QuestionUpdateParams{
 		BankID:          req.BankID,
 		Type:            req.Type,
 		Content:         req.Content,
@@ -175,12 +184,17 @@ func (h *QuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetQuestion(r.Context(), id); err != nil {
+	if _, err := h.Service.GetQuestion(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
-	if err := h.Service.DeleteQuestion(r.Context(), id); err != nil {
+	if err := h.Service.DeleteQuestion(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除题目失败")
 		return
 	}

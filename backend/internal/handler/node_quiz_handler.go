@@ -95,9 +95,13 @@ func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetQuiz(r.Context(), id); err != nil {
+	if _, err := h.Service.GetQuiz(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "测验不存在")
 		return
 	}
@@ -111,7 +115,7 @@ func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quiz, err := h.Service.UpdateQuiz(r.Context(), id, &store.NodeQuizUpdateParams{
+	quiz, err := h.Service.UpdateQuiz(r.Context(), id, tenantID, &store.NodeQuizUpdateParams{
 		Title:     req.Title,
 		Type:      req.Type,
 		TimeLimit: req.TimeLimit,
@@ -128,14 +132,18 @@ func (h *NodeQuizHandler) DeleteQuiz(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetQuiz(r.Context(), id); err != nil {
+	if _, err := h.Service.GetQuiz(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "测验不存在")
 		return
 	}
 
-	if err := h.Service.DeleteQuiz(r.Context(), id); err != nil {
+	if err := h.Service.DeleteQuiz(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除测验失败")
 		return
 	}
@@ -147,14 +155,18 @@ func (h *NodeQuizHandler) ListQuestions(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	quizID := chi.URLParam(r, "id")
-	if _, err := h.Service.GetQuiz(r.Context(), quizID); err != nil {
+	if _, err := h.Service.GetQuiz(r.Context(), quizID, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "测验不存在")
 		return
 	}
 
-	items, total, err := h.Service.ListQuizQuestions(r.Context(), quizID)
+	items, total, err := h.Service.ListQuizQuestions(r.Context(), quizID, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询题目失败")
 		return
@@ -167,9 +179,13 @@ func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	quizID := chi.URLParam(r, "id")
-	if _, err := h.Service.GetQuiz(r.Context(), quizID); err != nil {
+	if _, err := h.Service.GetQuiz(r.Context(), quizID, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "测验不存在")
 		return
 	}
@@ -180,10 +196,6 @@ func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Type == "" || req.Question == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
 		return
 	}
 
@@ -207,9 +219,13 @@ func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	questionID := chi.URLParam(r, "questionId")
-	if _, err := h.Service.GetQuizQuestion(r.Context(), questionID); err != nil {
+	if _, err := h.Service.GetQuizQuestion(r.Context(), questionID, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
@@ -223,7 +239,7 @@ func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	question, err := h.Service.UpdateQuizQuestion(r.Context(), questionID, &store.NodeQuizQuestionParams{
+	question, err := h.Service.UpdateQuizQuestion(r.Context(), questionID, tenantID, &store.NodeQuizQuestionParams{
 		Type:      req.Type,
 		Question:  req.Question,
 		Options:   req.Options,
@@ -243,13 +259,17 @@ func (h *NodeQuizHandler) DeleteQuestion(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	questionID := chi.URLParam(r, "questionId")
-	if _, err := h.Service.GetQuizQuestion(r.Context(), questionID); err != nil {
+	if _, err := h.Service.GetQuizQuestion(r.Context(), questionID, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
-	if err := h.Service.DeleteQuizQuestion(r.Context(), questionID); err != nil {
+	if err := h.Service.DeleteQuizQuestion(r.Context(), questionID, tenantID); err != nil {
 		respondServerError(w, r, err, "删除题目失败")
 		return
 	}

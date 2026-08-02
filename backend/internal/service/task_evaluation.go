@@ -26,6 +26,11 @@ func (s *TaskEvaluationService) ListMethods(ctx context.Context, taskID, tenantI
 	return s.st.TaskEval().FetchTaskMethods(ctx, taskID, tenantID)
 }
 
+// TaskTenantID 查询任务所属租户（归属校验用）。
+func (s *TaskEvaluationService) TaskTenantID(ctx context.Context, taskID string) (string, error) {
+	return s.st.ScenarioTasks().TaskTenantID(ctx, taskID)
+}
+
 // SaveMethods 保存任务测评方式（乐观锁 + 事务内软删/重写/临时考试联动）。
 func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskID, creatorID string, version int, inputs []*MethodSaveInput) ([]domain.TaskEvaluationMethod, error) {
 	if version > 0 {

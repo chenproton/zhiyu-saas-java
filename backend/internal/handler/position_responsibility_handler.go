@@ -50,6 +50,14 @@ func (h *PositionResponsibilityHandler) Get(w http.ResponseWriter, r *http.Reque
 		respondError(w, http.StatusNotFound, "岗位职责不存在")
 		return
 	}
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), item.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, item)
 }
 
@@ -65,6 +73,15 @@ func (h *PositionResponsibilityHandler) Create(w http.ResponseWriter, r *http.Re
 	}
 	if req.CareerPositionID == "" || req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), req.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
 		return
 	}
 
@@ -88,8 +105,17 @@ func (h *PositionResponsibilityHandler) Update(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetResponsibility(r.Context(), id); err != nil {
+	item, err := h.Service.GetResponsibility(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位职责不存在")
+		return
+	}
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), item.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
 		return
 	}
 
@@ -102,7 +128,7 @@ func (h *PositionResponsibilityHandler) Update(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	item, err := h.Service.UpdateResponsibility(r.Context(), id, &store.PositionResponsibilityParams{
+	item, err = h.Service.UpdateResponsibility(r.Context(), id, &store.PositionResponsibilityParams{
 		CareerPositionID: req.CareerPositionID,
 		Name:             req.Name,
 		Description:      req.Description,
@@ -122,8 +148,17 @@ func (h *PositionResponsibilityHandler) Delete(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetResponsibility(r.Context(), id); err != nil {
+	item, err := h.Service.GetResponsibility(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位职责不存在")
+		return
+	}
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), item.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
 		return
 	}
 	if err := h.Service.DeleteResponsibility(r.Context(), id); err != nil {

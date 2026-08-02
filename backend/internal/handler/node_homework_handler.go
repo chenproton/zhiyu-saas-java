@@ -56,8 +56,12 @@ func (h *NodeHomeworkHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	hw, err := h.Service.GetNodeHomework(r.Context(), id)
+	hw, err := h.Service.GetNodeHomework(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "作业不存在")
 		return
@@ -105,7 +109,11 @@ func (h *NodeHomeworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetNodeHomework(r.Context(), id); err != nil {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.GetNodeHomework(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "作业不存在")
 		return
 	}
@@ -119,7 +127,7 @@ func (h *NodeHomeworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hw, err := h.Service.UpdateNodeHomework(r.Context(), id, &store.NodeHomeworkUpdateParams{
+	hw, err := h.Service.UpdateNodeHomework(r.Context(), id, tenantID, &store.NodeHomeworkUpdateParams{
 		Title:          req.Title,
 		Requirement:    req.Requirement,
 		NeedAttachment: req.NeedAttachment,
@@ -139,12 +147,16 @@ func (h *NodeHomeworkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetNodeHomework(r.Context(), id); err != nil {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.GetNodeHomework(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "作业不存在")
 		return
 	}
 
-	if err := h.Service.DeleteNodeHomework(r.Context(), id); err != nil {
+	if err := h.Service.DeleteNodeHomework(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除作业失败")
 		return
 	}

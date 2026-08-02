@@ -103,6 +103,12 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	taskTenantID, err := h.Service.TaskTenantID(r.Context(), taskID)
+	if err != nil || taskTenantID != tenantID {
+		respondError(w, http.StatusNotFound, "场景任务不存在")
+		return
+	}
+
 	claims := middleware.CurrentUser(r)
 	creatorID := ""
 	if claims != nil {

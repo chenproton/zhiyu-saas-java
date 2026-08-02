@@ -123,8 +123,13 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	id := chi.URLParam(r, "id")
-	existing, err := h.Service.GetQuestionBank(r.Context(), id)
+	existing, err := h.Service.GetQuestionBankInTenant(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题库不存在")
 		return
@@ -157,12 +162,7 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		collaboratorDeptIDs = existing.CollaboratorDeptIDs
 	}
 
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	bank, err := h.Service.UpdateQuestionBank(r.Context(), id, &store.QuestionBankUpdateParams{
+	bank, err := h.Service.UpdateQuestionBank(r.Context(), id, tenantID, &store.QuestionBankUpdateParams{
 		TenantID:            tenantID,
 		Name:                req.Name,
 		Description:         req.Description,
@@ -190,8 +190,13 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	id := chi.URLParam(r, "id")
-	bank, err := h.Service.GetQuestionBank(r.Context(), id)
+	bank, err := h.Service.GetQuestionBankInTenant(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题库不存在")
 		return
@@ -200,7 +205,7 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "草稿库不允许删除")
 		return
 	}
-	if err := h.Service.DeleteQuestionBank(r.Context(), id); err != nil {
+	if err := h.Service.DeleteQuestionBank(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除题库失败")
 		return
 	}

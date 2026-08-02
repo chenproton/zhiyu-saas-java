@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -55,9 +56,37 @@ func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Requ
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
+	urlID := chi.URLParam(r, "id")
+	if urlID != "" {
+		req.ID = urlID
+	}
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
+	}
+
+	scenarioTenantID, err := h.Service.ScenarioTenantID(r.Context(), req.ScenarioID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "场景不存在")
+		return
+	}
+	if scenarioTenantID != nil && !verifyTenantOwnership(w, r, *scenarioTenantID) {
+		return
+	}
+	if req.ID != "" {
+		existingScenarioID, err := h.Service.WeightScenarioID(r.Context(), req.ID)
+		if err != nil {
+			respondError(w, http.StatusNotFound, "权重配置不存在")
+			return
+		}
+		existingTenantID, err := h.Service.ScenarioTenantID(r.Context(), existingScenarioID)
+		if err != nil {
+			respondError(w, http.StatusNotFound, "场景不存在")
+			return
+		}
+		if existingTenantID != nil && !verifyTenantOwnership(w, r, *existingTenantID) {
+			return
+		}
 	}
 
 	wgt, err := h.Service.UpsertWeight(r.Context(), tenantID, &store.ScenarioWeightUpsertParams{

@@ -28,19 +28,24 @@ func (s *EvaluationService) GetQuestionBank(ctx context.Context, id string) (*do
 	return s.st.QuestionBanks().Get(ctx, id)
 }
 
+// GetQuestionBankInTenant 查询单个题库（租户限定）。
+func (s *EvaluationService) GetQuestionBankInTenant(ctx context.Context, id, tenantID string) (*domain.QuestionBank, error) {
+	return s.st.QuestionBanks().GetScoped(ctx, id, tenantID)
+}
+
 // CreateQuestionBank 创建题库。
 func (s *EvaluationService) CreateQuestionBank(ctx context.Context, tenantID string, p *store.QuestionBankCreateParams) (*domain.QuestionBank, error) {
 	return s.st.QuestionBanks().Create(ctx, tenantID, p)
 }
 
-// UpdateQuestionBank 更新题库。
-func (s *EvaluationService) UpdateQuestionBank(ctx context.Context, id string, p *store.QuestionBankUpdateParams) (*domain.QuestionBank, error) {
-	return s.st.QuestionBanks().Update(ctx, id, p)
+// UpdateQuestionBank 更新题库（限定租户）。
+func (s *EvaluationService) UpdateQuestionBank(ctx context.Context, id, tenantID string, p *store.QuestionBankUpdateParams) (*domain.QuestionBank, error) {
+	return s.st.QuestionBanks().Update(ctx, id, tenantID, p)
 }
 
-// DeleteQuestionBank 删除题库。
-func (s *EvaluationService) DeleteQuestionBank(ctx context.Context, id string) error {
-	return s.st.QuestionBanks().Delete(ctx, id)
+// DeleteQuestionBank 删除题库（限定租户）。
+func (s *EvaluationService) DeleteQuestionBank(ctx context.Context, id, tenantID string) error {
+	return s.st.QuestionBanks().Delete(ctx, id, tenantID)
 }
 
 // EnsureDraftPool 确保用户草稿池存在。

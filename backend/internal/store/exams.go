@@ -95,13 +95,13 @@ type QuestionSnapshot struct {
 	Score    float64
 }
 
-// FetchQuestion 查询题目快照。
-func (s *ExamStore) FetchQuestion(ctx context.Context, questionID string) (*QuestionSnapshot, error) {
+// FetchQuestion 查询题目快照（限定租户）。
+func (s *ExamStore) FetchQuestion(ctx context.Context, tenantID, questionID string) (*QuestionSnapshot, error) {
 	var q QuestionSnapshot
 	var optionsStr, answerStr *string
 	err := s.q.QueryRow(ctx, `
-		SELECT id, type, content, options, answer, analysis, score FROM questions WHERE id = $1
-	`, questionID).Scan(&q.ID, &q.Type, &q.Content, &optionsStr, &answerStr, &q.Analysis, &q.Score)
+		SELECT id, type, content, options, answer, analysis, score FROM questions WHERE id = $1 AND tenant_id = $2
+	`, questionID, tenantID).Scan(&q.ID, &q.Type, &q.Content, &optionsStr, &answerStr, &q.Analysis, &q.Score)
 	if err != nil {
 		return nil, err
 	}

@@ -58,8 +58,12 @@ func (h *KnowledgePointHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	kp, err := h.Service.GetKnowledgePoint(r.Context(), id)
+	kp, err := h.Service.GetKnowledgePoint(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
@@ -114,8 +118,12 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetKnowledgePoint(r.Context(), id); err != nil {
+	if _, err := h.Service.GetKnowledgePoint(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
 	}
@@ -126,10 +134,6 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
 		return
 	}
 
@@ -158,12 +162,16 @@ func (h *KnowledgePointHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetKnowledgePoint(r.Context(), id); err != nil {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.GetKnowledgePoint(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
 	}
 
-	if err := h.Service.DeleteKnowledgePoint(r.Context(), id); err != nil {
+	if err := h.Service.DeleteKnowledgePoint(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除知识点失败")
 		return
 	}

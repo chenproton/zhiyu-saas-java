@@ -68,6 +68,13 @@ func (s *ScenarioWeightStore) ListConfig() ListQueryConfig[domain.ScenarioWeight
 	}
 }
 
+// ScenarioIDOf 查询权重配置所属场景（租户归属校验用）。
+func (s *ScenarioWeightStore) ScenarioIDOf(ctx context.Context, id string) (string, error) {
+	var scenarioID string
+	err := s.q.QueryRow(ctx, `SELECT scenario_id FROM scenario_weight_configs WHERE id = $1`, id).Scan(&scenarioID)
+	return scenarioID, err
+}
+
 // ScenarioWeightUpsertParams 权重 upsert 参数。
 type ScenarioWeightUpsertParams struct {
 	ID         string
@@ -152,6 +159,13 @@ func (s *ScenarioGradeStore) ListConfig() ListQueryConfig[domain.ScenarioGradeMa
 }
 
 // Delete 删除等级映射。
+// ScenarioIDOf 查询等级映射所属场景（租户归属校验用）。
+func (s *ScenarioGradeStore) ScenarioIDOf(ctx context.Context, id string) (string, error) {
+	var scenarioID string
+	err := s.q.QueryRow(ctx, `SELECT scenario_id FROM scenario_grade_mappings WHERE id = $1`, id).Scan(&scenarioID)
+	return scenarioID, err
+}
+
 // ScenarioGradeUpsertParams 等级映射 upsert 参数。
 type ScenarioGradeUpsertParams struct {
 	ID          string
@@ -203,6 +217,13 @@ func (s *TaskKnowledgeAbilityStore) BindKnowledge(ctx context.Context, tenantID,
 		&b.ID, &b.TaskID, &b.KnowledgePointID,
 	)
 	return b, err
+}
+
+// TaskIDOf 查询绑定行关联的任务 ID（租户归属校验用）。
+func (s *TaskKnowledgeAbilityStore) TaskIDOf(ctx context.Context, bindTable, id string) (string, error) {
+	var taskID string
+	err := s.q.QueryRow(ctx, `SELECT task_id FROM `+bindTable+` WHERE id = $1`, id).Scan(&taskID)
+	return taskID, err
 }
 
 // UnbindKnowledge 解绑知识绑定。

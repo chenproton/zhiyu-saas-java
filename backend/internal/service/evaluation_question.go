@@ -11,9 +11,9 @@ func (s *EvaluationService) ListQuestions(ctx context.Context, p store.ListParam
 	return s.st.Questions().List(ctx, p, cfg)
 }
 
-// GetQuestion 查询单个题目。
-func (s *EvaluationService) GetQuestion(ctx context.Context, id string) (*domain.Question, error) {
-	return s.st.Questions().Get(ctx, id)
+// GetQuestion 查询单个题目（限定租户）。
+func (s *EvaluationService) GetQuestion(ctx context.Context, id, tenantID string) (*domain.Question, error) {
+	return s.st.Questions().Get(ctx, id, tenantID)
 }
 
 // CreateQuestion 创建题目。
@@ -21,14 +21,14 @@ func (s *EvaluationService) CreateQuestion(ctx context.Context, tenantID string,
 	return s.st.Questions().Create(ctx, tenantID, p)
 }
 
-// UpdateQuestion 更新题目。
-func (s *EvaluationService) UpdateQuestion(ctx context.Context, id string, p *store.QuestionUpdateParams) (*domain.Question, error) {
-	return s.st.Questions().Update(ctx, id, p)
+// UpdateQuestion 更新题目（限定租户）。
+func (s *EvaluationService) UpdateQuestion(ctx context.Context, id, tenantID string, p *store.QuestionUpdateParams) (*domain.Question, error) {
+	return s.st.Questions().Update(ctx, id, tenantID, p)
 }
 
-// DeleteQuestion 删除题目。
-func (s *EvaluationService) DeleteQuestion(ctx context.Context, id string) error {
-	return s.st.Questions().Delete(ctx, id)
+// DeleteQuestion 删除题目（限定租户）。
+func (s *EvaluationService) DeleteQuestion(ctx context.Context, id, tenantID string) error {
+	return s.st.Questions().Delete(ctx, id, tenantID)
 }
 
 // BatchCreateQuestions 批量创建题目（事务内）。
@@ -45,9 +45,9 @@ func (s *EvaluationService) BatchCreateQuestions(ctx context.Context, tenantID, 
 	return count, err
 }
 
-// FetchExamQuestion 查询题目快照。
-func (s *EvaluationService) FetchExamQuestion(ctx context.Context, questionID string) (*store.QuestionSnapshot, error) {
-	return s.st.Exams().FetchQuestion(ctx, questionID)
+// FetchExamQuestion 查询题目快照（限定租户）。
+func (s *EvaluationService) FetchExamQuestion(ctx context.Context, tenantID, questionID string) (*store.QuestionSnapshot, error) {
+	return s.st.Exams().FetchQuestion(ctx, tenantID, questionID)
 }
 
 // AddExamQuestion 添加题目到试卷（事务内：添加 + 重算总分）。
