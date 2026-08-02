@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -117,6 +118,10 @@ func (h *ApprovalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Status: string(domain.ApprovalStatusPending), SubmitterID: user.UserID, History: domain.JSONSlice{},
 	})
 	if err != nil {
+		if errors.Is(err, store.ErrApprovalExists) {
+			respondError(w, http.StatusConflict, "该内容已有待审批记录")
+			return
+		}
 		respondServerError(w, r, err, "创建审批记录失败")
 		return
 	}

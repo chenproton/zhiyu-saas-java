@@ -13,6 +13,9 @@ type ApprovalStore struct {
 	q Queryer
 }
 
+// ErrApprovalExists 目标已有待审批记录。
+var ErrApprovalExists = errors.New("approval already pending")
+
 // NewApprovalStore 创建审批 store。
 func NewApprovalStore(q Queryer) *ApprovalStore {
 	return &ApprovalStore{q: q}
@@ -45,8 +48,17 @@ func (s *ApprovalStore) Get(ctx context.Context, id string) (*domain.ApprovalRec
 	return ar, nil
 }
 
-// Create 创建审批记录。
+// Create 创建审批记录（同一目标仅允许一条 pending 记录，唯一索引兜底）。
 func (s *ApprovalStore) Create(ctx context.Context, tenantID *string, p *ApprovalCreateParams) (*domain.ApprovalRecord, error) {
+	if p.Status == string(domain.ApprovalStatusPending) {
+		exists, err := s.ExistsPending(ctx, p.TargetType, p.TargetID)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, ErrApprovalExists
+		}
+	}
 	var id string
 	err := s.q.QueryRow(ctx, `
 		INSERT INTO approval_records (id, tenant_id, target_type, target_id, workflow_id,
@@ -58,6 +70,18 @@ func (s *ApprovalStore) Create(ctx context.Context, tenantID *string, p *Approva
 		return nil, err
 	}
 	return s.Get(ctx, id)
+}
+
+// ExistsPending 判断目标是否已有待审批记录。
+func (s *ApprovalStore) ExistsPending(ctx context.Context, targetType, targetID string) (bool, error) {
+	var exists bool
+	err := s.q.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM approval_records
+			WHERE target_type = $1 AND target_id = $2 AND status = $3
+		)
+	`, targetType, targetID, string(domain.ApprovalStatusPending)).Scan(&exists)
+	return exists, err
 }
 
 // UpdateHistory 更新历史（不改变状态）。
