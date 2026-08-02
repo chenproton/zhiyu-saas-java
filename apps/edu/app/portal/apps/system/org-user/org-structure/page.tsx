@@ -552,7 +552,7 @@ export default function OrgStructurePage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
+    <div className="min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-foreground">组织架构管理</h1>

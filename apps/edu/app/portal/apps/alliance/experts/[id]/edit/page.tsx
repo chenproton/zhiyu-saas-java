@@ -152,7 +152,7 @@ export default function AllianceExpertEditPage() {
           <ArrowLeft className="h-4 w-4 mr-1" />
           返回
         </Button>
-        <h1 className="text-xl font-bold">编辑专家</h1>
+        <h1 className="text-xl font-semibold text-foreground">编辑专家</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

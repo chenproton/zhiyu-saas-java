@@ -184,7 +184,7 @@ export default function PositionsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-foreground">职位管理</h1>
@@ -232,7 +232,7 @@ export default function PositionsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
+      <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="border-border">

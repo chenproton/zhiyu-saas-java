@@ -144,7 +144,7 @@ function ExamResultsContent() {
         </Button>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{usage.name}</h1>
+            <h1 className="text-xl font-semibold text-foreground tracking-tight">{usage.name}</h1>
             <Badge variant="outline" className="gap-1">
               <GraduationCap className="size-4" />
               在线考试

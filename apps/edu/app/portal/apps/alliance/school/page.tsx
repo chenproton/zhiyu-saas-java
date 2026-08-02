@@ -247,10 +247,10 @@ export default function AllianceSchoolPage() {
     )
 
   return (
-    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
+    <div className="min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">学校信息管理</h1>
+          <h1 className="text-xl font-semibold text-foreground">学校信息管理</h1>
           <p className="mt-1 text-sm text-muted-foreground">配置学校基本信息，与租户信息同步</p>
         </div>
         {tenant && (

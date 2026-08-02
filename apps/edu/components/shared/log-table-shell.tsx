@@ -41,7 +41,7 @@ export function LogTableShell<T extends { id: string }>({
 }: LogTableShellProps<T>) {
   return (
     <>
-      <div className="rounded-lg border border-border bg-card">
+      <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="border-border">

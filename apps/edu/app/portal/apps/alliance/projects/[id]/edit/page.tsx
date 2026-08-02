@@ -110,7 +110,7 @@ export default function AllianceProjectEditPage() {
           <ArrowLeft className="h-4 w-4 mr-1" />
           返回
         </Button>
-        <h1 className="text-xl font-bold">编辑合作项目</h1>
+        <h1 className="text-xl font-semibold text-foreground">编辑合作项目</h1>
         <Badge variant={item.publishStatus === 'published' ? 'default' : 'secondary'}>
           {item.publishStatus === 'published' ? '已发布' : '草稿'}
         </Badge>

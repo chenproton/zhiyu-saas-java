@@ -213,8 +213,8 @@ export function EditorShell({
 
   const pageTitle = title ? (
     <div className="mb-8">
-      <h1 className="text-2xl font-semibold text-gray-800">{title}</h1>
-      {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+      <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+      {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
     </div>
   ) : null
 

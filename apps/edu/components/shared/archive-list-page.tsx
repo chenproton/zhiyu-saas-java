@@ -130,8 +130,8 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">{pageTitle}</h1>
-        <p className="text-muted-foreground mt-1">{pageDescription}</p>
+        <h1 className="text-xl font-semibold text-foreground">{pageTitle}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{pageDescription}</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-start">

@@ -84,7 +84,7 @@ export default function AllianceBrandsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">品牌运营管理</h1>
+        <h1 className="text-xl font-semibold text-foreground">品牌运营管理</h1>
         <p className="text-muted-foreground text-sm mt-1">管理六大品牌模块内容，配置前台展示</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

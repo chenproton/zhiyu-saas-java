@@ -195,7 +195,7 @@ export default function PostRecommendPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
             岗位目标推荐管理
           </h1>
           <p className="text-muted-foreground mt-1">

@@ -189,7 +189,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   }
 
   return (
-    <div className="p-4 sm:p-6 min-h-full">
+    <div className="min-h-full">
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">{title}</h1>
@@ -242,7 +242,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
 
       {!loading && (
         <>
-          <div className="rounded-lg border border-border bg-card">
+          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
             <Table>
               <TableHeader>
                 <TableRow className="border-border">{renderTableHeader()}</TableRow>

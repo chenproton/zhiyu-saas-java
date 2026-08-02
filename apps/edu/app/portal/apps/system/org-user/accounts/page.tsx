@@ -186,18 +186,11 @@ export default function AccountsPage() {
   })
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="搜索姓名或账户..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="pl-9 w-full sm:w-64"
-            />
-          </div>
+    <div className="min-h-full">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">账户管理</h1>
+          <p className="mt-1 text-sm text-muted-foreground">管理系统登录账户，绑定角色并维护账户状态</p>
         </div>
         <div className="flex items-center gap-2">
           {selectedAccounts.length > 0 && (
@@ -218,6 +211,18 @@ export default function AccountsPage() {
         </div>
       </div>
 
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="搜索姓名或账户..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
       {error && (
         <div className="mb-4 rounded border border-destructive/20 bg-destructive/10 p-4 text-destructive flex items-start gap-3">
           <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -232,7 +237,7 @@ export default function AccountsPage() {
         </div>
       )}
 
-      <div className="bg-card rounded border">
+      <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>

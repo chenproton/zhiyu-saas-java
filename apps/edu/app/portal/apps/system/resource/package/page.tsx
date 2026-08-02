@@ -101,7 +101,7 @@ export default function PackagePage() {
     )
 
   return (
-    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
+    <div className="min-h-full">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">套餐情况查看</h1>
         <p className="mt-1 text-sm text-muted-foreground">查看当前租户购买的套餐内容和功能模块</p>

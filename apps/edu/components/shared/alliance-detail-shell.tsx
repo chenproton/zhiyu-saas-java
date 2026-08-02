@@ -88,8 +88,8 @@ export function AllianceDetailShell<T extends string = string>({
           </Button>
         )}
         <div>
-          <h1 className="text-xl font-bold">{title}</h1>
-          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
         </div>
         {statusBadge}
         <div className="flex-1" />

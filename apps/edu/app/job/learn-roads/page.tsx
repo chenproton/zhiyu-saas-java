@@ -702,7 +702,7 @@ export default function LearnRoadsPage() {
   const ListView = () => (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">岗位学习路径管理</h1>
+        <h1 className="text-xl font-semibold text-foreground">岗位学习路径管理</h1>
         <p className="text-muted-foreground mt-1">按岗位管理学习路径中场景与任务的展示顺序</p>
       </div>
 

@@ -298,7 +298,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   }
 
   return (
-    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
+    <div className="min-h-full">
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">{title}</h1>

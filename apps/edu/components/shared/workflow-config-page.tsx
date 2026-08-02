@@ -220,8 +220,8 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">审批流程配置</h1>
-          <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+          <h1 className="text-xl font-semibold text-foreground">审批流程配置</h1>
+          <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
         </div>
         <Dialog
           open={isCreateOpen}

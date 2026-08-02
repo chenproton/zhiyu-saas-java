@@ -257,10 +257,10 @@ export default function TenantPage() {
     )
 
   return (
-    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
+    <div className="min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">租户信息管理</h1>
+          <h1 className="text-xl font-semibold text-foreground">租户信息管理</h1>
           <p className="mt-1 text-sm text-muted-foreground">查看和编辑当前租户及学校信息</p>
         </div>
         {tenant && (

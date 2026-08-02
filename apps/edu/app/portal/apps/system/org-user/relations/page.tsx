@@ -117,18 +117,11 @@ export default function RelationsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="搜索关系..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="pl-9 w-full sm:w-64"
-            />
-          </div>
+    <div className="min-h-full">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">人员关系管理</h1>
+          <p className="mt-1 text-sm text-muted-foreground">维护用户之间的上下级、协同等业务关系</p>
         </div>
         <Button onClick={() => setShowDialog(true)} size="sm">
           <Plus className="h-4 w-4 mr-1" />
@@ -136,7 +129,19 @@ export default function RelationsPage() {
         </Button>
       </div>
 
-      <div className="bg-card rounded border">
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="搜索关系..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>

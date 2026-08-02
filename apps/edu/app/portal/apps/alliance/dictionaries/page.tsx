@@ -260,7 +260,7 @@ export default function AllianceDictionariesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">字典管理</h1>
+        <h1 className="text-xl font-semibold text-foreground">字典管理</h1>
         <p className="text-muted-foreground text-sm mt-1">维护联盟业务字典，供各模块下拉使用</p>
       </div>
       <div className="flex gap-1 border-b overflow-x-auto">
