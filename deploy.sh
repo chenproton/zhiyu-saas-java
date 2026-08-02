@@ -715,10 +715,6 @@ CACHED_LOCK=""; [[ -f "$BUILD_CACHE/lock-hash" ]] && CACHED_LOCK=$(cat "$BUILD_C
 if $BUILD_FRONTEND; then
   log "构建前端"
 
-  log "  质量门禁: pnpm typecheck / pnpm lint"
-  (cd "$BUILD_ROOT" && pnpm typecheck) || die "pnpm typecheck 失败"
-  (cd "$BUILD_ROOT" && pnpm lint) || die "pnpm lint 失败"
-
   if $NEED_INSTALL; then
     log "  安装依赖..."
     # 先试离线安装（需要 node_modules 或 pnpm store 已就绪）
@@ -727,6 +723,10 @@ if $BUILD_FRONTEND; then
     (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
     echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
   fi
+
+  log "  质量门禁: pnpm typecheck / pnpm lint"
+  (cd "$BUILD_ROOT" && pnpm typecheck) || die "pnpm typecheck 失败"
+  (cd "$BUILD_ROOT" && pnpm lint) || die "pnpm lint 失败"
 
   [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/.next"
   (cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
