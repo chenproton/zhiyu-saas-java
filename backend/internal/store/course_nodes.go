@@ -67,6 +67,27 @@ func (s *CourseNodeStore) List(ctx context.Context, p ListParams, cfg ListQueryC
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanCourseNodeBaseRows)
 }
 
+// ListConfig 返回课程节点列表查询配置，SQL 片段沉淀在 store 层。
+func (s *CourseNodeStore) ListConfig() ListQueryConfig[CourseNodeBase] {
+	return ListQueryConfig[CourseNodeBase]{
+		Table:         "system_course_nodes n",
+		SelectColumns: "n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name, n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status",
+		TenantScoped:  true,
+		OrderBy:       "n.sort_order ASC, n.id ASC",
+		NoPagination:  true,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if p.Values["courseId"] != "" {
+				qb.AddCondition("n.course_id = " + qb.NextArg(p.Values["courseId"]))
+			}
+			if p.Values["parentId"] != "" {
+				qb.AddCondition("n.parent_id = " + qb.NextArg(p.Values["parentId"]))
+			} else if p.Values["rootOnly"] == "true" {
+				qb.AddCondition("n.parent_id IS NULL")
+			}
+		},
+	}
+}
+
 // Get 查询单个节点基础行。
 func (s *CourseNodeStore) Get(ctx context.Context, id string) (*CourseNodeBase, error) {
 	n, err := s.fetchNode(ctx, id)

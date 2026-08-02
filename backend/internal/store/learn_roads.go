@@ -21,6 +21,22 @@ func NewLearnRoadsStore(q Queryer) *LearnRoadsStore {
 	return &LearnRoadsStore{q: q}
 }
 
+// ListConfig 返回学习路径列表查询配置，SQL 片段沉淀在 store 层。
+func (s *LearnRoadsStore) ListConfig() ListQueryConfig[domain.LearnRoad] {
+	return ListQueryConfig[domain.LearnRoad]{
+		Table:         "learn_roads",
+		SelectColumns: "id, name, description, position_ids, steps, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if name := p.Values["name"]; name != "" {
+				qb.AddCondition("name ILIKE " + qb.NextArg("%"+name+"%"))
+			}
+		},
+		ScanRows: s.ScanRows,
+	}
+}
+
 type LearnRoadCreateParams struct {
 	TenantID    string
 	Name        string

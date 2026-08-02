@@ -27,20 +27,7 @@ func (h *HybridModuleHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	nodeID := r.URL.Query().Get("nodeId")
-	cfg := store.ListQueryConfig[domain.HybridNodeModule]{
-		Table:         "hybrid_node_modules",
-		SelectColumns: "id, node_id, module_key, mode, data",
-		TenantScoped:  true,
-		OrderBy:       "module_key ASC",
-		NoPagination:  true,
-		ScanRows:      store.ScanHybridModuleRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if nodeID != "" {
-				qb.AddCondition("node_id = " + qb.NextArg(nodeID))
-			}
-		},
-	}
+	cfg := h.Service.Store().HybridModules().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

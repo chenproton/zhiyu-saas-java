@@ -24,6 +24,30 @@ func (s *OrganizationStore) List(ctx context.Context, p ListParams, cfg ListQuer
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanOrgRows)
 }
 
+// ListConfig 返回组织列表查询配置，SQL 片段沉淀在 store 层。
+func (s *OrganizationStore) ListConfig() ListQueryConfig[domain.Organization] {
+	return ListQueryConfig[domain.Organization]{
+		Table:         "organizations",
+		SelectColumns: "id, tenant_id, name, type_id, parent_id, sort_order, member_count, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		OrderBy:       "sort_order ASC, created_at ASC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if tenantID := p.Values["tenantId"]; tenantID != "" {
+				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
+			}
+			if typeID := p.Values["typeId"]; typeID != "" {
+				qb.AddCondition("type_id = " + qb.NextArg(typeID))
+			}
+			if parentID := p.Values["parentId"]; parentID != "" {
+				qb.AddCondition("parent_id = " + qb.NextArg(parentID))
+			} else if p.Values["rootOnly"] == "true" {
+				qb.AddCondition("parent_id IS NULL")
+			}
+		},
+	}
+}
+
 // Tree 查询租户下全部组织（用于构建树）。
 func (s *OrganizationStore) Tree(ctx context.Context, tenantID string) ([]domain.Organization, error) {
 	query := `
@@ -156,9 +180,9 @@ func (s *OrganizationStore) DeleteSubtree(ctx context.Context, tx Queryer, id, t
 		if i > 0 {
 			ph = append(ph, ',')
 		}
-		ph = append(ph, []byte("$"+itoa(i+1))...)
+		ph = append(ph, []byte("$"+Itoa(i+1))...)
 	}
-	tenantPh := "$" + itoa(len(args)+1)
+	tenantPh := "$" + Itoa(len(args)+1)
 	args = append(args, tenantID)
 
 	if _, err := tx.Exec(ctx, `

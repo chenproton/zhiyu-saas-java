@@ -28,23 +28,7 @@ type UpdateResourceCodeRequest struct {
 }
 
 func (h *ResourceCodeHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
-	resType := r.URL.Query().Get("type")
-	cfg := store.ListQueryConfig[domain.ResourceCode]{
-		Table:         "resource_codes",
-		SelectColumns: "id, tenant_id, code, name, description, type, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		ScanRows:      store.ScanResourceCodeRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if tenantID != "" {
-				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
-			}
-			if resType != "" {
-				qb.AddCondition("type = " + qb.NextArg(resType))
-			}
-		},
-	}
+	cfg := h.Service.Store().ResourceCodes().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

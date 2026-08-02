@@ -25,6 +25,39 @@ func (s *EvaluationResultStore) List(ctx context.Context, p ListParams, cfg List
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanSceneEvaluationResultRows)
 }
 
+// ListConfig 返回评价结果列表查询配置，SQL 片段沉淀在 store 层。
+// 学生（handler 注入 ownOnly=evaluateeId）仅可查看本人的评价结果，忽略其余过滤参数。
+func (s *EvaluationResultStore) ListConfig() ListQueryConfig[domain.SceneEvaluationResult] {
+	return ListQueryConfig[domain.SceneEvaluationResult]{
+		Table:         "scene_evaluation_results",
+		SelectColumns: "id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		ScanRows:      ScanSceneEvaluationResultRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if p.Values["ownOnly"] == "true" {
+				qb.AddCondition("evaluatee_id = " + qb.NextArg(p.Values["evaluateeId"]))
+				return
+			}
+			if taskID := p.Values["taskId"]; taskID != "" {
+				qb.AddCondition("task_id = " + qb.NextArg(taskID))
+			}
+			if sceneID := p.Values["sceneId"]; sceneID != "" {
+				qb.AddCondition("scene_id = " + qb.NextArg(sceneID))
+			}
+			if methodKey := p.Values["methodKey"]; methodKey != "" {
+				qb.AddCondition("method_key = " + qb.NextArg(methodKey))
+			}
+			if evaluateeID := p.Values["evaluateeId"]; evaluateeID != "" {
+				qb.AddCondition("evaluatee_id = " + qb.NextArg(evaluateeID))
+			}
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
 // Get 查询单个评价结果。
 func (s *EvaluationResultStore) Get(ctx context.Context, id string) (*domain.SceneEvaluationResult, error) {
 	res, err := s.fetchResult(ctx, id)

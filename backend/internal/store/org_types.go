@@ -91,3 +91,22 @@ func (s *OrgTypesStore) ScanRows(rows pgx.Rows) ([]domain.OrgType, error) {
 	}
 	return items, nil
 }
+
+// ListConfig 返回组织类型列表查询配置，SQL 片段沉淀在 store 层。
+func (s *OrgTypesStore) ListConfig() ListQueryConfig[domain.OrgType] {
+	return ListQueryConfig[domain.OrgType]{
+		Table:         "org_types",
+		SelectColumns: "id, tenant_id, name, category, description, is_default, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if tenantID := p.Values["tenantId"]; tenantID != "" {
+				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
+			}
+			if category := p.Values["category"]; category != "" {
+				qb.AddCondition("category = " + qb.NextArg(category))
+			}
+		},
+		ScanRows: s.ScanRows,
+	}
+}

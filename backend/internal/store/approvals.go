@@ -36,6 +36,28 @@ func (s *ApprovalStore) List(ctx context.Context, p ListParams, cfg ListQueryCon
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanApprovalRows)
 }
 
+// ListConfig 返回审批记录列表查询配置，SQL 片段沉淀在 store 层。
+func (s *ApprovalStore) ListConfig() ListQueryConfig[domain.ApprovalRecord] {
+	return ListQueryConfig[domain.ApprovalRecord]{
+		Table:         "approval_records",
+		SelectColumns: "id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id, history, created_at, updated_at",
+		TenantScoped:  true,
+		OrderBy:       "created_at DESC",
+		ScanRows:      ScanApprovalRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+			if targetType := p.Values["targetType"]; targetType != "" {
+				qb.AddCondition("target_type = " + qb.NextArg(targetType))
+			}
+			if submitterID := p.Values["submitterId"]; submitterID != "" {
+				qb.AddCondition("submitter_id = " + qb.NextArg(submitterID))
+			}
+		},
+	}
+}
+
 // Get 查询单个审批记录。
 func (s *ApprovalStore) Get(ctx context.Context, id string) (*domain.ApprovalRecord, error) {
 	ar, err := s.fetchApproval(ctx, id)

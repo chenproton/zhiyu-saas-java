@@ -102,6 +102,22 @@ func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string
 	})
 }
 
+// ListConfig 返回角色列表查询配置，SQL 片段沉淀在 store 层。
+func (s *RolesStore) ListConfig() ListQueryConfig[domain.Role] {
+	return ListQueryConfig[domain.Role]{
+		Table:         "roles",
+		SelectColumns: "id, tenant_id, code, name, description, permissions, user_count, status, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		ScanRows:      s.ScanRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
 func (s *RolesStore) ScanRows(rows pgx.Rows) ([]domain.Role, error) {
 	items := make([]domain.Role, 0)
 	for rows.Next() {

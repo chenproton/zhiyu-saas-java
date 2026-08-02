@@ -22,6 +22,25 @@ func (s *StudentPortraitStore) ListPortraits(ctx context.Context, p ListParams, 
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanStudentPortraitRows)
 }
 
+// ListConfig 返回学生画像列表查询配置，SQL 片段沉淀在 store 层。
+func (s *StudentPortraitStore) ListConfig() ListQueryConfig[domain.StudentAbilityPortrait] {
+	return ListQueryConfig[domain.StudentAbilityPortrait]{
+		Table:         "student_ability_portraits",
+		SelectColumns: "id, user_id, career_position_id, overall_grade, domain_scores, class_rank, class_total, major_rank, major_total, recommend_positions, updated_at, completed_courses, completed_scenes, total_credits, archive_count, course_records, graduation_qualified, attendance_rate, diploma_badge, dual_badge",
+		TenantScoped:  true,
+		OrderBy:       "updated_at DESC",
+		ScanRows:      ScanStudentPortraitRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if userID := p.Values["userId"]; userID != "" {
+				qb.AddCondition("user_id = " + qb.NextArg(userID))
+			}
+			if positionID := p.Values["careerPositionId"]; positionID != "" {
+				qb.AddCondition("career_position_id = " + qb.NextArg(positionID))
+			}
+		},
+	}
+}
+
 // GetPortrait 查询单个画像。
 func (s *StudentPortraitStore) GetPortrait(ctx context.Context, id, tenantID string) (*domain.StudentAbilityPortrait, error) {
 	p, err := s.fetchPortrait(ctx, `WHERE id = $1 AND tenant_id = $2`, id, tenantID)
@@ -43,6 +62,21 @@ func (s *StudentPortraitStore) GetPortraitByUserPosition(ctx context.Context, us
 // ListArchives 查询学生档案列表。
 func (s *StudentPortraitStore) ListArchives(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.StudentAbilityArchive]) ([]domain.StudentAbilityArchive, int, error) {
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanStudentArchiveRows)
+}
+
+// ArchivesListConfig 返回学生档案列表查询配置，SQL 片段沉淀在 store 层。
+func (s *StudentPortraitStore) ArchivesListConfig() ListQueryConfig[domain.StudentAbilityArchive] {
+	return ListQueryConfig[domain.StudentAbilityArchive]{
+		Table:         "student_ability_archives",
+		SelectColumns: "id, user_id, material_type, material_name, issuing_org, obtain_date, level, audit_status, audit_remark, converted_credit, direction, is_enabled, created_at",
+		TenantScoped:  true,
+		ScanRows:      ScanStudentArchiveRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if userID := p.Values["userId"]; userID != "" {
+				qb.AddCondition("user_id = " + qb.NextArg(userID))
+			}
+		},
+	}
 }
 
 // GetArchive 查询单个档案。

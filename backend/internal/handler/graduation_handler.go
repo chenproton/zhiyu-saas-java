@@ -50,18 +50,7 @@ func (h *GraduationHandler) ListTopics(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	cfg := store.ListQueryConfig[domain.GraduationProjectTopic]{
-		Table:         "graduation_project_topics",
-		SelectColumns: "id, tenant_id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		ScanRows:      store.ScanGraduationTopicRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Graduations().ListTopicsConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -264,19 +253,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.GraduationProjectArchive]{
-		Table:         "graduation_project_archives",
-		SelectColumns: "id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification",
-		TenantScoped:  true,
-		TenantColumn:  "tenant_id",
-		OrderBy:       "last_updated DESC",
-		ScanRows:      store.ScanGraduationArchiveRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if topicID := p.Values["topicId"]; topicID != "" {
-				qb.AddCondition("topic_id = " + qb.NextArg(topicID))
-			}
-		},
-	}
+	cfg := h.Service.Store().Graduations().ListArchivesConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -322,22 +299,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.GraduationProjectEvaluation]{
-		Table:         "graduation_project_evaluations",
-		SelectColumns: "id, topic_id, user_id, advisor_score, enterprise_score, defense_score, comprehensive_grade, is_excellent, status, evaluated_at",
-		TenantScoped:  true,
-		TenantColumn:  "tenant_id",
-		OrderBy:       "evaluated_at DESC",
-		ScanRows:      store.ScanGraduationEvaluationRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if topicID := p.Values["topicId"]; topicID != "" {
-				qb.AddCondition("topic_id = " + qb.NextArg(topicID))
-			}
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Graduations().ListEvaluationsConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

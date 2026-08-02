@@ -24,6 +24,22 @@ func (s *GraduationStore) ListTopics(ctx context.Context, p ListParams, cfg List
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanGraduationTopicRows)
 }
 
+// ListTopicsConfig 返回毕业设计课题列表查询配置，SQL 片段沉淀在 store 层。
+func (s *GraduationStore) ListTopicsConfig() ListQueryConfig[domain.GraduationProjectTopic] {
+	return ListQueryConfig[domain.GraduationProjectTopic]{
+		Table:         "graduation_project_topics",
+		SelectColumns: "id, tenant_id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		ScanRows:      ScanGraduationTopicRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
 // GetTopic 查询单个课题。
 func (s *GraduationStore) GetTopic(ctx context.Context, id string) (*domain.GraduationProjectTopic, error) {
 	t, err := s.fetchTopic(ctx, id)
@@ -130,6 +146,23 @@ func (s *GraduationStore) ListArchives(ctx context.Context, p ListParams, cfg Li
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanGraduationArchiveRows)
 }
 
+// ListArchivesConfig 返回毕业档案列表查询配置，SQL 片段沉淀在 store 层。
+func (s *GraduationStore) ListArchivesConfig() ListQueryConfig[domain.GraduationProjectArchive] {
+	return ListQueryConfig[domain.GraduationProjectArchive]{
+		Table:         "graduation_project_archives",
+		SelectColumns: "id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification",
+		TenantScoped:  true,
+		TenantColumn:  "tenant_id",
+		OrderBy:       "last_updated DESC",
+		ScanRows:      ScanGraduationArchiveRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if topicID := p.Values["topicId"]; topicID != "" {
+				qb.AddCondition("topic_id = " + qb.NextArg(topicID))
+			}
+		},
+	}
+}
+
 // CreateArchive 创建档案。
 func (s *GraduationStore) CreateArchive(ctx context.Context, tenantID, topicID, userID, phase string) (*domain.GraduationProjectArchive, error) {
 	var id string
@@ -160,6 +193,26 @@ func (s *GraduationStore) GetArchive(ctx context.Context, id string) (*domain.Gr
 // ListEvaluations 查询评价列表。
 func (s *GraduationStore) ListEvaluations(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.GraduationProjectEvaluation]) ([]domain.GraduationProjectEvaluation, int, error) {
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanGraduationEvaluationRows)
+}
+
+// ListEvaluationsConfig 返回毕业评价列表查询配置，SQL 片段沉淀在 store 层。
+func (s *GraduationStore) ListEvaluationsConfig() ListQueryConfig[domain.GraduationProjectEvaluation] {
+	return ListQueryConfig[domain.GraduationProjectEvaluation]{
+		Table:         "graduation_project_evaluations",
+		SelectColumns: "id, topic_id, user_id, advisor_score, enterprise_score, defense_score, comprehensive_grade, is_excellent, status, evaluated_at",
+		TenantScoped:  true,
+		TenantColumn:  "tenant_id",
+		OrderBy:       "evaluated_at DESC",
+		ScanRows:      ScanGraduationEvaluationRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if topicID := p.Values["topicId"]; topicID != "" {
+				qb.AddCondition("topic_id = " + qb.NextArg(topicID))
+			}
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
 }
 
 // CreateEvaluation 创建评价。

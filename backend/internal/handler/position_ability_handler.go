@@ -34,20 +34,7 @@ func (h *PositionAbilityHandler) ListBindings(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.PositionAbilityBinding]{
-		Table:         "position_ability_bindings",
-		SelectColumns: "id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
-		TenantScoped:  true,
-		OrderBy:       "id DESC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
-				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
-			}
-			if responsibilityID := p.Values["responsibilityId"]; responsibilityID != "" {
-				qb.AddCondition("responsibility_id = " + qb.NextArg(responsibilityID))
-			}
-		},
-	}
+	cfg := h.Service.Store().PositionAbilities().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

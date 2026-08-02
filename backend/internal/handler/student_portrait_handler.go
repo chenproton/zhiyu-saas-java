@@ -42,29 +42,14 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.StudentAbilityPortrait]{
-		Table:         "student_ability_portraits",
-		SelectColumns: `id, user_id, career_position_id, overall_grade, domain_scores, class_rank, class_total, major_rank, major_total, recommend_positions, updated_at, completed_courses, completed_scenes, total_credits, archive_count, course_records, graduation_qualified, attendance_rate, diploma_badge, dual_badge`,
-		TenantScoped:  true,
-		OrderBy:       "updated_at DESC",
-		ScanRows:      store.ScanStudentPortraitRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if middleware.HasRole(claims, "student") {
-				qb.AddCondition("user_id = " + qb.NextArg(claims.UserID))
-				return
-			}
-			if userID := p.Values["userId"]; userID != "" {
-				qb.AddCondition("user_id = " + qb.NextArg(userID))
-			}
-			if positionID := p.Values["careerPositionId"]; positionID != "" {
-				qb.AddCondition("career_position_id = " + qb.NextArg(positionID))
-			}
-		},
-	}
+	cfg := h.Service.Store().StudentPortraits().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
+	}
+	if middleware.HasRole(claims, "student") {
+		params.Values["userId"] = claims.UserID
 	}
 	items, total, err := h.Service.ListStudentPortraits(r.Context(), params, cfg)
 	if err != nil {
@@ -148,17 +133,7 @@ func (h *StudentPortraitHandler) ListArchives(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.StudentAbilityArchive]{
-		Table:         "student_ability_archives",
-		SelectColumns: `id, user_id, material_type, material_name, issuing_org, obtain_date, level, audit_status, audit_remark, converted_credit, direction, is_enabled, created_at`,
-		TenantScoped:  true,
-		ScanRows:      store.ScanStudentArchiveRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if userID := p.Values["userId"]; userID != "" {
-				qb.AddCondition("user_id = " + qb.NextArg(userID))
-			}
-		},
-	}
+	cfg := h.Service.Store().StudentPortraits().ArchivesListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

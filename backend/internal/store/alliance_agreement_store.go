@@ -38,6 +38,23 @@ func (s *AllianceStore) ScanAgreementRows(rows pgx.Rows) ([]domain.AllianceAgree
 	return items, nil
 }
 
+// ListConfig 返回合作协议列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AllianceStore) ListAgreementsConfig() ListQueryConfig[domain.AllianceAgreement] {
+	return ListQueryConfig[domain.AllianceAgreement]{
+		Table:         "alliance_agreements",
+		SelectColumns: "id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		OrderBy:       "created_at DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+		ScanRows: s.ScanAgreementRows,
+	}
+}
+
 func (s *AllianceStore) CreateAgreement(ctx context.Context, a *domain.AllianceAgreement) (string, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `

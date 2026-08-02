@@ -707,11 +707,11 @@ func (s *PortalStore) PeriodLabelMap(ctx context.Context, tenantID *string) map[
 	for i, n := range names {
 		switch {
 		case i < 4:
-			m[n] = "上午 " + itoa(i+1)
+			m[n] = "上午 " + Itoa(i+1)
 		case i < 8:
-			m[n] = "下午 " + itoa(i-3)
+			m[n] = "下午 " + Itoa(i-3)
 		default:
-			m[n] = "晚自习 " + itoa(i-7)
+			m[n] = "晚自习 " + Itoa(i-7)
 		}
 	}
 	return m

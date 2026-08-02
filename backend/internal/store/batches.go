@@ -193,7 +193,7 @@ func (s *BatchStore) CreateFields(ctx context.Context, table string, fields Batc
 	vals = append(vals, extraVals...)
 	placeholders := make([]string, len(cols))
 	for i := range cols {
-		placeholders[i] = "$" + itoa(i+1)
+		placeholders[i] = "$" + Itoa(i+1)
 	}
 	query := "INSERT INTO " + table + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ")"
 	_, err := s.q.Exec(ctx, query, vals...)
@@ -209,12 +209,12 @@ func (s *BatchStore) UpdateFields(ctx context.Context, table string, fields Batc
 	args := []any{fields.Name, fields.Code, fields.OrgNodeID, fields.MajorID, fields.WorkflowID}
 	argIdx := 6
 	if fields.Status != nil {
-		setClauses = append(setClauses, "status = $"+itoa(argIdx))
+		setClauses = append(setClauses, "status = $"+Itoa(argIdx))
 		args = append(args, *fields.Status)
 		argIdx++
 	}
 	args = append(args, id)
-	query := "UPDATE " + table + " SET " + strings.Join(setClauses, ", ") + " WHERE id = $" + itoa(argIdx)
+	query := "UPDATE " + table + " SET " + strings.Join(setClauses, ", ") + " WHERE id = $" + Itoa(argIdx)
 	_, err := s.q.Exec(ctx, query, args...)
 	return err
 }

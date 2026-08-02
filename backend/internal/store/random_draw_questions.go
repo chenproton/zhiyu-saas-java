@@ -94,6 +94,23 @@ func (s *RandomDrawQuestionStore) fetchQuestion(ctx context.Context, id string) 
 	return &q, nil
 }
 
+// ListConfig 返回随机抽题列表查询配置，SQL 片段沉淀在 store 层。
+func (s *RandomDrawQuestionStore) ListConfig() ListQueryConfig[domain.RandomDrawQuestion] {
+	return ListQueryConfig[domain.RandomDrawQuestion]{
+		Table:         "random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id",
+		SelectColumns: "rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at",
+		TenantScoped:  false,
+		SearchColumns: []string{"rdq.name", "rdq.description", "m.name"},
+		DefaultLimit:  200,
+		ScanRows:      ScanRandomDrawQuestionRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if majorID := p.Values["majorId"]; majorID != "" {
+				qb.AddCondition("rdq.major_id = " + qb.NextArg(majorID))
+			}
+		},
+	}
+}
+
 // ScanRandomDrawQuestionRows 扫描随机抽题行。
 func ScanRandomDrawQuestionRows(rows pgx.Rows) ([]domain.RandomDrawQuestion, error) {
 	items := make([]domain.RandomDrawQuestion, 0)

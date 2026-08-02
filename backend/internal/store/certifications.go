@@ -54,6 +54,23 @@ func (s *CertificationStore) ListRules(ctx context.Context, p ListParams, cfg Li
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanCertificationRuleRows)
 }
 
+// ListRulesConfig 返回认证规则列表查询配置，SQL 片段沉淀在 store 层。
+func (s *CertificationStore) ListRulesConfig() ListQueryConfig[domain.CertificationRule] {
+	return ListQueryConfig[domain.CertificationRule]{
+		Table:         "certification_rules",
+		SelectColumns: "id, career_position_id, status, rule_source, level_mapping, created_at, updated_at",
+		TenantScoped:  true,
+		OrderBy:       "created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      ScanCertificationRuleRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
 // GetRule 查询单个规则。
 func (s *CertificationStore) GetRule(ctx context.Context, id string) (*domain.CertificationRule, error) {
 	rule, err := s.fetchRule(ctx, id, "")

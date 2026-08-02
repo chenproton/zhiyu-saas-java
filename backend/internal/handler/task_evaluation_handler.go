@@ -177,17 +177,7 @@ func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.RubricTemplate]{
-		Table:         "rubric_templates",
-		SelectColumns: "id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		SearchParam:   "keyword",
-		OrderBy:       "updated_at DESC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			qb.AddCondition("is_deleted = false")
-		},
-	}
+	cfg := h.Service.Store().TaskEval().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

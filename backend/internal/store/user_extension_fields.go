@@ -90,8 +90,8 @@ func (s *UserExtensionFieldStore) EnsureDefaultSlots(ctx context.Context, tenant
 		if existing[slot] {
 			continue
 		}
-		fieldKey := "field_" + itoa(slot)
-		fieldName := "扩展字段" + itoa(slot)
+		fieldKey := "field_" + Itoa(slot)
+		fieldName := "扩展字段" + Itoa(slot)
 		if _, err := s.q.Exec(ctx, `
 			INSERT INTO user_extension_fields (id, tenant_id, field_key, field_name, field_type, is_enabled, is_required, applicable_role_codes, slot_number)
 			VALUES ($1, $2, $3, $4, 'text', FALSE, FALSE, '{}', $5)

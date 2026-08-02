@@ -24,6 +24,22 @@ func (s *NodeQuizStore) ListQuizzes(ctx context.Context, p ListParams, cfg ListQ
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanNodeQuizRows)
 }
 
+// ListConfig 返回测验列表查询配置，SQL 片段沉淀在 store 层。
+func (s *NodeQuizStore) ListConfig() ListQueryConfig[domain.NodeQuiz] {
+	return ListQueryConfig[domain.NodeQuiz]{
+		Table:         "node_quizzes",
+		SelectColumns: "id, node_id, title, type, time_limit",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		NoPagination:  true,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if p.Values["nodeId"] != "" {
+				qb.AddCondition("node_id = " + qb.NextArg(p.Values["nodeId"]))
+			}
+		},
+	}
+}
+
 // GetQuiz 查询单个测验。
 func (s *NodeQuizStore) GetQuiz(ctx context.Context, id string) (*domain.NodeQuiz, error) {
 	q, err := s.fetchQuiz(ctx, id)

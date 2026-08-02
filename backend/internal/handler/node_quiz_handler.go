@@ -44,19 +44,7 @@ func (h *NodeQuizHandler) ListQuizzes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nodeID := r.URL.Query().Get("nodeId")
-	cfg := store.ListQueryConfig[domain.NodeQuiz]{
-		Table:         "node_quizzes",
-		SelectColumns: "id, node_id, title, type, time_limit",
-		TenantScoped:  true,
-		OrderBy:       "id DESC",
-		NoPagination:  true,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if nodeID != "" {
-				qb.AddCondition("node_id = " + qb.NextArg(nodeID))
-			}
-		},
-	}
+	cfg := h.Service.Store().NodeQuizzes().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

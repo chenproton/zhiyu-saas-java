@@ -9,13 +9,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type MicroCertHandler struct {
-	Service *service.MicroCertService
-	Store   *store.MicroCertStore
+	Store *store.MicroCertStore
 }
 
 type CreateMicroCertTemplateRequest struct {
@@ -38,13 +36,8 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	items, total, err := executeListQuery[domain.MicroCertTemplate](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.MicroCertTemplate]{
-		Table:         "micro_cert_templates",
-		SelectColumns: "id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"title"},
-		ScanRows:      h.Store.ScanTemplateRows,
-	})
+	cfg := h.Store.ListTemplateConfig()
+	items, total, err := executeListQuery[domain.MicroCertTemplate](r.Context(), h.Store.Q(), r, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -58,18 +51,8 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.CertIssuanceRecord](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.CertIssuanceRecord]{
-		Table:         "cert_issuance_records",
-		SelectColumns: "id, template_id, user_id, cert_number, issue_date, expire_date, status, revoked_at, revoke_reason",
-		TenantScoped:  true,
-		OrderBy:       "issue_date DESC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if templateID := p.Values["templateId"]; templateID != "" {
-				qb.AddCondition("template_id = " + qb.NextArg(templateID))
-			}
-		},
-		ScanRows: h.Store.ScanIssuanceRows,
-	})
+	cfg := h.Store.ListIssuanceConfig()
+	items, total, err := executeListQuery[domain.CertIssuanceRecord](r.Context(), h.Store.Q(), r, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

@@ -30,20 +30,7 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.ScenarioGradeMapping]{
-		Table:         "scenario_grade_mappings",
-		SelectColumns: "id, scenario_id, task_id, level, min_score, max_score, description, color",
-		TenantScoped:  true,
-		OrderBy:       "min_score ASC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if scenarioID := p.Values["scenarioId"]; scenarioID != "" {
-				qb.AddCondition("scenario_id = " + qb.NextArg(scenarioID))
-			}
-			if taskID := p.Values["taskId"]; taskID != "" {
-				qb.AddCondition("task_id = " + qb.NextArg(taskID))
-			}
-		},
-	}
+	cfg := h.Service.Store().ScenarioGrades().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

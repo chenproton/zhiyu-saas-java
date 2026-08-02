@@ -38,20 +38,7 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.KnowledgePoint]{
-		Table:         "knowledge_points",
-		SelectColumns: "id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, source_type, source_id, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if linkedStr := p.Values["linked"]; linkedStr != "" {
-				qb.AddCondition("linked = " + qb.NextArg(linkedStr == "true"))
-			}
-			if creatorID := p.Values["creatorId"]; creatorID != "" {
-				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
-			}
-		},
-	}
+	cfg := h.Service.Store().KnowledgePoints().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

@@ -50,6 +50,24 @@ func (s *ScenarioWeightStore) Upsert(ctx context.Context, tenantID string, p *Sc
 	return w, err
 }
 
+// ListConfig 返回权重配置列表查询配置，SQL 片段沉淀在 store 层。
+func (s *ScenarioWeightStore) ListConfig() ListQueryConfig[domain.ScenarioWeightConfig] {
+	return ListQueryConfig[domain.ScenarioWeightConfig]{
+		Table:         "scenario_weight_configs",
+		SelectColumns: "id, scenario_id, task_id, weight",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if scenarioID := p.Values["scenarioId"]; scenarioID != "" {
+				qb.AddCondition("scenario_id = " + qb.NextArg(scenarioID))
+			}
+			if taskID := p.Values["taskId"]; taskID != "" {
+				qb.AddCondition("task_id = " + qb.NextArg(taskID))
+			}
+		},
+	}
+}
+
 // ScenarioWeightUpsertParams 权重 upsert 参数。
 type ScenarioWeightUpsertParams struct {
 	ID         string
@@ -113,6 +131,24 @@ func (s *ScenarioGradeStore) Upsert(ctx context.Context, tenantID string, p *Sce
 		FROM scenario_grade_mappings WHERE id = $1
 	`, id).Scan(&m.ID, &m.ScenarioID, &m.TaskID, &m.Level, &m.MinScore, &m.MaxScore, &m.Description, &m.Color)
 	return m, err
+}
+
+// ListConfig 返回等级映射列表查询配置，SQL 片段沉淀在 store 层。
+func (s *ScenarioGradeStore) ListConfig() ListQueryConfig[domain.ScenarioGradeMapping] {
+	return ListQueryConfig[domain.ScenarioGradeMapping]{
+		Table:         "scenario_grade_mappings",
+		SelectColumns: "id, scenario_id, task_id, level, min_score, max_score, description, color",
+		TenantScoped:  true,
+		OrderBy:       "min_score ASC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if scenarioID := p.Values["scenarioId"]; scenarioID != "" {
+				qb.AddCondition("scenario_id = " + qb.NextArg(scenarioID))
+			}
+			if taskID := p.Values["taskId"]; taskID != "" {
+				qb.AddCondition("task_id = " + qb.NextArg(taskID))
+			}
+		},
+	}
 }
 
 // Delete 删除等级映射。

@@ -79,7 +79,7 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
 		WHERE `+where+`
 		ORDER BY r.evaluated_at DESC
-		LIMIT `+itoa(limit)+` OFFSET `+itoa(offset), qb.Args()...)
+		LIMIT `+Itoa(limit)+` OFFSET `+Itoa(offset), qb.Args()...)
 	if err != nil {
 		return nil, 0, err
 	}

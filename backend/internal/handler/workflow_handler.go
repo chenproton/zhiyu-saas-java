@@ -35,14 +35,7 @@ func (h *WorkflowHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	cfg := store.ListQueryConfig[domain.Workflow]{
-		Table:         "workflows",
-		SelectColumns: "id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		OrderBy:       "created_at DESC",
-		ScanRows:      store.ScanWorkflowRows,
-	}
+	cfg := h.Service.Store().Workflows().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

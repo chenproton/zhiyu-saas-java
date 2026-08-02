@@ -7,13 +7,12 @@ import (
 	"net/http"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/service"
+
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CertificateLibraryHandler struct {
-	Service *service.CertificateLibraryService
-	Store   *store.CertificateLibraryStore
+	Store *store.CertificateLibraryStore
 }
 
 // CertificateLibraryRequest 证书创建/更新请求体（均为可选字段，更新时按需合并）。
@@ -25,20 +24,7 @@ type CertificateLibraryRequest struct {
 }
 
 func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
-	creatorID := r.URL.Query().Get("creatorId")
-
-	items, total, err := executeListQuery[domain.CertificateLibraryItem](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.CertificateLibraryItem]{
-		Table:         "certificate_library",
-		SelectColumns: "id, tenant_id, name, url, description, image_url, creator_id, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "description"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if creatorID != "" {
-				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
-			}
-		},
-		ScanRows: h.Store.ScanRows,
-	})
+	items, total, err := executeListQuery[domain.CertificateLibraryItem](r.Context(), h.Store.Q(), r, h.Store.ListConfig())
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

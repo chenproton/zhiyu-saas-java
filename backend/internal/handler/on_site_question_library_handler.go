@@ -8,13 +8,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type OnSiteQuestionLibraryHandler struct {
-	Service *service.OnSiteQuestionLibraryService
-	Store   *store.OnSiteQuestionLibraryStore
+	Store *store.OnSiteQuestionLibraryStore
 }
 
 type CreateOnSiteQuestionLibraryRequest struct {
@@ -38,13 +36,8 @@ type UpdateOnSiteQuestionLibraryRequest struct {
 }
 
 func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OnSiteQuestionLibraryItem](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.OnSiteQuestionLibraryItem]{
-		Table:         "on_site_question_library",
-		SelectColumns: "id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"question_text", "answer"},
-		ScanRows:      h.Store.ScanRows,
-	})
+	cfg := h.Store.ListConfig()
+	items, total, err := executeListQuery[domain.OnSiteQuestionLibraryItem](r.Context(), h.Store.Q(), r, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

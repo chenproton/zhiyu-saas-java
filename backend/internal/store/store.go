@@ -67,6 +67,7 @@ type Store struct {
 	evalMethods      *EvaluationMethodStore
 	appeals          *AppealStore
 	evalResults      *EvaluationResultStore
+	nodeEvalResults  *NodeEvaluationResultStore
 	studentPortrait  *StudentPortraitStore
 	jobAbilityRes    *JobAbilityResultStore
 	graduations      *GraduationStore
@@ -150,6 +151,7 @@ func newStore(q Queryer) *Store {
 		evalMethods:      NewEvaluationMethodStore(q),
 		appeals:          NewAppealStore(q),
 		evalResults:      NewEvaluationResultStore(q),
+		nodeEvalResults:  NewNodeEvaluationResultStore(q),
 		studentPortrait:  NewStudentPortraitStore(q),
 		jobAbilityRes:    NewJobAbilityResultStore(q),
 		graduations:      NewGraduationStore(q),
@@ -432,6 +434,11 @@ func (s *Store) Appeals() *AppealStore {
 // EvaluationResults 返回评价结果 store。
 func (s *Store) EvaluationResults() *EvaluationResultStore {
 	return s.evalResults
+}
+
+// NodeEvaluationResults 返回节点测评结果 store。
+func (s *Store) NodeEvaluationResults() *NodeEvaluationResultStore {
+	return s.nodeEvalResults
 }
 
 // StudentPortraits 返回学生画像 store。

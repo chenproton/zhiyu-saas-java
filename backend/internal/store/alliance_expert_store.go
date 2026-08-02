@@ -56,6 +56,23 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 	return items, nil
 }
 
+// ListConfig 返回专家列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AllianceStore) ListExpertsConfig() ListQueryConfig[domain.AllianceExpert] {
+	return ListQueryConfig[domain.AllianceExpert]{
+		Table:         "alliance_experts",
+		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "title", "industry"},
+		OrderBy:       "created_at DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+		ScanRows: s.ScanExpertRows,
+	}
+}
+
 func (s *AllianceStore) CreateExpert(ctx context.Context, e *domain.AllianceExpert) (string, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `

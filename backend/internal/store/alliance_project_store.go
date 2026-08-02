@@ -48,6 +48,23 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 	return items, nil
 }
 
+// ListConfig 返回合作项目列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AllianceStore) ListProjectsConfig() ListQueryConfig[domain.AllianceProject] {
+	return ListQueryConfig[domain.AllianceProject]{
+		Table:         "alliance_projects",
+		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		OrderBy:       "created_at DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if phase := p.Values["phase"]; phase != "" {
+				qb.AddCondition("phase = " + qb.NextArg(phase))
+			}
+		},
+		ScanRows: s.ScanProjectRows,
+	}
+}
+
 func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string) (*domain.AllianceProject, error) {
 	var p domain.AllianceProject
 	var typ, description, budget, coverImage *string

@@ -28,17 +28,7 @@ func (h *PositionResponsibilityHandler) List(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.PositionResponsibility]{
-		Table:         "position_responsibilities",
-		SelectColumns: "id, career_position_id, name, description, sort_order",
-		TenantScoped:  false,
-		OrderBy:       "sort_order ASC, id ASC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
-				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
-			}
-		},
-	}
+	cfg := h.Service.Store().PositionResponsibilities().ListConfig()
 	params, _ := listParamsFromRequest(r, false)
 	items, total, err := h.Service.ListResponsibilities(r.Context(), params, cfg)
 	if err != nil {

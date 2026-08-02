@@ -1,17 +1,17 @@
 # zhiyu-saas 后端分层重构计划
 
-> 状态：已确认，P0 立规完成，P1/P2 已完成，P3 部分完成（格式化清零；列表 SQL 下沉 8/45 域，剩余域配置仍驻留 handler 层；审计修复进行中）
+> 状态：已完成。P0-P3 全部收口：列表 SQL 配置全量下沉 store（非冻结区 handler 零 SQL 片段）、service 按域重组文件、DI 统一 store-only、工具函数收敛、store 纯逻辑单测补齐。
 > 关联红线：见 `AGENTS.md`「二、交付要求」第 6 条
 
 ## 一、现状基线（实测，2026-08-02 更新）
 
 | 包                | 文件/行数         | 状态                                                                                                                                                                                          |
 | ----------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| handler           | 121 文件          | 除豁免冻结区（import/export/template 22 文件）与测试外，无直写 SQL、无 `*pgxpool.Pool` 字段                                                                                                   |
-| store             | 65 文件           | 独立类型模式成熟：`NewXxxStore(q)` 工厂；列表查询配置（`ListConfig()`/`AdminListConfig()` 等）已覆盖 exam/position/question_bank/scenario/scheduling/teaching_plan/training_program/user 8 域 |
-| service           | 多文件            | 业务编排层，提供 `Store()`/`Queryer()` 供 handler 直读                                                                                                                                        |
+| handler           | 121 文件          | 除豁免冻结区（import/export/template 22 文件）与测试外：无直写 SQL、无 `*pgxpool.Pool` 字段、无 `pgx.Tx`；handler 不再持有 Service+Store 双依赖（统一 store-only）                                 |
+| store             | 70+ 文件          | 独立类型模式成熟：`NewXxxStore(q)` 工厂；**列表查询配置全量下沉**（各域 `ListConfig()`/`AdminListConfig()`/`PublicListConfig()`/`ListXxxConfig()` 方法 + `BatchTableConfig` + 日志包级配置），非冻结区 handler 不再内联 SQL 片段 |
+| service           | 50 文件           | 业务编排层，提供 `Store()`/`Queryer()` 供 handler 直读；`PositionService`/`EvaluationService` 方法已按域重组为独立文件（position/ability/batch/workflow/term/teaching_plan/training_program/workspace_stats 等） |
 | domain            | 12 文件 / 2.1k 行 | 类型中心，**保持不动，不新建 model/**                                                                                                                                                         |
-| handler/common.go | ~370 行           | 响应/租户/权限 helper + `executeListQuery` 适配；`withTx`（死代码）已删除、`lookupIDByName` 已迁入 `import_common.go` 豁免区，不再依赖 `*pgxpool.Pool`                                        |
+| handler/common.go | ~370 行           | 响应/租户/权限 helper + `executeListQuery` 适配；`parseInt`/`parsePageLimit`/`itoa` 委托 store 唯一实现；时间格式化统一 `store.FormatDateTime`                                                     |
 
 **现有可复用资产**：
 
@@ -22,6 +22,8 @@
 - **`respondServerError`**（`handler/common.go`）：新增 handler 的 500 错误处理约定，统一记录原始 error 后返回通用错误响应
 - **`crudConfig[T, V]`**（`handler/crud.go`）：租户域字典实体 CRUD 通用模板（crudCreate/crudGet/crudUpdate/crudDelete），major/industry/org_type/staff_title/certificate_library 已套用，新增同类字典接口优先复用
 - **`withTxStore`**（`store/store.go`）：领域 store 内部多语句事务统一模板（Begin/Rollback/Commit），`Store.WithTx` 亦基于它；禁止再手写 `beginner.Begin` 散落代码
+- **列表查询配置下沉模式**：各域 store 提供 `ListConfig()` 等方法返回 `ListQueryConfig`（SQL 片段唯一所在地），handler 仅 `h.Service.Store().Xxx().ListConfig()` 取配置；claims 派生过滤由 handler 注入 `params.Values`，store 不读 Claims
+- **`store.BatchTableConfig`**（`store/batch_configs.go`）：5 类批次表/列/状态差异配置 + 5 个构造器，BatchHandler 模板据此工作
 
 ## 二、目标架构
 
@@ -80,10 +82,14 @@ internal/
 **P2 完成后**：除豁免冻结区（import/export/template 22 文件）外，全部 handler 无直写 SQL、无 `*pgxpool.Pool` 字段（认证类 fetch helper 经 store 封装，`LoadCertificationModel` 等既有 service 查询保留）。
 **类型安全**：store 层全部使用强类型 DTO（`map[string]any` 已清零）。
 
-### P3 清理（进行中）
+### P3 清理（✅ 已完成）
 
 - `common.go` → 保留响应/租户/权限 helper，`withTx`（死代码）已删除、`lookupIDByName` 已迁至 `import_common.go` ✅
-- **非豁免 Handler 列表 SQL 下沉** ⚠️ **部分完成（8/45 域）**：exam/position/question_bank/scenario/scheduling（含 venue/period_slots）/teaching_plan/training_program/user 已沉淀到对应 store 的 `ListConfig()`/`AdminListConfig()`/`PublicListConfig()`/`FavoritesListConfig()`/`ListSchedulesConfig()` 等（`store` 共 9 处 `ListConfig` 系列函数）；**其余约 37 个域的 `ListQueryConfig` 配置（Table/SelectColumns/ExtraFilter/扫描器）仍内联在 handler 层**（如 `handler/alliance_handler.go:78`、`handler/course_handler.go:85`、`handler/batch_configs.go:20`），SQL 片段经 `store.ExecuteListQuery` 白名单校验后拼入，注入安全，但按架构契约属于待下沉债务，后续批次按 store `ListConfig()` 模式继续迁移
+- **非豁免 Handler 列表 SQL 下沉** ✅：46 个 handler 的 `ListQueryConfig` 配置（Table/SelectColumns/ExtraFilter/扫描器）全部沉淀到对应 store（`ListConfig()`/`AdminListConfig()`/`PublicListConfig()` 等 + `store/batch_configs.go` + `store/logs.go` 包级配置），非冻结区 handler 零 SQL 片段；claims 派生过滤经 `params.Values` 注入，store 不读 Claims
+- **DI 统一** ✅：major/industry/org_type/staff_title/certificate_library/role/learn_road/micro_cert/on_site_question_library 9 个 handler 统一为 store-only（删除对应死 service 文件与路由构造）
+- **工具函数收敛** ✅：`parseInt`/`parsePageLimit`/`itoa` 唯一实现于 store（handler 侧委托）；时间格式化统一 `store.FormatDateTime`
+- **service 按域重组** ✅：`PositionService`（121 方法）/`EvaluationService`（109 方法）方法拆分为按域独立文件（position/ability/banner/term/batch/workflow/subscription/resource_code/recommend/hybrid_module/lesson_behavior/landing/approval/teaching_plan/training_program/workspace_stats + evaluation_* 系列），接收者类型不变、零行为变化
+- **store 纯逻辑单测** ✅：`content_actions_test.go`（状态流转矩阵/业务规则/白名单防注入/ParsePageLimit）
 - 巨型文件拆分：template(1621)/resource_import(1503) — **明确不做**（`docs/components.md` 约定大文件不拆分）
 - store 查询构建器单测：`query_test.go` 已存在，`status.test.ts`/`api-helpers.test.ts`/`format-utils.test.ts` 补齐 ✅
 - 格式化债务：Prettier（根目录 `format`/`format:check`）+ gofmt 全量清零 ✅

@@ -93,26 +93,7 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	courseID := r.URL.Query().Get("courseId")
-	parentID := r.URL.Query().Get("parentId")
-
-	cfg := store.ListQueryConfig[store.CourseNodeBase]{
-		Table:         "system_course_nodes n",
-		SelectColumns: "n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name, n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status",
-		TenantScoped:  true,
-		OrderBy:       "n.sort_order ASC, n.id ASC",
-		NoPagination:  true,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if courseID != "" {
-				qb.AddCondition("n.course_id = " + qb.NextArg(courseID))
-			}
-			if parentID != "" {
-				qb.AddCondition("n.parent_id = " + qb.NextArg(parentID))
-			} else if p.Values["rootOnly"] == "true" {
-				qb.AddCondition("n.parent_id IS NULL")
-			}
-		},
-	}
+	cfg := h.Service.Store().CourseNodes().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

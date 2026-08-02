@@ -31,24 +31,7 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	examID := r.URL.Query().Get("examId")
-	status := r.URL.Query().Get("status")
-
-	cfg := store.ListQueryConfig[domain.ExamUsage]{
-		Table:         "exam_usages",
-		SelectColumns: "id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		ScanRows:      store.ScanExamUsageRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if examID != "" {
-				qb.AddCondition("exam_id = " + qb.NextArg(examID))
-			}
-			if status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().ExamUsages().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

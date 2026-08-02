@@ -26,6 +26,24 @@ func (s *KnowledgePointStore) List(ctx context.Context, p ListParams, cfg ListQu
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanKnowledgePointRows)
 }
 
+// ListConfig 返回知识点列表查询配置，SQL 片段沉淀在 store 层。
+func (s *KnowledgePointStore) ListConfig() ListQueryConfig[domain.KnowledgePoint] {
+	return ListQueryConfig[domain.KnowledgePoint]{
+		Table:         "knowledge_points",
+		SelectColumns: "id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, source_type, source_id, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if linkedStr := p.Values["linked"]; linkedStr != "" {
+				qb.AddCondition("linked = " + qb.NextArg(linkedStr == "true"))
+			}
+			if creatorID := p.Values["creatorId"]; creatorID != "" {
+				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
+			}
+		},
+	}
+}
+
 // Get 查询单个知识点。
 func (s *KnowledgePointStore) Get(ctx context.Context, id string) (*domain.KnowledgePoint, error) {
 	kp, err := s.fetchKP(ctx, id)
@@ -183,6 +201,22 @@ func NewNodeHomeworkStore(q Queryer) *NodeHomeworkStore {
 // List 查询作业列表。
 func (s *NodeHomeworkStore) List(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.NodeHomework]) ([]domain.NodeHomework, int, error) {
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanNodeHomeworkRows)
+}
+
+// ListConfig 返回作业列表查询配置，SQL 片段沉淀在 store 层。
+func (s *NodeHomeworkStore) ListConfig() ListQueryConfig[domain.NodeHomework] {
+	return ListQueryConfig[domain.NodeHomework]{
+		Table:         "node_homeworks",
+		SelectColumns: "id, node_id, title, requirement, need_attachment, deadline",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		NoPagination:  true,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if p.Values["nodeId"] != "" {
+				qb.AddCondition("node_id = " + qb.NextArg(p.Values["nodeId"]))
+			}
+		},
+	}
 }
 
 // Get 查询单个作业。

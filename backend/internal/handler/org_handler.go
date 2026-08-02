@@ -40,26 +40,7 @@ type UpdateOrgRequest struct {
 }
 
 func (h *OrgHandler) List(w http.ResponseWriter, r *http.Request) {
-	cfg := store.ListQueryConfig[domain.Organization]{
-		Table:         "organizations",
-		SelectColumns: "id, tenant_id, name, type_id, parent_id, sort_order, member_count, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		OrderBy:       "sort_order ASC, created_at ASC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if tenantID := p.Values["tenantId"]; tenantID != "" {
-				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
-			}
-			if typeID := p.Values["typeId"]; typeID != "" {
-				qb.AddCondition("type_id = " + qb.NextArg(typeID))
-			}
-			if parentID := p.Values["parentId"]; parentID != "" {
-				qb.AddCondition("parent_id = " + qb.NextArg(parentID))
-			} else if p.Values["rootOnly"] == "true" {
-				qb.AddCondition("parent_id IS NULL")
-			}
-		},
-	}
+	cfg := h.Service.Store().Organizations().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

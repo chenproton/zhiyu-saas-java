@@ -86,6 +86,18 @@ type WorkflowParams struct {
 	Status      domain.WorkflowStatus
 }
 
+// ListConfig 返回审批流程列表查询配置，SQL 片段沉淀在 store 层。
+func (s *WorkflowStore) ListConfig() ListQueryConfig[domain.Workflow] {
+	return ListQueryConfig[domain.Workflow]{
+		Table:         "workflows",
+		SelectColumns: "id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		OrderBy:       "created_at DESC",
+		ScanRows:      ScanWorkflowRows,
+	}
+}
+
 // ScanWorkflowRows 扫描审批流程行。
 func ScanWorkflowRows(rows pgx.Rows) ([]domain.Workflow, error) {
 	items := make([]domain.Workflow, 0)

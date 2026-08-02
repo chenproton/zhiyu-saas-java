@@ -25,7 +25,7 @@ func (s *PositionCertificateStore) List(ctx context.Context, careerPositionID st
 	args := []any{}
 	argIdx := 1
 	if careerPositionID != "" {
-		where = append(where, "career_position_id = $"+itoa(argIdx))
+		where = append(where, "career_position_id = $"+Itoa(argIdx))
 		args = append(args, careerPositionID)
 		argIdx++
 	}
@@ -51,7 +51,7 @@ func (s *PositionCertificateStore) List(ctx context.Context, careerPositionID st
 		JOIN certificate_library cl ON cl.id = pc.certificate_library_id
 		WHERE ` + cond + `
 		ORDER BY cl.name ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+		LIMIT $` + Itoa(argIdx) + ` OFFSET $` + Itoa(argIdx+1)
 
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {

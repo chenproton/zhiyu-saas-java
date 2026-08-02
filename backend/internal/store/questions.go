@@ -69,14 +69,14 @@ func (s *QuestionStore) Update(ctx context.Context, id string, p *QuestionUpdate
 	args := []any{p.Type, p.Content, p.OptionsJSON, p.AnswerJSON, p.Analysis, p.Score, p.Difficulty, p.KnowledgePoints, p.Source}
 	argIdx := 10
 	if p.BankID != "" {
-		setClauses = append(setClauses, "bank_id = $"+itoa(argIdx))
+		setClauses = append(setClauses, "bank_id = $"+Itoa(argIdx))
 		args = append(args, p.BankID)
 		argIdx++
 	}
 	args = append(args, id)
 	_, err := s.q.Exec(ctx, `
 		UPDATE questions SET `+joinSQL(setClauses, ", ")+`
-		WHERE id = $`+itoa(argIdx)+`
+		WHERE id = $`+Itoa(argIdx)+`
 	`, args...)
 	if err != nil {
 		return nil, err
@@ -166,6 +166,28 @@ func (s *QuestionStore) fetchQuestion(ctx context.Context, id string) (*domain.Q
 	q.CreatorID = creatorID
 	q.Source = source
 	return &q, nil
+}
+
+// ListConfig 返回题目列表查询配置，SQL 片段沉淀在 store 层。
+func (s *QuestionStore) ListConfig() ListQueryConfig[domain.Question] {
+	return ListQueryConfig[domain.Question]{
+		Table:         "questions",
+		SelectColumns: "id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"content"},
+		ScanRows:      ScanQuestionRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if bankID := p.Values["bankId"]; bankID != "" {
+				qb.AddCondition("bank_id = " + qb.NextArg(bankID))
+			}
+			if qType := p.Values["type"]; qType != "" {
+				qb.AddCondition("type = " + qb.NextArg(qType))
+			}
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
 }
 
 // ScanQuestionRows 扫描题目行。

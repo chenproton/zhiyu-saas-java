@@ -117,6 +117,31 @@ func (s *AllianceStore) ScanEnterpriseRows(rows pgx.Rows) ([]domain.AllianceEnte
 	return items, nil
 }
 
+// ListConfig 返回合作企业列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AllianceStore) ListEnterprisesConfig() ListQueryConfig[domain.AllianceEnterprise] {
+	return ListQueryConfig[domain.AllianceEnterprise]{
+		Table: "alliance_enterprises",
+		SelectColumns: "id, tenant_id, name, enterprise_type, industry, region, description, " +
+			"logo_url, cover_image, status, rating, cooperation_types, contact_person, " +
+			"contact_phone, contact_email, address, unified_social_credit_code, " +
+			"established_year, employee_count, business_license_photos, qualification_photos, " +
+			"intellectual_property_photos, cover_photos, secondary_colleges, rating_record, " +
+			"is_public, created_by, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "industry"},
+		OrderBy:       "created_at DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+			if rating := p.Values["rating"]; rating != "" {
+				qb.AddCondition("rating = " + qb.NextArg(rating))
+			}
+		},
+		ScanRows: s.ScanEnterpriseRows,
+	}
+}
+
 func (s *AllianceStore) GetEnterpriseByID(ctx context.Context, id, tenantID string) (*domain.AllianceEnterprise, error) {
 	var e domain.AllianceEnterprise
 	var industry, region, description, logoURL, coverImage, rating *string

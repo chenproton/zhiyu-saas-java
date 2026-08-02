@@ -8,13 +8,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type RoleHandler struct {
-	Service *service.RoleService
-	Store   *store.RolesStore
+	Store *store.RolesStore
 }
 type CreateRoleRequest struct {
 	TenantID    string         `json:"tenantId"`
@@ -35,20 +33,8 @@ type AssignRoleRequest struct {
 }
 
 func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
-	status := r.URL.Query().Get("status")
-
-	items, total, err := executeListQuery[domain.Role](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.Role]{
-		Table:         "roles",
-		SelectColumns: "id, tenant_id, code, name, description, permissions, user_count, status, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-		ScanRows: h.Store.ScanRows,
-	})
+	cfg := h.Store.ListConfig()
+	items, total, err := executeListQuery[domain.Role](r.Context(), h.Store.Q(), r, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

@@ -8,13 +8,11 @@ import (
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type MajorHandler struct {
-	Service *service.MajorService
-	Store   *store.MajorsStore
+	Store *store.MajorsStore
 }
 
 // MajorRequest 专业创建/更新请求体（更新流程忽略 tenantId）。
@@ -27,20 +25,7 @@ type MajorRequest struct {
 }
 
 func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
-	enabledStr := r.URL.Query().Get("enabled")
-
-	items, total, err := executeListQuery(r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.Major]{
-		Table:         "majors",
-		SelectColumns: "id, tenant_id, code, name, alias, enabled, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if enabledStr != "" {
-				qb.AddCondition("enabled = " + qb.NextArg(enabledStr == "true"))
-			}
-		},
-		ScanRows: h.Store.ScanRows,
-	})
+	items, total, err := executeListQuery(r.Context(), h.Store.Q(), r, h.Store.ListConfig())
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

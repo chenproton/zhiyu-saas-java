@@ -2,10 +2,7 @@ package handler
 
 import (
 	"net/http"
-	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -27,67 +24,26 @@ func (h *NodeEvaluationResultHandler) List(w http.ResponseWriter, r *http.Reques
 	}
 
 	nodeID := r.URL.Query().Get("nodeId")
-	evaluateeID := r.URL.Query().Get("evaluateeId")
 	if nodeID == "" {
 		respondError(w, http.StatusBadRequest, "缺少节点ID")
 		return
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.NodeEvaluationResult]{
-		Table: "node_evaluation_results",
-		SelectColumns: "id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, " +
-			"total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, " +
-			"comment, graded_at, graded_by",
-		TenantScoped: true,
-		OrderBy:      "created_at DESC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			qb.AddCondition("node_id = " + qb.NextArg(nodeID))
-			if middleware.HasRole(claims, "student") {
-				qb.AddCondition("evaluatee_id = " + qb.NextArg(claims.UserID))
-				return
-			}
-			if evaluateeID != "" {
-				qb.AddCondition("evaluatee_id = " + qb.NextArg(evaluateeID))
-			}
-		},
-		ScanRows: h.scanRows,
-	})
+	cfg := h.Service.Store().NodeEvaluationResults().ListConfig()
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	if middleware.HasRole(claims, "student") {
+		params.Values["isStudent"] = "true"
+		params.Values["studentUserId"] = claims.UserID
+	}
+	items, total, err := store.ExecuteListQuery(r.Context(), h.Service.Queryer(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询节点测评结果失败")
 		return
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items, "total": total})
-}
-
-func (h *NodeEvaluationResultHandler) scanRows(rows pgx.Rows) ([]domain.NodeEvaluationResult, error) {
-	var items []domain.NodeEvaluationResult
-	for rows.Next() {
-		var r domain.NodeEvaluationResult
-		var totalScore *float64
-		var comment *string
-		var gradedAt *time.Time
-		var gradedBy *string
-		if err := rows.Scan(
-			&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &r.EvaluatorID, &r.EvaluatorType, &r.Status,
-			&totalScore, &r.MaxScore, &r.EvalPointScores, &r.ObjectiveAnswers, &r.SubjectiveContent, &r.DrawnQuestions,
-			&comment, &gradedAt, &gradedBy,
-		); err != nil {
-			return nil, err
-		}
-		if totalScore != nil {
-			r.TotalScore = totalScore
-		}
-		if comment != nil {
-			r.Comment = comment
-		}
-		if gradedAt != nil {
-			r.GradedAt = gradedAt
-		}
-		if gradedBy != nil {
-			r.GradedBy = gradedBy
-		}
-		items = append(items, r)
-	}
-	return items, nil
 }

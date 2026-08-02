@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -47,43 +46,12 @@ type BatchUpdateStatusRequest struct {
 	Status string `json:"status"`
 }
 
-// BatchScanRowFunc 批次单行扫描（经 store 查询后由扫描函数转换）。
-type BatchScanRowFunc func(ctx context.Context, row pgx.Row) (any, error)
-
-// BatchScanRowsFunc 批次列表行扫描。
-type BatchScanRowsFunc func(rows pgx.Rows) ([]any, error)
-
-type BatchTableConfig struct {
-	TableName      string
-	WriteTableName string
-	SelectColumns  string
-	EntityName     string
-	StatusOpen     string
-	StatusClosed   string
-
-	SearchColumns []string
-
-	ExtraListFilters store.ListQueryFilter
-
-	CreateExtraCols []string
-	CreateExtraVals []any
-
-	TenantScoped       bool
-	TenantFilterColumn string
-
-	CreateWithStatus bool
-	UpdateWithStatus bool
-
-	ScanRow  BatchScanRowFunc
-	ScanRows BatchScanRowsFunc
-}
-
 type BatchHandler struct {
 	Service batchService
-	Config  BatchTableConfig
+	Config  store.BatchTableConfig
 }
 
-func NewBatchHandler(svc *service.PositionService, config BatchTableConfig) *BatchHandler {
+func NewBatchHandler(svc batchService, config store.BatchTableConfig) *BatchHandler {
 	return &BatchHandler{Service: svc, Config: config}
 }
 

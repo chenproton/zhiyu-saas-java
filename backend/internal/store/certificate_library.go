@@ -94,3 +94,19 @@ func (s *CertificateLibraryStore) ScanRows(rows pgx.Rows) ([]domain.CertificateL
 	}
 	return items, nil
 }
+
+// ListConfig 返回证书库列表查询配置，SQL 片段沉淀在 store 层。
+func (s *CertificateLibraryStore) ListConfig() ListQueryConfig[domain.CertificateLibraryItem] {
+	return ListQueryConfig[domain.CertificateLibraryItem]{
+		Table:         "certificate_library",
+		SelectColumns: "id, tenant_id, name, url, description, image_url, creator_id, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "description"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if creatorID := p.Values["creatorId"]; creatorID != "" {
+				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
+			}
+		},
+		ScanRows: s.ScanRows,
+	}
+}

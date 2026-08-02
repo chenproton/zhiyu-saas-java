@@ -39,6 +39,26 @@ func (s *AllianceStore) ScanBrandRows(rows pgx.Rows) ([]domain.AllianceBrand, er
 	return items, nil
 }
 
+// ListConfig 返回品牌列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AllianceStore) ListBrandsConfig() ListQueryConfig[domain.AllianceBrand] {
+	return ListQueryConfig[domain.AllianceBrand]{
+		Table:         "alliance_brands",
+		SelectColumns: "id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, student_id, enterprise_id, position_id, major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		OrderBy:       "sort_order ASC, created_at DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if brandType := p.Values["brandType"]; brandType != "" {
+				qb.AddCondition("brand_type = " + qb.NextArg(brandType))
+			}
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+		ScanRows: s.ScanBrandRows,
+	}
+}
+
 func (s *AllianceStore) CreateBrand(ctx context.Context, b *domain.AllianceBrand) (string, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `

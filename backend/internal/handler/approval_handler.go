@@ -42,28 +42,7 @@ func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	status := r.URL.Query().Get("status")
-	submitterID := r.URL.Query().Get("submitterId")
-	targetType := r.URL.Query().Get("targetType")
-
-	cfg := store.ListQueryConfig[domain.ApprovalRecord]{
-		Table:         "approval_records",
-		SelectColumns: "id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id, history, created_at, updated_at",
-		TenantScoped:  true,
-		OrderBy:       "created_at DESC",
-		ScanRows:      store.ScanApprovalRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-			if targetType != "" {
-				qb.AddCondition("target_type = " + qb.NextArg(targetType))
-			}
-			if submitterID != "" {
-				qb.AddCondition("submitter_id = " + qb.NextArg(submitterID))
-			}
-		},
-	}
+	cfg := h.Service.Store().Approvals().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

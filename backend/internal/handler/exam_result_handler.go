@@ -7,7 +7,6 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
-	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ExamResultHandler struct {
@@ -33,17 +32,7 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.ExamResult]{
-		Table:         "exam_results er LEFT JOIN majors m ON m.id = er.major_id",
-		SelectColumns: "er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at",
-		TenantScoped:  true,
-		TenantColumn:  "er.tenant_id",
-		OrderBy:       "er.score DESC, er.submit_time ASC",
-		ScanRows:      store.ScanExamResultRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			qb.AddCondition("er.exam_usage_id = " + qb.NextArg(usageID))
-		},
-	}
+	cfg := h.Service.Store().ExamResults().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

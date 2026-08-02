@@ -45,18 +45,7 @@ func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.ScenarioTask]{
-		Table:         "scenario_tasks",
-		SelectColumns: store.TaskSelectColumns,
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		OrderBy:       "sort_order",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if scenarioID := p.Values["scenarioId"]; scenarioID != "" {
-				qb.AddCondition("scenario_id = " + qb.NextArg(scenarioID))
-			}
-		},
-	}
+	cfg := h.Service.Store().ScenarioTasks().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

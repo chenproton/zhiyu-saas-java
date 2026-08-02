@@ -8,13 +8,11 @@ import (
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type OrgTypeHandler struct {
-	Service *service.OrgTypeService
-	Store   *store.OrgTypesStore
+	Store *store.OrgTypesStore
 }
 
 // OrgTypeRequest 组织类型创建/更新请求体（更新流程忽略 tenantId）。
@@ -26,21 +24,7 @@ type OrgTypeRequest struct {
 }
 
 func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OrgType](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.OrgType]{
-		Table:         "org_types",
-		SelectColumns: "id, tenant_id, name, category, description, is_default, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if tenantID := p.Values["tenantId"]; tenantID != "" {
-				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
-			}
-			if category := p.Values["category"]; category != "" {
-				qb.AddCondition("category = " + qb.NextArg(category))
-			}
-		},
-		ScanRows: h.Store.ScanRows,
-	})
+	items, total, err := executeListQuery[domain.OrgType](r.Context(), h.Store.Q(), r, h.Store.ListConfig())
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

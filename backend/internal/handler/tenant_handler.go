@@ -65,18 +65,7 @@ type adminUserInfo struct {
 }
 
 func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
-	cfg := store.ListQueryConfig[domain.Tenant]{
-		Table:         "tenants",
-		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
-		TenantScoped:  true,
-		TenantColumn:  "id",
-		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Tenants().ListConfig()
 	params, ok := listParamsFromRequest(r, cfg.TenantScoped)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -260,16 +249,7 @@ func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tena
 // 按产品决策：内部隐藏控制台，不做鉴权，跨租户管理。
 
 func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
-	cfg := store.ListQueryConfig[domain.Tenant]{
-		Table:         "tenants",
-		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
-		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Tenants().AdminListConfig()
 	params, _ := listParamsFromRequest(r, false)
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {

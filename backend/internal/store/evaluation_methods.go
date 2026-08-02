@@ -42,6 +42,22 @@ func (s *EvaluationMethodStore) List(ctx context.Context, p ListParams, cfg List
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanEvaluationMethodRows)
 }
 
+// ListConfig 返回评价方法列表查询配置，SQL 片段沉淀在 store 层。
+func (s *EvaluationMethodStore) ListConfig() ListQueryConfig[domain.EvaluationMethod] {
+	return ListQueryConfig[domain.EvaluationMethod]{
+		Table:         "evaluation_methods",
+		SelectColumns: "id, category_id, name, enabled, sub_category_name, description, doc_link",
+		TenantScoped:  true,
+		OrderBy:       "name",
+		ScanRows:      ScanEvaluationMethodRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if categoryID := p.Values["categoryId"]; categoryID != "" {
+				qb.AddCondition("category_id = " + qb.NextArg(categoryID))
+			}
+		},
+	}
+}
+
 // Get 查询单个评价方法。
 func (s *EvaluationMethodStore) Get(ctx context.Context, id string) (*domain.EvaluationMethod, error) {
 	var m domain.EvaluationMethod
@@ -102,6 +118,24 @@ func NewAppealStore(q Queryer) *AppealStore {
 // List 查询申诉列表。
 func (s *AppealStore) List(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.AppealRecord]) ([]domain.AppealRecord, int, error) {
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanAppealRows)
+}
+
+// ListConfig 返回申诉列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AppealStore) ListConfig() ListQueryConfig[domain.AppealRecord] {
+	return ListQueryConfig[domain.AppealRecord]{
+		Table:         "appeal_records",
+		SelectColumns: "id, user_id, type, reason, status, created_at",
+		TenantScoped:  true,
+		ScanRows:      ScanAppealRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if appealType := p.Values["type"]; appealType != "" {
+				qb.AddCondition("type = " + qb.NextArg(appealType))
+			}
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
 }
 
 // Get 查询单个申诉。

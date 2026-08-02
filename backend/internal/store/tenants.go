@@ -28,6 +28,36 @@ func (s *TenantStore) List(ctx context.Context, p ListParams, cfg ListQueryConfi
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanTenantRows)
 }
 
+// ListConfig 返回租户列表查询配置，SQL 片段沉淀在 store 层。
+func (s *TenantStore) ListConfig() ListQueryConfig[domain.Tenant] {
+	return ListQueryConfig[domain.Tenant]{
+		Table:         "tenants",
+		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
+		TenantScoped:  true,
+		TenantColumn:  "id",
+		SearchColumns: []string{"name", "code"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
+// AdminListConfig 返回超管控制台租户列表查询配置（跨租户、无租户隔离）。
+func (s *TenantStore) AdminListConfig() ListQueryConfig[domain.Tenant] {
+	return ListQueryConfig[domain.Tenant]{
+		Table:         "tenants",
+		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
+		SearchColumns: []string{"name", "code"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
 // Get 按 ID 查询租户。
 func (s *TenantStore) Get(ctx context.Context, id string) (*domain.Tenant, error) {
 	t, err := s.fetchTenant(ctx, id)

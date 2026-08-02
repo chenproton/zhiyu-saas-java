@@ -53,27 +53,27 @@ func (s *ResourceLibraryStore) List(ctx context.Context, tenantID string, f Reso
 	argIdx := 2
 
 	if f.Search != "" {
-		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.description ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(rl.name ILIKE $"+Itoa(argIdx)+" OR rl.description ILIKE $"+Itoa(argIdx)+")")
 		args = append(args, "%"+f.Search+"%")
 		argIdx++
 	}
 	if f.ResourceType != "" {
-		where = append(where, "rl.resource_type = $"+itoa(argIdx))
+		where = append(where, "rl.resource_type = $"+Itoa(argIdx))
 		args = append(args, f.ResourceType)
 		argIdx++
 	}
 	if f.OrgName != "" {
-		where = append(where, "o.name = $"+itoa(argIdx))
+		where = append(where, "o.name = $"+Itoa(argIdx))
 		args = append(args, f.OrgName)
 		argIdx++
 	}
 	if f.MajorName != "" {
-		where = append(where, "m.name = $"+itoa(argIdx))
+		where = append(where, "m.name = $"+Itoa(argIdx))
 		args = append(args, f.MajorName)
 		argIdx++
 	}
 	if f.UploadedBy != "" {
-		where = append(where, "rl.uploaded_by = $"+itoa(argIdx))
+		where = append(where, "rl.uploaded_by = $"+Itoa(argIdx))
 		args = append(args, f.UploadedBy)
 		argIdx++
 	}
@@ -103,7 +103,7 @@ func (s *ResourceLibraryStore) List(ctx context.Context, tenantID string, f Reso
 		` + resourceJoinClause + `
 		WHERE ` + cond + `
 		ORDER BY rl.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+		LIMIT $` + Itoa(argIdx) + ` OFFSET $` + Itoa(argIdx+1)
 
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {

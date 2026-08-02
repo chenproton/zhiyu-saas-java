@@ -25,6 +25,21 @@ func (s *ExamResultStore) List(ctx context.Context, p ListParams, cfg ListQueryC
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanExamResultRows)
 }
 
+// ListConfig 返回考试结果列表查询配置，SQL 片段沉淀在 store 层。
+func (s *ExamResultStore) ListConfig() ListQueryConfig[domain.ExamResult] {
+	return ListQueryConfig[domain.ExamResult]{
+		Table:         "exam_results er LEFT JOIN majors m ON m.id = er.major_id",
+		SelectColumns: "er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at",
+		TenantScoped:  true,
+		TenantColumn:  "er.tenant_id",
+		OrderBy:       "er.score DESC, er.submit_time ASC",
+		ScanRows:      ScanExamResultRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			qb.AddCondition("er.exam_usage_id = " + qb.NextArg(p.Values["usageId"]))
+		},
+	}
+}
+
 // UsageExamInfo 查询考试安排的 exam_id 与总分。
 func (s *ExamResultStore) UsageExamInfo(ctx context.Context, usageID string) (string, float64, error) {
 	var examID string

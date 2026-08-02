@@ -6,6 +6,7 @@ import (
 
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type LandingHandler struct {
@@ -56,7 +57,7 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 			item.College = e.OrgName
 		}
 		if e.StartTime != nil {
-			item.Time = e.StartTime.Format("2006-01-02 15:04")
+			item.Time = store.FormatDateTime(*e.StartTime)
 		}
 		item.Status = computeExamStatus(e.StartTime, e.EndTime, now)
 		items = append(items, item)

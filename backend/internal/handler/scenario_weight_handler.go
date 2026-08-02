@@ -26,23 +26,7 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	scenarioID := r.URL.Query().Get("scenarioId")
-	taskID := r.URL.Query().Get("taskId")
-
-	cfg := store.ListQueryConfig[domain.ScenarioWeightConfig]{
-		Table:         "scenario_weight_configs",
-		SelectColumns: "id, scenario_id, task_id, weight",
-		TenantScoped:  true,
-		OrderBy:       "id DESC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if scenarioID != "" {
-				qb.AddCondition("scenario_id = " + qb.NextArg(scenarioID))
-			}
-			if taskID != "" {
-				qb.AddCondition("task_id = " + qb.NextArg(taskID))
-			}
-		},
-	}
+	cfg := h.Service.Store().ScenarioWeights().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

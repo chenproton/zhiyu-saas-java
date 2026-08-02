@@ -56,38 +56,16 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.SceneEvaluationResult]{
-		Table:         "scene_evaluation_results",
-		SelectColumns: "id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by",
-		TenantScoped:  true,
-		OrderBy:       "id DESC",
-		ScanRows:      store.ScanSceneEvaluationResultRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if middleware.HasRole(claims, "student") {
-				qb.AddCondition("evaluatee_id = " + qb.NextArg(claims.UserID))
-				return
-			}
-			if taskID := p.Values["taskId"]; taskID != "" {
-				qb.AddCondition("task_id = " + qb.NextArg(taskID))
-			}
-			if sceneID := p.Values["sceneId"]; sceneID != "" {
-				qb.AddCondition("scene_id = " + qb.NextArg(sceneID))
-			}
-			if methodKey := p.Values["methodKey"]; methodKey != "" {
-				qb.AddCondition("method_key = " + qb.NextArg(methodKey))
-			}
-			if evaluateeID := p.Values["evaluateeId"]; evaluateeID != "" {
-				qb.AddCondition("evaluatee_id = " + qb.NextArg(evaluateeID))
-			}
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().EvaluationResults().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
+	}
+	// 学生仅可查看本人的评价结果，忽略其余过滤参数
+	if middleware.HasRole(claims, "student") {
+		params.Values["evaluateeId"] = claims.UserID
+		params.Values["ownOnly"] = "true"
 	}
 	items, total, err := h.Service.ListEvaluationResults(r.Context(), params, cfg)
 	if err != nil {

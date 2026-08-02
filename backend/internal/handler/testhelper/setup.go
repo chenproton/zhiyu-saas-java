@@ -126,7 +126,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/organizations/{id}", orgHandler.Update)
 			r.Delete("/organizations/{id}", orgHandler.Delete)
 
-			orgTypeHandler := &handler.OrgTypeHandler{Service: service.NewOrgTypeService(svc2), Store: st2.OrgTypes()}
+			orgTypeHandler := &handler.OrgTypeHandler{Store: st2.OrgTypes()}
 			r.Get("/org-types", orgTypeHandler.List)
 			r.Get("/org-types/{id}", orgTypeHandler.Get)
 			r.Post("/org-types", orgTypeHandler.Create)
@@ -144,7 +144,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/portal/workspace/me", userManagementHandler.UpdateMe)
 			r.Post("/portal/workspace/me/password", userManagementHandler.ChangeMyPassword)
 
-			roleHandler := &handler.RoleHandler{Service: service.NewRoleService(svc2), Store: st2.Roles()}
+			roleHandler := &handler.RoleHandler{Store: st2.Roles()}
 			r.Get("/roles", roleHandler.List)
 			r.Get("/roles/{id}", roleHandler.Get)
 			r.Post("/roles", roleHandler.Create)
@@ -152,14 +152,14 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/roles/{id}", roleHandler.Delete)
 			r.Post("/roles/{id}/assign", roleHandler.Assign)
 
-			majorHandler := &handler.MajorHandler{Service: service.NewMajorService(svc2), Store: st2.Majors()}
+			majorHandler := &handler.MajorHandler{Store: st2.Majors()}
 			r.Get("/majors", majorHandler.List)
 			r.Get("/majors/{id}", majorHandler.Get)
 			r.Post("/majors", majorHandler.Create)
 			r.Put("/majors/{id}", majorHandler.Update)
 			r.Delete("/majors/{id}", majorHandler.Delete)
 
-			industryHandler := &handler.IndustryHandler{Service: service.NewIndustryService(svc2), Store: st2.Industries()}
+			industryHandler := &handler.IndustryHandler{Store: st2.Industries()}
 			r.Get("/industries", industryHandler.List)
 			r.Get("/industries/{id}", industryHandler.Get)
 			r.Post("/industries", industryHandler.Create)
@@ -239,7 +239,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/job/recommendations/{id}", recommendHandler.Update)
 			r.Delete("/job/recommendations/{id}", recommendHandler.Delete)
 
-			learnRoadHandler := &handler.LearnRoadHandler{Service: service.NewLearnRoadService(svc2), Store: st2.LearnRoads()}
+			learnRoadHandler := &handler.LearnRoadHandler{Store: st2.LearnRoads()}
 			r.Get("/job/learn-roads", learnRoadHandler.List)
 			r.Get("/job/learn-roads/{id}", learnRoadHandler.Get)
 			r.Post("/job/learn-roads", learnRoadHandler.Create)
@@ -425,7 +425,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/portraits/archives", studentPortraitHandler.ListArchives)
 			r.Post("/evaluation/portraits/archives", studentPortraitHandler.CreateArchive)
 
-			microCertHandler := &handler.MicroCertHandler{Service: service.NewMicroCertService(svc2), Store: st2.MicroCerts()}
+			microCertHandler := &handler.MicroCertHandler{Store: st2.MicroCerts()}
 			r.Get("/evaluation/certificates/templates", microCertHandler.ListTemplates)
 			r.Post("/evaluation/certificates/templates", microCertHandler.CreateTemplate)
 			r.Get("/evaluation/certificates/templates/{id}", microCertHandler.ListTemplates)

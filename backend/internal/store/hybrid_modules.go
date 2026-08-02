@@ -22,6 +22,23 @@ func (s *HybridModuleStore) List(ctx context.Context, p ListParams, cfg ListQuer
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanHybridModuleRows)
 }
 
+// ListConfig 返回混合模块列表查询配置，SQL 片段沉淀在 store 层。
+func (s *HybridModuleStore) ListConfig() ListQueryConfig[domain.HybridNodeModule] {
+	return ListQueryConfig[domain.HybridNodeModule]{
+		Table:         "hybrid_node_modules",
+		SelectColumns: "id, node_id, module_key, mode, data",
+		TenantScoped:  true,
+		OrderBy:       "module_key ASC",
+		NoPagination:  true,
+		ScanRows:      ScanHybridModuleRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if nodeID := p.Values["nodeId"]; nodeID != "" {
+				qb.AddCondition("node_id = " + qb.NextArg(nodeID))
+			}
+		},
+	}
+}
+
 // Get 查询单个混合模块。
 func (s *HybridModuleStore) Get(ctx context.Context, id string) (*domain.HybridNodeModule, error) {
 	var m domain.HybridNodeModule

@@ -8,13 +8,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type LearnRoadHandler struct {
-	Service *service.LearnRoadService
-	Store   *store.LearnRoadsStore
+	Store *store.LearnRoadsStore
 }
 
 type CreateLearnRoadRequest struct {
@@ -37,20 +35,9 @@ func (h *LearnRoadHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.LearnRoad]{
-		Table:         "learn_roads",
-		SelectColumns: "id, name, description, position_ids, steps, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if name := p.Values["name"]; name != "" {
-				qb.AddCondition("name ILIKE " + qb.NextArg("%"+name+"%"))
-			}
-		},
-		ScanRows: h.Store.ScanRows,
-	}
+	cfg := h.Store.ListConfig()
 
-	items, total, err := executeListQuery(r.Context(), h.Service.Queryer(), r, cfg)
+	items, total, err := executeListQuery(r.Context(), h.Store.Q(), r, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

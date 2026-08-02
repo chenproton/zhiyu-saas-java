@@ -23,6 +23,33 @@ func NewMicroCertStore(q Queryer, beginner txBeginner) *MicroCertStore {
 	return &MicroCertStore{q: q, beginner: beginner}
 }
 
+// ListTemplateConfig 返回微证书模板列表查询配置，SQL 片段沉淀在 store 层。
+func (s *MicroCertStore) ListTemplateConfig() ListQueryConfig[domain.MicroCertTemplate] {
+	return ListQueryConfig[domain.MicroCertTemplate]{
+		Table:         "micro_cert_templates",
+		SelectColumns: "id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"title"},
+		ScanRows:      s.ScanTemplateRows,
+	}
+}
+
+// ListIssuanceConfig 返回证书发放记录列表查询配置，SQL 片段沉淀在 store 层。
+func (s *MicroCertStore) ListIssuanceConfig() ListQueryConfig[domain.CertIssuanceRecord] {
+	return ListQueryConfig[domain.CertIssuanceRecord]{
+		Table:         "cert_issuance_records",
+		SelectColumns: "id, template_id, user_id, cert_number, issue_date, expire_date, status, revoked_at, revoke_reason",
+		TenantScoped:  true,
+		OrderBy:       "issue_date DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if templateID := p.Values["templateId"]; templateID != "" {
+				qb.AddCondition("template_id = " + qb.NextArg(templateID))
+			}
+		},
+		ScanRows: s.ScanIssuanceRows,
+	}
+}
+
 type MicroCertTemplateCreateParams struct {
 	TenantID     string
 	Title        string

@@ -8,13 +8,11 @@ import (
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type IndustryHandler struct {
-	Service *service.IndustryService
-	Store   *store.IndustriesStore
+	Store *store.IndustriesStore
 }
 
 // IndustryRequest 行业创建/更新请求体（更新流程忽略 tenantId）。
@@ -28,25 +26,7 @@ type IndustryRequest struct {
 }
 
 func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
-	parentID := r.URL.Query().Get("parentId")
-	enabledStr := r.URL.Query().Get("enabled")
-
-	items, total, err := executeListQuery[domain.Industry](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.Industry]{
-		Table:         "industries",
-		SelectColumns: "id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		OrderBy:       "sort_order ASC, created_at DESC",
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if parentID != "" {
-				qb.AddCondition("parent_id = " + qb.NextArg(parentID))
-			}
-			if enabledStr != "" {
-				qb.AddCondition("enabled = " + qb.NextArg(enabledStr == "true"))
-			}
-		},
-		ScanRows: h.Store.ScanRows,
-	})
+	items, total, err := executeListQuery[domain.Industry](r.Context(), h.Store.Q(), r, h.Store.ListConfig())
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

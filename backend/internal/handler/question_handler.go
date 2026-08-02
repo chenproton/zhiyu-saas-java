@@ -39,24 +39,7 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.Question]{
-		Table:         "questions",
-		SelectColumns: "id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"content"},
-		ScanRows:      store.ScanQuestionRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if bankID := p.Values["bankId"]; bankID != "" {
-				qb.AddCondition("bank_id = " + qb.NextArg(bankID))
-			}
-			if qType := p.Values["type"]; qType != "" {
-				qb.AddCondition("type = " + qb.NextArg(qType))
-			}
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Questions().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

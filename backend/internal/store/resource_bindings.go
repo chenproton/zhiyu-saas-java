@@ -47,18 +47,18 @@ func (s *ResourceBindingStore) List(ctx context.Context, tenantID, search string
 	args := []any{}
 	argIdx := 1
 	if tenantID != "" {
-		where = append(where, "rl.tenant_id = $"+itoa(argIdx))
+		where = append(where, "rl.tenant_id = $"+Itoa(argIdx))
 		args = append(args, tenantID)
 		argIdx++
 	}
 	join := ""
 	if bind != nil && bindID != "" {
-		join = "JOIN " + bind.Table + " tb ON tb.resource_id = rl.id AND tb." + bind.IDCol + " = $" + itoa(argIdx)
+		join = "JOIN " + bind.Table + " tb ON tb.resource_id = rl.id AND tb." + bind.IDCol + " = $" + Itoa(argIdx)
 		args = append(args, bindID)
 		argIdx++
 	}
 	if search != "" {
-		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.description ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(rl.name ILIKE $"+Itoa(argIdx)+" OR rl.description ILIKE $"+Itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
@@ -89,7 +89,7 @@ func (s *ResourceBindingStore) List(ctx context.Context, tenantID, search string
 		` + join + `
 		WHERE ` + cond + `
 		ORDER BY rl.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+		LIMIT $` + Itoa(argIdx) + ` OFFSET $` + Itoa(argIdx+1)
 
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
@@ -222,20 +222,20 @@ func (s *ResourceBindingStore) ListCourseResources(ctx context.Context, tenantID
 	where := []string{"1=1"}
 	args := []any{}
 	argIdx := 1
-	where = append(where, "rl.tenant_id = $"+itoa(argIdx))
+	where = append(where, "rl.tenant_id = $"+Itoa(argIdx))
 	args = append(args, tenantID)
 	argIdx++
 
 	join := ""
 	if courseID != "" {
-		join = `JOIN course_resource_bindings crb ON crb.resource_id = rl.id AND crb.course_id = $` + itoa(argIdx)
+		join = `JOIN course_resource_bindings crb ON crb.resource_id = rl.id AND crb.course_id = $` + Itoa(argIdx)
 		args = append(args, courseID)
 		argIdx++
 	} else {
 		join = `LEFT JOIN course_resource_bindings crb ON crb.resource_id = rl.id`
 	}
 	if search != "" {
-		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.url ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(rl.name ILIKE $"+Itoa(argIdx)+" OR rl.url ILIKE $"+Itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
@@ -268,7 +268,7 @@ func (s *ResourceBindingStore) ListCourseResources(ctx context.Context, tenantID
 		` + join + `
 		WHERE ` + cond + `
 		ORDER BY rl.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+		LIMIT $` + Itoa(argIdx) + ` OFFSET $` + Itoa(argIdx+1)
 
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {

@@ -11,13 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type StaffTitleHandler struct {
-	Service *service.StaffTitleService
-	Store   *store.StaffTitlesStore
+	Store *store.StaffTitlesStore
 }
 
 // StaffTitleRequest 职称创建/更新请求体（更新流程忽略 tenantId 与 code）。
@@ -34,15 +32,7 @@ type ToggleStaffTitleStatusRequest struct {
 }
 
 func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
-	cfg := store.ListQueryConfig[domain.StaffTitle]{
-		Table:         "staff_titles",
-		SelectColumns: "id, tenant_id, code, name, description, user_count, status, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		ScanRows:      h.Store.ScanRows,
-	}
-
-	items, total, err := executeListQuery(r.Context(), h.Service.Queryer(), r, cfg)
+	items, total, err := executeListQuery(r.Context(), h.Store.Q(), r, h.Store.ListConfig())
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

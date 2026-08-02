@@ -101,6 +101,28 @@ func ScanAbilityPointRows(rows pgx.Rows) ([]domain.AbilityPoint, error) {
 	return items, nil
 }
 
+// ListConfig 返回能力点列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AbilityStore) ListConfig() ListQueryConfig[domain.AbilityPoint] {
+	return ListQueryConfig[domain.AbilityPoint]{
+		Table:         "ability_points",
+		SelectColumns: "id, name, code, description, category, attributes, is_public, creator_id, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "description"},
+		ScanRows:      ScanAbilityPointRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if p.Values["isPublic"] == "true" {
+				qb.AddCondition("is_public = " + qb.NextArg(true))
+			}
+			if category := p.Values["category"]; category != "" {
+				qb.AddCondition("category = " + qb.NextArg(category))
+			}
+			if creatorID := p.Values["creatorId"]; creatorID != "" {
+				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
+			}
+		},
+	}
+}
+
 // ===== 能力域 =====
 
 // AbilityDomainStore 能力域持久化。
@@ -209,6 +231,22 @@ func ScanAbilityDomainRows(rows pgx.Rows) ([]domain.AbilityDomain, error) {
 	return items, nil
 }
 
+// ListConfig 返回能力域列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AbilityDomainStore) ListConfig() ListQueryConfig[domain.AbilityDomain] {
+	return ListQueryConfig[domain.AbilityDomain]{
+		Table:         "ability_domains",
+		SelectColumns: "id, tenant_id, career_position_id, name, description, binding_ids, sort_order",
+		TenantScoped:  true,
+		OrderBy:       "sort_order ASC",
+		ScanRows:      ScanAbilityDomainRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
+				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
+			}
+		},
+	}
+}
+
 // ===== 轮播图 =====
 
 // BannerStore 轮播图持久化。
@@ -283,6 +321,22 @@ type BannerParams struct {
 	LinkURL   *string
 	SortOrder int
 	IsEnabled bool
+}
+
+// ListConfig 返回轮播图列表查询配置，SQL 片段沉淀在 store 层。
+func (s *BannerStore) ListConfig() ListQueryConfig[domain.JobBannerConfig] {
+	return ListQueryConfig[domain.JobBannerConfig]{
+		Table:         "banner_configs",
+		SelectColumns: "id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
+		TenantScoped:  true,
+		OrderBy:       "sort_order ASC, created_at DESC",
+		ScanRows:      ScanBannerRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if isEnabled := p.Values["isEnabled"]; isEnabled != "" {
+				qb.AddCondition("is_enabled = " + qb.NextArg(isEnabled == "true"))
+			}
+		},
+	}
 }
 
 // ScanBannerRows 扫描轮播图行。
@@ -373,6 +427,23 @@ type TermParams struct {
 	EndDate    string
 	WeeksCount int
 	IsCurrent  bool
+}
+
+// ListConfig 返回学期列表查询配置，SQL 片段沉淀在 store 层。
+func (s *TermStore) ListConfig() ListQueryConfig[domain.Term] {
+	return ListQueryConfig[domain.Term]{
+		Table:         "terms",
+		SelectColumns: "id, name, to_char(start_date, 'YYYY-MM-DD') AS start_date, to_char(end_date, 'YYYY-MM-DD') AS end_date, weeks_count, is_current, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		OrderBy:       "start_date DESC",
+		ScanRows:      ScanTermRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if isCurrent := p.Values["isCurrent"]; isCurrent == "true" {
+				qb.AddCondition("is_current = true")
+			}
+		},
+	}
 }
 
 // ScanTermRows 扫描学期行。

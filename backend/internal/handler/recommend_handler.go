@@ -36,24 +36,7 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	majorID := r.URL.Query().Get("majorId")
-	careerPositionID := r.URL.Query().Get("careerPositionId")
-	cfg := store.ListQueryConfig[domain.PositionRecommendation]{
-		Table:         "position_recommendations pr LEFT JOIN majors m ON m.id = pr.major_id",
-		SelectColumns: "pr.id, pr.major_id, COALESCE(m.name, '') AS major_name, pr.career_position_id, pr.position_type, pr.reason, pr.sort_order, pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at",
-		TenantScoped:  true,
-		TenantColumn:  "pr.tenant_id",
-		OrderBy:       "pr.sort_order ASC, pr.created_at DESC",
-		ScanRows:      store.ScanRecommendRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if majorID != "" {
-				qb.AddCondition("pr.major_id = " + qb.NextArg(majorID))
-			}
-			if careerPositionID != "" {
-				qb.AddCondition("pr.career_position_id = " + qb.NextArg(careerPositionID))
-			}
-		},
-	}
+	cfg := h.Service.Store().Recommends().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

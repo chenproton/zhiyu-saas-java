@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -60,7 +61,7 @@ func (qb *ListQueryBuilder) Args() []any {
 func (qb *ListQueryBuilder) NextArg(args ...any) string {
 	out := make([]string, len(args))
 	for i, a := range args {
-		out[i] = "$" + itoa(qb.idx)
+		out[i] = "$" + Itoa(qb.idx)
 		qb.args = append(qb.args, a)
 		qb.idx++
 	}
@@ -460,7 +461,8 @@ func ExecuteListQuery[T any](ctx context.Context, db ListQueryDB, p ListParams, 
 
 const maxPageSize = 200
 
-func parseInt(s string, defaultVal int) (int, error) {
+// ParseInt 解析整数，空串返回默认值。
+func ParseInt(s string, defaultVal int) (int, error) {
 	if s == "" {
 		return defaultVal, nil
 	}
@@ -471,8 +473,9 @@ func parseInt(s string, defaultVal int) (int, error) {
 	return v, nil
 }
 
-func parsePageLimit(s string, defaultVal int) (int, error) {
-	v, err := parseInt(s, defaultVal)
+// ParsePageLimit 解析分页大小并钳制到 [1, maxPageSize]。
+func ParsePageLimit(s string, defaultVal int) (int, error) {
+	v, err := ParseInt(s, defaultVal)
 	if err != nil {
 		return defaultVal, err
 	}
@@ -485,6 +488,12 @@ func parsePageLimit(s string, defaultVal int) (int, error) {
 	return v, nil
 }
 
-func itoa(i int) string {
+// Itoa 整数转字符串。
+func Itoa(i int) string {
 	return strconv.Itoa(i)
+}
+
+// FormatDateTime 统一的"2006-01-02 15:04"时间格式化出口。
+func FormatDateTime(t time.Time) string {
+	return t.Format("2006-01-02 15:04")
 }

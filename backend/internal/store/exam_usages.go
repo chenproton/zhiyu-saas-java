@@ -23,6 +23,25 @@ func (s *ExamUsageStore) List(ctx context.Context, p ListParams, cfg ListQueryCo
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanExamUsageRows)
 }
 
+// ListConfig 返回考试安排列表查询配置，SQL 片段沉淀在 store 层。
+func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
+	return ListQueryConfig[domain.ExamUsage]{
+		Table:         "exam_usages",
+		SelectColumns: "id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		ScanRows:      ScanExamUsageRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if examID := p.Values["examId"]; examID != "" {
+				qb.AddCondition("exam_id = " + qb.NextArg(examID))
+			}
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+	}
+}
+
 // Get 查询单个考试安排。
 func (s *ExamUsageStore) Get(ctx context.Context, id string) (*domain.ExamUsage, error) {
 	u, err := s.fetchExamUsage(ctx, id)

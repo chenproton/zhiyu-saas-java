@@ -173,6 +173,25 @@ func (s *ResourceCodeStore) fetchResourceCode(ctx context.Context, id string) (*
 	return &rc, nil
 }
 
+// ListConfig 返回资源码列表查询配置，SQL 片段沉淀在 store 层。
+func (s *ResourceCodeStore) ListConfig() ListQueryConfig[domain.ResourceCode] {
+	return ListQueryConfig[domain.ResourceCode]{
+		Table:         "resource_codes",
+		SelectColumns: "id, tenant_id, code, name, description, type, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		ScanRows:      ScanResourceCodeRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if tenantID := p.Values["tenantId"]; tenantID != "" {
+				qb.AddCondition("tenant_id = " + qb.NextArg(tenantID))
+			}
+			if resType := p.Values["type"]; resType != "" {
+				qb.AddCondition("type = " + qb.NextArg(resType))
+			}
+		},
+	}
+}
+
 // ScanResourceCodeRows 扫描资源码行。
 func ScanResourceCodeRows(rows pgx.Rows) ([]domain.ResourceCode, error) {
 	items := make([]domain.ResourceCode, 0)
@@ -295,4 +314,24 @@ func ScanRecommendRows(rows pgx.Rows) ([]domain.PositionRecommendation, error) {
 		items = append(items, rec)
 	}
 	return items, nil
+}
+
+// ListConfig 返回推荐位列表查询配置，SQL 片段沉淀在 store 层。
+func (s *RecommendStore) ListConfig() ListQueryConfig[domain.PositionRecommendation] {
+	return ListQueryConfig[domain.PositionRecommendation]{
+		Table:         "position_recommendations pr LEFT JOIN majors m ON m.id = pr.major_id",
+		SelectColumns: "pr.id, pr.major_id, COALESCE(m.name, '') AS major_name, pr.career_position_id, pr.position_type, pr.reason, pr.sort_order, pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at",
+		TenantScoped:  true,
+		TenantColumn:  "pr.tenant_id",
+		OrderBy:       "pr.sort_order ASC, pr.created_at DESC",
+		ScanRows:      ScanRecommendRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if majorID := p.Values["majorId"]; majorID != "" {
+				qb.AddCondition("pr.major_id = " + qb.NextArg(majorID))
+			}
+			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
+				qb.AddCondition("pr.career_position_id = " + qb.NextArg(careerPositionID))
+			}
+		},
+	}
 }

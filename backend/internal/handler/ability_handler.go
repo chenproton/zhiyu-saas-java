@@ -35,25 +35,7 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	isPublic := r.URL.Query().Get("isPublic") == "true"
-	cfg := store.ListQueryConfig[domain.AbilityPoint]{
-		Table:         "ability_points",
-		SelectColumns: "id, name, code, description, category, attributes, is_public, creator_id, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "description"},
-		ScanRows:      store.ScanAbilityPointRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if isPublic {
-				qb.AddCondition("is_public = " + qb.NextArg(true))
-			}
-			if category := p.Values["category"]; category != "" {
-				qb.AddCondition("category = " + qb.NextArg(category))
-			}
-			if creatorID := p.Values["creatorId"]; creatorID != "" {
-				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
-			}
-		},
-	}
+	cfg := h.Service.Store().Abilities().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

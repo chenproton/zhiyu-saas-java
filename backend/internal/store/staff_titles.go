@@ -122,3 +122,14 @@ func (s *StaffTitlesStore) ScanRows(rows pgx.Rows) ([]domain.StaffTitle, error) 
 	}
 	return items, nil
 }
+
+// ListConfig 返回职称列表查询配置，SQL 片段沉淀在 store 层。
+func (s *StaffTitlesStore) ListConfig() ListQueryConfig[domain.StaffTitle] {
+	return ListQueryConfig[domain.StaffTitle]{
+		Table:         "staff_titles",
+		SelectColumns: "id, tenant_id, code, name, description, user_count, status, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		ScanRows:      s.ScanRows,
+	}
+}

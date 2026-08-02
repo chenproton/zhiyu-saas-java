@@ -35,19 +35,7 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	isEnabledStr := r.URL.Query().Get("isEnabled")
-	cfg := store.ListQueryConfig[domain.JobBannerConfig]{
-		Table:         "banner_configs",
-		SelectColumns: "id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
-		TenantScoped:  true,
-		OrderBy:       "sort_order ASC, created_at DESC",
-		ScanRows:      store.ScanBannerRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if isEnabledStr != "" {
-				qb.AddCondition("is_enabled = " + qb.NextArg(isEnabledStr == "true"))
-			}
-		},
-	}
+	cfg := h.Service.Store().Banners().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

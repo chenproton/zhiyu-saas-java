@@ -11,6 +11,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PortalHandler struct {
@@ -321,10 +322,10 @@ func (h *PortalHandler) listStudentExams(ctx context.Context, userID string, ten
 			exam.Score = &s
 		}
 		if e.Start != nil {
-			exam.StartTime = e.Start.Format("2006-01-02 15:04")
+			exam.StartTime = store.FormatDateTime(*e.Start)
 		}
 		if e.End != nil {
-			exam.EndTime = e.End.Format("2006-01-02 15:04")
+			exam.EndTime = store.FormatDateTime(*e.End)
 		}
 		items = append(items, exam)
 	}

@@ -76,6 +76,24 @@ func (s *PositionAbilityStore) Delete(ctx context.Context, id string) error {
 	return err
 }
 
+// ListConfig 返回能力绑定列表查询配置，SQL 片段沉淀在 store 层。
+func (s *PositionAbilityStore) ListConfig() ListQueryConfig[domain.PositionAbilityBinding] {
+	return ListQueryConfig[domain.PositionAbilityBinding]{
+		Table:         "position_ability_bindings",
+		SelectColumns: "id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
+				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
+			}
+			if responsibilityID := p.Values["responsibilityId"]; responsibilityID != "" {
+				qb.AddCondition("responsibility_id = " + qb.NextArg(responsibilityID))
+			}
+		},
+	}
+}
+
 // PositionAbilityParams 能力绑定参数。
 type PositionAbilityParams struct {
 	CareerPositionID  string
@@ -190,6 +208,21 @@ func (s *PositionResponsibilityStore) Update(ctx context.Context, id string, p *
 func (s *PositionResponsibilityStore) Delete(ctx context.Context, id string) error {
 	_, err := s.q.Exec(ctx, `DELETE FROM position_responsibilities WHERE id = $1`, id)
 	return err
+}
+
+// ListConfig 返回职责列表查询配置，SQL 片段沉淀在 store 层。
+func (s *PositionResponsibilityStore) ListConfig() ListQueryConfig[domain.PositionResponsibility] {
+	return ListQueryConfig[domain.PositionResponsibility]{
+		Table:         "position_responsibilities",
+		SelectColumns: "id, career_position_id, name, description, sort_order",
+		TenantScoped:  false,
+		OrderBy:       "sort_order ASC, id ASC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
+				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
+			}
+		},
+	}
 }
 
 // PositionResponsibilityParams 职责参数。

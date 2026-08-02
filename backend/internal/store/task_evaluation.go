@@ -27,6 +27,21 @@ func (s *TaskEvaluationStore) ListRubricTemplates(ctx context.Context, p ListPar
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanRubricTemplates)
 }
 
+// ListConfig 返回评分模板列表查询配置，SQL 片段沉淀在 store 层。
+func (s *TaskEvaluationStore) ListConfig() ListQueryConfig[domain.RubricTemplate] {
+	return ListQueryConfig[domain.RubricTemplate]{
+		Table:         "rubric_templates",
+		SelectColumns: "id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		SearchParam:   "keyword",
+		OrderBy:       "updated_at DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			qb.AddCondition("is_deleted = false")
+		},
+	}
+}
+
 // GetRubricTemplate 查询单个评分模板。
 func (s *TaskEvaluationStore) GetRubricTemplate(ctx context.Context, id string) (*domain.RubricTemplate, error) {
 	var t domain.RubricTemplate

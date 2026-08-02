@@ -33,21 +33,7 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	majorID := r.URL.Query().Get("majorId")
-
-	cfg := store.ListQueryConfig[domain.RandomDrawQuestion]{
-		Table:         "random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id",
-		SelectColumns: "rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at",
-		TenantScoped:  false,
-		SearchColumns: []string{"rdq.name", "rdq.description", "m.name"},
-		DefaultLimit:  200,
-		ScanRows:      store.ScanRandomDrawQuestionRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if majorID != "" {
-				qb.AddCondition("rdq.major_id = " + qb.NextArg(majorID))
-			}
-		},
-	}
+	cfg := h.Service.Store().RandomDrawQuestions().ListConfig()
 	params, ok := listParamsFromRequest(r, false)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

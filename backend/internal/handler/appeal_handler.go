@@ -7,7 +7,6 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
-	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AppealHandler struct {
@@ -31,23 +30,7 @@ func (h *AppealHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	appealType := r.URL.Query().Get("type")
-	status := r.URL.Query().Get("status")
-
-	cfg := store.ListQueryConfig[domain.AppealRecord]{
-		Table:         "appeal_records",
-		SelectColumns: "id, user_id, type, reason, status, created_at",
-		TenantScoped:  true,
-		ScanRows:      store.ScanAppealRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if appealType != "" {
-				qb.AddCondition("type = " + qb.NextArg(appealType))
-			}
-			if status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Appeals().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

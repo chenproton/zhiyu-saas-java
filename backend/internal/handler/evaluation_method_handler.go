@@ -7,7 +7,6 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
-	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type EvaluationMethodHandler struct {
@@ -39,18 +38,7 @@ func (h *EvaluationMethodHandler) ListMethods(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.EvaluationMethod]{
-		Table:         "evaluation_methods",
-		SelectColumns: "id, category_id, name, enabled, sub_category_name, description, doc_link",
-		TenantScoped:  true,
-		OrderBy:       "name",
-		ScanRows:      store.ScanEvaluationMethodRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if categoryID := p.Values["categoryId"]; categoryID != "" {
-				qb.AddCondition("category_id = " + qb.NextArg(categoryID))
-			}
-		},
-	}
+	cfg := h.Service.Store().EvaluationMethods().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

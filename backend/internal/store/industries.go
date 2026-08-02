@@ -97,3 +97,23 @@ func (s *IndustriesStore) ScanRows(rows pgx.Rows) ([]domain.Industry, error) {
 	}
 	return items, nil
 }
+
+// ListConfig 返回行业列表查询配置，SQL 片段沉淀在 store 层。
+func (s *IndustriesStore) ListConfig() ListQueryConfig[domain.Industry] {
+	return ListQueryConfig[domain.Industry]{
+		Table:         "industries",
+		SelectColumns: "id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		OrderBy:       "sort_order ASC, created_at DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if parentID := p.Values["parentId"]; parentID != "" {
+				qb.AddCondition("parent_id = " + qb.NextArg(parentID))
+			}
+			if enabledStr := p.Values["enabled"]; enabledStr != "" {
+				qb.AddCondition("enabled = " + qb.NextArg(enabledStr == "true"))
+			}
+		},
+		ScanRows: s.ScanRows,
+	}
+}

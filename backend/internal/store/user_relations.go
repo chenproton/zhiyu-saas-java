@@ -35,12 +35,12 @@ func (s *UserRelationStore) List(ctx context.Context, tenantID, search string, l
 	args := []any{}
 	argIdx := 1
 	if tenantID != "" {
-		where = append(where, "r.tenant_id = $"+itoa(argIdx))
+		where = append(where, "r.tenant_id = $"+Itoa(argIdx))
 		args = append(args, tenantID)
 		argIdx++
 	}
 	if search != "" {
-		where = append(where, "(init_u.name ILIKE $"+itoa(argIdx)+" OR tgt_u.name ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(init_u.name ILIKE $"+Itoa(argIdx)+" OR tgt_u.name ILIKE $"+Itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
@@ -73,7 +73,7 @@ func (s *UserRelationStore) List(ctx context.Context, tenantID, search string, l
 		LEFT JOIN organizations tgt_org ON tgt_org.id = COALESCE(r.target_org_node_id, tgt_u.org_node_id)
 		WHERE ` + cond + `
 		ORDER BY r.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+		LIMIT $` + Itoa(argIdx) + ` OFFSET $` + Itoa(argIdx+1)
 
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {

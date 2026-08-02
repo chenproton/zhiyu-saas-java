@@ -28,19 +28,7 @@ func (h *AffairsTermHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	cfg := store.ListQueryConfig[domain.Term]{
-		Table:         "terms",
-		SelectColumns: "id, name, to_char(start_date, 'YYYY-MM-DD') AS start_date, to_char(end_date, 'YYYY-MM-DD') AS end_date, weeks_count, is_current, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name"},
-		OrderBy:       "start_date DESC",
-		ScanRows:      store.ScanTermRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if isCurrent := p.Values["isCurrent"]; isCurrent == "true" {
-				qb.AddCondition("is_current = true")
-			}
-		},
-	}
+	cfg := h.Service.Store().Terms().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

@@ -35,19 +35,7 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	careerPositionID := r.URL.Query().Get("careerPositionId")
-	cfg := store.ListQueryConfig[domain.AbilityDomain]{
-		Table:         "ability_domains",
-		SelectColumns: "id, tenant_id, career_position_id, name, description, binding_ids, sort_order",
-		TenantScoped:  true,
-		OrderBy:       "sort_order ASC",
-		ScanRows:      store.ScanAbilityDomainRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if careerPositionID != "" {
-				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
-			}
-		},
-	}
+	cfg := h.Service.Store().AbilityDomains().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

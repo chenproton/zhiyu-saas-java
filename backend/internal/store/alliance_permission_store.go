@@ -31,6 +31,18 @@ func (s *AllianceStore) ScanPermissionRows(rows pgx.Rows) ([]domain.AlliancePerm
 	return items, nil
 }
 
+// ListConfig 返回权限账号列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AllianceStore) ListPermissionsConfig() ListQueryConfig[domain.AlliancePermission] {
+	return ListQueryConfig[domain.AlliancePermission]{
+		Table:         "alliance_permissions",
+		SelectColumns: "id, tenant_id, account_name, account_type, enterprise_id, expert_id, is_enabled, resource_permissions, platform_permissions, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"account_name"},
+		OrderBy:       "created_at DESC",
+		ScanRows:      s.ScanPermissionRows,
+	}
+}
+
 func (s *AllianceStore) CreatePermission(ctx context.Context, p *domain.AlliancePermission) (string, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `

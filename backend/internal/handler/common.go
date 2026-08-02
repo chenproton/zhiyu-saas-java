@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -107,33 +106,19 @@ func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) bool {
 // MaxPageSize limits the number of items per page to prevent unbounded queries.
 const MaxPageSize = 200
 
+// parseInt 委托 store.ParseInt（唯一实现）。
 func parseInt(s string, defaultVal int) (int, error) {
-	if s == "" {
-		return defaultVal, nil
-	}
-	v, err := strconv.Atoi(s)
-	if err != nil {
-		return defaultVal, err
-	}
-	return v, nil
+	return store.ParseInt(s, defaultVal)
 }
 
+// parsePageLimit 委托 store.ParsePageLimit（唯一实现）。
 func parsePageLimit(s string, defaultVal int) (int, error) {
-	v, err := parseInt(s, defaultVal)
-	if err != nil {
-		return defaultVal, err
-	}
-	if v > MaxPageSize {
-		v = MaxPageSize
-	}
-	if v < 1 {
-		v = defaultVal
-	}
-	return v, nil
+	return store.ParsePageLimit(s, defaultVal)
 }
 
+// itoa 委托 store.Itoa（唯一实现）。
 func itoa(i int) string {
-	return strconv.Itoa(i)
+	return store.Itoa(i)
 }
 
 // platformAdminOnly returns true if the caller is a platform admin.

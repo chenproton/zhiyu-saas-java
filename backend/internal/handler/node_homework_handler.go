@@ -36,19 +36,7 @@ func (h *NodeHomeworkHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nodeID := r.URL.Query().Get("nodeId")
-	cfg := store.ListQueryConfig[domain.NodeHomework]{
-		Table:         "node_homeworks",
-		SelectColumns: "id, node_id, title, requirement, need_attachment, deadline",
-		TenantScoped:  true,
-		OrderBy:       "id DESC",
-		NoPagination:  true,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if nodeID != "" {
-				qb.AddCondition("node_id = " + qb.NextArg(nodeID))
-			}
-		},
-	}
+	cfg := h.Service.Store().NodeHomeworks().ListConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

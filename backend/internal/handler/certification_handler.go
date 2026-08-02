@@ -87,19 +87,7 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	cfg := store.ListQueryConfig[domain.CertificationRule]{
-		Table:         "certification_rules",
-		SelectColumns: "id, career_position_id, status, rule_source, level_mapping, created_at, updated_at",
-		TenantScoped:  true,
-		OrderBy:       "created_at DESC",
-		DefaultLimit:  50,
-		ScanRows:      store.ScanCertificationRuleRows,
-		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
+	cfg := h.Service.Store().Certifications().ListRulesConfig()
 	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")

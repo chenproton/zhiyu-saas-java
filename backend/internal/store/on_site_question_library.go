@@ -86,6 +86,17 @@ func (s *OnSiteQuestionLibraryStore) Delete(ctx context.Context, id string) erro
 	return err
 }
 
+// ListConfig 返回现场题库列表查询配置，SQL 片段沉淀在 store 层。
+func (s *OnSiteQuestionLibraryStore) ListConfig() ListQueryConfig[domain.OnSiteQuestionLibraryItem] {
+	return ListQueryConfig[domain.OnSiteQuestionLibraryItem]{
+		Table:         "on_site_question_library",
+		SelectColumns: "id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"question_text", "answer"},
+		ScanRows:      s.ScanRows,
+	}
+}
+
 func (s *OnSiteQuestionLibraryStore) ScanRows(rows pgx.Rows) ([]domain.OnSiteQuestionLibraryItem, error) {
 	items := make([]domain.OnSiteQuestionLibraryItem, 0)
 	for rows.Next() {

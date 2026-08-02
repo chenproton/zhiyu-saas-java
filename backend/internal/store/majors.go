@@ -93,3 +93,19 @@ func (s *MajorsStore) ScanRows(rows pgx.Rows) ([]domain.Major, error) {
 	}
 	return items, nil
 }
+
+// ListConfig 返回专业列表查询配置，SQL 片段沉淀在 store 层。
+func (s *MajorsStore) ListConfig() ListQueryConfig[domain.Major] {
+	return ListQueryConfig[domain.Major]{
+		Table:         "majors",
+		SelectColumns: "id, tenant_id, code, name, alias, enabled, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if enabledStr := p.Values["enabled"]; enabledStr != "" {
+				qb.AddCondition("enabled = " + qb.NextArg(enabledStr == "true"))
+			}
+		},
+		ScanRows: s.ScanRows,
+	}
+}

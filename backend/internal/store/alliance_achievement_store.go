@@ -47,6 +47,26 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 	return items, nil
 }
 
+// ListConfig 返回合作成果列表查询配置，SQL 片段沉淀在 store 层。
+func (s *AllianceStore) ListAchievementsConfig() ListQueryConfig[domain.AllianceAchievement] {
+	return ListQueryConfig[domain.AllianceAchievement]{
+		Table:         "alliance_achievements",
+		SelectColumns: "id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"title"},
+		OrderBy:       "created_at DESC",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if achieveType := p.Values["type"]; achieveType != "" {
+				qb.AddCondition("type = " + qb.NextArg(achieveType))
+			}
+			if status := p.Values["status"]; status != "" {
+				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+		},
+		ScanRows: s.ScanAchievementRows,
+	}
+}
+
 func (s *AllianceStore) CreateAchievement(ctx context.Context, a *domain.AllianceAchievement) (string, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `

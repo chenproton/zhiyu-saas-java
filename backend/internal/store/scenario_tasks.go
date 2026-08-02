@@ -197,6 +197,22 @@ func (s *ScenarioTaskStore) fetchTask(ctx context.Context, id string) (*domain.S
 	return &t, nil
 }
 
+// ListConfig 返回任务列表查询配置，SQL 片段沉淀在 store 层。
+func (s *ScenarioTaskStore) ListConfig() ListQueryConfig[domain.ScenarioTask] {
+	return ListQueryConfig[domain.ScenarioTask]{
+		Table:         "scenario_tasks",
+		SelectColumns: TaskSelectColumns,
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		OrderBy:       "sort_order",
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if scenarioID := p.Values["scenarioId"]; scenarioID != "" {
+				qb.AddCondition("scenario_id = " + qb.NextArg(scenarioID))
+			}
+		},
+	}
+}
+
 func scanTaskRows(rows pgx.Rows) ([]domain.ScenarioTask, error) {
 	items := make([]domain.ScenarioTask, 0)
 	for rows.Next() {
