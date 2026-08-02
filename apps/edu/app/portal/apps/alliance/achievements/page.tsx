@@ -15,19 +15,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'
-import type {
-  AllianceAchievement,
-  AllianceEnterprise,
-  AllianceProject,
-  AllianceListResponse,
-} from '@/lib/types'
+import type { AllianceAchievement, AllianceEnterprise, AllianceProject } from '@/lib/types'
 
 export default function AllianceAchievementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -44,9 +39,9 @@ export default function AllianceAchievementsPage() {
     setError(null)
     try {
       const [data, ents, projs] = await Promise.all([
-        portalRequest<AllianceListResponse<AllianceAchievement>>('/alliance/achievements'),
-        portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
-        portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
+        allianceAchievementApi.list(),
+        allianceEnterpriseApi.list({ limit: 1000 }),
+        allianceProjectApi.list({ limit: 1000 }),
       ])
       setItems(data.items || [])
       setEnterprises(ents.items || [])
@@ -222,21 +217,15 @@ export default function AllianceAchievementsPage() {
       getDeleteDescription={(item: any) => <>确定要删除成果「{item.title}」吗？</>}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) {
-          await portalRequest(`/alliance/achievements/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify(item),
-          })
+          await allianceAchievementApi.update(item.id, item)
         } else {
-          await portalRequest('/alliance/achievements', {
-            method: 'POST',
-            body: JSON.stringify(item),
-          })
+          await allianceAchievementApi.create(item)
         }
         toast({ title: `成果已${isEdit ? '更新' : '创建'}` })
         await fetchItems()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/achievements/${item.id}`, { method: 'DELETE' })
+        await allianceAchievementApi.delete(item.id)
         toast({ title: '成果已删除' })
         await fetchItems()
       }}

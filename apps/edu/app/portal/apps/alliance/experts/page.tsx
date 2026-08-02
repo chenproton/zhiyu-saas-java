@@ -15,13 +15,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceExpertApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
-import type { AllianceExpert, AllianceListResponse } from '@/lib/types'
+import type { AllianceExpert } from '@/lib/types'
 
 export default function AllianceExpertsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -35,7 +35,7 @@ export default function AllianceExpertsPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await portalRequest<AllianceListResponse<AllianceExpert>>('/alliance/experts')
+      const data = await allianceExpertApi.list()
       setExperts(data.items || [])
     } catch (e: any) {
       setError(e.message || '加载失败')
@@ -198,18 +198,13 @@ export default function AllianceExpertsPage() {
         </>
       )}
       onSave={async (item: any, isEdit: boolean) => {
-        if (isEdit)
-          await portalRequest(`/alliance/experts/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify(item),
-          })
-        else
-          await portalRequest('/alliance/experts', { method: 'POST', body: JSON.stringify(item) })
+        if (isEdit) await allianceExpertApi.update(item.id, item)
+        else await allianceExpertApi.create(item)
         toast({ title: `专家已${isEdit ? '更新' : '创建'}` })
         await fetchExperts()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/experts/${item.id}`, { method: 'DELETE' })
+        await allianceExpertApi.delete(item.id)
         toast({ title: '已删除' })
         await fetchExperts()
       }}

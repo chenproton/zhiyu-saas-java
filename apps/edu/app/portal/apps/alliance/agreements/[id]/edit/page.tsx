@@ -17,9 +17,8 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { portalRequest } from '@/lib/api'
+import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
-import type { AllianceEnterprise, AllianceProject, AllianceListResponse } from '@/lib/types'
 
 const AGREEMENT_TYPES = [
   '战略合作协议',
@@ -54,9 +53,9 @@ export default function AllianceAgreementEditPage() {
   useEffect(() => {
     if (!id) return
     Promise.all([
-      portalRequest<any>(`/alliance/agreements/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
-      portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
+      allianceAgreementApi.get(id),
+      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceProjectApi.list({ limit: 1000 }),
     ])
       .then(([a, ents, projs]) => {
         setItem({
@@ -86,10 +85,7 @@ export default function AllianceAgreementEditPage() {
     }
     setSaving(true)
     try {
-      await portalRequest(`/alliance/agreements/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(item),
-      })
+      await allianceAgreementApi.update(id, item)
       toast({ title: '协议已更新' })
       router.push(`/portal/apps/alliance/agreements/${id}`)
     } catch (e: any) {

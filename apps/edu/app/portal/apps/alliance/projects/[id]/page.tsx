@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { portalRequest, allianceAchievementApi, allianceAgreementApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
@@ -36,7 +36,6 @@ import type {
   AllianceProjectMilestone,
   AllianceAgreement,
   AllianceAchievement,
-  AllianceListResponse,
 } from '@/lib/types'
 
 export default function AllianceProjectDetailPage() {
@@ -76,12 +75,10 @@ export default function AllianceProjectDetailPage() {
   const loadData = () => {
     if (!tenantId || !id) return
     Promise.all([
-      portalRequest<AllianceProject>(`/alliance/projects/${id}`),
-      portalRequest<AllianceListResponse<AllianceProjectMilestone>>(
-        `/alliance/projects/${id}/milestones`,
-      ),
-      portalRequest<AllianceListResponse<AllianceAgreement>>('/alliance/agreements?limit=1000'),
-      portalRequest<AllianceListResponse<AllianceAchievement>>('/alliance/achievements?limit=1000'),
+      allianceProjectApi.get(id),
+      allianceProjectApi.listMilestones(id),
+      allianceAgreementApi.list({ limit: 1000 }),
+      allianceAchievementApi.list({ limit: 1000 }),
     ])
       .then(([p, m, agr, ach]) => {
         setProject(p)
@@ -101,10 +98,7 @@ export default function AllianceProjectDetailPage() {
     try {
       const current = project as any
       const agreementIds = [...new Set([...(current.agreementIds || []), ...linkSelected])]
-      await portalRequest(`/alliance/projects/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ ...current, agreementIds }),
-      })
+      await allianceProjectApi.update(id, { ...current, agreementIds })
       toast({ title: `已关联 ${linkSelected.length} 份协议` })
       setLinkDialog(false)
       setLinkSelected([])
@@ -119,12 +113,9 @@ export default function AllianceProjectDetailPage() {
   const unlinkAgr = async (aid: string) => {
     const current = project as any
     try {
-      await portalRequest(`/alliance/projects/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          ...current,
-          agreementIds: (current.agreementIds || []).filter((x: string) => x !== aid),
-        }),
+      await allianceProjectApi.update(id, {
+        ...current,
+        agreementIds: (current.agreementIds || []).filter((x: string) => x !== aid),
       })
       toast({ title: '已取消关联' })
       loadData()
@@ -140,16 +131,10 @@ export default function AllianceProjectDetailPage() {
     }
     setSavingA(true)
     try {
-      const data = await portalRequest<{ id: string }>('/alliance/agreements', {
-        method: 'POST',
-        body: JSON.stringify(aForm),
-      })
+      const data = await allianceAgreementApi.create(aForm)
       const current = project as any
       const agreementIds = [...(current.agreementIds || []), data.id]
-      await portalRequest(`/alliance/projects/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ ...current, agreementIds }),
-      })
+      await allianceProjectApi.update(id, { ...current, agreementIds })
       toast({ title: '协议已创建并关联项目' })
       setNewAgrDialog(false)
       setAForm({ name: '', type: '', startDate: '', endDate: '', status: 'draft', content: '' })

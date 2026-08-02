@@ -21,9 +21,9 @@ import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Loader2, Send } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
-import type { AllianceProject, AllianceEnterprise, AllianceListResponse } from '@/lib/types'
+import type { AllianceProject } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -64,8 +64,8 @@ export default function AllianceProjectEditPage() {
   useEffect(() => {
     if (!tenantId || !id) return
     Promise.all([
-      portalRequest<AllianceProject>(`/alliance/projects/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
+      allianceProjectApi.get(id),
+      allianceEnterpriseApi.list({ limit: 1000 }),
     ])
       .then(([p, ents]) => {
         setItem(p)
@@ -79,12 +79,9 @@ export default function AllianceProjectEditPage() {
     if (!item) return
     setSaving(true)
     try {
-      await portalRequest(`/alliance/projects/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          ...item,
-          publishStatus: publish ? 'published' : item.publishStatus || 'draft',
-        }),
+      await allianceProjectApi.update(id, {
+        ...item,
+        publishStatus: publish ? 'published' : item.publishStatus || 'draft',
       })
       toast({ title: publish ? '项目已发布' : '草稿已保存' })
       router.push(`/portal/apps/alliance/projects/${id}`)

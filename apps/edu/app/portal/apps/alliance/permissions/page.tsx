@@ -15,13 +15,13 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Pencil, Trash2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { alliancePermissionApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
-import type { AlliancePermission, AllianceListResponse } from '@/lib/types'
+import type { AlliancePermission } from '@/lib/types'
 
 export default function AlliancePermissionsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -35,8 +35,7 @@ export default function AlliancePermissionsPage() {
     setLoading(true)
     setError(null)
     try {
-      const data =
-        await portalRequest<AllianceListResponse<AlliancePermission>>('/alliance/permissions')
+      const data = await alliancePermissionApi.list()
       setItems(data.items || [])
     } catch (e: any) {
       setError(e.message || '加载失败')
@@ -170,29 +169,20 @@ export default function AlliancePermissionsPage() {
       getDeleteDescription={(item: any) => <>确定要删除「{item.accountName}」的授权吗？</>}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) {
-          await portalRequest(`/alliance/permissions/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify(item),
-          })
+          await alliancePermissionApi.update(item.id, item)
         } else {
-          await portalRequest('/alliance/permissions', {
-            method: 'POST',
-            body: JSON.stringify(item),
-          })
+          await alliancePermissionApi.create(item)
         }
         toast({ title: `授权已${isEdit ? '更新' : '创建'}` })
         await fetchItems()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/permissions/${item.id}`, { method: 'DELETE' })
+        await alliancePermissionApi.delete(item.id)
         toast({ title: '授权已删除' })
         await fetchItems()
       }}
       onToggleEnabled={async (item: any) => {
-        await portalRequest(`/alliance/permissions/${item.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ ...item, isEnabled: !item.isEnabled }),
-        })
+        await alliancePermissionApi.toggleEnabled(item.id, !item.isEnabled)
         await fetchItems()
       }}
     />

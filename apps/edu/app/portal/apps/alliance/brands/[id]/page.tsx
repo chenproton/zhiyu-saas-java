@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceBrandApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
@@ -20,7 +20,7 @@ export default function AllianceBrandDetailPage() {
 
   useEffect(() => {
     if (!tenantId || !id) return
-    portalRequest<AllianceBrand>(`/alliance/brands/${id}`)
+    allianceBrandApi.get(id)
       .then((b) => setBrand(b))
       .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))

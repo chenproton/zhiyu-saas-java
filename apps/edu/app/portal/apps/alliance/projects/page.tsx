@@ -17,18 +17,13 @@ import { Progress } from '@/components/ui/progress'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
-import type {
-  AllianceProject,
-  AllianceEnterprise,
-  AllianceProjectMilestone,
-  AllianceListResponse,
-} from '@/lib/types'
+import type { AllianceProject, AllianceEnterprise, AllianceProjectMilestone } from '@/lib/types'
 
 export default function AllianceProjectsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -45,17 +40,15 @@ export default function AllianceProjectsPage() {
     setError(null)
     try {
       const [data, ents] = await Promise.all([
-        portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects'),
-        portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
+        allianceProjectApi.list(),
+        allianceEnterpriseApi.list({ limit: 1000 }),
       ])
       setProjects(data.items || [])
       setEnterprises(ents.items || [])
       const ms: Record<string, AllianceProjectMilestone[]> = {}
       for (const p of data.items || []) {
         try {
-          const m = await portalRequest<AllianceListResponse<AllianceProjectMilestone>>(
-            `/alliance/projects/${p.id}/milestones`,
-          )
+          const m = await allianceProjectApi.listMilestones(p.id)
           ms[p.id] = m.items || []
         } catch {
           ms[p.id] = []
@@ -234,18 +227,13 @@ export default function AllianceProjectsPage() {
         </>
       )}
       onSave={async (item: any, isEdit: boolean) => {
-        if (isEdit)
-          await portalRequest(`/alliance/projects/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify(item),
-          })
-        else
-          await portalRequest('/alliance/projects', { method: 'POST', body: JSON.stringify(item) })
+        if (isEdit) await allianceProjectApi.update(item.id, item)
+        else await allianceProjectApi.create(item)
         toast({ title: `项目已${isEdit ? '更新' : '创建'}` })
         await fetchProjects()
       }}
       onDelete={async (item: any) => {
-        await portalRequest(`/alliance/projects/${item.id}`, { method: 'DELETE' })
+        await allianceProjectApi.delete(item.id)
         toast({ title: '已删除' })
         await fetchProjects()
       }}

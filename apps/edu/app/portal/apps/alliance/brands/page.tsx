@@ -5,8 +5,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
-import type { AllianceBrand, AllianceListResponse } from '@/lib/types'
+import { allianceBrandApi } from '@/lib/api'
 
 const brandCards = [
   {
@@ -61,7 +60,7 @@ export default function AllianceBrandsPage() {
     if (!tenantId) return
     const loadCounts = async () => {
       try {
-        const data = await portalRequest<AllianceListResponse<AllianceBrand>>('/alliance/brands')
+        const data = await allianceBrandApi.list()
         const c: Record<string, number> = {}
         for (const b of data.items || []) {
           c[b.brandType] = (c[b.brandType] || 0) + 1

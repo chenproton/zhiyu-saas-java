@@ -18,9 +18,8 @@ import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { portalRequest } from '@/lib/api'
+import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
-import type { AllianceEnterprise, AllianceProject, AllianceListResponse } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -55,8 +54,8 @@ export default function AllianceAchievementNewPage() {  const { toast } = useToa
 
   useEffect(() => {
     Promise.all([
-      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
-      portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
+      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceProjectApi.list({ limit: 1000 }),
     ])
       .then(([ents, projs]) => {
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
@@ -70,10 +69,7 @@ export default function AllianceAchievementNewPage() {  const { toast } = useToa
   const handleSave = async () => {
     setSaving(true)
     try {
-      const data = await portalRequest<{ id: string }>('/alliance/achievements', {
-        method: 'POST',
-        body: JSON.stringify(item),
-      })
+      const data = await allianceAchievementApi.create(item)
       toast({ title: '成果已创建' })
       router.push(`/portal/apps/alliance/achievements/${data.id}`)
     } catch (e: any) {

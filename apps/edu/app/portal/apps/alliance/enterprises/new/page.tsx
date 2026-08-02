@@ -19,7 +19,7 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { portalRequest } from '@/lib/api'
+import { allianceEnterpriseApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 
 const SECONDARY_COLLEGES = [
@@ -74,10 +74,7 @@ export default function AllianceEnterpriseNewPage() {
     }
     setSaving(true)
     try {
-      const data = await portalRequest<{ id: string }>('/alliance/enterprises', {
-        method: 'POST',
-        body: JSON.stringify(item),
-      })
+      const data = await allianceEnterpriseApi.create(item)
       toast({ title: '企业已创建' })
       router.push(`/portal/apps/alliance/enterprises/${data.id}`)
     } catch (e: any) {

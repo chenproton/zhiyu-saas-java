@@ -23,7 +23,12 @@ import {
 } from '@/components/ui/dialog'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import {
+  allianceEnterpriseApi,
+  allianceAgreementApi,
+  allianceProjectApi,
+  allianceAchievementApi,
+} from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
@@ -33,7 +38,6 @@ import type {
   AllianceAgreement,
   AllianceProject,
   AllianceAchievement,
-  AllianceListResponse,
 } from '@/lib/types'
 
 export default function AllianceEnterpriseDetailPage() {
@@ -62,10 +66,10 @@ export default function AllianceEnterpriseDetailPage() {
   const loadData = () => {
     if (!tenantId || !id) return
     Promise.all([
-      portalRequest<AllianceEnterprise>(`/alliance/enterprises/${id}`),
-      portalRequest<AllianceListResponse<AllianceAgreement>>('/alliance/agreements?limit=1000'),
-      portalRequest<AllianceListResponse<AllianceProject>>(`/alliance/projects?limit=1000`),
-      portalRequest<AllianceListResponse<AllianceAchievement>>(`/alliance/achievements?limit=1000`),
+      allianceEnterpriseApi.get(id),
+      allianceAgreementApi.list({ limit: 1000 }),
+      allianceProjectApi.list({ limit: 1000 }),
+      allianceAchievementApi.list({ limit: 1000 }),
     ])
       .then(([ent, agr, proj, ach]) => {
         setEnterprise(ent)
@@ -94,10 +98,7 @@ export default function AllianceEnterpriseDetailPage() {
         const agreement = allAgreements.find((a) => a.id === aid)
         if (!agreement) continue
         const ids = [...(agreement.enterpriseIds || []), id]
-        await portalRequest(`/alliance/agreements/${aid}`, {
-          method: 'PUT',
-          body: JSON.stringify({ ...agreement, enterpriseIds: ids }),
-        })
+        await allianceAgreementApi.update(aid, { ...agreement, enterpriseIds: ids })
       }
       toast({ title: `已关联 ${linkSelected.length} 份协议` })
       setLinkDialog(false)
@@ -117,10 +118,7 @@ export default function AllianceEnterpriseDetailPage() {
     }
     setSavingA(true)
     try {
-      await portalRequest('/alliance/agreements', {
-        method: 'POST',
-        body: JSON.stringify({ ...aForm, enterpriseIds: [id] }),
-      })
+      await allianceAgreementApi.create({ ...aForm, enterpriseIds: [id] })
       toast({ title: '协议已创建并关联' })
       setNewDialog(false)
       setAForm({ name: '', type: '', startDate: '', endDate: '', status: 'draft', content: '' })
@@ -136,12 +134,9 @@ export default function AllianceEnterpriseDetailPage() {
     const agreement = allAgreements.find((a) => a.id === aid)
     if (!agreement) return
     try {
-      await portalRequest(`/alliance/agreements/${aid}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          ...agreement,
-          enterpriseIds: (agreement.enterpriseIds || []).filter((x) => x !== id),
-        }),
+      await allianceAgreementApi.update(aid, {
+        ...agreement,
+        enterpriseIds: (agreement.enterpriseIds || []).filter((x) => x !== id),
       })
       toast({ title: '已取消关联' })
       loadData()

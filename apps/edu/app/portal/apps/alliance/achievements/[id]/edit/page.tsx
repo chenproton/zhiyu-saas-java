@@ -19,14 +19,9 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
-import type {
-  AllianceAchievement,
-  AllianceEnterprise,
-  AllianceProject,
-  AllianceListResponse,
-} from '@/lib/types'
+import type { AllianceAchievement } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -57,9 +52,9 @@ export default function AllianceAchievementEditPage() {
   useEffect(() => {
     if (!tenantId || !id) return
     Promise.all([
-      portalRequest<AllianceAchievement>(`/alliance/achievements/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterprise>>('/alliance/enterprises?limit=1000'),
-      portalRequest<AllianceListResponse<AllianceProject>>('/alliance/projects?limit=1000'),
+      allianceAchievementApi.get(id),
+      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceProjectApi.list({ limit: 1000 }),
     ])
       .then(([a, ents, projs]) => {
         setItem(a)
@@ -74,10 +69,7 @@ export default function AllianceAchievementEditPage() {
     if (!item) return
     setSaving(true)
     try {
-      await portalRequest(`/alliance/achievements/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(item),
-      })
+      await allianceAchievementApi.update(id, item)
       toast({ title: '成果已更新' })
       router.push(`/portal/apps/alliance/achievements/${id}`)
     } catch (e: any) {
