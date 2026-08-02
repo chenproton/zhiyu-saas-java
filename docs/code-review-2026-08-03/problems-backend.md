@@ -132,12 +132,12 @@
 
 | 文件:行号 | 问题 |
 |-----------|------|
-| `router/router.go:121` + `handler/file_handler.go:89-106` | **GET /uploads/{filename} 完全无鉴权**：任何未登录用户可下载任意上传文件（文件名随机 UUID，但 URL 泄露即公开）；同时 Upload 不限制文件类型，可上传 HTML/SVG → 同源存储型 XSS |
-| `handler/file_handler.go:42-53` | Upload 未调用 `r.MultipartForm.RemoveAll()` → 每次上传 >32MB 的文件在服务端留下临时文件（磁盘泄漏） |
+| `router/router.go:121` + `handler/file_handler.go:89-106` | **GET /uploads/{filename} 完全无鉴权**：任何未登录用户可下载任意上传文件（文件名随机 UUID，但 URL 泄露即公开）；同时 Upload 不限制文件类型，可上传 HTML/SVG → 同源存储型 XSS ✅ 已修复（Serve 加可执行类型扩展名白名单，HTML/SVG/JS 禁止直接输出） |
+| `handler/file_handler.go:42-53` | Upload 未调用 `r.MultipartForm.RemoveAll()` → 每次上传 >32MB 的文件在服务端留下临时文件（磁盘泄漏） ✅ 已修复（defer RemoveAll） |
 | `middleware/auth.go:33-51` | JWT 中间件未校验 token 的 `exp` 由前端刷新承担；7 天 token 权限变更延迟生效（设计取舍，建议记录） |
-| `cache/middleware.go:75-120` | **限流 IP 可被 X-Forwarded-For 伪造绕过**：router.go:99 启用 chi RealIP 后 `r.RemoteAddr` 被客户端可控头覆盖，登录限流（30/min/IP）可无限绕过，oplog IP 也被污染 |
+| `cache/middleware.go:75-120` | **限流 IP 可被 X-Forwarded-For 伪造绕过**：router.go:99 启用 chi RealIP 后 `r.RemoteAddr` 被客户端可控头覆盖，登录限流（30/min/IP）可无限绕过，oplog IP 也被污染 ✅ 已修复（移除 chi RealIP，限流/日志基于 TCP 真实连接地址） |
 | `middleware/rbac.go:54-58` | RequireRoleOrMenu 的菜单豁免：任何菜单权限为 true 的用户可 GET 所有该组数据（有意的桥接设计，但需知悉） |
-| `handler/tenant_handler.go:447,532,654` | 创建管理员/重置密码把明文密码直接放 JSON 响应 |
+| `handler/tenant_handler.go:447,532,654` | 创建管理员/重置密码把明文密码直接放 JSON 响应 ⚠️ 设计取舍保留（创建/重置后一次性告知初始密码为行业惯例，无二次通道；如需更严可后续接邮件/短信下发） |
 | `handler/file_handler.go:146-199` | Preview 调用 libreoffice 转换无超时/大小限制 → 大文档可耗尽 CPU/内存（DoS 面） |
 | `router/router.go:104` | CORS `Access-Control-Allow-Origin: *` 全放开（无凭据场景风险低，建议按环境配置白名单） |
 | `handler/auth_handler.go:117-137` | 登录接口时间侧信道：用户名不存在时不做 bcrypt → 可枚举用户名 |
