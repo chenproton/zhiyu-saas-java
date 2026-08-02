@@ -309,7 +309,11 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, _ := h.Service.Get(r.Context(), id)
+	user, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询用户失败")
+		return
+	}
 	user.PasswordHash = ""
 	respondJSON(w, http.StatusOK, user)
 }
@@ -625,7 +629,11 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	updated, _ := h.Service.Get(r.Context(), id)
+	updated, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询用户失败")
+		return
+	}
 	h.Service.AttachRoles(r.Context(), updated)
 	updated.PasswordHash = ""
 	respondJSON(w, http.StatusOK, updated)

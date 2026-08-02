@@ -141,7 +141,11 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 }
 
 func migrateDown(conn *pgx.Conn, dir string) error {
-	rows, err := conn.Query(ctx(), `SELECT version FROM schema_migrations ORDER BY version DESC`)
+	// 按数字版本号降序回滚（字符串排序会把 100_ 排在 99_ 之前）
+	rows, err := conn.Query(ctx(), `
+		SELECT version FROM schema_migrations
+		ORDER BY (regexp_replace(version, '^([0-9]+).*$', '\\1'))::bigint DESC, version DESC
+	`)
 	if err != nil {
 		return fmt.Errorf("list applied migrations: %w", err)
 	}
