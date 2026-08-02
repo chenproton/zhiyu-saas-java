@@ -655,10 +655,13 @@ if $BUILD_BACKEND; then
     die "gofmt 检查未通过，请先运行 gofmt -w ."
   fi
   (cd "$BACKEND_DIR" && go vet ./...) || die "go vet ./... 失败"
-  if command -v pg_isready >/dev/null 2>&1 && pg_isready "$DATABASE_URL" >/dev/null 2>&1; then
-    (cd "$BACKEND_DIR" && go test ./...) || die "go test ./... 失败"
+  # go test 集成测试会向数据库执行 migration/DELETE，仅允许在 TEST_DATABASE_URL
+  # 指定的专用测试库上运行，避免误伤生产数据。
+  TEST_DB_URL="${TEST_DATABASE_URL:-$DATABASE_URL}"
+  if [[ -n "$TEST_DATABASE_URL" ]] && command -v pg_isready >/dev/null 2>&1 && pg_isready "$TEST_DATABASE_URL" >/dev/null 2>&1; then
+    (cd "$BACKEND_DIR" && TEST_DATABASE_URL="$TEST_DATABASE_URL" go test ./...) || die "go test ./... 失败"
   else
-    warn "数据库不可用，跳过 go test（环境限制，非代码错误）"
+    warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
   fi
   mkdir -p "$BUILD_CACHE/go-cache"
   if [[ -d "$BACKEND_DIR/vendor" ]]; then
