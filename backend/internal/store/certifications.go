@@ -21,6 +21,34 @@ func NewCertificationStore(q Queryer) *CertificationStore {
 	return &CertificationStore{q: q}
 }
 
+// PublishedTarget 已发布认证规则对应的租户+岗位组合。
+type PublishedTarget struct {
+	TenantID  string
+	PositionID string
+}
+
+// ListPublishedTargets 返回所有 published 规则的 tenant+position 组合。
+func (s *CertificationStore) ListPublishedTargets(ctx context.Context) ([]PublishedTarget, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT DISTINCT tenant_id, career_position_id FROM certification_rules
+		WHERE status = 'published' AND tenant_id IS NOT NULL
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var targets []PublishedTarget
+	for rows.Next() {
+		var t PublishedTarget
+		if err := rows.Scan(&t.TenantID, &t.PositionID); err != nil {
+			return nil, err
+		}
+		targets = append(targets, t)
+	}
+	return targets, rows.Err()
+}
+
 // ListRules 查询认证规则列表。
 func (s *CertificationStore) ListRules(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.CertificationRule]) ([]domain.CertificationRule, int, error) {
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanCertificationRuleRows)

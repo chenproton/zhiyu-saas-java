@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -113,7 +114,7 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 			respondError(w, http.StatusNotFound, c.entityName+"不存在")
 			return
 		}
-		if _, isTransition := err.(interface{ Transition() }); isTransition || err.Error()[:len("invalid transition")] == "invalid transition" {
+		if _, isTransition := err.(interface{ Transition() }); isTransition || strings.HasPrefix(err.Error(), "invalid transition") {
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}

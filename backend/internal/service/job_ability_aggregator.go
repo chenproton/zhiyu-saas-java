@@ -65,34 +65,15 @@ func (a *JobAbilityAggregator) AggregatePosition(ctx context.Context, tenantID, 
 
 // AggregateAllPublished 遍历所有 published 规则的 tenant+position 组合逐个汇聚。
 func (a *JobAbilityAggregator) AggregateAllPublished(ctx context.Context) error {
-	rows, err := a.store.Q().Query(ctx, `
-		SELECT DISTINCT tenant_id, career_position_id FROM certification_rules
-		WHERE status = 'published' AND tenant_id IS NOT NULL
-	`)
+	targets, err := a.store.Certifications().ListPublishedTargets(ctx)
 	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	type target struct {
-		tenantID, positionID string
-	}
-	var targets []target
-	for rows.Next() {
-		var t target
-		if err := rows.Scan(&t.tenantID, &t.positionID); err != nil {
-			return err
-		}
-		targets = append(targets, t)
-	}
-	if err := rows.Err(); err != nil {
 		return err
 	}
 
 	var firstErr error
 	for _, t := range targets {
-		if err := a.AggregatePosition(ctx, t.tenantID, t.positionID, nil); err != nil {
-			slog.Error("岗位能力汇聚失败", "tenantId", t.tenantID, "careerPositionId", t.positionID, "error", err)
+		if err := a.AggregatePosition(ctx, t.TenantID, t.PositionID, nil); err != nil {
+			slog.Error("岗位能力汇聚失败", "tenantId", t.TenantID, "careerPositionId", t.PositionID, "error", err)
 			if firstErr == nil {
 				firstErr = err
 			}
