@@ -28,15 +28,6 @@ type ReviewApprovalRequest struct {
 	Remark *string `json:"remark"`
 }
 
-var entityTableMap = map[string]string{
-	"career_position":  "career_positions",
-	"scenario":         "scenarios",
-	"course":           "courses",
-	"question_bank":    "question_banks",
-	"exam":             "exams",
-	"training_program": "training_programs",
-}
-
 func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")

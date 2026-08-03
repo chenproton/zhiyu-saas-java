@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -29,6 +30,16 @@ var allowedApprovalTables = []string{
 	"question_banks",
 	"exams",
 	"training_programs",
+}
+
+// approvalTargetTypeToTable 审批目标类型（记录中存储的单数形式）→ 实体表名映射。
+var approvalTargetTypeToTable = map[string]string{
+	"career_position":  "career_positions",
+	"scenario":         "scenarios",
+	"course":           "courses",
+	"question_bank":    "question_banks",
+	"exam":             "exams",
+	"training_program": "training_programs",
 }
 
 // List 查询审批记录列表。
@@ -142,8 +153,12 @@ func (s *ApprovalStore) AdvanceRecord(ctx context.Context, tx Queryer, id, statu
 	return tag.RowsAffected() > 0, nil
 }
 
-// SyncEntityStatus 同步实体状态（白名单表）。
-func (s *ApprovalStore) SyncEntityStatus(ctx context.Context, tx Queryer, table, status, targetID, tenantID string) error {
+// SyncEntityStatus 同步实体状态（目标类型映射实体表，白名单表校验）。
+func (s *ApprovalStore) SyncEntityStatus(ctx context.Context, tx Queryer, targetType, status, targetID, tenantID string) error {
+	table, ok := approvalTargetTypeToTable[targetType]
+	if !ok {
+		return fmt.Errorf("invalid identifier: %s", targetType)
+	}
 	if _, err := SanitizeIdentifier(table, allowedApprovalTables); err != nil {
 		return err
 	}
