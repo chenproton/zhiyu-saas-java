@@ -208,7 +208,7 @@ func ScanPeriodSlotRows(rows pgx.Rows) ([]domain.PeriodSlot, error) {
 
 // ListSchedules 查询排课列表。
 func (s *SchedulingStore) ListSchedules(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.ScheduleEntry]) ([]domain.ScheduleEntry, int, error) {
-	return ExecuteListQuery(ctx, s.q, p, cfg, ScanScheduleEntryRows)
+	return ExecuteListQuery(ctx, s.q, p, cfg)
 }
 
 // GetSchedule 查询单个排课。
@@ -717,38 +717,6 @@ func (s *SchedulingStore) fetchScheduleEntry(ctx context.Context, id, tenantID s
 	return &e, nil
 }
 
-// ScanScheduleEntryRows 扫描排课行。
-func ScanScheduleEntryRows(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
-	items := make([]domain.ScheduleEntry, 0)
-	for rows.Next() {
-		var e domain.ScheduleEntry
-		var planEntryID, courseCode, teacherID2, venueID, scenarioID *string
-		var teacherName, venueName, className, scenarioName string
-		if err := rows.Scan(
-			&e.ID, &e.TermID, &planEntryID, &e.CourseName, &courseCode, &e.CourseID, &e.Type,
-			&e.ClassNodeID, &e.ClassNodeIDs, &teacherID2, &e.DayOfWeek, &e.Periods, &e.StartWeek, &e.EndWeek,
-			&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version,
-			&teacherName, &venueName, &className, &scenarioName); err != nil {
-			return nil, err
-		}
-		e.PlanEntryID = planEntryID
-		e.CourseCode = courseCode
-		e.TeacherID = teacherID2
-		e.VenueID = venueID
-		e.ScenarioID = scenarioID
-		e.TeacherName = teacherName
-		e.VenueName = venueName
-		e.ClassName = className
-		e.ScenarioName = scenarioName
-		items = append(items, e)
-	}
-	return items, nil
-}
-
-const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at, COALESCE(se.class_node_ids, '{}') AS class_node_ids, COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names"
-
-const scheduleEntryListFrom = "schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id"
-
 // ScanScheduleEntryListRows 扫描排课列表行（含 class_name/class_names 等联表列）。
 func ScanScheduleEntryListRows(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
 	items := make([]domain.ScheduleEntry, 0)
@@ -765,6 +733,10 @@ func ScanScheduleEntryListRows(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
 	}
 	return items, nil
 }
+
+const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at, COALESCE(se.class_node_ids, '{}') AS class_node_ids, COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names"
+
+const scheduleEntryListFrom = "schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id"
 
 func scheduleListFilter(p ListParams, qb *ListQueryBuilder) {
 	if termID := p.Values["termId"]; termID != "" {
@@ -819,7 +791,7 @@ func (s *SchedulingStore) ListVenuesConfig() ListQueryConfig[domain.Venue] {
 func (s *SchedulingStore) ListPeriodSlotsConfig() ListQueryConfig[domain.PeriodSlot] {
 	return ListQueryConfig[domain.PeriodSlot]{
 		Table:         "period_slots",
-		SelectColumns: "id, name, sort_order, start_time::text, end_time::text",
+		SelectColumns: "id, name, sort_order, start_time, end_time",
 		TenantScoped:  true,
 		OrderBy:       "sort_order ASC",
 		ScanRows:      ScanPeriodSlotRows,
