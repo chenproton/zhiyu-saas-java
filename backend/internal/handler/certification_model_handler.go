@@ -121,7 +121,7 @@ func (h *CertificationModelHandler) PutWeights(w http.ResponseWriter, r *http.Re
 	}
 	taskWeights := make([]store.CertificationWeightItem, 0, len(req.TaskWeights))
 	for _, tw := range req.TaskWeights {
-		taskWeights = append(taskWeights, store.CertificationWeightItem{AbilityPointID: tw.AbilityPointID, TaskID: strPtr(tw.TaskID), Weight: tw.Weight})
+		taskWeights = append(taskWeights, store.CertificationWeightItem{AbilityPointID: tw.AbilityPointID, TaskID: store.StrPtrIfNonEmpty(tw.TaskID), Weight: tw.Weight})
 	}
 
 	err = h.Service.PutCertificationWeights(r.Context(), tenantID, positionID, pointWeights, taskWeights)

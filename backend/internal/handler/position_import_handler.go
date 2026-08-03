@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -454,9 +453,4 @@ func mapRequiredLevel(l string) string {
 	default:
 		return l
 	}
-}
-
-func itoaPtr(v int) *string {
-	s := strconv.Itoa(v)
-	return &s
 }

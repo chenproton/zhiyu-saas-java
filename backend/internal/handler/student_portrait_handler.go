@@ -184,7 +184,7 @@ func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Re
 	archive, err := h.Service.CreateStudentArchive(r.Context(), &store.StudentArchiveCreateParams{
 		TenantID:     tenantID,
 		UserID:       req.UserID,
-		MaterialType: strPtr(req.MaterialType),
+		MaterialType: store.StrPtrIfNonEmpty(req.MaterialType),
 		MaterialName: req.MaterialName,
 		IssuingOrg:   req.IssuingOrg,
 		ObtainDate:   req.ObtainDate,

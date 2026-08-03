@@ -545,13 +545,6 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 	respondJSON(w, http.StatusOK, ListResponse[domain.CareerPosition]{Items: items, Total: total})
 }
 
-func strPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 // ===== Content actions =====
 
 func (h *PositionHandler) actions() contentActions {
