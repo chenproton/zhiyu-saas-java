@@ -138,7 +138,7 @@ func TestPosition_StatusTransitions(t *testing.T) {
 	positionID := pos.ID
 	defer env.DB.Exec(context.Background(), "DELETE FROM career_positions WHERE id = $1", positionID)
 
-	if string(pos.Status) != string(domain.CareerPositionStatusDraft) {
+	if string(pos.Status) != string(domain.StatusDraft) {
 		t.Fatalf("initial status = %q, want draft", pos.Status)
 	}
 
@@ -151,7 +151,7 @@ func TestPosition_StatusTransitions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if string(pos.Status) != string(domain.CareerPositionStatusPending) {
+		if string(pos.Status) != string(domain.StatusPending) {
 			t.Errorf("status = %q, want pending", pos.Status)
 		}
 	})
@@ -166,7 +166,7 @@ func TestPosition_StatusTransitions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if string(pos.Status) != string(domain.CareerPositionStatusApproved) {
+		if string(pos.Status) != string(domain.StatusApproved) {
 			t.Errorf("status = %q, want approved", pos.Status)
 		}
 	})
@@ -180,7 +180,7 @@ func TestPosition_StatusTransitions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if string(pos.Status) != string(domain.CareerPositionStatusPublished) {
+		if string(pos.Status) != string(domain.StatusPublished) {
 			t.Errorf("status = %q, want published", pos.Status)
 		}
 	})
@@ -194,7 +194,7 @@ func TestPosition_StatusTransitions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if string(pos.Status) != string(domain.CareerPositionStatusArchived) {
+		if string(pos.Status) != string(domain.StatusArchived) {
 			t.Errorf("status = %q, want archived", pos.Status)
 		}
 	})
@@ -1115,7 +1115,7 @@ func TestPosition_Clone(t *testing.T) {
 	if cloned.ID == posID {
 		t.Fatal("cloned position id should differ from source")
 	}
-	if cloned.Status != domain.CareerPositionStatusDraft {
+	if cloned.Status != domain.StatusDraft {
 		t.Fatalf("cloned position status should be draft, got %s", cloned.Status)
 	}
 	if cloned.Name != fmt.Sprintf("Cloned Position %s", suffix) {

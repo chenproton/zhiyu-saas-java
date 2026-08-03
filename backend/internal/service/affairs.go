@@ -106,11 +106,6 @@ func (s *AffairsService) UpdateSchedule(ctx context.Context, id, tenantID string
 	return s.st.Scheduling().UpdateSchedule(ctx, id, tenantID, p)
 }
 
-// DeleteSchedule 删除排课。
-func (s *AffairsService) DeleteSchedule(ctx context.Context, id, tenantID string) error {
-	return s.st.Scheduling().DeleteSchedule(ctx, id, tenantID)
-}
-
 // DeleteScheduleWithRestore 删除排课并恢复计划条目为待排（事务内）。
 func (s *AffairsService) DeleteScheduleWithRestore(ctx context.Context, id, tenantID string, planEntryID *string) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {
@@ -396,11 +391,6 @@ func (s *AffairsService) ListPlanEntryBriefs(ctx context.Context, tenantID, term
 // ListTeacherNames 查询教师名单。
 func (s *AffairsService) ListTeacherNames(ctx context.Context, tenantID string) ([]string, error) {
 	return s.st.Scheduling().ListTeacherNames(ctx, tenantID)
-}
-
-// ListVenueNames 查询场地名单。
-func (s *AffairsService) ListVenueNames(ctx context.Context, tenantID string) ([]string, error) {
-	return s.st.Scheduling().ListVenueNames(ctx, tenantID)
 }
 
 // ListClassNames 查询班级名单。

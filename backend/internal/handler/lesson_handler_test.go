@@ -104,7 +104,7 @@ func TestCourse_StatusTransitions(t *testing.T) {
 	course, _ := testhelper.Unmarshal[domain.Course](w)
 	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", course.ID)
 
-	if course.Status != domain.CourseStatusDraft {
+	if course.Status != domain.StatusDraft {
 		t.Fatalf("expected draft, got %s", course.Status)
 	}
 
@@ -113,7 +113,7 @@ func TestCourse_StatusTransitions(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	course, _ = testhelper.Unmarshal[domain.Course](w)
-	if course.Status != domain.CourseStatusPending {
+	if course.Status != domain.StatusPending {
 		t.Fatalf("expected pending, got %s", course.Status)
 	}
 
@@ -124,7 +124,7 @@ func TestCourse_StatusTransitions(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	course, _ = testhelper.Unmarshal[domain.Course](w)
-	if course.Status != domain.CourseStatusApproved {
+	if course.Status != domain.StatusApproved {
 		t.Fatalf("expected approved, got %s", course.Status)
 	}
 
@@ -133,7 +133,7 @@ func TestCourse_StatusTransitions(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	course, _ = testhelper.Unmarshal[domain.Course](w)
-	if course.Status != domain.CourseStatusPublished {
+	if course.Status != domain.StatusPublished {
 		t.Fatalf("expected published, got %s", course.Status)
 	}
 }

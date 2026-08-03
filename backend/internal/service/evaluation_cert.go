@@ -46,11 +46,6 @@ func (s *EvaluationService) ListCertificationItems(ctx context.Context, ruleID s
 	return s.st.Certifications().ListItems(ctx, ruleID)
 }
 
-// GetCertificationItem 查询单个能力项。
-func (s *EvaluationService) GetCertificationItem(ctx context.Context, id string) (*domain.CertificationAbilityItem, error) {
-	return s.st.Certifications().GetItem(ctx, id, "")
-}
-
 // GetCertificationItemByTenant 查询单个能力项（租户限定）。
 func (s *EvaluationService) GetCertificationItemByTenant(ctx context.Context, id, tenantID string) (*domain.CertificationAbilityItem, error) {
 	return s.st.Certifications().GetItem(ctx, id, tenantID)
@@ -74,11 +69,6 @@ func (s *EvaluationService) DeleteCertificationItem(ctx context.Context, id, ten
 // ListCertificationPoints 查询项下能力点。
 func (s *EvaluationService) ListCertificationPoints(ctx context.Context, itemID string) ([]domain.CertificationAbilityPoint, error) {
 	return s.st.Certifications().ListPoints(ctx, itemID)
-}
-
-// GetCertificationPoint 查询单个能力点。
-func (s *EvaluationService) GetCertificationPoint(ctx context.Context, id string) (*domain.CertificationAbilityPoint, error) {
-	return s.st.Certifications().GetPoint(ctx, id, "")
 }
 
 // GetCertificationPointByTenant 查询单个能力点（租户限定）。

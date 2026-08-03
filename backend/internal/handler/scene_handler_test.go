@@ -34,7 +34,7 @@ func TestScenario_CRUD(t *testing.T) {
 	id := scenario.ID
 	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", id)
 
-	if scenario.Name != "Test Scenario" || scenario.Status != domain.ScenarioStatusDraft {
+	if scenario.Name != "Test Scenario" || scenario.Status != domain.StatusDraft {
 		t.Fatalf("unexpected scenario data: name=%s status=%s", scenario.Name, scenario.Status)
 	}
 
@@ -129,7 +129,7 @@ func TestScenario_StatusTransitions(t *testing.T) {
 	id := scenario.ID
 	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", id)
 
-	if scenario.Status != domain.ScenarioStatusDraft {
+	if scenario.Status != domain.StatusDraft {
 		t.Fatalf("initial status should be draft, got %s", scenario.Status)
 	}
 
@@ -139,7 +139,7 @@ func TestScenario_StatusTransitions(t *testing.T) {
 		t.Fatalf("submit: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	s, _ := testhelper.Unmarshal[domain.Scenario](w)
-	if s.Status != domain.ScenarioStatusPending {
+	if s.Status != domain.StatusPending {
 		t.Fatalf("after submit: expected pending, got %s", s.Status)
 	}
 
@@ -151,7 +151,7 @@ func TestScenario_StatusTransitions(t *testing.T) {
 		t.Fatalf("review: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	s, _ = testhelper.Unmarshal[domain.Scenario](w)
-	if s.Status != domain.ScenarioStatusApproved {
+	if s.Status != domain.StatusApproved {
 		t.Fatalf("after approve: expected approved, got %s", s.Status)
 	}
 
@@ -161,7 +161,7 @@ func TestScenario_StatusTransitions(t *testing.T) {
 		t.Fatalf("publish: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	s, _ = testhelper.Unmarshal[domain.Scenario](w)
-	if s.Status != domain.ScenarioStatusPublished {
+	if s.Status != domain.StatusPublished {
 		t.Fatalf("after publish: expected published, got %s", s.Status)
 	}
 
@@ -171,7 +171,7 @@ func TestScenario_StatusTransitions(t *testing.T) {
 		t.Fatalf("archive: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	s, _ = testhelper.Unmarshal[domain.Scenario](w)
-	if s.Status != domain.ScenarioStatusArchived {
+	if s.Status != domain.StatusArchived {
 		t.Fatalf("after archive: expected archived, got %s", s.Status)
 	}
 }
@@ -1117,7 +1117,7 @@ func TestScenario_Clone(t *testing.T) {
 	if cloned.ID == scID {
 		t.Fatal("cloned scenario id should differ from source")
 	}
-	if cloned.Status != domain.ScenarioStatusDraft {
+	if cloned.Status != domain.StatusDraft {
 		t.Fatalf("cloned scenario status should be draft, got %s", cloned.Status)
 	}
 

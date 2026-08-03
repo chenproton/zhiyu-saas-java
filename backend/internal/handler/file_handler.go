@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -22,9 +21,6 @@ const maxFormMemory = 32 << 20  // 32MB in-memory, rest to temp files
 type FileHandler struct {
 	UploadDir string
 }
-
-// logger 记录文件转换等内部错误（响应体不泄漏进程输出）。
-var logger = slog.Default()
 
 type UploadResponse struct {
 	URL      string `json:"url"`

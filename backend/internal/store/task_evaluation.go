@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -487,30 +486,6 @@ func scanRubricTemplates(rows pgx.Rows) ([]domain.RubricTemplate, error) {
 		items = append(items, t)
 	}
 	return items, rows.Err()
-}
-
-func jsonRawMessageToJSONSlice(raw json.RawMessage) domain.JSONSlice {
-	if len(raw) == 0 || string(raw) == "null" {
-		return domain.JSONSlice{}
-	}
-	var s domain.JSONSlice
-	_ = json.Unmarshal(raw, &s)
-	if s == nil {
-		return domain.JSONSlice{}
-	}
-	return s
-}
-
-func jsonRawMessageToJSONMap(raw json.RawMessage) domain.JSONMap {
-	if len(raw) == 0 || string(raw) == "null" {
-		return domain.JSONMap{}
-	}
-	var m domain.JSONMap
-	_ = json.Unmarshal(raw, &m)
-	if m == nil {
-		return domain.JSONMap{}
-	}
-	return m
 }
 
 // GetStringSliceFromJSONMap 从 JSONMap 提取字符串数组（store/service 共用，单一实现）。

@@ -261,12 +261,6 @@ func (s *SchedulingStore) UpdateSchedule(ctx context.Context, id, tenantID strin
 	return err
 }
 
-// DeleteSchedule 删除排课。
-func (s *SchedulingStore) DeleteSchedule(ctx context.Context, id, tenantID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM schedule_entries WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
-}
-
 // DeleteScheduleWithRestore 删除排课并恢复计划条目为待排（事务内）。
 func (s *SchedulingStore) DeleteScheduleWithRestore(ctx context.Context, tx Queryer, id, tenantID string, planEntryID *string) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
