@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { certificateLibraryApi, fileApi } from '@/lib/api'
+import { formatDate } from '@/lib/format-utils'
 import type { CertificateLibraryItem } from '@/lib/types/job'
 import { useToast } from '@zhiyu/ui'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
@@ -176,7 +177,7 @@ export default function CertificatesPage() {
             {item.description || '-'}
           </TableCell>
           <TableCell className="p-3 text-sm text-slate-400">
-            {new Date(item.createdAt).toLocaleDateString('zh-CN')}
+            {formatDate(item.createdAt)}
           </TableCell>
           <TableCell className="p-3 text-right whitespace-nowrap">
             <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}>

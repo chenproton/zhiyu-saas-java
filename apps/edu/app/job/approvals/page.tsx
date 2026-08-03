@@ -10,6 +10,7 @@ import { useSubmitterNames } from '@/hooks/use-submitter-names'
 import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/approval-list-page'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { reportError } from '@/lib/error-handling'
+import { formatDate } from '@/lib/format-utils'
 import { useToast } from '@zhiyu/ui'
 
 interface ApprovalView {
@@ -109,7 +110,7 @@ export default function JobApprovalsPage() {
         batchName: batch?.name,
         submitterId: a.submitterId,
         status: a.status,
-        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        submittedAt: formatDate(a.createdAt),
         stepInfo: getStepInfo(a),
         history: a.history,
       }

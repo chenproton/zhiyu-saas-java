@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { courseApi, lessonBatchApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
+import { formatDate } from '@/lib/format-utils'
 import type { Course } from '@/lib/types/lesson'
 import type { LessonBatch } from '@/lib/types/lesson'
 import { useApprovals } from '@/hooks/use-approvals'
@@ -121,7 +122,7 @@ export default function CourseApprovalsPage() {
         batchName: batch?.name,
         submitterId: a.submitterId,
         status: a.status,
-        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        submittedAt: formatDate(a.createdAt),
         stepInfo: getStepInfo(a),
         history: a.history,
       }

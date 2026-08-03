@@ -11,6 +11,7 @@ import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { toast } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
+import { formatDate } from '@/lib/format-utils'
 
 const TYPE_LABELS: Record<string, string> = {
   question_bank: '题库',
@@ -163,7 +164,7 @@ export default function EvaluationApprovalsPage() {
         batchName,
         submitterId: a.submitterId,
         status: a.status,
-        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        submittedAt: formatDate(a.createdAt),
         stepInfo: getStepInfoFn(a),
         history: a.history,
       }

@@ -28,6 +28,7 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { formatDate } from '@/lib/format-utils'
 import type {
   AllianceEnterprise,
   AllianceProject,
@@ -77,8 +78,6 @@ export default function AllianceEnterprisesPage() {
 
   const countBy = (arr: any[], field: string, id: string) =>
     arr.filter((x) => (x[field] || []).includes?.(id)).length
-
-  const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('zh-CN') : '-')
 
   return (
     <PortalCrudPage
@@ -167,8 +166,8 @@ export default function AllianceEnterprisesPage() {
             </Link>
           </TableCell>
           <TableCell>{enterprise.createdBy || '-'}</TableCell>
-          <TableCell>{fmtDate(enterprise.createdAt)}</TableCell>
-          <TableCell>{fmtDate(enterprise.updatedAt)}</TableCell>
+          <TableCell>{formatDate(enterprise.createdAt)}</TableCell>
+          <TableCell>{formatDate(enterprise.updatedAt)}</TableCell>
           <TableRowActions>
             <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}`}>
               <Button variant="ghost" size="sm">

@@ -367,16 +367,6 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	conflicts, err := h.checkScheduleConflicts(ctx, tenantID, &req, "")
-	if err != nil {
-		respondServerError(w, r, err, "排课冲突校验失败")
-		return
-	}
-	if len(conflicts) > 0 {
-		respondJSON(w, http.StatusConflict, map[string]interface{}{"error": "排课冲突", "conflicts": conflicts})
-		return
-	}
-
 	entryType := req.Type
 	if entryType == "" {
 		entryType = "traditional"
@@ -405,7 +395,7 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 		primaryClass = classIDs[0]
 	}
 
-	id, err := h.Service.CreateSchedule(ctx, &store.ScheduleCreateParams{
+	id, conflicts, err := h.Service.CreateScheduleChecked(ctx, tenantID, &store.ScheduleCreateParams{
 		TenantID:     tenantID,
 		TermID:       req.TermID,
 		PlanEntryID:  emptyStrToNil(req.PlanEntryID),
@@ -427,6 +417,10 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 	})
 	if err != nil {
 		respondServerError(w, r, err, "创建排课失败")
+		return
+	}
+	if len(conflicts) > 0 {
+		respondJSON(w, http.StatusConflict, map[string]interface{}{"error": "排课冲突", "conflicts": conflicts})
 		return
 	}
 
@@ -460,16 +454,6 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 	}
 	ctx := r.Context()
 
-	conflicts, err := h.checkScheduleConflicts(ctx, tenantID, &req, id)
-	if err != nil {
-		respondServerError(w, r, err, "排课冲突校验失败")
-		return
-	}
-	if len(conflicts) > 0 {
-		respondJSON(w, http.StatusConflict, map[string]interface{}{"error": "排课冲突", "conflicts": conflicts})
-		return
-	}
-
 	entryType := req.Type
 	if entryType == "" {
 		entryType = "traditional"
@@ -496,7 +480,7 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 	if primaryClass == "" && len(classIDs) > 0 {
 		primaryClass = classIDs[0]
 	}
-	err = h.Service.UpdateSchedule(ctx, id, tenantID, &store.ScheduleCreateParams{
+	conflicts, err := h.Service.UpdateScheduleChecked(ctx, id, tenantID, &store.ScheduleCreateParams{
 		TermID:       req.TermID,
 		PlanEntryID:  emptyStrToNil(req.PlanEntryID),
 		CourseName:   req.CourseName,
@@ -516,6 +500,10 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 	})
 	if err != nil {
 		respondServerError(w, r, err, "更新排课失败")
+		return
+	}
+	if len(conflicts) > 0 {
+		respondJSON(w, http.StatusConflict, map[string]interface{}{"error": "排课冲突", "conflicts": conflicts})
 		return
 	}
 
@@ -933,25 +921,6 @@ func validateScheduleRequest(w http.ResponseWriter, req *ScheduleEntryRequest) b
 		return false
 	}
 	return true
-}
-
-// checkScheduleConflicts 校验同一 term 下教师/班级/场地的时间冲突：
-// 周次区间重叠 × day_of_week 相同 × 周次模式相容 × periods(JSONB) 有交集。
-// excludeID 用于更新时排除自身。
-func (h *SchedulingHandler) checkScheduleConflicts(ctx context.Context, tenantID string, req *ScheduleEntryRequest, excludeID string) ([]domain.ScheduleConflict, error) {
-	return h.Service.CheckScheduleConflicts(ctx, tenantID, &store.ScheduleConflictParams{
-		TermID:       req.TermID,
-		PlanEntryID:  req.PlanEntryID,
-		ClassNodeID:  req.ClassNodeID,
-		ClassNodeIDs: req.ClassNodeIDs,
-		TeacherID:    req.TeacherID,
-		DayOfWeek:    req.DayOfWeek,
-		Periods:      req.Periods,
-		StartWeek:    req.StartWeek,
-		EndWeek:      req.EndWeek,
-		WeekPattern:  req.WeekPattern,
-		VenueID:      req.VenueID,
-	}, excludeID)
 }
 
 func (h *SchedulingHandler) fetchScheduleEntry(ctx context.Context, id, tenantID string) (*domain.ScheduleEntry, error) {

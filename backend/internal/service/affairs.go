@@ -87,23 +87,64 @@ func (s *AffairsService) GetSchedule(ctx context.Context, id, tenantID string) (
 	return s.st.Scheduling().GetSchedule(ctx, id, tenantID)
 }
 
-// CreateSchedule 创建排课（事务内）。
-func (s *AffairsService) CreateSchedule(ctx context.Context, p *store.ScheduleCreateParams) (string, error) {
+// CreateScheduleChecked 事务内完成「advisory 锁 + 冲突校验 + 插入」，
+// 冲突时返回冲突列表不落库，避免检查与插入分离事务导致的并发竞态。
+func (s *AffairsService) CreateScheduleChecked(ctx context.Context, tenantID string, p *store.ScheduleCreateParams) (string, []domain.ScheduleConflict, error) {
 	var id string
+	var conflicts []domain.ScheduleConflict
 	err := s.WithTx(ctx, func(txStore *store.Store) error {
-		i, err := txStore.Scheduling().CreateSchedule(ctx, txStore.Q(), p)
+		if err := txStore.Scheduling().LockScheduleTerm(ctx, txStore.Q(), tenantID, p.TermID); err != nil {
+			return err
+		}
+		var err error
+		conflicts, err = txStore.Scheduling().CheckScheduleConflictsTx(ctx, txStore.Q(), tenantID, p.TermID, conflictParamsFromCreate(p), "")
 		if err != nil {
 			return err
 		}
-		id = i
-		return nil
+		if len(conflicts) > 0 {
+			return nil
+		}
+		id, err = txStore.Scheduling().CreateSchedule(ctx, txStore.Q(), p)
+		return err
 	})
-	return id, err
+	return id, conflicts, err
 }
 
-// UpdateSchedule 更新排课。
-func (s *AffairsService) UpdateSchedule(ctx context.Context, id, tenantID string, p *store.ScheduleCreateParams) error {
-	return s.st.Scheduling().UpdateSchedule(ctx, id, tenantID, p)
+// UpdateScheduleChecked 事务内完成「advisory 锁 + 冲突校验 + 更新」，排除自身 id。
+func (s *AffairsService) UpdateScheduleChecked(ctx context.Context, id, tenantID string, p *store.ScheduleCreateParams) ([]domain.ScheduleConflict, error) {
+	var conflicts []domain.ScheduleConflict
+	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		if err := txStore.Scheduling().LockScheduleTerm(ctx, txStore.Q(), tenantID, p.TermID); err != nil {
+			return err
+		}
+		var err error
+		conflicts, err = txStore.Scheduling().CheckScheduleConflictsTx(ctx, txStore.Q(), tenantID, p.TermID, conflictParamsFromCreate(p), id)
+		if err != nil {
+			return err
+		}
+		if len(conflicts) > 0 {
+			return nil
+		}
+		return txStore.Scheduling().UpdateSchedule(ctx, txStore.Q(), id, tenantID, p)
+	})
+	return conflicts, err
+}
+
+// conflictParamsFromCreate 从创建参数派生冲突校验参数。
+func conflictParamsFromCreate(p *store.ScheduleCreateParams) *store.ScheduleConflictParams {
+	return &store.ScheduleConflictParams{
+		TermID:       p.TermID,
+		PlanEntryID:  p.PlanEntryID,
+		ClassNodeID:  p.ClassNodeID,
+		ClassNodeIDs: p.ClassNodeIDs,
+		TeacherID:    p.TeacherID,
+		DayOfWeek:    p.DayOfWeek,
+		Periods:      p.Periods,
+		StartWeek:    p.StartWeek,
+		EndWeek:      p.EndWeek,
+		WeekPattern:  p.WeekPattern,
+		VenueID:      p.VenueID,
+	}
 }
 
 // DeleteScheduleWithRestore 删除排课并恢复计划条目为待排（事务内）。
@@ -111,11 +152,6 @@ func (s *AffairsService) DeleteScheduleWithRestore(ctx context.Context, id, tena
 	return s.WithTx(ctx, func(txStore *store.Store) error {
 		return txStore.Scheduling().DeleteScheduleWithRestore(ctx, txStore.Q(), id, tenantID, planEntryID)
 	})
-}
-
-// CheckScheduleConflicts 校验排课冲突。
-func (s *AffairsService) CheckScheduleConflicts(ctx context.Context, tenantID string, p *store.ScheduleConflictParams, excludeID string) ([]domain.ScheduleConflict, error) {
-	return s.st.Scheduling().CheckScheduleConflicts(ctx, tenantID, p.TermID, p, excludeID)
 }
 
 // FetchTermBrief 查询学期。

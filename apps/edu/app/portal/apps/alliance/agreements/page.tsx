@@ -21,6 +21,7 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { formatDate } from '@/lib/format-utils'
 import type { AllianceAgreement, AllianceEnterprise, AllianceProject } from '@/lib/types'
 
 export default function AllianceAgreementsPage() {
@@ -123,10 +124,10 @@ export default function AllianceAgreementsPage() {
             </TableCell>
             <TableCell>{item.type || '-'}</TableCell>
             <TableCell>
-              {item.startDate ? new Date(item.startDate).toLocaleDateString('zh-CN') : '-'}
+              {formatDate(item.startDate)}
             </TableCell>
             <TableCell className={expiring ? 'text-amber-600 font-medium' : ''}>
-              {item.endDate ? new Date(item.endDate).toLocaleDateString('zh-CN') : '-'}
+              {formatDate(item.endDate)}
               {expiring && <span className="ml-1 text-xs">（即将到期）</span>}
             </TableCell>
             <TableCell>{allianceLabel('agreementStatus', item.status)}</TableCell>

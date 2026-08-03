@@ -182,8 +182,6 @@ func requireTenant(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return *claims.TenantID, true
 }
 
-// institutionFilter returns the institution_id value to filter by, or an empty
-// string when the caller is a platform admin. ok=false means the caller has no
 // verifyTenantOwnership checks that the entity's tenantID matches the caller's tenant.
 // Writes a 403 response and returns false when they don't match.
 func verifyTenantOwnership(w http.ResponseWriter, r *http.Request, entityTenantID string) bool {

@@ -11,6 +11,7 @@ import {
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useIndustryMap, useMajorMap } from '@/lib/use-resource-maps'
+import { formatDate } from '@/lib/format-utils'
 import { ArchiveListPage, type ArchiveColumn } from '@/components/shared/archive-list-page'
 
 export default function PositionArchivePage() {
@@ -205,7 +206,7 @@ export default function PositionArchivePage() {
       className: 'w-24',
       cell: (entry) => (
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {new Date(entry.updatedAt).toLocaleDateString()}
+          {formatDate(entry.updatedAt)}
         </span>
       ),
     },

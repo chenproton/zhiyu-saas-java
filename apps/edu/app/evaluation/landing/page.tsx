@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { questionBankApi, examApi, evaluationBatchApi } from '@/lib/api'
+import { formatDate } from '@/lib/format-utils'
 import type { QuestionBank, Exam } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
@@ -64,7 +65,7 @@ function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
               <FileText className="w-3 h-3" /> {bank.questionCount} 题
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {new Date(bank.createdAt).toLocaleDateString('zh-CN')}
+              <Clock className="w-3 h-3" /> {formatDate(bank.createdAt)}
             </span>
             <span className="text-purple-500 group-hover:text-purple-600 font-medium">
               查看详情 →

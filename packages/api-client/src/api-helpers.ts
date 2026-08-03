@@ -175,7 +175,8 @@ async function requestWithPlatform<T>(
   }
 
   const res = await fetch(url, { ...options, headers })
-  const data = await res.json().catch(() => ({ error: '请求失败' }))
+  const hasBody = res.status !== 204 && res.headers.get('content-length') !== '0'
+  const data = hasBody ? await res.json().catch(() => ({ error: '请求失败' })) : ({} as T)
 
   if (!res.ok) {
     const errorMessage = (data as any).error || `HTTP ${res.status}`

@@ -13,35 +13,6 @@ const (
 
 // InstitutionStatus removed — defined in status.go
 
-type ResourceStatus string
-
-const (
-	ResourceStatusDraft          ResourceStatus = "draft"
-	ResourceStatusReviewing      ResourceStatus = "reviewing"
-	ResourceStatusRejected       ResourceStatus = "rejected"
-	ResourceStatusPendingPublish ResourceStatus = "pending_publish"
-	ResourceStatusPublished      ResourceStatus = "published"
-	ResourceStatusOfflined       ResourceStatus = "offlined"
-)
-
-type OrderStatus string
-
-const (
-	OrderStatusPending   OrderStatus = "pending"
-	OrderStatusPaid      OrderStatus = "paid"
-	OrderStatusCancelled OrderStatus = "cancelled"
-	OrderStatusRefunded  OrderStatus = "refunded"
-)
-
-type WithdrawalStatus string
-
-const (
-	WithdrawalStatusPending  WithdrawalStatus = "pending"
-	WithdrawalStatusApproved WithdrawalStatus = "approved"
-	WithdrawalStatusPaid     WithdrawalStatus = "paid"
-	WithdrawalStatusRejected WithdrawalStatus = "rejected"
-)
-
 type UserRole string
 
 const (
@@ -115,25 +86,4 @@ type Institution struct {
 	TotalIncome       float64           `json:"totalIncome"`
 	CreatedAt         time.Time         `json:"createdAt"`
 	UpdatedAt         time.Time         `json:"updatedAt"`
-}
-
-type ResourceTag struct {
-	ID         string `json:"id"`
-	ResourceID string `json:"resourceId"`
-	TagType    string `json:"tagType"`
-	TagValue   string `json:"tagValue"`
-}
-
-type Order struct {
-	ID           string      `json:"id"`
-	OrderNo      string      `json:"orderNo"`
-	BuyerID      string      `json:"buyerId"`
-	SellerID     string      `json:"sellerId"`
-	ResourceID   string      `json:"resourceId"`
-	Price        float64     `json:"price"`
-	PlatformFee  float64     `json:"platformFee"`
-	SellerIncome float64     `json:"sellerIncome"`
-	Status       OrderStatus `json:"status"`
-	PaidAt       *time.Time  `json:"paidAt,omitempty"`
-	CreatedAt    time.Time   `json:"createdAt"`
 }

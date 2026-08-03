@@ -16,8 +16,8 @@ import { LibraryPageShell } from '../_components/library-page-shell'
 import {
   KnowledgePointFormDialog,
   type KnowledgePointFormValues,
-} from '@/components/shared/knowledge-point-form-dialog'
-import type { GranularLessonOption } from '@/components/shared/granular-lesson-select-dialog'
+} from './_components/knowledge-point-form-dialog'
+import type { GranularLessonOption } from './_components/granular-lesson-select-dialog'
 import { useLibraryCrud } from '../_components/use-library-crud'
 
 export default function KnowledgePointsPage() {

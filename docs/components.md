@@ -4,11 +4,11 @@
 
 > **页面级共享壳**与**业务组件**位于 `apps/edu/components/shared/`。
 > **通用 UI/交互组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用，`apps/edu/components/shared/` 保留 re-export 薄封装）：`ComboboxSelect`/`MixedTagEditor`/`ImportWizardDialog`/`ImportConfirmDialog`/`ConfirmDialog`/`StatusBadge`/`TableRowActions`/`HoverActionBar`。
-> **评测配置组件**位于 `apps/edu/app/lesson/admin/_components/assessment/`（`course-evaluation-rules-dialog.tsx`）与 `apps/edu/components/shared/eval-method-config-module.tsx`，仅课程编辑器使用；任务编辑器经 `method-config-dialog.tsx` 复用共享组件。
+> **评测配置组件**位于 `apps/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`）与 `apps/edu/components/evaluation-rules/`（`evaluation-rules-editor.tsx`、`bank-question-selector-panel.tsx`），仅课程编辑器使用；任务编辑器经 `components/evaluation-rules/` 内的测评面板组件复用共享组件。
 > **任务步骤卡片**位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
 > **评测专用组件**位于 `apps/edu/components/evaluation/`。
 > **通用 Hooks** 位于 `@/hooks/`（`apps/edu/hooks/`）和 `packages/ui/src/hooks/`。
-> **错误处理工具**：`apps/edu/lib/error-handling.ts`（`reportError`/`withFallback`），关键路径静默失败统一改用它记录。
+> **错误处理工具**：`apps/edu/lib/error-handling.ts`（`reportError`），关键路径异步失败统一改用它记录。
 
 ## 页面级组件
 
@@ -54,10 +54,16 @@
 | `ResourcePreviewModal` | `resource-preview-modal.tsx` | 文件预览弹窗 | `resource`, `open`, `onOpenChange` |
 | `ResetPasswordDialog` | `reset-password-dialog.tsx` | 重置密码对话框 | `open`, `userId`, `userName`, `onSuccess` |
 | `CoverImageUpload` | `cover-image-upload.tsx` | 封面上传（预览/替换/删除） | `imageUrl`, `uploading`, `label`, `alt`, `onUpload`, `onRemove` |
-| `GranularLessonSelectDialog` | `granular-lesson-select-dialog.tsx` | 课时多选对话框（搜索+勾选+批量确认） | `open`, `onOpenChange`, `granularCourses`, `selectedIds`, `onChange` |
-| `KnowledgePointFormDialog` | `knowledge-point-form-dialog.tsx` | 知识点创建/编辑/克隆表单 | `open`, `onOpenChange`, `onSubmit`, `initialValues`, `title` |
+| `GranularLessonSelectDialog` | `app/library/knowledge/_components/granular-lesson-select-dialog.tsx` | 课时多选对话框（搜索+勾选+批量确认） | `open`, `onOpenChange`, `granularCourses`, `selectedIds`, `onChange` |
+| `KnowledgePointFormDialog` | `app/library/knowledge/_components/knowledge-point-form-dialog.tsx` | 知识点创建/编辑/克隆表单 | `open`, `onOpenChange`, `onSubmit`, `initialValues`, `title` |
 | `LogTableShell<T>` | `log-table-shell.tsx` | 日志表格壳子（表格+分页+加载态） | `items`, `columns`, `total`, `page`, `totalPages` |
 | `ScheduleGrid` | `schedule-grid.tsx` | 周课表网格（7 列星期 × 节次行），排课页与学生/教师工作台共用 | `entries`, `periodSlots?`, `week?`, `onEntryClick?`, `getEntryHref?` |
+| `FormFieldRow` / `FormFieldGrid` | `form-field-row.tsx` | 表单字段行/网格布局（label + 必填星号 + 说明 + 控件），47 个文件复用的最高频表单组件 | `label`, `required`, `hint`, `children` |
+| `ImageListUpload` | `image-list-upload.tsx` | 图片列表上传（多图、预览、删除、排序） | `files`, `onChange`, `uploading` |
+| `StatusActionBar` | `status-action-bar.tsx` | 详情页状态操作栏（当前状态标签 + 可用操作按钮组） | `status`, `actions` |
+| `PaginationBar` | `pagination-bar.tsx` | 表格分页条（总数 + 上一页/下一页 + 页码），供 `PortalCrudPage`/`LogTableShell` 等壳组件使用 | `page`, `totalPages`, `total`, `onPageChange` |
+| `ErrorState` | `packages/ui` re-export | 列表/详情加载失败重试态 | `message`, `onRetry` |
+| `LoadingView` | `packages/ui` re-export | 居中加载占位（spinner + 文案），22 个文件使用 | `label` |
 
 ## 选择器组件
 
@@ -69,6 +75,10 @@
 | `BatchSelector` | `batch-selector.tsx` | 批次选择器（下拉选择 + 创建新批次） | `value`, `onChange` |
 | `UserSelector` | `user-selector.tsx` | 选择用户（多选/单选、组织树筛选、排除学生） | `value`, `onChange`, `multiple`, `excludeStudent`, `tenantId` |
 | `OrgNodePicker` | `org-node-picker.tsx` | 组织节点选择器（Popover） | `value`, `onChange` |
+| `MultiOrgNodePicker` | `multi-org-node-picker.tsx` | 多组织节点选择器（多选树） | `value`, `onChange` |
+| `BrandRelationSelect` | `brand-relation-select.tsx` | 品牌关联选择（企业/专家/成果等多类型关联） | `value`, `onChange` |
+| `KnowledgeSelector` | `knowledge-selector.tsx` | 知识点选择器 | `value`, `onChange` |
+| `EvalMethodSelector` | `eval-method-selector.tsx` | 测评方式选择器 | `value`, `onChange` |
 
 ## 布局组件
 
@@ -102,7 +112,6 @@
 | Hook | 用途 |
 |------|------|
 | `useToast` | Toast 通知（`toast`, `dismiss`, `toasts`），配合 `<Toaster>` 使用 |
-| `useIsMobile` | 响应式断点，viewport < 768px 时返回 `true` |
 
 ## DataProvider（评测数据上下文）
 
@@ -126,7 +135,7 @@
 ## 评测配置组件（课程编辑器使用）
 
 > 组件位于 `apps/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`），
-> 当前仅被课程编辑器（`lesson/admin/system/add`）使用；任务编辑器经 `method-config-dialog.tsx` 复用 `MixedTagEditor` 等共享组件。
+> 当前仅被课程编辑器（`lesson/admin/system/add`）使用；任务编辑器经 `components/evaluation-rules/` 复用 `MixedTagEditor`、`BankQuestionSelectorPanel` 等共享组件。
 > 架构分两层：
 
 ### 第一层：`EvalMethodConfigModule` — 测评方式选择 + 4 步规则配置
@@ -144,13 +153,12 @@
 
 ### 第二层：测评方式面板（每种一个独立组件）
 
-> 位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`
+> 位于 `apps/edu/components/evaluation-rules/`
 
 | 组件 | 文件 | 对应测评方式 |
 |------|------|-----------|
 | `BankQuestionSelectorPanel` | `bank-question-selector-panel.tsx` | 题库、随堂测 |
 | `ResourceMaterialConfig` | 现场评审、成果评价、作业（配置逻辑已并入 `atomic-modules`，2026-08 删除原文件） |
-| `MethodConfigDialog` | `method-config-dialog.tsx` | 所有方式的评价标准配置 |
 
 **新增测评方式只需：** 创建新面板组件 + 在 `EvalMethodConfigModule` 的 `EVALUATION_METHOD_OPTIONS` 数组中加一行。
 
@@ -190,7 +198,7 @@
 5. **弹窗**：内容多的弹窗直接用 `<Dialog>` 默认尺寸（自带 `max-h-[calc(100dvh-2rem)]` 内部滚动）；全屏编辑器类用 `size="full"`
 6. **Tabs**：Tab 过多时直接使用 `<TabsList>`（自带超宽横向滚动）
 7. **分页**：`<Pagination>` 自带换行，无需额外处理
-8. **断点**：需要 JS 判断移动端时使用 `useIsMobile()`（`@zhiyu/ui`），样式一律用 Tailwind `max-md:` / `md:` 变体
+8. **断点**：样式一律用 Tailwind `max-md:` / `md:` 变体，不依赖 JS 断点判断
 9. **触控目标**：移动端按钮/点击区域保持 ≥ 32px
 
 ## 注意事项

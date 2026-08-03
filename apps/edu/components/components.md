@@ -31,7 +31,7 @@ components/
 
 ### `evaluation-rules/EvaluationRulesEditor` 不拆分
 
-`apps/edu/components/evaluation-rules/evaluation-rules-editor.tsx` 当前约 2450 行，内部包含：
+`apps/edu/components/evaluation-rules/evaluation-rules-editor.tsx` 当前约 5000 行，内部包含：
 
 - 评审流程设置（review steps）
 - 评价方式顺序/权重配置
@@ -51,7 +51,6 @@ components/
 
 以下组件目前只在一个业务文件中被使用，抽象价值有限，后续重构时可评估是否收回业务页或合并到更近的业务目录：
 
-- `ComboboxSelect` → `app/affairs/programs/[id]/_components/courses-tab.tsx`
 - `RandomQuestionDialog` → `app/evaluation/exams/[id]/page.tsx`
 - `ManualQuestionDialog` → `app/evaluation/exams/[id]/page.tsx`
 - `Footer` → `app/portal/page.tsx`
@@ -59,11 +58,7 @@ components/
 
 #### 复用评估补充
 
-- **`ComboboxSelect` 有扩展复用潜力**：代码中还存在 3 处独立的 `Command + Popover` 搜索下拉实现：
-  - `components/job/position-builder/step-ability-modeling.tsx`（岗位过滤，单选）
-  - `app/job/recommend/page.tsx`（岗位选择，单选 + 自定义选项渲染 + disabled）
-  - `app/portal/apps/system/org-user/accounts/page.tsx`（角色绑定，多选）
-  当前 `ComboboxSelect` 只支持简单单选。若后续扩展支持 `disabled`、`renderOption`、`multi` 等能力，可替换上述实现。目前保持简单单选组件不变，遇到新需求时再扩展。
+- **`ComboboxSelect`** 已从单用扩展为通用可搜索下拉（支持单选/多选/disabled/renderOption），当前被 4 个文件使用，原先 3 处独立的 `Command + Popover` 实现均已迁移到该组件，不再需要评估收回。
 
 - **`RandomQuestionDialog` / `ManualQuestionDialog`**：属于试卷组卷领域的复杂弹窗，逻辑较重，即使只有 1 处使用也建议保留为独立组件，避免 `app/evaluation/exams/[id]/page.tsx` 过度膨胀。
 

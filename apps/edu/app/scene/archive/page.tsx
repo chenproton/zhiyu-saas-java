@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 
 import { scenarioApi, sceneBatchApi } from '@/lib/api'
+import { formatDate } from '@/lib/format-utils'
 import type { Scenario, SceneBatch } from '@/lib/types/scene'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
@@ -195,7 +196,7 @@ export default function SceneArchivePage() {
       className: 'w-24',
       cell: (entry) => (
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {new Date(entry.updatedAt).toLocaleDateString()}
+          {formatDate(entry.updatedAt)}
         </span>
       ),
     },

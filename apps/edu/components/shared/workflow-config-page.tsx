@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { workflowApi, majorApi } from '@/lib/api'
+import { formatDate } from '@/lib/format-utils'
 import type { Workflow } from '@/lib/types/backend'
 import { useToast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
@@ -316,7 +317,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
                           : '-'}
                       </TableCell>
                       <TableCell className="text-sm text-gray-500">
-                        {new Date(wf.createdAt).toLocaleDateString()}
+                        {formatDate(wf.createdAt)}
                       </TableCell>
                       <TableRowActions>
                         <Button

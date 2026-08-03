@@ -249,8 +249,8 @@ func (s *SchedulingStore) CreateSchedule(ctx context.Context, tx Queryer, p *Sch
 }
 
 // UpdateSchedule 更新排课。
-func (s *SchedulingStore) UpdateSchedule(ctx context.Context, id, tenantID string, p *ScheduleCreateParams) error {
-	_, err := s.q.Exec(ctx, `
+func (s *SchedulingStore) UpdateSchedule(ctx context.Context, tx Queryer, id, tenantID string, p *ScheduleCreateParams) error {
+	_, err := tx.Exec(ctx, `
 		UPDATE schedule_entries SET term_id = $1, plan_entry_id = $2, course_name = $3, course_code = $4, course_id = $5, type = $6,
 			class_node_id = $7, class_node_ids = $8, teacher_id = $9, day_of_week = $10, periods = $11,
 			start_week = $12, end_week = $13, week_pattern = $14, venue_id = $15, scenario_id = $16, updated_at = NOW()
@@ -258,6 +258,13 @@ func (s *SchedulingStore) UpdateSchedule(ctx context.Context, id, tenantID strin
 	`, p.TermID, p.PlanEntryID, p.CourseName, p.CourseCode, p.CourseID, p.Type,
 		p.ClassNodeID, p.ClassNodeIDs, p.TeacherID, p.DayOfWeek, p.Periods, p.StartWeek, p.EndWeek, p.WeekPattern,
 		p.VenueID, p.ScenarioID, id, tenantID)
+	return err
+}
+
+// LockScheduleTerm 以租户+学期粒度的 advisory 锁串行化排课变更，避免冲突校验与插入间的并发竞态。
+// 须在事务内调用，锁随事务提交/回滚自动释放。
+func (s *SchedulingStore) LockScheduleTerm(ctx context.Context, q Queryer, tenantID, termID string) error {
+	_, err := q.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`, tenantID+"|"+termID)
 	return err
 }
 
@@ -301,8 +308,13 @@ type ScheduleCreateParams struct {
 
 // ===== 冲突/查询辅助 =====
 
-// CheckScheduleConflicts 查询排课冲突（完整：周重叠+节次重叠+教师/班级/场地）。
-func (s *SchedulingStore) CheckScheduleConflicts(ctx context.Context, tenantID, termID string, p *ScheduleConflictParams, excludeID string) ([]domain.ScheduleConflict, error) {
+// CheckScheduleConflictsTx 在指定事务/连接上执行冲突校验（服务层事务内复用）。
+func (s *SchedulingStore) CheckScheduleConflictsTx(ctx context.Context, q Queryer, tenantID, termID string, p *ScheduleConflictParams, excludeID string) ([]domain.ScheduleConflict, error) {
+	return checkScheduleConflicts(ctx, q, tenantID, termID, p, excludeID)
+}
+
+// checkScheduleConflicts 在指定 Queryer（连接或事务）上执行冲突查询，供事务内复用。
+func checkScheduleConflicts(ctx context.Context, q Queryer, tenantID, termID string, p *ScheduleConflictParams, excludeID string) ([]domain.ScheduleConflict, error) {
 	periods := JSONSliceToStrings(p.Periods)
 	if len(periods) == 0 {
 		return nil, nil
@@ -316,7 +328,7 @@ func (s *SchedulingStore) CheckScheduleConflicts(ctx context.Context, tenantID, 
 		reqClasses = []string{p.ClassNodeID}
 	}
 
-	rows, err := s.q.Query(ctx, `
+	rows, err := q.Query(ctx, `
 		SELECT se.id, se.course_name, COALESCE(o.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
 			se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern,
 			se.teacher_id, se.class_node_id, se.venue_id, se.plan_entry_id, se.class_node_ids

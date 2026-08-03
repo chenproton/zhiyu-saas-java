@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { courseApi, lessonBatchApi } from '@/lib/api'
+import { formatDate } from '@/lib/format-utils'
 import type { Course, LessonBatch } from '@/lib/types/lesson'
 
 import { useToast, StatusBadge } from '@zhiyu/ui'
@@ -134,7 +135,7 @@ export default function LessonArchivePage() {
       header: '归档时间',
       cell: (course) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(course.updatedAt).toLocaleDateString()}
+          {formatDate(course.updatedAt)}
         </span>
       ),
     },

@@ -50,6 +50,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
 import { authApi } from '@/lib/api'
+import { formatDate } from '@/lib/format-utils'
 
 const TENANTS_API = '/admin/tenants'
 
@@ -683,7 +684,7 @@ export default function SuperAdminPage() {
                       <StatusBadge status={t.status} />
                     </TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {new Date(t.createdAt).toLocaleDateString('zh-CN')}
+                      {formatDate(t.createdAt)}
                     </TableCell>
                     <TableRowActions>
                       <Button

@@ -21,6 +21,7 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { formatDate } from '@/lib/format-utils'
 import { Switch } from '@/components/ui/switch'
 import type { AllianceAchievement, AllianceEnterprise, AllianceProject } from '@/lib/types'
 
@@ -117,11 +118,7 @@ export default function AllianceAchievementsPage() {
             </TableCell>
             <TableCell>{project?.name || '-'}</TableCell>
             <TableCell>{allianceLabel('achievementType', item.type)}</TableCell>
-            <TableCell>
-              {item.achievementDate
-                ? new Date(item.achievementDate).toLocaleDateString('zh-CN')
-                : '-'}
-            </TableCell>
+            <TableCell>{formatDate(item.achievementDate)}</TableCell>
             <TableCell>{item.createdBy || '-'}</TableCell>
             <TableRowActions>
               <Link href={`/portal/apps/alliance/achievements/${item.id}`}>

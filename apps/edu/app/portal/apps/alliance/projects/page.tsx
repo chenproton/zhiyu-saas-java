@@ -23,6 +23,7 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { formatDate } from '@/lib/format-utils'
 import type { AllianceProject, AllianceEnterprise, AllianceProjectMilestone } from '@/lib/types'
 
 export default function AllianceProjectsPage() {
@@ -71,7 +72,6 @@ export default function AllianceProjectsPage() {
   }, [tenantId, authLoading, fetchProjects])
 
   const entName = (id: string) => enterprises.find((e) => e.id === id)?.name || id
-  const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('zh-CN') : '-')
 
   return (
     <PortalCrudPage
@@ -127,7 +127,7 @@ export default function AllianceProjectsPage() {
             </TableCell>
             <TableCell>{p.type || '-'}</TableCell>
             <TableCell className="whitespace-nowrap">
-              {fmtDate(p.startDate)} ~ {fmtDate(p.endDate)}
+              {formatDate(p.startDate)} ~ {formatDate(p.endDate)}
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
@@ -136,7 +136,7 @@ export default function AllianceProjectsPage() {
               </div>
             </TableCell>
             <TableCell>{allianceLabel('projectPhase', p.phase)}</TableCell>
-            <TableCell>{fmtDate(p.updatedAt)}</TableCell>
+            <TableCell>{formatDate(p.updatedAt)}</TableCell>
             <TableRowActions>
               <Link href={`/portal/apps/alliance/projects/${p.id}`}>
                 <Button variant="ghost" size="sm">
