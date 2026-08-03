@@ -312,6 +312,7 @@ var (
 		"lb.tenant_id",
 		"p.tenant_id",
 		"pr.tenant_id",
+		"rdq.tenant_id",
 		"s.tenant_id",
 		"sb.tenant_id",
 		"se.tenant_id",
