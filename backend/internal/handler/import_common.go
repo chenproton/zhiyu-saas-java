@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -409,8 +411,8 @@ func findOrCreateKnowledgePoints(ctx context.Context, db *pgxpool.Pool, tenantID
 	return ids
 }
 
-// findOrCreateResources 按租户+名称批量查找资源库资源，不存在则以 document 类型创建，
-// 返回命中的 ID 列表。供课程/场景/颗粒课导入复用。
+// findOrCreateResources 按租户+名称批量查找资源库资源，不存在则按文件后缀推断类型创建
+// （无后缀/未知后缀归入 other），返回命中的 ID 列表。供课程/场景/颗粒课导入复用。
 func findOrCreateResources(ctx context.Context, db *pgxpool.Pool, tenantID string, names []string, userID string) []string {
 	if len(names) == 0 {
 		return []string{}
@@ -428,8 +430,8 @@ func findOrCreateResources(ctx context.Context, db *pgxpool.Pool, tenantID strin
 			continue
 		}
 		id = uuid.NewString()
-		_, _ = db.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document'::resource_type,$4) ON CONFLICT DO NOTHING`,
-			id, tenantID, name, userID)
+		_, _ = db.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,$4::resource_type,$5) ON CONFLICT DO NOTHING`,
+			id, tenantID, name, resourceTypeByExt(name), userID)
 		var existing string
 		_ = db.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 		if existing != "" {
@@ -439,6 +441,31 @@ func findOrCreateResources(ctx context.Context, db *pgxpool.Pool, tenantID strin
 		}
 	}
 	return ids
+}
+
+// resourceTypeByExt 根据文件名后缀推断资源类型，无法识别（无后缀/未知后缀/URL 等）时返回 other。
+// 后缀清单与前端 lib/resource-type-constants.tsx 的 resourceTypeExtensionMap 保持一致；
+// zip 同时属于 archive 与 software，这里优先按 archive 处理。
+func resourceTypeByExt(name string) string {
+	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
+	switch ext {
+	case "pdf", "doc", "docx", "txt", "ppt", "pptx", "md":
+		return string(domain.ResourceTypeDocument)
+	case "xls", "xlsx", "csv":
+		return string(domain.ResourceTypeSpreadsheet)
+	case "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp":
+		return string(domain.ResourceTypeImage)
+	case "mp3", "wav", "ogg", "m4a", "flac", "aac":
+		return string(domain.ResourceTypeAudio)
+	case "mp4", "webm", "mov", "avi", "mkv", "flv":
+		return string(domain.ResourceTypeVideo)
+	case "zip", "rar", "7z", "tar", "gz", "bz2":
+		return string(domain.ResourceTypeArchive)
+	case "exe", "dmg", "pkg", "deb", "rpm", "msi", "apk":
+		return string(domain.ResourceTypeSoftware)
+	default:
+		return string(domain.ResourceTypeOther)
+	}
 }
 
 // lookupBatchID 按租户+名称在批次表中查找记录 ID，找不到返回 nil。
