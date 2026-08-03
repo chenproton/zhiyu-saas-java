@@ -33,10 +33,10 @@
 |-----------|------|
 | `components/shared/rich-text-editor.tsx:46,50,57,59` | 调用 `toast.error/.success`，但 toast 是函数（无方法）→ 任何 PDF 上传动作抛 `TypeError`，上传流程整体不可用 ✅ 已修复（删除 any toast prop，改用 @zhiyu/ui toast 函数调用，2 个调用方同步清理） |
 | `app/lesson/admin/system/add/page.tsx:365,653` | 编辑模式 `contentCode` 硬编码 `'CNT-SQL001'`，保存时把假编码写回每个已有节点 → 批量污染真实编码 ✅ 已修复（编辑加载时回填 course.code） |
-| `app/lesson/admin/system/add/page.tsx:629-632,1201-1211` | 自定义知识点（kp-custom-*）保存时被过滤剔除且无创建接口调用 → 静默丢失 |
+| `app/lesson/admin/system/add/page.tsx:629-632,1201-1211` | 自定义知识点（kp-custom-*）保存时被过滤剔除且无创建接口调用 → 静默丢失 ✅ 已修复（保存前 knowledgeApi.create 持久化并映射真实 ID） |
 | `app/lesson/admin/hybrid/add/page.tsx:167-494` | 编辑已有课程时表单不回填（无 effect）；节点树/模块内容从未持久化（无 courseNodeApi 调用）；`handleFinish` 保存失败也跳转丢数据 ✅ 部分修复（编辑回填 rootForm + handleFinish 失败不跳转；节点持久化为较大功能改动待办） |
 | `app/lesson/admin/granular/add/page.tsx:311-345` | create 分支未设 hasSavedRef，保存成功前点"取消"会删除刚创建的课程；`handleFinish` 失败仍跳转 |
-| `app/affairs/programs/[id]/_components/courses-tab.tsx:219-243` | 未关联行（linkType=none）保存时被丢弃，而后端整表 PUT → 关联被删除；岗位分组行只产生 1 条 payload |
+| `app/affairs/programs/[id]/_components/courses-tab.tsx:219-243` | 未关联行（linkType=none）保存时被丢弃，而后端整表 PUT → 关联被删除；岗位分组行只产生 1 条 payload ⚠️ 待业务确认（岗位分组折叠/保存语义涉及排课数据，需产品确认后修复） |
 | `app/portal/apps/alliance/achievements/[id]/page.tsx:94` | `filter(a.type === kind)` kind 为复数 'scenes'/'courses'，枚举为单数 'scene'/'course' → 添加场景/课程功能永久不可用 ✅ 已修复（kind 映射为单数枚举） |
 | `app/portal/apps/alliance/experts/[id]/edit/page.tsx:125-132` | payload 缺 expertType/professionalFields/photos/rating/positionDirection，后端全字段 UPDATE → 保存即清空专家数据 ✅ 已修复（补齐字段与回填） |
 | `app/portal/apps/alliance/projects/page.tsx:123,240` | 前台展示 Switch 绑定 `onToggleEnabled={async () => {}}` 空实现 → 开关不持久化、点击回弹（同类：achievements/page.tsx:232、brands/*/page.tsx 多个） ✅ 部分修复（projects 已持久化；achievements/brands 同模式待办） |

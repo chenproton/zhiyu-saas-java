@@ -630,8 +630,26 @@ function AddSystemPageInner() {
 
         // 知识点
         const kpList = draft?.knowledgePoints || node.knowledgePoints || []
+        // 自定义知识点：先持久化创建，用真实 ID 替换临时 ID（否则保存时被过滤丢失）
+        const kpIdMapping = new Map<string, string>()
+        for (const kp of kpList) {
+          if (!kp.id.startsWith('kp-custom-')) continue
+          try {
+            const created = await knowledgeApi.create({
+              name: kp.name,
+              code: undefined,
+              description: kp.description,
+              linked: false,
+              granularLessonIds: [],
+              sourceType: 'course_node',
+            } as any)
+            kpIdMapping.set(kp.id, created.id)
+          } catch (createErr) {
+            reportError(createErr, '创建自定义知识点')
+          }
+        }
         const knowledgePointIds = kpList
-          .map((kp) => kp.id)
+          .map((kp) => kpIdMapping.get(kp.id) || kp.id)
           .filter((id) => !id.startsWith('kp-custom-'))
 
         // 资源：已入库的资源直接走绑定，本地临时资源等节点创建后再上传
