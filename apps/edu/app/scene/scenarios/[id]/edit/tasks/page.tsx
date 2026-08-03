@@ -1452,23 +1452,13 @@ function EditCardDialog({
       }
     }
     const label = mk === 'question_bank' ? '题库' : '随堂测'
-    const examName = `${task.name}-${label}临时试卷`
-    // If name already taken, lookup existing exam; else create new with unique name
-    let exam: any
-    try {
-      exam = await examApi.create({
-        name: examName,
-        duration: currentCfg?.timeLimit || 90,
-        isTemp: true,
-      } as any)
-    } catch {
-      // Name conflict — append timestamp to make unique
-      exam = await examApi.create({
-        name: `${examName}-${Date.now()}`,
-        duration: currentCfg?.timeLimit || 90,
-        isTemp: true,
-      } as any)
-    }
+    // 自动生成的临时试卷名称带随机后缀，避免与历史残留考试重名触发 409
+    const examName = `${task.name}-${label}临时试卷-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+    const exam = await examApi.create({
+      name: examName,
+      duration: currentCfg?.timeLimit || 90,
+      isTemp: true,
+    } as any)
     for (const qid of questionIds) {
       await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
     }
