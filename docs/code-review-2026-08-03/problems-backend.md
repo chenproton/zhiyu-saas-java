@@ -217,8 +217,8 @@
 
 ### 3.2 导入类吞错
 
-- `handler/resource_import_handler.go:361-367`：`typeRows, _ :=` 忽略错误后 `typeRows.Next()` 对 nil 调用 → **panic 风险**（同文件 769 行正确检查了 err）
-- `handler/template_handler.go:586-596,771-777,823-829,881-887,1080-1086,1171-1178`：6 处 `rows, _ :=` 后直接 `for rows.Next()` → nil rows panic 风险
+- `handler/resource_import_handler.go:361-367`：`typeRows, _ :=` 忽略错误后 `typeRows.Next()` 对 nil 调用 → **panic 风险**（同文件 769 行正确检查了 err）✅ 已修复（err 守卫）
+- `handler/template_handler.go:586-596,771-777,823-829,881-887,1080-1086,1171-1178`：6 处 `rows, _ :=` 后直接 `for rows.Next()` → nil rows panic 风险 ✅ 已修复（7 处全部 err 守卫，失败返回空列表）
 - `handler/affairs_config_import_handler.go:59-132`：QueryRow/INSERT 错误全吞，计数虚报
 - `handler/granular_course_import_handler.go:137-138`：Preview 接口实际写库（findOrCreateKnowledgePoints 在 preview 分支执行 INSERT）
 - `handler/question_import_handler.go:121-125`：找不到题目明细 Sheet 仍返回 200 成功
