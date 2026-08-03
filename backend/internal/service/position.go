@@ -53,20 +53,14 @@ func (s *PositionService) Create(ctx context.Context, tenantID string, p *store.
 
 // Update 更新岗位（事务内重绑专业）。
 func (s *PositionService) Update(ctx context.Context, id string, p *store.PositionUpdateParams) (*domain.CareerPosition, error) {
-	var pos *domain.CareerPosition
 	err := s.WithTx(ctx, func(txStore *store.Store) error {
-		pos, err := txStore.Positions().Update(ctx, txStore.Q(), id, p)
-		if err != nil {
-			return err
-		}
-		pos2 := pos
-		_ = pos2
-		return nil
+		_, err := txStore.Positions().Update(ctx, txStore.Q(), id, p)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	pos, err = s.st.Positions().Get(ctx, id)
+	pos, err := s.st.Positions().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
