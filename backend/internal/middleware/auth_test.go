@@ -3,7 +3,9 @@ package middleware_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -133,4 +135,87 @@ func TestCurrentUser_Nil(t *testing.T) {
 
 func strPtr(s string) *string {
 	return &s
+}
+
+func TestJWT_ExpiredToken(t *testing.T) {
+	handler := middleware.JWT(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("handler should not be called")
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	user := &domain.User{
+		ID:       "u1",
+		TenantID: strPtr("t1"),
+		Role:     domain.UserRoleSchool,
+	}
+	claims := jwt.MapClaims{
+		"userID":   user.ID,
+		"tenantId": *user.TenantID,
+		"role":     string(user.Role),
+		"exp":      time.Now().Add(-time.Hour).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenStr, err := token.SignedString([]byte(testSecret))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for expired token, got %d", w.Code)
+	}
+}
+
+func TestJWT_WrongSecretToken(t *testing.T) {
+	handler := middleware.JWT(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("handler should not be called")
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	user := &domain.User{ID: "u1", Role: domain.UserRoleSchool}
+	tokenStr, err := middleware.GenerateToken("wrong-secret", middleware.TokenInput{User: user})
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for wrong-secret token, got %d", w.Code)
+	}
+}
+
+func TestJWT_TamperedToken(t *testing.T) {
+	handler := middleware.JWT(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("handler should not be called")
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	user := &domain.User{ID: "u1", Role: domain.UserRoleSchool}
+	tokenStr, err := middleware.GenerateToken(testSecret, middleware.TokenInput{User: user})
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+	// 篡改 payload（签名不匹配）
+	parts := strings.Split(tokenStr, ".")
+	payload := parts[1]
+	mod := []byte(payload)
+	mod[0] = 'A'
+	tampered := parts[0] + "." + string(mod) + "." + parts[2]
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+tampered)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for tampered token, got %d", w.Code)
+	}
 }

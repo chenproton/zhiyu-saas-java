@@ -287,12 +287,12 @@
 - **[严重] `handler/testhelper/setup.go:48-51`**：TEST_DATABASE_URL 未设置时回退 DATABASE_URL（生产库）→ 测试会对生产库执行 migration 与 DELETE 种子数据。缺省必须 `t.Skip` ✅ 已修复（不回退 DATABASE_URL，缺失即 t.Skip）
 - **[中] `setup.go:476-485`**：清理表清单不全（缺 lesson_batches、micro_cert、exam_usages、certification_*、appeal_records、users）→ 断言失败时数据跨运行累积 ✅ 已修复（清单补 10 表）
 - **[中] `lesson_handler_test.go:574`**：过期的 `t.Skip`（lesson_batches 表已存在），测试未启用 ✅ 已修复（移除 Skip 启用测试）
-- **[中] `user_management_handler_test.go:57-60,284-293`**：defer 清理注册在断言之后，断言失败即泄漏用户行
-- **[中] `portal_handlers_test.go:202-206`**：断言仅"非 500"，404/400 均通过
+- **[中] `user_management_handler_test.go:57-60,284-293`**：defer 清理注册在断言之后，断言失败即泄漏用户行 ❌ 误报（Go defer 在 t.Fatalf 触发 Goexit 时仍会执行，清理必然生效）
+- **[中] `portal_handlers_test.go:202-206`**：断言仅"非 500"，404/400 均通过 ✅ 已修复（改为期望 200）
 - **[中] `query_test.go:117-125`**：ExecuteListQuery 成功路径从未执行（fake 恒返回 nil rows）
 - **[低] `evaluation_handler_test.go:859-866`**：TestMicroCert 签发记录泄漏
-- **[低] `edge_case_test.go:159`**：非法 bcrypt 占位哈希
-- **[低] `middleware/auth_test.go`**：缺少过期/篡改/错误密钥 token 用例
+- **[低] `edge_case_test.go:159`**：非法 bcrypt 占位哈希 ✅ 已修复（替换为合法 bcrypt）
+- **[低] `middleware/auth_test.go`**：缺少过期/篡改/错误密钥 token 用例 ✅ 已修复（新增 3 个用例全部通过）
 
 ---
 
