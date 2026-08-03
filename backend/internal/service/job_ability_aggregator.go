@@ -35,6 +35,13 @@ func (a *JobAbilityAggregator) lockPosition(tenantID, positionID string) *sync.M
 	return m
 }
 
+// unlockPosition 汇聚结束后移除岗位锁，避免 map 永久膨胀。
+func (a *JobAbilityAggregator) unlockPosition(tenantID, positionID string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.positionLocks, tenantID+":"+positionID)
+}
+
 // aggPoint 汇聚用能力点：关联链来自 position_ability_bindings + 场景评分点关联。
 type aggPoint struct {
 	abilityPointID string
@@ -118,7 +125,10 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	// 防止同岗位并发汇聚导致数据竞争
 	posLock := a.lockPosition(tenantID, careerPositionID)
 	posLock.Lock()
-	defer posLock.Unlock()
+	defer func() {
+		posLock.Unlock()
+		a.unlockPosition(tenantID, careerPositionID)
+	}()
 
 	// 1. 加载规则 + 组装能力模型（绑定链/任务链全量自动带出，权重缺省均分兜底）
 	ruleID, err := a.store.Certifications().FindRuleIDForPosition(ctx, tenantID, careerPositionID)

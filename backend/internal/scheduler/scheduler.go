@@ -21,7 +21,7 @@ type Scheduler struct {
 func Start(pool *pgxpool.Pool) *Scheduler {
 	st := store.New(pool)
 	agg := service.NewJobAbilityAggregator(st)
-	c := cron.New()
+	c := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
 	if _, err := c.AddFunc("0 2 * * *", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
