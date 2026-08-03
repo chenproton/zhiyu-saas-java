@@ -43,9 +43,9 @@ func (h *CertificateLibraryHandler) crud() crudConfig[CertificateLibraryRequest,
 		CreateErrMsg: "创建证书失败",
 		UpdateErrMsg: "更新证书失败",
 		DeleteErrMsg: "删除证书失败",
-		// 仅需登录即可查看/创建，更新/删除校验租户归属
+		// 仅需登录即可查看/创建，更新/删除校验租户归属；详情读取同样校验租户（防跨租户 IDOR）
 		CheckOwnership: true,
-		GetOwnership:   false,
+		GetOwnership:   true,
 		ValidateCreate: func(t *CertificateLibraryRequest) string {
 			if t.Name == nil || *t.Name == "" {
 				return "缺少必填字段"
