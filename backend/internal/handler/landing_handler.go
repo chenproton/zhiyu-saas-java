@@ -65,14 +65,7 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[LandingExamItem]{Items: items, Total: len(items)})
 }
 
-func computeExamStatus(start, end interface{}, now time.Time) string {
-	var startTime, endTime *time.Time
-	if t, ok := start.(*time.Time); ok {
-		startTime = t
-	}
-	if t, ok := end.(*time.Time); ok {
-		endTime = t
-	}
+func computeExamStatus(startTime, endTime *time.Time, now time.Time) string {
 	if startTime == nil || startTime.IsZero() {
 		return "进行中"
 	}
