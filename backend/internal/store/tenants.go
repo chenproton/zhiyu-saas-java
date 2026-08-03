@@ -313,10 +313,7 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 	teacherMenus := domain.JSONMap{
 		"/job/positions": true, "/job/archive": true, "/job/approvals": true, "/job/landing": true,
 		"/lesson/admin/system": true, "/lesson/admin/granular": true, "/lesson/admin/hybrid": true,
-		"/lesson/admin/archive": true, "/lesson/teacher/claim": true,
-		"/lesson/teacher/behavior-collection": true, "/lesson/teacher/progress-tracking": true,
-		"/lesson/teacher/final-assessment": true, "/lesson/teacher/grade-submit": true,
-		"/lesson/teacher/learning-portrait": true, "/lesson/admin/approvals": true, "/lesson/landing": true,
+		"/lesson/admin/archive": true, "/lesson/admin/approvals": true, "/lesson/landing": true,
 		"/scene/": true, "/scene/archive": true, "/scene/approvals": true, "/scene/landing": true,
 		"/evaluation/question-banks": true, "/evaluation/exams": true, "/evaluation/exam-usage": true,
 		"/evaluation/batches": true, "/evaluation/workflows": true, "/evaluation/approvals": true,
