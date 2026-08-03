@@ -11,13 +11,19 @@
 
 ## 目录结构
 
+组件实现在共享包，组装在应用侧：
+
 ```
-apps/edu/components/platform-shell/
+packages/ui/src/components/platform-shell/
 ├── config.ts          # PlatformNavigationConfig 接口定义
 ├── icons.ts           # platformIconMap (26 个 Lucide 图标)
-├── index.ts           # 统一导出（PlatformShell + 类型）
-├── PlatformShell.tsx  # PlatformShell + PlatformSideNav（TopNav 引用 @/components/portal/top-nav）
+├── index.ts           # 统一导出（PlatformSideNav + 类型）
+├── PlatformSideNav.tsx# PlatformSideNav 侧边栏（权限过滤、展开/收起）
 └── utils.ts           # cn + matchesPath
+
+apps/edu/components/platform-shell/
+├── index.ts           # 统一导出
+└── PlatformShell.tsx  # PlatformShell 组装（TopNav 引用 @/components/portal/top-nav）
 ```
 
 ## 检查点

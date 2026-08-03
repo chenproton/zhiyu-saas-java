@@ -19,6 +19,30 @@
 
 ## 记录
 
+### 2026-08-03 审计文档逐项复核：平台隔离恢复与文档校准
+
+- 审计文档：
+  - 新增：`backend/middleware.md` 平台隔离检查点更新（RequirePlatform 恢复）
+  - 更新：`docs/audits/backend/handler-infra.md`
+  - 更新：`docs/audits/backend/auth-security.md`
+  - 更新：`docs/audits/backend/migrations.md`
+  - 更新：`docs/audits/backend/operations-platform.md`
+  - 更新：`docs/audits/backend/resource-sharing-platform.md`
+  - 更新：`docs/audits/frontend/api-client.md`
+  - 更新：`docs/audits/frontend/shared-packages.md`
+  - 更新：`docs/audits/frontend/edu-app.md`
+  - 更新：`docs/audits/frontend/platform-shell.md`
+  - 更新：`docs/audits/frontend/landing-pages.md`
+  - 更新：`docs/audits/evaluation-method-field-alignment.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - **逐文档核对 26 份审计文档与源码**：除平台隔离外全部检查点与代码一致。
+  - **恢复 `RequirePlatform` 平台隔离中间件**：middleware/auth-security 文档要求而代码缺失（saas token 可访问 portal 业务路由）→ 新建 `middleware/platform.go`，portal/saas 路由组分别强制平台 token 匹配，附单元测试。
+  - **文档过时修正**：handler-infra（jsonSliceToUUIDSlice 已存在）、auth-security（ENABLE_DEBUG_AUTH 已移除）、migrations（迁移 33 对非 118 对）、operations-platform 与 resource-sharing-platform（机构/订单/提现/横幅/商城资源随商城移除归档）、api-client（API 分域 11 文件）、shared-packages（shared-types 25+ 模块、AI 组件已移除）、edu-app（8 个顶级域含 affairs）、platform-shell（组件目录在 packages/ui）、landing-pages（exams 页已用 landingApi）、evaluation-method-field-alignment（reviewSteps 在 evaluation-rules.ts）。
+
 ### 2026-08-03 审计文档同步：对齐代码现状与审查口径校准
 
 - 审计文档：

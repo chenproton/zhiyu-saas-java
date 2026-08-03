@@ -25,7 +25,7 @@
 | 检查点 | 结论 | 说明 |
 |---|---|---|
 | 公开访问性 | 业务约束 | 所有落地页调用认证 API，未登录用户被 401 拦截跳转登录——这是**产品设计**（学生门户仅对登录用户开放），非缺陷。若业务需要真正匿名分享页，需另行改造（见风险节）。 |
-| API 端点选择 | PARTIAL | 测评落地页调用 `questionBankApi.list`/`examApi.list` 而非 `landingApi.listExams`。`landingApi` 对应 `GET /evaluation/landing/exams` 无需认证，但前端未使用。 |
+| API 端点选择 | PARTIAL | 公开考试列表页（`evaluation/landing/exams`）已使用 `landingApi.listExams`；`evaluation/landing/page.tsx` 首页仍用 `questionBankApi.list`/`examApi.list`（认证接口，但仅取 `status: published`，功能等价）。 |
 | 数据隔离 | PASS | 所有认证 API 通过 tenant_id 隔离，学生只能看到本租户已发布内容。 |
 | 数据泄漏 | PASS | 未暴露审批记录、草稿、用户数据等管理侧信息；仅查询 `status: "published"` 过滤。 |
 | 错误状态处理 | PARTIAL | `scene/landing/[id]`、`job/student/[id]` 有 `.catch(() => setXxx(null))` 静默处理，无用户可感知的错误提示。`evaluation/landing`、`lesson/landing`、`library/landing` 通过 `.catch(() => setXxx([]))` 空列表兜底。 |

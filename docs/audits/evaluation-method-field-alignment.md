@@ -145,7 +145,7 @@
 ## 五、真实缺陷与修复项
 
 ### 5.1 `reviewSteps` 在通用转换函数中丢失
-- **位置**：`packages/shared-types/src/evaluation.ts`
+- **位置**：`packages/shared-types/src/evaluation-rules.ts`（原文档记录为 `evaluation.ts`，实际实现位于 `evaluation-rules.ts`）
 - **现象**：`evalRuleConfigToMethods` 对 review 方法硬编码 `reviewSteps: []`。
 - **影响**：虽然当前后台 `taskStateToMethodsInput` 会重新赋值绕过该函数，但任何直接调用 `evalRuleConfigToMethods` 的场景都会丢失评审步骤。
 - **修复**：当 `mk === "review"` 时从 `config.reviewSteps` 读取。
