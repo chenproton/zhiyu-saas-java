@@ -388,25 +388,32 @@ type UserUpdateParams struct {
 	TitleIDs        []string
 }
 
-func (s *UserStore) fetchUser(ctx context.Context, q Queryer, id string) (*domain.User, error) {
+// rowScanner 抽象 pgx.Row 与 pgx.Rows 共有的 Scan 能力。
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+// scanUser 将 users 表一行扫描为 domain.User；withPasswordHash 表示查询结果包含
+// password_hash 列。返回的 passwordHash 仅在 withPasswordHash 时有值。
+func scanUser(s rowScanner, withPasswordHash bool) (domain.User, string, error) {
 	var user domain.User
 	var tenantID, institutionID, orgNodeID, majorID, loginName, phone, avatarURL, studentNo, workID, idCard *string
 	var titleIDs []string
 	var oauth domain.JSONMap
-
-	err := q.QueryRow(ctx, `
-		SELECT id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
-			student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at
-		FROM users WHERE id = $1
-	`, id).Scan(
+	var passwordHash string
+	targets := []any{
 		&user.ID, &tenantID, &institutionID, &orgNodeID, &majorID,
-		&user.Role, &user.Platform, &loginName, &user.Username, &user.PasswordHash, &user.Name, &user.Email,
-		&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
-		&user.GraduateYear, &user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
+		&user.Role, &user.Platform, &loginName, &user.Username,
+	}
+	if withPasswordHash {
+		targets = append(targets, &passwordHash)
+	}
+	targets = append(targets,
+		&user.Name, &user.Email, &phone, &avatarURL, &studentNo, &workID, &idCard,
+		&titleIDs, &oauth, &user.Status, &user.GraduateYear, &user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
 	)
-	if err != nil {
-		return nil, err
+	if err := s.Scan(targets...); err != nil {
+		return user, "", err
 	}
 	user.TenantID = tenantID
 	user.InstitutionID = institutionID
@@ -420,36 +427,30 @@ func (s *UserStore) fetchUser(ctx context.Context, q Queryer, id string) (*domai
 	user.IDCard = idCard
 	user.TitleIDs = titleIDs
 	user.Oauth = oauth
+	return user, passwordHash, nil
+}
+
+func (s *UserStore) fetchUser(ctx context.Context, q Queryer, id string) (*domain.User, error) {
+	user, passwordHash, err := scanUser(q.QueryRow(ctx, `
+		SELECT id, tenant_id, institution_id, org_node_id, major_id,
+			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
+			student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at
+		FROM users WHERE id = $1
+	`, id), true)
+	if err != nil {
+		return nil, err
+	}
+	user.PasswordHash = passwordHash
 	return &user, nil
 }
 
 func scanUserRows(rows pgx.Rows) ([]domain.User, error) {
 	items := make([]domain.User, 0)
 	for rows.Next() {
-		var user domain.User
-		var tenantID, institutionID, orgNodeID, majorID, loginName, phone, avatarURL, studentNo, workID, idCard *string
-		var titleIDs []string
-		var oauth domain.JSONMap
-		if err := rows.Scan(
-			&user.ID, &tenantID, &institutionID, &orgNodeID, &majorID,
-			&user.Role, &user.Platform, &loginName, &user.Username, &user.Name, &user.Email,
-			&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
-			&user.GraduateYear, &user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
-		); err != nil {
+		user, _, err := scanUser(rows, false)
+		if err != nil {
 			return nil, err
 		}
-		user.TenantID = tenantID
-		user.InstitutionID = institutionID
-		user.OrgNodeID = orgNodeID
-		user.MajorID = majorID
-		user.LoginName = loginName
-		user.Phone = phone
-		user.AvatarURL = avatarURL
-		user.StudentNo = studentNo
-		user.WorkID = workID
-		user.IDCard = idCard
-		user.TitleIDs = titleIDs
-		user.Oauth = oauth
 		items = append(items, user)
 	}
 	return items, nil
