@@ -250,10 +250,10 @@ func (s *CourseCloneStore) cloneSystemCourseNodes(ctx context.Context, tx Querye
 			n.KnowledgePointIds, n.ResourceIds, n.AbilityPointIds, n.EvalData, n.Status); err != nil {
 			return err
 		}
-		if err := s.cloneNodeKnowledgeBindings(ctx, tx, n.ID, newNodeID, tenantID); err != nil {
+		if err := s.cloneNodeKnowledgeBindings(ctx, tx, n.ID, newNodeID); err != nil {
 			return err
 		}
-		if err := s.cloneNodeResourceBindings(ctx, tx, n.ID, newNodeID, tenantID); err != nil {
+		if err := s.cloneNodeResourceBindings(ctx, tx, n.ID, newNodeID); err != nil {
 			return err
 		}
 	}
@@ -429,7 +429,7 @@ func (s *CourseCloneStore) cloneHybridNodeModules(ctx context.Context, tx Querye
 	return rows.Err()
 }
 
-func (s *CourseCloneStore) cloneNodeKnowledgeBindings(ctx context.Context, tx Queryer, oldNodeID, newNodeID, tenantID string) error {
+func (s *CourseCloneStore) cloneNodeKnowledgeBindings(ctx context.Context, tx Queryer, oldNodeID, newNodeID string) error {
 	rows, err := tx.Query(ctx, `
 		SELECT knowledge_point_id FROM node_knowledge_point_bindings WHERE node_id = $1
 	`, oldNodeID)
@@ -440,19 +440,19 @@ func (s *CourseCloneStore) cloneNodeKnowledgeBindings(ctx context.Context, tx Qu
 	for rows.Next() {
 		var kpID string
 		if err := rows.Scan(&kpID); err != nil {
-			continue
+			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id)
-			VALUES ($1, $2, $3, $4)
-		`, uuid.NewString(), tenantID, newNodeID, kpID); err != nil {
+			INSERT INTO node_knowledge_point_bindings (id, node_id, knowledge_point_id)
+			VALUES ($1, $2, $3)
+		`, uuid.NewString(), newNodeID, kpID); err != nil {
 			return err
 		}
 	}
 	return rows.Err()
 }
 
-func (s *CourseCloneStore) cloneNodeResourceBindings(ctx context.Context, tx Queryer, oldNodeID, newNodeID, tenantID string) error {
+func (s *CourseCloneStore) cloneNodeResourceBindings(ctx context.Context, tx Queryer, oldNodeID, newNodeID string) error {
 	rows, err := tx.Query(ctx, `
 		SELECT resource_id FROM node_resource_bindings WHERE node_id = $1
 	`, oldNodeID)
@@ -463,12 +463,12 @@ func (s *CourseCloneStore) cloneNodeResourceBindings(ctx context.Context, tx Que
 	for rows.Next() {
 		var resID string
 		if err := rows.Scan(&resID); err != nil {
-			continue
+			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id)
-			VALUES ($1, $2, $3, $4)
-		`, uuid.NewString(), tenantID, newNodeID, resID); err != nil {
+			INSERT INTO node_resource_bindings (id, node_id, resource_id)
+			VALUES ($1, $2, $3)
+		`, uuid.NewString(), newNodeID, resID); err != nil {
 			return err
 		}
 	}
