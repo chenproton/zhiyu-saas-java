@@ -46,6 +46,7 @@ export const portalUserManagementApi = {
     roleCode?: string
     orgNodeId?: string
     majorId?: string
+    titleId?: string
     search?: string
     status?: string
     limit?: number
