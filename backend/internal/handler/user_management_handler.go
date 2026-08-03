@@ -304,7 +304,6 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		slog.Error("update user failed", "error", err)
 		respondServerError(w, r, err, "更新用户失败")
 		return
 	}

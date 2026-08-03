@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -39,7 +38,6 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 	}
 	items, total, err := h.Service.ListGradeMappings(r.Context(), params, cfg)
 	if err != nil {
-		slog.Error("查询场景等级映射列表失败", "error", err)
 		respondServerError(w, r, err, "查询场景等级映射列表失败")
 		return
 	}

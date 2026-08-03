@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -30,7 +29,6 @@ func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error("查询组织类型失败", "error", err)
 		respondServerError(w, r, err, "查询组织类型失败")
 		return
 	}

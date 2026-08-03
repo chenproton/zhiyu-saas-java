@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -116,7 +115,6 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 
 	rows, err := h.Service.FindUsersByUsername(r.Context(), req.Username, platform)
 	if err != nil {
-		slog.Error("login query failed", "error", err)
 		respondServerError(w, r, err, "登录失败")
 		return
 	}
@@ -170,7 +168,6 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 	}
 	preAuthToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, preAuthClaims).SignedString([]byte(h.JWTSecret))
 	if err != nil {
-		slog.Error("generating preAuthToken failed", "error", err)
 		respondServerError(w, r, err, "登录失败")
 		return
 	}

@@ -418,14 +418,12 @@ func (h *CourseHandler) Assessments(w http.ResponseWriter, r *http.Request) {
 
 	exams, err := h.Service.ListCourseExamUsages(r.Context(), courseID, *claims.TenantID)
 	if err != nil {
-		slog.Error("查询课程考试安排失败", "error", err)
 		respondServerError(w, r, err, "查询课程测评失败")
 		return
 	}
 
 	homeworks, err := h.Service.ListCourseHomeworks(r.Context(), courseID, *claims.TenantID)
 	if err != nil {
-		slog.Error("查询课程作业失败", "error", err)
 		respondServerError(w, r, err, "查询课程测评失败")
 		return
 	}
@@ -465,7 +463,6 @@ func (h *CourseHandler) SubmitHomework(w http.ResponseWriter, r *http.Request) {
 
 	submissionID, err := h.Service.SubmitCourseHomework(r.Context(), *claims.TenantID, courseID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls)
 	if err != nil {
-		slog.Error("提交课程作业失败", "error", err)
 		respondServerError(w, r, err, "提交作业失败")
 		return
 	}
@@ -488,7 +485,6 @@ func (h *CourseHandler) ListHomeworkSubmissions(w http.ResponseWriter, r *http.R
 
 	subs, err := h.Service.ListCourseHomeworkSubmissions(r.Context(), *claims.TenantID, courseID, homeworkID)
 	if err != nil {
-		slog.Error("查询课程作业提交失败", "error", err)
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
@@ -545,7 +541,6 @@ func (h *CourseHandler) GradeHomeworkSubmission(w http.ResponseWriter, r *http.R
 			respondError(w, http.StatusNotFound, "提交记录不存在")
 			return
 		}
-		slog.Error("批改课程作业失败", "error", err)
 		respondServerError(w, r, err, "批改失败")
 		return
 	}
@@ -582,7 +577,6 @@ func (h *CourseHandler) SubmitNodeHomework(w http.ResponseWriter, r *http.Reques
 
 	submissionID, err := h.Service.SubmitNodeHomework(r.Context(), *claims.TenantID, nodeID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls)
 	if err != nil {
-		slog.Error("提交节点作业失败", "error", err)
 		respondServerError(w, r, err, "提交作业失败")
 		return
 	}
@@ -605,7 +599,6 @@ func (h *CourseHandler) ListNodeHomeworkSubmissions(w http.ResponseWriter, r *ht
 
 	subs, err := h.Service.ListNodeHomeworkSubmissions(r.Context(), *claims.TenantID, nodeID, homeworkID)
 	if err != nil {
-		slog.Error("查询节点作业提交失败", "error", err)
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
@@ -662,7 +655,6 @@ func (h *CourseHandler) GradeNodeHomeworkSubmission(w http.ResponseWriter, r *ht
 			respondError(w, http.StatusNotFound, "提交记录不存在")
 			return
 		}
-		slog.Error("批改节点作业失败", "error", err)
 		respondServerError(w, r, err, "批改失败")
 		return
 	}

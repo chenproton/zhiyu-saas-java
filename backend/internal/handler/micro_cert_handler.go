@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -43,7 +42,6 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error("查询微证书模板列表失败", "error", err)
 		respondServerError(w, r, err, "查询微证书模板列表失败")
 		return
 	}
@@ -58,7 +56,6 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error("查询证书发放记录列表失败", "error", err)
 		respondServerError(w, r, err, "查询证书发放记录列表失败")
 		return
 	}

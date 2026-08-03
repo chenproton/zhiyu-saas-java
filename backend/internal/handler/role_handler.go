@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -35,7 +34,6 @@ func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error("查询角色列表失败", "error", err)
 		respondServerError(w, r, err, "查询角色列表失败")
 		return
 	}
@@ -147,7 +145,6 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.Assign(r.Context(), role.TenantID, id, req.UserID); err != nil {
-		slog.Error("assign role failed", "error", err)
 		respondServerError(w, r, err, "分配角色失败")
 		return
 	}

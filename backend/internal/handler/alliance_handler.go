@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -36,7 +35,6 @@ func (h *AllianceHandler) GetSchoolInfo(w http.ResponseWriter, r *http.Request) 
 			})
 			return
 		}
-		slog.Error("获取学校信息失败", "error", err)
 		respondServerError(w, r, err, "获取学校信息失败")
 		return
 	}
@@ -61,7 +59,6 @@ func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Reques
 	info.TenantID = tenantID
 
 	if err := h.Store.UpsertSchoolInfo(r.Context(), &info); err != nil {
-		slog.Error("更新学校信息失败", "error", err)
 		respondServerError(w, r, err, "更新学校信息失败")
 		return
 	}
@@ -112,7 +109,6 @@ func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *htt
 
 	items, err := h.Store.ListEnterpriseAgreements(r.Context(), eid)
 	if err != nil {
-		slog.Error("查询企业协议列表失败", "error", err)
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
@@ -148,7 +144,6 @@ func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *ht
 
 	id, err := h.Store.CreateEnterpriseAgreement(r.Context(), &p)
 	if err != nil {
-		slog.Error("创建企业协议失败", "error", err)
 		respondServerError(w, r, err, "创建失败")
 		return
 	}
@@ -185,7 +180,6 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 		return
 	}
 	if err := h.Store.UpdateEnterpriseAgreement(r.Context(), id, &p); err != nil {
-		slog.Error("更新企业协议失败", "error", err)
 		respondServerError(w, r, err, "更新失败")
 		return
 	}
@@ -289,7 +283,6 @@ func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request
 
 	id, err := h.Store.CreateMilestone(r.Context(), &m)
 	if err != nil {
-		slog.Error("创建里程碑失败", "error", err)
 		respondServerError(w, r, err, "创建失败")
 		return
 	}
@@ -317,7 +310,6 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := h.Store.UpdateMilestone(r.Context(), id, tenantID, &m); err != nil {
-		slog.Error("更新里程碑失败", "error", err)
 		respondServerError(w, r, err, "更新失败")
 		return
 	}
@@ -424,7 +416,6 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error("查询权限列表失败", "error", err)
 		respondServerError(w, r, err, "查询权限列表失败")
 		return
 	}
@@ -473,7 +464,6 @@ func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Reques
 
 	id, err := h.Store.CreatePermission(r.Context(), &p)
 	if err != nil {
-		slog.Error("创建权限失败", "error", err)
 		respondServerError(w, r, err, "创建失败")
 		return
 	}
@@ -500,7 +490,6 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := h.Store.UpdatePermission(r.Context(), id, tenantID, &p); err != nil {
-		slog.Error("更新权限失败", "error", err)
 		respondServerError(w, r, err, "更新失败")
 		return
 	}
@@ -579,7 +568,6 @@ func (h *AllianceHandler) CreateDictionaryItem(w http.ResponseWriter, r *http.Re
 			respondError(w, http.StatusConflict, "字典项编码已存在")
 			return
 		}
-		slog.Error("创建字典项失败", "error", err)
 		respondServerError(w, r, err, "创建失败")
 		return
 	}

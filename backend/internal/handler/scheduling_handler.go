@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"strings"
 
@@ -46,7 +45,6 @@ func (h *SchedulingHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error("查询场地列表失败", "error", err)
 		respondServerError(w, r, err, "查询场地列表失败")
 		return
 	}
@@ -81,7 +79,6 @@ func (h *SchedulingHandler) CreateVenue(w http.ResponseWriter, r *http.Request) 
 		Capacity: req.Capacity,
 	})
 	if err != nil {
-		slog.Error("创建场地失败", "error", err)
 		respondServerError(w, r, err, "创建场地失败")
 		return
 	}
@@ -181,7 +178,6 @@ func (h *SchedulingHandler) ListPeriodSlots(w http.ResponseWriter, r *http.Reque
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error("查询节次列表失败", "error", err)
 		respondServerError(w, r, err, "查询节次列表失败")
 		return
 	}
@@ -217,7 +213,6 @@ func (h *SchedulingHandler) CreatePeriodSlot(w http.ResponseWriter, r *http.Requ
 		EndTime:   emptyStrToNil(req.EndTime),
 	})
 	if err != nil {
-		slog.Error("创建节次失败", "error", err)
 		respondServerError(w, r, err, "创建节次失败")
 		return
 	}
@@ -327,7 +322,6 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Error("查询排课列表失败", "error", err)
 		respondServerError(w, r, err, "查询排课列表失败")
 		return
 	}
@@ -375,7 +369,6 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 
 	conflicts, err := h.checkScheduleConflicts(ctx, tenantID, &req, "")
 	if err != nil {
-		slog.Error("排课冲突校验失败", "error", err)
 		respondServerError(w, r, err, "排课冲突校验失败")
 		return
 	}
@@ -433,7 +426,6 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 		Source:       "manual",
 	})
 	if err != nil {
-		slog.Error("创建排课失败", "error", err)
 		respondServerError(w, r, err, "创建排课失败")
 		return
 	}
@@ -470,7 +462,6 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 
 	conflicts, err := h.checkScheduleConflicts(ctx, tenantID, &req, id)
 	if err != nil {
-		slog.Error("排课冲突校验失败", "error", err)
 		respondServerError(w, r, err, "排课冲突校验失败")
 		return
 	}
@@ -524,7 +515,6 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 		ScenarioID:   emptyStrToNil(req.ScenarioID),
 	})
 	if err != nil {
-		slog.Error("更新排课失败", "error", err)
 		respondServerError(w, r, err, "更新排课失败")
 		return
 	}
@@ -594,7 +584,6 @@ func (h *SchedulingHandler) AutoSchedule(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		slog.Error("自动排课失败", "error", err)
 		respondServerError(w, r, err, "自动排课失败")
 		return
 	}
@@ -633,7 +622,6 @@ func (h *SchedulingHandler) PublishSchedules(w http.ResponseWriter, r *http.Requ
 
 	published, version, err := h.Service.PublishSchedules(r.Context(), tenantID, req.TermID)
 	if err != nil {
-		slog.Error("发布课表失败", "error", err)
 		respondServerError(w, r, err, "发布课表失败")
 		return
 	}
@@ -851,7 +839,6 @@ func (h *SchedulingHandler) Timetable(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.listTimetableEntries(r.Context(), tenantID, termID, classNodeID, teacherID, status)
 	if err != nil {
-		slog.Error("查询课表失败", "error", err)
 		respondServerError(w, r, err, "查询课表失败")
 		return
 	}
@@ -909,7 +896,6 @@ func (h *SchedulingHandler) MySchedule(w http.ResponseWriter, r *http.Request) {
 	if classNodeID != "" || teacherID != "" {
 		items, err = h.listTimetableEntries(ctx, tenantID, termID, classNodeID, teacherID, "published")
 		if err != nil {
-			slog.Error("查询个人课表失败", "error", err)
 			respondServerError(w, r, err, "查询个人课表失败")
 			return
 		}

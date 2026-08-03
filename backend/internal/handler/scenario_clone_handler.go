@@ -60,14 +60,12 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
 			return
 		}
-		slog.Error("[CloneScenario] clone failed", "scenario_id", id, "error", err)
 		respondServerError(w, r, err, "克隆场景方案失败")
 		return
 	}
 
 	scenario, err := h.Service.Get(r.Context(), newID)
 	if err != nil {
-		slog.Error("[CloneScenario] fetch cloned scenario failed", "new_id", newID, "error", err)
 		respondServerError(w, r, err, "获取cloned scenario失败")
 		return
 	}
