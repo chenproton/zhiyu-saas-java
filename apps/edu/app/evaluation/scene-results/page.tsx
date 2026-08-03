@@ -30,6 +30,7 @@ import {
   taskApi,
 } from '@/lib/api'
 import type { SceneEvaluationResult } from '@/lib/types'
+import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 
 interface TaskStudent {
   studentId: string
@@ -65,16 +66,6 @@ interface ScenarioGroup {
     gradedCount: number
     studentCount: number
   }[]
-}
-
-const evalMethodLabels: Record<string, string> = {
-  random_draw: '现场问答',
-  review: '现场评审',
-  paper: '试卷',
-  question_bank: '题库',
-  outcome: '成果评价',
-  homework: '作业',
-  quiz: '随堂测',
 }
 
 export default function GradingPage() {
@@ -302,7 +293,7 @@ export default function GradingPage() {
                     : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50',
                 )}
               >
-                {evalMethodLabels[m.methodKey] || m.methodKey}
+                {EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey}
                 <span className="ml-1 flex items-center gap-1">
                   {m.pendingCount > 0 && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-700 font-medium">
@@ -597,7 +588,7 @@ export default function GradingPage() {
                                         variant="outline"
                                         className="text-[10px] font-normal bg-gray-50 text-gray-600 border-gray-200"
                                       >
-                                        {evalMethodLabels[m.methodKey] || m.methodKey}
+                                        {EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey}
                                       </Badge>
                                     ))}
                                   </div>

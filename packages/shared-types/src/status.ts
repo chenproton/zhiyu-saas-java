@@ -65,3 +65,12 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 export function getStatusConfig(status: string): StatusConfig {
   return STATUS_MAP[status] || { label: status, color: '#64748b', bg: '#f1f5f9' }
 }
+
+export const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'draft', label: '草稿' },
+  { value: 'pending', label: '审批中' },
+  { value: 'approved', label: '已通过' },
+  { value: 'rejected', label: '已驳回' },
+  { value: 'published', label: '已发布' },
+  { value: 'archived', label: '已归档' },
+]

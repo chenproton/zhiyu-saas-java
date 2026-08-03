@@ -10,6 +10,7 @@ import type { ContentBatch } from '@/components/shared/content-list-page'
 import type { QuestionBankFormData } from '@/lib/types'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
+import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
 
 interface BankItem {
   id: string
@@ -101,14 +102,7 @@ export default function QuestionBanksPage() {
         exportEntityName="question_banks"
         importExcelEntity="question-banks"
         coBuilderField="collaboratorIds"
-        statusFilterOptions={[
-          { value: 'draft', label: '草稿' },
-          { value: 'pending', label: '审批中' },
-          { value: 'approved', label: '已通过' },
-          { value: 'rejected', label: '已驳回' },
-          { value: 'published', label: '已发布' },
-          { value: 'archived', label: '已归档' },
-        ]}
+        statusFilterOptions={STATUS_FILTER_OPTIONS}
         mapItem={(b) => mapBankItem(b, currentUserId)}
         mapBatch={mapBatch}
         createPayload={() => ({

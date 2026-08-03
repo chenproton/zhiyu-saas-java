@@ -41,7 +41,7 @@ import {
   nodeEvaluationResultApi,
 } from '@/lib/api'
 import type { Course, NodeResource, KnowledgePoint } from '@/lib/types'
-import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
+import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS, EVAL_METHOD_LABELS, EVAL_METHOD_COLORS } from '@/lib/types'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import type {
   CourseAssessmentsResponse,
@@ -302,25 +302,6 @@ export default function CourseDetailPage() {
 
   const diff = SCENE_DIFFICULTY[course?.difficulty ?? 3] || SCENE_DIFFICULTY[3]
 
-  const evalMethodLabels: Record<string, string> = {
-    paper: '试卷',
-    question_bank: '题库',
-    quiz: '测验',
-    homework: '作业',
-    random_draw: '随机抽题',
-    review: '评审',
-    outcome: '成果',
-  }
-  const evalMethodColors: Record<string, string> = {
-    paper: '#0ea5e9',
-    question_bank: '#8b5cf6',
-    quiz: '#06b6d4',
-    homework: '#f59e0b',
-    random_draw: '#6366f1',
-    review: '#f43f5e',
-    outcome: '#10b981',
-  }
-
   function getNodeEvalMethods(node: SystemCourseNode) {
     const evalRuleConfig = (node.evalData as any)?.evalRuleConfig
     const methods = (evalRuleConfig?.evaluationMethods || []) as string[]
@@ -455,8 +436,8 @@ export default function CourseDetailPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                               {evalMethods.map(
                                 ({ methodKey, resourceConfig, isExam, isHomework }) => {
-                                  const label = evalMethodLabels[methodKey] || methodKey
-                                  const color = evalMethodColors[methodKey] || '#94a3b8'
+                                  const label = EVAL_METHOD_LABELS[methodKey] || methodKey
+                                  const color = EVAL_METHOD_COLORS[methodKey] || '#94a3b8'
                                   const result = results.find((r) => r.methodKey === methodKey)
                                   const hw = isHomework ? (node.homeworks || [])[0] : undefined
                                   return (

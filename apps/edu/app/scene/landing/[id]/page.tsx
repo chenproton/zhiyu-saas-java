@@ -33,7 +33,7 @@ import type {
   KnowledgePoint,
   AbilityPoint,
 } from '@/lib/types'
-import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
+import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS, EVAL_METHOD_LABELS, EVAL_METHOD_COLORS } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { SceneKnowledgeGraph } from '@/components/scene/student/knowledge-graph'
 import {
@@ -61,26 +61,6 @@ const coverGradients = [
 const taskTypeLabels: Record<string, string> = {
   assessment: '考核',
   training: '训练',
-}
-
-const evalMethodLabels: Record<string, string> = {
-  random_draw: '随机抽题',
-  review: '评审',
-  paper: '试卷',
-  question_bank: '题库',
-  outcome: '成果',
-  homework: '作业',
-  quiz: '测验',
-}
-
-const methodColorMap: Record<string, string> = {
-  random_draw: '#6366f1',
-  review: '#f43f5e',
-  paper: '#0ea5e9',
-  question_bank: '#8b5cf6',
-  outcome: '#10b981',
-  homework: '#f59e0b',
-  quiz: '#06b6d4',
 }
 
 interface AbilitiesTabProps {
@@ -323,23 +303,23 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
                       <span
                         key={m}
                         className="text-[11px] px-2 py-0.5 rounded-full font-medium text-white"
-                        style={{ backgroundColor: methodColorMap[m] || '#94a3b8' }}
+                        style={{ backgroundColor: EVAL_METHOD_COLORS[m] || '#94a3b8' }}
                       >
-                        {evalMethodLabels[m] || m}
+                        {EVAL_METHOD_LABELS[m] || m}
                       </span>
                     ))}
                   </div>
                   {methods.map((m) => (
                     <div key={m} className="flex items-center gap-2 mb-1.5">
                       <span className="text-[11px] text-slate-500 w-16 shrink-0 truncate">
-                        {evalMethodLabels[m] || m}
+                        {EVAL_METHOD_LABELS[m] || m}
                       </span>
                       <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
                           style={{
                             width: `${Math.round(weights[m] || 0)}%`,
-                            backgroundColor: methodColorMap[m] || '#94a3b8',
+                            backgroundColor: EVAL_METHOD_COLORS[m] || '#94a3b8',
                           }}
                         />
                       </div>
@@ -620,9 +600,9 @@ export default function SceneDetailPage() {
                                 <span
                                   key={m}
                                   className="text-[10px] px-2 py-0.5 rounded-full font-medium text-white"
-                                  style={{ backgroundColor: methodColorMap[m] || '#94a3b8' }}
+                                  style={{ backgroundColor: EVAL_METHOD_COLORS[m] || '#94a3b8' }}
                                 >
-                                  {evalMethodLabels[m] || m}
+                                  {EVAL_METHOD_LABELS[m] || m}
                                 </span>
                               ))}
                             </div>

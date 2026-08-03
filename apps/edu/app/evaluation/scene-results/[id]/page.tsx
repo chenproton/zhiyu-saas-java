@@ -45,16 +45,7 @@ import {
   randomDrawQuestionApi,
 } from '@/lib/api'
 import type { SceneEvaluationResult, TaskEvaluationMethod, TaskEvalPoint } from '@/lib/types'
-
-const evalMethodLabels: Record<string, string> = {
-  random_draw: '现场问答',
-  review: '现场评审',
-  paper: '试卷',
-  question_bank: '题库',
-  outcome: '成果评价',
-  homework: '作业',
-  quiz: '随堂测',
-}
+import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 
 const evalMethodColors: Record<string, string> = {
   random_draw: 'bg-purple-50 text-purple-600 border-purple-200',
@@ -890,7 +881,7 @@ export default function GradingDetailPage() {
   }, [id])
 
   const methodKey = result?.methodKey || ''
-  const methodName = evalMethodLabels[methodKey] || methodKey
+  const methodName = EVAL_METHOD_LABELS_GRADING[methodKey] || methodKey
   const isExamMethod = ['paper', 'question_bank', 'quiz'].includes(methodKey)
   const isRandomDraw = methodKey === 'random_draw'
   const isReview = methodKey === 'review'

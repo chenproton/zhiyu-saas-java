@@ -55,6 +55,39 @@ export const QUESTION_TYPE_BADGE_CLASSES: Record<string, string> = {
   short_answer: 'bg-teal-500',
 }
 
+// 评价方式标签（学习端展示：随机抽题/评审/...）
+export const EVAL_METHOD_LABELS: Record<string, string> = {
+  random_draw: '随机抽题',
+  review: '评审',
+  paper: '试卷',
+  question_bank: '题库',
+  outcome: '成果',
+  homework: '作业',
+  quiz: '测验',
+}
+
+// 评价方式标签（评分端展示：现场问答/现场评审/...）
+export const EVAL_METHOD_LABELS_GRADING: Record<string, string> = {
+  random_draw: '现场问答',
+  review: '现场评审',
+  paper: '试卷',
+  question_bank: '题库',
+  outcome: '成果评价',
+  homework: '作业',
+  quiz: '随堂测',
+}
+
+// 评价方式颜色（hex，学习端）
+export const EVAL_METHOD_COLORS: Record<string, string> = {
+  random_draw: '#6366f1',
+  review: '#f43f5e',
+  paper: '#0ea5e9',
+  question_bank: '#8b5cf6',
+  outcome: '#10b981',
+  homework: '#f59e0b',
+  quiz: '#06b6d4',
+}
+
 // 题库接口
 export interface QuestionBank {
   id: string

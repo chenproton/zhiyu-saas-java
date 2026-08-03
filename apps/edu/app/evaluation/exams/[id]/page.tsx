@@ -48,16 +48,7 @@ import type {
   QuestionType,
   QuestionFormData,
 } from '@/lib/types'
-import { QUESTION_TYPE_LABELS, canPerformAction } from '@/lib/types'
-
-const TYPE_COLORS: Record<QuestionType, string> = {
-  single: 'bg-blue-500',
-  multiple: 'bg-indigo-500',
-  judge: 'bg-amber-500',
-  fill: 'bg-purple-500',
-  essay: 'bg-rose-500',
-  short_answer: 'bg-teal-500',
-}
+import { QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, canPerformAction } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format-utils'
 export default function ExamComposerPage() {
@@ -531,7 +522,7 @@ export default function ExamComposerPage() {
                   </span>
                   <p className="flex-1 text-sm line-clamp-1 min-w-0">{question.content}</p>
                   <Badge
-                    className={`text-xs text-white shrink-0 hover:opacity-90 ${TYPE_COLORS[question.type]}`}
+                    className={`text-xs text-white shrink-0 hover:opacity-90 ${QUESTION_TYPE_BADGE_CLASSES[question.type]}`}
                   >
                     {QUESTION_TYPE_LABELS[question.type]}
                   </Badge>

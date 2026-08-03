@@ -12,6 +12,7 @@ import type { Position } from '@/lib/types/job-source'
 import { useAuth } from '@/components/auth-provider'
 import { ContentListPage, type ContentBatch } from '@/components/shared/content-list-page'
 import { draftSuffix } from '@/lib/format-utils'
+import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
 
 function mapPosition(
   backend: any,
@@ -50,14 +51,7 @@ export default function PositionsPage() {
       importExcelEntity="positions"
       createRedirectUrl={(id) => `/job/positions/${id}/edit?new=true`}
       coBuilderField="collaborators"
-      statusFilterOptions={[
-        { value: 'draft', label: '草稿' },
-        { value: 'pending', label: '审批中' },
-        { value: 'approved', label: '已通过' },
-        { value: 'rejected', label: '已驳回' },
-        { value: 'published', label: '已发布' },
-        { value: 'archived', label: '已归档' },
-      ]}
+      statusFilterOptions={STATUS_FILTER_OPTIONS}
       mapItem={(b) => mapPosition(b, currentUserId)}
       mapBatch={mapPositionBatch}
       createPayload={(uid, _label) =>

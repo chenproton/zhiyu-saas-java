@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { StatusActionBar } from '@/components/shared/status-action-bar'
 import { programApi, affairsBatchApi, approvalApi, importExportApi } from '@/lib/api'
 import type { TrainingProgram } from '@/lib/types'
+import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
 
 function mapProgram(backend: any) {
   return {
@@ -38,14 +39,7 @@ export default function ProgramsPage() {
       exportEntityName=""
       coBuilderField="collaborators"
       createRedirectUrl={(id) => `/affairs/programs/${id}?new=true`}
-      statusFilterOptions={[
-        { value: 'draft', label: '草稿' },
-        { value: 'pending', label: '审批中' },
-        { value: 'approved', label: '已通过' },
-        { value: 'rejected', label: '已驳回' },
-        { value: 'published', label: '已发布' },
-        { value: 'archived', label: '已归档' },
-      ]}
+      statusFilterOptions={STATUS_FILTER_OPTIONS}
       mapItem={mapProgram}
       mapBatch={mapBatch}
       createPayload={() => ({

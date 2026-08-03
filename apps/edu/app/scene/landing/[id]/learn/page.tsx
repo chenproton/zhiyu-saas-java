@@ -61,7 +61,7 @@ import type {
   TaskEvaluationMethod,
   SceneEvaluationResult,
 } from '@/lib/types'
-import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
+import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS, EVAL_METHOD_LABELS, EVAL_METHOD_COLORS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
@@ -84,26 +84,6 @@ const resourceTypeIcons: Record<string, string> = {
   image: 'text-[#ec4899] bg-pink-50',
   audio: 'text-[#06b6d4] bg-cyan-50',
   pdf: 'text-[#ef4444] bg-red-50',
-}
-
-const evalMethodLabels: Record<string, string> = {
-  random_draw: '随机抽题',
-  review: '评审',
-  paper: '试卷',
-  question_bank: '题库',
-  outcome: '成果',
-  homework: '作业',
-  quiz: '测验',
-}
-
-const methodColorMap: Record<string, string> = {
-  random_draw: '#6366f1',
-  review: '#f43f5e',
-  paper: '#0ea5e9',
-  question_bank: '#8b5cf6',
-  outcome: '#10b981',
-  homework: '#f59e0b',
-  quiz: '#06b6d4',
 }
 
 const methodIconMap: Record<string, React.ElementType> = {
@@ -861,10 +841,10 @@ interface EvalMethodCardProps {
 
 function EvalMethodCard({ method, result, sceneId, taskId }: EvalMethodCardProps) {
   const { user } = useAuth()
-  const color = methodColorMap[method.methodKey] || '#94a3b8'
+  const color = EVAL_METHOD_COLORS[method.methodKey] || '#94a3b8'
   const bg = methodBgMap[method.methodKey] || '#f8fafc'
   const border = methodBorderMap[method.methodKey] || '#e2e8f0'
-  const label = evalMethodLabels[method.methodKey] || method.methodKey
+  const label = EVAL_METHOD_LABELS[method.methodKey] || method.methodKey
   const Icon = methodIconMap[method.methodKey] || ClipboardList
   const weight = method.weight || 0
   const actionText = methodActionText[method.methodKey] || '开始测评'
@@ -994,8 +974,8 @@ function EvalMethodSubmitDialog({
   userId,
   onSubmitted,
 }: EvalMethodSubmitDialogProps) {
-  const color = methodColorMap[method.methodKey] || '#94a3b8'
-  const label = evalMethodLabels[method.methodKey] || method.methodKey
+  const color = EVAL_METHOD_COLORS[method.methodKey] || '#94a3b8'
+  const label = EVAL_METHOD_LABELS[method.methodKey] || method.methodKey
   const Icon = methodIconMap[method.methodKey] || ClipboardList
   const resourceConfig = method.resourceConfig || {}
   const reviewSteps = method.reviewSteps || []
