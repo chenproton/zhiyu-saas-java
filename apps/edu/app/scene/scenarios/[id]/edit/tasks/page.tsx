@@ -590,28 +590,51 @@ export default function TasksEditPage() {
             }
           }
         } else {
-          const created = await knowledgeApi.create({
-            name: kp.name,
-            code: kp.code,
-            description: kp.description,
-            linked: false,
-            granularLessonIds: kp.granularLessons || [],
-            sourceType: 'scenario_task',
-            sourceId: scenarioId,
-          } as any)
-          kpIdMapping[kpId] = created.id
+          // 租户内知识点名称唯一：同名已存在时直接复用，避免创建 409 导致任务丢失知识点
+          let targetId = ''
+          const nameCollision = nextKnowledgePoints.find(
+            (k) => k.id !== kpId && k.name === kp.name,
+          )
+          if (nameCollision) {
+            targetId = nameCollision.id
+          } else {
+            try {
+              const created = await knowledgeApi.create({
+                name: kp.name,
+                code: kp.code,
+                description: kp.description,
+                linked: false,
+                granularLessonIds: kp.granularLessons || [],
+                sourceType: 'scenario_task',
+                sourceId: scenarioId,
+              } as any)
+              targetId = created.id
+            } catch (err: any) {
+              // 兜底：并发等场景下仍可能撞名，按后端提示合并到已有知识点
+              const existing = nextKnowledgePoints.find(
+                (k) => k.id !== kpId && k.name === kp.name,
+              )
+              if (existing && String(err?.message || '').includes('已存在')) {
+                targetId = existing.id
+              }
+            }
+          }
+          if (!targetId) {
+            failedCreateIds.push(kpId)
+            continue
+          }
+          kpIdMapping[kpId] = targetId
           const idx = nextKnowledgePoints.findIndex((k) => k.id === kpId)
           if (idx >= 0) {
             nextKnowledgePoints[idx] = {
               ...nextKnowledgePoints[idx],
-              id: created.id,
-              granularLessons:
-                created.granularLessonIds || nextKnowledgePoints[idx].granularLessons || [],
+              id: targetId,
+              granularLessons: nextKnowledgePoints[idx].granularLessons || [],
             }
           }
           nextCustomKnowledgePointIds.delete(kpId)
-          nextCustomKnowledgePointIds.add(created.id)
-          datasets.persistedCustomKnowledgePointIds.current.add(created.id)
+          nextCustomKnowledgePointIds.add(targetId)
+          datasets.persistedCustomKnowledgePointIds.current.add(targetId)
         }
       } catch (err: any) {
         failedCreateIds.push(kpId)
@@ -634,22 +657,40 @@ export default function TasksEditPage() {
     for (const abId of Array.from(datasets.customAbilityPointIds.current)) {
       const ap = nextAbilityPoints.find((a) => (a as { id: string }).id === abId)
       if (!ap) continue
-      try {
-        const created = await abilityApi.create({
-          name: (ap as { name: string }).name,
-          description: (ap as { description?: string }).description,
-          category: (ap as { category?: string }).category,
-          attributes: [],
-          isPublic: false,
-        } as any)
-        abIdMapping[abId] = created.id
-        const idx = nextAbilityPoints.findIndex((a) => (a as { id: string }).id === abId)
-        if (idx >= 0)
-          nextAbilityPoints[idx] = { ...(nextAbilityPoints[idx] as object), id: created.id }
-        datasets.customAbilityPointIds.current.delete(abId)
-      } catch (err: any) {
-        failedAbilityIds.push(abId)
+      // 租户内能力点名称唯一：同名已存在时直接复用，避免创建 409 导致任务丢失能力点
+      let targetId = ''
+      const nameCollision = nextAbilityPoints.find(
+        (a) => (a as { id: string }).id !== abId && (a as { name: string }).name === (ap as { name: string }).name,
+      )
+      if (nameCollision) {
+        targetId = (nameCollision as { id: string }).id
+      } else {
+        try {
+          const created = await abilityApi.create({
+            name: (ap as { name: string }).name,
+            description: (ap as { description?: string }).description,
+            category: (ap as { category?: string }).category,
+            attributes: [],
+            isPublic: false,
+          } as any)
+          targetId = created.id
+        } catch (err: any) {
+          const existing = nextAbilityPoints.find(
+            (a) => (a as { id: string }).id !== abId && (a as { name: string }).name === (ap as { name: string }).name,
+          )
+          if (existing && String(err?.message || '').includes('已存在')) {
+            targetId = (existing as { id: string }).id
+          }
+        }
       }
+      if (!targetId) {
+        failedAbilityIds.push(abId)
+        continue
+      }
+      abIdMapping[abId] = targetId
+      const idx = nextAbilityPoints.findIndex((a) => (a as { id: string }).id === abId)
+      if (idx >= 0) nextAbilityPoints[idx] = { ...(nextAbilityPoints[idx] as object), id: targetId }
+      datasets.customAbilityPointIds.current.delete(abId)
     }
     datasets.setAbilityPoints(nextAbilityPoints)
     if (failedAbilityIds.length > 0) {

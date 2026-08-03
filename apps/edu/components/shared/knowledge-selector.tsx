@@ -109,6 +109,7 @@ export function KnowledgeSelector({
     code: string
     granularLessons: string[]
   }>({ name: '', description: '', code: '', granularLessons: [] })
+  const [kpNameError, setKpNameError] = useState('')
 
   const [glSelectOpen, setGlSelectOpen] = useState(false)
   const [glSelectTargetKp, setGlSelectTargetKp] = useState<string | null>(null)
@@ -149,6 +150,7 @@ export function KnowledgeSelector({
 
   const openAddKp = () => {
     setNewKpForm({ name: kpSearch, description: '', code: generateKpCode(), granularLessons: [] })
+    setKpNameError('')
     setKpActionMode('add')
     setKpActionTarget(null)
     setKpActionOpen(true)
@@ -161,6 +163,7 @@ export function KnowledgeSelector({
       code: generateKpCode(),
       granularLessons: kp.granularLessons || [],
     })
+    setKpNameError('')
     setKpActionMode('clone')
     setKpActionTarget(kp)
     setKpActionOpen(true)
@@ -173,19 +176,33 @@ export function KnowledgeSelector({
       code: kp.code || generateKpCode(),
       granularLessons: kp.granularLessons || [],
     })
+    setKpNameError('')
     setKpActionMode('edit')
     setKpActionTarget(kp)
     setKpActionOpen(true)
   }
 
+  // 名称在租户内唯一（后端唯一约束），重名创建/改名必然 409，直接阻止
+  const findNameCollision = (name: string, excludeId?: string) =>
+    pool.find((p) => p.id !== excludeId && p.name.trim() === name.trim()) ||
+    selected.find((s) => s.id !== excludeId && s.name.trim() === name.trim())
+
   const handleSaveKp = () => {
-    if (!newKpForm.name.trim()) return
+    const name = newKpForm.name.trim()
+    if (!name) return
+    const excludeId = kpActionMode === 'edit' ? kpActionTarget?.id : undefined
+    const collision = findNameCollision(name, excludeId)
+    if (collision) {
+      setKpNameError(`已存在同名知识点「${collision.name}」，请选择已有知识点或使用其他名称`)
+      return
+    }
+    setKpNameError('')
     if (kpActionMode === 'edit' && kpActionTarget) {
       const updated = selected.map((s) =>
         s.id === kpActionTarget.id
           ? {
               ...s,
-              name: newKpForm.name.trim(),
+              name,
               description: newKpForm.description.trim(),
               code: newKpForm.code,
               granularLessons: newKpForm.granularLessons,
@@ -199,7 +216,7 @@ export function KnowledgeSelector({
     const newId = `kp-custom-${Date.now()}`
     const newKp: KnowledgePointItem = {
       id: newId,
-      name: newKpForm.name.trim(),
+      name,
       description: newKpForm.description.trim(),
       code: newKpForm.code,
       linked: false,
@@ -560,10 +577,14 @@ export function KnowledgeSelector({
               <Label>知识点名称</Label>
               <Input
                 value={newKpForm.name}
-                onChange={(e) => setNewKpForm({ ...newKpForm, name: e.target.value })}
+                onChange={(e) => {
+                  setNewKpForm({ ...newKpForm, name: e.target.value })
+                  if (kpNameError) setKpNameError('')
+                }}
                 placeholder="输入知识点名称"
                 className="mt-1.5"
               />
+              {kpNameError && <p className="text-xs text-red-500 mt-1">{kpNameError}</p>}
             </div>
             <div>
               <Label>描述</Label>
@@ -633,7 +654,7 @@ export function KnowledgeSelector({
             <Button variant="outline" onClick={() => setKpActionOpen(false)}>
               取消
             </Button>
-            <Button onClick={handleSaveKp} disabled={!newKpForm.name.trim()}>
+            <Button onClick={handleSaveKp} disabled={!newKpForm.name.trim() || !!kpNameError}>
               {kpActionMode === 'add'
                 ? '新增并选中'
                 : kpActionMode === 'clone'
