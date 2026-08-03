@@ -454,7 +454,7 @@ func (s *SchedulingStore) FallbackClassID(ctx context.Context, entryID string) *
 func (s *SchedulingStore) FetchTermBrief(ctx context.Context, id, tenantID string) (*domain.Term, error) {
 	var t domain.Term
 	err := s.q.QueryRow(ctx, `
-		SELECT id, name, start_date, end_date
+		SELECT id, name, to_char(start_date, 'YYYY-MM-DD') AS start_date, to_char(end_date, 'YYYY-MM-DD') AS end_date
 		FROM terms WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(&t.ID, &t.Name, &t.StartDate, &t.EndDate)
 	if err != nil {
