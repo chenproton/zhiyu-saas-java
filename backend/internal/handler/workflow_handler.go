@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -13,15 +13,9 @@ import (
 type WorkflowHandler struct {
 	Service *service.PositionService
 }
-type CreateWorkflowRequest struct {
-	Name        string             `json:"name"`
-	Scene       *string            `json:"scene"`
-	Description *string            `json:"description"`
-	Steps       domain.JSONSlice   `json:"steps"`
-	MajorIds    domain.StringSlice `json:"majorIds"`
-}
 
-type UpdateWorkflowRequest struct {
+// WorkflowRequest 审批流程创建/更新请求体（更新时忽略 status 时默认沿用现有状态）。
+type WorkflowRequest struct {
 	Name        string             `json:"name"`
 	Scene       *string            `json:"scene"`
 	Description *string            `json:"description"`
@@ -49,134 +43,108 @@ func (h *WorkflowHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.Workflow]{Items: items, Total: total})
 }
 
+// crud 返回审批流程 CRUD 差异配置；HTTP 流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *WorkflowHandler) crud() crudConfig[WorkflowRequest, domain.Workflow] {
+	return crudConfig[WorkflowRequest, domain.Workflow]{
+		NotFoundMsg:        "审批流程不存在",
+		CreateErrMsg:       "创建审批流程失败",
+		UpdateErrMsg:       "更新审批流程失败",
+		DeleteErrMsg:       "删除审批流程失败",
+		UniqueViolationMsg: "工作流名称已存在，请使用其他名称",
+		CheckOwnership:     true,
+		ValidateCreate: func(t *WorkflowRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *WorkflowRequest) (string, bool) {
+			claims := middleware.CurrentUser(r)
+			if claims == nil || claims.TenantID == nil {
+				return "", true
+			}
+			return *claims.TenantID, true
+		},
+		ValidateUpdate: func(t *WorkflowRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		ValidateUpdateExisting: func(t *WorkflowRequest, existing *domain.Workflow) string {
+			if t.Status == "" {
+				t.Status = string(existing.Status)
+			}
+			if t.Status != string(domain.WorkflowStatusActive) && t.Status != string(domain.WorkflowStatusInactive) {
+				return "无效状态"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *WorkflowRequest, tenantID, userID string) (string, error) {
+			steps := t.Steps
+			if steps == nil {
+				steps = domain.JSONSlice{}
+			}
+			majorIds := t.MajorIds
+			if majorIds == nil {
+				majorIds = domain.StringSlice{}
+			}
+			wf, err := h.Service.CreateWorkflow(ctx, store.StrPtrIfNonEmpty(tenantID), &store.WorkflowParams{
+				Name: t.Name, Scene: t.Scene, Description: t.Description,
+				Steps: steps, MajorIds: majorIds, Status: domain.WorkflowStatusActive,
+			})
+			if err != nil {
+				return "", err
+			}
+			return wf.ID, nil
+		},
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *WorkflowRequest) error {
+			steps := t.Steps
+			if steps == nil {
+				steps = domain.JSONSlice{}
+			}
+			majorIds := t.MajorIds
+			if majorIds == nil {
+				majorIds = domain.StringSlice{}
+			}
+			_, err := h.Service.UpdateWorkflow(ctx, id, tenantID, &store.WorkflowParams{
+				Name: t.Name, Scene: t.Scene, Description: t.Description,
+				Steps: steps, MajorIds: majorIds, Status: domain.WorkflowStatus(t.Status),
+			})
+			return err
+		},
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Service.DeleteWorkflow(ctx, id, tenantID)
+		},
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.Workflow, error) {
+			wf, err := h.Service.GetWorkflow(ctx, id, tenantID)
+			if err != nil {
+				return domain.Workflow{}, err
+			}
+			return *wf, nil
+		},
+		TenantFn: requireTenant,
+		TenantIDFn: func(t *domain.Workflow) string {
+			if t.TenantID == nil {
+				return ""
+			}
+			return *t.TenantID
+		},
+	}
+}
+
 func (h *WorkflowHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	workflow, err := h.Service.GetWorkflow(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "审批流程不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, workflow)
+	crudGet(w, r, h.crud())
 }
 
 func (h *WorkflowHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	var req CreateWorkflowRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	if req.Steps == nil {
-		req.Steps = domain.JSONSlice{}
-	}
-	if req.MajorIds == nil {
-		req.MajorIds = domain.StringSlice{}
-	}
-	workflow, err := h.Service.CreateWorkflow(r.Context(), claims.TenantID, &store.WorkflowParams{
-		Name: req.Name, Scene: req.Scene, Description: req.Description,
-		Steps: req.Steps, MajorIds: req.MajorIds, Status: domain.WorkflowStatusActive,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "工作流名称已存在，请使用其他名称")
-			return
-		}
-		respondServerError(w, r, err, "创建审批流程失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, workflow)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	existing, err := h.Service.GetWorkflow(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "审批流程不存在")
-		return
-	}
-	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
-		return
-	}
-	var req UpdateWorkflowRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	if req.Status == "" {
-		req.Status = string(existing.Status)
-	}
-	if req.Status != string(domain.WorkflowStatusActive) && req.Status != string(domain.WorkflowStatusInactive) {
-		respondError(w, http.StatusBadRequest, "无效状态")
-		return
-	}
-	if req.Steps == nil {
-		req.Steps = domain.JSONSlice{}
-	}
-	if req.MajorIds == nil {
-		req.MajorIds = domain.StringSlice{}
-	}
-	workflow, err := h.Service.UpdateWorkflow(r.Context(), id, tenantID, &store.WorkflowParams{
-		Name: req.Name, Scene: req.Scene, Description: req.Description,
-		Steps: req.Steps, MajorIds: req.MajorIds, Status: domain.WorkflowStatus(req.Status),
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "工作流名称已存在，请使用其他名称")
-			return
-		}
-		respondServerError(w, r, err, "更新审批流程失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, workflow)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *WorkflowHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	existing, err := h.Service.GetWorkflow(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "审批流程不存在")
-		return
-	}
-	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
-		return
-	}
-	if err := h.Service.DeleteWorkflow(r.Context(), id, tenantID); err != nil {
-		respondServerError(w, r, err, "删除审批流程失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

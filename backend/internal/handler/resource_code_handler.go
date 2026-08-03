@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -13,15 +13,11 @@ import (
 type ResourceCodeHandler struct {
 	Service *service.PositionService
 }
-type CreateResourceCodeRequest struct {
+
+// ResourceCodeRequest 资源编码创建/更新请求体（更新时忽略 tenantId/code）。
+type ResourceCodeRequest struct {
 	TenantID    string  `json:"tenantId"`
 	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Type        string  `json:"type"`
-}
-
-type UpdateResourceCodeRequest struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	Type        string  `json:"type"`
@@ -42,101 +38,83 @@ func (h *ResourceCodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.ResourceCode]{Items: items, Total: total})
 }
 
+// crud 返回资源编码 CRUD 差异配置；HTTP 流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+// 仅门户管理（canManagePortal）可写，读仅需登录 + 租户归属校验。
+func (h *ResourceCodeHandler) crud() crudConfig[ResourceCodeRequest, domain.ResourceCode] {
+	return crudConfig[ResourceCodeRequest, domain.ResourceCode]{
+		NotFoundMsg:        "资源编码不存在",
+		CreateErrMsg:       "创建资源编码失败",
+		UpdateErrMsg:       "更新资源编码失败",
+		DeleteErrMsg:       "删除资源编码失败",
+		UniqueViolationMsg: "资源编码代码已存在，请使用其他代码",
+		Permit: func(r *http.Request) bool {
+			return canManagePortal(middleware.CurrentUser(r))
+		},
+		// 读仅需登录，租户归属由 GetOwnership 校验。
+		PermitGet:      nil,
+		CheckOwnership: true,
+		GetOwnership:   true,
+		ValidateCreate: func(t *ResourceCodeRequest) string {
+			if t.TenantID == "" || t.Code == "" || t.Name == "" || t.Type == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *ResourceCodeRequest) (string, bool) {
+			if !verifyRequestTenant(w, r, t.TenantID) {
+				return "", false
+			}
+			return t.TenantID, true
+		},
+		ValidateUpdate: func(t *ResourceCodeRequest) string {
+			if t.Name == "" || t.Type == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *ResourceCodeRequest, tenantID, userID string) (string, error) {
+			rc, err := h.Service.CreateResourceCode(ctx, &store.ResourceCodeParams{
+				TenantID: t.TenantID, Code: t.Code, Name: t.Name, Description: t.Description, Type: t.Type,
+			})
+			if err != nil {
+				return "", err
+			}
+			return rc.ID, nil
+		},
+		UpdateFn: func(ctx context.Context, id, _ string, t *ResourceCodeRequest) error {
+			_, err := h.Service.UpdateResourceCode(ctx, id, &store.ResourceCodeParams{
+				Name: t.Name, Description: t.Description, Type: t.Type,
+			})
+			return err
+		},
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Service.DeleteResourceCode(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.ResourceCode, error) {
+			rc, err := h.Service.GetResourceCode(ctx, id)
+			if err != nil {
+				return domain.ResourceCode{}, err
+			}
+			return *rc, nil
+		},
+		TenantIDFn: func(t *domain.ResourceCode) string {
+			return t.TenantID
+		},
+	}
+}
+
 func (h *ResourceCodeHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	resourceCode, err := h.Service.GetResourceCode(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "资源编码不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, resourceCode.TenantID) {
-		return
-	}
-	respondJSON(w, http.StatusOK, resourceCode)
+	crudGet(w, r, h.crud())
 }
 
 func (h *ResourceCodeHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	var req CreateResourceCodeRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.TenantID == "" || req.Code == "" || req.Name == "" || req.Type == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	if !verifyRequestTenant(w, r, req.TenantID) {
-		return
-	}
-	resourceCode, err := h.Service.CreateResourceCode(r.Context(), &store.ResourceCodeParams{
-		TenantID: req.TenantID, Code: req.Code, Name: req.Name, Description: req.Description, Type: req.Type,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "资源编码代码已存在，请使用其他代码")
-			return
-		}
-		respondServerError(w, r, err, "创建资源编码失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, resourceCode)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *ResourceCodeHandler) Update(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	existing, err := h.Service.GetResourceCode(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "资源编码不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, existing.TenantID) {
-		return
-	}
-	var req UpdateResourceCodeRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" || req.Type == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	resourceCode, err := h.Service.UpdateResourceCode(r.Context(), id, &store.ResourceCodeParams{
-		Name: req.Name, Description: req.Description, Type: req.Type,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "更新资源编码失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, resourceCode)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *ResourceCodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	existing, err := h.Service.GetResourceCode(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "资源编码不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, existing.TenantID) {
-		return
-	}
-	if err := h.Service.DeleteResourceCode(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除资源编码失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

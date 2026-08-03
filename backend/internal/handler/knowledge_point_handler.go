@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -14,7 +14,8 @@ type KnowledgePointHandler struct {
 	Service *service.LessonContentService
 }
 
-type CreateKnowledgePointRequest struct {
+// KnowledgePointRequest 知识点创建/更新请求体（更新时忽略 sourceType/sourceId）。
+type KnowledgePointRequest struct {
 	Name              string           `json:"name"`
 	Code              *string          `json:"code"`
 	Description       *string          `json:"description"`
@@ -22,14 +23,6 @@ type CreateKnowledgePointRequest struct {
 	GranularLessonIds domain.JSONSlice `json:"granularLessonIds"`
 	SourceType        *string          `json:"sourceType"`
 	SourceID          *string          `json:"sourceId"`
-}
-
-type UpdateKnowledgePointRequest struct {
-	Name              string           `json:"name"`
-	Code              *string          `json:"code"`
-	Description       *string          `json:"description"`
-	Linked            bool             `json:"linked"`
-	GranularLessonIds domain.JSONSlice `json:"granularLessonIds"`
 }
 
 func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -52,128 +45,81 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.KnowledgePoint]{Items: items, Total: total})
 }
 
-func (h *KnowledgePointHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
+// crud 返回知识点 CRUD 差异配置；HTTP 流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *KnowledgePointHandler) crud() crudConfig[KnowledgePointRequest, domain.KnowledgePoint] {
+	return crudConfig[KnowledgePointRequest, domain.KnowledgePoint]{
+		NotFoundMsg:        "知识点不存在",
+		CreateErrMsg:       "创建知识点失败",
+		UpdateErrMsg:       "更新知识点失败",
+		DeleteErrMsg:       "删除知识点失败",
+		UniqueViolationMsg: "知识点名称已存在，请使用其他名称",
+		ValidateCreate: func(t *KnowledgePointRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *KnowledgePointRequest) (string, bool) {
+			return requireTenant(w, r)
+		},
+		ValidateUpdate: func(t *KnowledgePointRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *KnowledgePointRequest, tenantID, userID string) (string, error) {
+			kp, err := h.Service.CreateKnowledgePoint(ctx, tenantID, &store.KnowledgePointCreateParams{
+				Name:              t.Name,
+				Code:              t.Code,
+				Description:       t.Description,
+				Linked:            t.Linked,
+				GranularLessonIds: t.GranularLessonIds,
+				CreatorID:         userID,
+				SourceType:        t.SourceType,
+				SourceID:          t.SourceID,
+			})
+			if err != nil {
+				return "", err
+			}
+			return kp.ID, nil
+		},
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *KnowledgePointRequest) error {
+			_, err := h.Service.UpdateKnowledgePoint(ctx, tenantID, id, &store.KnowledgePointUpdateParams{
+				Name:              t.Name,
+				Code:              t.Code,
+				Description:       t.Description,
+				Linked:            t.Linked,
+				GranularLessonIds: t.GranularLessonIds,
+			})
+			return err
+		},
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Service.DeleteKnowledgePoint(ctx, id, tenantID)
+		},
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.KnowledgePoint, error) {
+			kp, err := h.Service.GetKnowledgePoint(ctx, id, tenantID)
+			if err != nil {
+				return domain.KnowledgePoint{}, err
+			}
+			return *kp, nil
+		},
+		TenantFn: requireTenant,
 	}
+}
 
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	kp, err := h.Service.GetKnowledgePoint(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "知识点不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, kp)
+func (h *KnowledgePointHandler) Get(w http.ResponseWriter, r *http.Request) {
+	crudGet(w, r, h.crud())
 }
 
 func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	var req CreateKnowledgePointRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	kp, err := h.Service.CreateKnowledgePoint(r.Context(), tenantID, &store.KnowledgePointCreateParams{
-		Name:              req.Name,
-		Code:              req.Code,
-		Description:       req.Description,
-		Linked:            req.Linked,
-		GranularLessonIds: req.GranularLessonIds,
-		CreatorID:         claims.UserID,
-		SourceType:        req.SourceType,
-		SourceID:          req.SourceID,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
-			return
-		}
-		respondServerError(w, r, err, "创建知识点失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, kp)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetKnowledgePoint(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "知识点不存在")
-		return
-	}
-
-	var req UpdateKnowledgePointRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	kp, err := h.Service.UpdateKnowledgePoint(r.Context(), tenantID, id, &store.KnowledgePointUpdateParams{
-		Name:              req.Name,
-		Code:              req.Code,
-		Description:       req.Description,
-		Linked:            req.Linked,
-		GranularLessonIds: req.GranularLessonIds,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
-			return
-		}
-		respondServerError(w, r, err, "更新知识点失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, kp)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *KnowledgePointHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	if _, err := h.Service.GetKnowledgePoint(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "知识点不存在")
-		return
-	}
-
-	if err := h.Service.DeleteKnowledgePoint(r.Context(), id, tenantID); err != nil {
-		respondServerError(w, r, err, "删除知识点失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -13,14 +13,9 @@ import (
 type RandomDrawQuestionHandler struct {
 	Service *service.EvaluationService
 }
-type CreateRandomDrawQuestionRequest struct {
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Answer      *string `json:"answer"`
-	MajorID     *string `json:"majorId"`
-}
 
-type UpdateRandomDrawQuestionRequest struct {
+// RandomDrawQuestionRequest 随机抽题创建/更新请求体（字段一致）。
+type RandomDrawQuestionRequest struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	Answer      *string `json:"answer"`
@@ -47,109 +42,75 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, ListResponse[domain.RandomDrawQuestion]{Items: items, Total: total})
 }
 
-func (h *RandomDrawQuestionHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
+// crud 返回随机抽题 CRUD 差异配置；HTTP 流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+func (h *RandomDrawQuestionHandler) crud() crudConfig[RandomDrawQuestionRequest, domain.RandomDrawQuestion] {
+	return crudConfig[RandomDrawQuestionRequest, domain.RandomDrawQuestion]{
+		NotFoundMsg:        "随机抽题不存在",
+		CreateErrMsg:       "创建随机抽题失败",
+		UpdateErrMsg:       "更新随机抽题失败",
+		DeleteErrMsg:       "删除随机抽题失败",
+		UniqueViolationMsg: "现场问答题名称已存在",
+		ValidateCreate: func(t *RandomDrawQuestionRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *RandomDrawQuestionRequest) (string, bool) {
+			return requireTenant(w, r)
+		},
+		ValidateUpdate: func(t *RandomDrawQuestionRequest) string {
+			if t.Name == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *RandomDrawQuestionRequest, tenantID, userID string) (string, error) {
+			q, err := h.Service.CreateRandomDrawQuestion(ctx, tenantID, &store.RandomDrawQuestionParams{
+				Name:        t.Name,
+				Description: t.Description,
+				Answer:      t.Answer,
+				MajorID:     t.MajorID,
+			})
+			if err != nil {
+				return "", err
+			}
+			return q.ID, nil
+		},
+		UpdateFn: func(ctx context.Context, id, _ string, t *RandomDrawQuestionRequest) error {
+			_, err := h.Service.UpdateRandomDrawQuestion(ctx, id, &store.RandomDrawQuestionParams{
+				Name:        t.Name,
+				Description: t.Description,
+				Answer:      t.Answer,
+				MajorID:     t.MajorID,
+			})
+			return err
+		},
+		DeleteFn: func(ctx context.Context, id, _ string) error {
+			return h.Service.DeleteRandomDrawQuestion(ctx, id)
+		},
+		GetByIDFn: func(ctx context.Context, id, _ string) (domain.RandomDrawQuestion, error) {
+			q, err := h.Service.GetRandomDrawQuestion(ctx, id)
+			if err != nil {
+				return domain.RandomDrawQuestion{}, err
+			}
+			return *q, nil
+		},
 	}
+}
 
-	id := chi.URLParam(r, "id")
-	q, err := h.Service.GetRandomDrawQuestion(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "随机抽题不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, q)
+func (h *RandomDrawQuestionHandler) Get(w http.ResponseWriter, r *http.Request) {
+	crudGet(w, r, h.crud())
 }
 
 func (h *RandomDrawQuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	var req CreateRandomDrawQuestionRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	q, err := h.Service.CreateRandomDrawQuestion(r.Context(), tenantID, &store.RandomDrawQuestionParams{
-		Name:        req.Name,
-		Description: req.Description,
-		Answer:      req.Answer,
-		MajorID:     req.MajorID,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "现场问答题名称已存在")
-			return
-		}
-		respondServerError(w, r, err, "创建随机抽题失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, q)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *RandomDrawQuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetRandomDrawQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "随机抽题不存在")
-		return
-	}
-
-	var req UpdateRandomDrawQuestionRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	q, err := h.Service.UpdateRandomDrawQuestion(r.Context(), id, &store.RandomDrawQuestionParams{
-		Name:        req.Name,
-		Description: req.Description,
-		Answer:      req.Answer,
-		MajorID:     req.MajorID,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "现场问答题名称已存在")
-			return
-		}
-		respondServerError(w, r, err, "更新随机抽题失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, q)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *RandomDrawQuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetRandomDrawQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "随机抽题不存在")
-		return
-	}
-	if err := h.Service.DeleteRandomDrawQuestion(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除随机抽题失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }

@@ -23,6 +23,10 @@ type crudConfig[T any, V any] struct {
 
 	// Permit 追加鉴权函数；nil 表示仅需登录。不满足时响应 403。
 	Permit func(r *http.Request) bool
+	// PermitGet/PermitUpdate/PermitDelete 各操作独立鉴权；未设置时回退 Permit。
+	PermitGet    func(r *http.Request) bool
+	PermitUpdate func(r *http.Request) bool
+	PermitDelete func(r *http.Request) bool
 	// UniqueViolationMsg 非空时，Create/Update 遇唯一键冲突响应 409 并返回该文案。
 	UniqueViolationMsg string
 	// CheckOwnership 为 true 时，Update/Delete 校验实体租户归属（403）。
@@ -35,10 +39,13 @@ type crudConfig[T any, V any] struct {
 	CreateTenantFn func(w http.ResponseWriter, r *http.Request, t *T) (tenantID string, ok bool)
 	PrepareCreate  func(t *T, tenantID, userID string)
 	ValidateUpdate func(t *T) string
-	CreateFn       func(ctx context.Context, t *T, tenantID, userID string) (string, error)
-	UpdateFn       func(ctx context.Context, id, tenantID string, t *T) error
-	DeleteFn       func(ctx context.Context, id, tenantID string) error
-	GetByIDFn      func(ctx context.Context, id, tenantID string) (V, error)
+	// ValidateUpdateExisting 更新时在 decode 后执行的校验/归一化钩子，可读取已存在实体
+	// （如根据现有状态补默认值）。返回非空消息时响应 400。
+	ValidateUpdateExisting func(t *T, existing *V) string
+	CreateFn               func(ctx context.Context, t *T, tenantID, userID string) (string, error)
+	UpdateFn               func(ctx context.Context, id, tenantID string, t *T) error
+	DeleteFn               func(ctx context.Context, id, tenantID string) error
+	GetByIDFn              func(ctx context.Context, id, tenantID string) (V, error)
 	// TenantFn 解析当前请求租户（仅 GetByIDFn 需要租户过滤的实体设置，如联盟实体）；
 	// ok=false 时已写入错误响应。未设置时 tenantID 为空串。
 	TenantFn func(w http.ResponseWriter, r *http.Request) (tenantID string, ok bool)
@@ -95,7 +102,11 @@ func crudCreate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 }
 
 func crudGet[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudConfig[T, V]) {
-	if !crudCheckPermit(w, r, cfg.Permit) {
+	permit := cfg.Permit
+	if cfg.PermitGet != nil {
+		permit = cfg.PermitGet
+	}
+	if !crudCheckPermit(w, r, permit) {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -125,7 +136,11 @@ func crudGet[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudConfi
 }
 
 func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudConfig[T, V]) {
-	if !crudCheckPermit(w, r, cfg.Permit) {
+	permit := cfg.Permit
+	if cfg.PermitUpdate != nil {
+		permit = cfg.PermitUpdate
+	}
+	if !crudCheckPermit(w, r, permit) {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -155,6 +170,12 @@ func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 			return
 		}
 	}
+	if cfg.ValidateUpdateExisting != nil {
+		if msg := cfg.ValidateUpdateExisting(&body, &existing); msg != "" {
+			respondError(w, http.StatusBadRequest, msg)
+			return
+		}
+	}
 	if err := cfg.UpdateFn(r.Context(), id, tenantID, &body); err != nil {
 		if cfg.UniqueViolationMsg != "" && isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, cfg.UniqueViolationMsg)
@@ -174,7 +195,11 @@ func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 }
 
 func crudDelete[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudConfig[T, V]) {
-	if !crudCheckPermit(w, r, cfg.Permit) {
+	permit := cfg.Permit
+	if cfg.PermitDelete != nil {
+		permit = cfg.PermitDelete
+	}
+	if !crudCheckPermit(w, r, permit) {
 		return
 	}
 	id := chi.URLParam(r, "id")
