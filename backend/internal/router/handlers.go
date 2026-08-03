@@ -155,7 +155,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		userExtensionFieldHandler:     &handler.UserExtensionFieldHandler{Service: service.NewUserExtensionFieldService(svc)},
 		userRelationHandler:           &handler.UserRelationHandler{Service: service.NewUserRelationService(svc)},
 		workflowHandler:               &handler.WorkflowHandler{Service: positionSvc},
-		approvalHandler:               &handler.ApprovalHandler{Service: positionSvc},
+		approvalHandler:               &handler.ApprovalHandler{Service: positionSvc, RedisClient: redisClient},
 		allianceHandler:               &handler.AllianceHandler{Store: st.Alliance()},
 		positionHandler:               &handler.PositionHandler{Service: positionSvc, RedisClient: redisClient},
 		positionCloneHandler:          &handler.PositionCloneHandler{Service: service.NewPositionCloneService(svc)},

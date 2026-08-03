@@ -138,6 +138,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "创建考试失败")
 		return
 	}
+	h.clearLandingExamsCache(r, tenantID)
 	respondJSON(w, http.StatusCreated, exam)
 }
 
@@ -211,6 +212,9 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		respondServerError(w, r, err, "更新考试失败")
 		return
+	}
+	if existing.TenantID != nil {
+		h.clearLandingExamsCache(r, *existing.TenantID)
 	}
 	respondJSON(w, http.StatusOK, exam)
 }
@@ -413,6 +417,7 @@ func (h *ExamHandler) actions() contentActions {
 		entityName: "exam",
 		targetType: "exam",
 		inviteCol:  "collaborator_ids",
+		invalidate: h.clearLandingExamsCache,
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.Service.GetExam(ctx, id)
 		},

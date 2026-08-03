@@ -526,6 +526,7 @@ func (h *PositionHandler) actions() contentActions {
 		entityName: "position",
 		targetType: "career_position",
 		inviteCol:  "collaborators",
+		invalidate: h.clearPublicPositionsCacheByTenantID,
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.Service.Get(ctx, id)
 		},

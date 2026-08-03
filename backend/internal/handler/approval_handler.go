@@ -3,18 +3,38 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/cache"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
+// approvalCachePrefix 审批目标类型 → 列表缓存键前缀；无列表缓存的类型不配置。
+var approvalCachePrefix = map[string]string{
+	"career_position": "zhiyu:%s:public:positions",
+	"scenario":        "zhiyu:%s:public:scenarios",
+	"exam":            "zhiyu:%s:landing:exams",
+}
+
+// invalidateApprovalCache 审批改变实体状态后按目标类型失效对应列表缓存。
+func (h *ApprovalHandler) invalidateApprovalCache(r *http.Request, targetType, tenantID string) {
+	pattern, ok := approvalCachePrefix[targetType]
+	if !ok {
+		return
+	}
+	cache.InvalidatePrefix(r.Context(), h.RedisClient, fmt.Sprintf(pattern, tenantID))
+}
+
 type ApprovalHandler struct {
-	Service *service.PositionService
+	Service     *service.PositionService
+	RedisClient *redis.Client
 }
 
 type CreateApprovalRequest struct {
@@ -151,6 +171,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			respondServerError(w, r, err, "评审审批记录失败")
 			return
 		}
+		h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
 		record, _ = h.Service.GetApproval(r.Context(), id)
 		respondJSON(w, http.StatusOK, record)
 		return
@@ -193,6 +214,9 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		}
 		respondServerError(w, r, err, "评审审批记录失败")
 		return
+	}
+	if syncStatus {
+		h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
 	}
 	record, _ = h.Service.GetApproval(r.Context(), id)
 	respondJSON(w, http.StatusOK, record)

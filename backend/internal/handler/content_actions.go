@@ -34,6 +34,20 @@ type contentActions struct {
 	targetType string
 	inviteCol  string
 	fetch      func(ctx context.Context, id string) (interface{}, error)
+	// invalidate 写入成功后按租户失效对应列表缓存；无列表缓存的实体可为 nil
+	invalidate func(r *http.Request, tenantID string)
+}
+
+// invalidateAfterWrite 写入成功后按当前用户租户失效列表缓存。
+func (c contentActions) invalidateAfterWrite(r *http.Request) {
+	if c.invalidate == nil {
+		return
+	}
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil {
+		return
+	}
+	c.invalidate(r, *claims.TenantID)
 }
 
 // tableFor returns the sanitized table name for contentActions queries.
@@ -116,6 +130,7 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	c.invalidateAfterWrite(r)
 	entity, err := c.fetch(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, c.entityName+"不存在")
@@ -164,6 +179,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	c.invalidateAfterWrite(r)
 	entity, _ := c.fetch(r.Context(), id)
 	respondJSON(w, http.StatusOK, entity)
 }
@@ -194,6 +210,7 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "邀请协作者失败")
 		return
 	}
+	c.invalidateAfterWrite(r)
 	entity, err := c.fetch(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, c.entityName+"不存在")

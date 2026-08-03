@@ -317,6 +317,7 @@ func (h *ScenarioHandler) actions() contentActions {
 		entityName: "scenario",
 		targetType: "scenario",
 		inviteCol:  "co_builder_ids",
+		invalidate: h.clearScenarioListCache,
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.Service.Get(ctx, id)
 		},
@@ -328,51 +329,34 @@ func (h *ScenarioHandler) clearScenarioListCache(r *http.Request, tenantID strin
 	cache.InvalidatePrefix(r.Context(), h.RedisClient, "zhiyu:"+tenantID+":public:scenarios")
 }
 
-// clearCurrentTenantScenarioCache 按当前用户租户失效场景列表缓存。
-func (h *ScenarioHandler) clearCurrentTenantScenarioCache(r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil || claims.TenantID == nil {
-		return
-	}
-	h.clearScenarioListCache(r, *claims.TenantID)
-}
-
 func (h *ScenarioHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusPending)
-	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
-	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
 	h.actions().saveDraft(w, r)
-	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Review(w http.ResponseWriter, r *http.Request) {
 	h.actions().review(w, r)
-	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusPublished)
-	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
-	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
-	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	h.actions().invite(w, r)
-	h.clearCurrentTenantScenarioCache(r)
 }
