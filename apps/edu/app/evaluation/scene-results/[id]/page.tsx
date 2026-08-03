@@ -33,6 +33,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { reportError } from '@/lib/error-handling'
 import {
   evaluationResultApi,
   taskEvaluationApi,
@@ -756,8 +757,10 @@ export default function GradingDetailPage() {
   const [task, setTask] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
   const [exam, setExam] = useState<any>(null)
   const [examResult, setExamResult] = useState<any>(null)
   const [rdQuestions, setRdQuestions] = useState<any[]>([])
@@ -878,7 +881,8 @@ export default function GradingDetailPage() {
         const found = (u.items || []).find((x: any) => x.id === res.evaluateeId)
         setUser(found || null)
       } catch (e) {
-        /* ignore */
+        reportError(e, '加载评分详情')
+        setLoadError(e instanceof Error ? e.message : '加载失败')
       }
       setLoading(false)
     }
@@ -1014,7 +1018,8 @@ export default function GradingDetailPage() {
       await evaluationResultApi.grade(result.id, payload)
       setSaved(true)
     } catch (e) {
-      /* ignore */
+      reportError(e, '保存评分')
+      setSaveFailed(true)
     }
     setSaving(false)
   }
@@ -1022,7 +1027,18 @@ export default function GradingDetailPage() {
   if (loading)
     return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
   if (!result)
-    return <div className="h-screen flex items-center justify-center text-gray-400">记录不存在</div>
+    return (
+      <div className="h-screen flex flex-col items-center justify-center text-gray-400">
+        {loadError ? (
+          <>
+            <p className="mb-2">加载失败</p>
+            <p className="text-xs text-red-400">{loadError}</p>
+          </>
+        ) : (
+          <p>记录不存在</p>
+        )}
+      </div>
+    )
 
   const renderLeftPanel = () => {
     if (isExamMethod) return null
@@ -1039,7 +1055,7 @@ export default function GradingDetailPage() {
               <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                 {rdQuestions.length} 题
               </Badge>
-              {!saved && (
+            {!saved && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -1524,6 +1540,7 @@ export default function GradingDetailPage() {
               {saving ? '保存中...' : '提交评分'}
             </Button>
           )}
+          {saveFailed && <span className="text-xs text-red-500">保存失败，请重试</span>}
           {saved && (
             <Button
               size="sm"

@@ -39,6 +39,7 @@ import { examUsageApi } from '@/lib/api'
 import type { ExamUsage } from '@/lib/types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { formatDate } from '@/lib/format-utils'
+import { reportError } from '@/lib/error-handling'
 
 const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage['targetType']>, string> = {
   class: '班级',
@@ -159,18 +160,30 @@ export default function ExamUsagePage() {
       setCreateDialogOpen(false)
       resetForm()
       await loadUsages()
+    } catch (err) {
+      reportError(err, '创建考试安排')
     } finally {
       setCreateSubmitting(false)
     }
   }
 
   const handleStart = async (id: string) => {
-    await examUsageApi.start(id)
+    try {
+      await examUsageApi.start(id)
+    } catch (err) {
+      reportError(err, '开始考试')
+      return
+    }
     await loadUsages()
   }
 
   const handleFinish = async (id: string) => {
-    await examUsageApi.finish(id)
+    try {
+      await examUsageApi.finish(id)
+    } catch (err) {
+      reportError(err, '结束考试')
+      return
+    }
     await loadUsages()
   }
 
@@ -181,10 +194,14 @@ export default function ExamUsagePage() {
 
   const handleDelete = async () => {
     if (!deletingUsageId) return
-    await examUsageApi.delete(deletingUsageId)
-    setConfirmDeleteOpen(false)
-    setDeletingUsageId(null)
-    await loadUsages()
+    try {
+      await examUsageApi.delete(deletingUsageId)
+      setConfirmDeleteOpen(false)
+      setDeletingUsageId(null)
+      await loadUsages()
+    } catch (err) {
+      reportError(err, '删除考试安排')
+    }
   }
 
   const canStart = (status: ExamUsage['status']) => status === 'draft' || status === 'pending'

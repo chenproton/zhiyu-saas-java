@@ -226,7 +226,11 @@ export default function AllianceAchievementsPage() {
         toast({ title: '成果已删除' })
         await fetchItems()
       }}
-      onToggleEnabled={async () => {}}
+      onToggleEnabled={async (item: any) => {
+        // 全量回传：后端 PUT 为全列覆盖，避免部分字段被清空
+        await allianceAchievementApi.update(item.id, { ...item, isPublic: !item.isPublic })
+        toast({ title: item.isPublic ? '已取消前台展示' : '已开启前台展示' })
+      }}
     />
   )
 }

@@ -44,10 +44,12 @@ import { BatchSelector } from '@/components/shared/batch-selector'
 import { usePreviewResources } from '@/components/shared/resource-preview-modal'
 import { reportError } from '@/lib/error-handling'
 
-const customKnowledgePointIds = new Set<string>()
-const courseResourcePool: ResourceItem[] = []
-
 function AddGranularPageInner() {
+  // 组件内状态，避免模块级单例在多个编辑会话间串数据
+  const [customKnowledgePointIds, setCustomKnowledgePointIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [courseResourcePool, setCourseResourcePool] = useState<ResourceItem[]>([])
   const router = useRouter()
   const searchParams = useSearchParams()
   const editId = searchParams.get('id')
@@ -90,10 +92,10 @@ function AddGranularPageInner() {
           knowledgeApi.list({ limit: 1000 }),
           resourceLibraryApi.list({ limit: 1000 }),
         ])
-        customKnowledgePointIds.clear()
+        setCustomKnowledgePointIds(new Set())
         ;(kpRes.items || []).forEach((k) => {
           if (k.sourceType === 'course' && k.sourceId === editId) {
-            customKnowledgePointIds.add(k.id)
+            setCustomKnowledgePointIds((prev) => new Set(prev).add(k.id))
           }
         })
         const pool = kpRes.items.map((k) => ({
@@ -106,16 +108,19 @@ function AddGranularPageInner() {
         }))
         setKnowledgePool(pool)
 
-        courseResourcePool.length = 0
+        setCourseResourcePool([])
         ;(libRes.items || []).forEach((r: any) => {
-          courseResourcePool.push({
-            id: r.id,
-            name: r.name,
-            type: r.resourceType || r.type,
-            url: r.url,
-            description: r.description,
-            size: r.fileSize !== undefined ? r.fileSize : r.size,
-          } as ResourceItem)
+          setCourseResourcePool((prev) => [
+            ...prev,
+            {
+              id: r.id,
+              name: r.name,
+              type: r.resourceType || r.type,
+              url: r.url,
+              description: r.description,
+              size: r.fileSize !== undefined ? r.fileSize : r.size,
+            } as ResourceItem,
+          ])
         })
 
         if (editId) {
@@ -151,6 +156,7 @@ function AddGranularPageInner() {
       }
     }
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId])
 
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
@@ -203,6 +209,7 @@ function AddGranularPageInner() {
     background,
     estimatedHours,
     learningGoalPdf,
+    courseResourcePool,
     knowledgePoints,
     selectedResourceIds,
   ])
@@ -231,7 +238,7 @@ function AddGranularPageInner() {
               sourceId: editId,
             } as any)
             kpIdMapping[kp.id] = created.id
-            customKnowledgePointIds.add(created.id)
+            setCustomKnowledgePointIds((prev) => new Set(prev).add(created.id))
           } else {
             await knowledgeApi.update(kp.id, {
               name: kp.name,
@@ -320,6 +327,7 @@ function AddGranularPageInner() {
 
   const handleFinish = async () => {
     await handleSave()
+    if (!hasSavedRef.current) return
     router.push('/lesson/admin/granular')
   }
 
@@ -468,7 +476,7 @@ function AddGranularPageInner() {
                 onChange={setKnowledgePoints}
                 onAddCustom={(name, description) => {
                   const newId = `kp-custom-${Date.now()}`
-                  customKnowledgePointIds.add(newId)
+                  setCustomKnowledgePointIds((prev) => new Set(prev).add(newId))
                   const newKp: KnowledgePointItem = {
                     id: newId,
                     name,
@@ -540,9 +548,9 @@ function AddGranularPageInner() {
                     selectedIds={selectedResourceIds}
                     onChange={setSelectedResourceIds}
                     onUpload={(r) => {
-                      if (!courseResourcePool.find((x) => x.id === r.id)) {
-                        courseResourcePool.push(r)
-                      }
+                      setCourseResourcePool((prev) =>
+                        prev.some((x) => x.id === r.id) ? prev : [...prev, r],
+                      )
                       setSelectedResourceIds((prev) => [...prev, r.id])
                     }}
                     previewResources={previewResources}

@@ -136,6 +136,9 @@ export interface ResourceItem {
   name: string
   type: 'system' | 'granular' | 'case' | 'question' | 'material' | 'simulation' | 'custom'
   source: string
+  url?: string
+  description?: string
+  thumbnail?: string
 }
 
 export interface ReportItem {

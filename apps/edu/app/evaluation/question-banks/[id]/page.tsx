@@ -183,7 +183,8 @@ export default function QuestionBankDetailPage() {
   }
 
   const isDraftPool = bank.isDraftPool === true
-  const canEdit = true // 所有题库均可编辑题目
+  // 归档题库只读，其余状态（草稿/已发布）允许编辑题目
+  const canEdit = bank.status !== 'archived'
 
   const handleAddFiles = (files: FileList | null) => {
     if (!files) return

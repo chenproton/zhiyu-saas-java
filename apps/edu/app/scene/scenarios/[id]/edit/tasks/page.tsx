@@ -63,6 +63,7 @@ import {
   majorApi,
   taskResourceApi,
   taskEvaluationApi,
+  scenarioWeightApi,
   examApi,
   examUsageApi,
 } from '@/lib/api'
@@ -303,6 +304,19 @@ export default function TasksEditPage() {
           ts.gradeMapping = JSON.parse(JSON.stringify(defaultGradeMapping))
           states[t.id] = ts
         })
+        // 已保存的权重优先：从后端读取覆盖均分默认值（含锁定标记）
+        try {
+          const wres = await scenarioWeightApi.list({ scenarioId })
+          const weightById = new Map(wres.items?.map((w) => [w.taskId, w.weight]) || [])
+          Object.keys(states).forEach((tid) => {
+            if (weightById.has(tid)) {
+              states[tid].weight = weightById.get(tid)!
+              states[tid].locked = true
+            }
+          })
+        } catch (err) {
+          reportError(err, '加载任务权重')
+        }
         setTaskStates(states)
 
         // Preload datasets so card previews show names immediately
@@ -596,6 +610,24 @@ export default function TasksEditPage() {
     }
   }
 
+  // 持久化任务权重（仅对已落库任务；ON CONFLICT (scenario_id, task_id) 幂等 upsert）
+  const persistWeights = async () => {
+    for (const t of tasks) {
+      if (t.id.startsWith('task-')) continue
+      const st = taskStates[t.id]
+      if (!st) continue
+      try {
+        await scenarioWeightApi.upsert({
+          scenarioId,
+          taskId: t.id,
+          weight: st.weight ?? 0,
+        })
+      } catch (err) {
+        reportError(err, { source: '保存任务权重', extras: { taskId: t.id } })
+      }
+    }
+  }
+
   const saveTasksToBackend = async () => {
     // Persist custom knowledge points added in this session and map their IDs
     const kpIdMapping: Record<string, string> = {}
@@ -866,6 +898,7 @@ export default function TasksEditPage() {
     }
     setTasks(newTasks)
     setTaskStates(updatedTaskStates)
+    await persistWeights()
   }
 
   const handleSaveDraft = async () => {
@@ -1384,7 +1417,10 @@ export default function TasksEditPage() {
       {/* Weight Config Dialog */}
       <WeightConfigDialog
         open={isWeightConfigOpen}
-        onOpenChange={setIsWeightConfigOpen}
+        onOpenChange={(v) => {
+          if (!v) persistWeights()
+          setIsWeightConfigOpen(v)
+        }}
         tasks={tasks}
         taskStates={taskStates}
         updateAnyState={(id, updates) => updateState(id, updates)}

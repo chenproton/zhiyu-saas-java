@@ -30,6 +30,7 @@ import type { TeachingPlanDetail, TeachingPlanEntry } from '@/lib/types'
 import { EntryTypeBadge } from './_components/entry-type-badge'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { formatDateTime } from '@/lib/format-utils'
+import { reportError } from '@/lib/error-handling'
 
 const VENUE_TYPES = ['教室', '机房', '实训室', '实验室', '校外基地']
 
@@ -119,8 +120,11 @@ export default function TeachingPlanDetailPage() {
     try {
       const updated = await teachingPlanApi.updateEntry(entryId, { teacherId: tid })
       setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
-    } catch {
-      /* ignore */
+      return true
+    } catch (err) {
+      reportError(err, '更新计划教师')
+      toast({ variant: 'destructive', title: '教师更新失败', description: '请通过「保存修改」重新提交' })
+      return false
     }
   }
 

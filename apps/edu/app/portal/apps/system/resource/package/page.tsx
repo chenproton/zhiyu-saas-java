@@ -46,6 +46,7 @@ export default function PackagePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedModules, setExpandedModules] = useState<string[]>([])
+  const [reloadTick, setReloadTick] = useState(0)
 
   useEffect(() => {
     if (authLoading || !tenantId) return
@@ -78,7 +79,7 @@ export default function PackagePage() {
     return () => {
       cancelled = true
     }
-  }, [tenantId, authLoading])
+  }, [tenantId, authLoading, reloadTick])
 
   const packageModules = useMemo(() => buildPackageModules(subscription?.modules), [subscription])
 
@@ -110,9 +111,8 @@ export default function PackagePage() {
       loading={loading}
       error={error}
       onRetry={() => {
-        setLoading(true)
-        setError(null)
         setSubscription(null)
+        setReloadTick((t) => t + 1)
       }}
       colSpan={1}
       search={false}

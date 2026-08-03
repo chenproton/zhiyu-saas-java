@@ -208,6 +208,7 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
           id: r.id,
           name: r.name,
           type: getItemType(r.type),
+          ...(r.url ? { url: r.url } : {}),
           source: `${resourceTypeLabels[r.type] || r.type}库`,
         }
       })

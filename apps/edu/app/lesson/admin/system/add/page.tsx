@@ -250,7 +250,7 @@ function AddSystemPageInner() {
     ) => {
       const newNode: SystemCourseNode = {
         id: `node-${Date.now()}`,
-        courseId: 'course-1',
+        courseId: courseId || 'course-1',
         parentId,
         name,
         order,
@@ -262,7 +262,7 @@ function AddSystemPageInner() {
       setNodes((prev) => [...prev, newNode])
       setSelectedNodeId(newNode.id)
     },
-    [],
+    [courseId],
   )
 
   const handleUpdateNode = useCallback((nodeId: string, updates: Partial<SystemCourseNode>) => {
@@ -800,6 +800,7 @@ function AddSystemPageInner() {
 
   const handleFinish = useCallback(async () => {
     await handleSave()
+    if (!hasSavedRef.current) return
     router.push('/lesson/admin/system')
   }, [handleSave, router])
 

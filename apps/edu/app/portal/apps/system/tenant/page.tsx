@@ -267,7 +267,7 @@ export default function TenantPage() {
       entityLabel="租户"
       items={[]}
       loading={false}
-      error={null}
+      error={error}
       onRetry={fetchTenant}
       colSpan={1}
       search={false}

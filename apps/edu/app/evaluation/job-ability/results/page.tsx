@@ -81,6 +81,7 @@ function JobAbilityResultsContent() {
 
   const [aggregating, setAggregating] = useState(false)
   const aggregateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aggregatePollGenerationRef = useRef(0)
   const [listReloadKey, setListReloadKey] = useState(0)
 
   // 组件卸载时清理汇聚轮询定时器
@@ -199,6 +200,12 @@ function JobAbilityResultsContent() {
   const handleAggregate = async () => {
     if (!selectedPositionId) return
     const careerPositionId = selectedPositionId
+    // 清除上一轮轮询，避免不同岗位的汇聚轮询链交叉覆盖
+    if (aggregateTimerRef.current) {
+      clearTimeout(aggregateTimerRef.current)
+      aggregateTimerRef.current = null
+    }
+    const pollGeneration = ++aggregatePollGenerationRef.current
     setAggregating(true)
     let triggerLogId: string | undefined
     try {
@@ -216,6 +223,7 @@ function JobAbilityResultsContent() {
 
     let attempts = 0
     const poll = async () => {
+      if (pollGeneration !== aggregatePollGenerationRef.current) return
       attempts += 1
       try {
         const status = await jobAbilityResultApi.aggregateStatus(careerPositionId, triggerLogId)

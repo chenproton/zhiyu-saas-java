@@ -167,6 +167,19 @@ function HybridCourseAddForm() {
   const [nodes, setNodes] = useState<SystemCourseNode[]>(initialNodes)
   const [selectedNodeId, setSelectedNodeId] = useState<string>(FIRST_NODE_ID)
 
+  // 编辑模式：课程信息加载完成后同步根节点名称（initialNodes 只在首帧生效）
+  useEffect(() => {
+    const rootName = claimCourse || existing?.name
+    if (!rootName) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNodes((prev) => {
+      if (prev[0] && prev[0].id === FIRST_NODE_ID && prev[0].name !== rootName) {
+        return [{ ...prev[0], name: rootName }, ...prev.slice(1)]
+      }
+      return prev
+    })
+  }, [claimCourse, existing?.name])
+
   /* ========== atomic module assignments per node ========== */
   const [moduleAssignments, setModuleAssignments] = useState<Record<string, AtomicModuleKey[]>>(
     () => ({
@@ -321,23 +334,26 @@ function HybridCourseAddForm() {
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
 
-  const ensureNodeData = (nodeId: string): NodeModuleData => {
-    if (!nodeDataMap[nodeId]) {
-      const next = createDefaultNodeModuleData({
-        name: claimCourse || existing?.name,
-        code: existing?.code,
-        majorId: existing?.majorId,
-        semester: existing?.semester,
-        category: existing?.category as CourseBasicForm['category'],
-      })
-      setNodeDataMap((prev) => ({ ...prev, [nodeId]: next }))
-      return next
-    }
-    return nodeDataMap[nodeId]
-  }
+  const defaultNodeData = (): NodeModuleData =>
+    createDefaultNodeModuleData({
+      name: claimCourse || existing?.name,
+      code: existing?.code,
+      majorId: existing?.majorId,
+      semester: existing?.semester,
+      category: existing?.category as CourseBasicForm['category'],
+    })
+
+  // 选中节点缺省数据在 effect 中落 state（不在渲染期 setState）
+  useEffect(() => {
+    if (!selectedNodeId || nodeDataMap[selectedNodeId]) return
+    const next = defaultNodeData()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNodeDataMap((prev) => (prev[selectedNodeId] ? prev : { ...prev, [selectedNodeId]: next }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNodeId])
 
   const currentModules = selectedNodeId ? moduleAssignments[selectedNodeId] || [] : []
-  const currentData = selectedNodeId ? ensureNodeData(selectedNodeId) : null
+  const currentData = selectedNodeId ? (nodeDataMap[selectedNodeId] ?? defaultNodeData()) : null
 
   const relatedDesignNodeIds = useMemo(() => {
     if (!selectedNodeId || !currentData) return []

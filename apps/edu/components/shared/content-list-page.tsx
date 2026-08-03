@@ -335,13 +335,13 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     },
   })
 
+  // 导入预览数据（来自 use-import-flow）到达时打开确认弹窗，属外部数据驱动的 UI 同步
   useEffect(() => {
-    if (importPreview && hasExcel) {
-      ;(async () => {
-        setIsImportConfirmOpen(true)
-      })()
+    if (importPreview) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsImportConfirmOpen(true)
     }
-  }, [importPreview, hasExcel])
+  }, [importPreview])
 
   const loadData = useCallback(async () => {
     setIsLoading(true)

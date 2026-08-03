@@ -715,17 +715,10 @@ export function TeacherCoursesTab({
               <p className="text-xs text-gray-500 mt-0.5">共 {termPlans.length} 个</p>
             </div>
             <div className="max-h-[calc(100vh-320px)] overflow-y-auto p-2">
-              {termPlans.map((plan, index) => {
+              {termPlans.map((plan) => {
                 const sessions = classSessions.filter((s) => s.courseId === plan.id)
-                const courseTypeTag = [
-                  '混合课程',
-                  '实践场景',
-                  '混合课程',
-                  '实践场景',
-                  '混合课程',
-                  '实践场景',
-                ][index % 2]
-                const isHybrid = courseTypeTag === '混合课程'
+                const isHybrid = !!plan.courseId
+                const courseTypeTag = isHybrid ? '混合课程' : '实践场景'
                 const isActive = selectedPlanId === plan.id
                 return (
                   <button
@@ -788,16 +781,8 @@ export function TeacherCoursesTab({
                   const sessions = classSessions
                     .filter((s) => s.courseId === plan.id)
                     .sort((a, b) => a.week - b.week)
-                  const planIndex = termPlans.findIndex((p) => p.id === plan.id)
-                  const courseTypeTag = [
-                    '混合课程',
-                    '实践场景',
-                    '混合课程',
-                    '实践场景',
-                    '混合课程',
-                    '实践场景',
-                  ][planIndex % 2]
-                  const isHybrid = courseTypeTag === '混合课程'
+                  const isHybrid = !!plan.courseId
+                  const courseTypeTag = isHybrid ? '混合课程' : '实践场景'
                   const accentColors = isHybrid
                     ? {
                         bg: 'from-blue-50 to-indigo-50',

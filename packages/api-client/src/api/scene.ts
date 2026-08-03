@@ -6,6 +6,7 @@ import type {
   SceneBatch,
   RubricTemplate,
   TaskEvaluationMethod,
+  ScenarioWeightConfig,
 } from '../types/scene'
 import { request, buildQuery, ListResponse } from '../api-helpers'
 import { createCrudApi, createContentApi } from '../api-factory'
@@ -20,6 +21,16 @@ export const scenarioApi = {
     request<Scenario>(`/scene/scenarios/${id}/clone`, {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,
+    }),
+}
+
+export const scenarioWeightApi = {
+  list: (params?: { scenarioId?: string; taskId?: string }) =>
+    request<ListResponse<ScenarioWeightConfig>>(`/scene/weights${buildQuery(params || {})}`),
+  upsert: (req: { id?: string; scenarioId: string; taskId: string; weight: number }) =>
+    request<ScenarioWeightConfig>(`/scene/weights${req.id ? `/${req.id}` : ''}`, {
+      method: req.id ? 'PUT' : 'POST',
+      body: JSON.stringify(req),
     }),
 }
 
