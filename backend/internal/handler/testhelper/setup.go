@@ -394,6 +394,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 			evaluationResultHandler := &handler.EvaluationResultHandler{Service: evaluationSvc}
 			r.Get("/evaluation/results", evaluationResultHandler.List)
+			r.Post("/evaluation/results", evaluationResultHandler.Submit)
 			r.Get("/evaluation/results/{id}", evaluationResultHandler.Get)
 			r.Post("/evaluation/results/{id}/grade", evaluationResultHandler.Grade)
 			r.Post("/evaluation/results/batch-grade", evaluationResultHandler.BatchGrade)

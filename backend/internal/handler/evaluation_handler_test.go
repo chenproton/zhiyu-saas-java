@@ -542,6 +542,72 @@ func TestEvaluationResult(t *testing.T) {
 	}
 }
 
+func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	userID := "11111111-2222-4333-8444-555555555555"
+	_, err := env.DB.Exec(ctx, `
+		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
+		VALUES ($1, $2, 'student', 'saas', 'evalres-stu', 'evalres-stu', 'x', 'Eval Stu', 'active', '{}')
+	`, userID, testhelper.TestTenantID)
+	if err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	defer env.DB.Exec(ctx, "DELETE FROM scene_evaluation_results WHERE evaluatee_id = $1", userID)
+	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", userID)
+
+	taskID := "d8c7bccb-2509-4281-8c86-46224df98732"
+	sceneID := "5e9a300c-48fd-45b6-8d8f-74009957349e"
+
+	// 不传 evaluatorId：uuid 列必须落 NULL，不能因空串报 22P02
+	w := env.Do("POST", "/api/v1/evaluation/results", map[string]interface{}{
+		"taskId":      taskID,
+		"sceneId":     sceneID,
+		"methodKey":   "review",
+		"evaluateeId": userID,
+		"maxScore":    100,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("submit without evaluatorId: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	var evaluatorID *string
+	var gotSceneID string
+	if err := env.DB.QueryRow(ctx, `
+		SELECT evaluator_id, scene_id FROM scene_evaluation_results WHERE evaluatee_id = $1
+	`, userID).Scan(&evaluatorID, &gotSceneID); err != nil {
+		t.Fatalf("query result: %v", err)
+	}
+	if evaluatorID != nil {
+		t.Fatalf("expected evaluator_id NULL, got %v", *evaluatorID)
+	}
+	if gotSceneID != sceneID {
+		t.Fatalf("expected scene_id %s, got %s", sceneID, gotSceneID)
+	}
+
+	// 显式传空串 evaluatorId/sceneId 同样应归一化为 NULL，而不是 500
+	w = env.Do("POST", "/api/v1/evaluation/results", map[string]interface{}{
+		"taskId":      taskID,
+		"sceneId":     "",
+		"methodKey":   "review",
+		"evaluateeId": userID,
+		"evaluatorId": "",
+		"maxScore":    100,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("submit with empty evaluatorId/sceneId: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	if err := env.DB.QueryRow(ctx, `
+		SELECT evaluator_id, scene_id FROM scene_evaluation_results WHERE evaluatee_id = $1
+	`, userID).Scan(&evaluatorID, &gotSceneID); err != nil {
+		t.Fatalf("query result: %v", err)
+	}
+	if evaluatorID != nil || gotSceneID != "" {
+		t.Fatalf("expected evaluator_id NULL and scene_id NULL, got %v / %q", evaluatorID, gotSceneID)
+	}
+}
+
 func TestCertification_CRUD(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

@@ -126,22 +126,28 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		req.MaxScore = 100
 	}
 
-	evaluatorID := ""
 	evaluatorType := ""
-	if req.EvaluatorID != nil {
-		evaluatorID = *req.EvaluatorID
-	}
 	if req.EvaluatorType != nil {
 		evaluatorType = *req.EvaluatorType
 	}
+	// 评价人未指定时存 NULL（uuid 列不允许空串）
+	var evaluatorID *string
+	if req.EvaluatorID != nil && *req.EvaluatorID != "" {
+		evaluatorID = req.EvaluatorID
+	}
+	// sceneId 为空串时同样存 NULL
+	var sceneID *string
+	if req.SceneID != nil && *req.SceneID != "" {
+		sceneID = req.SceneID
+	}
 
 	// 学生提交时评价人只能是本人；指定评价人必须属于当前租户
-	if middleware.HasRole(claims, "student") && evaluatorID != "" && evaluatorID != claims.UserID {
+	if middleware.HasRole(claims, "student") && evaluatorID != nil && *evaluatorID != claims.UserID {
 		respondError(w, http.StatusForbidden, "学生仅可提交本人为评价人的评价结果")
 		return
 	}
-	if evaluatorID != "" {
-		evaluator, err := h.Service.Store().Users().Get(r.Context(), evaluatorID)
+	if evaluatorID != nil {
+		evaluator, err := h.Service.Store().Users().Get(r.Context(), *evaluatorID)
 		if err != nil || evaluator.TenantID == nil || *evaluator.TenantID != tenantID {
 			respondError(w, http.StatusForbidden, "无权操作：评价人不属于您的租户")
 			return
@@ -151,7 +157,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 	res, err := h.Service.SubmitEvaluationResult(r.Context(), &store.EvaluationResultSubmitParams{
 		TenantID:          tenantID,
 		TaskID:            req.TaskID,
-		SceneID:           req.SceneID,
+		SceneID:           sceneID,
 		MethodKey:         req.MethodKey,
 		EvaluateeID:       req.EvaluateeID,
 		EvaluatorID:       evaluatorID,

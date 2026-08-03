@@ -188,7 +188,7 @@ type EvaluationResultSubmitParams struct {
 	SceneID           *string
 	MethodKey         string
 	EvaluateeID       string
-	EvaluatorID       string
+	EvaluatorID       *string
 	EvaluatorType     string
 	MaxScore          float64
 	EvalPointScores   domain.JSONMap
