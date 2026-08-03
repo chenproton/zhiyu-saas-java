@@ -245,6 +245,10 @@ func (h *ApprovalHandler) isUserApproverForStep(ctx context.Context, record *dom
 }
 
 func (h *ApprovalHandler) isStepComplete(workflow *domain.Workflow, record *domain.ApprovalRecord, stepIdx int) bool {
+	if record.WorkflowID == nil {
+		// 无工作流配置视为单步审批，审核人通过即完成
+		return true
+	}
 	if workflow == nil || len(workflow.Steps) == 0 || stepIdx >= len(workflow.Steps) {
 		// fail-closed：流程加载失败/步骤缺失时不视为完成，避免一步直达通过并发布
 		return false
@@ -271,8 +275,14 @@ func (h *ApprovalHandler) isStepComplete(workflow *domain.Workflow, record *doma
 		if action != string(domain.ApprovalStatusApproved) {
 			continue
 		}
-		stepFlt, _ := entryMap["stepIdx"].(float64)
-		if int(stepFlt) != stepIdx {
+		stepFlt := 0
+		switch v := entryMap["stepIdx"].(type) {
+		case float64:
+			stepFlt = int(v)
+		case int:
+			stepFlt = v
+		}
+		if stepFlt != stepIdx {
 			continue
 		}
 		rid, _ := entryMap["reviewerId"].(string)
@@ -289,8 +299,8 @@ func (h *ApprovalHandler) isStepComplete(workflow *domain.Workflow, record *doma
 
 func (h *ApprovalHandler) isLastStep(workflow *domain.Workflow, stepIdx int) bool {
 	if workflow == nil || len(workflow.Steps) == 0 {
-		// fail-closed：流程缺失时不视为最后一步，避免直接进入发布
-		return false
+		// 无工作流配置视为最后一步（单步审批直接通过）；有工作流但加载失败由 isStepComplete 拦截
+		return true
 	}
 	return stepIdx >= len(workflow.Steps)-1
 }

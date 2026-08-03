@@ -283,6 +283,9 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Description = existing.Description
 	}
 	batchID := req.BatchID
+	if batchID == nil {
+		batchID = existing.BatchID
+	}
 
 	if req.CoCreatorIds == nil {
 		req.CoCreatorIds = existing.CoCreatorIds

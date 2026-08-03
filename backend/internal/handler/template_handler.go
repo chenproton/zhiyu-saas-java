@@ -49,6 +49,10 @@ func (h *TemplateHandler) ServeScenarioTemplate(w http.ResponseWriter, r *http.R
 }
 
 func writeExcel(w http.ResponseWriter, f *excelize.File, filename string) {
+	if f == nil {
+		respondError(w, http.StatusInternalServerError, "生成模板失败")
+		return
+	}
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	if err := f.Write(w); err != nil {

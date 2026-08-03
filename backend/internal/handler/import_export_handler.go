@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
@@ -160,8 +161,9 @@ type importRow struct {
 	code   string
 }
 
-func parseImportCSV(r *http.Request) ([]importRow, []string, error) {
-	reader := csv.NewReader(r.Body)
+// parseImportCSVFile 从已上传的文件句柄解析 CSV（r.Body 已被 ParseMultipartForm 消费，不能再读）。
+func parseImportCSVFile(f multipart.File) ([]importRow, []string, error) {
+	reader := csv.NewReader(f)
 	reader.FieldsPerRecord = -1
 	header, err := reader.Read()
 	if err != nil {
@@ -253,7 +255,7 @@ func (h *ImportExportHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	rows, parseErrors, err := parseImportCSV(r)
+	rows, parseErrors, err := parseImportCSVFile(file)
 	if err != nil {
 		slog.Error("解析导入文件失败", "error", err)
 		respondError(w, http.StatusBadRequest, "解析导入文件失败")
@@ -318,7 +320,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	rows, parseErrors, err := parseImportCSV(r)
+	rows, parseErrors, err := parseImportCSVFile(file)
 	if err != nil {
 		slog.Error("解析导入文件失败", "error", err)
 		respondError(w, http.StatusBadRequest, "解析导入文件失败")

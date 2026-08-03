@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 )
 
 // CertGradeStore 岗位等级认证数据持久化（只读聚合）。
@@ -46,11 +47,12 @@ func (s *CertGradeStore) ListGrades(ctx context.Context, positionID string) ([]C
 	var grades []CertGradeRow
 	for rows.Next() {
 		var g CertGradeRow
-		var lu *string
+		var lu *time.Time
+		// last_updated 为 timestamptz，需按 time.Time 扫描（*string 在二进制协议下必失败）
 		if err := rows.Scan(&g.ID, &g.PositionID, &g.GradeYear, &g.TotalAbilityPoints, &g.AvgAchievementRate, &lu); err != nil {
-			continue
+			return nil, err
 		}
-		g.LastUpdated = lu
+		g.LastUpdated = formatDate(lu)
 		grades = append(grades, g)
 	}
 	return grades, rows.Err()

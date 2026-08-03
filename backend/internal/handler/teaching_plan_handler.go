@@ -125,8 +125,16 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plan, _ := h.Service.GetTeachingPlan(ctx, planID, tenantID)
-	entries, _ := h.Service.ListTeachingPlanEntries(ctx, planID, tenantID)
+	plan, err := h.Service.GetTeachingPlan(ctx, planID, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询教学计划失败")
+		return
+	}
+	entries, err := h.Service.ListTeachingPlanEntries(ctx, planID, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询教学计划条目失败")
+		return
+	}
 	respondJSON(w, http.StatusCreated, TeachingPlanDetailResponse{TeachingPlan: *plan, Entries: entries})
 }
 

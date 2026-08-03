@@ -134,29 +134,31 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			durPtr = &duration
 		}
 
-		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
-		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
-
 		var existingID string
 		err := h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID)
 		exists := err == nil && existingID != ""
 
+		if exists && preview {
+			if len(result.DuplicateItems) < 100 {
+				result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{
+					RowNum: i + 1,
+					Key:    name,
+					Name:   name,
+				})
+			}
+			result.Skipped++
+			continue
+		}
+		if exists && !overwrite {
+			result.Skipped++
+			continue
+		}
+
+		// 查重/跳过判定之后才创建知识点与资源，preview 模式不产生任何写操作
+		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
+		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
+
 		if exists {
-			if preview {
-				if len(result.DuplicateItems) < 100 {
-					result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{
-						RowNum: i + 1,
-						Key:    name,
-						Name:   name,
-					})
-				}
-				result.Skipped++
-				continue
-			}
-			if !overwrite {
-				result.Skipped++
-				continue
-			}
 			_, err := h.DB.Exec(ctx, `
 				UPDATE courses
 				SET major_id=$3, batch_id=$4, difficulty=$5, description=$6, online_hours=$7,
