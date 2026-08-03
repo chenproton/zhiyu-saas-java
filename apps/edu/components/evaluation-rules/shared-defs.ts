@@ -27,19 +27,6 @@ export function getAllQuestions(): readonly CachedQuestion[] {
   return _allQuestions
 }
 
-export function setAllQuestions(questions: CachedQuestion[]): void {
-  _allQuestions.length = 0
-  _allQuestions.push(...questions)
-}
-
-export function addAllQuestions(questions: CachedQuestion[]): void {
-  _allQuestions.push(...questions)
-}
-
-export function clearAllQuestions(): void {
-  _allQuestions.length = 0
-}
-
 // ---------- questionCache ----------
 export function getCachedQuestion(id: string): CachedQuestion | undefined {
   return _questionCache.get(id)
@@ -59,17 +46,9 @@ export function setCachedQuestions(questions: CachedQuestion[]): void {
   }
 }
 
-export function clearQuestionCache(): void {
-  _questionCache.clear()
-}
-
 // ---------- loadedExams ----------
 export function getLoadedExams(): readonly LoadedExam[] {
   return _loadedExams
-}
-
-export function getLoadedExam(id: string): LoadedExam | undefined {
-  return _loadedExams.find((e) => e.id === id)
 }
 
 export function setLoadedExams(exams: LoadedExam[]): void {
@@ -79,19 +58,6 @@ export function setLoadedExams(exams: LoadedExam[]): void {
 
 export function addLoadedExam(exam: LoadedExam): void {
   _loadedExams.push(exam)
-}
-
-export function upsertLoadedExam(id: string, patch: Partial<LoadedExam>): void {
-  const idx = _loadedExams.findIndex((e) => e.id === id)
-  if (idx >= 0) {
-    _loadedExams[idx] = { ..._loadedExams[idx], ...patch, id }
-  } else {
-    _loadedExams.push({ ...patch, id, name: patch.name ?? '' })
-  }
-}
-
-export function clearLoadedExams(): void {
-  _loadedExams.length = 0
 }
 
 export function clearAllCaches(): void {

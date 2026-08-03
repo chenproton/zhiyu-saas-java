@@ -45,7 +45,7 @@ const parseExam = (exam: Exam): Exam => ({
 
 // ==================== DataContextValue type ====================
 
-export interface DataContextValue {
+interface DataContextValue {
   evaluationLoading?: boolean
 
   // 题库相关
