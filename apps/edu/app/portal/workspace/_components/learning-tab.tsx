@@ -10,6 +10,7 @@ import { SectionCard } from './section-card'
 import { StatCard } from './stat-card'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceCourse, WorkspaceSceneTask } from '@/lib/types'
+import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
 
 export function LearningTab() {
   const [courses, setCourses] = useState<WorkspaceCourse[]>([])
@@ -44,11 +45,10 @@ export function LearningTab() {
     return true
   })
 
-  const difficultyColorMap: Record<string, string> = {
-    简单: 'text-emerald-600',
-    中等: 'text-amber-600',
-    困难: 'text-rose-600',
-  }
+  // 中文标签 → 颜色，由共享 DIFFICULTY_LABELS/DIFFICULTY_COLORS 派生（与后端 difficultyLabel 中文输出对齐）
+  const difficultyColorMap: Record<string, string> = Object.fromEntries(
+    Object.entries(DIFFICULTY_LABELS).map(([key, label]) => [label, DIFFICULTY_COLORS[key]]),
+  )
 
   if (loading) {
     return (

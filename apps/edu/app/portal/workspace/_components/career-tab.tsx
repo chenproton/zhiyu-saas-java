@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@zhiyu/ui'
 import { SectionCard } from './section-card'
+import { DIFFICULTY_LABELS } from '@/lib/types'
 
 // 收藏数据暂由后端提供，当前无收藏 API，默认空状态
 
@@ -307,9 +308,15 @@ export function CareerTab() {
                     </Badge>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${exam.difficulty === '简单' ? 'bg-emerald-50 text-emerald-600' : exam.difficulty === '中等' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          exam.difficulty === 'easy'
+                            ? 'bg-emerald-50 text-emerald-600'
+                            : exam.difficulty === 'medium'
+                              ? 'bg-amber-50 text-amber-600'
+                              : 'bg-rose-50 text-rose-600'
+                        }`}
                       >
-                        {exam.difficulty}
+                        {DIFFICULTY_LABELS[exam.difficulty] || exam.difficulty}
                       </span>
                       <button
                         onClick={(e) => {
