@@ -13,12 +13,12 @@
   - `RequireRole(codes...)` 检查角色代码。
   - `RequirePermission(module, page, action)` 检查细粒度操作权限。
   - `admin: true` 权限绕过所有 `RequirePermission` 检查。
-- **平台隔离**：`RequirePlatform(platform)` 中间件强制 JWT 中的 `Platform` 字段匹配目标平台，拒绝跨平台请求。
+- **平台隔离**：`RequirePlatform(platform)` 中间件强制 JWT 中的 `Platform` 字段匹配目标平台，拒绝跨平台请求（portal 教育端与 saas 运营端路由组分别挂载，2026-08-03 恢复）。
 - **密码策略**：≥8 字符、≥1 字母、≥1 数字，bcrypt 哈希存储。
-- **操作审计**：`OperationLog` 中间件自动记录所有 POST/PUT/DELETE 操作到 `operation_logs` 表，跳过 `/behavior-collection/` 和 `/view` 路径。
+- **操作审计**：`OperationLog` 中间件自动记录所有 POST/PUT/DELETE 操作到 `operation_logs` 表（异步缓冲队列），跳过 `/behavior-collection/` 和 `/view` 路径。
 - **登录日志**：每次登录记录 IP、设备（UA 截断）、状态。
 - **超时保护**：`/api/v1` 路由组全局 30 秒超时。
-- **开发调试接口**：`ENABLE_DEBUG_AUTH=true` 时，`/auth/debug/token` 可按用户 ID 或用户名生成 JWT，仅供本地开发使用，生产环境必须关闭。
+- ~~开发调试接口~~：`ENABLE_DEBUG_AUTH` / `/auth/debug/token` 已随代码演进移除，不再存在。
 
 ## 检查点
 

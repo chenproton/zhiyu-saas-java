@@ -2,7 +2,7 @@
 
 ## 核心决策
 
-- **集中式 API 客户端**：所有 API 函数集中在 `packages/api-client/src/api.ts`，统一管理后端请求。
+- **集中式 API 客户端**：所有 API 函数集中在 `packages/api-client/src/api/` 目录下，按业务域拆分 11 个文件（auth/system/job/scene/lesson/evaluation/affairs/library/portal/alliance/import-export），统一管理后端请求。
 - **双 Token 管理**：
   - 两个 localStorage 键：`zhiyu-token`（SaaS）和 `zhiyu-portal-token`（Portal）。
   - `request()` 函数根据 URL 路径或 `NEXT_PUBLIC_DEFAULT_PLATFORM` 环境变量自动选择 token。
