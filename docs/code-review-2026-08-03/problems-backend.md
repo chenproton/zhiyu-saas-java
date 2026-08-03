@@ -3,6 +3,7 @@
 > 审查日期：2026-08-03
 > 审查范围：backend/ 全部 283 个 Go 文件（含测试），逐行完整阅读，未抽样
 > ✅ 已回查验证：每条问题已重新阅读代码确认，详见 [problems-verification.md](problems-verification.md)（后端）
+> ⚠️ 二次复核（2026-08-03）：确认 master 无新修改（HEAD=9782a4b9），全量复查代表性条目；修正 2 处误报（on_site Get、user_extension_field List），详见 verification 文档 E 节
 > 文件清单与勾选状态见 [checklist.md](checklist.md)
 > 严重级别：`[严重]` = 必须修复（安全漏洞/功能必炸/数据丢失）｜`[中]` = 建议修复（错误吞掉/数据不一致/明显缺陷）｜`[低]` = 可选（代码异味/健壮性/一致性）
 > 前端问题清单见 [problems-frontend.md](problems-frontend.md)
@@ -63,7 +64,7 @@
 | `handler/position_certificate_handler.go:33-54` | GET /job/position-certificates | List 无租户过滤，泄露全平台岗位证书 |
 | `handler/random_draw_question_handler.go:30-48` | GET /evaluation/random-draw-questions | List TenantScoped=false + SelectColumns 含 answer → 全租户答案泄露 |
 | `handler/node_homework_handler.go:53-66` | GET /lesson/nodes/.../homeworks | 无租户校验 |
-| `handler/on_site_question_library_handler.go:53-61` | GET /library/on-site-questions/{id} | **完全无鉴权**（未登录可读，含答案） |
+| `handler/on_site_question_library_handler.go:137-139` | GET /library/on-site-questions/{id} | ~~完全无鉴权（未登录可读，含答案）~~ **已修正**：走 crudGet，`crudCheckPermit` 有登录检查；但 `GetOwnership: false` + store `GetByID` 无租户过滤 → 登录用户可跨租户读取（含答案） |
 
 **businessUser / 其它角色组（跨租户读写删）**：
 

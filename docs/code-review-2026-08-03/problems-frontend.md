@@ -3,6 +3,7 @@
 > 审查日期：2026-08-03
 > 审查范围：apps/edu（app 页面 226 + components 98 + hooks/lib 22）+ packages（api-client 27 / shared-types 27 / ui 57），共 462 文件，逐行完整阅读
 > ✅ 已回查验证：每条问题已重新阅读代码确认，详见 [problems-verification.md](problems-verification.md)（前端）
+> ⚠️ 二次复核（2026-08-03）：确认 master 无新修改；复查代表性条目，修正 saasMe/saasLogin 条目（无调用方，降级为潜伏缺陷）
 > 文件清单与勾选状态见 [checklist.md](checklist.md)
 > 严重级别：`[严重]` 必须修复｜`[中]` 建议修复｜`[低]` 可选
 > 后端问题清单见 [problems-backend.md](problems-backend.md)
@@ -61,7 +62,7 @@
 
 | 文件:行号 | 问题 |
 |-----------|------|
-| `api/auth.ts:7-8,17` | saasLogin/saasMe 用 `request()`（默认 portal token）→ 后端 `meWithPlatform` 校验平台不符返回 403"无效平台" |
+| `api/auth.ts:7-8,17` | saasLogin/saasMe 用 `request()`（默认 portal token）→ 后端 `meWithPlatform` 校验平台不符返回 403"无效平台"（**二次复核降级**：apps/edu 无任何调用方，属潜伏缺陷，一旦接入即坏；见 verification E 节） |
 | `api/job.ts:72` | saveFull 期望 `{position}`，后端返回裸 `CareerPosition` → 调用方取 resp.position 恒 undefined |
 | `api/system.ts:71-78` | approval.review 传 `nextStepIdx`，后端请求体只有 action/remark → stepIdx 永不生效 |
 | `shared-types/src/index.ts:1-22` | barrel `export *` 同名冲突（Position/Workflow/ApprovalRecord/ApprovalStatus/Batch/PositionCertificate 等约 10 组）→ 包根导入不可解析 |

@@ -2,6 +2,8 @@
 
 > 本文件是对问题清单（problems-backend.md / problems-frontend.md）的回查验证结果：逐条重新阅读代码确认问题是否存在、校正行号与描述，并为每条（类）问题补充**最佳实践解决方案**。
 > 图例：✅ 已确认存在　⚠️ 部分属实（描述已修正）　❌ 误报（已从清单移除）
+>
+> **二次复核记录（2026-08-03）**：确认 master 无新修改（本地 HEAD = origin/master = 9782a4b9，工作区干净，无其它分支/worktree 含修复）。对清单代表性条目全量复查：① 43 个 IDOR handler 批量 grep 校验函数（仅 4 个文件有 verifyTenantOwnership/checkTenantAccess 且与报告描述一致）；② 6 处必炸 SQL 原文复核仍在；③ 前端 6 项严重缺陷原文复核仍在；④ 新修正 3 处（见 E 节）。
 
 ---
 
@@ -158,7 +160,10 @@ SearchColumns: []string{"b.name", "b.code"},
 |------|--------|----------|
 | `service/user.go:161-165` AttachRoles | "值副本导致角色信息不回写" | ❌ 误报：`*user = items[0]` 有回写，功能正常。降级为低危"store 查询错误被吞" |
 | `shared-types/src/index.ts` barrel 同名冲突 | "约 10 组类型在包根不可解析" | ❌ 误报：`job-source.ts` 未从 barrel 导出，`tsc --noEmit` 全包通过。保留低危"job-source/backend/approval/job 重复定义易漂移"（可维护性问题，非编译错误） |
-| `api/auth.ts` saasLogin/saasMe 平台错配 | "saasMe 携带 portal token 被 403" | ✅ 确认（运行时问题，编译不报错）：`request()` 默认 `getDefaultPlatform()='portal'`（api-helpers.ts:133），SaaS 登录后 token 存 `TOKEN_KEYS['saas']`，`saasMe` 却读 portal key → 无 token/错误 token → 后端 `meWithPlatform` 403"无效平台" |
+| `api/auth.ts` saasLogin/saasMe 平台错配 | "saasMe 携带 portal token 被 403" | ⚠️ 部分属实（二次复核修正）：`request()` 在 `NEXT_PUBLIC_DEFAULT_PLATFORM` 未配置时恒走 portal key（api-helpers.ts:148-152），而 `.env`/`.env.example` 均未配置该变量 → 若调用 `saasMe` 必然 403；**但 apps/edu 全仓无 `authApi.saasMe/saasLogin/me` 任何调用方**（仅 superadmin 手写 fetch + `setToken(data.token,'saas')` 自存自取，portal 登录用 `setToken(token,'portal')`）→ 由"运行时 bug"降级为"潜伏缺陷（死代码路径，一旦接入即 403）" |
+| `handler/on_site_question_library_handler.go:53-61` Get | "完全无鉴权，未登录可读（含答案）" | ❌ 误报（二次复核）：Get 走 `crudGet`（L137-139），`crudCheckPermit`（crud.go:53-60）对 `claims==nil` 返回 403。**IDOR 本身成立但降级**：`GetOwnership:false` + `GetByIDFn`→`Store.GetByID(ctx,id)`（无租户过滤）→ 登录用户可跨租户读任意题目（含答案）。已同步更新 problems-backend.md 1.1 节 |
+| `handler/user_extension_field_handler.go:28-42` List | "无任何角色校验，任意登录用户可读取" | ❌ 误报（二次复核）：List 有 `tenantFilter(claims)`（无租户 403），且路由挂 `registerPortalRoutes` → **systemAdmin 组**（routes.go:163-166）保护。从清单移除（store 层 Get/Update 无租户的纵深缺陷仍保留于 1.1 汇总行） |
+| `api/auth.ts` saasLogin 用 request() | "SaaS 登录 token 存错 key" | ⚠️ 同上：无调用方；登录接口本身无 token 依赖，`requestWithPlatform` 也不自动 setToken（需调用方手动存）→ 潜伏缺陷 |
 | `handler/content_actions.go:71` | "NULL tenant 行状态流转不可用" | ⚠️ 属实但为边缘脏数据，降级为低 |
 | `handler/course_handler.go:405-412` Assessments | "verifyTenantOwnership 用自己比自己是空操作" | ✅ 确认：`verifyTenantOwnership(w, r, *claims.TenantID)` 自身比较恒真，属无效调用（课程归属未校验），保留但标注为"空操作调用" |
 | `store/roles.go:84-103` Assign | "跨租户 roleID 可插入" | ✅ 确认（handler 校验了 role 归属但未校验 user 归属） |
