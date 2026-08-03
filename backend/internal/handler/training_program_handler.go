@@ -35,7 +35,7 @@ type ProgramCourseRequest struct {
 	Code       *string  `json:"code"`
 	Credits    *float64 `json:"credits"`
 	Hours      *int     `json:"hours"`
-	Semester   *string  `json:"semester"`
+	Semester   *int     `json:"semester"`
 	Nature     string   `json:"nature"`
 	Assessment *string  `json:"assessment"`
 	PositionID *string  `json:"positionId"`
@@ -292,13 +292,18 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 		if nature == "" {
 			nature = "必修"
 		}
+		semester := c.Semester
+		if semester == nil || *semester <= 0 {
+			one := 1
+			semester = &one
+		}
 		sortOrder := c.SortOrder
 		if sortOrder == 0 {
 			sortOrder = i
 		}
 		courses = append(courses, store.ProgramCourseItem{
 			Name: c.Name, Code: emptyStrToNil(c.Code), Credits: c.Credits, Hours: c.Hours,
-			Semester: c.Semester, Nature: nature, Assessment: emptyStrToNil(c.Assessment),
+			Semester: semester, Nature: nature, Assessment: emptyStrToNil(c.Assessment),
 			PositionID: emptyStrToNil(c.PositionID), CourseID: emptyStrToNil(c.CourseID), SortOrder: sortOrder,
 		})
 	}

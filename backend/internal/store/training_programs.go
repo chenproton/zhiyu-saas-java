@@ -172,7 +172,7 @@ type ProgramCourseItem struct {
 	Code       *string
 	Credits    *float64
 	Hours      *int
-	Semester   *string
+	Semester   *int
 	Nature     string
 	Assessment *string
 	PositionID *string
