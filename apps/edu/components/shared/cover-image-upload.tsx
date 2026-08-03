@@ -34,6 +34,14 @@ export function CoverImageUpload({
       <div
         className="aspect-video bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors overflow-hidden relative group"
         onClick={triggerUpload}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            triggerUpload()
+          }
+        }}
       >
         <input
           ref={inputRef}

@@ -194,6 +194,7 @@ export function DutyTable({
                         className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-blue-500 hover:text-blue-500"
                         disabled={page <= 0}
                         onClick={() => setPage(page - 1)}
+                        aria-label="上一页"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -208,6 +209,7 @@ export function DutyTable({
                         className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-blue-500 hover:text-blue-500"
                         disabled={page >= totalPages - 1}
                         onClick={() => setPage(page + 1)}
+                        aria-label="下一页"
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>

@@ -63,6 +63,7 @@ export function LandingPagination({
         className={arrowBtn}
         disabled={currentPage <= 1}
         onClick={() => onPageChange(currentPage - 1)}
+        aria-label="上一页"
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
@@ -87,6 +88,7 @@ export function LandingPagination({
         className={arrowBtn}
         disabled={currentPage >= totalPages}
         onClick={() => onPageChange(currentPage + 1)}
+        aria-label="下一页"
       >
         <ChevronRight className="w-4 h-4" />
       </button>

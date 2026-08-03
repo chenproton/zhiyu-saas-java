@@ -198,6 +198,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
                   variant="outline"
                   size="icon"
                   className="rounded-md h-10 w-10 text-[#475569]"
+                  aria-label="分享岗位"
                 >
                   <Share2 className="w-4 h-4" />
                 </Button>

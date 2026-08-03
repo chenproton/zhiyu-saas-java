@@ -101,6 +101,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+                    aria-label="查看详情"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </Button>
@@ -230,6 +231,7 @@ function ResourceCard({ item }: { item: WorkspaceResourceStat }) {
         variant="ghost"
         size="icon"
         className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+        aria-label="查看详情"
       >
         <ChevronRight className="w-4 h-4" />
       </Button>

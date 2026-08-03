@@ -21,6 +21,7 @@ export function PaginationBar({ page, totalPages, onPageChange, disabled }: Pagi
         size="sm"
         disabled={page <= 1 || disabled}
         onClick={() => onPageChange(page - 1)}
+        aria-label="上一页"
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
@@ -32,6 +33,7 @@ export function PaginationBar({ page, totalPages, onPageChange, disabled }: Pagi
         size="sm"
         disabled={page >= totalPages || disabled}
         onClick={() => onPageChange(page + 1)}
+        aria-label="下一页"
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

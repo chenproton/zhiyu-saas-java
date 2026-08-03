@@ -1,5 +1,6 @@
 'use client'
 
+import type { KeyboardEvent } from 'react'
 import { LucideIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -43,6 +44,18 @@ export function StatCard({
         className,
       )}
       onClick={onClick}
+      {...(onClick
+        ? {
+            role: 'button' as const,
+            tabIndex: 0,
+            onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            },
+          }
+        : {})}
     >
       <CardContent className="p-5">
         <div className="flex items-center gap-4">

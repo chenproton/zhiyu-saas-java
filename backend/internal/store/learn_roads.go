@@ -70,13 +70,12 @@ func (s *LearnRoadsStore) GetByID(ctx context.Context, id, tenantID string) (dom
 }
 
 func normalizePositionIDs(ids []string) []string {
-	out := make([]string, len(ids))
-	for i, id := range ids {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
 		if u, err := uuid.Parse(id); err == nil {
-			out[i] = u.String()
-		} else {
-			out[i] = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(id)).String()
+			out = append(out, u.String())
 		}
+		// 非法 ID 直接丢弃，避免写入 SHA1 伪 UUID 脏引用
 	}
 	return out
 }

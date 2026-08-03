@@ -248,6 +248,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
               size="icon"
               className="h-9 w-9 rounded-r-none border-r-0"
               onClick={prevPeriod}
+              aria-label="上一周"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -256,6 +257,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
               size="icon"
               className="h-9 w-9 rounded-l-none"
               onClick={nextPeriod}
+              aria-label="下一周"
             >
               <ChevronRight className="w-4 h-4" />
             </Button>

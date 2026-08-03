@@ -77,6 +77,12 @@ function OrgTreeRow({
         role="button"
         tabIndex={0}
         onClick={() => onSelect(node.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelect(node.id)
+          }
+        }}
         className={cn(
           'flex items-center gap-1.5 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors',
           selectedId === node.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
@@ -350,6 +356,12 @@ export function UserSelector({
                     role="button"
                     tabIndex={0}
                     onClick={() => setSelectedOrgId(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelectedOrgId(null)
+                      }
+                    }}
                     className={cn(
                       'flex items-center gap-2 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors mb-1',
                       !selectedOrgId ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',

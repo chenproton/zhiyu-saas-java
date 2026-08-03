@@ -486,6 +486,14 @@ export function ResourceSelector({
                           : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white',
                       )}
                       onClick={() => toggleResource(r.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          toggleResource(r.id)
+                        }
+                      }}
                     >
                       <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
                         {r.thumbnail && r.type === 'image' ? (
@@ -797,6 +805,14 @@ export function ResourceSelector({
                     : 'border-gray-200 hover:border-primary/30 hover:bg-gray-50/50 cursor-pointer',
                 )}
                 onClick={() => !newResUploading && fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && !newResUploading) {
+                    e.preventDefault()
+                    fileInputRef.current?.click()
+                  }
+                }}
                 onDragOver={(e) => {
                   e.preventDefault()
                 }}

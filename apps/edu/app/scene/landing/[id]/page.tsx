@@ -885,6 +885,7 @@ export default function SceneDetailPage() {
                       <Button
                         variant="ghost"
                         className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-blue-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-all"
+                        aria-label="分享"
                       >
                         <Share2 className="w-4 h-4" />
                       </Button>

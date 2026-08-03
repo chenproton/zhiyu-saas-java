@@ -592,7 +592,8 @@ func (s *CertificationStore) PutFullRule(ctx context.Context, tx Queryer, tenant
 			}
 			abilityPointUUID, err := uuid.Parse(point.AbilityPointID)
 			if err != nil {
-				abilityPointUUID = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(point.AbilityPointID))
+				// 非法能力点 ID：跳过该绑定，避免写入 SHA1 伪 UUID 脏引用
+				continue
 			}
 			pointID := uuid.NewString()
 			if _, err := tx.Exec(ctx, `

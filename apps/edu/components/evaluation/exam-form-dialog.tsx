@@ -116,11 +116,11 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
     try {
       const res = await fileApi.upload(file)
       setCoverUrl(res.url)
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: '上传失败',
-        description: err?.message || '封面上传失败',
+        description: err instanceof Error ? err.message : '封面上传失败',
       })
     }
   }

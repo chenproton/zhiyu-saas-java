@@ -464,7 +464,18 @@ export function TeachingResourceSelector({ items, onChange }: TeachingResourceSe
                                 </Badge>
                               </div>
                             </div>
-                            <div className="p-2" onClick={() => toggleResource(r.id)}>
+                            <div
+                              className="p-2"
+                              onClick={() => toggleResource(r.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  toggleResource(r.id)
+                                }
+                              }}
+                            >
                               <p className="text-xs font-medium text-gray-800 truncate mb-1">
                                 {r.name}
                               </p>
