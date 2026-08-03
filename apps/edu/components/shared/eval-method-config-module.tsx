@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { PenTool } from 'lucide-react'
 import { EvalMethodSelector } from './eval-method-selector'
-import { CourseEvaluationRulesDialog } from '@/app/lesson/admin/_components/assessment/course-evaluation-rules-dialog'
+import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluation-rules-dialog'
 import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
 import { mergeEvalRuleMethods } from '@/lib/types/evaluation'
 import type { KnowledgePointItem } from '@/lib/types/lesson'

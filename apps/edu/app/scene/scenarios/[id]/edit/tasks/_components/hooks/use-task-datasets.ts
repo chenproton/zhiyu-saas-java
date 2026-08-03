@@ -16,7 +16,7 @@ import {
 import type { KnowledgePointItem, Course } from '@/lib/types/lesson'
 import type { ResourceItem } from '@/components/shared/resource-selector'
 import type { RubricScheme } from '@/components/evaluation-rules/types'
-import { setLoadedExams, type LoadedExam } from '../shared-defs'
+import { setLoadedExams, type LoadedExam } from '@/components/evaluation-rules/shared-defs'
 import { reportError } from '@/lib/error-handling'
 
 export type { RubricScheme }

@@ -83,7 +83,7 @@ import {
 import { TaskInfoCard } from './_components/task-info-card'
 import { TaskDescriptionCard } from './_components/task-description-card'
 import { TaskWeightCard } from './_components/task-weight-card'
-import { clearAllCaches } from './_components/shared-defs'
+import { clearAllCaches } from '@/components/evaluation-rules/shared-defs'
 import {
   cardConfigs,
   defaultGradeMapping,

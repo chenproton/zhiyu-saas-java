@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { EvaluationMethodSelector } from '../../../_components/assessment/evaluation-method-selector'
-import { CourseEvaluationRulesDialog } from '../../../_components/assessment/course-evaluation-rules-dialog'
+import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluation-rules-dialog'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
 import { TeachingResourceSelector } from './teaching-resource-selector'
 

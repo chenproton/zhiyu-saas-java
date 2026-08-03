@@ -57,7 +57,7 @@ import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
 import { useEvalRuleStore } from '@/lib/evaluation-rule-store'
 import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
-import { BankQuestionSelectorPanel } from '@/app/scene/scenarios/[id]/edit/tasks/_components/bank-question-selector-panel'
+import { BankQuestionSelectorPanel } from '@/components/evaluation-rules/bank-question-selector-panel'
 import {
   examApi,
   randomDrawQuestionApi,
@@ -71,7 +71,7 @@ import {
   questionTypeLabels,
   difficultyLabels,
   type LoadedExam,
-} from '@/app/scene/scenarios/[id]/edit/tasks/_components/shared-defs'
+} from '@/components/evaluation-rules/shared-defs'
 import {
   evaluationMethodOptions,
   evalSubTypeLabels,
