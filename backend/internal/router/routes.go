@@ -60,145 +60,153 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 		r.Use(auth)
 		r.Use(authmw.OperationLog(db, oplogBuffer))
 
-		registerAuthRoutes(r, h)
-		registerLandingRoutes(r, h, cachedLandingExams)
-
-		// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
+		// ========== Portal 教育端（强制 portal 平台 token）==========
 		r.Group(func(r chi.Router) {
-			r.Use(businessUser)
-			registerImportExportRoutes(r, h)
+			r.Use(authmw.RequirePlatform(domain.UserPlatformPortal))
+
+			r.Get("/auth/portal/me", h.authHandler.PortalMe)
+			r.Get("/subscriptions", h.subscriptionHandler.Get)
+
+			registerLandingRoutes(r, h, cachedLandingExams)
+
+			// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
+			r.Group(func(r chi.Router) {
+				r.Use(businessUser)
+				registerImportExportRoutes(r, h)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(jobViewer)
+
+				registerAlliancePublicRoutes(r, h)
+
+				r.With(cachedPublicPositions).Get("/job/public/positions", h.positionHandler.PublicList)
+				r.Get("/job/public/positions/{id}", h.positionHandler.PublicGet)
+
+				// 学生场景学习链路只读接口（写操作仍在 businessUser 组）：
+				// 学生从工作台课表进入场景大厅学习并提交测评，需要读取场景/任务/能力点/知识点
+				// 场景列表为重查询（3 个 LATERAL 聚合），挂租户级 2min 缓存（键含查询参数）
+				r.With(cachedPublicScenarios).Get("/scene/scenarios", h.scenarioHandler.List)
+				r.Get("/scene/scenarios/{id}", h.scenarioHandler.Get)
+				r.Get("/scene/tasks", h.scenarioTaskHandler.List)
+				r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
+				r.Get("/scene/tasks/{taskId}/evaluation-methods", h.taskEvaluationHandler.ListMethods)
+				r.Get("/job/abilities", h.abilityHandler.List)
+				r.Get("/job/abilities/{id}", h.abilityHandler.Get)
+				r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
+				r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
+
+				// 学生体系课学习页只读接口（写操作仍限 businessUser）
+				r.Get("/lesson/nodes", h.courseNodeHandler.List)
+				r.Get("/lesson/nodes/{id}", h.courseNodeHandler.Get)
+				r.Get("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.List)
+				r.Post("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submit", h.courseHandler.SubmitNodeHomework)
+
+				// 学生提交/查看本人的场景测评结果；评分仍限 businessUser
+				r.Get("/evaluation/results", h.evaluationResultHandler.List)
+				r.Post("/evaluation/results", h.evaluationResultHandler.Submit)
+
+				// 学生查看本人的岗位能力汇聚结果
+				r.Get("/evaluation/job-ability/results", h.jobAbilityResultHandler.List)
+
+				// 学生场景任务中查看/作答试卷（仅读）；写操作仍在 businessUser
+				registerContentReadRoutes(r, "/evaluation/exams", h.examHandler)
+				// 考试安排：学生查询 + 开始考试
+				r.Get("/evaluation/exam-usages", h.examUsageHandler.List)
+				r.Get("/evaluation/exam-usages/{id}", h.examUsageHandler.Get)
+				r.Post("/evaluation/exam-usages/{id}/start", h.examUsageHandler.Start)
+				// 学生提交考试结果
+				r.Post("/evaluation/exam-results", h.examResultHandler.Create)
+
+				// 学生/教师工作台课表渲染需要节次定义
+				r.Get("/affairs/period-slots", h.schedulingHandler.ListPeriodSlots)
+
+				// 课程前台落地页只读接口
+				registerContentReadRoutes(r, "/lesson/courses", h.courseHandler)
+
+				// 资源库前台落地页只读接口
+				r.Get("/library/resources", h.resourceLibraryHandler.List)
+				r.Get("/library/resources/{id}", h.resourceLibraryHandler.Get)
+				r.Get("/library/on-site-questions", h.onSiteQuestionLibraryHandler.List)
+				r.Get("/library/on-site-questions/{id}", h.onSiteQuestionLibraryHandler.Get)
+
+				// 岗位详情前台只读接口（岗位职责、能力绑定、能力域、证书）
+				r.Get("/job/position-responsibilities", h.positionResponsibilityHandler.List)
+				r.Get("/job/position-responsibilities/{id}", h.positionResponsibilityHandler.Get)
+				r.Get("/job/position-abilities", h.positionAbilityHandler.ListBindings)
+				r.Get("/job/ability-domains", h.abilityDomainHandler.List)
+				r.Get("/job/ability-domains/{id}", h.abilityDomainHandler.Get)
+				r.Get("/job/position-certificates", h.positionCertificateHandler.List)
+				r.Get("/job/position-certificates/{id}", h.positionCertificateHandler.Get)
+
+				// 岗位收藏前台接口
+				r.Get("/job/positions/{id}/favorite", h.positionHandler.GetFavorite)
+				r.Post("/job/positions/{id}/favorite", h.positionHandler.ToggleFavorite)
+				r.Get("/job/positions/favorites", h.positionHandler.ListFavorites)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(portalWorkspace)
+				// dashboard 内容按 userID 查询，缓存键含 userID（30s TTL），跨用户不串数据
+				r.With(cachedDashboard).Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
+				r.Get("/portal/workspace/my-schedule", h.schedulingHandler.MySchedule)
+				// 个人中心自助接口：修改本人姓名/密码（学生/教师/学校管理员）
+				r.Put("/portal/workspace/me", h.userManagementHandler.UpdateMe)
+				r.Post("/portal/workspace/me/password", h.userManagementHandler.ChangeMyPassword)
+			})
+
+			// 学生画像查询对全部业务角色开放（含学生本人），generate/archives 仍限业务用户
+			r.Group(func(r chi.Router) {
+				r.Use(jobViewer)
+				r.Get("/evaluation/portraits", h.studentPortraitHandler.List)
+				r.Get("/evaluation/portraits/{id}", h.studentPortraitHandler.Get)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(systemAdmin)
+				registerPortalRoutes(r, h)
+			})
+
+			registerWorkflowRoutes(r, h)
+
+			// 用户列表/详情对业务用户开放读取，写操作仍限系统管理员
+			r.Group(func(r chi.Router) {
+				r.Use(authmw.RequireUserRead())
+				r.Get("/users", h.userManagementHandler.List)
+				r.Get("/users/{id}", h.userManagementHandler.Get)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(businessUser)
+				registerJobRoutes(r, h)
+				registerSceneRoutes(r, h)
+				registerLessonRoutes(r, h)
+				registerEvaluationRoutes(r, h)
+				registerLibraryRoutes(r, h)
+				registerAffairsRoutes(r, h)
+
+				// 专业/行业参考数据为各业务模块共用，对业务用户开放只读
+				r.Get("/majors", h.majorHandler.List)
+				r.Get("/majors/{id}", h.majorHandler.Get)
+				r.Get("/industries", h.industryHandler.List)
+				r.Get("/industries/{id}", h.industryHandler.Get)
+			})
 		})
 
+		// ========== SaaS 运营端（强制 saas 平台 token）==========
 		r.Group(func(r chi.Router) {
-			r.Use(platformAdmin)
-			registerSuperAdminRoutes(r, h)
-		})
+			r.Use(authmw.RequirePlatform(domain.UserPlatformSaas))
 
-		r.Group(func(r chi.Router) {
-			r.Use(jobViewer)
+			r.Get("/auth/me", h.authHandler.SaasMe)
+			r.Get("/auth/saas/me", h.authHandler.SaasMe)
+			r.Get("/stats/me", h.statsHandler.MyStats)
 
-			registerAlliancePublicRoutes(r, h)
-
-			r.With(cachedPublicPositions).Get("/job/public/positions", h.positionHandler.PublicList)
-			r.Get("/job/public/positions/{id}", h.positionHandler.PublicGet)
-
-			// 学生场景学习链路只读接口（写操作仍在 businessUser 组）：
-			// 学生从工作台课表进入场景大厅学习并提交测评，需要读取场景/任务/能力点/知识点
-			// 场景列表为重查询（3 个 LATERAL 聚合），挂租户级 2min 缓存（键含查询参数）
-			r.With(cachedPublicScenarios).Get("/scene/scenarios", h.scenarioHandler.List)
-			r.Get("/scene/scenarios/{id}", h.scenarioHandler.Get)
-			r.Get("/scene/tasks", h.scenarioTaskHandler.List)
-			r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
-			r.Get("/scene/tasks/{taskId}/evaluation-methods", h.taskEvaluationHandler.ListMethods)
-			r.Get("/job/abilities", h.abilityHandler.List)
-			r.Get("/job/abilities/{id}", h.abilityHandler.Get)
-			r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
-			r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
-
-			// 学生体系课学习页只读接口（写操作仍限 businessUser）
-			r.Get("/lesson/nodes", h.courseNodeHandler.List)
-			r.Get("/lesson/nodes/{id}", h.courseNodeHandler.Get)
-			r.Get("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.List)
-			r.Post("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submit", h.courseHandler.SubmitNodeHomework)
-
-			// 学生提交/查看本人的场景测评结果；评分仍限 businessUser
-			r.Get("/evaluation/results", h.evaluationResultHandler.List)
-			r.Post("/evaluation/results", h.evaluationResultHandler.Submit)
-
-			// 学生查看本人的岗位能力汇聚结果
-			r.Get("/evaluation/job-ability/results", h.jobAbilityResultHandler.List)
-
-			// 学生场景任务中查看/作答试卷（仅读）；写操作仍在 businessUser
-			registerContentReadRoutes(r, "/evaluation/exams", h.examHandler)
-			// 考试安排：学生查询 + 开始考试
-			r.Get("/evaluation/exam-usages", h.examUsageHandler.List)
-			r.Get("/evaluation/exam-usages/{id}", h.examUsageHandler.Get)
-			r.Post("/evaluation/exam-usages/{id}/start", h.examUsageHandler.Start)
-			// 学生提交考试结果
-			r.Post("/evaluation/exam-results", h.examResultHandler.Create)
-
-			// 学生/教师工作台课表渲染需要节次定义
-			r.Get("/affairs/period-slots", h.schedulingHandler.ListPeriodSlots)
-
-			// 课程前台落地页只读接口
-			registerContentReadRoutes(r, "/lesson/courses", h.courseHandler)
-
-			// 资源库前台落地页只读接口
-			r.Get("/library/resources", h.resourceLibraryHandler.List)
-			r.Get("/library/resources/{id}", h.resourceLibraryHandler.Get)
-			r.Get("/library/on-site-questions", h.onSiteQuestionLibraryHandler.List)
-			r.Get("/library/on-site-questions/{id}", h.onSiteQuestionLibraryHandler.Get)
-
-			// 岗位详情前台只读接口（岗位职责、能力绑定、能力域、证书）
-			r.Get("/job/position-responsibilities", h.positionResponsibilityHandler.List)
-			r.Get("/job/position-responsibilities/{id}", h.positionResponsibilityHandler.Get)
-			r.Get("/job/position-abilities", h.positionAbilityHandler.ListBindings)
-			r.Get("/job/ability-domains", h.abilityDomainHandler.List)
-			r.Get("/job/ability-domains/{id}", h.abilityDomainHandler.Get)
-			r.Get("/job/position-certificates", h.positionCertificateHandler.List)
-			r.Get("/job/position-certificates/{id}", h.positionCertificateHandler.Get)
-
-			// 岗位收藏前台接口
-			r.Get("/job/positions/{id}/favorite", h.positionHandler.GetFavorite)
-			r.Post("/job/positions/{id}/favorite", h.positionHandler.ToggleFavorite)
-			r.Get("/job/positions/favorites", h.positionHandler.ListFavorites)
-		})
-
-		r.Group(func(r chi.Router) {
-			r.Use(portalWorkspace)
-			// dashboard 内容按 userID 查询，缓存键含 userID（30s TTL），跨用户不串数据
-			r.With(cachedDashboard).Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
-			r.Get("/portal/workspace/my-schedule", h.schedulingHandler.MySchedule)
-			// 个人中心自助接口：修改本人姓名/密码（学生/教师/学校管理员）
-			r.Put("/portal/workspace/me", h.userManagementHandler.UpdateMe)
-			r.Post("/portal/workspace/me/password", h.userManagementHandler.ChangeMyPassword)
-		})
-
-		// 学生画像查询对全部业务角色开放（含学生本人），generate/archives 仍限业务用户
-		r.Group(func(r chi.Router) {
-			r.Use(jobViewer)
-			r.Get("/evaluation/portraits", h.studentPortraitHandler.List)
-			r.Get("/evaluation/portraits/{id}", h.studentPortraitHandler.Get)
-		})
-
-		r.Group(func(r chi.Router) {
-			r.Use(systemAdmin)
-			registerPortalRoutes(r, h)
-		})
-
-		registerWorkflowRoutes(r, h)
-
-		// 用户列表/详情对业务用户开放读取，写操作仍限系统管理员
-		r.Group(func(r chi.Router) {
-			r.Use(authmw.RequireUserRead())
-			r.Get("/users", h.userManagementHandler.List)
-			r.Get("/users/{id}", h.userManagementHandler.Get)
-		})
-
-		r.Group(func(r chi.Router) {
-			r.Use(businessUser)
-			registerJobRoutes(r, h)
-			registerSceneRoutes(r, h)
-			registerLessonRoutes(r, h)
-			registerEvaluationRoutes(r, h)
-			registerLibraryRoutes(r, h)
-			registerAffairsRoutes(r, h)
-
-			// 专业/行业参考数据为各业务模块共用，对业务用户开放只读
-			r.Get("/majors", h.majorHandler.List)
-			r.Get("/majors/{id}", h.majorHandler.Get)
-			r.Get("/industries", h.industryHandler.List)
-			r.Get("/industries/{id}", h.industryHandler.Get)
+			r.Group(func(r chi.Router) {
+				r.Use(platformAdmin)
+				registerSuperAdminRoutes(r, h)
+			})
 		})
 	})
-}
-
-func registerAuthRoutes(r chi.Router, h *Handlers) {
-	r.Get("/auth/me", h.authHandler.SaasMe)
-	r.Get("/auth/saas/me", h.authHandler.SaasMe)
-	r.Get("/auth/portal/me", h.authHandler.PortalMe)
-	r.Get("/stats/me", h.statsHandler.MyStats)
-	r.Get("/subscriptions", h.subscriptionHandler.Get)
 }
 
 func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
