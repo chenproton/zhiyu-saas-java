@@ -57,13 +57,19 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *QuestionBankHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := tenantFilter(claims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
-	bank, err := h.Service.GetQuestionBank(r.Context(), id)
+	bank, err := h.Service.GetQuestionBankInTenant(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题库不存在")
 		return

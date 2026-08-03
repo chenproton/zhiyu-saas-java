@@ -119,6 +119,10 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
+	if middleware.CurrentUser(r) == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
 	name := r.URL.Query().Get("name")
 	if name == "" || strings.Contains(name, "..") {
 		respondError(w, http.StatusBadRequest, "无效文件名")

@@ -77,6 +77,16 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 校验课程归属当前租户，防跨租户写入课程资源绑定
+	courseTenantID, err := h.Service.CourseTenantID(r.Context(), req.CourseID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, courseTenantID) {
+		return
+	}
+
 	var fileSize *int64
 	if req.Size != nil {
 		s := int64(*req.Size)

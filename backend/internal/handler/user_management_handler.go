@@ -483,6 +483,12 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "批量创建用户失败")
 		return
 	}
+	// 响应不下发密码哈希/证件号等敏感字段
+	for i := range created {
+		created[i].PasswordHash = ""
+		created[i].IDCard = nil
+		created[i].Oauth = nil
+	}
 	respondJSON(w, http.StatusCreated, ListResponse[domain.User]{Items: created, Total: len(created)})
 }
 

@@ -556,7 +556,13 @@ func (h *CertificationHandler) CreateTask(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-	task, err := h.Service.CreateCertificationTask(r.Context(), tenantID, chi.URLParam(r, "pointId"), req.TaskID, req.MaxScore, req.Weight)
+	// 校验认证点归属当前租户，防跨租户挂任务
+	pointID := chi.URLParam(r, "pointId")
+	if _, err := h.Service.GetCertificationPointByTenant(r.Context(), pointID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "认证点不存在")
+		return
+	}
+	task, err := h.Service.CreateCertificationTask(r.Context(), tenantID, pointID, req.TaskID, req.MaxScore, req.Weight)
 	if err != nil {
 		respondServerError(w, r, err, "创建关联任务失败")
 		return

@@ -5,7 +5,10 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -36,7 +39,25 @@ func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "查询现场题库列表失败")
 		return
 	}
+	stripAnswerForStudents(r, items)
 	respondJSON(w, http.StatusOK, ListResponse[domain.OnSiteQuestionLibraryItem]{Items: items, Total: total})
+}
+
+// stripAnswerForStudents 学生视角不下发题目答案/分值（学生端只读题库用于现场问答练习）。
+func stripAnswerForStudents(r *http.Request, items []domain.OnSiteQuestionLibraryItem) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		return
+	}
+	for _, rc := range claims.RoleCodes {
+		if rc == domain.RoleStudent {
+			for i := range items {
+				items[i].Answer = nil
+				items[i].Score = 0
+			}
+			return
+		}
+	}
 }
 
 // crud 返回现场题库题目 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
@@ -132,8 +153,24 @@ func (h *OnSiteQuestionLibraryHandler) crud() crudConfig[OnSiteQuestionLibraryRe
 	}
 }
 
+// Get 详情（学生视角隐藏答案/分值）。
 func (h *OnSiteQuestionLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
-	crudGet(w, r, h.crud())
+	cfg := h.crud()
+	if !crudCheckPermit(w, r, cfg.Permit) {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	item, err := cfg.GetByIDFn(r.Context(), id, "")
+	if err != nil {
+		respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
+		return
+	}
+	if cfg.GetOwnership && cfg.TenantIDFn != nil && !verifyTenantOwnership(w, r, cfg.TenantIDFn(&item)) {
+		return
+	}
+	items := []domain.OnSiteQuestionLibraryItem{item}
+	stripAnswerForStudents(r, items)
+	respondJSON(w, http.StatusOK, items[0])
 }
 
 func (h *OnSiteQuestionLibraryHandler) Create(w http.ResponseWriter, r *http.Request) {

@@ -53,7 +53,7 @@ func (h *ProgramCourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http
 
 // ImportExcel POST /import/program-courses/excel — 导入方案课程 Excel，全量替换。
 func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
-	_, ok := h.checkAuth(w, r)
+	tenantID, ok := h.checkAuth(w, r)
 	if !ok {
 		return
 	}
@@ -61,6 +61,17 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 	programID := getProgramID(r)
 	if programID == "" {
 		respondError(w, http.StatusBadRequest, "缺少方案ID programId")
+		return
+	}
+
+	// 校验方案归属当前租户，防跨租户清空/替换他人方案课程
+	var tenantOf string
+	if err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM training_programs WHERE id=$1`, programID).Scan(&tenantOf); err != nil {
+		respondError(w, http.StatusNotFound, "方案不存在")
+		return
+	}
+	if tenantOf != tenantID {
+		respondError(w, http.StatusForbidden, "无权操作该方案")
 		return
 	}
 
@@ -102,6 +113,15 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"created": len(courses), "failed": len(errors), "entity": "方案课程", "errors": errors})
+}
+
+// currentTenant 读取当前请求租户（checkAuth 已保证存在）。
+func (h *ProgramCourseImportHandler) currentTenant(r *http.Request) string {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil {
+		return ""
+	}
+	return *claims.TenantID
 }
 
 func (h *ProgramCourseImportHandler) checkAuth(w http.ResponseWriter, r *http.Request) (string, bool) {
@@ -161,14 +181,14 @@ func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *exceliz
 
 		if positionName != "" {
 			var pid string
-			if err := h.DB.QueryRow(r.Context(), `SELECT id FROM career_positions WHERE name=$1 LIMIT 1`, positionName).Scan(&pid); err == nil {
+			if err := h.DB.QueryRow(r.Context(), `SELECT id FROM career_positions WHERE name=$1 AND tenant_id=$2 LIMIT 1`, positionName, h.currentTenant(r)).Scan(&pid); err == nil {
 				c.PositionID = &pid
 				c.Name = positionName
 			}
 		}
 		if c.PositionID == nil && courseName != "" {
 			var id, n string
-			if err := h.DB.QueryRow(r.Context(), `SELECT id, name FROM courses WHERE name=$1 AND type='system' LIMIT 1`, courseName).Scan(&id, &n); err == nil {
+			if err := h.DB.QueryRow(r.Context(), `SELECT id, name FROM courses WHERE name=$1 AND type='system' AND tenant_id=$2 LIMIT 1`, courseName, h.currentTenant(r)).Scan(&id, &n); err == nil {
 				c.Name = n
 				if c.Name == "" {
 					c.Name = courseName

@@ -60,8 +60,8 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		err := h.DB.QueryRow(ctx, `
 			SELECT name, COALESCE(short_name,''), position_type, COALESCE(description,''),
 				COALESCE(career_path,''), salary_min, salary_max, industry_id, requirements, batch_id
-			FROM career_positions WHERE id=$1
-		`, pid).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements, &batchID)
+			FROM career_positions WHERE id=$1 AND tenant_id=$2
+		`, pid, tenantID).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements, &batchID)
 		if err != nil {
 			slog.Warn("导出岗位行跳过", "positionId", pid, "error", err)
 			continue
@@ -69,13 +69,13 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 
 		industryName := ""
 		if industryID != nil && *industryID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM industries WHERE id=$1`, *industryID).Scan(&industryName); err != nil {
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM industries WHERE id=$1 AND tenant_id=$2`, *industryID, tenantID).Scan(&industryName); err != nil {
 				slog.Warn("导出岗位行业名查询失败", "industryId", *industryID, "error", err)
 			}
 		}
 
 		var majorNames []string
-		majRows, err := h.DB.Query(ctx, `SELECT m.name FROM majors m JOIN career_position_majors cpm ON cpm.major_id=m.id WHERE cpm.career_position_id=$1`, pid)
+		majRows, err := h.DB.Query(ctx, `SELECT m.name FROM majors m JOIN career_position_majors cpm ON cpm.major_id=m.id JOIN career_positions cp ON cp.id=cpm.career_position_id WHERE cpm.career_position_id=$1 AND cp.tenant_id=$2`, pid, tenantID)
 		if err != nil {
 			slog.Warn("导出岗位专业列表查询失败", "positionId", pid, "error", err)
 		} else {
@@ -91,7 +91,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		}
 
 		var certNames []string
-		certRows, err := h.DB.Query(ctx, `SELECT cl.name FROM certificate_library cl JOIN position_certificates pc ON pc.certificate_library_id=cl.id WHERE pc.career_position_id=$1`, pid)
+		certRows, err := h.DB.Query(ctx, `SELECT cl.name FROM certificate_library cl JOIN position_certificates pc ON pc.certificate_library_id=cl.id WHERE pc.career_position_id=$1 AND pc.tenant_id=$2`, pid, tenantID)
 		if err != nil {
 			slog.Warn("导出岗位证书列表查询失败", "positionId", pid, "error", err)
 		} else {
@@ -108,7 +108,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM batches WHERE id=$1 AND tenant_id=$2`, *batchID, tenantID).Scan(&batchName); err != nil {
 				slog.Warn("导出岗位批次名查询失败", "batchId", *batchID, "error", err)
 			}
 		}
@@ -158,7 +158,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 	bindRow := 3
 	for _, pid := range positionIDs {
 		var positionName string
-		if err := h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, pid).Scan(&positionName); err != nil {
+		if err := h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1 AND tenant_id=$2`, pid, tenantID).Scan(&positionName); err != nil {
 			slog.Warn("导出岗位绑定名称查询失败", "positionId", pid, "error", err)
 		}
 
