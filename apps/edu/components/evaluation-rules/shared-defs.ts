@@ -71,11 +71,3 @@ export {
   QUESTION_TYPE_LABELS_SHORT as questionTypeLabels,
   DIFFICULTY_LABELS as difficultyLabels,
 } from '@zhiyu/shared-types'
-
-export const questionBankLabels: Record<string, string> = {
-  frontend: '前端开发题库',
-  backend: '后端开发题库',
-  draft: '草稿库',
-  public: '公共基础题库',
-  professional: '专业技能题库',
-}

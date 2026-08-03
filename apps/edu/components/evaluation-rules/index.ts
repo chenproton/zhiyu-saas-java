@@ -22,9 +22,5 @@ export {
   defaultGradeMapping,
   defaultEvalSubjects,
   defaultEvalPoints,
-  paperMocks,
-  questionBankLabels,
-  allQuestions,
-  initialRubricLibrary,
 } from './constants'
 export { uid, clone } from './utils'

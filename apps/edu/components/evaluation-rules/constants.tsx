@@ -4,7 +4,7 @@ import { Database, FileQuestion, FileText, PenTool, BookOpen, ClipboardList } fr
 import type { GradeMapping } from '@/lib/types/lesson'
 import type { EvalRuleSubjectConfig, EvalRulePoint } from '@/lib/types/evaluation'
 import { DEFAULT_EVAL_RULE_GRADE_MAPPING, DEFAULT_EVAL_RULE_SUBJECTS } from '@/lib/types/evaluation'
-import type { EvalSubType, QuestionItem, RubricScheme } from './types'
+import type { EvalSubType } from './types'
 
 export const evaluationMethodOptions = [
   {
@@ -96,18 +96,3 @@ export const defaultGradeMapping: GradeMapping[] = DEFAULT_EVAL_RULE_GRADE_MAPPI
 export const defaultEvalSubjects: EvalRuleSubjectConfig[] = DEFAULT_EVAL_RULE_SUBJECTS
 
 export const defaultEvalPoints: EvalRulePoint[] = []
-
-export const paperMocks: { id: string; name: string; questionCount: number; totalScore: number }[] =
-  []
-
-export const questionBankLabels: Record<string, string> = {
-  frontend: '前端开发题库',
-  backend: '后端开发题库',
-  draft: '草稿库',
-  public: '公共基础题库',
-  professional: '专业技能题库',
-}
-
-export const allQuestions: QuestionItem[] = []
-
-export const initialRubricLibrary: RubricScheme[] = []

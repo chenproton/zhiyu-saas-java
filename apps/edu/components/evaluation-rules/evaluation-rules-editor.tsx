@@ -49,9 +49,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { useToast } from '@zhiyu/ui'
+import { useToast, MixedTagEditor } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
-import { MixedTagEditor } from '@/components/shared/mixed-tag-editor'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
@@ -68,8 +67,6 @@ import {
   getLoadedExams,
   setLoadedExams,
   addLoadedExam,
-  questionTypeLabels,
-  difficultyLabels,
   type LoadedExam,
 } from '@/components/evaluation-rules/shared-defs'
 import {
@@ -77,9 +74,6 @@ import {
   evalSubTypeLabels,
   evalSubTypeColors,
   defaultGradeMapping,
-  questionBankLabels,
-  allQuestions,
-  initialRubricLibrary,
 } from './constants'
 import {
   type EvalObjectType,
@@ -188,7 +182,6 @@ export function EvaluationRulesEditor({
   const [methodInstanceCounts] = useState<Record<string, number>>({})
 
   const [showAddQuestion, setShowAddQuestion] = useState(false)
-  const [selectedQuestionForDetail] = useState<string | null>(null)
   const [questionDetailOpen, setQuestionDetailOpen] = useState(false)
 
   const [rdqSearch, setRdqSearch] = useState('')
@@ -226,7 +219,7 @@ export function EvaluationRulesEditor({
   const [methodDialogViews, setMethodDialogViews] = useState<
     Record<string, 'list' | 'edit' | 'template'>
   >({})
-  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>(initialRubricLibrary)
+  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
 
   const [reviewSteps, setReviewSteps] = useState<ReviewStep[]>(() => {
     const incoming = configProp.reviewSteps || []
@@ -4617,42 +4610,7 @@ export function EvaluationRulesEditor({
           <DialogHeader>
             <DialogTitle>题目详情</DialogTitle>
           </DialogHeader>
-          {(() => {
-            const q = allQuestions.find((aq) => aq.id === selectedQuestionForDetail)
-            if (!q) return null
-            return (
-              <div className="space-y-3 py-2">
-                <div>
-                  <Label className="text-xs text-gray-500">题目名称</Label>
-                  <p className="text-sm font-medium mt-1">{q.name}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">题目内容</Label>
-                  <p className="text-sm mt-1">{q.content}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div>
-                    <Label className="text-xs text-gray-500">题型</Label>
-                    <p className="text-sm mt-1">{questionTypeLabels[q.type] || q.type}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500">难度</Label>
-                    <p className="text-sm mt-1">{difficultyLabels[q.difficulty] || q.difficulty}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500">分值</Label>
-                    <p className="text-sm mt-1">{q.score}分</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500">所属题库</Label>
-                    <p className="text-sm mt-1">
-                      {questionBankLabels[q.questionBank as string] || q.questionBank || '-'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
+          {null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuestionDetailOpen(false)}>
               关闭
