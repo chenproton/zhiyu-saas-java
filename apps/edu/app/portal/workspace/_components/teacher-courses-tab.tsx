@@ -38,7 +38,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { PrepAssociateDialog } from './prep-associate-dialog'
 import { HybridGradingDialog } from './hybrid-grading-dialog'
 import { portalApi } from '@/lib/api'
-import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from '@/lib/external-links'
+import { SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type {
   WorkspaceDashboard,
   WorkspaceClassPlan,
@@ -661,16 +661,18 @@ export function TeacherCoursesTab({
     }
   }, [semesters, selectedTerm])
 
-  const termPlans = classPlans.filter((p) => p.term === selectedTerm)
+  const termPlans = useMemo(
+    () => classPlans.filter((p) => p.term === selectedTerm),
+    [classPlans, selectedTerm],
+  )
   const selectedPlan = termPlans.find((p) => p.id === selectedPlanId) || null
 
   useEffect(() => {
     queueMicrotask(() => {
-      if (termPlans.length > 0) {
-        setSelectedPlanId(termPlans[0].id)
-      } else {
-        setSelectedPlanId(null)
-      }
+      setSelectedPlanId((prev) => {
+        if (prev && termPlans.some((p) => p.id === prev)) return prev
+        return termPlans[0]?.id || null
+      })
     })
   }, [selectedTerm, termPlans])
 
@@ -803,7 +805,7 @@ export function TeacherCoursesTab({
                         iconBg: 'bg-gradient-to-br from-blue-500 to-indigo-600',
                         badgeBg: 'bg-gradient-to-r from-blue-500 to-indigo-500',
                         prepUrl: '/lesson/admin/hybrid/add?id=hybrid-1',
-                        learnUrl: `${COURSE_LEARN_URL}/learn/courses/hybrid/hybrid-1/teacherlearn`,
+                        learnUrl: plan.courseId ? `/lesson/landing/${plan.courseId}` : '',
                       }
                     : {
                         bg: 'from-emerald-50 to-teal-50',
@@ -1024,14 +1026,9 @@ export function TeacherCoursesTab({
                                           size="sm"
                                           variant="outline"
                                           className={`flex-1 justify-center text-[10px] h-7 px-1.5 ${isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
-                                          disabled={!isHybrid && !accentColors.learnUrl}
+                                          disabled={!accentColors.learnUrl}
                                           onClick={() => {
-                                            if (!accentColors.learnUrl) return
-                                            if (isHybrid) {
-                                              window.open(accentColors.learnUrl, '_blank')
-                                            } else {
-                                              router.push(accentColors.learnUrl)
-                                            }
+                                            if (accentColors.learnUrl) router.push(accentColors.learnUrl)
                                           }}
                                         >
                                           <PlayCircle className="h-3 w-3 mr-0.5" />

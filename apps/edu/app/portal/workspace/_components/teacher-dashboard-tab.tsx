@@ -34,7 +34,7 @@ import { CourseDetailDialog } from './teacher-courses-tab'
 import { PrepAssociateDialog } from './prep-associate-dialog'
 import { HybridGradingDialog } from './hybrid-grading-dialog'
 import { portalApi } from '@/lib/api'
-import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from '@/lib/external-links'
+import { SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type { WorkspaceDashboard, WorkspaceScheduleEvent } from '@/lib/types'
 import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
@@ -329,7 +329,7 @@ function getCourseUrls(event: TeacherScheduleEvent) {
     return {
       isHybrid: true,
       prepUrl: '/lesson/admin/hybrid/add?id=hybrid-1',
-      learnUrl: `${COURSE_LEARN_URL}/learn/courses/hybrid/hybrid-1/teacherlearn`,
+      learnUrl: event.courseId ? `/lesson/landing/${event.courseId}` : '',
     }
   }
   return {
@@ -671,11 +671,9 @@ function CourseScheduleTable({
                             size="sm"
                             variant="outline"
                             className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
-                            disabled={!urls.isHybrid && !urls.learnUrl}
+                            disabled={!urls.learnUrl}
                             onClick={() => {
-                              if (!urls.learnUrl) return
-                              if (urls.isHybrid) window.open(urls.learnUrl, '_blank')
-                              else router.push(urls.learnUrl)
+                              if (urls.learnUrl) router.push(urls.learnUrl)
                             }}
                           >
                             <PlayCircle className="h-3.5 w-3.5 mr-1" />
