@@ -336,14 +336,14 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 		{"school_admin", "学校管理员", domain.JSONMap{
 			"scene":      modPerms(adminActions),
 			"lesson":     domain.JSONMap{"courses": adminActions},
-			"evaluation": domain.JSONMap{"exams": adminActions},
+			"evaluation": domain.JSONMap{"exams": adminActions, "question-banks": adminActions},
 			"job":        domain.JSONMap{"positions": adminActions},
 		}},
 		{"teacher", "教师", domain.JSONMap{
 			"menus":      teacherMenus,
 			"scene":      modPerms(adminActions),
 			"lesson":     domain.JSONMap{"courses": adminActions},
-			"evaluation": domain.JSONMap{"exams": adminActions},
+			"evaluation": domain.JSONMap{"exams": adminActions, "question-banks": adminActions},
 			"job":        domain.JSONMap{"positions": adminActions},
 		}},
 		{"student", "学生", domain.JSONMap{
