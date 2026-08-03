@@ -160,7 +160,7 @@ func (s *CourseStore) ReplaceCourseBindings(ctx context.Context, courseID, tenan
 		if _, err := s.q.Exec(ctx, `
 			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
 			VALUES ($1, $2, $3, $4, 'course', $5)
-			ON CONFLICT (course_id, knowledge_point_id) DO NOTHING
+			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
 		`, uuid.NewString(), tenantID, courseID, kpID, userID); err != nil {
 			return fmt.Errorf("insert course knowledge binding: %w", err)
 		}
