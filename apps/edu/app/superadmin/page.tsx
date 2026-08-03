@@ -49,9 +49,9 @@ import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
+import { authApi } from '@/lib/api'
 
 const TENANTS_API = '/admin/tenants'
-const LOGIN_URL = '/api/v1/auth/saas/login'
 
 interface AdminTenant {
   id: string
@@ -179,26 +179,14 @@ export default function SuperAdminPage() {
     setLoginLoading(true)
     setLoginError(null)
     try {
-      const res = await fetch(LOGIN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
-      })
-      const data = await res.json().catch(() => ({ error: '请求失败' }))
-      if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`)
+      const data = await authApi.saasLogin({ username: loginUsername, password: loginPassword })
+      const payload = JSON.parse(atob(data.token.split('.')[1]))
+      if (!payload.roleCodes?.includes('platform_admin')) {
+        throw new Error('当前账号不是平台管理员，无权限访问')
       }
-      if (data.token && data.user) {
-        const payload = JSON.parse(atob(data.token.split('.')[1]))
-        if (!payload.roleCodes?.includes('platform_admin')) {
-          throw new Error('当前账号不是平台管理员，无权限访问')
-        }
-        setToken(data.token, 'saas')
-        setAuthenticated(true)
-        setAuthUser(data.user.username || data.user.name || '管理员')
-      } else {
-        throw new Error('登录响应缺少 token')
-      }
+      setToken(data.token, 'saas')
+      setAuthenticated(true)
+      setAuthUser(data.user.username || data.user.name || '管理员')
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : '登录失败')
     } finally {

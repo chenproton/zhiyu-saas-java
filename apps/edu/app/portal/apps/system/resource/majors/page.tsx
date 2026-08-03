@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Pencil, Trash2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest, buildQuery, type ListResponse } from '@/lib/api'
+import { majorApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -27,9 +27,7 @@ export default function MajorsPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await portalRequest<ListResponse<Major>>(
-        `/majors${buildQuery({ tenantId, limit: 1000 })}`,
-      )
+      const res = await majorApi.list({ tenantId, limit: 1000 })
       setMajors(res.items)
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载专业数据失败')
@@ -155,42 +153,33 @@ export default function MajorsPage() {
         }
         if (!item.code.trim() || !item.name.trim()) return
         if (isEdit) {
-          await portalRequest(`/majors/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify({
-              code: item.code.trim(),
-              name: item.name.trim(),
-              alias: item.alias?.trim() || null,
-              enabled: item.enabled,
-            }),
+          await majorApi.update(item.id, {
+            code: item.code.trim(),
+            name: item.name.trim(),
+            alias: item.alias?.trim() || undefined,
+            enabled: item.enabled,
           })
           toast({ title: '保存成功', description: '专业信息已更新' })
         } else {
-          await portalRequest('/majors', {
-            method: 'POST',
-            body: JSON.stringify({
-              tenantId,
-              code: item.code.trim(),
-              name: item.name.trim(),
-              alias: item.alias?.trim() || null,
-              enabled: true,
-            }),
+          await majorApi.create({
+            tenantId,
+            code: item.code.trim(),
+            name: item.name.trim(),
+            alias: item.alias?.trim() || undefined,
+            enabled: true,
           })
           toast({ title: '创建成功', description: '新专业已添加' })
         }
       }}
       onDelete={async (item) => {
-        await portalRequest(`/majors/${item.id}`, { method: 'DELETE' })
+        await majorApi.delete(item.id)
       }}
       onToggleEnabled={async (item) => {
-        await portalRequest(`/majors/${item.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            code: item.code,
-            name: item.name,
-            alias: item.alias || null,
-            enabled: !item.enabled,
-          }),
+        await majorApi.update(item.id, {
+          code: item.code,
+          name: item.name,
+          alias: item.alias || undefined,
+          enabled: !item.enabled,
         })
         toast({ title: !item.enabled ? '已启用' : '已关闭' })
       }}

@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Pencil, Trash2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest, buildQuery, type ListResponse } from '@/lib/api'
+import { industryApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -34,9 +34,7 @@ export default function IndustriesPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await portalRequest<ListResponse<Industry>>(
-        `/industries${buildQuery({ tenantId, limit: 1000 })}`,
-      )
+      const res = await industryApi.list({ tenantId, limit: 1000 })
       setIndustries(res.items)
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载行业数据失败')
@@ -209,45 +207,36 @@ export default function IndustriesPage() {
         }
         if (!item.code.trim() || !item.name.trim()) return
         if (isEdit) {
-          await portalRequest(`/industries/${item.id}`, {
-            method: 'PUT',
-            body: JSON.stringify({
-              code: item.code.trim(),
-              name: item.name.trim(),
-              parentId: item.parentId || null,
-              enabled: item.enabled,
-              sortOrder: item.sortOrder,
-            }),
+          await industryApi.update(item.id, {
+            code: item.code.trim(),
+            name: item.name.trim(),
+            parentId: item.parentId || undefined,
+            enabled: item.enabled,
+            sortOrder: item.sortOrder,
           })
           toast({ title: '保存成功', description: '行业信息已更新' })
         } else {
-          await portalRequest('/industries', {
-            method: 'POST',
-            body: JSON.stringify({
-              tenantId,
-              code: item.code.trim(),
-              name: item.name.trim(),
-              parentId: item.parentId || null,
-              enabled: true,
-              sortOrder: item.sortOrder,
-            }),
+          await industryApi.create({
+            tenantId,
+            code: item.code.trim(),
+            name: item.name.trim(),
+            parentId: item.parentId || undefined,
+            enabled: true,
+            sortOrder: item.sortOrder,
           })
           toast({ title: '创建成功', description: '新行业已添加' })
         }
       }}
       onDelete={async (item) => {
-        await portalRequest(`/industries/${item.id}`, { method: 'DELETE' })
+        await industryApi.delete(item.id)
       }}
       onToggleEnabled={async (item) => {
-        await portalRequest(`/industries/${item.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            code: item.code,
-            name: item.name,
-            parentId: item.parentId || null,
-            enabled: !item.enabled,
-            sortOrder: item.sortOrder,
-          }),
+        await industryApi.update(item.id, {
+          code: item.code,
+          name: item.name,
+          parentId: item.parentId || undefined,
+          enabled: !item.enabled,
+          sortOrder: item.sortOrder,
         })
         toast({ title: !item.enabled ? '已启用' : '已关闭' })
       }}
