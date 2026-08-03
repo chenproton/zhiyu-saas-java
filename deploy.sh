@@ -8,6 +8,7 @@
 #
 # 选项:
 #   --clean      清空构建缓存，全量重建
+#   --gates      构建前执行质量门禁（默认跳过，GitHub Actions 已覆盖；go vet/test、pnpm typecheck/lint）
 #   --skip-merge 部署成功不自动合并到 master
 #
 # 所有行为自动判断:
@@ -18,15 +19,16 @@
 set -euo pipefail
 
 # ── 参数 ──
-BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false; FORCE_FLAG=false
+BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false; FORCE_FLAG=false; GATES_FLAG=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --branch) BRANCH_NAME="$2"; shift 2 ;;
     --clean) CLEAN_BUILD=true; shift ;;
     --force) FORCE_FLAG=true; shift ;;
+    --gates) GATES_FLAG=true; shift ;;
     --skip-merge) SKIP_MERGE=true; shift ;;
     --help|-h)
-      echo "用法: $0 --branch <分支名> [--clean] [--force] [--skip-merge]"; exit 0 ;;
+      echo "用法: $0 --branch <分支名> [--clean] [--force] [--gates] [--skip-merge]"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
@@ -648,20 +650,25 @@ BUILD_BACKEND=true
 
 if $BUILD_BACKEND; then
   log "构建后端"
-  log "  质量门禁: gofmt / go vet / go test"
-  if gofmt -l "$BACKEND_DIR" | grep -q .; then
-    warn "gofmt 检查失败，存在未格式化文件："
-    gofmt -l "$BACKEND_DIR" | head -10
-    die "gofmt 检查未通过，请先运行 gofmt -w ."
-  fi
-  (cd "$BACKEND_DIR" && go vet ./...) || die "go vet ./... 失败"
-  # go test 集成测试会向数据库执行 migration/DELETE，仅允许在 TEST_DATABASE_URL
-  # 指定的专用测试库上运行，避免误伤生产数据。
-  TEST_DB_URL="${TEST_DATABASE_URL:-}"
-  if [[ -n "$TEST_DB_URL" ]] && command -v pg_isready >/dev/null 2>&1 && pg_isready "$TEST_DB_URL" >/dev/null 2>&1; then
-    (cd "$BACKEND_DIR" && TEST_DATABASE_URL="$TEST_DB_URL" go test ./...) || die "go test ./... 失败"
+  if [[ "$GATES_FLAG" == "true" ]]; then
+    log "  质量门禁: gofmt / go vet / go test"
+    if gofmt -l "$BACKEND_DIR" | grep -q .; then
+      warn "gofmt 检查失败，存在未格式化文件："
+      gofmt -l "$BACKEND_DIR" | head -10
+      die "gofmt 检查未通过，请先运行 gofmt -w ."
+    fi
+    # 与下方 go build 共用 GOCACHE，避免双份编译缓存拖慢部署
+    (cd "$BACKEND_DIR" && GOCACHE="$BUILD_CACHE/go-cache" go vet ./...) || die "go vet ./... 失败"
+    # go test 集成测试会向数据库执行 migration/DELETE，仅允许在 TEST_DATABASE_URL
+    # 指定的专用测试库上运行，避免误伤生产数据。
+    TEST_DB_URL="${TEST_DATABASE_URL:-}"
+    if [[ -n "$TEST_DB_URL" ]] && command -v pg_isready >/dev/null 2>&1 && pg_isready "$TEST_DB_URL" >/dev/null 2>&1; then
+      (cd "$BACKEND_DIR" && TEST_DATABASE_URL="$TEST_DB_URL" go test ./...) || die "go test ./... 失败"
+    else
+      warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
+    fi
   else
-    warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
+    log "  质量门禁已跳过（GitHub Actions 已覆盖，--gates 可手动开启）"
   fi
   mkdir -p "$BUILD_CACHE/go-cache"
   if [[ -d "$BACKEND_DIR/vendor" ]]; then
@@ -724,9 +731,13 @@ if $BUILD_FRONTEND; then
     echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
   fi
 
-  log "  质量门禁: pnpm typecheck / pnpm lint"
-  (cd "$BUILD_ROOT" && pnpm typecheck) || die "pnpm typecheck 失败"
-  (cd "$BUILD_ROOT" && pnpm lint) || die "pnpm lint 失败"
+  if [[ "$GATES_FLAG" == "true" ]]; then
+    log "  质量门禁: pnpm typecheck / pnpm lint"
+    (cd "$BUILD_ROOT" && pnpm typecheck) || die "pnpm typecheck 失败"
+    (cd "$BUILD_ROOT" && pnpm lint) || die "pnpm lint 失败"
+  else
+    log "  质量门禁已跳过（GitHub Actions 已覆盖，--gates 可手动开启）"
+  fi
 
   [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/.next"
   (cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
@@ -856,9 +867,19 @@ if [[ "$CLEAN_BUILD" == "true" ]]; then
   fi
 fi
 
+# 每次部署后的磁盘清理：构建缓存超限自动裁剪（保留近期缓存，不拖慢下次构建）
+if docker builder prune --help 2>/dev/null | grep -q -- '--keep-storage'; then
+  docker builder prune -f --keep-storage 10GB >/dev/null 2>&1 || true
+else
+  docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
+fi
+# 清理悬空镜像（<none>），不影响在用镜像
+docker image prune -f >/dev/null 2>&1 || true
+
 # 清理过旧的镜像标签，每侧保留最近 5 个
 prune_old_images "zhiyu-backend" 5
 prune_old_images "zhiyu-edu" 5
+prune_old_images "fangzhengjin/kkfileview" 3
 
 # ════════════════════════════════════════════
 # 7. Nginx + 合并
