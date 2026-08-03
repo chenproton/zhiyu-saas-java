@@ -255,6 +255,8 @@ func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, 
 	}
 
 	user.PasswordHash = ""
+	// OAuth 第三方凭据不随登录响应下发
+	user.Oauth = nil
 	respondJSON(w, http.StatusOK, LoginResponse{Token: token, User: *user})
 }
 

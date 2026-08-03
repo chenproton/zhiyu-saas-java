@@ -103,8 +103,12 @@ func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	course, err := h.Service.GetCourseDetail(r.Context(), id)
+	course, err := h.Service.GetCourseDetailInTenant(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "课程不存在")
 		return

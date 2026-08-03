@@ -165,6 +165,11 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询用户列表失败")
 		return
 	}
+	// 批量场景裁剪身份证/OAuth 敏感字段，避免教师翻页拉取全租户敏感信息
+	for i := range items {
+		items[i].IDCard = nil
+		items[i].Oauth = nil
+	}
 	respondJSON(w, http.StatusOK, ListResponse[domain.User]{Items: items, Total: total})
 }
 
@@ -179,6 +184,8 @@ func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.PasswordHash = ""
+	// 详情保留身份证供编辑回显，OAuth 凭据不随详情下发
+	user.Oauth = nil
 	respondJSON(w, http.StatusOK, user)
 }
 
