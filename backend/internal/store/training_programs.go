@@ -123,7 +123,7 @@ func (s *TrainingProgramStore) ListCourses(ctx context.Context, programID string
 		return nil, err
 	}
 	defer rows.Close()
-	var items []domain.TrainingProgramCourse
+	items := make([]domain.TrainingProgramCourse, 0)
 	for rows.Next() {
 		var c domain.TrainingProgramCourse
 		var positionID, courseID *string
