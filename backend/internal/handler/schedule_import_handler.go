@@ -13,6 +13,7 @@ import (
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScheduleImportHandler struct {
@@ -756,7 +757,7 @@ func (h *ScheduleImportHandler) checkScheduleConflicts(ctx context.Context, tena
 			AND se.periods ?| $7
 			AND ($8 = '' OR se.id::text <> $8)
 	`
-	periods := jsonSliceToStrings(req.Periods)
+	periods := store.JSONSliceToStrings(req.Periods)
 	weekPattern := req.WeekPattern
 	if weekPattern == "" {
 		weekPattern = "all"

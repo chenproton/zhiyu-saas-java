@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 // ErrMissingTenant is returned by ExecuteListQuery when a tenant-scoped query
@@ -503,6 +504,25 @@ func ParsePageLimit(s string, defaultVal int) (int, error) {
 // Itoa 整数转字符串。
 func Itoa(i int) string {
 	return strconv.Itoa(i)
+}
+
+// StrPtrIfNonEmpty 空串转 nil，避免将空字符串写入 UUID 等列导致数据库错误。
+func StrPtrIfNonEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// JSONSliceToStrings 将 JSONSlice 转为字符串数组（过滤空串）。
+func JSONSliceToStrings(s domain.JSONSlice) []string {
+	out := make([]string, 0, len(s))
+	for _, v := range s {
+		if str, ok := v.(string); ok && str != "" {
+			out = append(out, str)
+		}
+	}
+	return out
 }
 
 // FormatDateTime 统一的"2006-01-02 15:04"时间格式化出口。

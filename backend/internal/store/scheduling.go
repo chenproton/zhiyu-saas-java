@@ -309,7 +309,7 @@ type ScheduleCreateParams struct {
 
 // CheckScheduleConflicts 查询排课冲突（完整：周重叠+节次重叠+教师/班级/场地）。
 func (s *SchedulingStore) CheckScheduleConflicts(ctx context.Context, tenantID, termID string, p *ScheduleConflictParams, excludeID string) ([]domain.ScheduleConflict, error) {
-	periods := jsonSliceToStrings(p.Periods)
+	periods := JSONSliceToStrings(p.Periods)
 	if len(periods) == 0 {
 		return nil, nil
 	}
@@ -796,17 +796,6 @@ func (s *SchedulingStore) ListPeriodSlotsConfig() ListQueryConfig[domain.PeriodS
 		OrderBy:       "sort_order ASC",
 		ScanRows:      ScanPeriodSlotRows,
 	}
-}
-
-// jsonSliceToStrings JSONSlice 转字符串数组。
-func jsonSliceToStrings(s domain.JSONSlice) []string {
-	out := make([]string, 0, len(s))
-	for _, v := range s {
-		if str, ok := v.(string); ok {
-			out = append(out, str)
-		}
-	}
-	return out
 }
 
 // UserOrgNodeID 查询用户组织节点。

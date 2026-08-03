@@ -19,11 +19,12 @@ import (
 )
 
 // emptyStrToNil 将空字符串转为 nil，避免将空字符串写入 UUID 列导致 database error。
+// 实现委托 store.StrPtrIfNonEmpty（唯一实现）。
 func emptyStrToNil(s *string) *string {
-	if s == nil || *s == "" {
+	if s == nil {
 		return nil
 	}
-	return s
+	return store.StrPtrIfNonEmpty(*s)
 }
 
 // coalesceStringSlice 将 nil 切片转为空切片，避免 SQL 参数中写入 NULL。

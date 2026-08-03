@@ -15,14 +15,6 @@ var ErrNoPeriodSlots = errors.New("未配置节次")
 // ErrNoVenues 未配置场地。
 var ErrNoVenues = errors.New("未配置场地")
 
-// strPtrIfNonEmpty 空串转 nil。
-func strPtrIfNonEmpty(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 // AffairsService 教务排课业务编排。
 type AffairsService struct {
 	*Service
@@ -225,9 +217,9 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 					checkSet = append(checkSet, existing...)
 					checkSet = append(checkSet, createdBriefs(creates)...)
 					if hasScheduleConflict(checkSet, &store.ScheduleConflictParams{
-						PlanEntryID: strPtrIfNonEmpty(e.ID),
+						PlanEntryID: store.StrPtrIfNonEmpty(e.ID),
 						ClassNodeID: e.ClassNodeID,
-						TeacherID:   strPtrIfNonEmpty(e.TeacherID),
+						TeacherID:   store.StrPtrIfNonEmpty(e.TeacherID),
 						DayOfWeek:   day,
 						Periods:     domain.JSONSlice{periodName},
 						StartWeek:   e.StartWeek,
@@ -242,18 +234,18 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 						TermID:      termID,
 						PlanEntryID: &e.ID,
 						CourseName:  e.CourseName,
-						CourseCode:  strPtrIfNonEmpty(e.CourseCode),
-						CourseID:    strPtrIfNonEmpty(e.CourseID),
+						CourseCode:  store.StrPtrIfNonEmpty(e.CourseCode),
+						CourseID:    store.StrPtrIfNonEmpty(e.CourseID),
 						Type:        entryType,
 						ClassNodeID: e.ClassNodeID,
-						TeacherID:   strPtrIfNonEmpty(e.TeacherID),
+						TeacherID:   store.StrPtrIfNonEmpty(e.TeacherID),
 						DayOfWeek:   day,
 						Periods:     domain.JSONSlice{periodName},
 						StartWeek:   e.StartWeek,
 						EndWeek:     e.EndWeek,
 						WeekPattern: weekPattern,
 						VenueID:     &venue.ID,
-						ScenarioID:  strPtrIfNonEmpty(e.ScenarioID),
+						ScenarioID:  store.StrPtrIfNonEmpty(e.ScenarioID),
 						Source:      "auto",
 					})
 					success++
@@ -332,7 +324,7 @@ func hasScheduleConflict(existing []store.TermScheduleBrief, p *store.ScheduleCo
 		if exPattern != "all" && p.WeekPattern != "all" && exPattern != p.WeekPattern {
 			continue
 		}
-		if !periodsOverlap(ex.Periods, schedulePeriodStrings(p.Periods)) {
+		if !periodsOverlap(ex.Periods, store.JSONSliceToStrings(p.Periods)) {
 			continue
 		}
 		if p.PlanEntryID != nil && ex.PlanEntryID != nil && *ex.PlanEntryID == *p.PlanEntryID {
@@ -369,17 +361,6 @@ func periodsOverlap(a, b []string) bool {
 		}
 	}
 	return false
-}
-
-// schedulePeriodStrings 提取节次字符串列表。
-func schedulePeriodStrings(s domain.JSONSlice) []string {
-	out := make([]string, 0, len(s))
-	for _, v := range s {
-		if str, ok := v.(string); ok {
-			out = append(out, str)
-		}
-	}
-	return out
 }
 
 // PublishSchedules 批量发布排课。

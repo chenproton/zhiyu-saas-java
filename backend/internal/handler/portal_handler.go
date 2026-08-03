@@ -148,7 +148,7 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 			if se.EntryType == "scene" {
 				eventType = "scene"
 			}
-			periodNames := jsonSliceToStrings(se.Periods)
+			periodNames := store.JSONSliceToStrings(se.Periods)
 			if len(periodNames) == 0 {
 				continue
 			}
@@ -173,7 +173,7 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 				if se.EntryType == "scene" {
 					eventType = "scene"
 				}
-				periodNames := jsonSliceToStrings(se.Periods)
+				periodNames := store.JSONSliceToStrings(se.Periods)
 				if len(periodNames) == 0 {
 					continue
 				}
@@ -406,7 +406,7 @@ func (h *PortalHandler) listTeacherClassPlansAndSessions(ctx context.Context, us
 		}
 		planID := plans[idx].ID
 
-		periodNames := jsonSliceToStrings(se.Periods)
+		periodNames := store.JSONSliceToStrings(se.Periods)
 		if len(periodNames) == 0 {
 			continue
 		}

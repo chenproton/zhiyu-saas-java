@@ -700,7 +700,7 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	for _, m := range srows {
 		if m.PlanEntryID != nil {
 			schedMap[*m.PlanEntryID] = map[string]string{
-				"day": dayMap[m.Day], "periods": strings.Join(jsonSliceToStrings(m.Periods), "，"),
+				"day": dayMap[m.Day], "periods": strings.Join(store.JSONSliceToStrings(m.Periods), "，"),
 				"teacher": m.TeacherName, "venue": m.VenueName, "classes": strings.Join(m.ClassNames, "，"),
 			}
 		}
@@ -947,16 +947,6 @@ func validateScheduleRequest(w http.ResponseWriter, req *ScheduleEntryRequest) b
 		return false
 	}
 	return true
-}
-
-func jsonSliceToStrings(s domain.JSONSlice) []string {
-	out := make([]string, 0, len(s))
-	for _, v := range s {
-		if str, ok := v.(string); ok && str != "" {
-			out = append(out, str)
-		}
-	}
-	return out
 }
 
 // checkScheduleConflicts 校验同一 term 下教师/班级/场地的时间冲突：
