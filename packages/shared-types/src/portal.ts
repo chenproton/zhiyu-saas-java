@@ -27,6 +27,8 @@ export interface WorkspaceScheduleEvent {
   className?: string
   tag?: string
   description?: string
+  scenarioId?: string
+  courseId?: string
 }
 
 export interface WorkspaceStats {
@@ -130,6 +132,8 @@ export interface WorkspaceClassPlan {
   students: number
   teacher: string
   status: 'pending' | 'active'
+  scenarioId?: string
+  courseId?: string
 }
 
 export interface WorkspaceClassSession {

@@ -43,15 +43,17 @@ type WorkspaceTodo struct {
 }
 
 type WorkspaceScheduleEvent struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	Type      string `json:"type"`
-	DayOfWeek int    `json:"dayOfWeek"`
-	Period    string `json:"period"`
-	Teacher   string `json:"teacher,omitempty"`
-	Location  string `json:"location,omitempty"`
-	Status    string `json:"status,omitempty"`
-	ClassName string `json:"className,omitempty"`
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	Type       string `json:"type"`
+	DayOfWeek  int    `json:"dayOfWeek"`
+	Period     string `json:"period"`
+	Teacher    string `json:"teacher,omitempty"`
+	Location   string `json:"location,omitempty"`
+	Status     string `json:"status,omitempty"`
+	ClassName  string `json:"className,omitempty"`
+	ScenarioID string `json:"scenarioId,omitempty"`
+	CourseID   string `json:"courseId,omitempty"`
 }
 
 type WorkspaceStats struct {
@@ -148,13 +150,15 @@ type WorkspaceTeacherCourse struct {
 }
 
 type WorkspaceClassPlan struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Course   string `json:"course"`
-	Term     string `json:"term"`
-	Students int    `json:"students"`
-	Teacher  string `json:"teacher"`
-	Status   string `json:"status"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Course     string `json:"course"`
+	Term       string `json:"term"`
+	Students   int    `json:"students"`
+	Teacher    string `json:"teacher"`
+	Status     string `json:"status"`
+	ScenarioID string `json:"scenarioId,omitempty"`
+	CourseID   string `json:"courseId,omitempty"`
 }
 
 type WorkspaceClassSession struct {

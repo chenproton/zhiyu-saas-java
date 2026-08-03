@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   BookOpen,
   Calendar,
@@ -35,7 +36,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { SectionCard } from './section-card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PrepAssociateDialog } from './prep-associate-dialog'
-import { GradingIframeDialog } from './grading-iframe-dialog'
 import { HybridGradingDialog } from './hybrid-grading-dialog'
 import { portalApi } from '@/lib/api'
 import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from '@/lib/external-links'
@@ -620,6 +620,7 @@ export function TeacherCoursesTab({
   prepAssociations = {},
   onAssociate,
 }: TeacherCoursesTabProps = {}) {
+  const router = useRouter()
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
   const [selectedTerm, setSelectedTerm] = useState('')
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
@@ -635,9 +636,6 @@ export function TeacherCoursesTab({
   const [prepUrl, setPrepUrl] = useState('')
   const [, setPrepSessionLabels] = useState<Record<string, string>>({})
 
-  const [gradeDialogOpen, setGradeDialogOpen] = useState(false)
-  const [gradeSessionTitle, setGradeSessionTitle] = useState('')
-  const [gradeClassName, setGradeClassName] = useState('')
   const [hybridGradeDialogOpen, setHybridGradeDialogOpen] = useState(false)
   const [hybridGradeSessionTitle, setHybridGradeSessionTitle] = useState('')
   const [hybridGradeClassName, setHybridGradeClassName] = useState('')
@@ -813,7 +811,7 @@ export function TeacherCoursesTab({
                         iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600',
                         badgeBg: 'bg-gradient-to-r from-emerald-500 to-teal-500',
                         prepUrl: `${SCENE_PLATFORM_URL}/student_teacher.html?task=task-1-1`,
-                        learnUrl: `${SCENE_PLATFORM_URL}/student_teacher.html?task=task-1-1`,
+                        learnUrl: plan.scenarioId ? `/scene/landing/${plan.scenarioId}` : '',
                       }
                   return (
                     <div
@@ -1026,9 +1024,15 @@ export function TeacherCoursesTab({
                                           size="sm"
                                           variant="outline"
                                           className={`flex-1 justify-center text-[10px] h-7 px-1.5 ${isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
-                                          onClick={() =>
-                                            window.open(accentColors.learnUrl, '_blank')
-                                          }
+                                          disabled={!isHybrid && !accentColors.learnUrl}
+                                          onClick={() => {
+                                            if (!accentColors.learnUrl) return
+                                            if (isHybrid) {
+                                              window.open(accentColors.learnUrl, '_blank')
+                                            } else {
+                                              router.push(accentColors.learnUrl)
+                                            }
+                                          }}
                                         >
                                           <PlayCircle className="h-3 w-3 mr-0.5" />
                                           {isHybrid ? '上课' : '前往导学'}
@@ -1038,19 +1042,15 @@ export function TeacherCoursesTab({
                                           variant="outline"
                                           className="flex-1 justify-center text-[10px] h-7 px-1.5 border-amber-200 text-amber-600 hover:bg-amber-50"
                                           onClick={() => {
-                                            if (isHybrid) {
-                                              setHybridGradeSessionTitle(
-                                                `第 ${session.week} 周 · ${session.weekday} ${session.period}`,
-                                              )
-                                              setHybridGradeClassName(plan.name)
-                                              setHybridGradeDialogOpen(true)
-                                            } else {
-                                              setGradeSessionTitle(
-                                                `第 ${session.week} 周 · ${session.weekday} ${session.period}`,
-                                              )
-                                              setGradeClassName(plan.name)
-                                              setGradeDialogOpen(true)
+                                            if (!isHybrid) {
+                                              router.push('/evaluation/scene-results')
+                                              return
                                             }
+                                            setHybridGradeSessionTitle(
+                                              `第 ${session.week} 周 · ${session.weekday} ${session.period}`,
+                                            )
+                                            setHybridGradeClassName(plan.name)
+                                            setHybridGradeDialogOpen(true)
                                           }}
                                         >
                                           <GraduationCap className="h-3 w-3 mr-0.5" />
@@ -1128,12 +1128,6 @@ export function TeacherCoursesTab({
             }))
           }
         }}
-      />
-      <GradingIframeDialog
-        open={gradeDialogOpen}
-        onOpenChange={setGradeDialogOpen}
-        sessionTitle={gradeSessionTitle}
-        className={gradeClassName}
       />
       <HybridGradingDialog
         open={hybridGradeDialogOpen}

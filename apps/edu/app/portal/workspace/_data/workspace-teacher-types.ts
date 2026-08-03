@@ -97,6 +97,8 @@ export interface TeacherScheduleEvent {
   description?: string
   tag?: string
   className?: string
+  scenarioId?: string
+  courseId?: string
 }
 
 export const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']

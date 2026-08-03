@@ -106,6 +106,8 @@ type TeacherScheduleRow struct {
 	VenueName   string
 	ClassNames  []string
 	TeacherName string
+	ScenarioID  string
+	CourseID    string
 }
 
 // ListTeacherSchedules 教师排课事件。
@@ -114,7 +116,7 @@ func (s *PortalStore) ListTeacherSchedules(ctx context.Context, userID string, t
 		SELECT se.id::text, se.course_name, se.type, se.day_of_week, se.periods,
 			COALESCE(v.name, '') AS venue_name,
 			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names,
-			COALESCE(u.name, '')
+			COALESCE(u.name, ''), COALESCE(se.scenario_id::text, ''), COALESCE(se.course_id::text, '')
 		FROM schedule_entries se
 		LEFT JOIN venues v ON v.id = se.venue_id
 		LEFT JOIN users u ON u.id = se.teacher_id
@@ -133,7 +135,7 @@ func (s *PortalStore) ListTeacherSchedules(ctx context.Context, userID string, t
 	var items []TeacherScheduleRow
 	for rows.Next() {
 		var r TeacherScheduleRow
-		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.ClassNames, &r.TeacherName); err != nil {
+		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.ClassNames, &r.TeacherName, &r.ScenarioID, &r.CourseID); err != nil {
 			continue
 		}
 		items = append(items, r)
@@ -159,6 +161,8 @@ type StudentScheduleRow struct {
 	Periods     domain.JSONSlice
 	VenueName   string
 	TeacherName string
+	ScenarioID  string
+	CourseID    string
 }
 
 // ListStudentSchedules 学生班级排课事件。
@@ -166,7 +170,7 @@ func (s *PortalStore) ListStudentSchedules(ctx context.Context, classNodeID stri
 	query := `
 		SELECT se.id::text, se.course_name, se.type, se.day_of_week, se.periods,
 			COALESCE(v.name, '') AS venue_name,
-			COALESCE(u.name, '')
+			COALESCE(u.name, ''), COALESCE(se.scenario_id::text, ''), COALESCE(se.course_id::text, '')
 		FROM schedule_entries se
 		LEFT JOIN venues v ON v.id = se.venue_id
 		LEFT JOIN users u ON u.id = se.teacher_id
@@ -186,7 +190,7 @@ func (s *PortalStore) ListStudentSchedules(ctx context.Context, classNodeID stri
 	var items []StudentScheduleRow
 	for rows.Next() {
 		var r StudentScheduleRow
-		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.TeacherName); err != nil {
+		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.TeacherName, &r.ScenarioID, &r.CourseID); err != nil {
 			continue
 		}
 		items = append(items, r)
@@ -547,6 +551,8 @@ type ClassPlanRow struct {
 	TeacherName string
 	VenueName   string
 	ClassNames  []string
+	ScenarioID  string
+	CourseID    string
 }
 
 // ListClassPlans 教师班级计划。
@@ -555,7 +561,8 @@ func (s *PortalStore) ListClassPlans(ctx context.Context, userID string, tenantI
 		SELECT se.id::text, COALESCE(se.plan_entry_id::text, ''), se.course_name, se.type, se.day_of_week,
 			se.periods, se.start_week, se.end_week, se.week_pattern, se.status,
 			COALESCE(t.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
-			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names
+			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names,
+			COALESCE(se.scenario_id::text, ''), COALESCE(se.course_id::text, '')
 		FROM schedule_entries se
 		JOIN terms t ON t.id = se.term_id
 		LEFT JOIN users u ON u.id = se.teacher_id
@@ -573,7 +580,7 @@ func (s *PortalStore) ListClassPlans(ctx context.Context, userID string, tenantI
 		var r ClassPlanRow
 		if err := rows.Scan(&r.ID, &r.PlanEntryID, &r.CourseName, &r.Type, &r.DayOfWeek, &r.Periods,
 			&r.StartWeek, &r.EndWeek, &r.WeekPattern, &r.Status,
-			&r.TermName, &r.TeacherName, &r.VenueName, &r.ClassNames); err != nil {
+			&r.TermName, &r.TeacherName, &r.VenueName, &r.ClassNames, &r.ScenarioID, &r.CourseID); err != nil {
 			continue
 		}
 		items = append(items, r)

@@ -160,6 +160,7 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 				ID: se.ID, Title: se.CourseName, Type: eventType, DayOfWeek: se.DayOfWeek,
 				Period: period, Location: se.VenueName,
 				ClassName: strings.Join(se.ClassNames, "、"), Teacher: se.TeacherName, Status: "进行中",
+				ScenarioID: se.ScenarioID, CourseID: se.CourseID,
 			})
 		}
 	} else if role == "student" {
@@ -183,6 +184,7 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 				events = append(events, domain.WorkspaceScheduleEvent{
 					ID: se.ID, Title: se.CourseName, Type: eventType, DayOfWeek: se.DayOfWeek,
 					Period: period, Location: se.VenueName, Teacher: se.TeacherName, Status: "进行中",
+					ScenarioID: se.ScenarioID, CourseID: se.CourseID,
 				})
 			}
 		}
@@ -397,6 +399,7 @@ func (h *PortalHandler) listTeacherClassPlansAndSessions(ctx context.Context, us
 			plans = append(plans, domain.WorkspaceClassPlan{
 				ID: planEntryID, Name: strings.Join(classNames, "、"), Course: courseName,
 				Term: termName, Students: 0, Teacher: teacherName, Status: statusVal,
+				ScenarioID: se.ScenarioID, CourseID: se.CourseID,
 			})
 			idx = len(plans) - 1
 			planIndex[key] = idx

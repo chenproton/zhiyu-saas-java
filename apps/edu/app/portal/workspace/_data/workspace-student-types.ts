@@ -178,6 +178,8 @@ export interface ScheduleEvent {
   description?: string
   tag?: string
   status?: string
+  scenarioId?: string
+  courseId?: string
 }
 
 export const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']

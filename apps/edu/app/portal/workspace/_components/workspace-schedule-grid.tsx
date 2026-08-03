@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   MapPin,
   User,
@@ -22,7 +23,6 @@ import {
 } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from '@/lib/external-links'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { allPeriods, days, type ScheduleEvent } from '../_data/workspace-student-types'
 import { formatDate } from '@/lib/format-utils'
@@ -67,16 +67,18 @@ const typeStyles: Record<
   },
 }
 
-function getStudentActionUrls(event: ScheduleEvent) {
-  if (event.type === 'scene') {
+function getStudentActionUrls(
+  event: ScheduleEvent,
+): { learnUrl: string; isActionable: true } | { isActionable: false } {
+  if (event.type === 'scene' && event.scenarioId) {
     return {
-      learnUrl: `${SCENE_PLATFORM_URL}/student.html?task=task-1-1`,
+      learnUrl: `/scene/landing/${event.scenarioId}`,
       isActionable: true,
     }
   }
-  if (event.type === 'course') {
+  if (event.type === 'course' && event.courseId) {
     return {
-      learnUrl: `${COURSE_LEARN_URL}/learn/courses/system/1/learn`,
+      learnUrl: `/lesson/landing/${event.courseId}`,
       isActionable: true,
     }
   }
@@ -293,6 +295,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
 
 function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; children: ReactNode }) {
   const action = getStudentActionUrls(event)
+  const router = useRouter()
 
   if (!action.isActionable) {
     return <>{children}</>
@@ -347,7 +350,7 @@ function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; child
                 size="sm"
                 variant="outline"
                 className={`flex-1 justify-center text-[11px] h-7 px-2 ${borderColor} ${textColor} ${hoverBg}`}
-                onClick={() => window.open(action.learnUrl, '_blank')}
+                onClick={() => router.push(action.learnUrl)}
               >
                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
                 前往学习
