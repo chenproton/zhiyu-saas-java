@@ -59,12 +59,15 @@ func (s *ScenarioTaskStore) ScenarioTenantID(ctx context.Context, scenarioID str
 
 // TaskTenantID 查询任务所属租户（归属校验用）。
 func (s *ScenarioTaskStore) TaskTenantID(ctx context.Context, taskID string) (string, error) {
-	var tenantID string
-	err := s.q.QueryRow(ctx, `SELECT COALESCE(tenant_id, '') FROM scenario_tasks WHERE id = $1`, taskID).Scan(&tenantID)
+	var tenantID *string
+	err := s.q.QueryRow(ctx, `SELECT tenant_id FROM scenario_tasks WHERE id = $1`, taskID).Scan(&tenantID)
 	if err != nil {
 		return "", err
 	}
-	return tenantID, nil
+	if tenantID == nil {
+		return "", nil
+	}
+	return *tenantID, nil
 }
 
 // Create 创建任务。
