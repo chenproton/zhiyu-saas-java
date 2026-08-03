@@ -227,8 +227,8 @@ export function BankQuestionSelectorPanel({
 
   return (
     <>
-      <div className="flex gap-4 flex-1 min-h-0">
-        <div className="w-3/5 flex flex-col min-h-0 min-w-0 border rounded-xl p-3 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+        <div className="w-full lg:w-3/5 flex flex-col min-h-0 min-w-0 border rounded-xl p-3 overflow-hidden">
           {selectedBankId ? (
             <>
               <div className="flex items-center gap-2 mb-3">
@@ -267,19 +267,19 @@ export function BankQuestionSelectorPanel({
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm table-fixed min-w-[560px]">
+                    <table className="w-full text-sm table-fixed min-w-[480px]">
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[40%]">
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[48%]">
                             题目内容
                           </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[16%]">
                             题型
                           </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[10%]">
                             难度
                           </th>
-                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[36%]">
+                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">
                             操作
                           </th>
                         </tr>
@@ -424,7 +424,7 @@ export function BankQuestionSelectorPanel({
             </>
           )}
         </div>
-        <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0 min-w-0 overflow-hidden">
+        <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0 min-w-0 overflow-hidden">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium text-gray-700">
               已选择题目 ({selectedIds.length}
