@@ -478,6 +478,11 @@ func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {
 		"career_positions", "ability_points", "knowledge_points",
 		"exams", "question_banks", "scenarios", "courses",
 		"staff_titles", "industries", "majors", "org_types",
+		"lesson_batches", "scene_batches", "evaluation_batches", "affairs_batches",
+		"micro_cert_templates", "cert_issuance_records",
+		"exam_usages", "exam_results",
+		"certification_rules", "certification_ability_items", "certification_ability_points",
+		"appeal_records", "user_relations",
 	}
 	for _, tbl := range tables {
 		db.Exec(ctx, "DELETE FROM "+tbl+" WHERE tenant_id = $1", TestTenantID)

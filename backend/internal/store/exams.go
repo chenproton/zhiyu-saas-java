@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -250,7 +251,9 @@ func (s *ExamStore) fetchExamQuestions(ctx context.Context, examID string) ([]do
 			return nil, err
 		}
 		if optionsStr != nil {
-			_ = json.Unmarshal([]byte(*optionsStr), &eq.Options)
+			if err := json.Unmarshal([]byte(*optionsStr), &eq.Options); err != nil {
+				slog.Warn("解析题目选项失败", "error", err)
+			}
 		}
 		if answerStr != nil {
 			var ans domain.JSONSlice
@@ -329,7 +332,9 @@ func (s *ExamStore) BatchFetchExamQuestions(ctx context.Context, examIDs []strin
 			return nil, err
 		}
 		if optionsStr != nil {
-			_ = json.Unmarshal([]byte(*optionsStr), &eq.Options)
+			if err := json.Unmarshal([]byte(*optionsStr), &eq.Options); err != nil {
+				slog.Warn("解析题目选项失败", "error", err)
+			}
 		}
 		if answerStr != nil {
 			var ans domain.JSONSlice

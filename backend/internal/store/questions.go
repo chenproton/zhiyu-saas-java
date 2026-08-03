@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -153,12 +154,16 @@ func (s *QuestionStore) fetchQuestion(ctx context.Context, id, tenantID string) 
 	}
 	if answerStr != nil {
 		var ans domain.JSONSlice
-		_ = json.Unmarshal([]byte(*answerStr), &ans)
+		if err := json.Unmarshal([]byte(*answerStr), &ans); err != nil {
+			slog.Warn("解析题目答案失败", "error", err)
+		}
 		q.Answer = ans
 	}
 	if optionsStr != nil {
 		var opts []string
-		_ = json.Unmarshal([]byte(*optionsStr), &opts)
+		if err := json.Unmarshal([]byte(*optionsStr), &opts); err != nil {
+			slog.Warn("解析题目选项失败", "error", err)
+		}
 		q.Options = opts
 	}
 	q.Analysis = analysis
@@ -204,12 +209,16 @@ func ScanQuestionRows(rows pgx.Rows) ([]domain.Question, error) {
 		}
 		if answerStr != nil {
 			var ans domain.JSONSlice
-			_ = json.Unmarshal([]byte(*answerStr), &ans)
+			if err := json.Unmarshal([]byte(*answerStr), &ans); err != nil {
+				slog.Warn("解析题目答案失败", "error", err)
+			}
 			q.Answer = ans
 		}
 		if optionsStr != nil {
 			var opts []string
-			_ = json.Unmarshal([]byte(*optionsStr), &opts)
+			if err := json.Unmarshal([]byte(*optionsStr), &opts); err != nil {
+				slog.Warn("解析题目选项失败", "error", err)
+			}
 			q.Options = opts
 		}
 		q.Analysis = analysis

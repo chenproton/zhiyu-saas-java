@@ -572,7 +572,7 @@ func TestNodeHomework_CRUD(t *testing.T) {
 }
 
 func TestCourseBatch_CRUD(t *testing.T) {
-	t.Skip("lesson_batches table not yet created in migrations")
+	// lesson_batches 表已由迁移创建，测试启用
 }
 
 func TestHybridModule(t *testing.T) {
