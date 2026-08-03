@@ -339,7 +339,7 @@ func (s *AllianceStore) ListPublicEnterprises(ctx context.Context) ([]domain.All
 			business_license_photos, qualification_photos, intellectual_property_photos,
 			cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at
 		FROM alliance_enterprises WHERE is_public = true AND status = 'active'
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC LIMIT 100
 	`)
 }
 

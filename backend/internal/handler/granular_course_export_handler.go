@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -57,17 +58,22 @@ func (h *GranularCourseExportHandler) fillCoursesData(ctx context.Context, f *ex
 			FROM courses WHERE id=$1 AND tenant_id=$2 AND type='granular'
 		`, cid, tenantID).Scan(&name, &desc, &majorID, &batchID, &difficulty, &duration)
 		if err != nil {
+			slog.Warn("导出颗粒课行跳过", "courseId", cid, "error", err)
 			continue
 		}
 
 		majorName := ""
 		if majorID != nil && *majorID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM majors WHERE id=$1`, *majorID).Scan(&majorName)
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM majors WHERE id=$1`, *majorID).Scan(&majorName); err != nil {
+				slog.Warn("导出颗粒课专业名查询失败", "majorId", *majorID, "error", err)
+			}
 		}
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName)
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+				slog.Warn("导出颗粒课批次名查询失败", "batchId", *batchID, "error", err)
+			}
 		}
 
 		diffStr := ""
@@ -112,7 +118,10 @@ func (h *GranularCourseExportHandler) lookupCourseKnowledgePointNames(ctx contex
 	var names []string
 	for rows.Next() {
 		var n string
-		rows.Scan(&n)
+		if err := rows.Scan(&n); err != nil {
+			slog.Warn("导出颗粒课知识点行扫描失败", "error", err)
+			continue
+		}
 		if n != "" {
 			names = append(names, n)
 		}
@@ -134,7 +143,10 @@ func (h *GranularCourseExportHandler) lookupCourseResourceNames(ctx context.Cont
 	var names []string
 	for rows.Next() {
 		var n string
-		rows.Scan(&n)
+		if err := rows.Scan(&n); err != nil {
+			slog.Warn("导出颗粒课资源行扫描失败", "error", err)
+			continue
+		}
 		if n != "" {
 			names = append(names, n)
 		}

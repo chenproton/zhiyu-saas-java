@@ -152,7 +152,7 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context) ([]domain.Al
 			enterprise_ids, project_ids, related_positions, related_scenes,
 			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
 		FROM alliance_achievements WHERE is_public = true AND status = 'published'
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC LIMIT 100
 	`)
 }
 

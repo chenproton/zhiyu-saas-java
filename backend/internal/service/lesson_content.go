@@ -115,9 +115,9 @@ func (s *LessonContentService) DeleteQuiz(ctx context.Context, id, tenantID stri
 	})
 }
 
-// ListQuizQuestions 查询题目（限定租户）。
-func (s *LessonContentService) ListQuizQuestions(ctx context.Context, quizID, tenantID string) ([]domain.NodeQuizQuestion, int, error) {
-	return s.st.NodeQuizzes().ListQuestions(ctx, quizID, tenantID)
+// ListQuizQuestions 查询题目（限定租户，limit<=0 时默认 500）。
+func (s *LessonContentService) ListQuizQuestions(ctx context.Context, quizID, tenantID string, limit, offset int) ([]domain.NodeQuizQuestion, int, error) {
+	return s.st.NodeQuizzes().ListQuestions(ctx, quizID, tenantID, limit, offset)
 }
 
 // AddQuizQuestion 添加题目。

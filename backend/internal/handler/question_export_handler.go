@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -81,6 +82,7 @@ func (h *QuestionExportHandler) fillQuestionsData(ctx context.Context, f *exceli
 			WHERE id=$1 AND bank_id=$2 AND tenant_id=$3
 		`, qid, bankID, tenantID).Scan(&qType, &content, &optionsJSON, &answerJSON, &analysis, &score, &difficulty, &knowledgePointIDs, &source)
 		if err != nil {
+			slog.Warn("导出题目行跳过", "questionId", qid, "error", err)
 			continue
 		}
 

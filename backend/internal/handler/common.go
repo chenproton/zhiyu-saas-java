@@ -96,8 +96,12 @@ func respondServerError(w http.ResponseWriter, r *http.Request, err error, messa
 	respondError(w, http.StatusInternalServerError, message)
 }
 
+// maxJSONBodySize limits JSON request bodies to 10MB to prevent unbounded reads.
+const maxJSONBodySize = 10 << 20 // 10MB
+
 // decodeBody 解析 JSON 请求体，失败时写 400 响应并返回 false。
 func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBodySize)
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
 		respondError(w, http.StatusBadRequest, "无效请求体")
 		return false

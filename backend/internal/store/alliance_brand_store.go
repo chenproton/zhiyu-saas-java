@@ -132,6 +132,6 @@ func (s *AllianceStore) ListPublicBrands(ctx context.Context, brandType string) 
 		query += " AND brand_type = $1"
 		args = append(args, brandType)
 	}
-	query += " ORDER BY sort_order ASC, created_at DESC"
+	query += " ORDER BY sort_order ASC, created_at DESC LIMIT 100"
 	return queryList(ctx, s.q, s.ScanBrandRows, query, args...)
 }

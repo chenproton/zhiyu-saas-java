@@ -205,7 +205,7 @@ func (s *AllianceStore) ListPublicProjects(ctx context.Context) ([]domain.Allian
 			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_by, created_at, updated_at
 		FROM alliance_projects WHERE is_public = true AND publish_status = 'published'
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC LIMIT 100
 	`)
 }
 

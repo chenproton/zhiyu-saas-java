@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,11 +18,18 @@ import (
 type JobAbilityResultHandler struct {
 	Service *service.EvaluationService
 	Agg     *service.JobAbilityAggregator
+
+	aggMu       sync.Mutex
+	aggInFlight map[string]struct{}
 }
 
 func NewJobAbilityResultHandler(st *store.Store) *JobAbilityResultHandler {
 	svc := service.New(st)
-	return &JobAbilityResultHandler{Service: service.NewEvaluationService(svc), Agg: service.NewJobAbilityAggregator(st)}
+	return &JobAbilityResultHandler{
+		Service:     service.NewEvaluationService(svc),
+		Agg:         service.NewJobAbilityAggregator(st),
+		aggInFlight: make(map[string]struct{}),
+	}
 }
 
 type JobAbilityResultItem struct {
@@ -196,12 +204,30 @@ func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	h.aggMu.Lock()
+	if _, running := h.aggInFlight[req.CareerPositionID]; running {
+		h.aggMu.Unlock()
+		slog.Warn("job ability aggregate skipped: already running", "positionId", req.CareerPositionID)
+		respondJSON(w, http.StatusAccepted, map[string]string{"status": "running"})
+		return
+	}
+	h.aggInFlight[req.CareerPositionID] = struct{}{}
+	h.aggMu.Unlock()
+
 	logID, err := h.Agg.CreateLog(r.Context(), tenantID, req.CareerPositionID)
 	if err != nil {
+		h.aggMu.Lock()
+		delete(h.aggInFlight, req.CareerPositionID)
+		h.aggMu.Unlock()
 		respondServerError(w, r, err, "触发汇聚失败")
 		return
 	}
 	go func() {
+		defer func() {
+			h.aggMu.Lock()
+			delete(h.aggInFlight, req.CareerPositionID)
+			h.aggMu.Unlock()
+		}()
 		defer func() {
 			if rec := recover(); rec != nil {
 				slog.Error("job ability aggregate panic", "logId", logID, "panic", rec)

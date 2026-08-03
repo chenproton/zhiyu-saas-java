@@ -90,18 +90,25 @@ func (s *NodeQuizStore) DeleteQuiz(ctx context.Context, tx Queryer, id, tenantID
 	return err
 }
 
-// ListQuestions 查询测验题目（限定租户）。
-func (s *NodeQuizStore) ListQuestions(ctx context.Context, quizID, tenantID string) ([]domain.NodeQuizQuestion, int, error) {
+// ListQuestions 查询测验题目（限定租户，limit<=0 时默认 500）。
+func (s *NodeQuizStore) ListQuestions(ctx context.Context, quizID, tenantID string, limit, offset int) ([]domain.NodeQuizQuestion, int, error) {
 	var total int
 	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM node_quiz_questions WHERE quiz_id = $1 AND tenant_id = $2`, quizID, tenantID).Scan(&total); err != nil {
 		return nil, 0, err
+	}
+	if limit <= 0 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
 	}
 	rows, err := s.q.Query(ctx, `
 		SELECT id, quiz_id, type, question, options, answer, score, sort_order
 		FROM node_quiz_questions
 		WHERE quiz_id = $1 AND tenant_id = $2
 		ORDER BY sort_order ASC
-	`, quizID, tenantID)
+		LIMIT $3 OFFSET $4
+	`, quizID, tenantID, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

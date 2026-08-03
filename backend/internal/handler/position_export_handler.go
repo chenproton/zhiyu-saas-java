@@ -63,36 +63,54 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			FROM career_positions WHERE id=$1
 		`, pid).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements, &batchID)
 		if err != nil {
-			slog.Info(fmt.Sprintf("[export/positions] scan position %s: %v", pid, err))
+			slog.Warn("导出岗位行跳过", "positionId", pid, "error", err)
 			continue
 		}
 
 		industryName := ""
 		if industryID != nil && *industryID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM industries WHERE id=$1`, *industryID).Scan(&industryName)
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM industries WHERE id=$1`, *industryID).Scan(&industryName); err != nil {
+				slog.Warn("导出岗位行业名查询失败", "industryId", *industryID, "error", err)
+			}
 		}
 
 		var majorNames []string
-		majRows, _ := h.DB.Query(ctx, `SELECT m.name FROM majors m JOIN career_position_majors cpm ON cpm.major_id=m.id WHERE cpm.career_position_id=$1`, pid)
-		for majRows.Next() {
-			var mn string
-			majRows.Scan(&mn)
-			majorNames = append(majorNames, mn)
+		majRows, err := h.DB.Query(ctx, `SELECT m.name FROM majors m JOIN career_position_majors cpm ON cpm.major_id=m.id WHERE cpm.career_position_id=$1`, pid)
+		if err != nil {
+			slog.Warn("导出岗位专业列表查询失败", "positionId", pid, "error", err)
+		} else {
+			for majRows.Next() {
+				var mn string
+				if err := majRows.Scan(&mn); err != nil {
+					slog.Warn("导出岗位专业行扫描失败", "positionId", pid, "error", err)
+					continue
+				}
+				majorNames = append(majorNames, mn)
+			}
+			majRows.Close()
 		}
-		majRows.Close()
 
 		var certNames []string
-		certRows, _ := h.DB.Query(ctx, `SELECT cl.name FROM certificate_library cl JOIN position_certificates pc ON pc.certificate_library_id=cl.id WHERE pc.career_position_id=$1`, pid)
-		for certRows.Next() {
-			var cn string
-			certRows.Scan(&cn)
-			certNames = append(certNames, cn)
+		certRows, err := h.DB.Query(ctx, `SELECT cl.name FROM certificate_library cl JOIN position_certificates pc ON pc.certificate_library_id=cl.id WHERE pc.career_position_id=$1`, pid)
+		if err != nil {
+			slog.Warn("导出岗位证书列表查询失败", "positionId", pid, "error", err)
+		} else {
+			for certRows.Next() {
+				var cn string
+				if err := certRows.Scan(&cn); err != nil {
+					slog.Warn("导出岗位证书行扫描失败", "positionId", pid, "error", err)
+					continue
+				}
+				certNames = append(certNames, cn)
+			}
+			certRows.Close()
 		}
-		certRows.Close()
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM batches WHERE id=$1`, *batchID).Scan(&batchName)
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+				slog.Warn("导出岗位批次名查询失败", "batchId", *batchID, "error", err)
+			}
 		}
 
 		salaryStr := ""
@@ -140,7 +158,9 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 	bindRow := 3
 	for _, pid := range positionIDs {
 		var positionName string
-		h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, pid).Scan(&positionName)
+		if err := h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, pid).Scan(&positionName); err != nil {
+			slog.Warn("导出岗位绑定名称查询失败", "positionId", pid, "error", err)
+		}
 
 		bindRows, err := h.DB.Query(ctx, `
 			SELECT pr.name, ap.name, ap.category, pab.attributes, pab.domain, pab.required_level, COALESCE(pab.rubric_description,'')
@@ -151,12 +171,16 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			ORDER BY pr.sort_order
 		`, pid, tenantID)
 		if err != nil {
+			slog.Warn("导出岗位能力绑定查询失败", "positionId", pid, "error", err)
 			continue
 		}
 		for bindRows.Next() {
 			var respName, abilityName, category, domain, level, rubricDesc string
 			var attributes []string
-			bindRows.Scan(&respName, &abilityName, &category, &attributes, &domain, &level, &rubricDesc)
+			if err := bindRows.Scan(&respName, &abilityName, &category, &attributes, &domain, &level, &rubricDesc); err != nil {
+				slog.Warn("导出岗位能力绑定行扫描失败", "positionId", pid, "error", err)
+				continue
+			}
 
 			attrStr := strings.Join(attributes, ",")
 			if attrStr == "" {

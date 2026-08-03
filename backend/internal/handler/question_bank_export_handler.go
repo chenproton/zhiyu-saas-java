@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -61,6 +62,7 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 			FROM question_banks WHERE id=$1 AND tenant_id=$2
 		`, bid, tenantID).Scan(&name, &desc, &batchID)
 		if err != nil {
+			slog.Warn("导出题库行跳过", "bankId", bid, "error", err)
 			continue
 		}
 

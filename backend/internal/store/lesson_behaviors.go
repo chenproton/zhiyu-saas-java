@@ -36,7 +36,7 @@ func (s *LessonBehaviorStore) ListRecords(ctx context.Context, tenantID, courseI
 		args = append(args, endDate)
 		query += " AND r.record_date <= $" + strconv.Itoa(len(args))
 	}
-	query += " ORDER BY r.record_date DESC, r.created_at DESC"
+	query += " ORDER BY r.record_date DESC, r.created_at DESC LIMIT 1000"
 
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {

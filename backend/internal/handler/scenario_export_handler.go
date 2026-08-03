@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -60,15 +61,20 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 			FROM scenarios WHERE id=$1 AND tenant_id=$2
 		`, sid, tenantID).Scan(&name, &careerPositionID, &industryIDs, &professionIDs, &batchID, &diff, &bg)
 		if err != nil {
+			slog.Warn("导出场景行跳过", "scenarioId", sid, "error", err)
 			continue
 		}
 
 		positionName := ""
 		if careerPositionID != nil && *careerPositionID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, *careerPositionID).Scan(&positionName)
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, *careerPositionID).Scan(&positionName); err != nil {
+				slog.Warn("导出场景岗位名查询失败", "positionId", *careerPositionID, "error", err)
+			}
 		}
 		if batchID != nil && *batchID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM scene_batches WHERE id=$1`, *batchID).Scan(&batchName)
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM scene_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+				slog.Warn("导出场景批次名查询失败", "batchId", *batchID, "error", err)
+			}
 		}
 
 		industryNames := h.lookupNames(ctx, "industries", industryIDs)
@@ -99,7 +105,9 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 	taskRow := 3
 	for _, sid := range scenarioIDs {
 		var scenarioName string
-		h.DB.QueryRow(ctx, `SELECT name FROM scenarios WHERE id=$1`, sid).Scan(&scenarioName)
+		if err := h.DB.QueryRow(ctx, `SELECT name FROM scenarios WHERE id=$1`, sid).Scan(&scenarioName); err != nil {
+			slog.Warn("导出场景任务名称查询失败", "scenarioId", sid, "error", err)
+		}
 
 		taskRows, err := h.DB.Query(ctx, `
 			SELECT id, name, task_type, difficulty, estimated_hours,
@@ -108,6 +116,7 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 			FROM scenario_tasks WHERE scenario_id=$1 AND tenant_id=$2 ORDER BY sort_order
 		`, sid, tenantID)
 		if err != nil {
+			slog.Warn("导出场景任务查询失败", "scenarioId", sid, "error", err)
 			continue
 		}
 		for taskRows.Next() {
@@ -115,7 +124,10 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 			var tdiff int
 			var thours float64
 			var kpIDs, apIDs, resIDs []string
-			taskRows.Scan(&taskID, &tname, &ttype, &tdiff, &thours, &tdesc, &tdetail, &kpIDs, &apIDs, &resIDs)
+			if err := taskRows.Scan(&taskID, &tname, &ttype, &tdiff, &thours, &tdesc, &tdetail, &kpIDs, &apIDs, &resIDs); err != nil {
+				slog.Warn("导出场景任务行扫描失败", "scenarioId", sid, "error", err)
+				continue
+			}
 
 			kpNames := h.lookupKnowledgePointNames(ctx, kpIDs)
 			apNames := h.lookupAbilityPointNames(ctx, apIDs)

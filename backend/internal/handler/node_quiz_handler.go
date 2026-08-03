@@ -166,7 +166,20 @@ func (h *NodeQuizHandler) ListQuestions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	items, total, err := h.Service.ListQuizQuestions(r.Context(), quizID, tenantID)
+	limit := 500
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := parseInt(v, 0); err == nil && n > 0 && n <= 1000 {
+			limit = n
+		}
+	}
+	offset := 0
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := parseInt(v, 0); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	items, total, err := h.Service.ListQuizQuestions(r.Context(), quizID, tenantID, limit, offset)
 	if err != nil {
 		respondServerError(w, r, err, "查询题目失败")
 		return

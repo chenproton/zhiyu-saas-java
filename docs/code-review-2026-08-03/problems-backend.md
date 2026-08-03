@@ -213,7 +213,7 @@
 
 ### 3.1 导出类静默缺行（接口仍 200 成功）
 
-- `handler/course_export_handler.go:63-75`、`handler/granular_course_export_handler.go:55-61,98`、`handler/exam_export_handler.go:94`、`handler/question_export_handler.go:83-85`、`handler/position_export_handler.go:66-95`、`handler/resource_export_handler.go:126-132`、`handler/scenario_export_handler.go:38-145`（fillScenariosData 恒返回 nil，错误分支不可达）、`handler/question_bank_export_handler.go:63-65`
+- `handler/course_export_handler.go:63-75`、`handler/granular_course_export_handler.go:55-61,98`、`handler/exam_export_handler.go:94`、`handler/question_export_handler.go:83-85`、`handler/position_export_handler.go:66-95`、`handler/resource_export_handler.go:126-132`、`handler/scenario_export_handler.go:38-145`（fillScenariosData 恒返回 nil，错误分支不可达）、`handler/question_bank_export_handler.go:63-65` ✅ 已修复（全部吞错点加 slog.Warn 记录，不再静默缺行）
 
 ### 3.2 导入类吞错
 
@@ -250,21 +250,21 @@
 - `handler/course_export_handler.go:140-142`：每节点 3 次查询
 - `handler/scenario_export_handler.go:54-205`：每场景 5+ 查询，每 ID 一条 SQL
 - `service/affairs.go:220-264`：AutoSchedule O(D×P×V×E×(N+E)) 拷贝
-- `store/query.go:97` SearchParam 未使用；`ExecuteListQuery` 不检查 rows.Err()
+- `store/query.go:97` SearchParam 未使用；`ExecuteListQuery` 不检查 rows.Err() ✅ 部分修复（rows.Err() 已补；SearchParam 语义保留）
 - `handler/resource_export_handler.go:134-149`：每组织 2 次额外查询 + 逐级 buildOrgPath
-- `handler/job_ability_result_handler.go:204-216`：每次请求无条件 go 30 分钟后台汇聚，无并发上限
+- `handler/job_ability_result_handler.go:204-216`：每次请求无条件 go 30 分钟后台汇聚，无并发上限 ✅ 已修复（进程内单飞去重）
 
 ### 4.2 全表扫描/无 LIMIT
 
 - `store/alliance_*_store.go` 多个 ListPublic* 无 LIMIT
-- `store/lesson_behaviors.go:22` 按课程全量返回
+- `store/lesson_behaviors.go:22` 按课程全量返回 ✅ 已修复（LIMIT 1000）
 - `store/positions.go` / `store/certifications.go` 等 `LIKE '%...%'` 前导通配符
-- `handler/node_quiz_handler.go:91` ListQuestions 无分页
+- `handler/node_quiz_handler.go:91` ListQuestions 无分页 ✅ 已修复（limit/offset 分页）
 
 ### 4.3 内存/资源
 
 - `handler/file_handler.go` Preview 大文档转换无超时
-- `handler/common.go:90-96` decodeBody 无 MaxBytesReader 限制
+- `handler/common.go:90-96` decodeBody 无 MaxBytesReader 限制 ✅ 已修复（10MB 限制）
 - `handler/random_draw_question_handler.go` 等无请求体大小限制
 
 ---

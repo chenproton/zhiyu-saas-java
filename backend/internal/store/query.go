@@ -463,6 +463,10 @@ func ExecuteListQuery[T any](ctx context.Context, db ListQueryDB, p ListParams, 
 		slog.Error("scan rows failed", "query", query, "error", err)
 		return nil, total, err
 	}
+	if err := rows.Err(); err != nil {
+		slog.Error("list query rows iteration failed", "query", query, "error", err)
+		return nil, total, err
+	}
 	return items, total, nil
 }
 

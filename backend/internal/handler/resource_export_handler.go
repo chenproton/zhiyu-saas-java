@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -126,6 +127,7 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 	for rows.Next() {
 		var r orgRow
 		if err := rows.Scan(&r.id, &r.name, &r.typeID, &r.parentID, &r.sort); err != nil {
+			slog.Warn("导出组织行扫描失败", "error", err)
 			continue
 		}
 		orgs = append(orgs, r)
@@ -133,7 +135,9 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 
 	for i := range orgs {
 		var typeName string
-		h.DB.QueryRow(ctx, `SELECT name FROM org_types WHERE id=$1`, orgs[i].typeID).Scan(&typeName)
+		if err := h.DB.QueryRow(ctx, `SELECT name FROM org_types WHERE id=$1`, orgs[i].typeID).Scan(&typeName); err != nil {
+			slog.Warn("导出组织类型名查询失败", "typeId", orgs[i].typeID, "error", err)
+		}
 		orgs[i].typeName = typeName
 	}
 
@@ -141,7 +145,9 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 	for _, o := range orgs {
 		if o.parentID != nil && *o.parentID != "" {
 			var name string
-			h.DB.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1`, *o.parentID).Scan(&name)
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1`, *o.parentID).Scan(&name); err != nil {
+				slog.Warn("导出组织上级名称查询失败", "orgId", *o.parentID, "error", err)
+			}
 			if name != "" {
 				parentNames[*o.parentID] = name
 			}
@@ -219,6 +225,7 @@ func (h *ResourceExportHandler) fillUsers(ctx context.Context, f *excelize.File,
 	for rows.Next() {
 		var u userRow
 		if err := rows.Scan(&u.id, &u.username, &u.name, &u.status, &u.orgNodeID, &u.titleIDs); err != nil {
+			slog.Warn("导出用户行扫描失败", "error", err)
 			continue
 		}
 		users = append(users, u)

@@ -170,7 +170,7 @@ func (s *AllianceStore) ListPublicExperts(ctx context.Context) ([]domain.Allianc
 			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
 			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
 		FROM alliance_experts WHERE is_public = true AND status = 'active'
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC LIMIT 100
 	`)
 }
 
