@@ -1,4 +1,5 @@
 import type {
+  AffairsBatch,
   AffairsTerm,
   AffairsTermPayload,
   TrainingProgram,
@@ -236,15 +237,15 @@ export const myScheduleApi = {
 
 export const affairsBatchApi = {
   list: (params?: Record<string, string | number | boolean | undefined>) =>
-    request<any>(`/affairs/batches${buildQuery(params || {})}`),
-  get: (id: string) => request<any>(`/affairs/batches/${id}`),
-  create: (req: any) =>
-    request<any>('/affairs/batches', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: any) =>
-    request<any>(`/affairs/batches/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
-  delete: (id: string) => request<any>(`/affairs/batches/${id}`, { method: 'DELETE' }),
+    request<ListResponse<AffairsBatch>>(`/affairs/batches${buildQuery(params || {})}`),
+  get: (id: string) => request<AffairsBatch>(`/affairs/batches/${id}`),
+  create: (req: Omit<AffairsBatch, 'id'>) =>
+    request<AffairsBatch>('/affairs/batches', { method: 'POST', body: JSON.stringify(req) }),
+  update: (id: string, req: Partial<Omit<AffairsBatch, 'id'>>) =>
+    request<AffairsBatch>(`/affairs/batches/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/affairs/batches/${id}`, { method: 'DELETE' }),
   updateStatus: (id: string, status: string) =>
-    request<any>(`/affairs/batches/${id}/status`, {
+    request<AffairsBatch>(`/affairs/batches/${id}/status`, {
       method: 'POST',
       body: JSON.stringify({ status }),
     }),

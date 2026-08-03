@@ -47,17 +47,17 @@ export interface BatchGroupItem {
   name: string
   code?: string
   workflowId?: string
-  status: string
+  status: 'open' | 'closed'
 }
 
 export interface BatchGroupApi {
   list: (
     params?: Record<string, string | number | boolean | undefined>,
-  ) => Promise<{ items: any[] }>
-  create: (body: any) => Promise<any>
-  update: (id: string, body: any) => Promise<any>
-  delete: (id: string) => Promise<any>
-  updateStatus: (id: string, status: string) => Promise<any>
+  ) => Promise<{ items: BatchGroupItem[] }>
+  create: (body: Omit<BatchGroupItem, 'id'>) => Promise<BatchGroupItem>
+  update: (id: string, body: Partial<Omit<BatchGroupItem, 'id'>>) => Promise<BatchGroupItem>
+  delete: (id: string) => Promise<{ id: string }>
+  updateStatus: (id: string, status: string) => Promise<BatchGroupItem>
 }
 
 interface BatchGroupPageProps {

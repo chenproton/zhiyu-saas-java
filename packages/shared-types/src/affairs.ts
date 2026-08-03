@@ -260,3 +260,13 @@ export interface TeachingPlanEntryUpdatePayload {
   credits?: number
   totalHours?: number
 }
+
+/** 事务批次（affairs.batches） */
+export interface AffairsBatch {
+  id: string
+  tenantId?: string
+  name: string
+  code?: string
+  workflowId?: string
+  status: 'open' | 'closed'
+}
