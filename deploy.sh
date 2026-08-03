@@ -558,14 +558,6 @@ log "  前端入口: http://<服务器IP>:${NGINX_PORT}/portal/login"
 
 DEPLOY_COMPOSE="$DEPLOY_DIR/docker-compose.yml"
 BUILD_CACHE="$DEPLOY_DIR/.build-cache"
-IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "latest")"
-
-# 将 IMAGE_TAG 写回 .env，确保 docker compose 能读取到实际镜像标签
-if grep -q "^IMAGE_TAG=" "$ENV_FILE" 2>/dev/null; then
-  sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" "$ENV_FILE"
-else
-  echo "IMAGE_TAG=${IMAGE_TAG}" >> "$ENV_FILE"
-fi
 set -a; source "$ENV_FILE"; set +a
 
 # 数据库连接
@@ -582,6 +574,21 @@ if [[ -n "$BRANCH_NAME" ]]; then
   oc=$(git -C "$ORIGINAL_ROOT" rev-parse "origin/$BRANCH_NAME" 2>/dev/null || true)
   [[ -z "$oc" ]] && die "origin/$BRANCH_NAME 不存在，请先 git push"
   [[ "$lc" != "$oc" ]] && die "本地 $BRANCH_NAME 与 origin 不一致，请先 git push"
+fi
+
+# 镜像标签：分支部署时用分支提交（构建的正是这份代码），否则用当前 HEAD。
+# 标签即构建源码的 commit hash，部署后一眼可确认镜像内容，无需再进容器核对。
+if [[ -n "$BRANCH_NAME" ]]; then
+  IMAGE_TAG="$(git -C "$ORIGINAL_ROOT" rev-parse --short "origin/$BRANCH_NAME" 2>/dev/null || echo "latest")"
+else
+  IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "latest")"
+fi
+
+# 将 IMAGE_TAG 写回 .env，确保 docker compose 能读取到实际镜像标签
+if grep -q "^IMAGE_TAG=" "$ENV_FILE" 2>/dev/null; then
+  sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" "$ENV_FILE"
+else
+  echo "IMAGE_TAG=${IMAGE_TAG}" >> "$ENV_FILE"
 fi
 
 # ── 部署锁 ──
