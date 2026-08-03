@@ -179,10 +179,10 @@
 | `handler/exam_import_handler.go:155-171` | overwrite 先 DELETE exam_questions 再逐条插入，无事务，中途失败考试被清空 |
 | `handler/schedule_import_handler.go:155-262` | `overwrite` 参数从未使用：无论是否选择覆盖，只要含课程列表 Sheet 即无条件 DELETE 该学期全部排课 ⚠️ 设计取舍保留（代码注释与模板说明明确「清空重排」：回传文件代表该学期完整排课快照） |
 | `handler/position_import_handler.go:139-192` | overwrite 4 个 DELETE + 逐条 INSERT 无事务、错误全吞 → 半覆盖状态 |
-| `store/course_homeworks.go:77-98,141-162` | Grade 作业的 UPDATE + INSERT 评价双语句无事务 |
-| `store/graduations.go:99-127` | ApplyTopic 报名写 archive 与递增计数非事务 |
-| `store/question_banks.go:69-94` | Create 题库 INSERT + 知识点绑定无事务 |
-| `store/scenarios.go:110-122` | Delete 4 条语句无事务 |
+| `store/course_homeworks.go:77-98,141-162` | Grade 作业的 UPDATE + INSERT 评价双语句无事务 ✅ 已修复（withTxStore 事务化） |
+| `store/graduations.go:99-127` | ApplyTopic 报名写 archive 与递增计数非事务 ✅ 已修复（事务化，满员整体回滚） |
+| `store/question_banks.go:69-94` | Create 题库 INSERT + 知识点绑定无事务 ✅ 已修复（事务化） |
+| `store/scenarios.go:110-122` | Delete 4 条语句无事务 ✅ 已修复（事务化） |
 | `handler/training_program_handler.go:193-196` | 任何错误（含 DB 故障）映射为 400"已被引用" |
 | `handler/affairs_term_handler.go:134-137` | 同上模式 |
 | `handler/scheduling_handler.go:146-149` | DeleteVenue 任意错误 → 400"已被引用" |

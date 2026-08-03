@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -11,12 +12,13 @@ import (
 
 // GraduationStore 毕业设计持久化。
 type GraduationStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewGraduationStore 创建毕业设计 store。
-func NewGraduationStore(q Queryer) *GraduationStore {
-	return &GraduationStore{q: q}
+func NewGraduationStore(q Queryer, beginner txBeginner) *GraduationStore {
+	return &GraduationStore{q: q, beginner: beginner}
 }
 
 // ListTopics 查询课题列表。
@@ -98,30 +100,41 @@ func (s *GraduationStore) DeleteTopic(ctx context.Context, tx Queryer, id string
 // 返回 (是否新报名, 是否成功)。已报名过则 (false, true)。
 func (s *GraduationStore) ApplyTopic(ctx context.Context, tenantID, topicID, userID, phase string) (bool, bool, error) {
 	var applied bool
-	err := s.q.QueryRow(ctx, `
-		INSERT INTO graduation_project_archives (tenant_id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification)
-		VALUES ($1, $2, $3, $4, 'making', 0, NOW(), false)
-		ON CONFLICT (topic_id, user_id) DO NOTHING
-		RETURNING user_id
-	`, tenantID, topicID, userID, phase).Scan(&userID)
-	if err == pgx.ErrNoRows {
-		// 已报名过，不再占用名额
-		return false, true, nil
-	}
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `
+			INSERT INTO graduation_project_archives (tenant_id, topic_id, user_id, phase, doc_status, doc_count, last_updated, has_rectification)
+			VALUES ($1, $2, $3, $4, 'making', 0, NOW(), false)
+			ON CONFLICT (topic_id, user_id) DO NOTHING
+			RETURNING user_id
+		`, tenantID, topicID, userID, phase).Scan(&userID)
+		if err == pgx.ErrNoRows {
+			// 已报名过，不再占用名额
+			applied = false
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		applied = true
+		tag, err := tx.Exec(ctx, `
+			UPDATE graduation_project_topics SET applied_count = applied_count + 1 
+			WHERE id = $1 AND applied_count < capacity
+		`, topicID)
+		if err != nil {
+			return err
+		}
+		applied = tag.RowsAffected() > 0
+		if !applied {
+			// 满员时回滚报名记录（事务内直接返回错误触发整体回滚）
+			return fmt.Errorf("topic full")
+		}
+		return nil
+	})
 	if err != nil {
+		if err.Error() == "topic full" {
+			return true, false, nil
+		}
 		return false, false, err
-	}
-	tag, err := s.q.Exec(ctx, `
-		UPDATE graduation_project_topics SET applied_count = applied_count + 1 
-		WHERE id = $1 AND applied_count < capacity
-	`, topicID)
-	if err != nil {
-		return false, false, err
-	}
-	applied = tag.RowsAffected() > 0
-	if !applied {
-		// 满员回滚报名记录
-		_, _ = s.q.Exec(ctx, `DELETE FROM graduation_project_archives WHERE topic_id = $1 AND user_id = $2`, topicID, userID)
 	}
 	return true, applied, nil
 }

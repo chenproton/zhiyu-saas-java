@@ -80,27 +80,33 @@ func (s *QuestionBankStore) IsDraftPool(ctx context.Context, id string) (bool, e
 // Create 创建题库。
 func (s *QuestionBankStore) Create(ctx context.Context, tenantID string, p *QuestionBankCreateParams) (*domain.QuestionBank, error) {
 	var id string
-	err := s.q.QueryRow(ctx, `
-		INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count, creator_id,
-			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, 'v1.0', 'mine', FALSE)
-		RETURNING id
-	`, tenantID, p.Code, p.Name, p.Description, p.CoverImage, p.CreatorID,
-		p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID).Scan(&id)
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `
+			INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count, creator_id,
+				collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
+			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, 'v1.0', 'mine', FALSE)
+			RETURNING id
+		`, tenantID, p.Code, p.Name, p.Description, p.CoverImage, p.CreatorID,
+			p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID).Scan(&id)
+		if err != nil {
+			return err
+		}
+		for _, kpID := range p.KnowledgePointIDs {
+			if kpID == "" {
+				continue
+			}
+			if _, err := tx.Exec(ctx, `
+					INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
+					VALUES (gen_random_uuid(), $1, $2, $3)
+					ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
+				`, tenantID, id, kpID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-	for _, kpID := range p.KnowledgePointIDs {
-		if kpID == "" {
-			continue
-		}
-		if _, err := s.q.Exec(ctx, `
-			INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
-			VALUES (gen_random_uuid(), $1, $2, $3)
-			ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
-		`, tenantID, id, kpID); err != nil {
-			return nil, err
-		}
 	}
 	return s.Get(ctx, id)
 }
