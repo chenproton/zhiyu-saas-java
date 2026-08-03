@@ -167,12 +167,12 @@ export function MixedTagEditor({
     // 异步数据（knowledgePoints/abilityPoints）到达后，补渲染已登记但未生成 span 的标签
     const kpSpanIds = new Set(
       Array.from(el.children)
-        .filter((n) => (n as HTMLElement).dataset.tag === 'kp' && (n as HTMLElement).dataset.id)
+        .filter((n) => (n as HTMLElement).dataset.type === 'kp' && (n as HTMLElement).dataset.id)
         .map((n) => (n as HTMLElement).dataset.id as string),
     )
     const abSpanIds = new Set(
       Array.from(el.children)
-        .filter((n) => (n as HTMLElement).dataset.tag === 'ab' && (n as HTMLElement).dataset.id)
+        .filter((n) => (n as HTMLElement).dataset.type === 'ab' && (n as HTMLElement).dataset.id)
         .map((n) => (n as HTMLElement).dataset.id as string),
     )
     const missingKpIds = knowledgePointIds.filter((id) => !kpSpanIds.has(id))
