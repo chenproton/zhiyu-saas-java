@@ -10,19 +10,13 @@ const (
 	StatusRejected  ContentStatus = "rejected"
 	StatusPublished ContentStatus = "published"
 	StatusArchived  ContentStatus = "archived"
-	StatusReviewing ContentStatus = "reviewing"
 
 	// Batch states
 	StatusOpen   ContentStatus = "open"
 	StatusClosed ContentStatus = "closed"
 
 	// Certification states
-	StatusReady        ContentStatus = "ready"
 	StatusNotSubmitted ContentStatus = "not_submitted"
-	StatusNone         ContentStatus = "none"
-
-	// Institution states
-	InstitutionStatusDisabled ContentStatus = "disabled"
 )
 
 // 别名：保持各模块类型兼容，底层统一
@@ -81,6 +75,7 @@ const (
 	BatchStatusOpen   = StatusOpen
 	BatchStatusClosed = StatusClosed
 
+	LessonBatchStatusActive = ContentStatus("active")
 	LessonBatchStatusOpen   = StatusOpen
 	LessonBatchStatusClosed = StatusClosed
 
