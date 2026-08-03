@@ -1067,9 +1067,6 @@ CREATE TABLE public.scene_evaluation_results (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-    version character varying(255) NOT NULL,
-    applied_at timestamp with time zone DEFAULT now() NOT NULL
-);
 CREATE TABLE public.staff_titles (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     tenant_id uuid NOT NULL,
