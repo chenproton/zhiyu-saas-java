@@ -40,7 +40,8 @@ import {
   nodeHomeworkApi,
   nodeEvaluationResultApi,
 } from '@/lib/api'
-import type { Course, SystemCourseNode, NodeResource, KnowledgePoint } from '@/lib/types'
+import type { Course, NodeResource, KnowledgePoint } from '@/lib/types'
+import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import type {
   CourseAssessmentsResponse,
   CourseAssessmentHomework,
@@ -284,13 +285,33 @@ export default function CourseDetailPage() {
     }
   }, [highlightNodeId, nodes])
 
-  const totalResources = resources.length
+  const allResources = useMemo(() => {
+    const items: NodeResource[] = []
+    nodes.forEach((n) => {
+      ;(n.resources || []).forEach((r) => items.push({ ...r, nodeId: n.id }))
+    })
+    resources.forEach((r) => items.push({ ...r, nodeId: 'course' }))
+    return items
+  }, [resources, nodes])
+
+  const totalResources = allResources.length
   const courseKnowledgeList = useMemo(() => {
-    const ids = new Set(course?.knowledgePointIds || [])
-    nodes.forEach((n) => n.knowledgePointIds?.forEach((kid) => ids.add(kid)))
-    return Array.from(ids)
-      .map((kid) => knowledgeMap.get(kid))
-      .filter(Boolean) as KnowledgePoint[]
+    const ids = new Set<string>()
+    const kps: KnowledgePoint[] = []
+    course?.knowledgePointIds?.forEach((kid) => {
+      if (ids.has(kid)) return
+      ids.add(kid)
+      const kp = knowledgeMap.get(kid)
+      if (kp) kps.push(kp)
+    })
+    nodes.forEach((n) => {
+      ;(n.knowledgePoints || []).forEach((kp) => {
+        if (ids.has(kp.id)) return
+        ids.add(kp.id)
+        kps.push(kp as KnowledgePoint)
+      })
+    })
+    return kps
   }, [course, nodes, knowledgeMap])
 
   const totalEvalCount = useMemo(() => {
@@ -396,10 +417,10 @@ export default function CourseDetailPage() {
             ) : (
               <div className="space-y-3">
                 {nodes
-                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .sort((a, b) => a.order - b.order)
                   .map((node, idx) => {
-                    const nodeResources = resources.filter((r) => (r as any).nodeId === node.id)
-                    const nodeKnow = node.knowledgePointIds?.length || 0
+                    const nodeResources = node.resources || []
+                    const nodeKnow = node.knowledgePoints?.length || 0
                     const evalMethods = getNodeEvalMethods(node)
                     const results = nodeResults.get(node.id) || []
                     return (
@@ -417,7 +438,7 @@ export default function CourseDetailPage() {
                               <div className="text-[15px] font-semibold text-slate-800 truncate">
                                 {node.name}
                               </div>
-                              {node.refType === 'original' && (
+                              {node.type === 'original' && (
                                 <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-purple-50 text-purple-600 border-purple-200 shrink-0">
                                   引用颗粒课
                                 </span>
@@ -514,7 +535,7 @@ export default function CourseDetailPage() {
                                           <button
                                             onClick={async () => {
                                               setActiveNodeId(node.id)
-                                              setActiveNodeHomework(hw)
+                                              setActiveNodeHomework(hw as NodeHomework)
                                               if (isStudent) {
                                                 setNodeSubmitContent('')
                                                 setNodeSubmitUrls('')
@@ -576,7 +597,7 @@ export default function CourseDetailPage() {
                   const nodeMap = new Map<string, string>()
                   nodes.forEach((n) => nodeMap.set(n.id, n.name))
                   const byNode = new Map<string, NodeResource[]>()
-                  resources.forEach((r) => {
+                  allResources.forEach((r) => {
                     const nid = (r as any).nodeId || 'course'
                     const list = byNode.get(nid) || []
                     list.push(r)
