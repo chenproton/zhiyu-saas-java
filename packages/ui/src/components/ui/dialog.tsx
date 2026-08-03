@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import * as DismissableLayerPrimitive from '@radix-ui/react-dismissable-layer'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -16,6 +17,15 @@ function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive
 
 function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
   return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+}
+
+/**
+ * 将指定内容注册为上层 Dialog 的 DismissableLayer branch：
+ * 对 branch 内元素的 pointerdown/focus 视作“弹窗内部”，不会触发外层 Dialog 的点击外部关闭。
+ * 典型场景：在 Dialog 内部通过 portal 渲染的次级浮层（如资源预览弹窗）。
+ */
+function DialogBranch({ ...props }: React.ComponentProps<typeof DismissableLayerPrimitive.Branch>) {
+  return <DismissableLayerPrimitive.Branch data-slot="dialog-branch" {...props} />
 }
 
 function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.Close>) {
@@ -153,6 +163,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogBranch,
   DialogClose,
   DialogContent,
   DialogDescription,
