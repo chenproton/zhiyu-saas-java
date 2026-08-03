@@ -27,3 +27,8 @@ func (s *Service) WithTx(ctx context.Context, fn func(txStore *store.Store) erro
 func (s *Service) Store() *store.Store {
 	return s.store
 }
+
+// GenerateEntityCode 生成唯一业务编码（service 层封装，handler 不再直调 store）。
+func (s *Service) GenerateEntityCode(ctx context.Context, q store.Queryer, prefix, table, tenantID string) (string, error) {
+	return store.GenerateUniqueEntityCode(ctx, q, prefix, table, tenantID)
+}

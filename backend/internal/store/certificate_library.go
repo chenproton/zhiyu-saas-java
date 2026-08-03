@@ -92,7 +92,7 @@ func (s *CertificateLibraryStore) ScanRows(rows pgx.Rows) ([]domain.CertificateL
 		c.CreatorID = creator
 		items = append(items, c)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回证书库列表查询配置，SQL 片段沉淀在 store 层。

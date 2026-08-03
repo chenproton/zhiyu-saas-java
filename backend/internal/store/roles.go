@@ -136,5 +136,5 @@ func (s *RolesStore) ScanRows(rows pgx.Rows) ([]domain.Role, error) {
 		r.Description = desc
 		items = append(items, r)
 	}
-	return items, nil
+	return items, rows.Err()
 }

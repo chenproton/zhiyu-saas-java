@@ -469,7 +469,7 @@ func scanRubricTemplates(rows pgx.Rows) ([]domain.RubricTemplate, error) {
 		}
 		items = append(items, t)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func jsonRawMessageToJSONSlice(raw json.RawMessage) domain.JSONSlice {

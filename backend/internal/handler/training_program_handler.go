@@ -102,7 +102,7 @@ func (h *TrainingProgramHandler) Create(w http.ResponseWriter, r *http.Request) 
 	}
 	code := req.Code
 	if code == nil || *code == "" {
-		gen, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.TrainingProgramQueryer(), "RP", "training_programs", tenantID)
+		gen, err := h.Service.GenerateEntityCode(r.Context(), h.Service.TrainingProgramQueryer(), "RP", "training_programs", tenantID)
 		if err == nil {
 			code = &gen
 		}

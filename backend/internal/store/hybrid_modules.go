@@ -103,5 +103,5 @@ func ScanHybridModuleRows(rows pgx.Rows) ([]domain.HybridNodeModule, error) {
 		}
 		items = append(items, m)
 	}
-	return items, nil
+	return items, rows.Err()
 }

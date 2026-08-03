@@ -92,7 +92,7 @@ func scanScenarioWeightRows(rows pgx.Rows) ([]domain.ScenarioWeightConfig, error
 		}
 		items = append(items, w)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ScenarioGradeStore 场景等级映射持久化。
@@ -187,7 +187,7 @@ func scanScenarioGradeRows(rows pgx.Rows) ([]domain.ScenarioGradeMapping, error)
 		}
 		items = append(items, m)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // TaskKnowledgeAbilityStore 任务知识/能力绑定持久化。

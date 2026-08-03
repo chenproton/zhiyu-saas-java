@@ -110,7 +110,7 @@ func ScanRecommendRows(rows pgx.Rows) ([]domain.PositionRecommendation, error) {
 		rec.Reason = reason
 		items = append(items, rec)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回推荐位列表查询配置，SQL 片段沉淀在 store 层。

@@ -146,7 +146,7 @@ func scanPositionAbilityRows(rows pgx.Rows) ([]domain.PositionAbilityBinding, er
 		b.Attributes = attributes
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // PositionResponsibilityStore 岗位职责持久化。
@@ -258,5 +258,5 @@ func scanPositionResponsibilityRows(rows pgx.Rows) ([]domain.PositionResponsibil
 		}
 		items = append(items, r)
 	}
-	return items, nil
+	return items, rows.Err()
 }

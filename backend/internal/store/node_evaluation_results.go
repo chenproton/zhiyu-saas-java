@@ -72,5 +72,5 @@ func ScanNodeEvaluationResultRows(rows pgx.Rows) ([]domain.NodeEvaluationResult,
 		}
 		items = append(items, r)
 	}
-	return items, nil
+	return items, rows.Err()
 }

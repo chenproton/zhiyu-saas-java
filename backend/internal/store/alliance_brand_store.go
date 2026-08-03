@@ -36,7 +36,7 @@ func (s *AllianceStore) ScanBrandRows(rows pgx.Rows) ([]domain.AllianceBrand, er
 		b.ExpertID = expertID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回品牌列表查询配置，SQL 片段沉淀在 store 层。

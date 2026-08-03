@@ -108,7 +108,7 @@ func ScanBannerRows(rows pgx.Rows) ([]domain.JobBannerConfig, error) {
 		b.LinkURL = linkURL
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ===== 学期 =====

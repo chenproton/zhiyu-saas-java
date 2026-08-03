@@ -224,7 +224,7 @@ func scanResourceBindingRows(rows pgx.Rows) ([]ResourceRow, error) {
 		}
 		items = append(items, res)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListCourseResources 课程资源列表（列顺序与原 course_resource_handler 一致）。

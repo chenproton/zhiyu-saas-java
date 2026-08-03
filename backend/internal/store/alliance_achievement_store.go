@@ -44,7 +44,7 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 		a.CreatedBy = createdBy
 		items = append(items, a)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回合作成果列表查询配置，SQL 片段沉淀在 store 层。

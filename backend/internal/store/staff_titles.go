@@ -106,7 +106,7 @@ func (s *StaffTitlesStore) BatchCountUsersByTitle(ctx context.Context, tenantID 
 		}
 		counts[id] = count
 	}
-	return counts, nil
+	return counts, rows.Err()
 }
 
 func (s *StaffTitlesStore) ScanRows(rows pgx.Rows) ([]domain.StaffTitle, error) {
@@ -120,7 +120,7 @@ func (s *StaffTitlesStore) ScanRows(rows pgx.Rows) ([]domain.StaffTitle, error) 
 		t.Description = desc
 		items = append(items, t)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回职称列表查询配置，SQL 片段沉淀在 store 层。

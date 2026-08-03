@@ -244,5 +244,5 @@ func scanTaskRows(rows pgx.Rows) ([]domain.ScenarioTask, error) {
 		}
 		items = append(items, t)
 	}
-	return items, nil
+	return items, rows.Err()
 }

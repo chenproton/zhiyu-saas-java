@@ -128,5 +128,5 @@ func ScanRandomDrawQuestionRows(rows pgx.Rows) ([]domain.RandomDrawQuestion, err
 		q.MajorName = majorName
 		items = append(items, q)
 	}
-	return items, nil
+	return items, rows.Err()
 }

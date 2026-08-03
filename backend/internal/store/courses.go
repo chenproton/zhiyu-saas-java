@@ -321,5 +321,5 @@ func ScanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
 		}
 		items = append(items, c)
 	}
-	return items, nil
+	return items, rows.Err()
 }

@@ -301,5 +301,5 @@ func ScanQuestionBankRows(rows pgx.Rows) ([]domain.QuestionBank, error) {
 		b.BatchID = batchID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }

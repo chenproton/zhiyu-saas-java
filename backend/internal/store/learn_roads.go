@@ -121,5 +121,5 @@ func (s *LearnRoadsStore) ScanRows(rows pgx.Rows) ([]domain.LearnRoad, error) {
 		r.Steps = steps
 		items = append(items, r)
 	}
-	return items, nil
+	return items, rows.Err()
 }

@@ -149,7 +149,7 @@ func (s *MicroCertStore) ScanTemplateRows(rows pgx.Rows) ([]domain.MicroCertTemp
 		t.CoverImage = cover
 		items = append(items, t)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func (s *MicroCertStore) ScanIssuanceRows(rows pgx.Rows) ([]domain.CertIssuanceRecord, error) {
@@ -166,5 +166,5 @@ func (s *MicroCertStore) ScanIssuanceRows(rows pgx.Rows) ([]domain.CertIssuanceR
 		r.RevokeReason = revokeReason
 		items = append(items, r)
 	}
-	return items, nil
+	return items, rows.Err()
 }

@@ -154,7 +154,7 @@ func ScanJobBatchRows(rows pgx.Rows) ([]any, error) {
 		b.WorkflowID = workflowID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func ScanSceneBatchRows(rows pgx.Rows) ([]any, error) {
@@ -175,7 +175,7 @@ func ScanSceneBatchRows(rows pgx.Rows) ([]any, error) {
 		b.WorkflowID = workflowID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func ScanLessonBatchRows(rows pgx.Rows) ([]any, error) {
@@ -193,7 +193,7 @@ func ScanLessonBatchRows(rows pgx.Rows) ([]any, error) {
 		b.MajorName = majorName
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func ScanEvaluationBatchRows(rows pgx.Rows) ([]any, error) {
@@ -214,7 +214,7 @@ func ScanEvaluationBatchRows(rows pgx.Rows) ([]any, error) {
 		b.WorkflowID = workflowID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func ScanAffairsBatchRows(rows pgx.Rows) ([]any, error) {
@@ -235,5 +235,5 @@ func ScanAffairsBatchRows(rows pgx.Rows) ([]any, error) {
 		b.WorkflowID = workflowID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }

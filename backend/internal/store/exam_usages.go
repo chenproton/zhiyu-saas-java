@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -45,6 +46,9 @@ func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
 // Get 查询单个考试安排。
 func (s *ExamUsageStore) Get(ctx context.Context, id string) (*domain.ExamUsage, error) {
 	u, err := s.fetchExamUsage(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -164,5 +168,5 @@ func ScanExamUsageRows(rows pgx.Rows) ([]domain.ExamUsage, error) {
 		u.CreatorID = creatorID
 		items = append(items, u)
 	}
-	return items, nil
+	return items, rows.Err()
 }

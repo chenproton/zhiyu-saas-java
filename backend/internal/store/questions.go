@@ -218,5 +218,5 @@ func ScanQuestionRows(rows pgx.Rows) ([]domain.Question, error) {
 		q.Source = source
 		items = append(items, q)
 	}
-	return items, nil
+	return items, rows.Err()
 }

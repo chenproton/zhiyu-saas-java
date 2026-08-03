@@ -45,7 +45,7 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 		p.CreatedBy = createdBy
 		items = append(items, p)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回合作项目列表查询配置，SQL 片段沉淀在 store 层。
@@ -147,7 +147,7 @@ func (s *AllianceStore) ScanMilestoneRows(rows pgx.Rows) ([]domain.AllianceProje
 		m.CompletedDate = formatDate(completedDate)
 		items = append(items, m)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func (s *AllianceStore) CreateMilestone(ctx context.Context, m *domain.AllianceProjectMilestone) (string, error) {

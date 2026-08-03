@@ -254,7 +254,7 @@ func scanResourceRows(rows pgx.Rows) ([]domain.ResourceLibraryItem, error) {
 		item.UploaderMajorName = uploaderMajorName
 		items = append(items, item)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func joinSQL(parts []string, sep string) string {

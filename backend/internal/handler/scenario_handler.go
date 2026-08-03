@@ -164,7 +164,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code, err := store.GenerateUniqueEntityCode(r.Context(), h.DB.Q(), "CJ", "scenarios", *tenantID)
+	code, err := h.Service.GenerateEntityCode(r.Context(), h.DB.Q(), "CJ", "scenarios", *tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "生成scenario code失败")
 		return

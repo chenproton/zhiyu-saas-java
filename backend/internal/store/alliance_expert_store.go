@@ -53,7 +53,7 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 		e.CreatedBy = createdBy
 		items = append(items, e)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回专家列表查询配置，SQL 片段沉淀在 store 层。

@@ -219,7 +219,7 @@ func scanNodeQuizRows(rows pgx.Rows) ([]domain.NodeQuiz, error) {
 		}
 		items = append(items, q)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func scanNodeQuizQuestionRows(rows pgx.Rows) ([]domain.NodeQuizQuestion, error) {
@@ -231,5 +231,5 @@ func scanNodeQuizQuestionRows(rows pgx.Rows) ([]domain.NodeQuizQuestion, error) 
 		}
 		items = append(items, q)
 	}
-	return items, nil
+	return items, rows.Err()
 }

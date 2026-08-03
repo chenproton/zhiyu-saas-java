@@ -148,7 +148,7 @@ func scanKnowledgePointRows(rows pgx.Rows) ([]domain.KnowledgePoint, error) {
 		}
 		items = append(items, kp)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // SyncCourseKnowledgePoints 维护颗粒课对知识点的双向引用。
@@ -301,5 +301,5 @@ func scanNodeHomeworkRows(rows pgx.Rows) ([]domain.NodeHomework, error) {
 		}
 		items = append(items, hw)
 	}
-	return items, nil
+	return items, rows.Err()
 }

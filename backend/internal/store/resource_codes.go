@@ -118,7 +118,7 @@ func ScanResourceCodeRows(rows pgx.Rows) ([]domain.ResourceCode, error) {
 		rc.Description = description
 		items = append(items, rc)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ===== 推荐位 =====

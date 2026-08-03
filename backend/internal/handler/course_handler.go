@@ -153,7 +153,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.EvalData = domain.JSONMap{}
 	}
 
-	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), prefix, "courses", tenantID)
+	code, err := h.Service.GenerateEntityCode(r.Context(), h.Service.Queryer(), prefix, "courses", tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "生成课程代码失败")
 		return

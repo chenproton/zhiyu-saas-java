@@ -118,5 +118,5 @@ func ScanWorkflowRows(rows pgx.Rows) ([]domain.Workflow, error) {
 		w.MajorIds = majorIds
 		items = append(items, w)
 	}
-	return items, nil
+	return items, rows.Err()
 }

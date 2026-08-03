@@ -28,7 +28,7 @@ func (s *AllianceStore) ScanPermissionRows(rows pgx.Rows) ([]domain.AlliancePerm
 		p.PlatformPermissions = platformPerms
 		items = append(items, p)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回权限账号列表查询配置，SQL 片段沉淀在 store 层。

@@ -19,7 +19,7 @@ func (s *AllianceStore) ScanDictionaryRows(rows pgx.Rows) ([]domain.AllianceDict
 		}
 		items = append(items, d)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func (s *AllianceStore) CreateDictionary(ctx context.Context, d *domain.AllianceDictionary) (string, error) {

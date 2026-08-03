@@ -111,7 +111,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		duration = &req.Duration
 	}
 
-	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), "SJ", "exams", tenantID)
+	code, err := h.Service.GenerateEntityCode(r.Context(), h.Service.Queryer(), "SJ", "exams", tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "生成考试编码失败")
 		return

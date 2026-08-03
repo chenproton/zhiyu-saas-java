@@ -195,7 +195,7 @@ func scanScenarioRows(rows pgx.Rows) ([]domain.Scenario, error) {
 		}
 		items = append(items, sc)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // RecordView 记录浏览日志并累加计数（多个内容实体共用）。

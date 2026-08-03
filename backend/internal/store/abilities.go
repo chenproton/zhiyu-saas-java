@@ -94,7 +94,7 @@ func ScanAbilityPointRows(rows pgx.Rows) ([]domain.AbilityPoint, error) {
 		a.Code = code
 		items = append(items, a)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回能力点列表查询配置，SQL 片段沉淀在 store 层。

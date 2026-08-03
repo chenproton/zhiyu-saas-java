@@ -271,12 +271,12 @@
 
 ## 5. 后端一致性/健壮性（低危汇总）
 
-- **rows.Err() 未检查**：`store/` 下约 30 个 scan 函数（`ability_domains.go:113`、`alliance_*.go`、`banners.go:112`、`cert_grades.go`、`course_homeworks.go`、`exam_results.go:312`、`graduations.go`、`lesson_behaviors.go`、`logs.go`、`majors.go`、`node_quizzes.go`、`org_types.go`、`positions.go:568`、`question_banks.go:250`、`resource_library.go:258`、`scenarios.go:198`、`staff_titles.go`、`student_portraits.go`、`tenants.go:196`、`user_relations.go:97`、`workflows.go:118`、`scenario_tasks.go`、`course_nodes.go:385`、`teaching_plans.go:355` 等）
+- **rows.Err() 未检查**：`store/` 下约 30 个 scan 函数（`ability_domains.go:113`、`alliance_*.go`、`banners.go:112`、`cert_grades.go`、`course_homeworks.go`、`exam_results.go:312`、`graduations.go`、`lesson_behaviors.go`、`logs.go`、`majors.go`、`node_quizzes.go`、`org_types.go`、`positions.go:568`、`question_banks.go:250`、`resource_library.go:258`、`scenarios.go:198`、`staff_titles.go`、`student_portraits.go`、`tenants.go:196`、`user_relations.go:97`、`workflows.go:118`、`scenario_tasks.go`、`course_nodes.go:385`、`teaching_plans.go:355` 等） ✅ 已修复（60 处 scan 循环统一补 rows.Err()）
 - **Scan 错误 continue 吞掉**：`store/scenario_clone.go` 7 处、`store/course_clone.go` 4 处、`store/cert_grades.go` 3 处、`store/graduations.go` 3 处、`store/course_homeworks.go:164`（NULL comment 扫描失败静默丢行）等
-- **ErrNoRows 未映射 ErrNotFound**：`store/exam_usages.go:46`、`store/roles.go:43`、`store/industries.go:53`、`store/teaching_plans.go:212`、`store/subscriptions.go` 等
+- **ErrNoRows 未映射 ErrNotFound**：`store/exam_usages.go:46`、`store/roles.go:43`、`store/industries.go:53`、`store/teaching_plans.go:212`、`store/subscriptions.go` 等 ✅ 部分修复（exam_usages 映射 ErrNotFound；其余 handler 均按 err!=nil 处理行为一致，语义统一待办）
 - **JSON 反序列化错误忽略**：`store/questions.go:154-163,205-214`、`store/exams.go:252-258`、`service/task_evaluation.go:147-169` 等
 - **非法 UUID 静默转 SHA1 伪 UUID**：`store/certifications.go:586-589`、`store/learn_roads.go:72-82`（脏引用写入）
-- **分层违规**：`handler/node_evaluation_result_handler.go:42`、`handler/course_handler.go:156`、`handler/exam_handler.go:114` 直接调 `store.GenerateUniqueEntityCode(..., h.Service.Queryer(), ...)`
+- **分层违规**：`handler/node_evaluation_result_handler.go:42`、`handler/course_handler.go:156`、`handler/exam_handler.go:114` 直接调 `store.GenerateUniqueEntityCode(..., h.Service.Queryer(), ...)` ✅ 已修复（service 层 GenerateEntityCode 封装，6 处 handler 改调）
 - **domain 类型问题**：`evaluation.go:210` JobAbilityResult.EvaluatedAt string 与 DB timestamptz 不一致；`lesson.go:137` LessonBatchStatus 枚举缺 'active'（表 DEFAULT）；`status.go:13-25` 死常量；`unified.go:99/107` Phone 与 ContactPhone 并存；多个 `*string`/string、`JSONSlice`/`[]string` 不统一；`alliance.go:62-75/178-193` 重复类型定义
 - **handler 内死代码/弱校验**：`stats_handler.go:23-29` MyStats 硬编码零值；`subscription_handler.go:39-69` Update 无路由注册；`oplog.go:74-82` statusRecorder 不实现 Flusher（导出流式响应场景受限）；`common.go:170,291` 悬空注释
 

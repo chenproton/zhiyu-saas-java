@@ -198,5 +198,5 @@ func ScanApprovalRows(rows pgx.Rows) ([]domain.ApprovalRecord, error) {
 		ar.History = history
 		items = append(items, ar)
 	}
-	return items, nil
+	return items, rows.Err()
 }

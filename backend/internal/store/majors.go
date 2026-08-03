@@ -91,7 +91,7 @@ func (s *MajorsStore) ScanRows(rows pgx.Rows) ([]domain.Major, error) {
 		m.Alias = alias
 		items = append(items, m)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回专业列表查询配置，SQL 片段沉淀在 store 层。
