@@ -12,8 +12,8 @@ func (s *PositionService) ListBanners(ctx context.Context, p store.ListParams, c
 }
 
 // GetBanner 查询单个轮播图。
-func (s *PositionService) GetBanner(ctx context.Context, id string) (*domain.JobBannerConfig, error) {
-	return s.st.Banners().Get(ctx, id)
+func (s *PositionService) GetBanner(ctx context.Context, id, tenantID string) (*domain.JobBannerConfig, error) {
+	return s.st.Banners().Get(ctx, id, tenantID)
 }
 
 // CreateBanner 创建轮播图。
@@ -22,13 +22,13 @@ func (s *PositionService) CreateBanner(ctx context.Context, tenantID string, p *
 }
 
 // UpdateBanner 更新轮播图。
-func (s *PositionService) UpdateBanner(ctx context.Context, id string, p *store.BannerParams) (*domain.JobBannerConfig, error) {
-	return s.st.Banners().Update(ctx, id, p)
+func (s *PositionService) UpdateBanner(ctx context.Context, id, tenantID string, p *store.BannerParams) (*domain.JobBannerConfig, error) {
+	return s.st.Banners().Update(ctx, id, tenantID, p)
 }
 
 // DeleteBanner 删除轮播图。
-func (s *PositionService) DeleteBanner(ctx context.Context, id string) error {
-	return s.st.Banners().Delete(ctx, id)
+func (s *PositionService) DeleteBanner(ctx context.Context, id, tenantID string) error {
+	return s.st.Banners().Delete(ctx, id, tenantID)
 }
 
 // ListAnnouncements 查询公告。

@@ -32,6 +32,14 @@ export function ResourceUploadZone({
           : 'border-gray-200 hover:border-primary/30 hover:bg-gray-50/50 cursor-pointer',
       )}
       onClick={() => !uploading && fileInputRef.current?.click()}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !uploading) {
+          e.preventDefault()
+          fileInputRef.current?.click()
+        }
+      }}
       onDragOver={(e) => {
         e.preventDefault()
         e.stopPropagation()

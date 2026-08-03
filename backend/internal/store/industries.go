@@ -95,7 +95,7 @@ func (s *IndustriesStore) ScanRows(rows pgx.Rows) ([]domain.Industry, error) {
 		i.ParentID = parentID
 		items = append(items, i)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回行业列表查询配置，SQL 片段沉淀在 store 层。

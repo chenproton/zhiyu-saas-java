@@ -193,5 +193,5 @@ func scanPositionCertificateRows(rows pgx.Rows) ([]domain.PositionCertificate, e
 		}
 		items = append(items, item)
 	}
-	return items, nil
+	return items, rows.Err()
 }

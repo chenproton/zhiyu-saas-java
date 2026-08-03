@@ -36,7 +36,7 @@ func (s *AllianceStore) ScanBrandRows(rows pgx.Rows) ([]domain.AllianceBrand, er
 		b.ExpertID = expertID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回品牌列表查询配置，SQL 片段沉淀在 store 层。
@@ -132,6 +132,6 @@ func (s *AllianceStore) ListPublicBrands(ctx context.Context, brandType string) 
 		query += " AND brand_type = $1"
 		args = append(args, brandType)
 	}
-	query += " ORDER BY sort_order ASC, created_at DESC"
+	query += " ORDER BY sort_order ASC, created_at DESC LIMIT 100"
 	return queryList(ctx, s.q, s.ScanBrandRows, query, args...)
 }

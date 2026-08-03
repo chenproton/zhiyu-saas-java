@@ -12,12 +12,13 @@ import (
 
 // ScenarioStore 场景方案持久化。
 type ScenarioStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewScenarioStore 创建场景 store。
-func NewScenarioStore(q Queryer) *ScenarioStore {
-	return &ScenarioStore{q: q}
+func NewScenarioStore(q Queryer, beginner txBeginner) *ScenarioStore {
+	return &ScenarioStore{q: q, beginner: beginner}
 }
 
 // List 查询场景列表。
@@ -108,17 +109,17 @@ func (s *ScenarioStore) Update(ctx context.Context, id string, p *ScenarioUpdate
 
 // Delete 删除场景（先解绑引用）。
 func (s *ScenarioStore) Delete(ctx context.Context, id string) error {
-	if _, err := s.q.Exec(ctx, `UPDATE training_program_courses SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
-		return fmt.Errorf("unbind scenario from programs: %w", err)
-	}
-	if _, err := s.q.Exec(ctx, `UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
-		return fmt.Errorf("unbind scenario from teaching plans: %w", err)
-	}
-	if _, err := s.q.Exec(ctx, `UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
-		return fmt.Errorf("unbind scenario from schedules: %w", err)
-	}
-	_, err := s.q.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, id)
-	return err
+	// training_program_courses.scenario_id 已于 102 迁移删除，方案-场景关联改经 position_id 链路，无需解绑
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
+			return fmt.Errorf("unbind scenario from teaching plans: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
+			return fmt.Errorf("unbind scenario from schedules: %w", err)
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, id)
+		return err
+	})
 }
 
 // IncrementView 记录场景浏览。
@@ -194,7 +195,7 @@ func scanScenarioRows(rows pgx.Rows) ([]domain.Scenario, error) {
 		}
 		items = append(items, sc)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // RecordView 记录浏览日志并累加计数（多个内容实体共用）。

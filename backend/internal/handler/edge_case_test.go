@@ -156,7 +156,7 @@ func TestNonOperatorAccess(t *testing.T) {
 	token := env.NewTokenWithIdentity(schoolUserID, testhelper.TestTenantID, domain.UserRoleSchool, nil, "school_admin")
 	_, err := env.DB.Exec(ctx,
 		`INSERT INTO users (id, tenant_id, role, username, login_name, password_hash, name, status, title_ids) VALUES ($1, $2, 'school', $3, $3, $4, 'School User', 'active', '{}')`,
-		schoolUserID, testhelper.TestTenantID, schoolUserID[:8], "$2a$10$placeholderhash")
+		schoolUserID, testhelper.TestTenantID, schoolUserID[:8], "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy")
 	if err != nil {
 		t.Fatalf("create school user: %v", err)
 	}

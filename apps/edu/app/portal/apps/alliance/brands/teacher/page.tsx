@@ -191,7 +191,7 @@ export default function AllianceTeacherBrandPage() {
               label="关联教师"
               value={item.teacherId || ''}
               onChange={(v: any) => setItem({ ...item, teacherId: v })}
-              fetchUrl="/users?role=teacher&limit=1000"
+              fetchUrl="/users?role=teacher&limit=200"
             />
           </div>
           <div className="grid gap-2">
@@ -200,7 +200,7 @@ export default function AllianceTeacherBrandPage() {
               label="关联专家"
               value={item.expertId || ''}
               onChange={(v: any) => setItem({ ...item, expertId: v })}
-              fetchUrl="/alliance/experts?limit=1000"
+              fetchUrl="/alliance/experts?limit=200"
             />
           </div>
         </div>

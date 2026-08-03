@@ -54,8 +54,12 @@ func (h *AbilityHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	ability, err := h.Service.GetAbility(r.Context(), id)
+	ability, err := h.Service.GetAbility(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
@@ -106,7 +110,11 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetAbility(r.Context(), id); err != nil {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.GetAbility(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
 	}
@@ -118,7 +126,7 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-	ability, err := h.Service.UpdateAbility(r.Context(), id, &store.AbilityPointParams{
+	ability, err := h.Service.UpdateAbility(r.Context(), id, tenantID, &store.AbilityPointParams{
 		Name:        req.Name,
 		Description: req.Description,
 		Category:    req.Category,
@@ -142,11 +150,15 @@ func (h *AbilityHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetAbility(r.Context(), id); err != nil {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.GetAbility(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
 	}
-	if err := h.Service.DeleteAbility(r.Context(), id); err != nil {
+	if err := h.Service.DeleteAbility(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除能力点失败")
 		return
 	}

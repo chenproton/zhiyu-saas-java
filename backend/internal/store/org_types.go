@@ -89,7 +89,7 @@ func (s *OrgTypesStore) ScanRows(rows pgx.Rows) ([]domain.OrgType, error) {
 		o.Description = desc
 		items = append(items, o)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回组织类型列表查询配置，SQL 片段沉淀在 store 层。

@@ -79,11 +79,15 @@ func (s *EvaluationResultStore) Submit(ctx context.Context, p *EvaluationResultS
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (tenant_id, task_id, evaluatee_id, method_key) DO UPDATE SET
 			scene_id = EXCLUDED.scene_id,
+			evaluator_id = EXCLUDED.evaluator_id,
+			evaluator_type = EXCLUDED.evaluator_type,
+			max_score = EXCLUDED.max_score,
 			objective_answers = EXCLUDED.objective_answers,
 			subjective_content = EXCLUDED.subjective_content,
 			drawn_questions = EXCLUDED.drawn_questions,
 			eval_point_scores = EXCLUDED.eval_point_scores,
 			status = 'pending',
+			graded_at = NULL,
 			updated_at = EXCLUDED.updated_at
 		RETURNING id
 	`, p.TenantID, p.TaskID, p.SceneID, p.MethodKey, p.EvaluateeID,
@@ -142,8 +146,9 @@ func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, taskID
 }
 
 // UpdateExamResultScore 更新考试结果分数。
-func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examResultID string, score float64) {
-	_, _ = s.q.Exec(ctx, `UPDATE exam_results SET score = $1, updated_at = NOW() WHERE id = $2`, score, examResultID)
+func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examResultID string, score float64) error {
+	_, err := s.q.Exec(ctx, `UPDATE exam_results SET score = $1, updated_at = NOW() WHERE id = $2`, score, examResultID)
+	return err
 }
 
 // EvaluationResultGradeTarget 评分目标（task/method/evaluatee）。

@@ -53,6 +53,11 @@ export default function AllianceExpertEditPage() {
     city: '',
     title: '',
     position: '',
+    expertType: '',
+    professionalFields: [] as string[],
+    positionDirection: '',
+    photos: [] as string[],
+    rating: '',
     experienceYears: undefined as number | undefined,
     education: '',
     industry: '',
@@ -75,7 +80,7 @@ export default function AllianceExpertEditPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceExpertApi.get(id),
-      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceEnterpriseApi.list({ limit: 200 }),
     ])
       .then(([expert, ents]) => {
         setItem({
@@ -85,6 +90,11 @@ export default function AllianceExpertEditPage() {
           city: expert.city || '',
           title: expert.title || '',
           position: expert.position || '',
+          expertType: expert.expertType || '',
+          professionalFields: expert.professionalFields || [],
+          positionDirection: expert.positionDirection || '',
+          photos: expert.photos || [],
+          rating: expert.rating || '',
           experienceYears: expert.experienceYears,
           education: expert.education || '',
           industry: expert.industry || '',

@@ -246,8 +246,11 @@ export default function TenantPage() {
 
   const handleWebsiteChange = (v: string) =>
     setF('website', v ? (v.startsWith('http') ? v : 'https://' + v) : v)
-  const adminFetcher = async <T,>(path: string, options?: RequestInit): Promise<T> =>
-    portalRequest<T>(path, options)
+  const adminFetcher = useCallback(
+    async <T,>(path: string, options?: RequestInit): Promise<T> =>
+      portalRequest<T>(path, options),
+    [],
+  )
 
   if (authLoading || loading)
     return (

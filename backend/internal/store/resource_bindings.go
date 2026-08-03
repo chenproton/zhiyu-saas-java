@@ -50,6 +50,9 @@ func (s *ResourceBindingStore) List(ctx context.Context, tenantID, search string
 		where = append(where, "rl.tenant_id = $"+Itoa(argIdx))
 		args = append(args, tenantID)
 		argIdx++
+	} else {
+		// 纵深防御：无租户时不返回全库资源
+		where = append(where, "1=0")
 	}
 	join := ""
 	if bind != nil && bindID != "" {
@@ -160,6 +163,13 @@ func (s *ResourceBindingStore) Unbind(ctx context.Context, bindTable, id string,
 	return nil
 }
 
+// BindTargetID 查询绑定行关联的主实体 ID（租户归属校验用）。
+func (s *ResourceBindingStore) BindTargetID(ctx context.Context, bindTable, id string) (string, error) {
+	var bindID string
+	err := s.q.QueryRow(ctx, `SELECT `+bindColOf(bindTable)+` FROM `+bindTable+` WHERE id = $1`, id).Scan(&bindID)
+	return bindID, err
+}
+
 // bindColOf 绑定表的目标列名。
 func bindColOf(table string) string {
 	switch table {
@@ -214,7 +224,7 @@ func scanResourceBindingRows(rows pgx.Rows) ([]ResourceRow, error) {
 		}
 		items = append(items, res)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListCourseResources 课程资源列表（列顺序与原 course_resource_handler 一致）。

@@ -146,7 +146,7 @@ func scanPositionAbilityRows(rows pgx.Rows) ([]domain.PositionAbilityBinding, er
 		b.Attributes = attributes
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // PositionResponsibilityStore 岗位职责持久化。
@@ -215,7 +215,7 @@ func (s *PositionResponsibilityStore) ListConfig() ListQueryConfig[domain.Positi
 	return ListQueryConfig[domain.PositionResponsibility]{
 		Table:         "position_responsibilities",
 		SelectColumns: "id, career_position_id, name, description, sort_order",
-		TenantScoped:  false,
+		TenantScoped:  true,
 		OrderBy:       "sort_order ASC, id ASC",
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
@@ -258,5 +258,5 @@ func scanPositionResponsibilityRows(rows pgx.Rows) ([]domain.PositionResponsibil
 		}
 		items = append(items, r)
 	}
-	return items, nil
+	return items, rows.Err()
 }

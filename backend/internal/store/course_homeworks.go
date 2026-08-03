@@ -25,12 +25,13 @@ type HomeworkSubmissionItem struct {
 
 // CourseHomeworkStore 课程/节点作业持久化。
 type CourseHomeworkStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewCourseHomeworkStore 创建作业 store。
-func NewCourseHomeworkStore(q Queryer) *CourseHomeworkStore {
-	return &CourseHomeworkStore{q: q}
+func NewCourseHomeworkStore(q Queryer, beginner txBeginner) *CourseHomeworkStore {
+	return &CourseHomeworkStore{q: q, beginner: beginner}
 }
 
 // CourseHomeworkExists 校验课程作业存在。
@@ -77,22 +78,28 @@ func (s *CourseHomeworkStore) ListCourseHomeworkSubmissions(ctx context.Context,
 func (s *CourseHomeworkStore) GradeCourseHomework(ctx context.Context, graderID, tenantID, courseID, homeworkID, submissionID string, score float64, comment string) (string, float64, error) {
 	var studentID string
 	var totalScore float64
-	err := s.q.QueryRow(ctx, `
-		UPDATE course_homework_submissions
-		SET score = $1, comment = $2, status = 'graded', graded_at = NOW(), graded_by = $3
-		WHERE id = $4 AND tenant_id = $5 AND course_id = $6 AND homework_id = $7
-		RETURNING student_id, COALESCE(total_score, 100)
-	`, score, comment, graderID, submissionID, tenantID, courseID, homeworkID).Scan(&studentID, &totalScore)
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `
+			UPDATE course_homework_submissions
+			SET score = $1, comment = $2, status = 'graded', graded_at = NOW(), graded_by = $3
+			WHERE id = $4 AND tenant_id = $5 AND course_id = $6 AND homework_id = $7
+			RETURNING student_id, COALESCE(total_score, 100)
+		`, score, comment, graderID, submissionID, tenantID, courseID, homeworkID).Scan(&studentID, &totalScore)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score)
+			VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5)
+			ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
+			DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', graded_at = NOW(), updated_at = NOW()
+		`, tenantID, courseID, studentID, score, totalScore); err != nil {
+			return fmt.Errorf("upsert course eval result: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return "", 0, err
-	}
-	if _, err := s.q.Exec(ctx, `
-		INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score)
-		VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5)
-		ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
-		DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', graded_at = NOW(), updated_at = NOW()
-	`, tenantID, courseID, studentID, score, totalScore); err != nil {
-		return "", 0, fmt.Errorf("upsert course eval result: %w", err)
 	}
 	return studentID, totalScore, nil
 }

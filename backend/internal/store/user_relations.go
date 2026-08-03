@@ -38,6 +38,9 @@ func (s *UserRelationStore) List(ctx context.Context, tenantID, search string, l
 		where = append(where, "r.tenant_id = $"+Itoa(argIdx))
 		args = append(args, tenantID)
 		argIdx++
+	} else {
+		// 纵深防御：无租户时不返回全库关系
+		where = append(where, "1=0")
 	}
 	if search != "" {
 		where = append(where, "(init_u.name ILIKE $"+Itoa(argIdx)+" OR tgt_u.name ILIKE $"+Itoa(argIdx)+")")

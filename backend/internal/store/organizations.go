@@ -58,6 +58,9 @@ func (s *OrganizationStore) Tree(ctx context.Context, tenantID string) ([]domain
 	if tenantID != "" {
 		query += " WHERE tenant_id = $1"
 		args = append(args, tenantID)
+	} else {
+		// 纵深防御：无租户时不返回全库组织树
+		query += " WHERE 1=0"
 	}
 	query += " ORDER BY sort_order ASC, created_at ASC"
 	rows, err := s.q.Query(ctx, query, args...)

@@ -135,6 +135,19 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		evaluatorType = *req.EvaluatorType
 	}
 
+	// 学生提交时评价人只能是本人；指定评价人必须属于当前租户
+	if middleware.HasRole(claims, "student") && evaluatorID != "" && evaluatorID != claims.UserID {
+		respondError(w, http.StatusForbidden, "学生仅可提交本人为评价人的评价结果")
+		return
+	}
+	if evaluatorID != "" {
+		evaluator, err := h.Service.Store().Users().Get(r.Context(), evaluatorID)
+		if err != nil || evaluator.TenantID == nil || *evaluator.TenantID != tenantID {
+			respondError(w, http.StatusForbidden, "无权操作：评价人不属于您的租户")
+			return
+		}
+	}
+
 	res, err := h.Service.SubmitEvaluationResult(r.Context(), &store.EvaluationResultSubmitParams{
 		TenantID:          tenantID,
 		TaskID:            req.TaskID,

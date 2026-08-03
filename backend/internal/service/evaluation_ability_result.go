@@ -21,9 +21,9 @@ func (s *EvaluationService) SummaryJobAbilityResults(ctx context.Context, tenant
 	return s.st.JobAbilityResults().Summary(ctx, tenantID)
 }
 
-// GetAggregateLog 查询汇聚日志。
-func (s *EvaluationService) GetAggregateLog(ctx context.Context, logID string) (*store.JobAbilityAggregateLog, error) {
-	return s.st.JobAbilityResults().GetAggregateLogByID(ctx, logID)
+// GetAggregateLog 查询汇聚日志（租户限定）。
+func (s *EvaluationService) GetAggregateLog(ctx context.Context, logID, tenantID string) (*store.JobAbilityAggregateLog, error) {
+	return s.st.JobAbilityResults().GetAggregateLogByID(ctx, logID, tenantID)
 }
 
 // GetRecentAggregateLog 查询最近汇聚日志。

@@ -564,5 +564,5 @@ func ScanPositionRows(rows pgx.Rows) ([]domain.CareerPosition, error) {
 		pos.Collaborators = collaborators
 		items = append(items, pos)
 	}
-	return items, nil
+	return items, rows.Err()
 }

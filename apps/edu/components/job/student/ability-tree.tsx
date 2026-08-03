@@ -102,6 +102,14 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
                     key={ab.id}
                     className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-[#eff6ff] cursor-pointer transition-colors gap-2"
                     onClick={() => setSelectedAbility({ binding: ab, abilityPoint: info })}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelectedAbility({ binding: ab, abilityPoint: info })
+                      }
+                    }}
                   >
                     <div className="flex flex-col min-w-0 gap-1">
                       <div className="flex items-center gap-2 min-w-0">

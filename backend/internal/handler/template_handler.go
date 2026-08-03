@@ -585,7 +585,10 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 
 func (h *TemplateHandler) queryLessonBatches(ctx context.Context, tenantID string) []string {
 	var names []string
-	rows, _ := h.DB.Query(ctx, `SELECT name FROM lesson_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, qErr := h.DB.Query(ctx, `SELECT name FROM lesson_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if qErr != nil {
+		return nil
+	}
 	for rows.Next() {
 		var n string
 		rows.Scan(&n)
@@ -768,7 +771,10 @@ func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tena
 
 	// Reference sheets
 	var batches [][]string
-	bRows, _ := h.DB.Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	bRows, qErr := h.DB.Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if qErr != nil {
+		return nil
+	}
 	for bRows.Next() {
 		var n string
 		bRows.Scan(&n)
@@ -820,7 +826,10 @@ func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID
 	f.AutoFilter("题目明细", "A2:L2", []excelize.AutoFilterOptions{})
 
 	var kps [][]string
-	kRows, _ := h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	kRows, qErr := h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if qErr != nil {
+		return nil
+	}
 	for kRows.Next() {
 		var n string
 		kRows.Scan(&n)
@@ -878,7 +887,10 @@ func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID str
 	f.AutoFilter("试卷题目", "A2:C2", []excelize.AutoFilterOptions{})
 
 	var batches [][]string
-	bRows, _ := h.DB.Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	bRows, qErr := h.DB.Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if qErr != nil {
+		return nil
+	}
 	for bRows.Next() {
 		var n string
 		bRows.Scan(&n)
@@ -1077,7 +1089,10 @@ func (h *TemplateHandler) generateOrganizationTemplate(ctx context.Context, tena
 	f.AutoFilter("组织架构", "A2:D2", []excelize.AutoFilterOptions{})
 
 	var types [][]string
-	rows, _ := h.DB.Query(ctx, `SELECT name FROM org_types WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, qErr := h.DB.Query(ctx, `SELECT name FROM org_types WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if qErr != nil {
+		return nil
+	}
 	for rows.Next() {
 		var n string
 		rows.Scan(&n)
@@ -1169,7 +1184,10 @@ func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID 
 	h.addRefSheet(f, "【参考】组织节点路径", []string{"组织节点路径"}, []float64{48}, "仅作参考，无需编辑修改。教师列表 Sheet「所属组织节点(路径)」与本表路径一致则可精确定位。", paths)
 
 	var titles [][]string
-	tRows, _ := h.DB.Query(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	tRows, qErr := h.DB.Query(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if qErr != nil {
+		return nil
+	}
 	for tRows.Next() {
 		var n string
 		tRows.Scan(&n)

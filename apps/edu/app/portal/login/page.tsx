@@ -222,14 +222,16 @@ export default function PortalLoginPage() {
               </div>
             )}
 
-            <div className="mt-6 rounded-lg bg-slate-50 p-3 text-xs text-slate-400">
-              <p className="mb-1 font-medium text-slate-500">测试账号：</p>
-              <ul className="space-y-0.5">
-                <li>学校管理员：school / school123</li>
-                <li>教师：teacher / teacher123</li>
-                <li>学生：student / student123</li>
-              </ul>
-            </div>
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="mt-6 rounded-lg bg-slate-50 p-3 text-xs text-slate-400">
+                <p className="mb-1 font-medium text-slate-500">测试账号（仅开发环境显示）：</p>
+                <ul className="space-y-0.5">
+                  <li>学校管理员：school / school123</li>
+                  <li>教师：teacher / teacher123</li>
+                  <li>学生：student / student123</li>
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
 

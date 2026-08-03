@@ -22,8 +22,8 @@ func (s *RecommendStore) List(ctx context.Context, p ListParams, cfg ListQueryCo
 }
 
 // Get 查询单个推荐位。
-func (s *RecommendStore) Get(ctx context.Context, id string) (*domain.PositionRecommendation, error) {
-	rec, err := s.fetchRecommend(ctx, id)
+func (s *RecommendStore) Get(ctx context.Context, id, tenantID string) (*domain.PositionRecommendation, error) {
+	rec, err := s.fetchRecommend(ctx, id, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -42,28 +42,28 @@ func (s *RecommendStore) Create(ctx context.Context, tenantID string, p *Recomme
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Update 更新推荐位。
-func (s *RecommendStore) Update(ctx context.Context, id string, p *RecommendParams) (*domain.PositionRecommendation, error) {
-	if _, err := s.fetchRecommend(ctx, id); err != nil {
+func (s *RecommendStore) Update(ctx context.Context, id, tenantID string, p *RecommendParams) (*domain.PositionRecommendation, error) {
+	if _, err := s.fetchRecommend(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE position_recommendations SET
 			major_id = $1, career_position_id = $2, position_type = $3, reason = $4,
 			sort_order = $5, is_enabled = $6, updated_at = NOW()
-		WHERE id = $7
-	`, p.MajorID, p.CareerPositionID, p.PositionType, p.Reason, p.SortOrder, p.IsEnabled, id); err != nil {
+		WHERE id = $7 AND tenant_id = $8
+	`, p.MajorID, p.CareerPositionID, p.PositionType, p.Reason, p.SortOrder, p.IsEnabled, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Delete 删除推荐位。
-func (s *RecommendStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM position_recommendations WHERE id = $1`, id)
+func (s *RecommendStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM position_recommendations WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -78,7 +78,7 @@ type RecommendParams struct {
 	CreatedBy        string
 }
 
-func (s *RecommendStore) fetchRecommend(ctx context.Context, id string) (*domain.PositionRecommendation, error) {
+func (s *RecommendStore) fetchRecommend(ctx context.Context, id, tenantID string) (*domain.PositionRecommendation, error) {
 	var rec domain.PositionRecommendation
 	var reason *string
 	err := s.q.QueryRow(ctx, `
@@ -87,8 +87,8 @@ func (s *RecommendStore) fetchRecommend(ctx context.Context, id string) (*domain
 			pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at
 		FROM position_recommendations pr
 		LEFT JOIN majors m ON m.id = pr.major_id
-		WHERE pr.id = $1
-	`, id).Scan(&rec.ID, &rec.MajorID, &rec.MajorName, &rec.CareerPositionID, &rec.PositionType, &reason, &rec.SortOrder,
+		WHERE pr.id = $1 AND pr.tenant_id = $2
+	`, id, tenantID).Scan(&rec.ID, &rec.MajorID, &rec.MajorName, &rec.CareerPositionID, &rec.PositionType, &reason, &rec.SortOrder,
 		&rec.IsEnabled, &rec.CreatedBy, &rec.CreatedAt, &rec.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func ScanRecommendRows(rows pgx.Rows) ([]domain.PositionRecommendation, error) {
 		rec.Reason = reason
 		items = append(items, rec)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回推荐位列表查询配置，SQL 片段沉淀在 store 层。

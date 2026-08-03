@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -56,13 +57,16 @@ func (h *ExamExportHandler) fillExamsData(ctx context.Context, f *excelize.File,
 			FROM exams WHERE id=$1 AND tenant_id=$2
 		`, eid, tenantID).Scan(&name, &desc, &batchID)
 		if err != nil {
+			slog.Warn("导出试卷行跳过", "examId", eid, "error", err)
 			continue
 		}
 		examNameMap[eid] = name
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM evaluation_batches WHERE id=$1`, *batchID).Scan(&batchName)
+			if err := h.DB.QueryRow(ctx, `SELECT name FROM evaluation_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+				slog.Warn("导出试卷批次名查询失败", "batchId", *batchID, "error", err)
+			}
 		}
 
 		r := 3 + ri
@@ -86,12 +90,16 @@ func (h *ExamExportHandler) fillExamsData(ctx context.Context, f *excelize.File,
 			ORDER BY sort_order
 		`, eid, tenantID)
 		if err != nil {
+			slog.Warn("导出试卷题目查询失败", "examId", eid, "error", err)
 			continue
 		}
 		for rows.Next() {
 			var content string
 			var score float64
-			rows.Scan(&content, &score)
+			if err := rows.Scan(&content, &score); err != nil {
+				slog.Warn("导出试卷题目行扫描失败", "examId", eid, "error", err)
+				continue
+			}
 
 			setCell("试卷题目", fmt.Sprintf("A%d", questionRow), examName)
 			setCell("试卷题目", fmt.Sprintf("B%d", questionRow), content)

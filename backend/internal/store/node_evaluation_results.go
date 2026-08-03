@@ -27,7 +27,9 @@ func (s *NodeEvaluationResultStore) ListConfig() ListQueryConfig[domain.NodeEval
 		TenantScoped: true,
 		OrderBy:      "created_at DESC",
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
-			qb.AddCondition("node_id = " + qb.NextArg(p.Values["nodeId"]))
+			if nodeID := p.Values["nodeId"]; nodeID != "" {
+				qb.AddCondition("node_id = " + qb.NextArg(nodeID))
+			}
 			if p.Values["isStudent"] == "true" {
 				qb.AddCondition("evaluatee_id = " + qb.NextArg(p.Values["studentUserId"]))
 				return
@@ -70,5 +72,5 @@ func ScanNodeEvaluationResultRows(rows pgx.Rows) ([]domain.NodeEvaluationResult,
 		}
 		items = append(items, r)
 	}
-	return items, nil
+	return items, rows.Err()
 }

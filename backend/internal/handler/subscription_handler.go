@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -76,12 +77,17 @@ func (h *SubscriptionHandler) AdminGet(w http.ResponseWriter, r *http.Request) {
 	}
 	sub, err := h.Service.GetSubscriptionByTenant(r.Context(), tenantID)
 	if err != nil {
-		respondJSON(w, http.StatusOK, domain.SubscriptionPackage{
-			TenantID: tenantID,
-			Name:     "",
-			Modules:  domain.JSONMap{},
-			Status:   "inactive",
-		})
+		if errors.Is(err, store.ErrNotFound) {
+			// 未订阅：返回默认空订阅（前端展示未开通态）
+			respondJSON(w, http.StatusOK, domain.SubscriptionPackage{
+				TenantID: tenantID,
+				Name:     "",
+				Modules:  domain.JSONMap{},
+				Status:   "inactive",
+			})
+			return
+		}
+		respondServerError(w, r, err, "查询订阅失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, sub)

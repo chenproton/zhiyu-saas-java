@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { courseApi, lessonBatchApi } from '@/lib/api'
@@ -106,25 +106,28 @@ export default function CourseApprovalsPage() {
     },
   ]
 
-  const mapRecord = (a: any): ApprovalView => {
-    const course = courseMap.get(a.targetId)
-    const batch = course?.batchId ? batchMap.get(course.batchId) : undefined
-    return {
-      id: a.id,
-      courseId: a.targetId,
-      courseName: course?.name || a.targetId,
-      courseCode: course?.code || '-',
-      version: course?.version || '-',
-      courseType: course?.type || 'system',
-      major: course?.majorName,
-      batchName: batch?.name,
-      submitterId: a.submitterId,
-      status: a.status,
-      submittedAt: new Date(a.createdAt).toLocaleDateString(),
-      stepInfo: getStepInfo(a),
-      history: a.history,
-    }
-  }
+  const mapRecord = useCallback(
+    (a: any): ApprovalView => {
+      const course = courseMap.get(a.targetId)
+      const batch = course?.batchId ? batchMap.get(course.batchId) : undefined
+      return {
+        id: a.id,
+        courseId: a.targetId,
+        courseName: course?.name || a.targetId,
+        courseCode: course?.code || '-',
+        version: course?.version || '-',
+        courseType: course?.type || 'system',
+        major: course?.majorName,
+        batchName: batch?.name,
+        submitterId: a.submitterId,
+        status: a.status,
+        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        stepInfo: getStepInfo(a),
+        history: a.history,
+      }
+    },
+    [courseMap, batchMap, getStepInfo],
+  )
 
   return (
     <ApprovalListPage<ApprovalView>

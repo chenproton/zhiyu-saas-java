@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -61,6 +62,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 			FROM courses WHERE id=$1 AND tenant_id=$2 AND type='system'
 		`, cid, tenantID).Scan(&name, &desc, &majorID, &batchID)
 		if err != nil {
+			slog.Warn("导出课程行跳过", "courseId", cid, "error", err)
 			continue
 		}
 
@@ -91,6 +93,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 	for _, cid := range courseIDs {
 		courseName := courseNameMap[cid]
 		if courseName == "" {
+			slog.Warn("导出课程节点跳过：课程信息缺失", "courseId", cid)
 			continue
 		}
 
@@ -103,6 +106,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 			ORDER BY sort_order, created_at
 		`, cid, tenantID)
 		if err != nil {
+			slog.Warn("导出课程节点查询失败", "courseId", cid, "error", err)
 			continue
 		}
 

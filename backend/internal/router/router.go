@@ -96,7 +96,8 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	// 注意：不使用 chi RealIP —— 它会用客户端可控的 X-Forwarded-For 覆盖 RemoteAddr，
+	// 导致限流/操作日志的 IP 可被伪造绕过；RemoteAddr 保持为 TCP 连接真实地址
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(func(next http.Handler) http.Handler {

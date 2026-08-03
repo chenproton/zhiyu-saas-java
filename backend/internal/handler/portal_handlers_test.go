@@ -200,8 +200,8 @@ func TestSubscription_Get(t *testing.T) {
 	defer env.Cleanup()
 
 	w := env.Do("GET", "/api/v1/subscriptions?tenantId="+testhelper.TestTenantID, nil)
-	if w.Code == http.StatusInternalServerError {
-		t.Fatalf("unexpected 500: %s", testhelper.ErrMsg(w))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 }
 

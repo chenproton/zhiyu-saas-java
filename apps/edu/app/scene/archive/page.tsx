@@ -102,15 +102,16 @@ export default function SceneArchivePage() {
   }
 
   const handleBatchRestore = async (ids: string[]) => {
-    try {
-      await Promise.all(ids.map((id) => scenarioApi.saveDraft(id)))
-      await loadData()
+    const results = await Promise.allSettled(ids.map((id) => scenarioApi.saveDraft(id)))
+    const failed = results.filter((r) => r.status === 'rejected').length
+    await loadData()
+    if (failed === 0) {
       toast({ title: `已批量恢复 ${ids.length} 个场景` })
-    } catch (err: any) {
+    } else {
       toast({
         variant: 'destructive',
-        title: '批量恢复失败',
-        description: err.message || '请稍后重试',
+        title: '批量恢复部分失败',
+        description: `成功 ${ids.length - failed} 个，失败 ${failed} 个`,
       })
     }
   }

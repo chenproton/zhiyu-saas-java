@@ -51,6 +51,9 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
 
 	if err := os.MkdirAll(h.UploadDir, 0o755); err != nil {
 		respondServerError(w, r, err, "准备上传目录失败")
@@ -86,10 +89,24 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// 允许直接输出的文件扩展名白名单（防存储型 XSS：HTML/SVG/JS 等可执行类型禁止直接服务）
+var allowedServeExts = map[string]bool{
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".bmp": true,
+	".pdf": true,
+	".doc": true, ".docx": true, ".xls": true, ".xlsx": true, ".ppt": true, ".pptx": true,
+	".txt": true, ".csv": true,
+	".mp3": true, ".wav": true, ".mp4": true, ".webm": true,
+	".zip": true, ".rar": true, ".7z": true,
+}
+
 func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/uploads/")
 	if name == "" || strings.Contains(name, "..") {
 		respondError(w, http.StatusBadRequest, "无效文件名")
+		return
+	}
+	if !allowedServeExts[strings.ToLower(filepath.Ext(name))] {
+		respondError(w, http.StatusForbidden, "文件类型不允许直接访问")
 		return
 	}
 	path := filepath.Join(h.UploadDir, filepath.Clean(name))

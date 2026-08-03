@@ -101,7 +101,9 @@ func (s *ScenarioService) GetTask(ctx context.Context, id string) (*domain.Scena
 	if err != nil {
 		return nil, err
 	}
-	s.st.ScenarioTasks().PopulateEvalData(ctx, []domain.ScenarioTask{*t})
+	items := []domain.ScenarioTask{*t}
+	s.st.ScenarioTasks().PopulateEvalData(ctx, items)
+	*t = items[0]
 	return t, nil
 }
 

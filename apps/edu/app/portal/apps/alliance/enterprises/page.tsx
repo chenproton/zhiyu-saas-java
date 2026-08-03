@@ -52,9 +52,9 @@ export default function AllianceEnterprisesPage() {
     try {
       const [ent, proj, ach, agr] = await Promise.all([
         allianceEnterpriseApi.list(),
-        allianceProjectApi.list({ limit: 1000 }),
-        allianceAchievementApi.list({ limit: 1000 }),
-        allianceAgreementApi.list({ limit: 1000 }),
+        allianceProjectApi.list({ limit: 200 }),
+        allianceAchievementApi.list({ limit: 200 }),
+        allianceAgreementApi.list({ limit: 200 }),
       ])
       setEnterprises(ent.items || [])
       setProjects(proj.items || [])

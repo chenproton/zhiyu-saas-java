@@ -413,8 +413,9 @@ export default function SceneDetailPage() {
   useEffect(() => {
     if (!id || !scenario) return
 
+    // TODO: 列表接口后端上限 200，以下映射类数据超限时会缺失，需服务端分页或按需拉取
     taskApi
-      .list({ scenarioId: id, limit: 1000 })
+      .list({ scenarioId: id, limit: 200 })
       .then((res) => {
         const taskList = res.items || []
         setTasks(taskList)
@@ -422,7 +423,7 @@ export default function SceneDetailPage() {
       .catch(() => setTasks([]))
 
     resourceLibraryApi
-      .list({ limit: 10000 })
+      .list({ limit: 200 })
       .then((res) => {
         const rMap = new Map<string, TaskResource>()
         ;(res.items || []).forEach((r: any) => {
@@ -437,8 +438,8 @@ export default function SceneDetailPage() {
       .catch(() => setAllResourceMap(new Map()))
 
     Promise.all([
-      knowledgeApi.list({ limit: 1000 }).catch(() => ({ items: [], total: 0 })),
-      abilityApi.list({ limit: 1000 }).catch(() => ({ items: [], total: 0 })),
+      knowledgeApi.list({ limit: 200 }).catch(() => ({ items: [], total: 0 })),
+      abilityApi.list({ limit: 200 }).catch(() => ({ items: [], total: 0 })),
     ])
       .then(([kRes, aRes]) => {
         const kMap = new Map<string, KnowledgePoint>()
@@ -884,6 +885,7 @@ export default function SceneDetailPage() {
                       <Button
                         variant="ghost"
                         className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-blue-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-all"
+                        aria-label="分享"
                       >
                         <Share2 className="w-4 h-4" />
                       </Button>

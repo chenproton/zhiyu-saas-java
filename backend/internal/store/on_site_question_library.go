@@ -113,5 +113,5 @@ func (s *OnSiteQuestionLibraryStore) ScanRows(rows pgx.Rows) ([]domain.OnSiteQue
 		item.CreatorID = creatorID
 		items = append(items, item)
 	}
-	return items, nil
+	return items, rows.Err()
 }

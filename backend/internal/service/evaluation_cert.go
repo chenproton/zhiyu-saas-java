@@ -31,14 +31,14 @@ func (s *EvaluationService) UpdateCertificationRuleStatus(ctx context.Context, i
 	return s.st.Certifications().UpdateRuleStatus(ctx, id, tenantID, status)
 }
 
-// UpdateCertificationRule 更新规则。
-func (s *EvaluationService) UpdateCertificationRule(ctx context.Context, id, positionID, ruleSource string) (*domain.CertificationRule, error) {
-	return s.st.Certifications().UpdateRule(ctx, id, positionID, ruleSource)
+// UpdateCertificationRule 更新规则（限定租户）。
+func (s *EvaluationService) UpdateCertificationRule(ctx context.Context, id, tenantID, positionID, ruleSource string) (*domain.CertificationRule, error) {
+	return s.st.Certifications().UpdateRule(ctx, id, tenantID, positionID, ruleSource)
 }
 
-// DeleteCertificationRule 删除规则。
-func (s *EvaluationService) DeleteCertificationRule(ctx context.Context, id string) error {
-	return s.st.Certifications().DeleteRule(ctx, id)
+// DeleteCertificationRule 删除规则（限定租户）。
+func (s *EvaluationService) DeleteCertificationRule(ctx context.Context, id, tenantID string) error {
+	return s.st.Certifications().DeleteRule(ctx, id, tenantID)
 }
 
 // ListCertificationItems 查询规则下能力项。
@@ -48,7 +48,12 @@ func (s *EvaluationService) ListCertificationItems(ctx context.Context, ruleID s
 
 // GetCertificationItem 查询单个能力项。
 func (s *EvaluationService) GetCertificationItem(ctx context.Context, id string) (*domain.CertificationAbilityItem, error) {
-	return s.st.Certifications().GetItem(ctx, id)
+	return s.st.Certifications().GetItem(ctx, id, "")
+}
+
+// GetCertificationItemByTenant 查询单个能力项（租户限定）。
+func (s *EvaluationService) GetCertificationItemByTenant(ctx context.Context, id, tenantID string) (*domain.CertificationAbilityItem, error) {
+	return s.st.Certifications().GetItem(ctx, id, tenantID)
 }
 
 // CreateCertificationItem 创建能力项。
@@ -56,14 +61,14 @@ func (s *EvaluationService) CreateCertificationItem(ctx context.Context, tenantI
 	return s.st.Certifications().CreateItem(ctx, tenantID, ruleID, name, sortOrder)
 }
 
-// UpdateCertificationItem 更新能力项。
-func (s *EvaluationService) UpdateCertificationItem(ctx context.Context, id, name string, sortOrder int) (*domain.CertificationAbilityItem, error) {
-	return s.st.Certifications().UpdateItem(ctx, id, name, sortOrder)
+// UpdateCertificationItem 更新能力项（限定租户）。
+func (s *EvaluationService) UpdateCertificationItem(ctx context.Context, id, tenantID, name string, sortOrder int) (*domain.CertificationAbilityItem, error) {
+	return s.st.Certifications().UpdateItem(ctx, id, tenantID, name, sortOrder)
 }
 
-// DeleteCertificationItem 删除能力项。
-func (s *EvaluationService) DeleteCertificationItem(ctx context.Context, id string) error {
-	return s.st.Certifications().DeleteItem(ctx, id)
+// DeleteCertificationItem 删除能力项（限定租户）。
+func (s *EvaluationService) DeleteCertificationItem(ctx context.Context, id, tenantID string) error {
+	return s.st.Certifications().DeleteItem(ctx, id, tenantID)
 }
 
 // ListCertificationPoints 查询项下能力点。
@@ -73,7 +78,12 @@ func (s *EvaluationService) ListCertificationPoints(ctx context.Context, itemID 
 
 // GetCertificationPoint 查询单个能力点。
 func (s *EvaluationService) GetCertificationPoint(ctx context.Context, id string) (*domain.CertificationAbilityPoint, error) {
-	return s.st.Certifications().GetPoint(ctx, id)
+	return s.st.Certifications().GetPoint(ctx, id, "")
+}
+
+// GetCertificationPointByTenant 查询单个能力点（租户限定）。
+func (s *EvaluationService) GetCertificationPointByTenant(ctx context.Context, id, tenantID string) (*domain.CertificationAbilityPoint, error) {
+	return s.st.Certifications().GetPoint(ctx, id, tenantID)
 }
 
 // CreateCertificationPoint 创建能力点。
@@ -86,9 +96,9 @@ func (s *EvaluationService) UpdateCertificationPoint(ctx context.Context, id, te
 	return s.st.Certifications().UpdatePoint(ctx, id, tenantID, p)
 }
 
-// DeleteCertificationPoint 删除能力点。
-func (s *EvaluationService) DeleteCertificationPoint(ctx context.Context, id string) error {
-	return s.st.Certifications().DeletePoint(ctx, id)
+// DeleteCertificationPoint 删除能力点（限定租户）。
+func (s *EvaluationService) DeleteCertificationPoint(ctx context.Context, id, tenantID string) error {
+	return s.st.Certifications().DeletePoint(ctx, id, tenantID)
 }
 
 // CreateCertificationTask 创建关联任务。

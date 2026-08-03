@@ -157,6 +157,10 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Status != "" && req.Status != h.Config.StatusOpen && req.Status != h.Config.StatusClosed {
+		respondError(w, http.StatusBadRequest, "无效状态")
+		return
+	}
 	id := uuid.NewString()
 	status := h.Config.StatusOpen
 	if h.Config.CreateWithStatus && req.Status != "" {
@@ -215,6 +219,10 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		OrgNodeID:  req.OrgNodeID,
 		MajorID:    req.MajorID,
 		WorkflowID: req.WorkflowID,
+	}
+	if req.Status != "" && req.Status != h.Config.StatusOpen && req.Status != h.Config.StatusClosed {
+		respondError(w, http.StatusBadRequest, "无效状态")
+		return
 	}
 	if h.Config.UpdateWithStatus {
 		status := h.Config.StatusOpen

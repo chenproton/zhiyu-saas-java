@@ -118,10 +118,11 @@ export default function MyResourcesPage() {
 
   const userId = user?.id
 
+  // TODO: 列表接口后端上限 maxPageSize=200，此处全量展示会被截断，需改为服务端分页
   const loadKnowledge = useCallback(async () => {
     setLoadingKnowledge(true)
     try {
-      const res = await knowledgeApi.list({ creatorId: userId!, limit: 500 })
+      const res = await knowledgeApi.list({ creatorId: userId!, limit: 200 })
       setKnowledgeItems(res.items)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载知识点失败', description: err.message })
@@ -133,7 +134,7 @@ export default function MyResourcesPage() {
   const loadAbilities = useCallback(async () => {
     setLoadingAbility(true)
     try {
-      const res = await abilityApi.list({ creatorId: userId!, limit: 500 })
+      const res = await abilityApi.list({ creatorId: userId!, limit: 200 })
       setAbilityItems(res.items)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载能力点失败', description: err.message })
@@ -145,7 +146,7 @@ export default function MyResourcesPage() {
   const loadCertificates = useCallback(async () => {
     setLoadingCertificates(true)
     try {
-      const res = await certificateLibraryApi.list({ creatorId: userId!, limit: 500 })
+      const res = await certificateLibraryApi.list({ creatorId: userId!, limit: 200 })
       setCertificateItems(res.items)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载证书失败', description: err.message })
@@ -157,7 +158,7 @@ export default function MyResourcesPage() {
   const loadQuestions = useCallback(async () => {
     setLoadingQuestions(true)
     try {
-      const res = await onSiteQuestionLibraryApi.list({ creatorId: userId!, limit: 500 })
+      const res = await onSiteQuestionLibraryApi.list({ creatorId: userId!, limit: 200 })
       setQuestionItems(res.items)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载问答题失败', description: err.message })
@@ -173,7 +174,7 @@ export default function MyResourcesPage() {
         const res = await resourceLibraryApi.list({
           uploadedBy: userId!,
           resourceType: kind,
-          limit: 500,
+          limit: 200,
         })
         setResourceItemsMap((prev) => ({ ...prev, [kind]: res.items }))
         loadedResourceKinds.current.add(kind)

@@ -12,8 +12,8 @@ func (s *PositionService) ListWorkflows(ctx context.Context, p store.ListParams,
 }
 
 // GetWorkflow 查询单个审批流程。
-func (s *PositionService) GetWorkflow(ctx context.Context, id string) (*domain.Workflow, error) {
-	return s.st.Workflows().Get(ctx, id)
+func (s *PositionService) GetWorkflow(ctx context.Context, id, tenantID string) (*domain.Workflow, error) {
+	return s.st.Workflows().Get(ctx, id, tenantID)
 }
 
 // CreateWorkflow 创建审批流程。
@@ -22,11 +22,11 @@ func (s *PositionService) CreateWorkflow(ctx context.Context, tenantID *string, 
 }
 
 // UpdateWorkflow 更新审批流程。
-func (s *PositionService) UpdateWorkflow(ctx context.Context, id string, p *store.WorkflowParams) (*domain.Workflow, error) {
-	return s.st.Workflows().Update(ctx, id, p)
+func (s *PositionService) UpdateWorkflow(ctx context.Context, id, tenantID string, p *store.WorkflowParams) (*domain.Workflow, error) {
+	return s.st.Workflows().Update(ctx, id, tenantID, p)
 }
 
 // DeleteWorkflow 删除审批流程。
-func (s *PositionService) DeleteWorkflow(ctx context.Context, id string) error {
-	return s.st.Workflows().Delete(ctx, id)
+func (s *PositionService) DeleteWorkflow(ctx context.Context, id, tenantID string) error {
+	return s.st.Workflows().Delete(ctx, id, tenantID)
 }

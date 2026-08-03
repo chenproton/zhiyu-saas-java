@@ -13,6 +13,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { fileApi } from '@/lib/api'
+import { toast } from '@zhiyu/ui'
 
 interface RichTextEditorProps {
   value: string
@@ -21,7 +22,6 @@ interface RichTextEditorProps {
   minHeight?: number
   pdfUrl?: string | null
   onPdfChange?: (url: string | null) => void
-  toast: any
 }
 
 export function RichTextEditor({
@@ -31,7 +31,6 @@ export function RichTextEditor({
   minHeight = 300,
   pdfUrl,
   onPdfChange,
-  toast,
 }: RichTextEditorProps) {
   const [mode, setMode] = useState<'rich_text' | 'pdf'>('rich_text')
   const [pdfUploading, setPdfUploading] = useState(false)
@@ -43,20 +42,20 @@ export function RichTextEditor({
   const handlePdfUpload = async (file: File) => {
     if (!file) return
     if (file.type !== 'application/pdf') {
-      toast.error('请上传 PDF 文件')
+      toast({ variant: 'destructive', title: '请上传 PDF 文件' })
       return
     }
     if (file.size > 20 * 1024 * 1024) {
-      toast.error('文件大小超过 20MB')
+      toast({ variant: 'destructive', title: '文件大小超过 20MB' })
       return
     }
     setPdfUploading(true)
     try {
       const res = await fileApi.upload(file)
       onPdfChange?.(res.url)
-      toast.success('上传成功')
+      toast({ title: '上传成功' })
     } catch (err: any) {
-      toast.error('上传失败', { description: err.message })
+      toast({ variant: 'destructive', title: '上传失败', description: err.message })
     } finally {
       setPdfUploading(false)
     }

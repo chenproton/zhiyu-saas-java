@@ -192,7 +192,7 @@ func scanTenantRows(rows pgx.Rows) ([]domain.Tenant, error) {
 		t.EducationNature = edNature
 		items = append(items, t)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // CreateTenantResult 新租户初始化结果。

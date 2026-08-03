@@ -358,13 +358,15 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 	nameToID := make(map[string]string)
 
 	// Load org types
-	typeRows, _ := h.DB.Query(ctx, `SELECT id, name FROM org_types WHERE tenant_id=$1`, tenantID)
-	for typeRows.Next() {
-		var id, name string
-		_ = typeRows.Scan(&id, &name)
-		typeNameToID[name] = id
+	typeRows, typeErr := h.DB.Query(ctx, `SELECT id, name FROM org_types WHERE tenant_id=$1`, tenantID)
+	if typeErr == nil {
+		for typeRows.Next() {
+			var id, name string
+			_ = typeRows.Scan(&id, &name)
+			typeNameToID[name] = id
+		}
+		typeRows.Close()
 	}
-	typeRows.Close()
 
 	for i, row := range rows {
 		if i < 2 {

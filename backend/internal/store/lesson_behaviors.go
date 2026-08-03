@@ -18,16 +18,16 @@ func NewLessonBehaviorStore(q Queryer) *LessonBehaviorStore {
 	return &LessonBehaviorStore{q: q}
 }
 
-// ListRecords 查询行为记录（按课程+日期范围）。
-func (s *LessonBehaviorStore) ListRecords(ctx context.Context, courseID, startDate, endDate string) ([]domain.LessonBehaviorRecord, error) {
-	args := []any{courseID}
+// ListRecords 查询行为记录（按租户+课程+日期范围）。
+func (s *LessonBehaviorStore) ListRecords(ctx context.Context, tenantID, courseID, startDate, endDate string) ([]domain.LessonBehaviorRecord, error) {
+	args := []any{courseID, tenantID}
 	query := `
 		SELECT r.id, r.course_id, r.student_user_id, u.name, r.record_date, r.attendance,
 			   r.quiz_score, r.interaction_count, r.praise_count, r.rush_correct_count, r.rush_avg_time_sec,
 			   r.created_at, r.updated_at
 		FROM lesson_behavior_records r
 		JOIN users u ON u.id = r.student_user_id
-		WHERE r.course_id = $1`
+		WHERE r.course_id = $1 AND r.tenant_id = $2`
 	if startDate != "" {
 		args = append(args, startDate)
 		query += " AND r.record_date >= $" + strconv.Itoa(len(args))
@@ -36,7 +36,7 @@ func (s *LessonBehaviorStore) ListRecords(ctx context.Context, courseID, startDa
 		args = append(args, endDate)
 		query += " AND r.record_date <= $" + strconv.Itoa(len(args))
 	}
-	query += " ORDER BY r.record_date DESC, r.created_at DESC"
+	query += " ORDER BY r.record_date DESC, r.created_at DESC LIMIT 1000"
 
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {

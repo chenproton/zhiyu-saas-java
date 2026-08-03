@@ -57,3 +57,28 @@ func (s *ScenarioConfigService) BindAbility(ctx context.Context, tenantID, taskI
 func (s *ScenarioConfigService) UnbindAbility(ctx context.Context, id string) error {
 	return s.st.TaskBindings().UnbindAbility(ctx, id)
 }
+
+// ScenarioTenantID 查询场景所属租户（租户归属校验用）。
+func (s *ScenarioConfigService) ScenarioTenantID(ctx context.Context, scenarioID string) (*string, error) {
+	return s.st.ScenarioTasks().ScenarioTenantID(ctx, scenarioID)
+}
+
+// TaskScenarioID 查询任务所属场景（租户归属校验用）。
+func (s *ScenarioConfigService) TaskScenarioID(ctx context.Context, taskID string) (string, error) {
+	return s.st.ScenarioTasks().TaskScenarioID(ctx, taskID)
+}
+
+// TaskBindingTaskID 查询任务知识/能力绑定行关联的任务（租户归属校验用）。
+func (s *ScenarioConfigService) TaskBindingTaskID(ctx context.Context, bindTable, id string) (string, error) {
+	return s.st.TaskBindings().TaskIDOf(ctx, bindTable, id)
+}
+
+// WeightScenarioID 查询权重配置所属场景（租户归属校验用）。
+func (s *ScenarioConfigService) WeightScenarioID(ctx context.Context, id string) (string, error) {
+	return s.st.ScenarioWeights().ScenarioIDOf(ctx, id)
+}
+
+// GradeScenarioID 查询等级映射所属场景（租户归属校验用）。
+func (s *ScenarioConfigService) GradeScenarioID(ctx context.Context, id string) (string, error) {
+	return s.st.ScenarioGrades().ScenarioIDOf(ctx, id)
+}

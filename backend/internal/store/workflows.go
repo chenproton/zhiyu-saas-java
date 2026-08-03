@@ -23,18 +23,18 @@ func (s *WorkflowStore) List(ctx context.Context, p ListParams, cfg ListQueryCon
 }
 
 // Get 查询单个审批流程。
-func (s *WorkflowStore) Get(ctx context.Context, id string) (*domain.Workflow, error) {
+func (s *WorkflowStore) Get(ctx context.Context, id, tenantID string) (*domain.Workflow, error) {
 	var w domain.Workflow
-	var tenantID, description, scene *string
+	var tenantIDPtr, description, scene *string
 	var majorIds domain.StringSlice
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at
-		FROM workflows WHERE id = $1
-	`, id).Scan(&w.ID, &tenantID, &w.Name, &scene, &description, &w.Steps, &majorIds, &w.UsageCount, &w.Status, &w.CreatedAt)
+		FROM workflows WHERE id = $1 AND tenant_id IS NOT DISTINCT FROM $2
+	`, id, tenantID).Scan(&w.ID, &tenantIDPtr, &w.Name, &scene, &description, &w.Steps, &majorIds, &w.UsageCount, &w.Status, &w.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
-	w.TenantID = tenantID
+	w.TenantID = tenantIDPtr
 	w.Scene = scene
 	w.Description = description
 	w.MajorIds = majorIds
@@ -52,27 +52,31 @@ func (s *WorkflowStore) Create(ctx context.Context, tenantID *string, p *Workflo
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	tenant := ""
+	if tenantID != nil {
+		tenant = *tenantID
+	}
+	return s.Get(ctx, id, tenant)
 }
 
 // Update 更新审批流程。
-func (s *WorkflowStore) Update(ctx context.Context, id string, p *WorkflowParams) (*domain.Workflow, error) {
-	if _, err := s.Get(ctx, id); err != nil {
+func (s *WorkflowStore) Update(ctx context.Context, id, tenantID string, p *WorkflowParams) (*domain.Workflow, error) {
+	if _, err := s.Get(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE workflows SET
 			name = $1, scene = $2, description = $3, steps = $4, major_ids = $5, status = $6
-		WHERE id = $7
-	`, p.Name, p.Scene, p.Description, p.Steps, p.MajorIds, p.Status, id); err != nil {
+		WHERE id = $7 AND tenant_id IS NOT DISTINCT FROM $8
+	`, p.Name, p.Scene, p.Description, p.Steps, p.MajorIds, p.Status, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Delete 删除审批流程。
-func (s *WorkflowStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM workflows WHERE id = $1`, id)
+func (s *WorkflowStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM workflows WHERE id = $1 AND tenant_id IS NOT DISTINCT FROM $2`, id, tenantID)
 	return err
 }
 
@@ -114,5 +118,5 @@ func ScanWorkflowRows(rows pgx.Rows) ([]domain.Workflow, error) {
 		w.MajorIds = majorIds
 		items = append(items, w)
 	}
-	return items, nil
+	return items, rows.Err()
 }

@@ -58,6 +58,18 @@ func (s *QuestionBankStore) Get(ctx context.Context, id string) (*domain.Questio
 	return b, nil
 }
 
+// GetScoped 查询单个题库（限定租户）。
+func (s *QuestionBankStore) GetScoped(ctx context.Context, id, tenantID string) (*domain.QuestionBank, error) {
+	b, err := s.fetchBankScoped(ctx, id, tenantID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
 // IsDraftPool 查询是否草稿池。
 func (s *QuestionBankStore) IsDraftPool(ctx context.Context, id string) (bool, error) {
 	var isDraftPool bool
@@ -68,34 +80,40 @@ func (s *QuestionBankStore) IsDraftPool(ctx context.Context, id string) (bool, e
 // Create 创建题库。
 func (s *QuestionBankStore) Create(ctx context.Context, tenantID string, p *QuestionBankCreateParams) (*domain.QuestionBank, error) {
 	var id string
-	err := s.q.QueryRow(ctx, `
-		INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count, creator_id,
-			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, 'v1.0', 'mine', FALSE)
-		RETURNING id
-	`, tenantID, p.Code, p.Name, p.Description, p.CoverImage, p.CreatorID,
-		p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID).Scan(&id)
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `
+			INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count, creator_id,
+				collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
+			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, 'v1.0', 'mine', FALSE)
+			RETURNING id
+		`, tenantID, p.Code, p.Name, p.Description, p.CoverImage, p.CreatorID,
+			p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID).Scan(&id)
+		if err != nil {
+			return err
+		}
+		for _, kpID := range p.KnowledgePointIDs {
+			if kpID == "" {
+				continue
+			}
+			if _, err := tx.Exec(ctx, `
+					INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
+					VALUES (gen_random_uuid(), $1, $2, $3)
+					ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
+				`, tenantID, id, kpID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-	for _, kpID := range p.KnowledgePointIDs {
-		if kpID == "" {
-			continue
-		}
-		if _, err := s.q.Exec(ctx, `
-			INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
-			VALUES (gen_random_uuid(), $1, $2, $3)
-			ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
-		`, tenantID, id, kpID); err != nil {
-			return nil, err
-		}
 	}
 	return s.Get(ctx, id)
 }
 
-// Update 更新题库（保留原列语义：不含 version/owner_type）。
-func (s *QuestionBankStore) Update(ctx context.Context, id string, p *QuestionBankUpdateParams) (*domain.QuestionBank, error) {
-	if _, err := s.fetchBank(ctx, id); err != nil {
+// Update 更新题库（保留原列语义：不含 version/owner_type，限定租户）。
+func (s *QuestionBankStore) Update(ctx context.Context, id, tenantID string, p *QuestionBankUpdateParams) (*domain.QuestionBank, error) {
+	if _, err := s.fetchBankScoped(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if s.beginner == nil {
@@ -105,8 +123,8 @@ func (s *QuestionBankStore) Update(ctx context.Context, id string, p *QuestionBa
 		if _, err := tx.Exec(ctx, `
 			UPDATE question_banks SET name = $1, description = $2, cover_image = $3,
 				collaborator_ids = $4, collaborator_dept_ids = $5, batch_id = $6, updated_at = NOW()
-			WHERE id = $7
-		`, p.Name, p.Description, p.CoverImage, p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID, id); err != nil {
+			WHERE id = $7 AND tenant_id = $8
+		`, p.Name, p.Description, p.CoverImage, p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID, id, tenantID); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id); err != nil {
@@ -132,15 +150,18 @@ func (s *QuestionBankStore) Update(ctx context.Context, id string, p *QuestionBa
 	return s.Get(ctx, id)
 }
 
-// Delete 删除题库（连带题目与知识点绑定）。
-func (s *QuestionBankStore) Delete(ctx context.Context, id string) error {
+// Delete 删除题库（连带题目与知识点绑定，限定租户）。
+func (s *QuestionBankStore) Delete(ctx context.Context, id, tenantID string) error {
+	if _, err := s.fetchBankScoped(ctx, id, tenantID); err != nil {
+		return err
+	}
 	if _, err := s.q.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id); err != nil {
 		return fmt.Errorf("delete bank knowledge points: %w", err)
 	}
 	if _, err := s.q.Exec(ctx, `DELETE FROM questions WHERE bank_id = $1`, id); err != nil {
 		return fmt.Errorf("delete bank questions: %w", err)
 	}
-	_, err := s.q.Exec(ctx, `DELETE FROM question_banks WHERE id = $1`, id)
+	_, err := s.q.Exec(ctx, `DELETE FROM question_banks WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -227,6 +248,40 @@ func (s *QuestionBankStore) fetchBank(ctx context.Context, id string) (*domain.Q
 	return &b, nil
 }
 
+// fetchBankScoped 查询单个题库（限定租户）。
+func (s *QuestionBankStore) fetchBankScoped(ctx context.Context, id, tenantID string) (*domain.QuestionBank, error) {
+	var b domain.QuestionBank
+	var coverImage, creatorID, batchID *string
+	err := s.q.QueryRow(ctx, `
+		SELECT qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
+                (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
+                qb.creator_id,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
+			qb.collaborator_ids,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(qb.collaborator_ids) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
+			qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
+			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) AS knowledge_point_ids,
+			qb.created_at, qb.updated_at
+		FROM question_banks qb WHERE qb.id = $1 AND qb.tenant_id = $2
+	`, id, tenantID).Scan(
+		&b.ID, &b.Code, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
+		&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
+		&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
+		&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	b.CoverImage = coverImage
+	b.CreatorID = creatorID
+	b.BatchID = batchID
+	return &b, nil
+}
+
 // ScanQuestionBankRows 扫描题库行。
 func ScanQuestionBankRows(rows pgx.Rows) ([]domain.QuestionBank, error) {
 	items := make([]domain.QuestionBank, 0)
@@ -246,5 +301,5 @@ func ScanQuestionBankRows(rows pgx.Rows) ([]domain.QuestionBank, error) {
 		b.BatchID = batchID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }

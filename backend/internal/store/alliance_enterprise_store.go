@@ -114,7 +114,7 @@ func (s *AllianceStore) ScanEnterpriseRows(rows pgx.Rows) ([]domain.AllianceEnte
 		e.CreatedBy = createdBy
 		items = append(items, e)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回合作企业列表查询配置，SQL 片段沉淀在 store 层。
@@ -276,7 +276,7 @@ func (s *AllianceStore) ScanEnterpriseAgreementRows(rows pgx.Rows) ([]domain.All
 		a.Attachments = attachments
 		items = append(items, a)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func (s *AllianceStore) GetEnterpriseAgreementByID(ctx context.Context, id, tenantID string) (*domain.AllianceEnterpriseAgreement, error) {
@@ -339,7 +339,7 @@ func (s *AllianceStore) ListPublicEnterprises(ctx context.Context) ([]domain.All
 			business_license_photos, qualification_photos, intellectual_property_photos,
 			cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at
 		FROM alliance_enterprises WHERE is_public = true AND status = 'active'
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC LIMIT 100
 	`)
 }
 

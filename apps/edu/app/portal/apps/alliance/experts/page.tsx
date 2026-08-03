@@ -127,12 +127,13 @@ export default function AllianceExpertsPage() {
       createDefault={() =>
         ({
           id: '',
+          tenantId: '',
           name: '',
           status: 'active',
-          isPublic: false as any,
+          isPublic: false,
           createdAt: '',
           updatedAt: '',
-        }) as any
+        }) as AllianceExpert
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">

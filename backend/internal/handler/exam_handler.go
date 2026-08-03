@@ -111,7 +111,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		duration = &req.Duration
 	}
 
-	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), "SJ", "exams", tenantID)
+	code, err := h.Service.GenerateEntityCode(r.Context(), h.Service.Queryer(), "SJ", "exams", tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "生成考试编码失败")
 		return
@@ -151,6 +151,9 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	existing, err := h.Service.GetExam(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
 		return
 	}
 
@@ -224,6 +227,9 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
+	if !verifyTenantOwnership(w, r, tenantID) {
+		return
+	}
 	if err := h.Service.DeleteExam(r.Context(), id); err != nil {
 		respondServerError(w, r, err, "删除考试失败")
 		return
@@ -239,9 +245,18 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetExam(r.Context(), id); err != nil {
+	exam, err := h.Service.GetExam(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
 		return
 	}
 
@@ -254,7 +269,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q, err := h.Service.FetchExamQuestion(r.Context(), req.QuestionID)
+	q, err := h.Service.FetchExamQuestion(r.Context(), tenantID, req.QuestionID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
@@ -265,16 +280,11 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		score = q.Score
 	}
 
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
 	if err := h.Service.AddExamQuestion(r.Context(), tenantID, id, q, score); err != nil {
 		respondServerError(w, r, err, "添加题目失败")
 		return
 	}
-	exam, _ := h.Service.GetExam(r.Context(), id)
+	exam, _ = h.Service.GetExam(r.Context(), id)
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -287,15 +297,19 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	questionID := chi.URLParam(r, "questionId")
-	if _, err := h.Service.GetExam(r.Context(), id); err != nil {
+	exam, err := h.Service.GetExam(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
 		return
 	}
 	if err := h.Service.RemoveExamQuestion(r.Context(), id, questionID); err != nil {
 		respondServerError(w, r, err, "移除题目失败")
 		return
 	}
-	exam, _ := h.Service.GetExam(r.Context(), id)
+	exam, _ = h.Service.GetExam(r.Context(), id)
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -322,7 +336,16 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err := h.Service.UpdateExamQuestionScore(r.Context(), examID, questionID, req.Score)
+	exam, err := h.Service.GetExam(r.Context(), examID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
+		return
+	}
+
+	err = h.Service.UpdateExamQuestionScore(r.Context(), examID, questionID, req.Score)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusNotFound, "考试中未找到该题目")
@@ -331,7 +354,7 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "更新question score失败")
 		return
 	}
-	exam, _ := h.Service.GetExam(r.Context(), examID)
+	exam, _ = h.Service.GetExam(r.Context(), examID)
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -359,11 +382,19 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	exam, err := h.Service.GetExam(r.Context(), examID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
+		return
+	}
 	if err := h.Service.BulkUpdateExamScores(r.Context(), examID, req); err != nil {
 		respondServerError(w, r, err, "批量更新分数失败")
 		return
 	}
-	exam, _ := h.Service.GetExam(r.Context(), examID)
+	exam, _ = h.Service.GetExam(r.Context(), examID)
 	respondJSON(w, http.StatusOK, exam)
 }
 

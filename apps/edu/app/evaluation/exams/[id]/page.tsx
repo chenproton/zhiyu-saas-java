@@ -82,6 +82,7 @@ export default function ExamComposerPage() {
 
   const [loadingExam, setLoadingExam] = useState(!getExam(examId))
   const triedReload = useRef(false)
+  const dragTargetRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (getExam(examId) || triedReload.current) return
@@ -222,6 +223,8 @@ export default function ExamComposerPage() {
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault()
     if (draggedIndex === null || draggedIndex === index) return
+    if (dragTargetRef.current === index) return
+    dragTargetRef.current = index
 
     const newQuestions = [...exam.questions]
     const [dragged] = newQuestions.splice(draggedIndex, 1)
@@ -233,6 +236,7 @@ export default function ExamComposerPage() {
 
   const handleDragEnd = () => {
     setDraggedIndex(null)
+    dragTargetRef.current = null
   }
 
   const handleEvenDistribution = () => {

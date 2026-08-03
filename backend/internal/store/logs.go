@@ -67,7 +67,7 @@ func ScanLoginLogRows(rows pgx.Rows) ([]domain.LoginLog, error) {
 		log.Status = status
 		items = append(items, log)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ScanOperationLogRows 扫描操作日志行。
@@ -91,7 +91,7 @@ func ScanOperationLogRows(rows pgx.Rows) ([]domain.OperationLog, error) {
 		log.Status = status
 		items = append(items, log)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 var _ = context.Background // 保持 context 导入（扫描函数不直接用但类型依赖）

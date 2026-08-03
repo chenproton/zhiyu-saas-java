@@ -119,8 +119,12 @@ func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	base, err := h.Service.GetNodeBase(r.Context(), id)
+	base, err := h.Service.GetNodeBase(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
@@ -149,6 +153,11 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
+		return
+	}
+
+	if _, err := h.Service.Store().Courses().Get(r.Context(), req.CourseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
 
@@ -194,7 +203,11 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetNodeBase(r.Context(), id); err != nil {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.GetNodeBase(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
@@ -215,7 +228,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		resIDs = []string{}
 	}
 
-	node, err := h.Service.UpdateNode(r.Context(), id, &store.CourseNodeUpdateParams{
+	node, err := h.Service.UpdateNode(r.Context(), id, tenantID, &store.CourseNodeUpdateParams{
 		CourseID:            req.CourseID,
 		ParentID:            req.ParentID,
 		Name:                req.Name,
@@ -254,11 +267,15 @@ func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetNodeBase(r.Context(), id); err != nil {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.GetNodeBase(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
-	if err := h.Service.DeleteNode(r.Context(), id); err != nil {
+	if err := h.Service.DeleteNode(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除课程节点失败")
 		return
 	}
@@ -277,6 +294,14 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.CourseID == "" || len(req.NodeIDs) == 0 {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.Store().Courses().Get(r.Context(), req.CourseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
 	if err := h.Service.ReorderNodes(r.Context(), req.CourseID, req.NodeIDs); err != nil {

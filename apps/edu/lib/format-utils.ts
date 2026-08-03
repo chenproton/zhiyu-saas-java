@@ -26,3 +26,16 @@ export function formatDateTime(value?: string | Date | null, fallback = '-'): st
     minute: '2-digit',
   }).format(d)
 }
+
+/**
+ * 校验外链协议白名单（http/https），防止 javascript: 等危险协议被渲染为链接。
+ */
+export function isSafeExternalUrl(url?: string | null): boolean {
+  if (!url) return false
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}

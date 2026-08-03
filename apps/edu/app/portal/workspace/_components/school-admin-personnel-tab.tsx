@@ -113,6 +113,7 @@ export function SchoolAdminPersonnelTab() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+                aria-label="查看详情"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>

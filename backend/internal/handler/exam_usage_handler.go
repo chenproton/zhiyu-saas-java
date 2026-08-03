@@ -141,6 +141,10 @@ func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return
 	}
+	if usage.Status != "scheduled" {
+		respondError(w, http.StatusBadRequest, "考试安排不在待开始状态")
+		return
+	}
 	if err := h.Service.SetExamUsageStatus(r.Context(), id, "in_progress"); err != nil {
 		respondServerError(w, r, err, "开始考试安排失败")
 		return
@@ -157,6 +161,10 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
+		return
+	}
+	if usage.Status != "in_progress" {
+		respondError(w, http.StatusBadRequest, "考试安排不在进行中状态")
 		return
 	}
 	if err := h.Service.SetExamUsageStatus(r.Context(), id, "finished"); err != nil {

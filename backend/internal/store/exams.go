@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -95,13 +96,13 @@ type QuestionSnapshot struct {
 	Score    float64
 }
 
-// FetchQuestion 查询题目快照。
-func (s *ExamStore) FetchQuestion(ctx context.Context, questionID string) (*QuestionSnapshot, error) {
+// FetchQuestion 查询题目快照（限定租户）。
+func (s *ExamStore) FetchQuestion(ctx context.Context, tenantID, questionID string) (*QuestionSnapshot, error) {
 	var q QuestionSnapshot
 	var optionsStr, answerStr *string
 	err := s.q.QueryRow(ctx, `
-		SELECT id, type, content, options, answer, analysis, score FROM questions WHERE id = $1
-	`, questionID).Scan(&q.ID, &q.Type, &q.Content, &optionsStr, &answerStr, &q.Analysis, &q.Score)
+		SELECT id, type, content, options, answer, analysis, score FROM questions WHERE id = $1 AND tenant_id = $2
+	`, questionID, tenantID).Scan(&q.ID, &q.Type, &q.Content, &optionsStr, &answerStr, &q.Analysis, &q.Score)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +251,9 @@ func (s *ExamStore) fetchExamQuestions(ctx context.Context, examID string) ([]do
 			return nil, err
 		}
 		if optionsStr != nil {
-			_ = json.Unmarshal([]byte(*optionsStr), &eq.Options)
+			if err := json.Unmarshal([]byte(*optionsStr), &eq.Options); err != nil {
+				slog.Warn("解析题目选项失败", "error", err)
+			}
 		}
 		if answerStr != nil {
 			var ans domain.JSONSlice
@@ -329,7 +332,9 @@ func (s *ExamStore) BatchFetchExamQuestions(ctx context.Context, examIDs []strin
 			return nil, err
 		}
 		if optionsStr != nil {
-			_ = json.Unmarshal([]byte(*optionsStr), &eq.Options)
+			if err := json.Unmarshal([]byte(*optionsStr), &eq.Options); err != nil {
+				slog.Warn("解析题目选项失败", "error", err)
+			}
 		}
 		if answerStr != nil {
 			var ans domain.JSONSlice

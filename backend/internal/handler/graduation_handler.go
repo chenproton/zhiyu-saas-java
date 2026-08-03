@@ -315,8 +315,8 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 
 func (h *GraduationHandler) QueryResults(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
+	if claims == nil || claims.TenantID == nil {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	limit := 50

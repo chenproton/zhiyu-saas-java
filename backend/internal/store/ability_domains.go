@@ -110,7 +110,7 @@ func ScanAbilityDomainRows(rows pgx.Rows) ([]domain.AbilityDomain, error) {
 		d.BindingIDs = bindingIDs
 		items = append(items, d)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回能力域列表查询配置，SQL 片段沉淀在 store 层。

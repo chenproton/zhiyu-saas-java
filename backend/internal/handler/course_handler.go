@@ -153,7 +153,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.EvalData = domain.JSONMap{}
 	}
 
-	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), prefix, "courses", tenantID)
+	code, err := h.Service.GenerateEntityCode(r.Context(), h.Service.Queryer(), prefix, "courses", tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "生成课程代码失败")
 		return
@@ -206,8 +206,13 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchCourse(r.Context(), id)
+	existing, err := h.Service.GetCourseDetailInTenant(r.Context(), id, tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "课程不存在")
 		return
@@ -215,11 +220,6 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateCourseRequest
 	if !decodeBody(w, r, &req) {
-		return
-	}
-
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
 		return
 	}
 
@@ -344,13 +344,18 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchCourse(r.Context(), id); err != nil {
+	if _, err := h.Service.GetCourseDetailInTenant(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
 
-	if err := h.Service.DeleteCourse(r.Context(), id); err != nil {
+	if err := h.Service.DeleteCourse(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除课程失败")
 		return
 	}

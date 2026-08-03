@@ -130,6 +130,9 @@ func (h *ScenarioHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
 	}
+	if scenario.TenantID != nil && !verifyTenantOwnership(w, r, *scenario.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, scenario)
 }
 
@@ -161,7 +164,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code, err := store.GenerateUniqueEntityCode(r.Context(), h.DB.Q(), "CJ", "scenarios", *tenantID)
+	code, err := h.Service.GenerateEntityCode(r.Context(), h.DB.Q(), "CJ", "scenarios", *tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "生成scenario code失败")
 		return
@@ -203,6 +206,9 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	existing, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "场景方案不存在")
+		return
+	}
+	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
 		return
 	}
 
@@ -279,8 +285,12 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.Get(r.Context(), id); err != nil {
+	existing, err := h.Service.Get(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "场景方案不存在")
+		return
+	}
+	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
 		return
 	}
 	if err := h.Service.Delete(r.Context(), id); err != nil {

@@ -133,6 +133,15 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	courseTenantID, err := h.Service.CourseTenantID(r.Context(), req.CourseID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, courseTenantID) {
+		return
+	}
+
 	id, err := h.Service.Bind(r.Context(), tenantID, "course_resource_bindings", "course_id", req.CourseID, req.ResourceID, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
 		return store.CourseSyncBind(ctx, q, courseID, resourceID)
 	})
@@ -150,6 +159,19 @@ func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
+	courseID, err := h.Service.BindTargetID(r.Context(), "course_resource_bindings", id)
+	if err != nil {
+		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		return
+	}
+	courseTenantID, err := h.Service.CourseTenantID(r.Context(), courseID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, courseTenantID) {
+		return
+	}
 	if err := h.Service.Unbind(r.Context(), "course_resource_bindings", id, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
 		return store.CourseSyncUnbind(ctx, q, courseID, resourceID)
 	}); err != nil {

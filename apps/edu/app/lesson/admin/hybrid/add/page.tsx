@@ -185,6 +185,25 @@ function HybridCourseAddForm() {
     }),
   }))
 
+  // 编辑模式回填根节点表单（useState 初始化时 existing 尚未加载）
+  useEffect(() => {
+    if (!existing || !editId) return
+    queueMicrotask(() => {
+      setNodeDataMap((prev) => ({
+        ...prev,
+        [FIRST_NODE_ID]: createDefaultNodeModuleData({
+          name: existing.name,
+          code: existing.code,
+          majorId: existing.majorId || undefined,
+          majorName: existing.majorName || undefined,
+          semester: existing.semester || undefined,
+          category: existing.category as CourseBasicForm['category'],
+          coverImage: existing.coverImage || undefined,
+        }),
+      }))
+    })
+  }, [existing, editId])
+
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
@@ -464,7 +483,7 @@ function HybridCourseAddForm() {
   const handleSave = async () => {
     if (!rootForm.name || !rootForm.code) {
       toast({ title: '请填写课程名称和课程编码', variant: 'destructive' })
-      return
+      return false
     }
     setSaving(true)
     try {
@@ -479,23 +498,28 @@ function HybridCourseAddForm() {
           setExisting(updated)
         }
         toast({ title: '草稿已保存' })
+        return true
       } else {
         const created = await courseApi.create(payload)
         setExisting(created)
         hasSavedRef.current = true
         toast({ title: '草稿已保存' })
         router.replace(`/lesson/admin/hybrid/add?id=${created.id}`)
+        return true
       }
     } catch (e: any) {
       toast({ title: e?.message || '保存失败，请检查表单后重试', variant: 'destructive' })
     } finally {
       setSaving(false)
     }
+    return false
   }
 
   const handleFinish = async () => {
-    await handleSave()
-    router.push('/lesson/admin/hybrid')
+    const ok = await handleSave()
+    if (ok) {
+      router.push('/lesson/admin/hybrid')
+    }
   }
 
   const availableModules = ATOMIC_MODULES.filter((m) => !currentModules.includes(m.key))

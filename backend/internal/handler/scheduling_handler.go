@@ -144,7 +144,11 @@ func (h *SchedulingHandler) DeleteVenue(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.Service.DeleteVenue(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusBadRequest, "该场地已被排课引用，无法删除")
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusBadRequest, "该场地已被排课引用，无法删除")
+			return
+		}
+		respondServerError(w, r, err, "删除场地失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

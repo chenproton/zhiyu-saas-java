@@ -1164,6 +1164,7 @@ export function YiKnowAssistant() {
                 className="h-9 w-9 shrink-0 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-sm transition-all duration-200 active:scale-95"
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isTyping}
+                aria-label="发送"
               >
                 <Send className="w-4 h-4" />
               </Button>

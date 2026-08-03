@@ -81,7 +81,20 @@ func (h *MicroCertHandler) GetTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
+	templateTenantID, err := h.Store.TemplateTenantID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "微证书模板不存在")
+		return
+	}
+	if templateTenantID != tenantID {
+		respondError(w, http.StatusNotFound, "微证书模板不存在")
+		return
+	}
 	template, err := h.Store.GetTemplate(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "微证书模板不存在")
@@ -134,8 +147,17 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetTemplate(r.Context(), id); err != nil {
+	templateTenantID, err := h.Store.TemplateTenantID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "微证书模板不存在")
+		return
+	}
+	if templateTenantID != tenantID {
 		respondError(w, http.StatusNotFound, "微证书模板不存在")
 		return
 	}
@@ -171,8 +193,17 @@ func (h *MicroCertHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetTemplate(r.Context(), id); err != nil {
+	templateTenantID, err := h.Store.TemplateTenantID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "微证书模板不存在")
+		return
+	}
+	if templateTenantID != tenantID {
 		respondError(w, http.StatusNotFound, "微证书模板不存在")
 		return
 	}
@@ -196,6 +227,16 @@ func (h *MicroCertHandler) IssueCerts(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.TemplateID == "" || len(req.UserIDs) == 0 {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+
+	templateTenantID, err := h.Store.TemplateTenantID(r.Context(), req.TemplateID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "微证书模板不存在")
+		return
+	}
+	if templateTenantID != tenantID {
+		respondError(w, http.StatusNotFound, "微证书模板不存在")
 		return
 	}
 

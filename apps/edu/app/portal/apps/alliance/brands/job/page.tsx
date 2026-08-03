@@ -191,7 +191,7 @@ export default function AllianceJobBrandPage() {
               label="关联岗位"
               value={item.positionId || ''}
               onChange={(v: any) => setItem({ ...item, positionId: v })}
-              fetchUrl="/job/positions?limit=1000"
+              fetchUrl="/job/positions?limit=200"
             />
           </div>
           <div className="grid gap-2">
@@ -200,7 +200,7 @@ export default function AllianceJobBrandPage() {
               label="关联专业"
               value={item.majorId || ''}
               onChange={(v: any) => setItem({ ...item, majorId: v })}
-              fetchUrl="/majors?limit=1000"
+              fetchUrl="/majors?limit=200"
             />
           </div>
         </div>

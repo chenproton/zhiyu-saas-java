@@ -59,6 +59,12 @@ func isUniqueViolation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
+// isForeignKeyViolation 判断是否为外键约束冲突（用于区分"被引用不可删"与内部错误）。
+func isForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}
+
 func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -77,17 +83,25 @@ func respondError(w http.ResponseWriter, status int, message string) {
 
 // respondServerError 统一返回 500 并记录原始错误，便于线上排查。
 func respondServerError(w http.ResponseWriter, r *http.Request, err error, message string) {
+	errDetail := "<nil>"
+	if err != nil {
+		errDetail = err.Error()
+	}
 	slog.Error("handler server error",
 		slog.String("method", r.Method),
 		slog.String("path", r.URL.Path),
 		slog.String("message", message),
-		slog.String("error", err.Error()),
+		slog.String("error", errDetail),
 	)
 	respondError(w, http.StatusInternalServerError, message)
 }
 
+// maxJSONBodySize limits JSON request bodies to 10MB to prevent unbounded reads.
+const maxJSONBodySize = 10 << 20 // 10MB
+
 // decodeBody 解析 JSON 请求体，失败时写 400 响应并返回 false。
 func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBodySize)
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
 		respondError(w, http.StatusBadRequest, "无效请求体")
 		return false

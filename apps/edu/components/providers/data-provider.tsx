@@ -48,6 +48,7 @@ import {
   microCertApi,
   taskApi,
   scenarioApi,
+  request,
 } from '@/lib/api'
 
 // ==================== Date parsing helpers ====================
@@ -848,6 +849,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     appealRecords,
     evaluationStandards,
     createProcessEvaluation: (data: Record<string, unknown>) => {
+      // TODO: 后端暂无过程评价持久化端点，当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
       const newEval: ProcessEvaluation = {
         id: `pe-${Date.now()}`,
         archiveId: data.archiveId as string,
@@ -862,6 +864,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return newEval
     },
     createRectificationDetail: (data: Record<string, unknown>) => {
+      // TODO: 后端暂无整改记录持久化端点，当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
       const newRect: RectificationDetail = {
         id: `rect-${Date.now()}`,
         archiveId: data.archiveId as string,
@@ -878,6 +881,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return newRect
     },
     updateRectificationDetail: (id: string, data: Partial<RectificationDetail>) => {
+      // TODO: 后端暂无整改记录更新端点，当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
       setRectificationDetails((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)))
     },
     createAppealRecord: (data: Record<string, unknown>) => {
@@ -891,12 +895,44 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         createdAt: new Date(),
       }
       setAppealRecords((prev) => [...prev, newAppeal])
+      // 持久化到后端（POST /evaluation/appeals，后端以 userId 标识学生），返回后回填真实 id，失败仅记录错误不影响本地展示
+      request<{
+        id: string
+        userId: string
+        status: string
+        createdAt: string
+      }>('/evaluation/appeals', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: data.studentId as string,
+          type: data.type as string,
+          reason: data.reason as string,
+        }),
+      })
+        .then((created) => {
+          setAppealRecords((prev) =>
+            prev.map((a) =>
+              a.id === newAppeal.id
+                ? {
+                    ...a,
+                    id: created.id,
+                    studentId: created.userId,
+                    status: created.status as AppealRecord['status'],
+                    createdAt: new Date(created.createdAt),
+                  }
+                : a,
+            ),
+          )
+        })
+        .catch((err) => reportError(err, '创建申诉记录'))
       return newAppeal
     },
     updateAppealRecord: (id: string, data: Partial<AppealRecord>) => {
+      // TODO: 后端仅有 approved/rejected 处理端点（POST /evaluation/appeals/{id}/process），与通用局部更新语义不符，暂仅更新本地 state
       setAppealRecords((prev) => prev.map((a) => (a.id === id ? { ...a, ...data } : a)))
     },
     updateEvaluationStandard: (id: string, data: Partial<EvaluationStandard>) => {
+      // TODO: 后端暂无评价标准持久化端点，当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
       setEvaluationStandards((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)))
     },
     creditConversionRules,
@@ -974,6 +1010,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       )
     },
     revokeCert: async (id: string, reason: string) => {
+      // TODO: 后端暂无证书吊销端点（microCertApi 仅支持模板/签发/历史查询），当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
       setCertIssuanceRecords((prev) =>
         prev.map((r) =>
           r.id === id

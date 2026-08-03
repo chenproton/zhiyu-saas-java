@@ -191,7 +191,7 @@ export default function AllianceEmployerBrandPage() {
               label="关联企业"
               value={item.enterpriseId || ''}
               onChange={(v: any) => setItem({ ...item, enterpriseId: v })}
-              fetchUrl="/alliance/enterprises?limit=1000"
+              fetchUrl="/alliance/enterprises?limit=200"
             />
           </div>
         </div>

@@ -44,10 +44,10 @@ export default function AllianceAchievementDetailPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceAchievementApi.get(id),
-      portalRequest<{ items: RelatedRef[] }>('/career/positions?limit=1000').catch(() => ({
+      portalRequest<{ items: RelatedRef[] }>('/career/positions?limit=200').catch(() => ({
         items: [],
       })),
-      allianceAchievementApi.list({ limit: 1000 }),
+      allianceAchievementApi.list({ limit: 200 }),
     ])
       .then(([a, pos, ach]) => {
         setAchievement(a)
@@ -91,7 +91,9 @@ export default function AllianceAchievementDetailPage() {
 
   const optionsFor = (kind: 'positions' | 'scenes' | 'courses'): RelatedRef[] => {
     if (kind === 'positions') return positions
-    const source = achievements.filter((a) => a.type === kind)
+    // kind 为复数（scenes/courses），achievement.type 枚举为单数（scene/course）
+    const typeKey = kind === 'scenes' ? 'scene' : 'course'
+    const source = achievements.filter((a) => a.type === typeKey)
     return source.map((a) => ({ id: a.id, name: a.title }))
   }
 

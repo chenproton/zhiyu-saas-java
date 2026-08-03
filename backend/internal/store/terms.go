@@ -106,5 +106,5 @@ func ScanTermRows(rows pgx.Rows) ([]domain.Term, error) {
 		}
 		items = append(items, term)
 	}
-	return items, nil
+	return items, rows.Err()
 }

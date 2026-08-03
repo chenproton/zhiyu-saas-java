@@ -44,7 +44,7 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 		a.CreatedBy = createdBy
 		items = append(items, a)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ListConfig 返回合作成果列表查询配置，SQL 片段沉淀在 store 层。
@@ -152,7 +152,7 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context) ([]domain.Al
 			enterprise_ids, project_ids, related_positions, related_scenes,
 			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
 		FROM alliance_achievements WHERE is_public = true AND status = 'published'
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC LIMIT 100
 	`)
 }
 

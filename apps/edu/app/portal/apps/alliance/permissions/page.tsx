@@ -147,14 +147,14 @@ export default function AlliancePermissionsPage() {
               label="所属企业"
               value={item.enterpriseId || ''}
               onChange={(v: any) => setItem({ ...item, enterpriseId: v, expertId: '' })}
-              fetchUrl="/alliance/enterprises?limit=1000"
+              fetchUrl="/alliance/enterprises?limit=200"
             />
           ) : (
             <BrandRelationSelect
               label="所属专家"
               value={item.expertId || ''}
               onChange={(v: any) => setItem({ ...item, expertId: v, enterpriseId: '' })}
-              fetchUrl="/alliance/experts?limit=1000"
+              fetchUrl="/alliance/experts?limit=200"
             />
           )}
           <div className="flex items-center gap-2">

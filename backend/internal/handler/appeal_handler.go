@@ -50,7 +50,20 @@ func (h *AppealHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
+	appealTenantID, err := h.Service.Store().Appeals().TenantID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "申诉不存在")
+		return
+	}
+	if appealTenantID != tenantID {
+		respondError(w, http.StatusNotFound, "申诉不存在")
+		return
+	}
 	appeal, err := h.Service.GetAppeal(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "申诉不存在")
@@ -98,6 +111,23 @@ func (h *AppealHandler) Process(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Status == "" {
 		respondError(w, http.StatusBadRequest, "缺少状态")
+		return
+	}
+	if req.Status != "approved" && req.Status != "rejected" {
+		respondError(w, http.StatusBadRequest, "状态仅支持 approved/rejected")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	appealTenantID, err := h.Service.Store().Appeals().TenantID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "申诉不存在")
+		return
+	}
+	if appealTenantID != tenantID {
+		respondError(w, http.StatusNotFound, "申诉不存在")
 		return
 	}
 	appeal, err := h.Service.ProcessAppeal(r.Context(), id, req.Status)

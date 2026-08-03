@@ -107,6 +107,10 @@ function AddSystemPageInner() {
   const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
   const [courseId, setCourseId] = useState(editId || '')
   const [courseName, setCourseName] = useState('')
+  // 内容（课程）编码：新建自动生成，编辑回填真实编码
+  const [contentCode, setContentCode] = useState(() =>
+    `CNT-${Date.now().toString(36).toUpperCase()}`,
+  )
   const [major, setMajor] = useState('')
   const [majors, setMajors] = useState<Major[]>([])
   const [courseDescription, setCourseDescription] = useState('')
@@ -183,6 +187,7 @@ function AddSystemPageInner() {
         if (cancelled) return
         setCourseId(course.id)
         setCourseName(course.name || '')
+        if (course.code) setContentCode(course.code)
         if (course.description) setCourseDescription(course.description)
         setCourseDescriptionPdf((course as any).evalData?.descriptionPdf || null)
         if (course.coverImage) setCoverImage(course.coverImage)
@@ -361,9 +366,7 @@ function AddSystemPageInner() {
   }, [nodeDrafts, nodes])
 
   /* module 1: basic info */
-  const [contentCode] = useState(() =>
-    isEdit ? 'CNT-SQL001' : `CNT-${Date.now().toString(36).toUpperCase()}`,
-  )
+
   const [hours, setHours] = useState('')
   const [learningGoal, setLearningGoal] = useState('')
   const [difficulty, setDifficulty] = useState<number>(0)
@@ -627,8 +630,26 @@ function AddSystemPageInner() {
 
         // 知识点
         const kpList = draft?.knowledgePoints || node.knowledgePoints || []
+        // 自定义知识点：先持久化创建，用真实 ID 替换临时 ID（否则保存时被过滤丢失）
+        const kpIdMapping = new Map<string, string>()
+        for (const kp of kpList) {
+          if (!kp.id.startsWith('kp-custom-')) continue
+          try {
+            const created = await knowledgeApi.create({
+              name: kp.name,
+              code: undefined,
+              description: kp.description,
+              linked: false,
+              granularLessonIds: [],
+              sourceType: 'course_node',
+            } as any)
+            kpIdMapping.set(kp.id, created.id)
+          } catch (createErr) {
+            reportError(createErr, '创建自定义知识点')
+          }
+        }
         const knowledgePointIds = kpList
-          .map((kp) => kp.id)
+          .map((kp) => kpIdMapping.get(kp.id) || kp.id)
           .filter((id) => !id.startsWith('kp-custom-'))
 
         // 资源：已入库的资源直接走绑定，本地临时资源等节点创建后再上传
@@ -973,7 +994,6 @@ function AddSystemPageInner() {
                     minHeight={280}
                     pdfUrl={courseDescriptionPdf}
                     onPdfChange={setCourseDescriptionPdf}
-                    toast={toast}
                   />
                 </div>
                 <div className="md:col-span-4 space-y-1.5">
@@ -1173,7 +1193,6 @@ function AddSystemPageInner() {
                                   minHeight={280}
                                   pdfUrl={learningGoalPdf}
                                   onPdfChange={setLearningGoalPdf}
-                                  toast={toast}
                                 />
                               </div>
                             </div>

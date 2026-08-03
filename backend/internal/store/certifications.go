@@ -122,23 +122,23 @@ func (s *CertificationStore) UpdateRuleStatus(ctx context.Context, id, tenantID,
 	return s.GetRule(ctx, id)
 }
 
-// UpdateRule 更新规则。
-func (s *CertificationStore) UpdateRule(ctx context.Context, id, positionID, ruleSource string) (*domain.CertificationRule, error) {
-	if _, err := s.fetchRule(ctx, id, ""); err != nil {
+// UpdateRule 更新规则（限定租户）。
+func (s *CertificationStore) UpdateRule(ctx context.Context, id, tenantID, positionID, ruleSource string) (*domain.CertificationRule, error) {
+	if _, err := s.fetchRule(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE certification_rules SET career_position_id = $1, rule_source = $2, updated_at = NOW()
-		WHERE id = $3
-	`, positionID, ruleSource, id); err != nil {
+		WHERE id = $3 AND tenant_id = $4
+	`, positionID, ruleSource, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.GetRule(ctx, id)
+	return s.GetRuleByTenant(ctx, id, tenantID)
 }
 
-// DeleteRule 删除规则。
-func (s *CertificationStore) DeleteRule(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM certification_rules WHERE id = $1`, id)
+// DeleteRule 删除规则（限定租户）。
+func (s *CertificationStore) DeleteRule(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM certification_rules WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -165,9 +165,9 @@ func (s *CertificationStore) ListItems(ctx context.Context, ruleID string) ([]do
 	return items, rows.Err()
 }
 
-// GetItem 查询单个能力项。
-func (s *CertificationStore) GetItem(ctx context.Context, id string) (*domain.CertificationAbilityItem, error) {
-	item, err := s.fetchItem(ctx, id, "")
+// GetItem 查询单个能力项（tenantID 非空时限定租户）。
+func (s *CertificationStore) GetItem(ctx context.Context, id, tenantID string) (*domain.CertificationAbilityItem, error) {
+	item, err := s.fetchItem(ctx, id, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -185,29 +185,32 @@ func (s *CertificationStore) CreateItem(ctx context.Context, tenantID, ruleID, n
 	if err != nil {
 		return nil, err
 	}
-	return s.GetItem(ctx, id)
+	return s.GetItem(ctx, id, tenantID)
 }
 
-// UpdateItem 更新能力项。
-func (s *CertificationStore) UpdateItem(ctx context.Context, id, name string, sortOrder int) (*domain.CertificationAbilityItem, error) {
-	if _, err := s.fetchItem(ctx, id, ""); err != nil {
+// UpdateItem 更新能力项（限定租户）。
+func (s *CertificationStore) UpdateItem(ctx context.Context, id, tenantID, name string, sortOrder int) (*domain.CertificationAbilityItem, error) {
+	if _, err := s.fetchItem(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE certification_ability_items SET name = $1, sort_order = $2, updated_at = NOW()
-		WHERE id = $3
-	`, name, sortOrder, id); err != nil {
+		WHERE id = $3 AND tenant_id = $4
+	`, name, sortOrder, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.GetItem(ctx, id)
+	return s.fetchItem(ctx, id, tenantID)
 }
 
-// DeleteItem 删除能力项（连带点数）。
-func (s *CertificationStore) DeleteItem(ctx context.Context, id string) error {
-	if _, err := s.q.Exec(ctx, `DELETE FROM certification_ability_points WHERE item_id = $1`, id); err != nil {
+// DeleteItem 删除能力项（连带点数，限定租户）。
+func (s *CertificationStore) DeleteItem(ctx context.Context, id, tenantID string) error {
+	if _, err := s.fetchItem(ctx, id, tenantID); err != nil {
+		return err
+	}
+	if _, err := s.q.Exec(ctx, `DELETE FROM certification_ability_points WHERE item_id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
 		return fmt.Errorf("delete certification ability points: %w", err)
 	}
-	_, err := s.q.Exec(ctx, `DELETE FROM certification_ability_items WHERE id = $1`, id)
+	_, err := s.q.Exec(ctx, `DELETE FROM certification_ability_items WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -234,9 +237,9 @@ func (s *CertificationStore) ListPoints(ctx context.Context, itemID string) ([]d
 	return items, rows.Err()
 }
 
-// GetPoint 查询单个能力点。
-func (s *CertificationStore) GetPoint(ctx context.Context, id string) (*domain.CertificationAbilityPoint, error) {
-	point, err := s.fetchPoint(ctx, id, "")
+// GetPoint 查询单个能力点（tenantID 非空时限定租户）。
+func (s *CertificationStore) GetPoint(ctx context.Context, id, tenantID string) (*domain.CertificationAbilityPoint, error) {
+	point, err := s.fetchPoint(ctx, id, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +257,7 @@ func (s *CertificationStore) CreatePoint(ctx context.Context, p *CertificationPo
 	if err != nil {
 		return nil, err
 	}
-	return s.GetPoint(ctx, id)
+	return s.GetPoint(ctx, id, p.TenantID)
 }
 
 // UpdatePoint 更新能力点。
@@ -268,12 +271,12 @@ func (s *CertificationStore) UpdatePoint(ctx context.Context, id, tenantID strin
 	`, p.MappingType, p.CustomLevelMapping, p.RequiredLevel, p.Weight, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.GetPoint(ctx, id)
+	return s.GetPoint(ctx, id, tenantID)
 }
 
-// DeletePoint 删除能力点。
-func (s *CertificationStore) DeletePoint(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM certification_ability_points WHERE id = $1`, id)
+// DeletePoint 删除能力点（限定租户）。
+func (s *CertificationStore) DeletePoint(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM certification_ability_points WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -355,15 +358,19 @@ type FullPoint struct {
 	Weight             float64
 }
 
-// ListFullItems 查询完整项（含能力名）。
+// ListFullItems 查询完整项（含能力名，取该条目下排序最前的能力点名称）。
 func (s *CertificationStore) ListFullItems(ctx context.Context, ruleID string) ([]FullItem, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT i.id, i.name, i.sort_order,
-			COALESCE((SELECT name FROM ability_points WHERE id = p.ability_point_id LIMIT 1), '')
+			COALESCE((
+				SELECT ap.name FROM certification_ability_points p
+				JOIN ability_points ap ON ap.id = p.ability_point_id
+				WHERE p.item_id = i.id
+				ORDER BY p.sort_order, p.id
+				LIMIT 1
+			), '')
 		FROM certification_ability_items i
-		LEFT JOIN certification_ability_points p ON p.item_id = i.id
 		WHERE i.rule_id = $1
-		GROUP BY i.id, i.name, i.sort_order
 		ORDER BY i.sort_order
 	`, ruleID)
 	if err != nil {
@@ -585,7 +592,8 @@ func (s *CertificationStore) PutFullRule(ctx context.Context, tx Queryer, tenant
 			}
 			abilityPointUUID, err := uuid.Parse(point.AbilityPointID)
 			if err != nil {
-				abilityPointUUID = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(point.AbilityPointID))
+				// 非法能力点 ID：跳过该绑定，避免写入 SHA1 伪 UUID 脏引用
+				continue
 			}
 			pointID := uuid.NewString()
 			if _, err := tx.Exec(ctx, `

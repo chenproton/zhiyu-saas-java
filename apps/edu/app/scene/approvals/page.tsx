@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { scenarioApi, sceneBatchApi } from '@/lib/api'
@@ -98,25 +98,28 @@ export default function SceneApprovalsPage() {
     },
   ]
 
-  const mapRecord = (a: any): ApprovalView => {
-    const scenario = scenarioMap.get(a.targetId)
-    const batch = scenario?.batchId ? batchMap.get(scenario.batchId) : undefined
-    return {
-      id: a.id,
-      scenarioId: a.targetId,
-      scenarioName: scenario?.name || a.targetId,
-      scenarioCode: scenario?.code || '-',
-      version: scenario?.version || '-',
-      positionName:
-        scenario?.professionNames?.join('、') || scenario?.careerPositionId || undefined,
-      batchName: batch?.name,
-      submitterId: a.submitterId,
-      status: a.status,
-      submittedAt: new Date(a.createdAt).toLocaleDateString(),
-      stepInfo: getStepInfo(a),
-      history: a.history,
-    }
-  }
+  const mapRecord = useCallback(
+    (a: any): ApprovalView => {
+      const scenario = scenarioMap.get(a.targetId)
+      const batch = scenario?.batchId ? batchMap.get(scenario.batchId) : undefined
+      return {
+        id: a.id,
+        scenarioId: a.targetId,
+        scenarioName: scenario?.name || a.targetId,
+        scenarioCode: scenario?.code || '-',
+        version: scenario?.version || '-',
+        positionName:
+          scenario?.professionNames?.join('、') || scenario?.careerPositionId || undefined,
+        batchName: batch?.name,
+        submitterId: a.submitterId,
+        status: a.status,
+        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        stepInfo: getStepInfo(a),
+        history: a.history,
+      }
+    },
+    [scenarioMap, batchMap, getStepInfo],
+  )
 
   return (
     <ApprovalListPage<ApprovalView>

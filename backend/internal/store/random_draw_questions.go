@@ -99,7 +99,7 @@ func (s *RandomDrawQuestionStore) ListConfig() ListQueryConfig[domain.RandomDraw
 	return ListQueryConfig[domain.RandomDrawQuestion]{
 		Table:         "random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id",
 		SelectColumns: "rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at",
-		TenantScoped:  false,
+		TenantScoped:  true,
 		SearchColumns: []string{"rdq.name", "rdq.description", "m.name"},
 		DefaultLimit:  200,
 		ScanRows:      ScanRandomDrawQuestionRows,
@@ -128,5 +128,5 @@ func ScanRandomDrawQuestionRows(rows pgx.Rows) ([]domain.RandomDrawQuestion, err
 		q.MajorName = majorName
 		items = append(items, q)
 	}
-	return items, nil
+	return items, rows.Err()
 }

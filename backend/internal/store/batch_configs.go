@@ -49,7 +49,7 @@ func NewJobBatchTableConfig() BatchTableConfig {
 		EntityName:         "batch",
 		StatusOpen:         string(domain.BatchStatusOpen),
 		StatusClosed:       string(domain.BatchStatusClosed),
-		SearchColumns:      []string{"name"},
+		SearchColumns:      []string{"b.name"},
 		TenantScoped:       true,
 		TenantFilterColumn: "b.tenant_id",
 		ScanRow:            ScanJobBatchRow,
@@ -66,7 +66,7 @@ func NewSceneBatchTableConfig() BatchTableConfig {
 		EntityName:         "scene batch",
 		StatusOpen:         string(domain.SceneBatchStatusOpen),
 		StatusClosed:       string(domain.SceneBatchStatusClosed),
-		SearchColumns:      []string{"name"},
+		SearchColumns:      []string{"sb.name"},
 		TenantScoped:       true,
 		TenantFilterColumn: "sb.tenant_id",
 		ScanRow:            ScanSceneBatchRow,
@@ -83,7 +83,7 @@ func NewCourseBatchTableConfig() BatchTableConfig {
 		EntityName:         "batch",
 		StatusOpen:         string(domain.LessonBatchStatusOpen),
 		StatusClosed:       string(domain.LessonBatchStatusClosed),
-		SearchColumns:      []string{"name", "code"},
+		SearchColumns:      []string{"lb.name", "lb.code"},
 		TenantScoped:       true,
 		TenantFilterColumn: "lb.tenant_id",
 		ExtraListFilters: func(p ListParams, qb *ListQueryBuilder) {
@@ -109,7 +109,7 @@ func NewEvaluationBatchTableConfig() BatchTableConfig {
 		EntityName:         "evaluation batch",
 		StatusOpen:         string(domain.BatchStatusOpen),
 		StatusClosed:       string(domain.BatchStatusClosed),
-		SearchColumns:      []string{"name"},
+		SearchColumns:      []string{"eb.name"},
 		TenantScoped:       true,
 		TenantFilterColumn: "eb.tenant_id",
 		ScanRow:            ScanEvaluationBatchRow,
@@ -126,7 +126,7 @@ func NewAffairsBatchTableConfig() BatchTableConfig {
 		EntityName:         "affairs batch",
 		StatusOpen:         string(domain.BatchStatusOpen),
 		StatusClosed:       string(domain.BatchStatusClosed),
-		SearchColumns:      []string{"name"},
+		SearchColumns:      []string{"ab.name"},
 		TenantScoped:       true,
 		TenantFilterColumn: "ab.tenant_id",
 		ScanRow:            ScanAffairsBatchRow,
@@ -154,7 +154,7 @@ func ScanJobBatchRows(rows pgx.Rows) ([]any, error) {
 		b.WorkflowID = workflowID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func ScanSceneBatchRows(rows pgx.Rows) ([]any, error) {
@@ -175,7 +175,7 @@ func ScanSceneBatchRows(rows pgx.Rows) ([]any, error) {
 		b.WorkflowID = workflowID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func ScanLessonBatchRows(rows pgx.Rows) ([]any, error) {
@@ -193,7 +193,7 @@ func ScanLessonBatchRows(rows pgx.Rows) ([]any, error) {
 		b.MajorName = majorName
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func ScanEvaluationBatchRows(rows pgx.Rows) ([]any, error) {
@@ -214,7 +214,7 @@ func ScanEvaluationBatchRows(rows pgx.Rows) ([]any, error) {
 		b.WorkflowID = workflowID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func ScanAffairsBatchRows(rows pgx.Rows) ([]any, error) {
@@ -235,5 +235,5 @@ func ScanAffairsBatchRows(rows pgx.Rows) ([]any, error) {
 		b.WorkflowID = workflowID
 		items = append(items, b)
 	}
-	return items, nil
+	return items, rows.Err()
 }

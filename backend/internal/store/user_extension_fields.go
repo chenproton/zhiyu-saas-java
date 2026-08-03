@@ -167,5 +167,5 @@ func scanUserExtensionFieldRows(rows pgx.Rows) ([]domain.UserExtensionField, err
 		field.ApplicableRoleCodes = applicableCodes
 		items = append(items, field)
 	}
-	return items, nil
+	return items, rows.Err()
 }

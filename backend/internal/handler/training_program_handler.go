@@ -102,7 +102,7 @@ func (h *TrainingProgramHandler) Create(w http.ResponseWriter, r *http.Request) 
 	}
 	code := req.Code
 	if code == nil || *code == "" {
-		gen, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.TrainingProgramQueryer(), "RP", "training_programs", tenantID)
+		gen, err := h.Service.GenerateEntityCode(r.Context(), h.Service.TrainingProgramQueryer(), "RP", "training_programs", tenantID)
 		if err == nil {
 			code = &gen
 		}
@@ -191,7 +191,11 @@ func (h *TrainingProgramHandler) Delete(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := h.Service.DeleteTrainingProgram(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusBadRequest, "该方案已被教学计划引用，无法删除")
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusBadRequest, "该方案已被教学计划引用，无法删除")
+			return
+		}
+		respondServerError(w, r, err, "删除人培方案失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

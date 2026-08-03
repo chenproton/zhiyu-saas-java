@@ -29,7 +29,7 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id, version, owner_type, is_draft_pool)
 			VALUES ($1, $2, $3, $4, 'draft', 0, $5, 'v1.0', 'tenant', FALSE)
 		`,
-		updateSQL:   `UPDATE question_banks SET name=$1, description=$2, updated_at=NOW() WHERE id=$3`,
+		updateSQL:   `UPDATE question_banks SET name=$1, updated_at=NOW() WHERE id=$2`,
 		defaultCols: []string{"id", "name", "description", "status", "created_at"},
 	},
 	"exams": {
@@ -39,7 +39,7 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, creator_id, version, owner_type)
 			VALUES ($1, $2, $3, $4, 'draft', 0, 60, $5, 'v1.0', 'tenant')
 		`,
-		updateSQL:   `UPDATE exams SET name=$1, description=$2, updated_at=NOW() WHERE id=$3`,
+		updateSQL:   `UPDATE exams SET name=$1, updated_at=NOW() WHERE id=$2`,
 		defaultCols: []string{"id", "name", "description", "status", "created_at"},
 	},
 	"courses": {
@@ -49,7 +49,7 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO courses (id, tenant_id, code, name, type, category, status, creator_id, co_creator_ids, node_count, resource_count, study_count)
 			VALUES ($1, $2, $3, $4, 'system', '导入', 'draft', $5, '{}', 0, 0, 0)
 		`,
-		updateSQL:   `UPDATE courses SET code=$1, name=$2, updated_at=NOW() WHERE id=$3`,
+		updateSQL:   `UPDATE courses SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
 		defaultCols: []string{"id", "code", "name", "status", "created_at"},
 	},
 	"career_positions": {
@@ -59,7 +59,7 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO career_positions (id, tenant_id, name, short_name, position_type, status, creator_id)
 			VALUES ($1, $2, $3, $4, 'other', 'draft', $5)
 		`,
-		updateSQL:   `UPDATE career_positions SET name=$1, short_name=$2, updated_at=NOW() WHERE id=$3`,
+		updateSQL:   `UPDATE career_positions SET name=$1, updated_at=NOW() WHERE id=$2`,
 		defaultCols: []string{"id", "name", "short_name", "status", "created_at"},
 	},
 	"scenarios": {
@@ -336,7 +336,13 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 		existingID, exists := h.findExistingByKey(r.Context(), entity, tenantID, meta.keyCol, key)
 		if exists {
 			if overwrite {
-				_, execErr := h.DB.Exec(r.Context(), meta.updateSQL, row.name, row.code, existingID)
+				// 按 updateSQL 占位符数传参：2 参（仅 name）/ 3 参（name, code）
+				updateArgs := []any{row.name}
+				if strings.Count(meta.updateSQL, "$") == 3 {
+					updateArgs = append(updateArgs, row.code)
+				}
+				updateArgs = append(updateArgs, existingID)
+				_, execErr := h.DB.Exec(r.Context(), meta.updateSQL, updateArgs...)
 				if execErr != nil {
 					failed++
 					continue

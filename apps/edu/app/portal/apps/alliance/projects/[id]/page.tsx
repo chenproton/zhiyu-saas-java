@@ -77,8 +77,8 @@ export default function AllianceProjectDetailPage() {
     Promise.all([
       allianceProjectApi.get(id),
       allianceProjectApi.listMilestones(id),
-      allianceAgreementApi.list({ limit: 1000 }),
-      allianceAchievementApi.list({ limit: 1000 }),
+      allianceAgreementApi.list({ limit: 200 }),
+      allianceAchievementApi.list({ limit: 200 }),
     ])
       .then(([p, m, agr, ach]) => {
         setProject(p)

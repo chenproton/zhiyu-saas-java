@@ -23,7 +23,7 @@ export default function AllianceExpertDetailPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceExpertApi.get(id),
-      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceEnterpriseApi.list({ limit: 200 }),
     ])
       .then(([e, ents]) => {
         setExpert(e)
