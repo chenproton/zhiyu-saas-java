@@ -92,7 +92,7 @@ func (s *AllianceStore) CreateExpert(ctx context.Context, e *domain.AllianceExpe
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateExpert(ctx context.Context, id string, e *domain.AllianceExpert) error {
+func (s *AllianceStore) UpdateExpert(ctx context.Context, id, tenantID string, e *domain.AllianceExpert) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_experts SET
 			name = $1, gender = $2, age = $3, title = $4, position = $5, expert_type = $6,
@@ -101,12 +101,12 @@ func (s *AllianceStore) UpdateExpert(ctx context.Context, id string, e *domain.A
 			cover_image = $16, photos = $17, attachments = $18, enterprise_id = $19, organization = $20, rating = $21,
 			status = $22, partner_source = $23, position_direction = $24,
 			secondary_colleges = $25, is_public = $26, updated_at = NOW()
-		WHERE id = $27
+		WHERE id = $27 AND tenant_id = $28
 	`, e.Name, e.Gender, e.Age, e.Title, e.Position, e.ExpertType, e.Industry,
 		emptyJSON(e.ProfessionalFields), emptyJSON(e.Specialties), e.ExperienceYears,
 		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL, e.CoverImage,
 		emptyJSON(e.Photos), emptyJSON(e.Attachments), e.EnterpriseID, e.Organization, e.Rating,
-		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, id)
+		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, id, tenantID)
 	return err
 }
 

@@ -69,14 +69,14 @@ func (s *AllianceStore) CreateAgreement(ctx context.Context, a *domain.AllianceA
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateAgreement(ctx context.Context, id string, a *domain.AllianceAgreement) error {
+func (s *AllianceStore) UpdateAgreement(ctx context.Context, id, tenantID string, a *domain.AllianceAgreement) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_agreements SET
 			name = $1, type = $2, content = $3, start_date = $4, end_date = $5,
 			status = $6, enterprise_ids = $7, project_ids = $8, attachments = $9, updated_at = NOW()
-		WHERE id = $10
+		WHERE id = $10 AND tenant_id = $11
 	`, a.Name, a.Type, a.Content, a.StartDate, a.EndDate, a.Status,
-		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), id)
+		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), id, tenantID)
 	return err
 }
 

@@ -90,8 +90,8 @@ func (s *EvaluationService) ListRandomDrawQuestions(ctx context.Context, p store
 }
 
 // GetRandomDrawQuestion 查询单个随机抽题。
-func (s *EvaluationService) GetRandomDrawQuestion(ctx context.Context, id string) (*domain.RandomDrawQuestion, error) {
-	return s.st.RandomDrawQuestions().Get(ctx, id)
+func (s *EvaluationService) GetRandomDrawQuestion(ctx context.Context, id, tenantID string) (*domain.RandomDrawQuestion, error) {
+	return s.st.RandomDrawQuestions().Get(ctx, id, tenantID)
 }
 
 // CreateRandomDrawQuestion 创建随机抽题。
@@ -100,11 +100,11 @@ func (s *EvaluationService) CreateRandomDrawQuestion(ctx context.Context, tenant
 }
 
 // UpdateRandomDrawQuestion 更新随机抽题。
-func (s *EvaluationService) UpdateRandomDrawQuestion(ctx context.Context, id string, p *store.RandomDrawQuestionParams) (*domain.RandomDrawQuestion, error) {
-	return s.st.RandomDrawQuestions().Update(ctx, id, p)
+func (s *EvaluationService) UpdateRandomDrawQuestion(ctx context.Context, id, tenantID string, p *store.RandomDrawQuestionParams) (*domain.RandomDrawQuestion, error) {
+	return s.st.RandomDrawQuestions().Update(ctx, id, tenantID, p)
 }
 
 // DeleteRandomDrawQuestion 删除随机抽题。
-func (s *EvaluationService) DeleteRandomDrawQuestion(ctx context.Context, id string) error {
-	return s.st.RandomDrawQuestions().Delete(ctx, id)
+func (s *EvaluationService) DeleteRandomDrawQuestion(ctx context.Context, id, tenantID string) error {
+	return s.st.RandomDrawQuestions().Delete(ctx, id, tenantID)
 }

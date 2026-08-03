@@ -59,6 +59,9 @@ func (h *RandomDrawQuestionHandler) crud() crudConfig[RandomDrawQuestionRequest,
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *RandomDrawQuestionRequest) (string, bool) {
 			return requireTenant(w, r)
 		},
+		TenantFn: func(w http.ResponseWriter, r *http.Request) (string, bool) {
+			return requireTenant(w, r)
+		},
 		ValidateUpdate: func(t *RandomDrawQuestionRequest) string {
 			if t.Name == "" {
 				return "缺少必填字段"
@@ -77,8 +80,8 @@ func (h *RandomDrawQuestionHandler) crud() crudConfig[RandomDrawQuestionRequest,
 			}
 			return q.ID, nil
 		},
-		UpdateFn: func(ctx context.Context, id, _ string, t *RandomDrawQuestionRequest) error {
-			_, err := h.Service.UpdateRandomDrawQuestion(ctx, id, &store.RandomDrawQuestionParams{
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *RandomDrawQuestionRequest) error {
+			_, err := h.Service.UpdateRandomDrawQuestion(ctx, id, tenantID, &store.RandomDrawQuestionParams{
 				Name:        t.Name,
 				Description: t.Description,
 				Answer:      t.Answer,
@@ -86,11 +89,11 @@ func (h *RandomDrawQuestionHandler) crud() crudConfig[RandomDrawQuestionRequest,
 			})
 			return err
 		},
-		DeleteFn: func(ctx context.Context, id, _ string) error {
-			return h.Service.DeleteRandomDrawQuestion(ctx, id)
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Service.DeleteRandomDrawQuestion(ctx, id, tenantID)
 		},
-		GetByIDFn: func(ctx context.Context, id, _ string) (domain.RandomDrawQuestion, error) {
-			q, err := h.Service.GetRandomDrawQuestion(ctx, id)
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.RandomDrawQuestion, error) {
+			q, err := h.Service.GetRandomDrawQuestion(ctx, id, tenantID)
 			if err != nil {
 				return domain.RandomDrawQuestion{}, err
 			}

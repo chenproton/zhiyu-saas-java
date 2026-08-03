@@ -23,8 +23,8 @@ func (s *RandomDrawQuestionStore) List(ctx context.Context, p ListParams, cfg Li
 }
 
 // Get 查询单个随机抽题。
-func (s *RandomDrawQuestionStore) Get(ctx context.Context, id string) (*domain.RandomDrawQuestion, error) {
-	q, err := s.fetchQuestion(ctx, id)
+func (s *RandomDrawQuestionStore) Get(ctx context.Context, id, tenantID string) (*domain.RandomDrawQuestion, error) {
+	q, err := s.fetchQuestion(ctx, id, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -42,26 +42,26 @@ func (s *RandomDrawQuestionStore) Create(ctx context.Context, tenantID string, p
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Update 更新随机抽题。
-func (s *RandomDrawQuestionStore) Update(ctx context.Context, id string, p *RandomDrawQuestionParams) (*domain.RandomDrawQuestion, error) {
-	if _, err := s.fetchQuestion(ctx, id); err != nil {
+func (s *RandomDrawQuestionStore) Update(ctx context.Context, id, tenantID string, p *RandomDrawQuestionParams) (*domain.RandomDrawQuestion, error) {
+	if _, err := s.fetchQuestion(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE random_draw_questions SET name = $1, description = $2, answer = $3, major_id = $4, updated_at = NOW()
-		WHERE id = $5
-	`, p.Name, p.Description, p.Answer, p.MajorID, id); err != nil {
+		WHERE id = $5 AND tenant_id = $6
+	`, p.Name, p.Description, p.Answer, p.MajorID, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Delete 删除随机抽题。
-func (s *RandomDrawQuestionStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM random_draw_questions WHERE id = $1`, id)
+func (s *RandomDrawQuestionStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM random_draw_questions WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -73,15 +73,15 @@ type RandomDrawQuestionParams struct {
 	MajorID     *string
 }
 
-func (s *RandomDrawQuestionStore) fetchQuestion(ctx context.Context, id string) (*domain.RandomDrawQuestion, error) {
+func (s *RandomDrawQuestionStore) fetchQuestion(ctx context.Context, id, tenantID string) (*domain.RandomDrawQuestion, error) {
 	var q domain.RandomDrawQuestion
 	var description, answer, majorID, majorName *string
 	err := s.q.QueryRow(ctx, `
 		SELECT rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at
 		FROM random_draw_questions rdq
 		LEFT JOIN majors m ON m.id = rdq.major_id
-		WHERE rdq.id = $1
-	`, id).Scan(
+		WHERE rdq.id = $1 AND rdq.tenant_id = $2
+	`, id, tenantID).Scan(
 		&q.ID, &q.Name, &description, &answer, &majorID, &majorName, &q.CreatedAt, &q.UpdatedAt,
 	)
 	if err != nil {

@@ -145,8 +145,8 @@ func (h *AllianceHandler) enterpriseCRUD() crudConfig[allianceEnterpriseRequest,
 			IsPublic:                   t.IsPublic,
 		})
 	}
-	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *allianceEnterpriseRequest) error {
-		return h.Store.UpdateEnterprise(ctx, id, &store.AllianceEnterpriseUpdateParams{
+	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *allianceEnterpriseRequest) error {
+		return h.Store.UpdateEnterprise(ctx, id, tenantID, &store.AllianceEnterpriseUpdateParams{
 			Name:                       t.Name,
 			EnterpriseType:             t.EnterpriseType,
 			Industry:                   t.Industry,
@@ -175,6 +175,79 @@ func (h *AllianceHandler) enterpriseCRUD() crudConfig[allianceEnterpriseRequest,
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
 		return h.Store.DeleteEnterprise(ctx, id, tenantID)
+	}
+	// 部分更新兜底：请求未携带的字段回退到已存在记录，避免 PUT 全列覆盖清空数据。
+	cfg.ValidateUpdateExisting = func(t *allianceEnterpriseRequest, existing *domain.AllianceEnterprise) string {
+		if t.Name == "" {
+			t.Name = existing.Name
+		}
+		if t.EnterpriseType == "" {
+			t.EnterpriseType = existing.EnterpriseType
+		}
+		if t.Status == "" {
+			t.Status = existing.Status
+		}
+		if t.Industry == nil {
+			t.Industry = existing.Industry
+		}
+		if t.Region == nil {
+			t.Region = existing.Region
+		}
+		if t.Description == nil {
+			t.Description = existing.Description
+		}
+		if t.LogoURL == nil {
+			t.LogoURL = existing.LogoURL
+		}
+		if t.CoverImage == nil {
+			t.CoverImage = existing.CoverImage
+		}
+		if t.Rating == nil {
+			t.Rating = existing.Rating
+		}
+		if len(t.CooperationTypes) == 0 {
+			t.CooperationTypes = existing.CooperationTypes
+		}
+		if t.ContactPerson == nil {
+			t.ContactPerson = existing.ContactPerson
+		}
+		if t.ContactPhone == nil {
+			t.ContactPhone = existing.ContactPhone
+		}
+		if t.ContactEmail == nil {
+			t.ContactEmail = existing.ContactEmail
+		}
+		if t.Address == nil {
+			t.Address = existing.Address
+		}
+		if t.UnifiedSocialCreditCode == nil {
+			t.UnifiedSocialCreditCode = existing.UnifiedSocialCreditCode
+		}
+		if t.EstablishedYear == nil {
+			t.EstablishedYear = existing.EstablishedYear
+		}
+		if t.EmployeeCount == nil {
+			t.EmployeeCount = existing.EmployeeCount
+		}
+		if len(t.BusinessLicensePhotos) == 0 {
+			t.BusinessLicensePhotos = existing.BusinessLicensePhotos
+		}
+		if len(t.QualificationPhotos) == 0 {
+			t.QualificationPhotos = existing.QualificationPhotos
+		}
+		if len(t.IntellectualPropertyPhotos) == 0 {
+			t.IntellectualPropertyPhotos = existing.IntellectualPropertyPhotos
+		}
+		if len(t.CoverPhotos) == 0 {
+			t.CoverPhotos = existing.CoverPhotos
+		}
+		if len(t.SecondaryColleges) == 0 {
+			t.SecondaryColleges = existing.SecondaryColleges
+		}
+		if len(t.RatingRecord) == 0 {
+			t.RatingRecord = existing.RatingRecord
+		}
+		return ""
 	}
 	cfg.GetByIDFn = func(ctx context.Context, id, tenantID string) (domain.AllianceEnterprise, error) {
 		e, err := h.Store.GetEnterpriseByID(ctx, id, tenantID)
@@ -207,8 +280,8 @@ func (h *AllianceHandler) projectCRUD() crudConfig[domain.AllianceProject, domai
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceProject, tenantID, userID string) (string, error) {
 		return h.Store.CreateProject(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceProject) error {
-		return h.Store.UpdateProject(ctx, id, t)
+	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceProject) error {
+		return h.Store.UpdateProject(ctx, id, tenantID, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
 		return h.Store.DeleteProject(ctx, id, tenantID)
@@ -244,8 +317,8 @@ func (h *AllianceHandler) achievementCRUD() crudConfig[domain.AllianceAchievemen
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceAchievement, tenantID, userID string) (string, error) {
 		return h.Store.CreateAchievement(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceAchievement) error {
-		return h.Store.UpdateAchievement(ctx, id, t)
+	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceAchievement) error {
+		return h.Store.UpdateAchievement(ctx, id, tenantID, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
 		return h.Store.DeleteAchievement(ctx, id, tenantID)
@@ -281,8 +354,8 @@ func (h *AllianceHandler) expertCRUD() crudConfig[domain.AllianceExpert, domain.
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceExpert, tenantID, userID string) (string, error) {
 		return h.Store.CreateExpert(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceExpert) error {
-		return h.Store.UpdateExpert(ctx, id, t)
+	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceExpert) error {
+		return h.Store.UpdateExpert(ctx, id, tenantID, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
 		return h.Store.DeleteExpert(ctx, id, tenantID)
@@ -318,8 +391,8 @@ func (h *AllianceHandler) agreementCRUD() crudConfig[domain.AllianceAgreement, d
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceAgreement, tenantID, userID string) (string, error) {
 		return h.Store.CreateAgreement(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceAgreement) error {
-		return h.Store.UpdateAgreement(ctx, id, t)
+	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceAgreement) error {
+		return h.Store.UpdateAgreement(ctx, id, tenantID, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
 		return h.Store.DeleteAgreement(ctx, id, tenantID)
@@ -354,8 +427,8 @@ func (h *AllianceHandler) brandCRUD() crudConfig[domain.AllianceBrand, domain.Al
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceBrand, tenantID, userID string) (string, error) {
 		return h.Store.CreateBrand(ctx, t)
 	}
-	cfg.UpdateFn = func(ctx context.Context, id, _ string, t *domain.AllianceBrand) error {
-		return h.Store.UpdateBrand(ctx, id, t)
+	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceBrand) error {
+		return h.Store.UpdateBrand(ctx, id, tenantID, t)
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
 		return h.Store.DeleteBrand(ctx, id, tenantID)

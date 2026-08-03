@@ -37,11 +37,11 @@ type CertificateLibraryUpdateParams struct {
 	ImageURL    *string
 }
 
-func (s *CertificateLibraryStore) GetByID(ctx context.Context, id string) (domain.CertificateLibraryItem, error) {
+func (s *CertificateLibraryStore) GetByID(ctx context.Context, id, tenantID string) (domain.CertificateLibraryItem, error) {
 	var c domain.CertificateLibraryItem
 	var url, desc, img, creator *string
 	err := s.q.QueryRow(ctx,
-		`SELECT id, tenant_id, name, url, description, image_url, creator_id, created_at FROM certificate_library WHERE id = $1`, id,
+		`SELECT id, tenant_id, name, url, description, image_url, creator_id, created_at FROM certificate_library WHERE id = $1 AND tenant_id = $2`, id, tenantID,
 	).Scan(&c.ID, &c.TenantID, &c.Name, &url, &desc, &img, &creator, &c.CreatedAt)
 	if err != nil {
 		return c, err
@@ -65,16 +65,16 @@ func (s *CertificateLibraryStore) Create(ctx context.Context, p CertificateLibra
 	return id, nil
 }
 
-func (s *CertificateLibraryStore) Update(ctx context.Context, id string, p CertificateLibraryUpdateParams) error {
+func (s *CertificateLibraryStore) Update(ctx context.Context, id, tenantID string, p CertificateLibraryUpdateParams) error {
 	_, err := s.q.Exec(ctx,
-		`UPDATE certificate_library SET name=$1, url=COALESCE(NULLIF($2,''), url), description=$3, image_url=$4, updated_at=NOW() WHERE id=$5`,
-		p.Name, p.URL, p.Description, p.ImageURL, id,
+		`UPDATE certificate_library SET name=$1, url=COALESCE(NULLIF($2,''), url), description=$3, image_url=$4, updated_at=NOW() WHERE id=$5 AND tenant_id=$6`,
+		p.Name, p.URL, p.Description, p.ImageURL, id, tenantID,
 	)
 	return err
 }
 
-func (s *CertificateLibraryStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM certificate_library WHERE id = $1`, id)
+func (s *CertificateLibraryStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM certificate_library WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 

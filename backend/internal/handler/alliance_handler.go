@@ -179,7 +179,7 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	if !decodeBody(w, r, &p) {
 		return
 	}
-	if err := h.Store.UpdateEnterpriseAgreement(r.Context(), id, &p); err != nil {
+	if err := h.Store.UpdateEnterpriseAgreement(r.Context(), id, tenantID, &p); err != nil {
 		respondServerError(w, r, err, "更新失败")
 		return
 	}
@@ -481,13 +481,33 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetPermissionByID(r.Context(), id, tenantID); err != nil {
+	existing, err := h.Store.GetPermissionByID(r.Context(), id, tenantID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "权限不存在")
 		return
 	}
 	var p domain.AlliancePermission
 	if !decodeBody(w, r, &p) {
 		return
+	}
+	// 部分更新兜底：请求未携带的字段回退到已存在记录，避免 PUT 全列覆盖清空数据。
+	if p.AccountName == "" {
+		p.AccountName = existing.AccountName
+	}
+	if p.AccountType == "" {
+		p.AccountType = existing.AccountType
+	}
+	if p.EnterpriseID == nil {
+		p.EnterpriseID = existing.EnterpriseID
+	}
+	if p.ExpertID == nil {
+		p.ExpertID = existing.ExpertID
+	}
+	if len(p.ResourcePermissions) == 0 {
+		p.ResourcePermissions = existing.ResourcePermissions
+	}
+	if len(p.PlatformPermissions) == 0 {
+		p.PlatformPermissions = existing.PlatformPermissions
 	}
 	if err := h.Store.UpdatePermission(r.Context(), id, tenantID, &p); err != nil {
 		respondServerError(w, r, err, "更新失败")

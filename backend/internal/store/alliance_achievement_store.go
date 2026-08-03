@@ -86,7 +86,7 @@ func (s *AllianceStore) CreateAchievement(ctx context.Context, a *domain.Allianc
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateAchievement(ctx context.Context, id string, a *domain.AllianceAchievement) error {
+func (s *AllianceStore) UpdateAchievement(ctx context.Context, id, tenantID string, a *domain.AllianceAchievement) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_achievements SET
 			title = $1, type = $2, description = $3, achievement_date = $4, cover_image = $5,
@@ -94,12 +94,12 @@ func (s *AllianceStore) UpdateAchievement(ctx context.Context, id string, a *dom
 			enterprise_ids = $11, project_ids = $12, related_positions = $13,
 			related_scenes = $14, related_courses = $15, status = $16, view_count = $17,
 			secondary_colleges = $18, is_public = $19, updated_at = NOW()
-		WHERE id = $20
+		WHERE id = $20 AND tenant_id = $21
 	`, a.Title, a.Type, a.Description, a.AchievementDate, a.CoverImage,
 		emptyJSON(a.Attachments), a.CitationReason, emptyJSON(a.Images), emptyJSON(a.OwnerPersons), emptyJSON(a.CoBuilders),
 		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs),
 		emptyJSON(a.RelatedPositions), emptyJSON(a.RelatedScenes), emptyJSON(a.RelatedCourses),
-		a.Status, a.ViewCount, emptyJSON(a.SecondaryColleges), a.IsPublic, id)
+		a.Status, a.ViewCount, emptyJSON(a.SecondaryColleges), a.IsPublic, id, tenantID)
 	return err
 }
 

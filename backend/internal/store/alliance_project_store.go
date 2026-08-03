@@ -111,16 +111,16 @@ func (s *AllianceStore) CreateProject(ctx context.Context, p *domain.AlliancePro
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateProject(ctx context.Context, id string, p *domain.AllianceProject) error {
+func (s *AllianceStore) UpdateProject(ctx context.Context, id, tenantID string, p *domain.AllianceProject) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_projects SET
 			name = $1, type = $2, description = $3, phase = $4, publish_status = $5,
 			start_date = $6, end_date = $7, budget = $8, cover_image = $9, enterprise_ids = $10,
 			agreement_ids = $11, secondary_colleges = $12, is_public = $13, updated_at = NOW()
-		WHERE id = $14
+		WHERE id = $14 AND tenant_id = $15
 	`, p.Name, p.Type, p.Description, p.Phase, p.PublishStatus,
 		p.StartDate, p.EndDate, p.Budget, p.CoverImage,
-		emptyJSON(p.EnterpriseIDs), emptyJSON(p.AgreementIDs), emptyJSON(p.SecondaryColleges), p.IsPublic, id)
+		emptyJSON(p.EnterpriseIDs), emptyJSON(p.AgreementIDs), emptyJSON(p.SecondaryColleges), p.IsPublic, id, tenantID)
 	return err
 }
 

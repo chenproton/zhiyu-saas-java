@@ -65,8 +65,8 @@ func (h *CertificateLibraryHandler) crud() crudConfig[CertificateLibraryRequest,
 				CreatorID:   userID,
 			})
 		},
-		UpdateFn: func(ctx context.Context, id, _ string, t *CertificateLibraryRequest) error {
-			existing, err := h.Store.GetByID(ctx, id)
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *CertificateLibraryRequest) error {
+			existing, err := h.Store.GetByID(ctx, id, tenantID)
 			if err != nil {
 				return err
 			}
@@ -88,18 +88,18 @@ func (h *CertificateLibraryHandler) crud() crudConfig[CertificateLibraryRequest,
 			if updateImg == nil {
 				updateImg = existing.ImageURL
 			}
-			return h.Store.Update(ctx, id, store.CertificateLibraryUpdateParams{
+			return h.Store.Update(ctx, id, tenantID, store.CertificateLibraryUpdateParams{
 				Name:        updateName,
 				URL:         updateURL,
 				Description: updateDesc,
 				ImageURL:    updateImg,
 			})
 		},
-		DeleteFn: func(ctx context.Context, id, _ string) error {
-			return h.Store.Delete(ctx, id)
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Store.Delete(ctx, id, tenantID)
 		},
-		GetByIDFn: func(ctx context.Context, id, _ string) (domain.CertificateLibraryItem, error) {
-			return h.Store.GetByID(ctx, id)
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.CertificateLibraryItem, error) {
+			return h.Store.GetByID(ctx, id, tenantID)
 		},
 		TenantIDFn: func(t *domain.CertificateLibraryItem) string { return t.TenantID },
 	}

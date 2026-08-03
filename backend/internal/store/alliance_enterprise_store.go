@@ -210,7 +210,7 @@ func (s *AllianceStore) CreateEnterprise(ctx context.Context, p *AllianceEnterpr
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateEnterprise(ctx context.Context, id string, p *AllianceEnterpriseUpdateParams) error {
+func (s *AllianceStore) UpdateEnterprise(ctx context.Context, id, tenantID string, p *AllianceEnterpriseUpdateParams) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_enterprises SET
 			name = $1, enterprise_type = $2, industry = $3, region = $4, description = $5,
@@ -220,12 +220,12 @@ func (s *AllianceStore) UpdateEnterprise(ctx context.Context, id string, p *Alli
 			business_license_photos = $18, qualification_photos = $19, intellectual_property_photos = $20,
 			cover_photos = $21, secondary_colleges = $22, rating_record = $23, is_public = $24,
 			updated_at = NOW()
-		WHERE id = $25
+		WHERE id = $25 AND tenant_id = $26
 	`, p.Name, p.EnterpriseType, p.Industry, p.Region, p.Description, p.LogoURL, p.CoverImage,
 		p.Status, p.Rating, emptyJSON(p.CooperationTypes), p.ContactPerson, p.ContactPhone,
 		p.ContactEmail, p.Address, p.UnifiedSocialCreditCode, p.EstablishedYear, p.EmployeeCount,
 		emptyJSON(p.BusinessLicensePhotos), emptyJSON(p.QualificationPhotos), emptyJSON(p.IntellectualPropertyPhotos),
-		emptyJSON(p.CoverPhotos), emptyJSON(p.SecondaryColleges), p.RatingRecord, p.IsPublic, id)
+		emptyJSON(p.CoverPhotos), emptyJSON(p.SecondaryColleges), p.RatingRecord, p.IsPublic, id, tenantID)
 	return err
 }
 
@@ -314,13 +314,13 @@ func (s *AllianceStore) CreateEnterpriseAgreement(ctx context.Context, p *Allian
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateEnterpriseAgreement(ctx context.Context, id string, p *AllianceEnterpriseAgreementUpdateParams) error {
+func (s *AllianceStore) UpdateEnterpriseAgreement(ctx context.Context, id, tenantID string, p *AllianceEnterpriseAgreementUpdateParams) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_enterprise_agreements SET
 			name = $1, type = $2, start_date = $3, end_date = $4, status = $5,
 			content = $6, attachments = $7, updated_at = NOW()
-		WHERE id = $8
-	`, p.Name, p.Type, p.StartDate, p.EndDate, p.Status, p.Content, emptyJSON(p.Attachments), id)
+		WHERE id = $8 AND tenant_id = $9
+	`, p.Name, p.Type, p.StartDate, p.EndDate, p.Status, p.Content, emptyJSON(p.Attachments), id, tenantID)
 	return err
 }
 

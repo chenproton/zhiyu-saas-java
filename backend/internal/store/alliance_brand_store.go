@@ -77,18 +77,18 @@ func (s *AllianceStore) CreateBrand(ctx context.Context, b *domain.AllianceBrand
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateBrand(ctx context.Context, id string, b *domain.AllianceBrand) error {
+func (s *AllianceStore) UpdateBrand(ctx context.Context, id, tenantID string, b *domain.AllianceBrand) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_brands SET
 			name = $1, status = $2, is_public = $3, is_featured = $4, cover_image = $5,
 			cover_video = $6, description = $7, data = $8,
 			student_id = $9, enterprise_id = $10, position_id = $11, major_id = $12,
 			teacher_id = $13, expert_id = $14, sort_order = $15, updated_at = NOW()
-		WHERE id = $16
+		WHERE id = $16 AND tenant_id = $17
 	`, b.Name, b.Status, b.IsPublic, b.IsFeatured, b.CoverImage, b.CoverVideo,
 		b.Description, b.Data,
 		b.StudentID, b.EnterpriseID, b.PositionID, b.MajorID, b.TeacherID, b.ExpertID,
-		b.SortOrder, id)
+		b.SortOrder, id, tenantID)
 	return err
 }
 

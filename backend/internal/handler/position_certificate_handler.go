@@ -46,8 +46,24 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusOK, ListResponse[domain.PositionCertificate]{Items: items, Total: total})
 }
 
+// checkCertTenant 校验证书所属岗位归属当前租户，不匹配时按不存在处理。
+func (h *PositionCertificateHandler) checkCertTenant(ctx context.Context, id, tenantID string) error {
+	item, err := h.Service.GetCertificate(ctx, id)
+	if err != nil {
+		return err
+	}
+	posTenant, err := h.Service.PositionTenantID(ctx, item.CareerPositionID)
+	if err != nil {
+		return err
+	}
+	if posTenant != tenantID {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
 // crud 返回岗位证书 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
-// 注意：PositionCertificate 无 TenantID 字段，原实现不做租户归属校验，维持原行为。
+// Get/Update/Delete 按证书所属岗位校验租户归属，防跨租户读写。
 func (h *PositionCertificateHandler) crud() crudConfig[PositionCertificateRequest, domain.PositionCertificate] {
 	return crudConfig[PositionCertificateRequest, domain.PositionCertificate]{
 		NotFoundMsg:  "证书不存在",
@@ -67,6 +83,9 @@ func (h *PositionCertificateHandler) crud() crudConfig[PositionCertificateReques
 				return "", true
 			}
 			return *claims.TenantID, true
+		},
+		TenantFn: func(w http.ResponseWriter, r *http.Request) (string, bool) {
+			return requireTenant(w, r)
 		},
 		ValidateUpdate: func(t *PositionCertificateRequest) string {
 			if t.CareerPositionID == "" {
@@ -88,6 +107,9 @@ func (h *PositionCertificateHandler) crud() crudConfig[PositionCertificateReques
 			return item.ID, nil
 		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *PositionCertificateRequest) error {
+			if err := h.checkCertTenant(ctx, id, tenantID); err != nil {
+				return err
+			}
 			_, err := h.Service.UpdateCertificate(ctx, tenantID, &store.PositionCertificateUpdateParams{
 				ID:               id,
 				CareerPositionID: t.CareerPositionID,
@@ -98,10 +120,16 @@ func (h *PositionCertificateHandler) crud() crudConfig[PositionCertificateReques
 			})
 			return err
 		},
-		DeleteFn: func(ctx context.Context, id, _ string) error {
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			if err := h.checkCertTenant(ctx, id, tenantID); err != nil {
+				return err
+			}
 			return h.Service.DeleteCertificate(ctx, id)
 		},
-		GetByIDFn: func(ctx context.Context, id, _ string) (domain.PositionCertificate, error) {
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.PositionCertificate, error) {
+			if err := h.checkCertTenant(ctx, id, tenantID); err != nil {
+				return domain.PositionCertificate{}, err
+			}
 			item, err := h.Service.GetCertificate(ctx, id)
 			if err != nil {
 				return domain.PositionCertificate{}, err
