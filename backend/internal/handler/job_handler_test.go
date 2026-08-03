@@ -362,6 +362,151 @@ func TestPosition_SaveFull(t *testing.T) {
 	})
 }
 
+// Regression: 从能力点库添加的 public 来源绑定在 SaveFull 后必须持久化，
+// 刷新后仍可见（此前分层重构丢掉了 publicAbilityId 的传递导致绑定被静默跳过）。
+func TestPosition_SaveFull_PublicBinding(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	var positionID, abilityPointID string
+
+	t.Run("CreatePosition", func(t *testing.T) {
+		w := env.Do("POST", "/api/v1/job/positions", map[string]interface{}{
+			"name":         "Public Binding Position",
+			"positionType": "enterprise",
+			"version":      "v1.0",
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		pos, err := testhelper.Unmarshal[domain.CareerPosition](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		positionID = pos.ID
+	})
+	defer func() {
+		if positionID != "" {
+			env.DB.Exec(ctx, "DELETE FROM career_positions WHERE id = $1", positionID)
+		}
+	}()
+
+	t.Run("CreatePublicAbility", func(t *testing.T) {
+		w := env.Do("POST", "/api/v1/job/abilities", map[string]interface{}{
+			"name":     "Pool Ability Point",
+			"category": "skill",
+			"isPublic": true,
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		ability, err := testhelper.Unmarshal[domain.AbilityPoint](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		abilityPointID = ability.ID
+	})
+	defer func() {
+		if abilityPointID != "" {
+			env.DB.Exec(ctx, "DELETE FROM ability_points WHERE id = $1", abilityPointID)
+		}
+	}()
+
+	if positionID == "" || abilityPointID == "" {
+		t.Fatal("setup failed")
+	}
+
+	t.Run("SaveFullWithPublicBinding", func(t *testing.T) {
+		body := map[string]interface{}{
+			"batchId":       "",
+			"name":          "Public Binding Position",
+			"shortName":     "",
+			"industry":      "",
+			"majors":        []string{},
+			"positionType":  "enterprise",
+			"salaryRange":   [2]int{0, 0},
+			"requirements":  []string{},
+			"version":       "v1.0",
+			"collaborators": []string{},
+			"responsibilities": []map[string]interface{}{
+				{"id": "resp-1", "name": "Responsibility 1"},
+			},
+			"certificates": []map[string]interface{}{},
+			"abilityBindings": []map[string]interface{}{
+				// 模拟前端从能力点库新添加的绑定：只带 publicAbilityId，不带 abilityPointId
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "public", "publicAbilityId": abilityPointID, "name": "Pool Ability Point", "category": "skill", "level": "understand", "rubricDescription": "", "description": ""},
+			},
+			"abilityDomains": []map[string]interface{}{},
+		}
+		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/positions/%s/save-full", positionID), body)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+
+	t.Run("VerifyPublicBindingPersisted", func(t *testing.T) {
+		w := env.Do("GET", fmt.Sprintf("/api/v1/job/position-abilities?careerPositionId=%s", positionID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		items, total, err := testhelper.UnmarshalList[domain.PositionAbilityBinding](w)
+		if err != nil {
+			t.Fatalf("unmarshal list: %v", err)
+		}
+		if total != 1 {
+			t.Fatalf("total = %d, want 1 (public binding was dropped)", total)
+		}
+		if items[0].Source != "public" {
+			t.Errorf("source = %q, want public", items[0].Source)
+		}
+		if items[0].AbilityPointID != abilityPointID {
+			t.Errorf("abilityPointId = %q, want %q", items[0].AbilityPointID, abilityPointID)
+		}
+	})
+
+	t.Run("SaveFullWithAbilityPointIdFallback", func(t *testing.T) {
+		body := map[string]interface{}{
+			"batchId":       "",
+			"name":          "Public Binding Position",
+			"shortName":     "",
+			"industry":      "",
+			"majors":        []string{},
+			"positionType":  "enterprise",
+			"salaryRange":   [2]int{0, 0},
+			"requirements":  []string{},
+			"version":       "v1.0",
+			"collaborators": []string{},
+			"responsibilities": []map[string]interface{}{
+				{"id": "resp-1", "name": "Responsibility 1"},
+			},
+			"certificates": []map[string]interface{}{},
+			"abilityBindings": []map[string]interface{}{
+				// 模拟从后端加载后再保存：只回传 abilityPointId
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "public", "abilityPointId": abilityPointID, "name": "Pool Ability Point", "category": "skill", "level": "understand", "rubricDescription": "", "description": ""},
+			},
+			"abilityDomains": []map[string]interface{}{},
+		}
+		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/positions/%s/save-full", positionID), body)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		w = env.Do("GET", fmt.Sprintf("/api/v1/job/position-abilities?careerPositionId=%s", positionID), nil)
+		items, total, err := testhelper.UnmarshalList[domain.PositionAbilityBinding](w)
+		if err != nil {
+			t.Fatalf("unmarshal list: %v", err)
+		}
+		if total != 1 || items[0].AbilityPointID != abilityPointID {
+			t.Errorf("abilityPointId fallback failed: total=%d got=%q want=%q", total, func() string {
+				if len(items) > 0 {
+					return items[0].AbilityPointID
+				}
+				return ""
+			}(), abilityPointID)
+		}
+	})
+}
+
 func TestPosition_ValidationErrors(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

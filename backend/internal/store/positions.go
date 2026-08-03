@@ -263,6 +263,7 @@ type FullPositionAbilityBindingItem struct {
 	Name              string
 	Category          string
 	Description       *string
+	PublicAbilityID   string
 	AbilityPointID    string
 	Domain            *string
 	RequiredLevel     string
