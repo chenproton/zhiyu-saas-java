@@ -80,12 +80,19 @@ func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
+	if !verifyTenantOwnership(w, r, pos.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, pos)
 }
 
 func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 	cfg := h.Service.Store().Positions().PublicListConfig()
-	params, _ := listParamsFromRequest(r, false)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询岗位失败")
@@ -105,6 +112,9 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 	pos, err := h.Service.Get(r.Context(), id)
 	if err != nil || pos.Status != domain.StatusPublished {
 		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, pos.TenantID) {
 		return
 	}
 	respondJSON(w, http.StatusOK, pos)
@@ -173,6 +183,9 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	existing, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, existing.TenantID) {
 		return
 	}
 
@@ -269,6 +282,9 @@ func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
+	if !verifyTenantOwnership(w, r, tenantID) {
+		return
+	}
 	if err := h.Service.Delete(r.Context(), id); err != nil {
 		respondServerError(w, r, err, "删除岗位失败")
 		return
@@ -343,8 +359,16 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.Get(r.Context(), id); err != nil {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	existing, err := h.Service.Get(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, existing.TenantID) {
 		return
 	}
 
@@ -374,11 +398,6 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.CareerPath != nil && *req.CareerPath != "" {
 		careerPath = req.CareerPath
-	}
-
-	tenantID := ""
-	if claims.TenantID != nil {
-		tenantID = *claims.TenantID
 	}
 
 	certificates := make([]store.FullPositionCertificateItem, 0, len(req.Certificates))
@@ -433,7 +452,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	err := h.Service.SaveFull(r.Context(), tenantID, id, &store.FullPositionSaveParams{
+	err = h.Service.SaveFull(r.Context(), tenantID, id, &store.FullPositionSaveParams{
 		BatchID:          batchID,
 		Name:             req.Name,
 		ShortName:        req.ShortName,

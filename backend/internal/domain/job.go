@@ -30,6 +30,7 @@ const (
 
 type CareerPosition struct {
 	ID                string               `json:"id"`
+	TenantID          string               `json:"tenantId,omitempty"`
 	BatchID           *string              `json:"batchId,omitempty"`
 	Code              string               `json:"code"`
 	Name              string               `json:"name"`

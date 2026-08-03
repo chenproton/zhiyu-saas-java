@@ -62,11 +62,13 @@ func (s *PositionStore) AdminListConfig() ListQueryConfig[domain.CareerPosition]
 	}
 }
 
-// PublicListConfig 返回前台公开岗位列表查询配置（仅已发布）。
+// PublicListConfig 返回前台公开岗位列表查询配置（仅已发布，租户隔离）。
 func (s *PositionStore) PublicListConfig() ListQueryConfig[domain.CareerPosition] {
 	return ListQueryConfig[domain.CareerPosition]{
 		Table:         positionListFrom,
 		SelectColumns: positionSelectColumns,
+		TenantScoped:  true,
+		TenantColumn:  "cp.tenant_id",
 		SearchColumns: []string{"cp.name"},
 		SearchParam:   "search",
 		OrderBy:       "cp.created_at DESC",
@@ -493,7 +495,7 @@ func (s *PositionStore) fetchPosition(ctx context.Context, id string) (*domain.C
 	var majorIDs, majorNames, requirements, collaborators []string
 
 	err := s.q.QueryRow(ctx, `
-		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
+		SELECT cp.id, cp.tenant_id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
@@ -513,7 +515,7 @@ func (s *PositionStore) fetchPosition(ctx context.Context, id string) (*domain.C
 		LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id
 		WHERE cp.id = $1
 	`, id).Scan(
-		&pos.ID, &batchID, &pos.Code, &pos.Name, &shortName, &industryID, &majorIDs, &majorNames, &pos.PositionType,
+		&pos.ID, &pos.TenantID, &batchID, &pos.Code, &pos.Name, &shortName, &industryID, &majorIDs, &majorNames, &pos.PositionType,
 		&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
 		&pos.Version, &pos.Status, &pos.CreatedBy, &pos.CreatedByName, &collaborators, &pos.CollaboratorNames, &pos.FavoriteCount, &pos.ViewCount,
 		&pos.CreatedAt, &pos.UpdatedAt,

@@ -190,6 +190,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/job/positions/{id}/publish", positionHandler.Publish)
 			r.Post("/job/positions/{id}/archive", positionHandler.Archive)
 			r.Post("/job/positions/{id}/clone", positionCloneHandler.Clone)
+			r.Get("/job/public/positions", positionHandler.PublicList)
+			r.Get("/job/public/positions/{id}", positionHandler.PublicGet)
 
 			abilityHandler := &handler.AbilityHandler{Service: positionSvc}
 			r.Get("/job/abilities", abilityHandler.List)
