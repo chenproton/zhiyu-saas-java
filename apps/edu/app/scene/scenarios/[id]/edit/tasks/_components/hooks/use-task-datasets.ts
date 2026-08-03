@@ -45,7 +45,7 @@ export interface TaskStateRubricRefs {
 
 export interface LoadDatasetsContext {
   taskStatesRef?: React.MutableRefObject<Record<string, TaskStateRubricRefs>>
-  setExistingScenario?: React.Dispatch<React.SetStateAction<unknown>>
+  setExistingScenario?: (updater: (prev: unknown) => unknown) => void
   scenarioDataRef?: React.MutableRefObject<unknown>
 }
 
@@ -274,7 +274,7 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
                   (u as { name: string }).name,
                 ]),
               )
-              setExistingScenario((prev: unknown) =>
+              setExistingScenario?.((prev: unknown) =>
                 prev
                   ? {
                       ...(prev as Record<string, unknown>),

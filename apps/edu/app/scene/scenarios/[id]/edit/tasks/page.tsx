@@ -100,7 +100,35 @@ import {
 import { useAuth } from '@/components/auth-provider'
 import { reportError } from '@/lib/error-handling'
 import type { Task } from '@/lib/types/scene-mock'
+import type { Scenario } from '@/lib/types/scene'
+import type { CareerPosition } from '@/lib/types/job'
 import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
+
+// 详情头部展示用场景增强模型（附加已解析的名称/共建人）
+interface EnrichedScenario extends Scenario {
+  positionId?: string
+  positionName?: string
+  industryName?: string
+  professionName?: string
+  industryId?: string
+  professionId?: string
+  coBuilders: { id: string; name: string }[]
+}
+
+// 克隆候选场景：附带任务与元信息
+interface ClonedScenario extends Scenario {
+  tasks?: Array<
+    ApiScenarioTask & {
+      scenarioName?: string
+      scenarioCreatorId?: string
+      scenarioCoBuilderIds?: string[]
+      scenarioStatus?: string
+    }
+  >
+}
+
+// 岗位列表项可能携带 industryName（后端返回，类型未收录）
+type PositionWithIndustryName = CareerPosition & { industryName?: string }
 
 // ============ Main Page ============
 
@@ -113,7 +141,7 @@ export default function TasksEditPage() {
 
   const datasets = useTaskDatasets()
 
-  const [existingScenario, setExistingScenario] = useState<any>(null)
+  const [existingScenario, setExistingScenario] = useState<EnrichedScenario | null>(null)
   const [, setDataLoaded] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -125,7 +153,7 @@ export default function TasksEditPage() {
   const [, setMajors] = useState<any[]>([])
   const [professions, setProfessions] = useState<any[]>([])
 
-  const scenarioDataRef = useRef<any>(null)
+  const scenarioDataRef = useRef<Scenario | null>(null)
   const taskStatesRef = useRef(taskStates)
   useEffect(() => {
     taskStatesRef.current = taskStates
@@ -136,7 +164,8 @@ export default function TasksEditPage() {
     async (keys: string[]) => {
       await loadDatasets(keys, {
         taskStatesRef,
-        setExistingScenario,
+        setExistingScenario: (updater) =>
+          setExistingScenario(updater as React.SetStateAction<EnrichedScenario | null>),
         scenarioDataRef,
       })
     },
@@ -168,27 +197,27 @@ export default function TasksEditPage() {
         setMajors(majRes.items)
 
         const positionName =
-          posRes.items.find((p: any) => p.id === scenarioData.careerPositionId)?.name ||
+          posRes.items.find((p) => p.id === scenarioData.careerPositionId)?.name ||
           scenarioData.careerPositionId
         const industryName =
           (scenarioData.industryNames || []).join('、') ||
           (scenarioData.industryIds || [])
-            .map((id: string) => indRes.items.find((i: any) => i.id === id)?.name)
+            .map((id: string) => indRes.items.find((i) => i.id === id)?.name)
             .filter(Boolean)
             .join('、') ||
           (scenarioData.industryIds || []).join('、')
         const professionName =
           (scenarioData.professionNames || []).join('、') ||
           (scenarioData.professionIds || [])
-            .map((id: string) => majRes.items.find((m: any) => m.id === id)?.name)
+            .map((id: string) => majRes.items.find((m) => m.id === id)?.name)
             .filter(Boolean)
             .join('、') ||
           (scenarioData.professionIds || []).join('、')
-        setExistingScenario((prev: any) => {
+        setExistingScenario((prev: EnrichedScenario | null) => {
           // 保留已解析的共建人姓名（避免 user?.id 变化导致 effect 重跑时覆盖掉已补齐的名称）
           const prevNameMap: Record<string, string> = {}
           if (prev?.coBuilders) {
-            prev.coBuilders.forEach((cb: any) => {
+            prev.coBuilders.forEach((cb) => {
               if (cb.name && cb.name !== cb.id) prevNameMap[cb.id] = cb.name
             })
           }
@@ -205,17 +234,22 @@ export default function TasksEditPage() {
           }
         })
 
-        const nextProfessions: any[] = []
-        posRes.items.forEach((p: any) => {
-          const prof = nextProfessions.find((pr: any) => pr.name === (p.industryName || '其他'))
+        const nextProfessions: Array<{
+          id: string
+          name: string
+          positions: Array<{ id: string; name: string; professionId: string }>
+        }> = []
+        posRes.items.forEach((p) => {
+          const pos = p as PositionWithIndustryName
+          const prof = nextProfessions.find((pr) => pr.name === (pos.industryName || '其他'))
           if (prof) {
-            prof.positions.push({ id: p.id, name: p.name, professionId: prof.id })
+            prof.positions.push({ id: pos.id, name: pos.name, professionId: prof.id })
           } else {
             nextProfessions.push({
               id: `prof-${nextProfessions.length + 1}`,
-              name: p.industryName || '其他',
+              name: pos.industryName || '其他',
               positions: [
-                { id: p.id, name: p.name, professionId: `prof-${nextProfessions.length + 1}` },
+                { id: pos.id, name: pos.name, professionId: `prof-${nextProfessions.length + 1}` },
               ],
             })
           }
@@ -330,7 +364,7 @@ export default function TasksEditPage() {
 
   const allTasks = useMemo(() => {
     void datasets.cloneDataVersion
-    return (datasets.scenarios as any[]).flatMap((s: any) =>
+    return (datasets.scenarios as ClonedScenario[]).flatMap((s) =>
       (s.tasks || []).map((t: any) => ({
         ...t,
         scenarioName: s.name,
@@ -459,7 +493,7 @@ export default function TasksEditPage() {
   const handleAddTask = async () => {
     if (!newTask.name.trim()) return
     try {
-      const payload: any = {
+      const payload: Omit<ApiScenarioTask, 'id'> = {
         scenarioId,
         name: newTask.name.trim(),
         code: `TK-${Date.now().toString().slice(-6)}`,
@@ -580,7 +614,7 @@ export default function TasksEditPage() {
             description: kp.description,
             linked: kp.linked ?? false,
             granularLessonIds: kp.granularLessons || [],
-          } as any)
+          })
           const idx = nextKnowledgePoints.findIndex((k) => k.id === kpId)
           if (idx >= 0) {
             nextKnowledgePoints[idx] = {
@@ -607,7 +641,7 @@ export default function TasksEditPage() {
                 granularLessonIds: kp.granularLessons || [],
                 sourceType: 'scenario_task',
                 sourceId: scenarioId,
-              } as any)
+              })
               targetId = created.id
             } catch (err: any) {
               // 兜底：并发等场景下仍可能撞名，按后端提示合并到已有知识点
@@ -776,21 +810,21 @@ export default function TasksEditPage() {
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i]
       const ts = updatedTaskStates[t.id] || makeDefaultTaskState(0, 0)
-      const payload: any = {
+      const payload: Omit<ApiScenarioTask, 'id'> = {
         scenarioId,
         name: t.name,
         code: t.code,
         sortOrder: i,
         description: t.description,
         detailedDescription: ts.description || t.detailedDescription,
-        descriptionPdf: ts.descriptionPdf || t.descriptionPdf || null,
+        descriptionPdf: ts.descriptionPdf || t.descriptionPdf || undefined,
         estimatedHours: t.estimatedHours,
         taskType: t.taskType,
         difficulty: t.difficulty,
         background: t.background,
         dependencyIds: t.dependencies || [],
         isReferenced: !!t.isReferenced,
-        sourceScenarioId: t.sourceScenarioId || null,
+        sourceScenarioId: t.sourceScenarioId || undefined,
         knowledgePointIds: ts.knowledgePoints || [],
         abilityPointIds: ts.abilityPoints || [],
         resourceIds: ts.resources || [],
@@ -840,7 +874,7 @@ export default function TasksEditPage() {
       await saveTasksToBackend()
       if (existingScenario?.status !== 'draft') {
         await scenarioApi.saveDraft(scenarioId)
-        setExistingScenario((prev: any) => (prev ? { ...prev, status: 'draft' } : prev))
+        setExistingScenario((prev) => (prev ? { ...prev, status: 'draft' } : prev))
         toast({ title: '草稿已保存', description: '场景已退回草稿状态' })
       } else {
         toast({ title: '草稿已保存' })
@@ -858,7 +892,7 @@ export default function TasksEditPage() {
       await saveTasksToBackend()
       if (existingScenario?.status !== 'draft') {
         await scenarioApi.saveDraft(scenarioId)
-        setExistingScenario((prev: any) => (prev ? { ...prev, status: 'draft' } : prev))
+        setExistingScenario((prev) => (prev ? { ...prev, status: 'draft' } : prev))
         toast({ title: '配置已保存', description: '场景已退回草稿状态' })
       } else {
         toast({ title: '配置已保存' })
