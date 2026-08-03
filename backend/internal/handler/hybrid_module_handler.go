@@ -11,7 +11,7 @@ import (
 )
 
 type HybridModuleHandler struct {
-	Service *service.PositionService
+	Service *service.LessonContentService
 }
 
 type UpsertHybridModuleRequest struct {

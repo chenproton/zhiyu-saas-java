@@ -11,7 +11,7 @@ import (
 )
 
 type ResourceCodeHandler struct {
-	Service *service.PositionService
+	Service *service.PortalService
 }
 
 // ResourceCodeRequest 资源编码创建/更新请求体（更新时忽略 tenantId/code）。

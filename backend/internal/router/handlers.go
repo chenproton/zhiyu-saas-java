@@ -115,6 +115,9 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	svc := service.New(st)
 	authSvc := service.NewAuthService(svc)
 	positionSvc := service.NewPositionService(svc)
+	affairsPlanSvc := service.NewAffairsPlanService(svc)
+	portalSvc := service.NewPortalService(svc)
+	approvalSvc := service.NewApprovalService(svc)
 	evaluationSvc := service.NewEvaluationService(svc)
 	scenarioSvc := service.NewScenarioService(svc)
 	lessonContentSvc := service.NewLessonContentService(svc)
@@ -148,14 +151,14 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		roleHandler:                   &handler.RoleHandler{Store: st.Roles()},
 		majorHandler:                  &handler.MajorHandler{Store: st.Majors()},
 		industryHandler:               &handler.IndustryHandler{Store: st.Industries()},
-		resourceCodeHandler:           &handler.ResourceCodeHandler{Service: positionSvc},
+		resourceCodeHandler:           &handler.ResourceCodeHandler{Service: portalSvc},
 		logHandler:                    &handler.LogHandler{Service: service.NewLogService(svc)},
-		subscriptionHandler:           &handler.SubscriptionHandler{Service: positionSvc},
+		subscriptionHandler:           &handler.SubscriptionHandler{Service: portalSvc},
 		staffTitleHandler:             &handler.StaffTitleHandler{Store: st.StaffTitles()},
 		userExtensionFieldHandler:     &handler.UserExtensionFieldHandler{Service: service.NewUserExtensionFieldService(svc)},
 		userRelationHandler:           &handler.UserRelationHandler{Service: service.NewUserRelationService(svc)},
-		workflowHandler:               &handler.WorkflowHandler{Service: positionSvc},
-		approvalHandler:               &handler.ApprovalHandler{Service: positionSvc, RedisClient: redisClient},
+		workflowHandler:               &handler.WorkflowHandler{Service: approvalSvc},
+		approvalHandler:               &handler.ApprovalHandler{Service: approvalSvc, RedisClient: redisClient},
 		allianceHandler:               &handler.AllianceHandler{Store: st.Alliance()},
 		positionHandler:               &handler.PositionHandler{Service: positionSvc, RedisClient: redisClient},
 		positionCloneHandler:          &handler.PositionCloneHandler{Service: service.NewPositionCloneService(svc)},
@@ -187,9 +190,9 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		nodeQuizHandler:               &handler.NodeQuizHandler{Service: lessonContentSvc},
 		nodeHomeworkHandler:           &handler.NodeHomeworkHandler{Service: lessonContentSvc},
 		nodeResourceHandler:           &handler.NodeResourceHandler{Service: service.NewResourceBindingService(svc)},
-		hybridModuleHandler:           &handler.HybridModuleHandler{Service: positionSvc},
+		hybridModuleHandler:           &handler.HybridModuleHandler{Service: lessonContentSvc},
 		courseBatchHandler:            handler.NewCourseBatchHandler(positionSvc),
-		lessonBehaviorHandler:         &handler.LessonBehaviorHandler{Service: positionSvc},
+		lessonBehaviorHandler:         &handler.LessonBehaviorHandler{Service: lessonContentSvc},
 		questionBankHandler:           &handler.QuestionBankHandler{Service: evaluationSvc},
 		questionHandler:               &handler.QuestionHandler{Service: evaluationSvc},
 		examHandler:                   &handler.ExamHandler{Service: evaluationSvc, RedisClient: redisClient},
@@ -210,9 +213,9 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		resourceLibraryHandler:        &handler.ResourceLibraryHandler{Service: service.NewResourceService(svc)},
 		onSiteQuestionLibraryHandler:  &handler.OnSiteQuestionLibraryHandler{Store: st.OnSiteQuestions()},
 		jobAbilityResultHandler:       handler.NewJobAbilityResultHandler(st),
-		affairsTermHandler:            &handler.AffairsTermHandler{Service: positionSvc},
-		trainingProgramHandler:        &handler.TrainingProgramHandler{Service: positionSvc},
-		teachingPlanHandler:           &handler.TeachingPlanHandler{Service: positionSvc},
+		affairsTermHandler:            &handler.AffairsTermHandler{Service: affairsPlanSvc},
+		trainingProgramHandler:        &handler.TrainingProgramHandler{Service: affairsPlanSvc},
+		teachingPlanHandler:           &handler.TeachingPlanHandler{Service: affairsPlanSvc},
 		schedulingHandler:             &handler.SchedulingHandler{Service: service.NewAffairsService(svc)},
 		scheduleImportHandler:         &handler.ScheduleImportHandler{DB: db},
 		programCourseImportHandler:    &handler.ProgramCourseImportHandler{DB: db},

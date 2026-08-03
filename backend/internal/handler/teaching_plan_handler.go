@@ -11,7 +11,7 @@ import (
 )
 
 type TeachingPlanHandler struct {
-	Service *service.PositionService
+	Service *service.AffairsPlanService
 }
 type TeachingPlanDetailResponse struct {
 	TeachingPlan domain.TeachingPlan        `json:"plan"`

@@ -11,7 +11,7 @@ import (
 )
 
 type WorkflowHandler struct {
-	Service *service.PositionService
+	Service *service.ApprovalService
 }
 
 // WorkflowRequest 审批流程创建/更新请求体（更新时忽略 status 时默认沿用现有状态）。

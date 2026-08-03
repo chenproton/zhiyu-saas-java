@@ -12,7 +12,7 @@ import (
 )
 
 type SubscriptionHandler struct {
-	Service *service.PositionService
+	Service *service.PortalService
 }
 
 type UpdateSubscriptionRequest struct {

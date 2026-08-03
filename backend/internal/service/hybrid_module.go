@@ -7,17 +7,17 @@ import (
 )
 
 // ListHybridModules 查询混合模块列表。
-func (s *PositionService) ListHybridModules(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.HybridNodeModule]) ([]domain.HybridNodeModule, int, error) {
+func (s *LessonContentService) ListHybridModules(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.HybridNodeModule]) ([]domain.HybridNodeModule, int, error) {
 	return s.st.HybridModules().List(ctx, p, cfg)
 }
 
 // GetHybridModule 查询单个混合模块（限定租户）。
-func (s *PositionService) GetHybridModule(ctx context.Context, id, tenantID string) (*domain.HybridNodeModule, error) {
+func (s *LessonContentService) GetHybridModule(ctx context.Context, id, tenantID string) (*domain.HybridNodeModule, error) {
 	return s.st.HybridModules().Get(ctx, id, tenantID)
 }
 
 // UpsertHybridModule 创建或更新混合模块。
-func (s *PositionService) UpsertHybridModule(ctx context.Context, tenantID, id string, p *store.HybridModuleParams) (*domain.HybridNodeModule, error) {
+func (s *LessonContentService) UpsertHybridModule(ctx context.Context, tenantID, id string, p *store.HybridModuleParams) (*domain.HybridNodeModule, error) {
 	if id != "" {
 		return s.st.HybridModules().Update(ctx, id, tenantID, p)
 	}
@@ -25,6 +25,6 @@ func (s *PositionService) UpsertHybridModule(ctx context.Context, tenantID, id s
 }
 
 // DeleteHybridModule 删除混合模块（限定租户）。
-func (s *PositionService) DeleteHybridModule(ctx context.Context, id, tenantID string) error {
+func (s *LessonContentService) DeleteHybridModule(ctx context.Context, id, tenantID string) error {
 	return s.st.HybridModules().Delete(ctx, id, tenantID)
 }

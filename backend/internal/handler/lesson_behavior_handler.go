@@ -12,7 +12,7 @@ import (
 )
 
 type LessonBehaviorHandler struct {
-	Service *service.PositionService
+	Service *service.LessonContentService
 }
 
 type LessonBehaviorAggregate struct {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
 	"time"
@@ -105,4 +106,9 @@ func (s *PositionService) CreditHoursRatio(ctx context.Context) float64 {
 // PeriodLabelMap 节次标签。
 func (s *PositionService) PeriodLabelMap(ctx context.Context, tenantID *string) map[string]string {
 	return s.st.Portal().PeriodLabelMap(ctx, tenantID)
+}
+
+// PendingApprovalCount 待审批数（工作台统计）。
+func (s *PositionService) PendingApprovalCount(ctx context.Context, tenantID *string) int {
+	return s.st.Portal().PendingApprovalCount(ctx, tenantID)
 }

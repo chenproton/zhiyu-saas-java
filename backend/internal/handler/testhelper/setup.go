@@ -165,7 +165,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/industries/{id}", industryHandler.Update)
 			r.Delete("/industries/{id}", industryHandler.Delete)
 
-			resourceCodeHandler := &handler.ResourceCodeHandler{Service: positionSvc}
+			resourceCodeHandler := &handler.ResourceCodeHandler{Service: service.NewPortalService(svc2)}
 			r.Get("/resource-codes", resourceCodeHandler.List)
 			r.Get("/resource-codes/{id}", resourceCodeHandler.Get)
 
@@ -173,7 +173,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/logs/login", logHandler.LoginLogs)
 			r.Get("/logs/operation", logHandler.OperationLogs)
 
-			subscriptionHandler := &handler.SubscriptionHandler{Service: positionSvc}
+			subscriptionHandler := &handler.SubscriptionHandler{Service: service.NewPortalService(svc2)}
 			r.Get("/subscriptions", subscriptionHandler.Get)
 			r.Put("/subscriptions/{id}", subscriptionHandler.Update)
 
@@ -345,7 +345,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/lesson/homeworks/{id}", nodeHomeworkHandler.Update)
 			r.Delete("/lesson/homeworks/{id}", nodeHomeworkHandler.Delete)
 
-			hybridModuleHandler := &handler.HybridModuleHandler{Service: positionSvc}
+			hybridModuleHandler := &handler.HybridModuleHandler{Service: lessonContentSvc}
 			r.Get("/lesson/hybrid-modules", hybridModuleHandler.ListModules)
 			r.Post("/lesson/hybrid-modules", hybridModuleHandler.UpsertModule)
 			r.Put("/lesson/hybrid-modules/{id}", hybridModuleHandler.UpsertModule)

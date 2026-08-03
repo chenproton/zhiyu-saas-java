@@ -33,7 +33,7 @@ func (h *ApprovalHandler) invalidateApprovalCache(r *http.Request, targetType, t
 }
 
 type ApprovalHandler struct {
-	Service     *service.PositionService
+	Service     *service.ApprovalService
 	RedisClient *redis.Client
 }
 

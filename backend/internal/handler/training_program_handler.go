@@ -13,7 +13,7 @@ import (
 )
 
 type TrainingProgramHandler struct {
-	Service *service.PositionService
+	Service *service.AffairsPlanService
 }
 type TrainingProgramRequest struct {
 	Name         string   `json:"name"`

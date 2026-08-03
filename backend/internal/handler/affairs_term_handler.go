@@ -11,7 +11,7 @@ import (
 )
 
 type AffairsTermHandler struct {
-	Service *service.PositionService
+	Service *service.AffairsPlanService
 }
 
 type TermRequest struct {
