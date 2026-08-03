@@ -13,6 +13,14 @@ export interface ApprovalStepInfo {
   steps: WorkflowStep[]
 }
 
+// 审批无权限时给出明确提示，避免用户误以为系统故障
+const PERMISSION_DENIED_HINT = '您暂无权限审批该条记录，请确认自己是当前步骤审批人'
+
+function isApprovalPermissionDenied(err: any): boolean {
+  const msg = (err?.message || err?.error || '') as string
+  return msg.includes('无权评审此步骤') || msg.includes('permission denied')
+}
+
 interface UseApprovalsOptions {
   targetType: string
   limit?: number
@@ -104,7 +112,10 @@ export function useApprovals({
         }
         await refresh()
       } catch (err: any) {
-        toast({ title: err.message || '审批失败', variant: 'destructive' })
+        toast({
+          title: isApprovalPermissionDenied(err) ? PERMISSION_DENIED_HINT : err.message || '审批失败',
+          variant: 'destructive',
+        })
       }
     },
     [refresh],
@@ -121,7 +132,10 @@ export function useApprovals({
         }
         await refresh()
       } catch (err: any) {
-        toast({ title: err.message || '驳回失败', variant: 'destructive' })
+        toast({
+          title: isApprovalPermissionDenied(err) ? PERMISSION_DENIED_HINT : err.message || '驳回失败',
+          variant: 'destructive',
+        })
       }
     },
     [refresh],
@@ -139,6 +153,8 @@ export function useApprovals({
         const failed = results.length - success
         if (failed === 0) {
           toast({ title: `批量${label}成功，共 ${success} 条` })
+        } else if (failed === results.length && results.every((r) => isApprovalPermissionDenied((r as any).reason))) {
+          toast({ title: PERMISSION_DENIED_HINT, variant: 'destructive' })
         } else {
           toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
         }
