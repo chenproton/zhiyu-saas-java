@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -15,15 +15,9 @@ type NodeHomeworkHandler struct {
 	Service *service.LessonContentService
 }
 
-type CreateNodeHomeworkRequest struct {
+// NodeHomeworkRequest 作业创建/更新请求体（更新时忽略 nodeId）。
+type NodeHomeworkRequest struct {
 	NodeID         string     `json:"nodeId"`
-	Title          string     `json:"title"`
-	Requirement    *string    `json:"requirement"`
-	NeedAttachment bool       `json:"needAttachment"`
-	Deadline       *time.Time `json:"deadline"`
-}
-
-type UpdateNodeHomeworkRequest struct {
 	Title          string     `json:"title"`
 	Requirement    *string    `json:"requirement"`
 	NeedAttachment bool       `json:"needAttachment"`
@@ -50,115 +44,77 @@ func (h *NodeHomeworkHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.NodeHomework]{Items: items, Total: total})
 }
 
-func (h *NodeHomeworkHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
+// crud 返回作业 CRUD 差异配置；HTTP 流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
+// 实体无 TenantID 字段，租户隔离通过 GetByIDFn 的租户限定查询实现（TenantFn=requireTenant）。
+func (h *NodeHomeworkHandler) crud() crudConfig[NodeHomeworkRequest, domain.NodeHomework] {
+	return crudConfig[NodeHomeworkRequest, domain.NodeHomework]{
+		NotFoundMsg:  "作业不存在",
+		CreateErrMsg: "创建作业失败",
+		UpdateErrMsg: "更新作业失败",
+		DeleteErrMsg: "删除作业失败",
+		ValidateCreate: func(t *NodeHomeworkRequest) string {
+			if t.NodeID == "" || t.Title == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *NodeHomeworkRequest) (string, bool) {
+			return requireTenant(w, r)
+		},
+		ValidateUpdate: func(t *NodeHomeworkRequest) string {
+			if t.Title == "" {
+				return "缺少必填字段"
+			}
+			return ""
+		},
+		CreateFn: func(ctx context.Context, t *NodeHomeworkRequest, tenantID, userID string) (string, error) {
+			hw, err := h.Service.CreateNodeHomework(ctx, tenantID, &store.NodeHomeworkCreateParams{
+				NodeID:         t.NodeID,
+				Title:          t.Title,
+				Requirement:    t.Requirement,
+				NeedAttachment: t.NeedAttachment,
+				Deadline:       t.Deadline,
+			})
+			if err != nil {
+				return "", err
+			}
+			return hw.ID, nil
+		},
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *NodeHomeworkRequest) error {
+			_, err := h.Service.UpdateNodeHomework(ctx, id, tenantID, &store.NodeHomeworkUpdateParams{
+				Title:          t.Title,
+				Requirement:    t.Requirement,
+				NeedAttachment: t.NeedAttachment,
+				Deadline:       t.Deadline,
+			})
+			return err
+		},
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Service.DeleteNodeHomework(ctx, id, tenantID)
+		},
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.NodeHomework, error) {
+			hw, err := h.Service.GetNodeHomework(ctx, id, tenantID)
+			if err != nil {
+				return domain.NodeHomework{}, err
+			}
+			return *hw, nil
+		},
+		TenantFn: requireTenant,
 	}
+}
 
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	hw, err := h.Service.GetNodeHomework(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "作业不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, hw)
+func (h *NodeHomeworkHandler) Get(w http.ResponseWriter, r *http.Request) {
+	crudGet(w, r, h.crud())
 }
 
 func (h *NodeHomeworkHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	var req CreateNodeHomeworkRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.NodeID == "" || req.Title == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	hw, err := h.Service.CreateNodeHomework(r.Context(), tenantID, &store.NodeHomeworkCreateParams{
-		NodeID:         req.NodeID,
-		Title:          req.Title,
-		Requirement:    req.Requirement,
-		NeedAttachment: req.NeedAttachment,
-		Deadline:       req.Deadline,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "创建作业失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, hw)
+	crudCreate(w, r, h.crud())
 }
 
 func (h *NodeHomeworkHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	if _, err := h.Service.GetNodeHomework(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "作业不存在")
-		return
-	}
-
-	var req UpdateNodeHomeworkRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Title == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
-	hw, err := h.Service.UpdateNodeHomework(r.Context(), id, tenantID, &store.NodeHomeworkUpdateParams{
-		Title:          req.Title,
-		Requirement:    req.Requirement,
-		NeedAttachment: req.NeedAttachment,
-		Deadline:       req.Deadline,
-	})
-	if err != nil {
-		respondServerError(w, r, err, "更新作业失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, hw)
+	crudUpdate(w, r, h.crud())
 }
 
 func (h *NodeHomeworkHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	if _, err := h.Service.GetNodeHomework(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "作业不存在")
-		return
-	}
-
-	if err := h.Service.DeleteNodeHomework(r.Context(), id, tenantID); err != nil {
-		respondServerError(w, r, err, "删除作业失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	crudDelete(w, r, h.crud())
 }
