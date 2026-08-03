@@ -63,8 +63,9 @@ const ACTION_MODULE_PLATFORM_MAP: Record<string, string> = {
 
 function filterMenuTreeBySubscription(
   tree: MenuTreeItem[],
-  modules: Record<string, boolean>,
+  modules: Record<string, boolean> | null | undefined,
 ): MenuTreeItem[] {
+  if (!modules) return tree
   return tree.filter((node) => {
     const platformId = MENU_TREE_PLATFORM_MAP[node.id]
     if (!platformId) return true
@@ -161,13 +162,15 @@ export default function RolesPage() {
 
   const menuTree = useMemo(() => {
     const tree = buildMenuTree()
-    return filterMenuTreeBySubscription(tree, subscriptionModules || {})
+    return filterMenuTreeBySubscription(tree, subscriptionModules)
   }, [subscriptionModules])
 
   const visibleActionModules = useMemo(
     () =>
       permissionModuleConfig.filter(
-        (mod) => (subscriptionModules || {})[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true,
+        (mod) =>
+          subscriptionModules == null ||
+          subscriptionModules[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true,
       ),
     [subscriptionModules],
   )
@@ -254,8 +257,10 @@ export default function RolesPage() {
         }
       }
       walk(menuTree)
+    } else {
+      // menus 缺失（如学校管理员/平台管理员）表示不限制菜单，回显为全选
+      walkAllIds(menuTree)
     }
-    // menus 缺失/空对象时不授予任何菜单（原先 fallback 全选所有菜单，新建角色默认全量权限）
     setCheckedMenus(menuSet)
 
     const actionSet = new Set<string>()
