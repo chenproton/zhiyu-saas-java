@@ -1547,9 +1547,10 @@ function EditCardDialog({
           return
         }
       }
-      // Generate temp exams for question_bank / quiz and persist examId back
+      // Generate temp exams for enabled question_bank / quiz and persist examId back
       const tempExamMethods = methodsInput.filter(
-        (m) => m.methodKey === 'question_bank' || m.methodKey === 'quiz',
+        (m) =>
+          m.isEnabled && (m.methodKey === 'question_bank' || m.methodKey === 'quiz'),
       )
       if (tempExamMethods.length > 0) {
         for (const m of tempExamMethods) {
@@ -2052,6 +2053,9 @@ function EditCardDialog({
               const newDisabled = (state.disabledEvaluationMethods || []).filter((d: string) =>
                 newMethods.includes(d),
               )
+              // 取消勾选的方法保留在 disabled 列表，确保保存 payload 始终包含全量方法，
+              // 后端只更新 payload 内的方法，缺省不会误禁用其他方法
+              const removed = state.evaluationMethods.filter((m) => !newMethods.includes(m))
               const newWeights = { ...state.methodWeights }
               for (const m of newMethods) {
                 if (!state.evaluationMethods.includes(m)) newWeights[m] = 0
@@ -2064,7 +2068,7 @@ function EditCardDialog({
               updateState({
                 evaluationMethods: newMethods,
                 methodWeights: newWeights,
-                disabledEvaluationMethods: newDisabled,
+                disabledEvaluationMethods: [...newDisabled, ...removed],
               })
             }}
           />

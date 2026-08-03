@@ -587,6 +587,80 @@ func TestTaskEvaluationMethod_TempExamIdempotent(t *testing.T) {
 	}
 }
 
+func TestTaskEvaluationMethod_PartialSavePreservesOthers(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	suffix := t.Name()
+	scCode := fmt.Sprintf("test-evm-part-%s", suffix)
+
+	w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
+		"name": "Eval Method Partial Scenario", "code": scCode, "difficulty": 1, "version": "v1.0",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create scenario: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	scenario, _ := testhelper.Unmarshal[domain.Scenario](w)
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", scenario.ID)
+
+	taskCode := fmt.Sprintf("tsk-evm-part-%s", suffix)
+	w = env.Do("POST", "/api/v1/scene/tasks", map[string]interface{}{
+		"scenarioId": scenario.ID, "name": "Eval Task Partial", "code": taskCode, "taskType": "assessment", "difficulty": 2,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create task: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	task, _ := testhelper.Unmarshal[domain.ScenarioTask](w)
+	taskID := task.ID
+	defer env.DB.Exec(ctx, "DELETE FROM task_evaluation_methods WHERE task_id = $1", taskID)
+	defer env.DB.Exec(ctx, "DELETE FROM scenario_tasks WHERE id = $1", taskID)
+
+	method := func(key string, enabled bool) map[string]interface{} {
+		return map[string]interface{}{
+			"methodKey":      key,
+			"weight":         50,
+			"evalObject":     "individual",
+			"evalSubjects":   []interface{}{},
+			"isEnabled":      enabled,
+			"evalPoints":     []map[string]interface{}{},
+			"reviewSteps":    []map[string]interface{}{},
+			"resourceConfig": map[string]interface{}{},
+		}
+	}
+
+	// 首次保存两个启用的方法
+	w = env.Do("PUT", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", map[string]interface{}{
+		"methods": []map[string]interface{}{method("paper", true), method("review", true)},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("initial save: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// 第二次只保存其中一个方法（模拟前端状态缺失部分方法的场景）
+	w = env.Do("PUT", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", map[string]interface{}{
+		"methods": []map[string]interface{}{method("paper", true)},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("partial save: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	var paperEnabled, reviewEnabled bool
+	if err := env.DB.QueryRow(ctx, `
+		SELECT bool_and(is_enabled) FILTER (WHERE method_key = 'paper'),
+		       bool_and(is_enabled) FILTER (WHERE method_key = 'review')
+		FROM task_evaluation_methods WHERE task_id = $1
+	`, taskID).Scan(&paperEnabled, &reviewEnabled); err != nil {
+		t.Fatalf("query enabled flags: %v", err)
+	}
+	if !paperEnabled {
+		t.Fatal("paper should remain enabled after partial save")
+	}
+	if !reviewEnabled {
+		t.Fatal("review must NOT be disabled by a save that omits it")
+	}
+}
+
 func TestRubricTemplateCRUD(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

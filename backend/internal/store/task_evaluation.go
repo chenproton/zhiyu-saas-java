@@ -196,14 +196,9 @@ func (s *TaskEvaluationStore) TaskName(ctx context.Context, taskID string) (stri
 }
 
 // SaveTaskMethod 保存单个测评方式（upsert 方法 + 重写评估点/评审步骤）。
+// 只按 payload 更新方法本身，不触碰 payload 之外的方法：前端状态缺失（如导入期间页面已打开）时，
+// 保存不会把未知方法静默禁用。
 func (s *TaskEvaluationStore) SaveTaskMethod(ctx context.Context, tx Queryer, tenantID, taskID string, newVersion int, m *TaskMethodInput) error {
-	if _, err := tx.Exec(ctx, `
-		UPDATE task_evaluation_methods SET is_enabled = false
-		WHERE task_id = $1 AND tenant_id = $2
-	`, taskID, tenantID); err != nil {
-		return err
-	}
-
 	var configID string
 	err := tx.QueryRow(ctx, `
 		INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
