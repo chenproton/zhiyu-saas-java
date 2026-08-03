@@ -13,9 +13,9 @@
 
 | 文件:行号 | 问题 |
 |-----------|------|
-| `components/knowledge-graph/knowledge-graph-d3-view.tsx:334-336` | d3 tooltip 用 `.html()` 拼接用户可控 `d.label`（知识点/课件名）→ 存储型 XSS，必须改 `.text()` 或转义 |
-| `components/shared/resource-preview-modal.tsx:230-237` | `href={resource.url}` 渲染用户可控 URL，`javascript:` 协议可执行，需协议白名单 |
-| `app/portal/login/page.tsx:226-231` | 硬编码明文测试账号（school/school123、teacher/teacher123、student/student123）随生产发布 |
+| `components/knowledge-graph/knowledge-graph-d3-view.tsx:334-336` | d3 tooltip 用 `.html()` 拼接用户可控 `d.label`（知识点/课件名）→ 存储型 XSS，必须改 `.text()` 或转义 ✅ 已修复（escapeHtml 转义） |
+| `components/shared/resource-preview-modal.tsx:230-237` | `href={resource.url}` 渲染用户可控 URL，`javascript:` 协议可执行，需协议白名单 ✅ 已修复（isSafeExternalUrl 协议白名单） |
+| `app/portal/login/page.tsx:226-231` | 硬编码明文测试账号（school/school123、teacher/teacher123、student/student123）随生产发布 ✅ 已修复（仅开发环境显示） |
 | `app/lesson/landing/[id]/page.tsx:1086-1101,1279-1289` | 学生提交的附件 URL 未校验协议直接 `<a href target=_blank>`，javascript: 可被教师端点击执行 |
 | `app/portal/apps/system/org-user/teachers/page.tsx:363` | 密码输入框 `type="text"` 明文显示，应 `type="password"` |
 | `app/superadmin/page.tsx:153-192` | 客户端 `atob` 裸解 JWT（中文用户名时 JSON.parse 抛错误判登录态）+ 绕过 api-client 手写 fetch 登录 |

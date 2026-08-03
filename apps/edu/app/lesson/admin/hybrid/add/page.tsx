@@ -96,19 +96,6 @@ function HybridCourseAddForm() {
         const c = await courseApi.get(editId)
         setExisting(c)
         if (c.batchId) setBatchId(c.batchId)
-        // 编辑模式回填根节点表单（useState 初始化时 existing 尚未加载）
-        setNodeDataMap((prev) => ({
-          ...prev,
-          [FIRST_NODE_ID]: createDefaultNodeModuleData({
-            name: c.name,
-            code: c.code,
-            majorId: c.majorId || undefined,
-            majorName: c.majorName || undefined,
-            semester: c.semester || undefined,
-            category: c.category as CourseBasicForm['category'],
-            coverImage: c.coverImage || undefined,
-          }),
-        }))
       } catch (err) {
         reportError(err, '加载课程信息')
         setExisting(null)
@@ -197,6 +184,25 @@ function HybridCourseAddForm() {
       category: existing?.category as CourseBasicForm['category'],
     }),
   }))
+
+  // 编辑模式回填根节点表单（useState 初始化时 existing 尚未加载）
+  useEffect(() => {
+    if (!existing || !editId) return
+    queueMicrotask(() => {
+      setNodeDataMap((prev) => ({
+        ...prev,
+        [FIRST_NODE_ID]: createDefaultNodeModuleData({
+          name: existing.name,
+          code: existing.code,
+          majorId: existing.majorId || undefined,
+          majorName: existing.majorName || undefined,
+          semester: existing.semester || undefined,
+          category: existing.category as CourseBasicForm['category'],
+          coverImage: existing.coverImage || undefined,
+        }),
+      }))
+    })
+  }, [existing, editId])
 
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)

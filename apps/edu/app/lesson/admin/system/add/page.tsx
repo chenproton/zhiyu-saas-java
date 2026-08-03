@@ -107,6 +107,10 @@ function AddSystemPageInner() {
   const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
   const [courseId, setCourseId] = useState(editId || '')
   const [courseName, setCourseName] = useState('')
+  // 内容（课程）编码：新建自动生成，编辑回填真实编码
+  const [contentCode, setContentCode] = useState(() =>
+    `CNT-${Date.now().toString(36).toUpperCase()}`,
+  )
   const [major, setMajor] = useState('')
   const [majors, setMajors] = useState<Major[]>([])
   const [courseDescription, setCourseDescription] = useState('')
@@ -362,9 +366,7 @@ function AddSystemPageInner() {
   }, [nodeDrafts, nodes])
 
   /* module 1: basic info */
-  const [contentCode, setContentCode] = useState(() =>
-    `CNT-${Date.now().toString(36).toUpperCase()}`,
-  )
+
   const [hours, setHours] = useState('')
   const [learningGoal, setLearningGoal] = useState('')
   const [difficulty, setDifficulty] = useState<number>(0)

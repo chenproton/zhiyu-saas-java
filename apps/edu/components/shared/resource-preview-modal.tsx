@@ -6,6 +6,7 @@ import { ExternalLink, X, FileText } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { cn } from '@/lib/utils'
 import type { TaskResource } from '@/lib/types'
+import { isSafeExternalUrl } from '@/lib/format-utils'
 
 const MIN_WIDTH = 320
 const MIN_HEIGHT = 200
@@ -227,7 +228,7 @@ function ResourcePreviewModalInner({
               <X className="h-4 w-4 mr-1" />
               关闭
             </Button>
-            {resource?.url && (
+            {isSafeExternalUrl(resource?.url) && (
               <Button variant="outline" size="sm" asChild onMouseDown={(e) => e.stopPropagation()}>
                 <a href={resource.url} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-1" />

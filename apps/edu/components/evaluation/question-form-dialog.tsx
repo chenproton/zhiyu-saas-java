@@ -223,7 +223,7 @@ export function QuestionFormDialog({
     }
 
     return data
-  }, [type, content, analysis, answer, difficulty, knowledgePointIds, options])
+  }, [type, content, analysis, answer, difficulty, knowledgePointIds, options, score])
 
   const resetForNext = useCallback(() => {
     setContent('')

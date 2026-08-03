@@ -1,5 +1,15 @@
 'use client'
 
+/** 转义 HTML 特殊字符，防止 tooltip 拼接用户数据导致 XSS */
+function escapeHtml(v: string): string {
+  return v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Briefcase,
@@ -332,7 +342,7 @@ export function KnowledgeGraphD3View({
         tooltip
           .style('display', 'block')
           .html(
-            `<strong>${d.label}</strong><br><span style="font-size:10px;opacity:0.8">${nodeLabels?.[d.type] ?? TYPE_META_D3[d.type].label}</span>`,
+            `<strong>${escapeHtml(String(d.label ?? ''))}</strong><br><span style="font-size:10px;opacity:0.8">${escapeHtml(nodeLabels?.[d.type] ?? TYPE_META_D3[d.type].label)}</span>`,
           )
       })
       .on('mousemove', (ev) => {
