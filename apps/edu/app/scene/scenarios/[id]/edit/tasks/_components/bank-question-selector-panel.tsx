@@ -267,19 +267,19 @@ export function BankQuestionSelectorPanel({
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm table-fixed min-w-[480px]">
+                    <table className="w-full text-sm table-fixed">
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[48%]">
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2">
                             题目内容
                           </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[16%]">
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[88px]">
                             题型
                           </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[10%]">
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[56px]">
                             难度
                           </th>
-                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">
+                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[120px]">
                             操作
                           </th>
                         </tr>
@@ -313,13 +313,13 @@ export function BankQuestionSelectorPanel({
                               </td>
                               <td className="px-3 py-2">
                                 <Badge
-                                  className={`text-xs text-white hover:opacity-90 ${typeColorMap[q.type ?? ''] || ''}`}
+                                  className={`text-xs text-white hover:opacity-90 whitespace-nowrap ${typeColorMap[q.type ?? ''] || ''}`}
                                 >
                                   {questionTypeLabels[q.type ?? ''] || q.type}
                                 </Badge>
                               </td>
                               <td className="px-3 py-2">
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-500 whitespace-nowrap">
                                   {difficultyLabels[q.difficulty ?? ''] || q.difficulty}
                                 </span>
                               </td>
