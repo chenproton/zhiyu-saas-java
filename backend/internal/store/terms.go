@@ -70,6 +70,16 @@ func (s *TermStore) Delete(ctx context.Context, id, tenantID string) error {
 	return err
 }
 
+// CountRefs 统计学期被教学计划/排课引用的数量，用于删除前引用检查。
+func (s *TermStore) CountRefs(ctx context.Context, id string) (int, error) {
+	var count int
+	err := s.q.QueryRow(ctx, `
+		SELECT (SELECT COUNT(*) FROM teaching_plans WHERE term_id = $1) +
+		       (SELECT COUNT(*) FROM schedule_entries WHERE term_id = $1)
+	`, id).Scan(&count)
+	return count, err
+}
+
 // TermParams 学期参数。
 type TermParams struct {
 	Name       string
