@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -18,7 +17,7 @@ import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -33,31 +32,16 @@ const brandDesc = '管理优质岗位的品牌级运营'
 export default function AllianceJobBrandPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [items, setItems] = useState<AllianceBrand[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchItems = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return []
       const data = await allianceBrandApi.list({ brandType })
-      setItems(data.items || [])
-    } catch (e: any) {
-      setError(e.message || '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return data.items || []
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    if (authLoading || !tenantId) return
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await fetchItems()
-    })()
-  }, [tenantId, authLoading, fetchItems])
+  const items = data ?? []
 
   return (
     <PortalCrudPage
@@ -68,8 +52,8 @@ export default function AllianceJobBrandPage() {
       createButtonLabel="新增品牌"
       items={items}
       loading={loading}
-      error={error}
-      onRetry={fetchItems}
+      error={error?.message ?? null}
+      onRetry={refresh}
       filterItems={(filtered, search) =>
         filtered.filter((b) => !search || b.name.toLowerCase().includes(search.toLowerCase()))
       }
@@ -214,12 +198,12 @@ export default function AllianceJobBrandPage() {
           await allianceBrandApi.create(item)
         }
         toast({ title: `品牌已${isEdit ? '更新' : '创建'}` })
-        await fetchItems()
+        await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceBrandApi.delete(item.id)
         toast({ title: '品牌已删除' })
-        await fetchItems()
+        await refresh()
       }}
       onToggleEnabled={async () => {}}
     />

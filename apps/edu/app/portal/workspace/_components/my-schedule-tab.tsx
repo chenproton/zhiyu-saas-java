@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { CalendarX2 } from 'lucide-react'
-import { useToast } from '@zhiyu/ui'
+import { useAsync } from '@zhiyu/ui'
 import { ScheduleGrid } from '@/components/shared/schedule-grid'
 import { myScheduleApi, periodSlotApi } from '@/lib/api'
 import type { AffairsTerm, PeriodSlot, ScheduleEntry } from '@/lib/types'
@@ -14,44 +14,26 @@ interface MyScheduleTabProps {
 
 /** 我的课表 Tab（学生/教师工作台共用，当前学期已发布课表） */
 export function MyScheduleTab({ role }: MyScheduleTabProps) {
-  const { toast } = useToast()
-  const [term, setTerm] = useState<AffairsTerm | null>(null)
-  const [entries, setEntries] = useState<ScheduleEntry[]>([])
-  const [periodSlots, setPeriodSlots] = useState<PeriodSlot[]>([])
-  const [loading, setLoading] = useState(true)
   const [noTerm, setNoTerm] = useState(false)
 
-  const loadData = useCallback(async () => {
+  const { data, loading } = useAsync(async () => {
     try {
       const [scheduleRes, slotRes] = await Promise.all([
         myScheduleApi.get(),
         periodSlotApi.list({ limit: 100 }).catch(() => ({ items: [] as PeriodSlot[], total: 0 })),
       ])
-      setTerm(scheduleRes.term)
-      setEntries(scheduleRes.items)
-      setPeriodSlots(slotRes.items)
+      return { term: scheduleRes.term, entries: scheduleRes.items, periodSlots: slotRes.items }
     } catch (err: any) {
-      // 后端 404：尚未配置学期，按空态处理；其余错误提示
+      // 后端 404：尚未配置学期，按空态处理；其余错误重抛交由 hook 统一提示
       if (err.message && (err.message.includes('学期') || err.message.includes('404'))) {
         setNoTerm(true)
-      } else {
-        toast({
-          variant: 'destructive',
-          title: '加载失败',
-          description: err.message || '查询我的课表失败',
-        })
+        return { term: null as AffairsTerm | null, entries: [], periodSlots: [] }
       }
-    } finally {
-      setLoading(false)
+      throw err
     }
-  }, [toast])
+  })
 
-  useEffect(() => {
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await loadData()
-    })()
-  }, [loadData])
+  const { term, entries, periodSlots } = data ?? {}
 
   const getEntryHref = (entry: ScheduleEntry) => {
     if (entry.type === 'scene' && entry.scenarioId) {
@@ -63,7 +45,7 @@ export function MyScheduleTab({ role }: MyScheduleTabProps) {
     return undefined
   }
 
-  const empty = !loading && (noTerm || entries.length === 0)
+  const empty = !loading && (noTerm || (entries ?? []).length === 0)
 
   return (
     <div className="space-y-3">
@@ -97,8 +79,8 @@ export function MyScheduleTab({ role }: MyScheduleTabProps) {
           </div>
         ) : (
           <ScheduleGrid
-            entries={entries}
-            periodSlots={periodSlots}
+            entries={entries ?? []}
+            periodSlots={periodSlots ?? []}
             loading={loading}
             emptyText="当前学期暂无已发布的课表"
             getEntryHref={getEntryHref}

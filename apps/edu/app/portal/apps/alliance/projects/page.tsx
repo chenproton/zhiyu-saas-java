@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -18,34 +18,24 @@ import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
-import type { AllianceProject, AllianceEnterprise, AllianceProjectMilestone } from '@/lib/types'
+import type { AllianceProjectMilestone } from '@/lib/types'
 
 export default function AllianceProjectsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [projects, setProjects] = useState<AllianceProject[]>([])
-  const [enterprises, setEnterprises] = useState<AllianceEnterprise[]>([])
-  const [milestones, setMilestones] = useState<Record<string, AllianceProjectMilestone[]>>({})
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchProjects = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return { projects: [], enterprises: [], milestones: {} }
       const [data, ents] = await Promise.all([
         allianceProjectApi.list(),
         allianceEnterpriseApi.list({ limit: 200 }),
       ])
-      setProjects(data.items || [])
-      setEnterprises(ents.items || [])
       const ms: Record<string, AllianceProjectMilestone[]> = {}
       for (const p of data.items || []) {
         try {
@@ -55,23 +45,14 @@ export default function AllianceProjectsPage() {
           ms[p.id] = []
         }
       }
-      setMilestones(ms)
-    } catch (e: any) {
-      setError(e.message || '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return { projects: data.items || [], enterprises: ents.items || [], milestones: ms }
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    if (authLoading || !tenantId) return
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await fetchProjects()
-    })()
-  }, [tenantId, authLoading, fetchProjects])
+  const { projects, enterprises, milestones } = data ?? {}
 
-  const entName = (id: string) => enterprises.find((e) => e.id === id)?.name || id
+  const entName = (id: string) => (enterprises ?? []).find((e) => e.id === id)?.name || id
 
   return (
     <PortalCrudPage
@@ -80,10 +61,10 @@ export default function AllianceProjectsPage() {
       entityLabel="合作项目"
       searchPlaceholder="搜索项目名称..."
       createButtonLabel="新增项目"
-      items={projects}
+      items={projects ?? []}
       loading={loading}
-      error={error}
-      onRetry={fetchProjects}
+      error={error?.message ?? null}
+      onRetry={refresh}
       filterItems={(items, search) =>
         items.filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()))
       }
@@ -108,7 +89,7 @@ export default function AllianceProjectsPage() {
         </>
       )}
       renderTableRow={(p: any, actions: any) => {
-        const ms = milestones[p.id] || []
+        const ms = (milestones ?? {})[p.id] || []
         const done = ms.filter((m) => m.isCompleted).length
         const progress = ms.length > 0 ? Math.round((done / ms.length) * 100) : 0
         const entIds: string[] = (p.enterpriseIds || []).map(String)
@@ -230,17 +211,17 @@ export default function AllianceProjectsPage() {
         if (isEdit) await allianceProjectApi.update(item.id, item)
         else await allianceProjectApi.create(item)
         toast({ title: `项目已${isEdit ? '更新' : '创建'}` })
-        await fetchProjects()
+        await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceProjectApi.delete(item.id)
         toast({ title: '已删除' })
-        await fetchProjects()
+        await refresh()
       }}
       onToggleEnabled={async (item: any) => {
         await allianceProjectApi.update(item.id, { isPublic: !item.isPublic })
         toast({ title: `已${item.isPublic ? '取消' : '设为'}前台展示` })
-        await fetchProjects()
+        await refresh()
       }}
     />
   )

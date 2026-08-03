@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -17,7 +17,7 @@ import {
 import { Pencil, Trash2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { industryApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import type { Industry } from '@/lib/types/backend'
@@ -25,30 +25,18 @@ import type { Industry } from '@/lib/types/backend'
 export default function IndustriesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [industries, setIndustries] = useState<Industry[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const fetchIndustries = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return []
       const res = await industryApi.list({ tenantId, limit: 1000 })
-      setIndustries(res.items)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载行业数据失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return res.items
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    if (authLoading || !tenantId) return
-    ;(async () => {
-      await fetchIndustries()
-    })()
-  }, [tenantId, authLoading, fetchIndustries])
+  const industries = useMemo(() => data ?? [], [data])
+
 
   const parentMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -72,8 +60,8 @@ export default function IndustriesPage() {
       createButtonLabel="新增行业"
       items={industries}
       loading={loading}
-      error={error}
-      onRetry={fetchIndustries}
+      error={error?.message ?? null}
+      onRetry={refresh}
       filterItems={(items, searchTerm) =>
         items.filter((ind) => {
           if (!searchTerm) return true

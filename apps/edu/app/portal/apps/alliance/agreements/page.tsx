@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -16,50 +16,35 @@ import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
-import type { AllianceAgreement, AllianceEnterprise, AllianceProject } from '@/lib/types'
+import type { AllianceAgreement } from '@/lib/types'
 
 export default function AllianceAgreementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [items, setItems] = useState<AllianceAgreement[]>([])
-  const [enterprises, setEnterprises] = useState<AllianceEnterprise[]>([])
-  const [projects, setProjects] = useState<AllianceProject[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchItems = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return { items: [], enterprises: [], projects: [] }
       const [data, ents, projs] = await Promise.all([
         allianceAgreementApi.list(),
         allianceEnterpriseApi.list({ limit: 200 }),
         allianceProjectApi.list({ limit: 200 }),
       ])
-      setItems(data.items || [])
-      setEnterprises(ents.items || [])
-      setProjects(projs.items || [])
-    } catch (e: any) {
-      setError(e.message || '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return {
+        items: data.items || [],
+        enterprises: ents.items || [],
+        projects: projs.items || [],
+      }
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    if (authLoading || !tenantId) return
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await fetchItems()
-    })()
-  }, [tenantId, authLoading, fetchItems])
+  const { items, enterprises, projects } = data ?? {}
 
   return (
     <PortalCrudPage
@@ -68,10 +53,10 @@ export default function AllianceAgreementsPage() {
       entityLabel="合作协议"
       searchPlaceholder="搜索协议名称..."
       createButtonLabel="新增协议"
-      items={items}
+      items={items ?? []}
       loading={loading}
-      error={error}
-      onRetry={fetchItems}
+      error={error?.message ?? null}
+      onRetry={refresh}
       filterItems={(filtered, search) =>
         filtered.filter((a) => !search || a.name.toLowerCase().includes(search.toLowerCase()))
       }
@@ -114,12 +99,12 @@ export default function AllianceAgreementsPage() {
             </TableCell>
             <TableCell className="max-w-[160px]">
               {entIds.length > 0
-                ? entIds.map((eid) => enterprises.find((e) => e.id === eid)?.name || eid).join('、')
+                ? entIds.map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid).join('、')
                 : '-'}
             </TableCell>
             <TableCell>
               {(item.projectIds || []).length > 0
-                ? projects.find((p) => p.id === (item.projectIds || [])[0])?.name || '-'
+                ? (projects ?? []).find((p) => p.id === (item.projectIds || [])[0])?.name || '-'
                 : '-'}
             </TableCell>
             <TableCell>{item.type || '-'}</TableCell>
@@ -230,12 +215,12 @@ export default function AllianceAgreementsPage() {
           await allianceAgreementApi.create(item)
         }
         toast({ title: `协议已${isEdit ? '更新' : '创建'}` })
-        await fetchItems()
+        await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceAgreementApi.delete(item.id)
         toast({ title: '协议已删除' })
-        await fetchItems()
+        await refresh()
       }}
       onToggleEnabled={async () => {}}
     />

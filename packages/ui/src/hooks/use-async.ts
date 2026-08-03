@@ -9,8 +9,8 @@ interface UseAsyncOptions<T> {
   deps?: unknown[]
   /** 是否挂载时自动加载，默认 true；需自行控制时机时设为 false */
   autoLoad?: boolean
-  /** 错误附加回调（默认已 toast('加载失败')） */
-  onError?: (err: Error) => void
+  /** 错误附加回调；返回 true 时抑制默认 toast（如页面已有 ErrorState 重试 UI） */
+  onError?: (err: Error) => boolean | void
   /** 初始数据，默认 undefined */
   initialData?: T
 }
@@ -57,12 +57,13 @@ export function useAsync<T>(fetcher: () => Promise<T>, options: UseAsyncOptions<
     } catch (err) {
       const e = err instanceof Error ? err : new Error('未知错误')
       setError(e)
-      optionsRef.current.onError?.(e)
-      toast({
-        variant: 'destructive',
-        title: '加载失败',
-        description: e.message || '无法获取数据',
-      })
+      if (!optionsRef.current.onError?.(e)) {
+        toast({
+          variant: 'destructive',
+          title: '加载失败',
+          description: e.message || '无法获取数据',
+        })
+      }
     } finally {
       setLoading(false)
     }

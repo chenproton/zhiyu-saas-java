@@ -1,47 +1,32 @@
 'use client'
 
-import { useEffect, useMemo, useCallback, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Lock, Info } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest, buildQuery, type ListResponse } from '@/lib/api'
+import { useAsync } from '@zhiyu/ui'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import type { ResourceCode } from '@/lib/types/backend'
 
 export default function ResourceCodesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
-  const [codes, setCodes] = useState<ResourceCode[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const fetchCodes = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return []
       const res = await portalRequest<ListResponse<ResourceCode>>(
         `/resource-codes${buildQuery({ tenantId, limit: 1000 })}`,
       )
-      setCodes(res.items)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载资源编码失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return res.items
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    if (authLoading || !tenantId) return
-    let cancelled = false
-    ;(async () => {
-      if (!cancelled) await fetchCodes()
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [tenantId, authLoading, fetchCodes])
+  const codes = useMemo(() => data ?? [], [data])
+
 
   const filteredCodes = useMemo(
     () => codes.filter((code) => code.name.includes(searchTerm) || code.code.includes(searchTerm)),
@@ -61,8 +46,8 @@ export default function ResourceCodesPage() {
       entityLabel="资源编码"
       items={filteredCodes}
       loading={loading}
-      error={error}
-      onRetry={fetchCodes}
+      error={error?.message ?? null}
+      onRetry={refresh}
       colSpan={5}
       searchPlaceholder="搜索编码名称或代码..."
       searchValue={searchTerm}

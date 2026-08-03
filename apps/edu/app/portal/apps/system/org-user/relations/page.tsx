@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import {
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Trash2 } from 'lucide-react'
 import { portalUserRelationApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { UserSelector } from '@/components/shared/user-selector'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -21,8 +21,13 @@ import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 interface RelationItem {
   id: string
   initiatorId: string
+  initiatorName?: string
+  initiatorDept?: string
   targetId: string
+  targetName?: string
+  targetDept?: string
   relationType: string
+  createdAt?: string
 }
 
 const relationTypes = [
@@ -41,29 +46,15 @@ const typeLabelMap: Record<string, string> = Object.fromEntries(
 export default function RelationsPage() {
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
-  const [relations, setRelations] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
-  const loadRelations = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
+  const { data: relations, loading, error, refresh } = useAsync(
+    async () => {
       const res = await portalUserRelationApi.list({ search: searchText || undefined })
-      setRelations(res.items)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载关系列表失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [searchText])
-
-  useEffect(() => {
-    ;(async () => {
-      await loadRelations()
-    })()
-  }, [loadRelations])
+      return res.items as RelationItem[]
+    },
+    { deps: [searchText], onError: () => true },
+  )
 
   const handleCreate = async (item: RelationItem) => {
     try {
@@ -87,7 +78,7 @@ export default function RelationsPage() {
     try {
       await portalUserRelationApi.delete(id)
       toast({ title: '删除成功' })
-      await loadRelations()
+      await refresh()
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -98,14 +89,14 @@ export default function RelationsPage() {
   }
 
   return (
-    <PortalCrudPage
+    <PortalCrudPage<RelationItem>
       title="人员关系管理"
       description="维护用户之间的上下级、协同等业务关系"
       entityLabel="关系"
-      items={relations}
+      items={relations ?? []}
       loading={loading}
-      error={error}
-      onRetry={loadRelations}
+      error={error?.message ?? null}
+      onRetry={refresh}
       colSpan={8}
       searchPlaceholder="搜索关系..."
       searchValue={searchText}
@@ -170,7 +161,7 @@ export default function RelationsPage() {
       renderTableRow={(relation, actions) => (
         <>
           <TableCell className="text-muted-foreground">
-            {relations.indexOf(relation) + 1}
+            {(relations ?? []).indexOf(relation) + 1}
           </TableCell>
           <TableCell className="font-medium">{relation.initiatorName}</TableCell>
           <TableCell className="text-muted-foreground">{relation.initiatorDept || '—'}</TableCell>

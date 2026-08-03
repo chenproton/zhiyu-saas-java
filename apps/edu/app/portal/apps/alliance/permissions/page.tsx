@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ import { Switch } from '@/components/ui/switch'
 import { Pencil, Trash2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { alliancePermissionApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
@@ -26,31 +26,16 @@ import type { AlliancePermission } from '@/lib/types'
 export default function AlliancePermissionsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [items, setItems] = useState<AlliancePermission[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchItems = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return []
       const data = await alliancePermissionApi.list()
-      setItems(data.items || [])
-    } catch (e: any) {
-      setError(e.message || '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return data.items || []
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    if (authLoading || !tenantId) return
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await fetchItems()
-    })()
-  }, [tenantId, authLoading, fetchItems])
+  const items = data ?? []
 
   return (
     <PortalCrudPage
@@ -61,8 +46,8 @@ export default function AlliancePermissionsPage() {
       createButtonLabel="新增授权"
       items={items}
       loading={loading}
-      error={error}
-      onRetry={fetchItems}
+      error={error?.message ?? null}
+      onRetry={refresh}
       filterItems={(filtered, search) =>
         filtered.filter(
           (p) => !search || p.accountName.toLowerCase().includes(search.toLowerCase()),
@@ -174,16 +159,16 @@ export default function AlliancePermissionsPage() {
           await alliancePermissionApi.create(item)
         }
         toast({ title: `授权已${isEdit ? '更新' : '创建'}` })
-        await fetchItems()
+        await refresh()
       }}
       onDelete={async (item: any) => {
         await alliancePermissionApi.delete(item.id)
         toast({ title: '授权已删除' })
-        await fetchItems()
+        await refresh()
       }}
       onToggleEnabled={async (item: any) => {
         await alliancePermissionApi.toggleEnabled(item.id, !item.isEnabled)
-        await fetchItems()
+        await refresh()
       }}
     />
   )

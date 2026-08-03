@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -10,7 +10,7 @@ import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Pencil, Trash2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { majorApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import type { Major } from '@/lib/types/backend'
@@ -18,30 +18,18 @@ import type { Major } from '@/lib/types/backend'
 export default function MajorsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [majors, setMajors] = useState<Major[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const fetchMajors = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return []
       const res = await majorApi.list({ tenantId, limit: 1000 })
-      setMajors(res.items)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载专业数据失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return res.items
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    ;(async () => {
-      if (authLoading || !tenantId) return
-      await fetchMajors()
-    })()
-  }, [tenantId, authLoading, fetchMajors])
+  const majors = data ?? []
+
 
   return (
     <PortalCrudPage
@@ -52,8 +40,8 @@ export default function MajorsPage() {
       createButtonLabel="新增专业"
       items={majors}
       loading={loading}
-      error={error}
-      onRetry={fetchMajors}
+      error={error?.message ?? null}
+      onRetry={refresh}
       filterItems={(items, searchTerm) =>
         items.filter(
           (major) =>

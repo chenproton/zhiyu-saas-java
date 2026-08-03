@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -23,58 +23,37 @@ import {
   allianceAchievementApi,
   allianceAgreementApi,
 } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
-import type {
-  AllianceEnterprise,
-  AllianceProject,
-  AllianceAchievement,
-  AllianceAgreement,
-} from '@/lib/types'
+import type { AllianceEnterprise } from '@/lib/types'
 
 export default function AllianceEnterprisesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [enterprises, setEnterprises] = useState<AllianceEnterprise[]>([])
-  const [projects, setProjects] = useState<AllianceProject[]>([])
-  const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
-  const [agreements, setAgreements] = useState<AllianceAgreement[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchEnterprises = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return { enterprises: [], projects: [], achievements: [], agreements: [] }
       const [ent, proj, ach, agr] = await Promise.all([
         allianceEnterpriseApi.list(),
         allianceProjectApi.list({ limit: 200 }),
         allianceAchievementApi.list({ limit: 200 }),
         allianceAgreementApi.list({ limit: 200 }),
       ])
-      setEnterprises(ent.items || [])
-      setProjects(proj.items || [])
-      setAchievements(ach.items || [])
-      setAgreements(agr.items || [])
-    } catch (e: any) {
-      setError(e.message || '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return {
+        enterprises: ent.items || [],
+        projects: proj.items || [],
+        achievements: ach.items || [],
+        agreements: agr.items || [],
+      }
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    if (authLoading || !tenantId) return
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await fetchEnterprises()
-    })()
-  }, [tenantId, authLoading, fetchEnterprises])
+  const { enterprises, projects, achievements, agreements } = data ?? {}
 
   const countBy = (arr: any[], field: string, id: string) =>
     arr.filter((x) => (x[field] || []).includes?.(id)).length
@@ -86,10 +65,10 @@ export default function AllianceEnterprisesPage() {
       entityLabel="合作企业"
       searchPlaceholder="搜索企业名称或行业..."
       createButtonLabel="新增企业"
-      items={enterprises}
+      items={enterprises ?? []}
       loading={loading}
-      error={error}
-      onRetry={fetchEnterprises}
+      error={error?.message ?? null}
+      onRetry={refresh}
       filterItems={(items, search) =>
         items.filter(
           (e) =>
@@ -146,7 +125,7 @@ export default function AllianceEnterprisesPage() {
               href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=agreements`}
               className="text-primary hover:underline"
             >
-              {agreements.filter((a) => (a.enterpriseIds || []).includes?.(enterprise.id)).length}
+              {(agreements ?? []).filter((a) => (a.enterpriseIds || []).includes?.(enterprise.id)).length}
             </Link>
           </TableCell>
           <TableCell>
@@ -154,7 +133,7 @@ export default function AllianceEnterprisesPage() {
               href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=projects`}
               className="text-primary hover:underline"
             >
-              {countBy(projects, 'enterpriseIds', enterprise.id)}
+              {countBy(projects ?? [], 'enterpriseIds', enterprise.id)}
             </Link>
           </TableCell>
           <TableCell>
@@ -162,7 +141,7 @@ export default function AllianceEnterprisesPage() {
               href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=achievements`}
               className="text-primary hover:underline"
             >
-              {countBy(achievements, 'enterpriseIds', enterprise.id)}
+              {countBy(achievements ?? [], 'enterpriseIds', enterprise.id)}
             </Link>
           </TableCell>
           <TableCell>{enterprise.createdBy || '-'}</TableCell>
@@ -338,16 +317,16 @@ export default function AllianceEnterprisesPage() {
           await allianceEnterpriseApi.create(item)
         }
         toast({ title: `企业已${isEdit ? '更新' : '创建'}` })
-        await fetchEnterprises()
+        await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceEnterpriseApi.delete(item.id)
         toast({ title: '企业已删除' })
-        await fetchEnterprises()
+        await refresh()
       }}
       onToggleEnabled={async (item: any) => {
         await allianceEnterpriseApi.togglePublic(item.id, !item.isPublic)
-        await fetchEnterprises()
+        await refresh()
       }}
     />
   )

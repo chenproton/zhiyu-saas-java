@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TableCell, TableHead } from '@/components/ui/table'
@@ -19,7 +19,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import type { OrgType } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 
 const categoryLabels = { internal: '内部组织', business: '业务组织', external: '外部协作组织' }
 const categoryColors = {
@@ -29,40 +29,19 @@ const categoryColors = {
 }
 
 export default function OrgTypesPage() {
-  const { tenantId } = usePortalAuth()
+  const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [orgTypes, setOrgTypes] = useState<OrgType[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const fetchData = useCallback(async () => {
-    if (!tenantId) {
-      setIsLoading(false)
-      setError('未获取到租户信息，请重新登录')
-      return
-    }
-    setIsLoading(true)
-    setError(null)
-    try {
+  const { data: orgTypes, loading: isLoading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return []
       const res = await orgTypeApi.list({ tenantId, limit: 1000 })
-      setOrgTypes(res.items)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载组织类型失败')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [tenantId])
+      return res.items
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      if (!cancelled) await fetchData()
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [fetchData])
 
   const handleSave = async (item: OrgType, isEdit: boolean) => {
     if (!tenantId) return
@@ -92,10 +71,10 @@ export default function OrgTypesPage() {
       title="组织类型管理"
       description="管理组织架构中的节点类型"
       entityLabel="组织类型"
-      items={orgTypes}
+      items={orgTypes ?? []}
       loading={isLoading}
-      error={error}
-      onRetry={fetchData}
+      error={error?.message ?? null}
+      onRetry={refresh}
       colSpan={4}
       searchPlaceholder="搜索类型名称..."
       searchValue={searchTerm}

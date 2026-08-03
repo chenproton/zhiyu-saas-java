@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceExpertApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -26,31 +26,17 @@ import type { AllianceExpert } from '@/lib/types'
 export default function AllianceExpertsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [experts, setExperts] = useState<AllianceExpert[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const fetchExperts = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(null)
-    try {
+  const { data, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return []
       const data = await allianceExpertApi.list()
-      setExperts(data.items || [])
-    } catch (e: any) {
-      setError(e.message || '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return data.items || []
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    if (authLoading || !tenantId) return
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await fetchExperts()
-    })()
-  }, [tenantId, authLoading, fetchExperts])
+  const experts = data ?? []
 
   return (
     <PortalCrudPage
@@ -61,8 +47,8 @@ export default function AllianceExpertsPage() {
       createButtonLabel="新增专家"
       items={experts}
       loading={loading}
-      error={error}
-      onRetry={fetchExperts}
+      error={error?.message ?? null}
+      onRetry={refresh}
       filterItems={(items, search) =>
         items.filter(
           (e) =>
@@ -202,12 +188,12 @@ export default function AllianceExpertsPage() {
         if (isEdit) await allianceExpertApi.update(item.id, item)
         else await allianceExpertApi.create(item)
         toast({ title: `专家已${isEdit ? '更新' : '创建'}` })
-        await fetchExperts()
+        await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceExpertApi.delete(item.id)
         toast({ title: '已删除' })
-        await fetchExperts()
+        await refresh()
       }}
       onToggleEnabled={async () => {}}
     />

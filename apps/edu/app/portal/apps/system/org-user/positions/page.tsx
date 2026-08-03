@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TableCell, TableHead } from '@/components/ui/table'
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { portalStaffTitleApi, portalUserManagementApi, type User } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import {
@@ -31,36 +31,23 @@ import {
 import type { StaffTitle } from '@/lib/types/backend'
 
 export default function PositionsPage() {
-  const { tenantId } = usePortalAuth()
+  const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
-  const [positions, setPositions] = useState<StaffTitle[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string>()
   const [searchTerm, setSearchTerm] = useState('')
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false)
   const [selectedPosition, setSelectedPosition] = useState<StaffTitle | null>(null)
   const [titleUsers, setTitleUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
 
-  const fetchPositions = useCallback(async () => {
-    if (!tenantId) return
-    setLoading(true)
-    setError(undefined)
-    try {
+  const { data: positions, loading, error, refresh } = useAsync(
+    async () => {
+      if (!tenantId) return []
       const res = await portalStaffTitleApi.list({ tenantId, limit: 200 })
-      setPositions(res.items)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantId])
+      return res.items
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
 
-  useEffect(() => {
-    ;(async () => {
-      await fetchPositions()
-    })()
-  }, [fetchPositions])
 
   const handleSave = async (item: StaffTitle, isEdit: boolean) => {
     if (!tenantId) return
@@ -119,10 +106,10 @@ export default function PositionsPage() {
       title="职位管理"
       description="管理系统职位信息"
       entityLabel="职位"
-      items={positions}
+      items={positions ?? []}
       loading={loading}
-      error={error ?? null}
-      onRetry={fetchPositions}
+      error={error?.message ?? null}
+      onRetry={refresh}
       colSpan={5}
       searchPlaceholder="搜索职位名称..."
       searchValue={searchTerm}
