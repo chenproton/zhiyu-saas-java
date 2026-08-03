@@ -5,7 +5,7 @@ import { scenarioApi, sceneBatchApi, importExportApi, approvalApi } from '@/lib/
 import { useAuth } from '@/components/auth-provider'
 import { ContentListPage, type ContentBatch } from '@/components/shared/content-list-page'
 import { draftSuffix } from '@/lib/format-utils'
-import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
+import { STATUS_FILTER_OPTIONS, type Scenario, type SceneBatch } from '@zhiyu/shared-types'
 
 function generateCode(prefix: string) {
   return `${prefix}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
@@ -41,14 +41,14 @@ export default function SceneHallPage() {
   const currentUserId = user?.id ?? ''
 
   return (
-    <ContentListPage<ScenarioListItem>
+    <ContentListPage<ScenarioListItem, Scenario, SceneBatch>
       title="场景大厅"
       subtitle="管理场景建设资源，支持场景创建、编辑、任务配置、审批发布等全流程管理"
       entityLabel="场景"
       addHref="/scene/scenarios"
       permissionModule="scene"
       permissionResource="scenarios"
-      itemApi={scenarioApi as any}
+      itemApi={scenarioApi}
       batchApi={sceneBatchApi}
       approvalApi={approvalApi}
       importExportApi={importExportApi}

@@ -5,15 +5,15 @@ import { ContentListPage } from '@/components/shared/content-list-page'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { StatusActionBar } from '@/components/shared/status-action-bar'
 import { programApi, affairsBatchApi, approvalApi, importExportApi } from '@/lib/api'
-import type { TrainingProgram } from '@/lib/types'
+import type { TrainingProgram, AffairsBatch } from '@/lib/types'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
 
 function mapProgram(backend: any) {
   return {
-    ...(backend as TrainingProgram),
+    ...backend,
     creatorId: backend.createdBy || '',
     coCreatorIds: backend.collaborators || [],
-  } as any
+  }
 }
 function mapBatch(backend: any) {
   return { id: backend.id, name: backend.name, workflowId: backend.workflowId }
@@ -22,16 +22,20 @@ function mapBatch(backend: any) {
 export default function ProgramsPage() {
   const router = useRouter()
   return (
-    <ContentListPage<TrainingProgram & { creatorId: string; coCreatorIds: string[] }>
+    <ContentListPage<
+      TrainingProgram & { creatorId: string; coCreatorIds: string[] },
+      TrainingProgram,
+      AffairsBatch
+    >
       title="人才培养方案"
       subtitle="维护专业人才培养方案及课程设置，发布后可生成学期教学计划"
       entityLabel="人培方案"
       addHref="/affairs/programs"
       permissionModule="affairs"
       permissionResource="programs"
-      itemApi={programApi as any}
-      batchApi={affairsBatchApi as any}
-      approvalApi={approvalApi as any}
+      itemApi={programApi}
+      batchApi={affairsBatchApi}
+      approvalApi={approvalApi}
       importExportApi={importExportApi}
       approvalTargetType="training_program"
       importExcelEntity=""

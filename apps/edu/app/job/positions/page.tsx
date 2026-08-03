@@ -9,6 +9,7 @@ import {
   positionToCreateRequest,
 } from '@/lib/converters/job-converters'
 import type { Position } from '@/lib/types/job-source'
+import type { CareerPosition, JobBatch } from '@/lib/types/job'
 import { useAuth } from '@/components/auth-provider'
 import { ContentListPage, type ContentBatch } from '@/components/shared/content-list-page'
 import { draftSuffix } from '@/lib/format-utils'
@@ -34,16 +35,16 @@ export default function PositionsPage() {
   const majorMap = useMajorMap()
 
   return (
-    <ContentListPage<Position>
+    <ContentListPage<Position, CareerPosition, JobBatch>
       title="岗位资源管理"
       subtitle="维护岗位信息、能力模型等岗位资源管理功能"
       entityLabel="岗位"
       addHref="/job/positions"
       permissionModule="job"
       permissionResource="positions"
-      itemApi={positionApi as any}
-      batchApi={batchApi as any}
-      approvalApi={approvalApi as any}
+      itemApi={positionApi}
+      batchApi={batchApi}
+      approvalApi={approvalApi}
       importExportApi={importExportApi}
       approvalTargetType="career_position"
       importEntityName="career_positions"
@@ -60,17 +61,17 @@ export default function PositionsPage() {
           name: `新建岗位_${draftSuffix()}`,
           shortName: '新岗位',
           industry: '',
-          majors: [],
+          majors: [] as string[],
           positionType: 'enterprise',
           salaryRange: [0, 0],
           description: '',
-          requirements: [],
+          requirements: [] as string[],
           careerPath: '',
           version: 'V1.0',
           status: 'draft',
           createdBy: uid,
-          collaborators: [],
-        } as any)
+          collaborators: [] as string[],
+        })
       }
       listExtraProps={{ configureStepParam: '2', industryMap, majorMap }}
       renderList={(props) => (

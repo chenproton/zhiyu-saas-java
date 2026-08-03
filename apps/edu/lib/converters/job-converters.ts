@@ -99,25 +99,25 @@ export function convertApiAbilityToLocal(a: AbilityPoint): Ability {
 }
 
 export function positionToCreateRequest(
-  data: Omit<Position, 'id' | 'createdAt' | 'updatedAt'>,
-): Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'> {
+  data: Partial<Omit<Position, 'id' | 'createdAt' | 'updatedAt'>>,
+): Partial<Omit<CareerPosition, 'id' | 'createdAt' | 'updatedAt'>> {
   return {
     batchId: data.batchId || undefined,
     name: data.name,
     shortName: data.shortName || undefined,
     industryId: data.industry || undefined,
-    majorIds: data.majors,
+    majorIds: data.majors ?? [],
     positionType: data.positionType,
     salaryMin: data.salaryRange?.[0],
     salaryMax: data.salaryRange?.[1],
     coverImage: data.coverImage,
     description: data.description,
-    requirements: data.requirements,
+    requirements: data.requirements ?? [],
     careerPath: data.careerPath,
     version: data.version,
     status: data.status,
     createdBy: data.createdBy,
-    collaborators: data.collaborators,
+    collaborators: data.collaborators ?? [],
   }
 }
 

@@ -7,7 +7,7 @@ import { EvaluationListTable } from '@/components/evaluation/evaluation-list-tab
 import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
 import { examApi, evaluationBatchApi, approvalApi, importExportApi } from '@/lib/api'
 import type { ContentBatch } from '@/components/shared/content-list-page'
-import type { ExamFormData } from '@/lib/types'
+import type { ExamFormData, Exam, EvaluationBatch } from '@/lib/types'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
@@ -39,7 +39,7 @@ function mapExamItem(backend: any, _currentUserId: string): ExamItem {
     batchId: backend.batchId ?? undefined,
     creatorId: backend.creatorId ?? undefined,
     coCreatorIds: backend.collaboratorIds || [],
-    rejectReason: (backend as any).rejectReason ?? undefined,
+    rejectReason: backend.rejectReason ?? undefined,
     code: backend.code || '',
     description: backend.description || '',
     questionCount: (backend.questions || []).length,
@@ -108,7 +108,7 @@ export default function ExamsPage() {
 
   return (
     <>
-      <ContentListPage<ExamItem>
+      <ContentListPage<ExamItem, Exam, EvaluationBatch>
         key={refreshKey}
         title="试卷资源管理"
         subtitle="维护试卷资源，支持组卷、审批、发布与批次分组管理"
@@ -116,9 +116,9 @@ export default function ExamsPage() {
         addHref="/evaluation/exams"
         permissionModule="evaluation"
         permissionResource="exams"
-        itemApi={examApi as any}
-        batchApi={evaluationBatchApi as any}
-        approvalApi={approvalApi as any}
+        itemApi={examApi}
+        batchApi={evaluationBatchApi}
+        approvalApi={approvalApi}
         importExportApi={importExportApi}
         approvalTargetType="exam"
         importEntityName="exams"
@@ -140,7 +140,7 @@ export default function ExamsPage() {
         createRedirectUrl={(id) => `/evaluation/exams/${id}?new=true`}
         onCreate={() => setCreateDialogOpen(true)}
         renderList={(props) => (
-          <EvaluationListTable {...(props as any)} type="exam" onReview={handleReview} />
+          <EvaluationListTable {...props} type="exam" onReview={handleReview} />
         )}
       />
       <ExamFormDialog

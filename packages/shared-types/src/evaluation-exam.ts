@@ -106,6 +106,8 @@ export interface QuestionBank {
   version: string
   ownerType: 'mine' | 'collaborate' | 'public'
   isDraftPool?: boolean
+  /** 驳回原因（后端审批驳回时返回） */
+  rejectReason?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -186,6 +188,8 @@ export interface Exam {
   createdAt: Date
   updatedAt: Date
   isTemp?: boolean
+  /** 驳回原因（后端审批驳回时返回） */
+  rejectReason?: string
 }
 
 // 创建试卷表单数据

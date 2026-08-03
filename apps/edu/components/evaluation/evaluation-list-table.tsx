@@ -18,6 +18,7 @@ import { StatusActionBar } from '@/components/shared/status-action-bar'
 import { cn } from '@/lib/utils'
 import type { ContentListItem, ListRenderProps } from '@/components/shared/content-list-page'
 import { formatDate } from '@/lib/format-utils'
+import type { Status } from '@/lib/types'
 
 interface EvaluationListTableProps<
   T extends ContentListItem = ContentListItem,
@@ -50,10 +51,10 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
 
   const router = useRouter()
 
-  const allSelectable = items.filter((b: any) => !b.isDraftPool)
+  const allSelectable = items.filter((b) => !b.isDraftPool)
   const allSelected =
-    allSelectable.length > 0 && allSelectable.every((b: any) => selectedIds.includes(b.id))
-  const someSelected = allSelectable.some((b: any) => selectedIds.includes(b.id)) && !allSelected
+    allSelectable.length > 0 && allSelectable.every((b) => selectedIds.includes(b.id))
+  const someSelected = allSelectable.some((b) => selectedIds.includes(b.id)) && !allSelected
 
   const isBank = type === 'bank'
   const detailHref = (id: string) =>
@@ -61,7 +62,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
 
   const handleHeaderCheckbox = (checked: boolean) => {
     if (checked) {
-      allSelectable.forEach((b: any) => onSelectId(b.id, true))
+      allSelectable.forEach((b) => onSelectId(b.id, true))
     } else {
       onSelectAll(false)
     }
@@ -92,7 +93,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((item: any) => {
+        {items.map((item) => {
           const isSelected = selectedIds.includes(item.id)
           const batchName = item.batchId ? batchMap.get(item.batchId) || '-' : '-'
           const isDraftPool = item.isDraftPool === true
@@ -159,7 +160,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                   </Button>
                 ) : (
                   <StatusActionBar
-                    status={item.status}
+                    status={item.status as Status}
                     onView={() => router.push(detailHref(item.id))}
                     onEdit={() => router.push(detailHref(item.id))}
                     onClone={() => onClone(item)}

@@ -71,6 +71,14 @@ export interface ContentListItem {
   creatorId?: string
   coCreatorIds?: string[]
   rejectReason?: string
+  code?: string
+  description?: string
+  isDraftPool?: boolean
+  questionCount?: number
+  totalScore?: number
+  creatorName?: string
+  collaboratorNames?: string[]
+  updatedAt?: string
 }
 
 export interface ContentBatch {
@@ -79,9 +87,10 @@ export interface ContentBatch {
   workflowId?: string
 }
 
-export interface ContentApi<T = any> {
+export interface ContentApi<T> {
   list: (params?: Record<string, any>) => Promise<ListResponse<T>>
-  create: (req: Partial<T>) => Promise<T>
+  // create/update 载荷：各域 API 的 TCreate/TUpdate 形态不一（Omit 专用类型），值约束由 createPayload 承担
+  create: (req: any) => Promise<T>
   submit: (id: string) => Promise<unknown>
   withdraw: (id: string) => Promise<unknown>
   publish: (id: string) => Promise<unknown>
@@ -89,11 +98,11 @@ export interface ContentApi<T = any> {
   archive: (id: string) => Promise<unknown>
   delete: (id: string) => Promise<unknown>
   invite: (id: string, userId: string) => Promise<unknown>
-  update: (id: string, req: Partial<T>) => Promise<T>
-  clone?: (id: string, body?: { name?: string; code?: string }) => Promise<T>
+  update: (id: string, req: any) => Promise<T>
+  clone?: (id: string, body?: any) => Promise<T>
 }
 
-export interface ContentBatchApi<T = any> {
+export interface ContentBatchApi<T> {
   list: (params?: Record<string, any>) => Promise<ListResponse<T>>
 }
 
@@ -140,7 +149,7 @@ export interface ContentImportExportApi {
   exportExamsExcel?: (ids: string[]) => Promise<Response>
 }
 
-export interface ContentListPageConfig<T extends ContentListItem> {
+export interface ContentListPageConfig<T extends ContentListItem, B extends { id: string } = T, Batch = B> {
   title: string
   subtitle: string
   entityLabel: string
@@ -149,8 +158,8 @@ export interface ContentListPageConfig<T extends ContentListItem> {
   permissionModule: string
   permissionResource: string
 
-  itemApi: ContentApi
-  batchApi: ContentBatchApi
+  itemApi: ContentApi<B>
+  batchApi: ContentBatchApi<Batch>
   approvalApi: ContentApprovalApi
   importExportApi: ContentImportExportApi
 
@@ -161,11 +170,11 @@ export interface ContentListPageConfig<T extends ContentListItem> {
 
   statusFilterOptions: { value: string; label: string }[]
 
-  mapItem: (backend: any, currentUserId: string) => T
-  mapBatch: (backend: any) => ContentBatch
+  mapItem: (backend: B, currentUserId: string) => T
+  mapBatch: (backend: Batch) => ContentBatch
   afterLoad?: (items: T[], batches: ContentBatch[]) => Promise<T[]>
 
-  createPayload: (userId: string, entityLabel: string) => any
+  createPayload: (userId: string, entityLabel: string) => Partial<B>
   createRedirectUrl?: (id: string) => string
   listParams?: Record<string, any>
 
@@ -203,7 +212,11 @@ type ViewMode = 'list' | 'group'
 
 // ─── Component ──────────────────────────────────────────────────────────
 
-export function ContentListPage<T extends ContentListItem>(config: ContentListPageConfig<T>) {
+export function ContentListPage<
+  T extends ContentListItem,
+  B extends { id: string } = T,
+  Batch = B,
+>(config: ContentListPageConfig<T, B, Batch>) {
   const {
     title,
     subtitle,
@@ -238,7 +251,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const currentUserId = user?.id ?? ''
   const { toast } = useToast()
 
-  const [, setItems] = useState<any[]>([])
   const [frontItems, setFrontItems] = useState<T[]>([])
   const [batches, setBatches] = useState<ContentBatch[]>([])
   const [majors, setMajors] = useState<Major[]>([])
@@ -351,7 +363,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         itemApi.list({ limit: 1000, ...(listParamsRef.current || {}) }),
         batchApi.list({ limit: 1000 }),
       ])
-      setItems(itemsResp.items)
       const mappedBatches = batchesResp.items.map(mapBatchRef.current)
       setBatches(mappedBatches)
       setExpandedBatches(mappedBatches.map((b) => b.id))
@@ -368,7 +379,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           reportError(err, '加载专业与审批流配置')
         }
       }
-      let front = itemsResp.items.map((i: any) => mapItemRef.current(i, currentUserId))
+      let front = itemsResp.items.map((i) => mapItemRef.current(i, currentUserId))
       if (afterLoadRef.current) front = await afterLoadRef.current(front, mappedBatches)
 
       const rejectedItems = front.filter((item) => item.status === 'rejected')
@@ -382,7 +393,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           const reasonMap = new Map<string, string>()
           for (const record of approvalsResp.items) {
             if (reasonMap.has(record.targetId)) continue
-            const history = (record.history || []) as any[]
+            const history = record.history || []
             for (let i = history.length - 1; i >= 0; i--) {
               const h = history[i]
               const action = h.action || h.status

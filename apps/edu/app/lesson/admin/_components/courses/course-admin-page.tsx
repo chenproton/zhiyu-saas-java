@@ -4,7 +4,7 @@ import { useAuth } from '@/components/auth-provider'
 import { courseApi, lessonBatchApi, importExportApi, approvalApi } from '@/lib/api'
 import { CourseList } from './course-list'
 import type { Course, CourseType } from '@/lib/types/lesson-source'
-import type { Course as BackendCourse } from '@/lib/types/lesson'
+import type { Course as BackendCourse, LessonBatch } from '@/lib/types/lesson'
 import {
   ContentListPage,
   type ContentBatch,
@@ -76,14 +76,14 @@ export function CourseAdminPage({
     courseType === 'system' ? '体系课' : courseType === 'granular' ? '颗粒课' : '混合课'
 
   return (
-    <ContentListPage<Course>
+    <ContentListPage<Course, BackendCourse, LessonBatch>
       title={title}
       subtitle={subtitle}
       entityLabel={typeLabel}
       addHref={addHref}
       permissionModule="lesson"
       permissionResource="courses"
-      itemApi={courseApi as any}
+      itemApi={courseApi}
       batchApi={lessonBatchApi}
       approvalApi={approvalApi}
       importExportApi={importExportApi}

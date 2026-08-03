@@ -7,7 +7,7 @@ import { EvaluationListTable } from '@/components/evaluation/evaluation-list-tab
 import { BankFormDialog } from '@/components/evaluation/bank-form-dialog'
 import { questionBankApi, evaluationBatchApi, approvalApi, importExportApi } from '@/lib/api'
 import type { ContentBatch } from '@/components/shared/content-list-page'
-import type { QuestionBankFormData } from '@/lib/types'
+import type { QuestionBankFormData, QuestionBank, EvaluationBatch } from '@/lib/types'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
@@ -37,7 +37,7 @@ function mapBankItem(backend: any, _currentUserId: string): BankItem {
     batchId: backend.batchId ?? undefined,
     creatorId: backend.creatorId ?? undefined,
     coCreatorIds: backend.collaboratorIds || [],
-    rejectReason: (backend as any).rejectReason ?? undefined,
+    rejectReason: backend.rejectReason ?? undefined,
     code: backend.code || '',
     description: backend.description || '',
     questionCount: backend.questionCount || 0,
@@ -85,7 +85,7 @@ export default function QuestionBanksPage() {
 
   return (
     <>
-      <ContentListPage<BankItem>
+      <ContentListPage<BankItem, QuestionBank, EvaluationBatch>
         key={refreshKey}
         title="题库资源管理"
         subtitle="维护题库及题目资源，支持审批、发布与批次分组管理"
@@ -93,9 +93,9 @@ export default function QuestionBanksPage() {
         addHref="/evaluation/question-banks"
         permissionModule="evaluation"
         permissionResource="question-banks"
-        itemApi={questionBankApi as any}
-        batchApi={evaluationBatchApi as any}
-        approvalApi={approvalApi as any}
+        itemApi={questionBankApi}
+        batchApi={evaluationBatchApi}
+        approvalApi={approvalApi}
         importExportApi={importExportApi}
         approvalTargetType="question_bank"
         importEntityName="question_banks"
@@ -115,7 +115,7 @@ export default function QuestionBanksPage() {
         })}
         createRedirectUrl={(id) => `/evaluation/question-banks/${id}?new=true`}
         onCreate={() => setCreateDialogOpen(true)}
-        renderList={(props) => <EvaluationListTable {...(props as any)} type="bank" />}
+        renderList={(props) => <EvaluationListTable {...props} type="bank" />}
       />
       <BankFormDialog
         open={createDialogOpen}
