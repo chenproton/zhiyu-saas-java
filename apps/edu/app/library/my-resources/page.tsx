@@ -115,6 +115,8 @@ export default function MyResourcesPage() {
 
   // 记录已成功加载过的资源类型，避免空数据时 effect 反复触发加载
   const loadedResourceKinds = useRef<Set<ResourceKind>>(new Set())
+  // 任一列表超过后端 maxPageSize=200 被截断时置 true，展示兜底提示
+  const [truncated, setTruncated] = useState(false)
 
   const userId = user?.id
 
@@ -124,6 +126,7 @@ export default function MyResourcesPage() {
     try {
       const res = await knowledgeApi.list({ creatorId: userId!, limit: 200 })
       setKnowledgeItems(res.items)
+      if (res.total > res.items.length) setTruncated(true)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载知识点失败', description: err.message })
     } finally {
@@ -136,6 +139,7 @@ export default function MyResourcesPage() {
     try {
       const res = await abilityApi.list({ creatorId: userId!, limit: 200 })
       setAbilityItems(res.items)
+      if (res.total > res.items.length) setTruncated(true)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载能力点失败', description: err.message })
     } finally {
@@ -148,6 +152,7 @@ export default function MyResourcesPage() {
     try {
       const res = await certificateLibraryApi.list({ creatorId: userId!, limit: 200 })
       setCertificateItems(res.items)
+      if (res.total > res.items.length) setTruncated(true)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载证书失败', description: err.message })
     } finally {
@@ -160,6 +165,7 @@ export default function MyResourcesPage() {
     try {
       const res = await onSiteQuestionLibraryApi.list({ creatorId: userId!, limit: 200 })
       setQuestionItems(res.items)
+      if (res.total > res.items.length) setTruncated(true)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载问答题失败', description: err.message })
     } finally {
@@ -235,6 +241,11 @@ export default function MyResourcesPage() {
 
   return (
     <div className="p-6 space-y-5">
+      {truncated && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+          部分数据超过单次加载上限（200 条），当前仅展示前 200 条，请按条件筛选查看完整数据。
+        </div>
+      )}
       <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50 to-violet-100">
         <CardContent className="p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">

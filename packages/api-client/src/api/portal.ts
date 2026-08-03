@@ -17,6 +17,7 @@ export const userManagementApi = {
     roleCode?: string
     orgNodeId?: string
     majorId?: string
+    titleId?: string
     search?: string
     status?: string
     limit?: number

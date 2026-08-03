@@ -46,6 +46,9 @@ func (s *UserStore) ListConfig() ListQueryConfig[domain.User] {
 			if orgNodeID := p.Values["orgNodeId"]; orgNodeID != "" {
 				qb.AddCondition("org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = " + qb.NextArg(orgNodeID) + " UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)")
 			}
+			if titleID := p.Values["titleId"]; titleID != "" {
+				qb.AddCondition("title_ids @> ARRAY[" + qb.NextArg(titleID) + "]::uuid[]")
+			}
 			if status := p.Values["status"]; status != "" {
 				qb.AddCondition("status = " + qb.NextArg(status))
 			}

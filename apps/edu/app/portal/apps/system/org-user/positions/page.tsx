@@ -100,10 +100,9 @@ export default function PositionsPage() {
     setLoadingUsers(true)
     setTitleUsers([])
     try {
-      // TODO: 按 titleIds 的前端过滤依赖全量用户列表，超 200 人时关联用户不完整，需服务端按职位筛选
-      const res = await portalUserManagementApi.list({ tenantId, limit: 200 })
-      const filtered = res.items.filter((u) => u.titleIds?.includes(position.id))
-      setTitleUsers(filtered)
+      // 服务端按 titleId 过滤（title_ids @> ARRAY[...]），避免全量拉取超 200 截断
+      const res = await portalUserManagementApi.list({ tenantId, titleId: position.id, limit: 200 })
+      setTitleUsers(res.items)
     } catch (err) {
       toast({
         variant: 'destructive',
