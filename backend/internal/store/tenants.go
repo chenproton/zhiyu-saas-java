@@ -311,14 +311,38 @@ func (s *TenantStore) CreateWithDefaults(ctx context.Context, tx Queryer, p *Ten
 
 func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenantID string) error {
 	teacherMenus := domain.JSONMap{
-		"/job/positions": true, "/job/archive": true, "/job/approvals": true, "/job/landing": true,
+		// 产业岗位学习平台
+		"/job/positions": true, "/job/batches": true, "/job/workflows": true,
+		"/job/approvals": true, "/job/learn-roads": true, "/job/student": true,
+		// 数字课程服务平台
 		"/lesson/admin/system": true, "/lesson/admin/granular": true, "/lesson/admin/hybrid": true,
-		"/lesson/admin/archive": true, "/lesson/admin/approvals": true, "/lesson/landing": true,
-		"/scene/": true, "/scene/archive": true, "/scene/approvals": true, "/scene/landing": true,
+		"/lesson/admin/batches": true, "/lesson/admin/workflows": true,
+		"/lesson/admin/approvals": true, "/lesson/landing": true,
+		// 实践场景学习平台
+		"/scene/": true, "/scene/batches": true, "/scene/workflows": true,
+		"/scene/approvals": true, "/scene/landing": true,
+		// 能力评价与测评资源管理平台
 		"/evaluation/question-banks": true, "/evaluation/exams": true, "/evaluation/exam-usage": true,
 		"/evaluation/batches": true, "/evaluation/workflows": true, "/evaluation/approvals": true,
-		"/evaluation/scene-results": true, "/evaluation/job-ability": true, "/evaluation/job-ability/results": true,
+		"/evaluation/scene-results": true, "/evaluation/job-ability/results": true,
 		"/evaluation/landing": true,
+		// 教学资源共享服务平台
+		"/library/knowledge": true, "/library/ability": true, "/library/certificates": true,
+		"/library/resources/document": true, "/library/resources/spreadsheet": true,
+		"/library/resources/image": true, "/library/resources/link": true,
+		"/library/resources/audio": true, "/library/resources/video": true,
+		"/library/resources/archive": true, "/library/resources/venue": true,
+		"/library/resources/facility": true, "/library/resources/software": true,
+		"/library/resources/other": true, "/library/questions": true,
+		"/library/my-resources": true, "/library/landing": true,
+		// 产教融合与就业服务平台
+		"/portal/apps/alliance/enterprises": true, "/portal/apps/alliance/projects": true,
+		"/portal/apps/alliance/achievements": true, "/portal/apps/alliance/experts": true,
+		"/portal/apps/alliance/agreements": true, "/portal/apps/alliance/permissions": true,
+		"/portal/apps/alliance/dictionaries": true, "/portal/apps/alliance/brands": true,
+		"/portal/apps/alliance/brands/talent": true, "/portal/apps/alliance/brands/employer": true,
+		"/portal/apps/alliance/brands/job": true, "/portal/apps/alliance/brands/major": true,
+		"/portal/apps/alliance/brands/teacher": true, "/portal/apps/alliance/brands/culture": true,
 	}
 	adminActions := []string{"submit_approval", "withdraw_approval", "publish", "unpublish", "delete", "review", "reject"}
 	modPerms := func(actions []string) domain.JSONMap {
@@ -345,8 +369,8 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 		}},
 		{"student", "学生", domain.JSONMap{
 			"menus": domain.JSONMap{
-				"/job/landing": true, "/lesson/landing": true,
-				"/scene/landing": true, "/evaluation/landing": true,
+				"/job/student": true, "/lesson/landing": true,
+				"/scene/landing": true, "/evaluation/landing": true, "/library/landing": true,
 			},
 		}},
 		{"enterprise_mentor", "企业导师", domain.JSONMap{
