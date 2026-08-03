@@ -176,13 +176,13 @@ func (s *PositionResponsibilityStore) Get(ctx context.Context, id string) (*doma
 	return r, nil
 }
 
-// Create 创建职责（tenant_id 保持 NULL，与原行为一致）。
+// Create 创建职责（tenant_id 取自所属岗位租户，保证租户隔离列表可见）。
 func (s *PositionResponsibilityStore) Create(ctx context.Context, p *PositionResponsibilityParams) (*domain.PositionResponsibility, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `
-		INSERT INTO position_responsibilities (id, career_position_id, name, description, sort_order)
-		VALUES ($1, $2, $3, $4, $5)
-	`, id, p.CareerPositionID, p.Name, p.Description, p.SortOrder)
+		INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, description, sort_order)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, id, p.TenantID, p.CareerPositionID, p.Name, p.Description, p.SortOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -227,6 +227,7 @@ func (s *PositionResponsibilityStore) ListConfig() ListQueryConfig[domain.Positi
 
 // PositionResponsibilityParams 职责参数。
 type PositionResponsibilityParams struct {
+	TenantID         string
 	CareerPositionID string
 	Name             string
 	Description      *string

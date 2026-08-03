@@ -34,7 +34,7 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 	}
 
 	cfg := h.Service.Store().RandomDrawQuestions().ListConfig()
-	params, ok := listParamsFromRequest(r, false)
+	params, ok := listParamsFromRequest(r, true)
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return

@@ -29,7 +29,11 @@ func (h *PositionResponsibilityHandler) List(w http.ResponseWriter, r *http.Requ
 	}
 
 	cfg := h.Service.Store().PositionResponsibilities().ListConfig()
-	params, _ := listParamsFromRequest(r, false)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
 	items, total, err := h.Service.ListResponsibilities(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询岗位职责失败")
@@ -86,6 +90,7 @@ func (h *PositionResponsibilityHandler) Create(w http.ResponseWriter, r *http.Re
 	}
 
 	item, err := h.Service.CreateResponsibility(r.Context(), &store.PositionResponsibilityParams{
+		TenantID:         positionTenantID,
 		CareerPositionID: req.CareerPositionID,
 		Name:             req.Name,
 		Description:      req.Description,
