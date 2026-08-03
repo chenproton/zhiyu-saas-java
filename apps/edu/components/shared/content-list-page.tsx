@@ -281,6 +281,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     type: 'archive' | 'delete'
     item: T
   } | null>(null)
+  const [confirmPending, setConfirmPending] = useState(false)
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
 
@@ -666,8 +667,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleConfirmAction = async () => {
-    if (!confirmAction) return
+    if (!confirmAction || confirmPending) return
     const { type, item } = confirmAction
+    setConfirmPending(true)
     try {
       if (type === 'archive') {
         await itemApi.archive(item.id)
@@ -683,6 +685,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       })
     } finally {
       setConfirmAction(null)
+      setConfirmPending(false)
     }
   }
 
@@ -1616,6 +1619,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               : `确定要删除${entityLabel}「${confirmAction.item.name}」吗？`
           }
           variant={confirmAction.type === 'delete' ? 'destructive' : 'default'}
+          pending={confirmPending}
           onConfirm={handleConfirmAction}
         />
       )}

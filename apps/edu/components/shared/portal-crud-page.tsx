@@ -489,6 +489,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           }}
           title="确认删除"
           description={deleteTarget ? getDeleteDescription?.(deleteTarget) : ''}
+          pending={deleting}
           variant="destructive"
           confirmText={deleting ? '删除中...' : '删除'}
           onConfirm={confirmDelete}
