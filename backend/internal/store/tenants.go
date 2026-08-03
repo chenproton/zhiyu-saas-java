@@ -313,7 +313,7 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 	teacherMenus := domain.JSONMap{
 		// 产业岗位学习平台
 		"/job/positions": true, "/job/batches": true, "/job/workflows": true,
-		"/job/approvals": true, "/job/learn-roads": true, "/job/student": true,
+		"/job/approvals": true, "/job/learn-roads": true, "/job/landing": true,
 		// 数字课程服务平台
 		"/lesson/admin/system": true, "/lesson/admin/granular": true, "/lesson/admin/hybrid": true,
 		"/lesson/admin/batches": true, "/lesson/admin/workflows": true,
@@ -369,7 +369,7 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 		}},
 		{"student", "学生", domain.JSONMap{
 			"menus": domain.JSONMap{
-				"/job/student": true, "/lesson/landing": true,
+				"/job/landing": true, "/lesson/landing": true,
 				"/scene/landing": true, "/evaluation/landing": true, "/library/landing": true,
 			},
 		}},

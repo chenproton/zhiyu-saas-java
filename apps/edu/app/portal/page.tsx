@@ -407,7 +407,7 @@ const ROW_START_CLASS: Record<string, string> = {
 }
 
 const INTERNAL_ROUTES: Record<string, string> = {
-  career: '/job/student',
+  career: '/job/landing',
   scene: '/scene/landing',
   ability: '/evaluation/landing',
   course: '/lesson/landing',

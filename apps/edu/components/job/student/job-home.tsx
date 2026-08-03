@@ -548,7 +548,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                 ) : (
                   <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
                     {recommendedPositions.map((pos) => (
-                      <Link key={pos.id} href={`/job/student/${pos.id}/learn`}>
+                      <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
                         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
                           <span className="flex-1 text-[13px] truncate group-hover:text-yellow-200 transition-colors">
                             {pos.shortName || pos.name}
@@ -578,7 +578,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                 ) : (
                   <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
                     {favoritePositions.map((pos) => (
-                      <Link key={pos.id} href={`/job/student/${pos.id}/learn`}>
+                      <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
                         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
                           <span className="flex-1 text-[13px] truncate group-hover:text-rose-200 transition-colors">
                             {pos.shortName || pos.name}
@@ -696,7 +696,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                   我的心仪岗位
                 </div>
                 <Link
-                  href="/job/student"
+                  href="/job/landing"
                   className="text-xs text-slate-400 hover:text-blue-600 cursor-pointer transition-colors"
                 >
                   全部 <ChevronRight className="w-3 h-3 inline" />
@@ -729,7 +729,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                       border: 'border-blue-100',
                     }
                     return (
-                      <Link key={pos.id} href={`/job/student/${pos.id}`}>
+                      <Link key={pos.id} href={`/job/landing/${pos.id}`}>
                         <div
                           className={`flex items-start gap-2.5 px-2.5 py-2 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}
                         >

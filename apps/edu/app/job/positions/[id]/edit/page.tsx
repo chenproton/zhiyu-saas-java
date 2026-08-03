@@ -395,7 +395,7 @@ function PositionEditPageContent({ params }: PageProps) {
         description="请确认是否已经保存数据"
         confirmText="跳转预览"
         cancelText="取消"
-        onConfirm={() => router.push(`/job/student/${id}`)}
+        onConfirm={() => router.push(`/job/landing/${id}`)}
       />
     </EditorShell>
   )

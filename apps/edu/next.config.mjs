@@ -19,8 +19,8 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: '/job/landing',
-        destination: '/job/student',
+        source: '/job/student',
+        destination: '/job/landing',
         permanent: true,
       },
     ]
@@ -74,7 +74,7 @@ const nextConfig = {
       },
       {
         source: '/explore/:path*',
-        destination: '/job/student/:path*',
+        destination: '/job/landing/:path*',
       },
     ]
   },

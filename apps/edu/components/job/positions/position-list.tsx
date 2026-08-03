@@ -169,7 +169,7 @@ export function PositionList({
                   <TableCell className="text-right relative">
                     <StatusActionBar
                       status={position.status}
-                      onView={() => router.push(`/job/student/${position.id}`)}
+                      onView={() => router.push(`/job/landing/${position.id}`)}
                       onEdit={() => router.push(`${basePath}/${position.id}/edit`)}
                       onClone={onClone ? () => onClone(position) : undefined}
                       onSubmit={onSubmitApproval ? () => onSubmitApproval(position) : undefined}

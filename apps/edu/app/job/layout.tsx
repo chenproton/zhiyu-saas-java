@@ -5,7 +5,7 @@ import { PlatformLayout } from '@/components/shared/platform-layout'
 
 export default function JobLayout({ children }: { children: React.ReactNode }) {
   return (
-    <PlatformLayout navigationConfig={jobNavigationConfig} landingPath="/job/student">
+    <PlatformLayout navigationConfig={jobNavigationConfig} landingPath="/job/landing">
       {children}
     </PlatformLayout>
   )

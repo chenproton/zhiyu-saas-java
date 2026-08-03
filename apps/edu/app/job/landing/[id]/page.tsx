@@ -71,7 +71,7 @@ export default function JobStudentDetailPage() {
   const tabsRef = useRef<HTMLDivElement>(null)
 
   const handleStartLearning = () => {
-    router.push(`/job/student/${id}/learn`)
+    router.push(`/job/landing/${id}/learn`)
   }
 
   const [responsibilities, setResponsibilities] = useState<PositionResponsibility[]>([])
@@ -183,7 +183,7 @@ export default function JobStudentDetailPage() {
         <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
           <Briefcase className="w-16 h-16 mb-4 opacity-40" />
           <div className="text-lg font-semibold text-[#475569]">岗位不存在或暂未公开</div>
-          <Link href="/job/student" className="text-blue-600 hover:underline mt-2">
+          <Link href="/job/landing" className="text-blue-600 hover:underline mt-2">
             返回岗位列表
           </Link>
         </div>

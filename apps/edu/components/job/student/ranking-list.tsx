@@ -69,7 +69,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
     const count = pos.favoriteCount ?? 0
     const palette = cardPalette
     return (
-      <Link key={pos.id} href={`/job/student/${pos.id}`}>
+      <Link key={pos.id} href={`/job/landing/${pos.id}`}>
         <div
           className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}
         >

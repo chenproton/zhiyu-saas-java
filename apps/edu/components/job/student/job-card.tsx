@@ -43,7 +43,7 @@ export function JobCard({
   const relatedScenes = scenarioCount
 
   return (
-    <Link href={`/job/student/${position.id}`}>
+    <Link href={`/job/landing/${position.id}`}>
       <div className="group bg-white rounded-2xl overflow-hidden border border-slate-200 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-blue-200 cursor-pointer h-full flex flex-col">
         <div
           className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4 text-white"
