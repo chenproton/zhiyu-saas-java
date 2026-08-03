@@ -24,7 +24,7 @@
 
 | 检查点 | 结论 | 说明 |
 |---|---|---|
-| 公开访问性 | FAIL | 所有落地页调用认证 API，未登录用户被 401 拦截跳转登录。仅 `/evaluation/landing` 有对应的后端公开路由但前端未使用 `landingApi`。 |
+| 公开访问性 | 业务约束 | 所有落地页调用认证 API，未登录用户被 401 拦截跳转登录——这是**产品设计**（学生门户仅对登录用户开放），非缺陷。若业务需要真正匿名分享页，需另行改造（见风险节）。 |
 | API 端点选择 | PARTIAL | 测评落地页调用 `questionBankApi.list`/`examApi.list` 而非 `landingApi.listExams`。`landingApi` 对应 `GET /evaluation/landing/exams` 无需认证，但前端未使用。 |
 | 数据隔离 | PASS | 所有认证 API 通过 tenant_id 隔离，学生只能看到本租户已发布内容。 |
 | 数据泄漏 | PASS | 未暴露审批记录、草稿、用户数据等管理侧信息；仅查询 `status: "published"` 过滤。 |
@@ -36,6 +36,6 @@
 
 ## 风险与约束
 
-- **落地页需登录使用**：当前所有落地页依赖认证 token，匿名用户直接访问会被重定向到登录页。若业务需要真正公开的预览页（如分享链接给外部访客），需改造前端使用 `landingApi` 或新增公开后端路由，并移除 `useAuth` 依赖。—— **业务约束，非安全风险。**
+- **落地页需登录使用**：当前所有落地页依赖认证 token，匿名用户直接访问会被重定向到登录页。若业务需要真正公开的预览页（如分享链接给外部访客），需改造前端使用 `landingApi` 或新增公开后端路由，并移除 `useAuth` 依赖。—— **业务约束，非安全风险；改造公开面会引入未鉴权接口，按“容忍 hacker / 简单优先”原则当前不做。**
 - **`evaluation/landing` 未对接公开 API**：后端已提供 `GET /evaluation/landing/exams`（无认证），但前端 `evaluation/landing/page.tsx` 仍使用 `questionBankApi.list`/`examApi.list`（需认证），未使用 `landingApi.listExams`。两端不一致导致公开 API 实际未被前端使用。—— **低危，业务暂未要求匿名访问，但造成了无用代码。**
 - **页面级 loading 无 UI 反馈**：`evaluation/landing`、`lesson/landing`、`library/landing` 设置了 `loading` state 但未渲染对应的骨架屏或加载动画，用户在数据加载期间看到空白页。—— **低危，影响首次访问体验。**

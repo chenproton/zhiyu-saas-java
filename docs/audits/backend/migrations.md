@@ -12,20 +12,22 @@
 
 | 指标 | 数值 |
 |---|---|
-| 迁移文件总数 | 4（2 `.up.sql` + 2 `.down.sql`） |
+| 迁移文件总数 | 236（118 对 `.up.sql` + `.down.sql`） |
 | 合并基准线大小 | 2184 行（001_baseline.up.sql） |
-| 增量迁移 | 1 条（091） |
-| 有 `.down.sql` 配对 | 2/2 ✅（100%） |
-| `.down.sql` 策略 | 001_baseline：循环 DROP 所有表+类型；091：DROP TABLE IF EXISTS |
+| 增量迁移 | 117 条（092 起） |
+| 有 `.down.sql` 配对 | 118/118 ✅（100%） |
+| `.down.sql` 策略 | 001_baseline：循环 DROP 所有表+类型；增量：DROP INDEX/TABLE/COLUMN IF EXISTS |
 | 合并基准线内 CREATE TABLE | 109 张表 |
 | 合并基准线内 DEFAULT 约束 | 431 处 |
+
+> 最近一次增量：`118_workspace_indexes`（工作台核心查询索引，2026-08-03 部署应用）。
 
 ## 检查点
 
 | 检查点 | 结论 | 说明 |
 |---|---|---|
-| 每 `.up.sql` 有配对 `.down.sql` | PASS | 2/2 完全配对 |
-| 迁移编号连续无重复 | PASS | 001（合并基准线）、091（增量）；间隔为合并预留 |
+| 每 `.up.sql` 有配对 `.down.sql` | PASS | 118/118 完全配对 |
+| 迁移编号连续无重复 | PASS | 001（合并基准线）+ 092~118（增量）；编号递增无重复 |
 | 命名规范统一 | PASS | `NNN_description.{up,down}.sql` |
 | CASCADE 覆盖率 | PASS | 多轮收敛后所有 tenant FK 统一为 `ON DELETE CASCADE`，已内化到基准线 |
 | 索引创建 | PASS | 基准线中在建表语句内随表创建 + 091 为 certification_weights 添加复合索引 |
@@ -35,5 +37,5 @@
 ## 风险与约束
 
 - **合并基准线为全量 DROP + CREATE**：`001_baseline.down.sql` 使用循环 `DROP TABLE IF EXISTS ... CASCADE` 删除所有表及类型。生产环境执行 down 恢复时，所有数据将永久丢失。—— **仅用于开发/测试环境重置，生产环境严禁执行 001 的 down。**
-- **增量迁移无锁超时保护**：091 等增量迁移直接执行，未设置 `statement_timeout` 或 `lock_timeout`。当前演示环境数据量小，可接受。—— **低危，若生产化部署需关注大表锁竞争，建议对大表 ALTER 添加 `lock_timeout`。**
-- **增量迁移数量少，需规范新增流程**：当前仅 1 条增量迁移（091），若后续频繁新增迁移，需保持 `.up.sql`/`.down.sql` 配对和编号递增的约定。
+- **增量迁移无锁超时保护**：增量迁移直接执行，未设置 `statement_timeout` 或 `lock_timeout`。当前演示环境数据量小，可接受。—— **低危，若生产化部署需关注大表锁竞争，建议对大表 ALTER 添加 `lock_timeout`。**
+- **增量迁移数量持续增长，需规范新增流程**：当前 117 条增量迁移（092~118），后续新增迁移需保持 `.up.sql`/`.down.sql` 配对和编号递增的约定。

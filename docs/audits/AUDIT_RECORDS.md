@@ -19,6 +19,27 @@
 
 ## 记录
 
+### 2026-08-03 审计文档同步：对齐代码现状与审查口径校准
+
+- 审计文档：
+  - 更新：`docs/audits/backend/handler-infra.md`
+  - 更新：`docs/audits/backend/migrations.md`
+  - 更新：`docs/audits/backend/deploy.md`
+  - 更新：`docs/audits/backend/portal-workspace.md`
+  - 更新：`docs/audits/backend/middleware.md`
+  - 更新：`docs/audits/backend/performance-maintainability.md`
+  - 更新：`docs/audits/frontend/shared-components.md`
+  - 更新：`docs/audits/frontend/landing-pages.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - **修复过时结论**：`handler-infra.md` BatchHandler 写操作租户校验由 🔴 FAIL 改为 ✅ PASS（`checkTenantAccess` 已覆盖 Update/Delete/UpdateStatus）；`portal-workspace.md` 更新工作台缓存（30s + 索引 118）现状；`middleware.md` 更新操作日志异步缓冲现状；`shared-components.md` 更新 ConfirmDialog pending 态已实现。
+  - **统计对齐**：`migrations.md` 迁移总数 4 → 118 对（092~118 增量）；`deploy.md` 四容器 → 五容器（+ kkfileview）。
+  - **审查口径校准（按项目原则）**：`performance-maintainability.md` 标注商城相关建议（状态机收敛/订单事务）随源码移除归档；统一导入导出建议与 import/export 豁免冻结区冲突，标注"不执行"；岗位 SaveFull 大事务按"简单优先"标注"保持现状"；优先级表补充状态列。
+  - **口径优化**：`landing-pages.md` "公开访问性"由 FAIL 改为"业务约束"（匿名公开面改造与"容忍 hacker/简单优先"原则冲突，不作为缺陷追踪）。
+
 ### 2026-07-29 全量审计文档同步：对齐最新代码状态
 
 - 审计文档：

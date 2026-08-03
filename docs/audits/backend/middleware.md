@@ -34,4 +34,4 @@
 
 ## 性能约束
 
-- 操作日志每次 POST/PUT/DELETE 产生两次 DB 查询：一次查 `users.name`，一次 `INSERT INTO operation_logs`。高频写操作场景（如批量导入）会产生大量日志写入。—— **P3，可考虑批量写入或异步队列化，参见 `performance-maintainability.md#六`。**
+- 操作日志写入已走**异步缓冲队列**（`oplog_buffer.go`：4096 容量 / 200 条批量 / 5s 冲刷 / 关闭时排空），不再逐条同步阻塞请求；`users.name` 查询仅在缓冲冲刷时发生。—— **已优化（2026-08-03 确认），DB 变慢时队列满则丢弃并 warn，属可接受的 best-effort 审计日志。**

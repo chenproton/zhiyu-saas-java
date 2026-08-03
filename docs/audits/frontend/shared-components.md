@@ -34,4 +34,4 @@
 - **useImportFlow 无前端文件校验**：不校验文件扩展名和大小，依赖后端 100MB 上限和 Excel 解析容错。—— **低危，与后端“不限制扩展名”策略对齐，上传安全由后端网关负责。**
 - **LogTableShell 无错误状态展示**：仅覆盖 loading 和 empty，当接口报错时需调用方自行处理。—— **低危，各页面 handler 自行处理错误 toast，组件保持简单职责。**
 - **StatusBadge 颜色由 getStatusConfig 生成 inline style**：不走 Tailwind 主题变量，若状态值 miss 会降级为原文 `label` 显示，可能 UI 不一致。—— **低危，getStatusConfig 已覆盖 15 种常用状态 + fallback，新增状态只需在共享包扩展 STATUS_MAP。**
-- **ConfirmDialog 无 loading/pending 状态**：异步 `onConfirm` 执行期间按钮无 loading 指示，用户可能重复点击。—— **低危，大部分确认操作（如删除）后端接口较快，极端场景由调用方自行禁用按钮。**
+- **ConfirmDialog 已支持 pending 态**：异步 `onConfirm` 执行期间按钮展示 spinner + "处理中..."并禁用关闭（`pending` prop），防重复提交；已接入 `content-list-page` 与 `portal-crud-page` 的删除/归档确认。—— **已优化（2026-08-03 确认）。**

@@ -3,11 +3,12 @@
 ## 核心决策
 
 - 后端保持单一 Go 服务，监听 `8080`，为前端提供统一 `/api/v1` API。
-- 使用 Docker Compose 管理四个容器：
+- 使用 Docker Compose 管理容器：
   - `zhiyu-backend`：Go 服务，端口 `8080`。健康检查 `GET /health`。
   - `zhiyu-edu`：教育管理前端 standalone，端口 `3020`。健康检查 `GET /portal/login`。
   - `zhiyu-postgres`：PostgreSQL 15 数据库，端口 `5433`（映射自容器内 `5432`）。
   - `zhiyu-redis`：Redis 7 缓存，内部端口 `6379`。
+  - `zhiyu-kkfileview`：KKFileView 文档预览服务（`profiles: ["kkfileview"]`，按需启动），支撑 Office 文件在线预览。
 - `deploy.sh` 部署流程：
   1. 记录当前镜像 tag（`docker inspect` 获取 backend/frontend 镜像名），用于失败时回滚。
   2. 源码 hash 比对（md5）：前后端各自独立判断变更，无变更则跳过构建。
@@ -29,7 +30,7 @@
 | Go 测试 | PASS | `go test ./...` 通过 |
 | 后端 Docker 镜像构建 | PASS | `docker build -t zhiyu-backend:<tag> -f Dockerfile` 成功 |
 | 前端 Docker 镜像构建 | PASS | `docker build -t zhiyu-edu:<tag>` 成功（standalone 模式） |
-| Docker Compose 启动 | PASS | `docker compose up -d` 成功启动四容器（backend/postgres/redis/frontend） |
+| Docker Compose 启动 | PASS | `docker compose up -d` 成功启动五容器（backend/postgres/redis/edu/kkfileview） |
 | 后端健康检查 | PASS | `http://127.0.0.1:8080/health` 返回 `{"status":"ok"}` |
 | 前端健康检查 | PASS | `http://127.0.0.1:3020/portal/login` 返回 200 |
 | 回滚逻辑 | PASS | 通过 `docker tag` 保存旧镜像，失败时 `IMAGE_TAG=rollback compose up -d --no-deps` 恢复 |

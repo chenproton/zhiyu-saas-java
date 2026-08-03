@@ -22,7 +22,8 @@
   - 场景任务状态 = 查询最新 `scene_evaluation_results`，分"未开始"/"进行中"/"已完成"。
   - 学分 = 总课时 / 16。
 - **角色判定**：前端传 `role` 参数，后端不强制校验角色权限，允许角色切换查看不同视图。
-- **无缓存**：每次请求直接执行 DB 查询（约 10+ 次查询/请求）。
+- **短周期缓存**：`/portal/workspace/dashboard` 挂 30 秒 Redis 缓存（`cache.DashboardKey`，键按租户+用户隔离，防跨用户串数据）；管理员视图内部以 `goAsync` 并行聚合 5 路统计，教师/学生视图并行 4~6 路。
+- **核心查询索引**：排课（`schedule_entries` 租户前缀教师/班级 + `class_node_ids` GIN）与待办计数（`approval_records(status, tenant_id)`）已由 migration `118_workspace_indexes` 覆盖。
 
 ## 检查点
 
@@ -38,7 +39,7 @@
 
 ## 性能约束
 
-- 当前每次 `/portal/workspace/dashboard` 请求执行 10+ 次 DB 查询，无缓存层。优化方案（查询合并、短周期缓存、按需加载、后台预计算）详见 `performance-maintainability.md#一`。
+- 工作台单请求仍包含多次 DB 查询（4~6 路并行），但已被 30 秒缓存 + 核心索引覆盖，P99 压力显著缓解。—— **已优化（2026-08-03 确认：缓存 + 索引迁移 118），若后续用户量增长可再评估查询合并与预计算，方案见 `performance-maintainability.md#一`。**
 
 ## 风险与约束
 

@@ -28,9 +28,9 @@
 | executeCountQuery 容错 | ✅ PASS | 查询失败返回 0 而非 panic，满足"普通业务允许报错"原则 |
 | BatchHandler List 租户过滤 | ✅ PASS | 当 `TenantScoped=true` 时，SQL WHERE 自动追加 `tenant_id = $N`；`TenantFilterColumn` 可自定义列名 |
 | BatchHandler Create 租户赋值 | ✅ PASS | 当 `TenantScoped=true` 时，INSERT 自动填充 `claims.TenantID`；credibility 风险：claims.TenantID 为 nil 时不会报错，tenant_id 将写入 NULL |
-| BatchHandler Update 租户校验 | 🔴 FAIL | 仅检查 `middleware.CurrentUser(r) == nil`（已登录），**不调用 `verifyTenantOwnership` 验证实体归属**；ScanRow 仅按 id 查询，无租户过滤——攻击者可修改同 id 但不同租户的实体 |
-| BatchHandler Delete 租户校验 | 🔴 FAIL | 同上，`DELETE FROM table WHERE id = $1` 无 tenant_id 条件，存在跨租户删除风险 |
-| BatchHandler UpdateStatus 租户校验 | 🔴 FAIL | 同上，仅验证 status 合法值（open/closed），无 tenant 归属检查 |
+| BatchHandler Update 租户校验 | ✅ PASS | `Update` 入口调用 `checkTenantAccess`（经 `BatchTenantOf` 查询实体租户 + `verifyTenantOwnership` 校验），跨租户实体返回 403 |
+| BatchHandler Delete 租户校验 | ✅ PASS | 同上，`Delete` 入口经 `checkTenantAccess` 校验实体租户归属后才执行删除 |
+| BatchHandler UpdateStatus 租户校验 | ✅ PASS | 同上，`UpdateStatus` 入口经 `checkTenantAccess` 校验租户归属 + 合法状态值（open/closed） |
 | BatchHandler SQL 注入 | ✅ PASS | 所有查询使用 `$N` 参数化，表名和列名虽来自 config 但也由后端代码控制（非用户输入） |
 | ImportPreviewResult 结构 | ✅ PASS | 统一返回 created/duplicates/failed/duplicateItems/errors，前端可据此展示预览对话框 |
 | ImportExecuteResult 结构 | ✅ PASS | 统一返回 created/failed/skipped/entity/errors，与 useImportFlow 的 toast 展示对齐 |
@@ -38,7 +38,7 @@
 
 ## 风险与约束
 
-- **🔴 BatchHandler 写操作缺少租户归属校验**：`Update`、`Delete`、`UpdateStatus` 三个方法仅验证用户已登录，未验证目标实体是否属于当前用户的租户。攻击者只需知道其他租户实体的 id（UUID 格式不易猜测，但非零风险）即可跨租户修改或删除数据。—— **高危，需在 Update/Delete/UpdateStatus 入口增加 `verifyTenantOwnership` 或确保 ScanRow 实现层内已含租户过滤。建议方案：在 ScanRow 签名的 db 查询中统一追加 `AND tenant_id = $2` 条件，以最小改动收敛。**
+- **✅ BatchHandler 写操作租户归属校验已补齐**：`Update`、`Delete`、`UpdateStatus` 均已通过 `checkTenantAccess`（`BatchTenantOf` 查实体租户 + `verifyTenantOwnership` 校验）在入口拦截跨租户操作，未通过返回 403/404。—— **已修复，2026-08-03 确认。**
 - **BatchHandler Create 中 tenant_id 可写入 NULL**：当 `TenantScoped=true` 但 `claims.TenantID` 为 nil 时，`tenantID` 变量为 nil，INSERT 的 tenant_id 列将写入 NULL。虽然 `requireTenant` 通常在路由中间件层已拦截无租户请求，但若未来某路由遗漏中间件，此防御深度不足。—— **低危，现有路由中间件已覆盖，但建议在 Create 内显式校验 TenantID 非空以确保自防御。**
 - **generateUniqueEntityCode 重试上限固定**：10 次重试在极端高并发下可能不足，但 36^8 空间极大 + 租户隔离范围，概率极低。—— **低危，符合"小概率异常宁可容忍"原则。**
 - **无 `jsonSliceToUUIDSlice` 函数**：`common.go` 中未提供 JSON 数组到 UUID 切片的标准转换工具，各 handler 自行实现 UUID 解析，可能存在校验不一致。—— **低危，UUID 格式由 Go 标准库 `google/uuid` 保证，handler 层自行调用 `uuid.Parse` 即可。**
