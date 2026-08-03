@@ -63,7 +63,7 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 学生仅可查看本人的评价结果，忽略其余过滤参数
-	if middleware.HasRole(claims, "student") {
+	if middleware.HasRole(claims, domain.RoleStudent) {
 		params.Values["evaluateeId"] = claims.UserID
 		params.Values["ownOnly"] = "true"
 	}
@@ -92,7 +92,7 @@ func (h *EvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 学生仅可查看本人的评价结果
-	if middleware.HasRole(claims, "student") && res.EvaluateeID != claims.UserID {
+	if middleware.HasRole(claims, domain.RoleStudent) && res.EvaluateeID != claims.UserID {
 		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
@@ -114,7 +114,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// 学生仅可提交本人的评价结果，防止替他人提交/伪造成绩
-	if middleware.HasRole(claims, "student") && req.EvaluateeID != claims.UserID {
+	if middleware.HasRole(claims, domain.RoleStudent) && req.EvaluateeID != claims.UserID {
 		respondError(w, http.StatusForbidden, "仅可提交本人的评价结果")
 		return
 	}
@@ -142,7 +142,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 学生提交时评价人只能是本人；指定评价人必须属于当前租户
-	if middleware.HasRole(claims, "student") && evaluatorID != nil && *evaluatorID != claims.UserID {
+	if middleware.HasRole(claims, domain.RoleStudent) && evaluatorID != nil && *evaluatorID != claims.UserID {
 		respondError(w, http.StatusForbidden, "学生仅可提交本人为评价人的评价结果")
 		return
 	}

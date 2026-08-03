@@ -93,7 +93,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		Search:           r.URL.Query().Get("search"),
 	}
 	// 学生仅可查看本人的能力汇聚结果
-	if middleware.HasRole(claims, "student") {
+	if middleware.HasRole(claims, domain.RoleStudent) {
 		f.UserID = claims.UserID
 	}
 	page, _ := parseInt(r.URL.Query().Get("page"), 1)

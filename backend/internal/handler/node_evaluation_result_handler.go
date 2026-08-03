@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -35,7 +36,7 @@ func (h *NodeEvaluationResultHandler) List(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	if middleware.HasRole(claims, "student") {
+	if middleware.HasRole(claims, domain.RoleStudent) {
 		params.Values["isStudent"] = "true"
 		params.Values["studentUserId"] = claims.UserID
 	}

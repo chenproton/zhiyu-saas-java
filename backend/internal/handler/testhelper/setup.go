@@ -454,7 +454,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 	generateTestToken := func(userID, tenantID string, role domain.UserRole) string {
 		u := &domain.User{ID: userID, TenantID: &tenantID, Role: role, Username: "test-user"}
-		token, _ := middleware.GenerateToken(TestJWTSecret, middleware.TokenInput{User: u, RoleCodes: []string{"platform_admin"}})
+		token, _ := middleware.GenerateToken(TestJWTSecret, middleware.TokenInput{User: u, RoleCodes: []string{domain.RolePlatformAdmin}})
 		return token
 	}
 
@@ -582,7 +582,7 @@ func (e *TestEnv) DoNoAuth(method, path string, body interface{}) *httptest.Resp
 }
 
 func (e *TestEnv) NewUserToken(userID, tenantID string, role domain.UserRole, institutionID *string) string {
-	return e.NewTokenWithIdentity(userID, tenantID, role, institutionID, "platform_admin")
+	return e.NewTokenWithIdentity(userID, tenantID, role, institutionID, domain.RolePlatformAdmin)
 }
 
 func (e *TestEnv) NewTokenWithIdentity(userID, tenantID string, role domain.UserRole, institutionID *string, roleCode string) string {

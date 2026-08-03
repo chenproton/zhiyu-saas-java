@@ -3,6 +3,8 @@ package middleware
 import (
 	"net/http"
 	"strings"
+
+	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 // RequireRole returns a middleware that only allows users bound to at least
@@ -151,7 +153,7 @@ func RequireSystemPermission() func(http.Handler) http.Handler {
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 				return
 			}
-			if HasSystemPermission(claims) || HasRole(claims, "school_admin") || HasRole(claims, "platform_admin") {
+			if HasSystemPermission(claims) || HasRole(claims, domain.RoleSchoolAdmin) || HasRole(claims, domain.RolePlatformAdmin) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -176,7 +178,7 @@ func RequireUserRead() func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			for _, code := range []string{"teacher", "school_admin", "enterprise_mentor", "platform_admin"} {
+			for _, code := range []string{domain.RoleTeacher, domain.RoleSchoolAdmin, domain.RoleEnterpriseMentor, domain.RolePlatformAdmin} {
 				if HasRole(claims, code) {
 					next.ServeHTTP(w, r)
 					return

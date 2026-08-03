@@ -868,7 +868,7 @@ func (h *SchedulingHandler) MySchedule(w http.ResponseWriter, r *http.Request) {
 
 	var classNodeID, teacherID string
 	viewAs := "teacher"
-	if middleware.HasRole(claims, "student") {
+	if middleware.HasRole(claims, domain.RoleStudent) {
 		viewAs = "student"
 		if nodeID := h.Service.UserOrgNodeID(ctx, claims.UserID, tenantID); nodeID != nil {
 			classNodeID = *nodeID

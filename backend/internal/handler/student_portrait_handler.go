@@ -48,7 +48,7 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	if middleware.HasRole(claims, "student") {
+	if middleware.HasRole(claims, domain.RoleStudent) {
 		params.Values["userId"] = claims.UserID
 	}
 	items, total, err := h.Service.ListStudentPortraits(r.Context(), params, cfg)
@@ -75,7 +75,7 @@ func (h *StudentPortraitHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "学生画像不存在")
 		return
 	}
-	if middleware.HasRole(claims, "student") && portrait.UserID != claims.UserID {
+	if middleware.HasRole(claims, domain.RoleStudent) && portrait.UserID != claims.UserID {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -106,7 +106,7 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 	}
 
 	// 学生本人只能生成自己的画像；请求体中的 userId 必须属于当前租户
-	if middleware.HasRole(claims, "student") && req.UserID != claims.UserID {
+	if middleware.HasRole(claims, domain.RoleStudent) && req.UserID != claims.UserID {
 		respondError(w, http.StatusForbidden, "仅可生成本人的画像")
 		return
 	}

@@ -354,26 +354,26 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 		name        string
 		permissions domain.JSONMap
 	}{
-		{"school_admin", "学校管理员", domain.JSONMap{
+		{domain.RoleSchoolAdmin, "学校管理员", domain.JSONMap{
 			"scene":      modPerms(adminActions),
 			"lesson":     domain.JSONMap{"courses": adminActions},
 			"evaluation": domain.JSONMap{"exams": adminActions, "question-banks": adminActions},
 			"job":        domain.JSONMap{"positions": adminActions},
 		}},
-		{"teacher", "教师", domain.JSONMap{
+		{domain.RoleTeacher, "教师", domain.JSONMap{
 			"menus":      teacherMenus,
 			"scene":      modPerms(adminActions),
 			"lesson":     domain.JSONMap{"courses": adminActions},
 			"evaluation": domain.JSONMap{"exams": adminActions, "question-banks": adminActions},
 			"job":        domain.JSONMap{"positions": adminActions},
 		}},
-		{"student", "学生", domain.JSONMap{
+		{domain.RoleStudent, "学生", domain.JSONMap{
 			"menus": domain.JSONMap{
 				"/job/landing": true, "/lesson/landing": true,
 				"/scene/landing": true, "/evaluation/landing": true, "/library/landing": true,
 			},
 		}},
-		{"enterprise_mentor", "企业导师", domain.JSONMap{
+		{domain.RoleEnterpriseMentor, "企业导师", domain.JSONMap{
 			"menus": domain.JSONMap{
 				"/job/positions": true, "/job/landing": true,
 				"/scene/": true, "/scene/landing": true,

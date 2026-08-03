@@ -43,12 +43,12 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 		if len(claims.RoleCodes) > 0 {
 			role = claims.RoleCodes[0]
 		} else {
-			role = "student"
+			role = domain.RoleStudent
 		}
 	}
 
-	isTeacher := role == "teacher" || role == "school" || role == "school_admin"
-	isSchoolAdmin := role == "school_admin"
+	isTeacher := role == domain.RoleTeacher || role == "school" || role == domain.RoleSchoolAdmin
+	isSchoolAdmin := role == domain.RoleSchoolAdmin
 
 	dash := domain.WorkspaceDashboard{
 		Role:           role,
@@ -117,7 +117,7 @@ func (h *PortalHandler) listAnnouncements(ctx context.Context, role string, tena
 
 func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *string, role string) []domain.WorkspaceTodo {
 	var todos []domain.WorkspaceTodo
-	if role == "teacher" || role == "school_admin" || role == "school" {
+	if role == domain.RoleTeacher || role == domain.RoleSchoolAdmin || role == "school" {
 		if pendingApprovals := h.Service.PendingApprovalCount(ctx, tenantID); pendingApprovals > 0 {
 			todos = append(todos, domain.WorkspaceTodo{
 				ID: "pending-approvals", Title: "待审批事项", Type: "approve", Count: pendingApprovals, Urgent: true,
@@ -140,7 +140,7 @@ func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *
 
 func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantID *string, role string) []domain.WorkspaceScheduleEvent {
 	var events []domain.WorkspaceScheduleEvent
-	if role == "teacher" || role == "school_admin" || role == "school" {
+	if role == domain.RoleTeacher || role == domain.RoleSchoolAdmin || role == "school" {
 		periodLabel := h.Service.PeriodLabelMap(ctx, tenantID)
 		rows, _ := h.Service.ListTeacherSchedules(ctx, userID, tenantID)
 		for _, se := range rows {
@@ -163,7 +163,7 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 				ScenarioID: se.ScenarioID, CourseID: se.CourseID,
 			})
 		}
-	} else if role == "student" {
+	} else if role == domain.RoleStudent {
 		classNodeID := h.Service.UserClassNodeID(ctx, userID, tenantID)
 		if classNodeID != "" {
 			periodLabel := h.Service.PeriodLabelMap(ctx, tenantID)
@@ -244,10 +244,10 @@ func (h *PortalHandler) schoolAdminPersonnelStats(ctx context.Context, tenantID 
 		counts[r.Code] = r.Count
 	}
 	return []domain.WorkspacePersonnelStat{
-		{Label: "学生", Value: counts["student"]},
-		{Label: "教职工", Value: counts["teacher"]},
-		{Label: "企业导师", Value: counts["enterprise_mentor"]},
-		{Label: "学校管理员", Value: counts["school_admin"]},
+		{Label: "学生", Value: counts[domain.RoleStudent]},
+		{Label: "教职工", Value: counts[domain.RoleTeacher]},
+		{Label: "企业导师", Value: counts[domain.RoleEnterpriseMentor]},
+		{Label: "学校管理员", Value: counts[domain.RoleSchoolAdmin]},
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/cache"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -44,11 +45,11 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 
 func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
 	auth := authmw.JWT(jwtSecret)
-	platformAdmin := authmw.RequireRole("platform_admin")
+	platformAdmin := authmw.RequireRole(domain.RolePlatformAdmin)
 	systemAdmin := authmw.RequireSystemPermission()
-	portalWorkspace := authmw.RequireRoleOrMenu("teacher", "student", "school_admin")
-	businessUser := authmw.RequireRoleOrMenu("teacher", "school_admin", "enterprise_mentor", "platform_admin")
-	jobViewer := authmw.RequireRoleOrMenu("teacher", "student", "school_admin", "enterprise_mentor", "platform_admin")
+	portalWorkspace := authmw.RequireRoleOrMenu(domain.RoleTeacher, domain.RoleStudent, domain.RoleSchoolAdmin)
+	businessUser := authmw.RequireRoleOrMenu(domain.RoleTeacher, domain.RoleSchoolAdmin, domain.RoleEnterpriseMentor, domain.RolePlatformAdmin)
+	jobViewer := authmw.RequireRoleOrMenu(domain.RoleTeacher, domain.RoleStudent, domain.RoleSchoolAdmin, domain.RoleEnterpriseMentor, domain.RolePlatformAdmin)
 
 	cachedLandingExams := cache.Cached(redisClient, 2*time.Minute, cache.LandingExamsKey())
 	cachedPublicPositions := cache.Cached(redisClient, 2*time.Minute, cache.PublicPositionsKey())
@@ -220,7 +221,7 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 
 func registerWorkflowRoutes(r chi.Router, h *Handlers) {
 	r.Group(func(r chi.Router) {
-		r.Use(authmw.RequireRoleOrMenu("school_admin", "teacher"))
+		r.Use(authmw.RequireRoleOrMenu(domain.RoleSchoolAdmin, domain.RoleTeacher))
 
 		r.Get("/workflows", h.workflowHandler.List)
 		r.Post("/workflows", h.workflowHandler.Create)

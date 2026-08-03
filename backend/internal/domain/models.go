@@ -50,6 +50,15 @@ const (
 	UserRoleOperator   UserRole = "operator"
 )
 
+// 业务角色 code 常量（单一真相：路由权限、handler 角色判断、store 种子数据/查询共用）。
+const (
+	RolePlatformAdmin    = "platform_admin"
+	RoleSchoolAdmin      = "school_admin"
+	RoleTeacher          = "teacher"
+	RoleStudent          = "student"
+	RoleEnterpriseMentor = "enterprise_mentor"
+)
+
 type UserPlatform string
 
 const (

@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -176,11 +177,11 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 }
 
 func (h *ResourceExportHandler) fillStudents(ctx context.Context, f *excelize.File, tenantID string, ids []string) error {
-	return h.fillUsers(ctx, f, tenantID, "student", ids)
+	return h.fillUsers(ctx, f, tenantID, domain.RoleStudent, ids)
 }
 
 func (h *ResourceExportHandler) fillTeachers(ctx context.Context, f *excelize.File, tenantID string, ids []string) error {
-	return h.fillUsers(ctx, f, tenantID, "teacher", ids)
+	return h.fillUsers(ctx, f, tenantID, domain.RoleTeacher, ids)
 }
 
 func (h *ResourceExportHandler) fillUsers(ctx context.Context, f *excelize.File, tenantID, roleCode string, ids []string) error {
@@ -232,7 +233,7 @@ func (h *ResourceExportHandler) fillUsers(ctx context.Context, f *excelize.File,
 	}
 
 	sheetName := "学生列表"
-	if roleCode == "teacher" {
+	if roleCode == domain.RoleTeacher {
 		sheetName = "教师列表"
 	}
 
@@ -248,7 +249,7 @@ func (h *ResourceExportHandler) fillUsers(ctx context.Context, f *excelize.File,
 		// Password is not exported; leave blank.
 		setCell(fmt.Sprintf("C%d", r), "")
 		setCell(fmt.Sprintf("D%d", r), h.buildOrgPath(ctx, tenantID, u.orgNodeID))
-		if roleCode == "teacher" {
+		if roleCode == domain.RoleTeacher {
 			titles := h.lookupTitleNames(ctx, tenantID, u.titleIDs)
 			setCell(fmt.Sprintf("E%d", r), strings.Join(titles, ","))
 			setCell(fmt.Sprintf("F%d", r), mapUserStatusToChinese(u.status))

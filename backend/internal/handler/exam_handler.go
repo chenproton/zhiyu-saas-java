@@ -74,7 +74,7 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 学生作答由服务端判分，不返回答案与解析
-	if middleware.HasRole(claims, "student") {
+	if middleware.HasRole(claims, domain.RoleStudent) {
 		for i := range exam.Questions {
 			exam.Questions[i].Answer = nil
 			exam.Questions[i].Analysis = nil

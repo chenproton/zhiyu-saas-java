@@ -466,7 +466,7 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 	}
 
 	institutionID := h.getInstitutionID(ctx, tenantID)
-	roleID := h.getRoleIDByCode(ctx, tenantID, "student")
+	roleID := h.getRoleIDByCode(ctx, tenantID, domain.RoleStudent)
 	if roleID == "" {
 		msg := "未找到学生角色(student)，请先在角色管理中创建"
 		result.Errors = append(result.Errors, msg)
@@ -569,7 +569,7 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 	}
 
 	institutionID := h.getInstitutionID(ctx, tenantID)
-	roleID := h.getRoleIDByCode(ctx, tenantID, "teacher")
+	roleID := h.getRoleIDByCode(ctx, tenantID, domain.RoleTeacher)
 	if roleID == "" {
 		msg := "未找到教师角色(teacher)，请先在角色管理中创建"
 		result.Errors = append(result.Errors, msg)

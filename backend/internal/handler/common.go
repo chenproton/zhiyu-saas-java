@@ -130,12 +130,12 @@ func itoa(i int) string {
 
 // platformAdminOnly returns true if the caller is a platform admin.
 func platformAdminOnly(claims *middleware.Claims) bool {
-	return middleware.HasRole(claims, "platform_admin")
+	return middleware.HasRole(claims, domain.RolePlatformAdmin)
 }
 
 // schoolAdminOnly returns true if the caller is a school admin.
 func schoolAdminOnly(claims *middleware.Claims) bool {
-	return middleware.HasRole(claims, "school_admin")
+	return middleware.HasRole(claims, domain.RoleSchoolAdmin)
 }
 
 // canManagePortal returns true for portal system management.
