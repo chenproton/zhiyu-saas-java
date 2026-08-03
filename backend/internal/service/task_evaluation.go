@@ -33,16 +33,6 @@ func (s *TaskEvaluationService) TaskTenantID(ctx context.Context, taskID string)
 
 // SaveMethods 保存任务测评方式（乐观锁 + 事务内软删/重写，临时考试联动在事务外执行）。
 func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskID, creatorID string, version int, inputs []*MethodSaveInput) ([]domain.TaskEvaluationMethod, error) {
-	if version > 0 {
-		currentVersion, err := s.st.TaskEval().MaxMethodVersion(ctx, taskID, tenantID)
-		if err != nil {
-			return nil, err
-		}
-		if currentVersion > version {
-			return nil, ErrMethodVersionConflict
-		}
-	}
-
 	taskName := "未命名任务"
 	if name, err := s.st.TaskEval().TaskName(ctx, taskID); err == nil && name != "" {
 		taskName = name
@@ -66,6 +56,19 @@ func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskI
 	}
 
 	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		// advisory 锁串行化并发保存，版本检查与写入在同一事务内，防双提交静默覆盖
+		if err := txStore.TaskEval().LockTaskEval(ctx, txStore.Q(), tenantID, taskID); err != nil {
+			return err
+		}
+		if version > 0 {
+			currentVersion, err := txStore.TaskEval().MaxMethodVersion(ctx, taskID, tenantID)
+			if err != nil {
+				return err
+			}
+			if currentVersion > version {
+				return ErrMethodVersionConflict
+			}
+		}
 		for _, m := range inputs {
 			evalSubjects := JSONRawToJSONSlice(m.EvalSubjects)
 			resourceConfig := JSONRawToJSONMap(m.ResourceConfig)

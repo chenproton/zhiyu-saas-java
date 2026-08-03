@@ -35,12 +35,8 @@ func (a *JobAbilityAggregator) lockPosition(tenantID, positionID string) *sync.M
 	return m
 }
 
-// unlockPosition 汇聚结束后移除岗位锁，避免 map 永久膨胀。
-func (a *JobAbilityAggregator) unlockPosition(tenantID, positionID string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	delete(a.positionLocks, tenantID+":"+positionID)
-}
+// 说明：汇聚锁不删除——若"用完即删"，等待者持有旧 mutex 引用而后来者拿到新锁，
+// 会破坏同一岗位的互斥。岗位数量有界，map 常驻可接受。
 
 // aggPoint 汇聚用能力点：关联链来自 position_ability_bindings + 场景评分点关联。
 type aggPoint struct {
@@ -125,10 +121,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	// 防止同岗位并发汇聚导致数据竞争
 	posLock := a.lockPosition(tenantID, careerPositionID)
 	posLock.Lock()
-	defer func() {
-		posLock.Unlock()
-		a.unlockPosition(tenantID, careerPositionID)
-	}()
+	defer posLock.Unlock()
 
 	// 1. 加载规则 + 组装能力模型（绑定链/任务链全量自动带出，权重缺省均分兜底）
 	ruleID, err := a.store.Certifications().FindRuleIDForPosition(ctx, tenantID, careerPositionID)

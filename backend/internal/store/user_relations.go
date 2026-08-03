@@ -49,7 +49,10 @@ func (s *UserRelationStore) List(ctx context.Context, tenantID, search string, l
 	}
 	cond := joinSQL(where, " AND ")
 
-	countQuery := `SELECT COUNT(*) FROM user_relations r WHERE ` + cond
+	countQuery := `SELECT COUNT(*) FROM user_relations r
+		LEFT JOIN users init_u ON init_u.id = r.initiator_id
+		LEFT JOIN users tgt_u ON tgt_u.id = r.target_id
+		WHERE ` + cond
 	var total int
 	if err := s.q.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err

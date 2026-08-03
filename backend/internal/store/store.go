@@ -136,7 +136,7 @@ func newStore(q Queryer) *Store {
 		courseNodes:      NewCourseNodeStore(q),
 		taskEval:         NewTaskEvaluationStore(q),
 		positions:        NewPositionStore(q),
-		courses:          NewCourseStore(q),
+		courses:          NewCourseStore(q, beginner),
 		courseHomeworks:  NewCourseHomeworkStore(q, beginner),
 		courseAssess:     NewCourseAssessmentStore(q),
 		questionBanks:    NewQuestionBankStore(q),

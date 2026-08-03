@@ -144,26 +144,32 @@ func (s *CourseHomeworkStore) ListNodeHomeworkSubmissions(ctx context.Context, t
 	return scanHomeworkSubmissions(rows)
 }
 
-// GradeNodeHomework 批改节点作业并同步统一评价结果。
+// GradeNodeHomework 批改节点作业并同步统一评价结果（事务内保证两步原子）。
 func (s *CourseHomeworkStore) GradeNodeHomework(ctx context.Context, graderID, tenantID, nodeID, homeworkID, submissionID string, score float64, comment string) (string, float64, error) {
 	var studentID string
 	var totalScore float64
-	err := s.q.QueryRow(ctx, `
-		UPDATE node_homework_submissions
-		SET score = $1, comment = $2, status = 'graded', graded_at = NOW(), graded_by = $3
-		WHERE id = $4 AND tenant_id = $5 AND node_id = $6 AND homework_id = $7
-		RETURNING student_id, COALESCE(total_score, 100)
-	`, score, comment, graderID, submissionID, tenantID, nodeID, homeworkID).Scan(&studentID, &totalScore)
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `
+			UPDATE node_homework_submissions
+			SET score = $1, comment = $2, status = 'graded', graded_at = NOW(), graded_by = $3
+			WHERE id = $4 AND tenant_id = $5 AND node_id = $6 AND homework_id = $7
+			RETURNING student_id, COALESCE(total_score, 100)
+		`, score, comment, graderID, submissionID, tenantID, nodeID, homeworkID).Scan(&studentID, &totalScore)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, status, total_score, max_score, comment, graded_at, graded_by)
+			VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5, $6, NOW(), $7)
+			ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key)
+			DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', comment = EXCLUDED.comment, graded_at = NOW(), graded_by = EXCLUDED.graded_by, updated_at = NOW()
+		`, tenantID, nodeID, studentID, score, totalScore, comment, graderID); err != nil {
+			return fmt.Errorf("upsert node eval result: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return "", 0, err
-	}
-	if _, err := s.q.Exec(ctx, `
-		INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, status, total_score, max_score, comment, graded_at, graded_by)
-		VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5, $6, NOW(), $7)
-		ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key)
-		DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', comment = EXCLUDED.comment, graded_at = NOW(), graded_by = EXCLUDED.graded_by, updated_at = NOW()
-	`, tenantID, nodeID, studentID, score, totalScore, comment, graderID); err != nil {
-		return "", 0, fmt.Errorf("upsert node eval result: %w", err)
 	}
 	return studentID, totalScore, nil
 }

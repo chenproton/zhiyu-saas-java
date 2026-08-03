@@ -72,7 +72,7 @@ func (s *KnowledgePointStore) Create(ctx context.Context, tx Queryer, tenantID s
 	if err := SyncCourseKnowledgePoints(ctx, tx, tenantID, id, jsonSliceToStringSlice(granularIDs)); err != nil {
 		return nil, err
 	}
-	return s.fetchKP(ctx, id, tenantID)
+	return s.fetchKPWith(ctx, tx, id, tenantID)
 }
 
 // Update 在事务内更新知识点并同步颗粒课引用。
@@ -91,7 +91,7 @@ func (s *KnowledgePointStore) Update(ctx context.Context, tx Queryer, tenantID, 
 	if err := SyncCourseKnowledgePoints(ctx, tx, tenantID, id, jsonSliceToStringSlice(granularIDs)); err != nil {
 		return nil, err
 	}
-	return s.fetchKP(ctx, id, tenantID)
+	return s.fetchKPWith(ctx, tx, id, tenantID)
 }
 
 // Delete 删除知识点。
@@ -122,8 +122,13 @@ type KnowledgePointUpdateParams struct {
 }
 
 func (s *KnowledgePointStore) fetchKP(ctx context.Context, id, tenantID string) (*domain.KnowledgePoint, error) {
+	return s.fetchKPWith(ctx, s.q, id, tenantID)
+}
+
+// fetchKPWith 用指定 Queryer（事务内用 tx，保证读到未提交行）查询知识点。
+func (s *KnowledgePointStore) fetchKPWith(ctx context.Context, q Queryer, id, tenantID string) (*domain.KnowledgePoint, error) {
 	var kp domain.KnowledgePoint
-	err := s.q.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, source_type, source_id, created_at, updated_at
 		FROM knowledge_points WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(

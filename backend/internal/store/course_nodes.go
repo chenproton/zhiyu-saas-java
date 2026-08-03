@@ -134,12 +134,12 @@ func (s *CourseNodeStore) Create(ctx context.Context, tx Queryer, tenantID strin
 			return nil, err
 		}
 	}
-	return s.fetchNode(ctx, id, tenantID)
+	return s.fetchNodeWith(ctx, tx, id, tenantID)
 }
 
 // Update 在事务内更新节点并重绑知识点/资源。
 func (s *CourseNodeStore) Update(ctx context.Context, tx Queryer, id, tenantID string, p *CourseNodeUpdateParams, kpIDs, resIDs []string) (*CourseNodeBase, error) {
-	if _, err := s.fetchNode(ctx, id, tenantID); err != nil {
+	if _, err := s.fetchNodeWith(ctx, tx, id, tenantID); err != nil {
 		return nil, err
 	}
 	evalData := p.EvalData
@@ -173,7 +173,7 @@ func (s *CourseNodeStore) Update(ctx context.Context, tx Queryer, id, tenantID s
 			return nil, err
 		}
 	}
-	return s.fetchNode(ctx, id, tenantID)
+	return s.fetchNodeWith(ctx, tx, id, tenantID)
 }
 
 // Delete 删除节点。
@@ -358,8 +358,13 @@ type CourseNodeCreateParams struct {
 type CourseNodeUpdateParams = CourseNodeCreateParams
 
 func (s *CourseNodeStore) fetchNode(ctx context.Context, id, tenantID string) (*CourseNodeBase, error) {
+	return s.fetchNodeWith(ctx, s.q, id, tenantID)
+}
+
+// fetchNodeWith 用指定 Queryer（事务内用 tx，保证读到未提交行）查询节点。
+func (s *CourseNodeStore) fetchNodeWith(ctx context.Context, q Queryer, id, tenantID string) (*CourseNodeBase, error) {
 	var n CourseNodeBase
-	err := s.q.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name,
 			n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours,
 			n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status

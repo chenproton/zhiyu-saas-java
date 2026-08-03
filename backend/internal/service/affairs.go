@@ -291,6 +291,10 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 		return success, failed, failures, nil
 	}
 	err = s.WithTx(ctx, func(txStore *store.Store) error {
+		// advisory 锁串行化并发排课（自动+手动），防冲突校验与插入间的竞态
+		if err := txStore.Scheduling().LockScheduleTerm(ctx, txStore.Q(), tenantID, termID); err != nil {
+			return err
+		}
 		for _, p := range creates {
 			if _, err := txStore.Scheduling().CreateSchedule(ctx, txStore.Q(), p); err != nil {
 				return err

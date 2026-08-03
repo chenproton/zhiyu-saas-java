@@ -93,7 +93,7 @@ func (s *ScenarioTaskStore) Create(ctx context.Context, p *ScenarioTaskParams) (
 
 // Update 更新任务（限定租户）。
 func (s *ScenarioTaskStore) Update(ctx context.Context, id string, tenantID string, p *ScenarioTaskParams) (*domain.ScenarioTask, error) {
-	if _, err := s.q.Exec(ctx, `
+	tag, err := s.q.Exec(ctx, `
 		UPDATE scenario_tasks SET scenario_id=$1, name=$2, code=$3, sort_order=$4,
 			description=$5, detailed_description=$6, description_pdf=$7, estimated_hours=$8, task_type=$9,
 			difficulty=$10, background=$11, dependency_ids=$12, is_referenced=$13,
@@ -103,8 +103,13 @@ func (s *ScenarioTaskStore) Update(ctx context.Context, id string, tenantID stri
 	`, p.ScenarioID, p.Name, p.Code, p.SortOrder, p.Description, p.DetailedDescription, p.DescriptionPdf,
 		p.EstimatedHours, p.TaskType, p.Difficulty, p.Background,
 		p.DependencyIDs, p.IsReferenced, p.SourceScenarioID,
-		p.KnowledgePointIDs, p.AbilityPointIDs, p.ResourceIDs, p.EvalData, id, tenantID); err != nil {
+		p.KnowledgePointIDs, p.AbilityPointIDs, p.ResourceIDs, p.EvalData, id, tenantID)
+	if err != nil {
 		return nil, err
+	}
+	// 租户不匹配时 UPDATE 影响 0 行，直接按不存在处理，避免回读他租户任务
+	if tag.RowsAffected() == 0 {
+		return nil, ErrNotFound
 	}
 	return s.fetchTask(ctx, id)
 }

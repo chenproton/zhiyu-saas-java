@@ -12,12 +12,13 @@ import (
 
 // CourseStore 课程持久化。
 type CourseStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewCourseStore 创建课程 store。
-func NewCourseStore(q Queryer) *CourseStore {
-	return &CourseStore{q: q}
+func NewCourseStore(q Queryer, beginner txBeginner) *CourseStore {
+	return &CourseStore{q: q, beginner: beginner}
 }
 
 // List 查询课程列表。
@@ -124,31 +125,35 @@ func (s *CourseStore) Update(ctx context.Context, id, tenantID string, p *Course
 	return s.fetchCourseScoped(ctx, id, tenantID)
 }
 
-// Delete 删除课程（先解绑引用与清理子表，限定租户）。
+// Delete 删除课程（先解绑引用与清理子表，限定租户；事务内保证原子）。
 func (s *CourseStore) Delete(ctx context.Context, id, tenantID string) error {
 	if _, err := s.fetchCourseScoped(ctx, id, tenantID); err != nil {
 		return err
 	}
-	if _, err := s.q.Exec(ctx, `UPDATE training_program_courses SET course_id = NULL WHERE course_id = $1`, id); err != nil {
-		return fmt.Errorf("unbind course from programs: %w", err)
-	}
-	if _, err := s.q.Exec(ctx, `UPDATE teaching_plan_entries SET course_id = NULL WHERE course_id = $1`, id); err != nil {
-		return fmt.Errorf("unbind course from teaching plans: %w", err)
-	}
-	if _, err := s.q.Exec(ctx, `UPDATE schedule_entries SET course_id = NULL WHERE course_id = $1`, id); err != nil {
-		return fmt.Errorf("unbind course from schedules: %w", err)
-	}
-	if _, err := s.q.Exec(ctx, `DELETE FROM course_homework_submissions WHERE course_id = $1`, id); err != nil {
-		return fmt.Errorf("delete course submissions: %w", err)
-	}
-	if _, err := s.q.Exec(ctx, `DELETE FROM course_homeworks WHERE course_id = $1`, id); err != nil {
-		return fmt.Errorf("delete course homeworks: %w", err)
-	}
-	if _, err := s.q.Exec(ctx, `DELETE FROM course_evaluation_results WHERE course_id = $1`, id); err != nil {
-		return fmt.Errorf("delete course eval results: %w", err)
-	}
-	_, err := s.q.Exec(ctx, `DELETE FROM courses WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `UPDATE training_program_courses SET course_id = NULL WHERE course_id = $1`, id); err != nil {
+			return fmt.Errorf("unbind course from programs: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `UPDATE teaching_plan_entries SET course_id = NULL WHERE course_id = $1`, id); err != nil {
+			return fmt.Errorf("unbind course from teaching plans: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `UPDATE schedule_entries SET course_id = NULL WHERE course_id = $1`, id); err != nil {
+			return fmt.Errorf("unbind course from schedules: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM course_homework_submissions WHERE course_id = $1`, id); err != nil {
+			return fmt.Errorf("delete course submissions: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM course_homeworks WHERE course_id = $1`, id); err != nil {
+			return fmt.Errorf("delete course homeworks: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM course_evaluation_results WHERE course_id = $1`, id); err != nil {
+			return fmt.Errorf("delete course eval results: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM courses WHERE id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 // ReplaceCourseBindings 替换课程的知识点/资源绑定表。
