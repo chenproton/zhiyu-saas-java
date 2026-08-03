@@ -203,7 +203,7 @@ type ExamUpdateParams struct {
 
 func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, error) {
 	var e domain.Exam
-	var coverImage, creatorID, batchID, tenantID *string
+	var coverImage, description, creatorID, batchID, tenantID *string
 	err := s.q.QueryRow(ctx, `
 		SELECT e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
 		e.is_temp,
@@ -217,11 +217,14 @@ func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, err
 			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at, e.tenant_id
 		FROM exams e WHERE e.id = $1
 	`, id).Scan(
-		&e.ID, &e.Code, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
+		&e.ID, &e.Code, &e.Name, &description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
 		&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt, &tenantID,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if description != nil {
+		e.Description = *description
 	}
 	e.CoverImage = coverImage
 	e.CreatorID = creatorID
@@ -274,12 +277,15 @@ func ScanExamRows(rows pgx.Rows) ([]domain.Exam, error) {
 	items := make([]domain.Exam, 0)
 	for rows.Next() {
 		var e domain.Exam
-		var coverImage, creatorID, batchID *string
+		var coverImage, description, creatorID, batchID *string
 		if err := rows.Scan(
-			&e.ID, &e.Code, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
+			&e.ID, &e.Code, &e.Name, &description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
 			&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
 		); err != nil {
 			return nil, err
+		}
+		if description != nil {
+			e.Description = *description
 		}
 		e.CoverImage = coverImage
 		e.CreatorID = creatorID

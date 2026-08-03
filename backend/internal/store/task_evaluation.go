@@ -323,7 +323,7 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 			} else if d, ok := resourceConfig["timeLimit"].(float64); ok && d > 0 {
 				duration = int(d)
 			}
-			name := fmt.Sprintf("%s-%s", taskName, label)
+			name := fmt.Sprintf("%s-%s-%s", taskName, label, taskID[:8])
 			id, err := s.createTempExam(ctx, tx, tenantID, name, duration, creatorID)
 			if err != nil {
 				return resourceConfig, err
@@ -351,6 +351,16 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 }
 
 func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, tenantID, name string, duration int, creatorID string) (string, error) {
+	var existingID string
+	err := tx.QueryRow(ctx, `
+		SELECT id FROM exams WHERE tenant_id = $1 AND name = $2 AND is_temp = TRUE LIMIT 1
+	`, tenantID, name).Scan(&existingID)
+	if err == nil && existingID != "" {
+		return existingID, nil
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("lookup temp exam: %w", err)
+	}
 	id := uuid.NewString()
 	code, err := GenerateUniqueEntityCode(ctx, tx, "SJ", "exams", tenantID)
 	if err != nil {
@@ -445,12 +455,24 @@ func (s *TaskEvaluationStore) ensureExamQuestions(ctx context.Context, tx Querye
 }
 
 func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Queryer, tenantID, examID, taskID, creatorID string) (string, error) {
+	var existingID string
+	err := tx.QueryRow(ctx, `
+		SELECT id FROM exam_usages
+		WHERE tenant_id = $1 AND exam_id = $2 AND target_type = 'task' AND $3::uuid = ANY(target_ids) AND status = 'draft'
+		LIMIT 1
+	`, tenantID, examID, taskID).Scan(&existingID)
+	if err == nil && existingID != "" {
+		return existingID, nil
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("lookup temp exam usage: %w", err)
+	}
 	id := uuid.NewString()
 	var creator any
 	if creatorID != "" {
 		creator = creatorID
 	}
-	_, err := tx.Exec(ctx, `
+	_, err = tx.Exec(ctx, `
 		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
 		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'task', $5, 'draft', $6)
 	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), []string{taskID}, creator)

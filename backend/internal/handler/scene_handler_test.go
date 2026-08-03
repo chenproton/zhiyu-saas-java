@@ -482,6 +482,111 @@ func TestTaskEvaluationMethod(t *testing.T) {
 	}
 }
 
+func TestTaskEvaluationMethod_TempExamIdempotent(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	suffix := t.Name()
+	scCode := fmt.Sprintf("test-evm-idem-%s", suffix)
+
+	w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
+		"name": "Eval Method Idem Scenario", "code": scCode, "difficulty": 1, "version": "v1.0",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create scenario: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	scenario, _ := testhelper.Unmarshal[domain.Scenario](w)
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", scenario.ID)
+
+	taskCode := fmt.Sprintf("tsk-evm-idem-%s", suffix)
+	w = env.Do("POST", "/api/v1/scene/tasks", map[string]interface{}{
+		"scenarioId": scenario.ID, "name": "Eval Task Idem", "code": taskCode, "taskType": "assessment", "difficulty": 2,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create task: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	task, _ := testhelper.Unmarshal[domain.ScenarioTask](w)
+	taskID := task.ID
+	defer env.DB.Exec(ctx, "DELETE FROM task_evaluation_methods WHERE task_id = $1", taskID)
+
+	w = env.Do("POST", "/api/v1/evaluation/question-banks", map[string]interface{}{
+		"name": "Idem Bank", "description": "for idempotent temp exam test",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create bank: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	bank, _ := testhelper.Unmarshal[domain.QuestionBank](w)
+	defer env.DB.Exec(ctx, "DELETE FROM question_banks WHERE id = $1", bank.ID)
+
+	w = env.Do("POST", "/api/v1/evaluation/questions", map[string]interface{}{
+		"bankId":  bank.ID,
+		"type":    "single",
+		"content": "Idem Q?",
+		"options": []string{"A", "B"},
+		"answer":  []string{"A"},
+		"score":   10,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create question: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	q, _ := testhelper.Unmarshal[domain.Question](w)
+	defer env.DB.Exec(ctx, "DELETE FROM questions WHERE id = $1", q.ID)
+
+	methods := []map[string]interface{}{
+		{
+			"methodKey":      "question_bank",
+			"weight":         100,
+			"evalObject":     "individual",
+			"evalSubjects":   []interface{}{},
+			"isEnabled":      true,
+			"evalPoints":     []map[string]interface{}{},
+			"reviewSteps":    []map[string]interface{}{},
+			"resourceConfig": map[string]interface{}{"questionIds": []string{q.ID}, "duration": 60},
+		},
+	}
+
+	var firstExamID string
+	for i := 0; i < 2; i++ {
+		w = env.Do("PUT", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", map[string]interface{}{
+			"methods": methods,
+		})
+		if w.Code != http.StatusOK {
+			t.Fatalf("save methods round %d: expected 200, got %d: %s", i+1, w.Code, testhelper.ErrMsg(w))
+		}
+		resp, err := testhelper.Unmarshal[struct {
+			Methods []domain.TaskEvaluationMethod `json:"methods"`
+		}](w)
+		if err != nil {
+			t.Fatalf("unmarshal methods: %v", err)
+		}
+		found := false
+		for _, m := range resp.Methods {
+			if m.MethodKey == "question_bank" {
+				if id, ok := m.ResourceConfig["examId"].(string); ok && id != "" {
+					if i == 0 {
+						firstExamID = id
+					} else if id != firstExamID {
+						t.Fatalf("round %d: examId changed %s -> %s", i+1, firstExamID, id)
+					}
+					found = true
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("round %d: question_bank method missing examId in resourceConfig", i+1)
+		}
+	}
+
+	var cnt int
+	if err := env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM exams WHERE tenant_id = $1 AND name LIKE 'Eval Task Idem-题库-%' AND is_temp = TRUE`, testhelper.TestTenantID).Scan(&cnt); err != nil {
+		t.Fatalf("count temp exams: %v", err)
+	}
+	if cnt != 1 {
+		t.Fatalf("expected exactly 1 temp exam after double save, got %d", cnt)
+	}
+}
+
 func TestRubricTemplateCRUD(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

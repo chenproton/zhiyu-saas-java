@@ -358,6 +358,33 @@ func TestExam_ValidationErrors(t *testing.T) {
 	}
 }
 
+func TestExam_CreateWithoutDescription(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	w := env.Do("POST", "/api/v1/evaluation/exams", map[string]interface{}{
+		"name":     "No Desc Exam",
+		"duration": 60,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create exam without description: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	exam, err := testhelper.Unmarshal[domain.Exam](w)
+	if err != nil {
+		t.Fatalf("unmarshal exam: %v", err)
+	}
+	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = $1", exam.ID)
+	if exam.Description != "" {
+		t.Fatalf("expected empty description, got %q", exam.Description)
+	}
+
+	w = env.Do("GET", "/api/v1/evaluation/exams/"+exam.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("get exam without description: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+}
+
 func TestExamUsage_CRUD(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
