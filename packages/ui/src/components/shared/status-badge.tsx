@@ -23,19 +23,6 @@ export function StatusBadge({
   )
 }
 
-export function EmptyState({ icon, text = '暂无数据' }: { icon?: React.ReactNode; text?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center text-sm text-gray-400">
-      {icon || (
-        <div className="mb-3 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-          <span className="text-2xl opacity-30">—</span>
-        </div>
-      )}
-      <p>{text}</p>
-    </div>
-  )
-}
-
 export function LoadingView({ text }: { text?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-sm text-gray-400">
