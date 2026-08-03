@@ -192,6 +192,9 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/job/positions/{id}/clone", positionCloneHandler.Clone)
 			r.Get("/job/public/positions", positionHandler.PublicList)
 			r.Get("/job/public/positions/{id}", positionHandler.PublicGet)
+			r.Get("/job/positions/favorites", positionHandler.ListFavorites)
+			r.Get("/job/positions/{id}/favorite", positionHandler.GetFavorite)
+			r.Post("/job/positions/{id}/favorite", positionHandler.ToggleFavorite)
 
 			abilityHandler := &handler.AbilityHandler{Service: positionSvc}
 			r.Get("/job/abilities", abilityHandler.List)

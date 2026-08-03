@@ -135,6 +135,11 @@ func (s *PositionService) GetFavorite(ctx context.Context, userID, positionID st
 	return s.st.Positions().GetFavorite(ctx, userID, positionID)
 }
 
+// FavoriteCount 查询岗位收藏数。
+func (s *PositionService) FavoriteCount(ctx context.Context, positionID string) (int, error) {
+	return s.st.Positions().FavoriteCount(ctx, positionID)
+}
+
 // ToggleFavorite 切换收藏。
 func (s *PositionService) ToggleFavorite(ctx context.Context, userID, positionID string) (bool, error) {
 	return s.st.Positions().ToggleFavorite(ctx, userID, positionID)

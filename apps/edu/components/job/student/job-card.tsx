@@ -33,7 +33,7 @@ export function JobCard({
   taskCount = 0,
   industryName,
 }: JobCardProps) {
-  const displayTitle = position.shortName || position.name
+  const displayTitle = position.name
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
     : { background: coverGradients[index % coverGradients.length] }

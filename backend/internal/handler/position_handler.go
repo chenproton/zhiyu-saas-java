@@ -109,6 +109,12 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	// 视图计数异步记录，不阻塞详情读取
+	tenantID := ""
+	if claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
+	recordViewAsync(h.Service.IncrementView, id, claims.UserID, tenantID)
 	pos, err := h.Service.Get(r.Context(), id)
 	if err != nil || pos.Status != domain.StatusPublished {
 		respondError(w, http.StatusNotFound, "岗位不存在")
@@ -484,7 +490,8 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 // ===== Favorites =====
 
 type FavoriteStatusResponse struct {
-	IsFavorite bool `json:"isFavorite"`
+	IsFavorite    bool `json:"isFavorite"`
+	FavoriteCount int  `json:"favoriteCount"`
 }
 
 func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
@@ -499,7 +506,8 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询收藏状态失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav})
+	cnt, _ := h.Service.FavoriteCount(r.Context(), id)
+	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav, FavoriteCount: cnt})
 }
 
 func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request) {
@@ -514,7 +522,10 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 		respondServerError(w, r, err, "切换收藏失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav})
+	// 收藏数变化影响前台岗位列表/排行榜，立即失效公开列表缓存
+	h.clearPublicPositionsCache(r)
+	cnt, _ := h.Service.FavoriteCount(r.Context(), id)
+	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav, FavoriteCount: cnt})
 }
 
 func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) {

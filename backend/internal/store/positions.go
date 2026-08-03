@@ -449,6 +449,16 @@ func (s *PositionStore) GetFavorite(ctx context.Context, userID, positionID stri
 	return exists, err
 }
 
+// FavoriteCount 查询岗位收藏数。
+func (s *PositionStore) FavoriteCount(ctx context.Context, positionID string) (int, error) {
+	var cnt int
+	err := s.q.QueryRow(ctx, `
+		SELECT COALESCE(cnt, 0) FROM favorite_counters
+		WHERE target_type = 'career_position' AND target_id = $1
+	`, positionID).Scan(&cnt)
+	return cnt, err
+}
+
 // ToggleFavorite 切换收藏，返回新状态。
 func (s *PositionStore) ToggleFavorite(ctx context.Context, userID, positionID string) (bool, error) {
 	var exists bool
