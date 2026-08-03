@@ -10,52 +10,20 @@ import type {
   ExamQuestion,
   QuestionBankFormData,
   QuestionFormData,
-  ExamFormData,
   StatusAction,
-  EvaluationMethodCategory,
-  EvaluationMethod,
-  SceneTask,
-  SceneEvaluationResult,
-  JobAbilityResult,
-  ApprovalItem,
-  GraduationProjectTopic,
-  GraduationProjectArchive,
-  GraduationProjectEvaluation,
-  GraduationQueryResult,
-  StudentAbilityArchive,
-  StudentAbilityPortrait,
-  ProcessEvaluation,
-  RectificationDetail,
-  AppealRecord,
-  CreditConversionRule,
-  EvaluationStandard,
-  CertIssuanceRecord,
-  ApprovalRecord,
 } from '@/lib/types'
-import { getNextStatus, canPerformAction } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import {
   questionBankApi,
   questionApi,
   examApi,
   evaluationBatchApi,
-  evaluationMethodApi,
-  evaluationResultApi,
-  jobAbilityResultApi,
   approvalApi,
-  graduationApi,
-  portraitApi,
-  microCertApi,
-  taskApi,
-  scenarioApi,
-  request,
 } from '@/lib/api'
 
 // ==================== Date parsing helpers ====================
 
 const parseDate = (v: string | Date | undefined): Date => (v ? new Date(v) : new Date())
-const parseOptDate = (v: string | Date | undefined): Date | undefined =>
-  v ? new Date(v) : undefined
 
 const parseQuestionBank = (bank: QuestionBank): QuestionBank => ({
   ...bank,
@@ -75,95 +43,23 @@ const parseExam = (exam: Exam): Exam => ({
   updatedAt: parseDate(exam.updatedAt as unknown as string | Date),
 })
 
-const parseSceneResult = (r: SceneEvaluationResult): SceneEvaluationResult => ({
-  ...r,
-  gradedAt: parseOptDate(r.gradedAt as unknown as string | Date),
-  createdAt: parseOptDate(r.createdAt as unknown as string | Date),
-  updatedAt: parseOptDate(r.updatedAt as unknown as string | Date),
-})
-
-const parseTopic = (t: GraduationProjectTopic): GraduationProjectTopic => ({
-  ...t,
-  startDate: parseDate(t.startDate as unknown as string | Date),
-  endDate: parseDate(t.endDate as unknown as string | Date),
-  createdAt: parseDate(t.createdAt as unknown as string | Date),
-})
-
-const parseArchive = (a: GraduationProjectArchive): GraduationProjectArchive => ({
-  ...a,
-  lastUpdated: parseDate(a.lastUpdated as unknown as string | Date),
-})
-
-const parseEvaluation = (e: GraduationProjectEvaluation): GraduationProjectEvaluation => ({
-  ...e,
-  evaluationTime: parseDate(e.evaluationTime as unknown as string | Date),
-})
-
-const parseStudentArchive = (a: StudentAbilityArchive): StudentAbilityArchive => ({
-  ...a,
-  obtainDate: parseDate(a.obtainDate as unknown as string | Date),
-  createdAt: parseDate(a.createdAt as unknown as string | Date),
-})
-
-const parsePortrait = (p: StudentAbilityPortrait): StudentAbilityPortrait => ({
-  ...p,
-  updatedAt: parseDate(p.updatedAt as unknown as string | Date),
-})
-
-const parseCertRecord = (r: CertIssuanceRecord): CertIssuanceRecord => ({
-  ...r,
-  issueDate: parseDate(r.issueDate as unknown as string | Date),
-  expireDate: parseOptDate(r.expireDate as unknown as string | Date | undefined),
-  revokedAt: parseOptDate(r.revokedAt as unknown as string | Date | undefined),
-})
-
-// ==================== Approval helpers ====================
-
-const APPROVAL_TYPE_MAP: Record<string, ApprovalItem['type']> = {
-  question: 'question',
-  question_bank: 'questionBank',
-  questionBank: 'questionBank',
-  exam: 'exam',
-  online_exam: 'onlineExam',
-  onlineExam: 'onlineExam',
-}
-
-const mapApprovalRecord = (record: ApprovalRecord): ApprovalItem => {
-  const type = APPROVAL_TYPE_MAP[record.targetType] || 'question'
-  const lastHistory = record.history?.[record.history.length - 1]
-  return {
-    id: record.id,
-    type,
-    title: `${type}审批 - ${record.targetId}`,
-    description: undefined,
-    submitterName: lastHistory?.reviewerName || record.submitterId,
-    submitTime: parseDate(record.createdAt),
-    status: record.status,
-    remark: lastHistory?.comment,
-  }
-}
-
 // ==================== DataContextValue type ====================
 
 export interface DataContextValue {
+  evaluationLoading?: boolean
+
   // 题库相关
   questionBanks: QuestionBank[]
   getQuestionBank: (id: string) => QuestionBank | undefined
-  createQuestionBank: (data: QuestionBankFormData) => Promise<QuestionBank>
   updateQuestionBank: (id: string, data: QuestionBankFormData) => Promise<void>
-  deleteQuestionBank: (id: string) => Promise<void>
-  updateQuestionBankStatus: (id: string, action: StatusAction) => Promise<void>
   loadQuestionBanks?: () => Promise<void>
-  evaluationLoading?: boolean
 
   // 题目相关
   questions: Question[]
   getQuestionsByBank: (bankId: string) => Question[]
-  getQuestion: (id: string) => Question | undefined
   createQuestion: (bankId: string, data: QuestionFormData) => Promise<Question>
   updateQuestion: (id: string, data: QuestionFormData) => Promise<void>
   deleteQuestion: (id: string) => Promise<void>
-  updateQuestionStatus: (id: string, action: StatusAction) => Promise<void>
   moveQuestions: (questionIds: string[], targetBankId: string) => Promise<void>
   loadBankQuestions?: (bankId: string) => Promise<void>
 
@@ -171,71 +67,13 @@ export interface DataContextValue {
   exams: Exam[]
   loadExams?: () => Promise<void>
   getExam: (id: string) => Exam | undefined
-  createExam: (data: ExamFormData) => Promise<Exam>
   updateExam: (id: string, data: Partial<Exam>) => Promise<void>
-  deleteExam: (id: string) => Promise<void>
   updateExamStatus: (id: string, action: StatusAction) => Promise<void>
   addQuestionToExam: (examId: string, question: Question, score?: number) => Promise<void>
   removeQuestionFromExam: (examId: string, examQuestionId: string) => Promise<void>
   updateExamQuestionScore: (examId: string, examQuestionId: string, score: number) => Promise<void>
   updateExamQuestionScores?: (examId: string, scores: Record<string, number>) => Promise<void>
   reorderExamQuestions: (examId: string, questions: ExamQuestion[]) => Promise<void>
-
-  // 场景任务测评相关
-  evaluationCategories: EvaluationMethodCategory[]
-  evaluationMethods: EvaluationMethod[]
-  sceneTasks: SceneTask[]
-  sceneEvaluationResults: SceneEvaluationResult[]
-
-  // 岗位能力测评结果
-  jobAbilityResults: JobAbilityResult[]
-
-  // 审批中心
-  approvalItems: ApprovalItem[]
-  approveItem: (id: string, remark?: string) => Promise<void>
-  rejectItem: (id: string, remark?: string) => Promise<void>
-
-  // 毕业设计管理
-  graduationProjectTopics: GraduationProjectTopic[]
-  graduationProjectArchives: GraduationProjectArchive[]
-  graduationProjectEvaluations: GraduationProjectEvaluation[]
-  graduationQueryResults: GraduationQueryResult[]
-  processEvaluations: ProcessEvaluation[]
-  rectificationDetails: RectificationDetail[]
-  appealRecords: AppealRecord[]
-  evaluationStandards: EvaluationStandard[]
-  createProcessEvaluation: (data: Record<string, unknown>) => ProcessEvaluation
-  createRectificationDetail: (data: Record<string, unknown>) => RectificationDetail
-  updateRectificationDetail: (id: string, data: Partial<RectificationDetail>) => void
-  createAppealRecord: (data: Record<string, unknown>) => AppealRecord
-  updateAppealRecord: (id: string, data: Partial<AppealRecord>) => void
-  updateEvaluationStandard: (id: string, data: Partial<EvaluationStandard>) => void
-
-  // 学生能力画像管理
-  studentAbilityArchives: StudentAbilityArchive[]
-  studentAbilityPortraits: StudentAbilityPortrait[]
-  creditConversionRules: CreditConversionRule[]
-  archiveVersions: StudentAbilityArchive[]
-
-  // 毕业设计管理操作
-  updateGraduationProjectArchive: (data: Partial<GraduationProjectArchive>) => Promise<void>
-  updateGraduationProjectEvaluation: (data: Partial<GraduationProjectEvaluation>) => Promise<void>
-
-  // 学生能力画像管理操作
-  createStudentAbilityArchive: (data: Record<string, unknown>) => Promise<StudentAbilityArchive>
-  updateStudentAbilityArchive: (id: string, data: Partial<StudentAbilityArchive>) => Promise<void>
-  deleteStudentAbilityArchive: (id: string) => Promise<void>
-  updateCreditConversionRules: (rules: CreditConversionRule[]) => void
-
-  // 微证书管理
-  certIssuanceRecords: CertIssuanceRecord[]
-  issueCert: (
-    data: Omit<CertIssuanceRecord, 'id' | 'certNumber' | 'status'>,
-  ) => Promise<CertIssuanceRecord>
-  issueBatchCerts: (
-    records: Omit<CertIssuanceRecord, 'id' | 'certNumber' | 'status'>[],
-  ) => Promise<CertIssuanceRecord[]>
-  revokeCert: (id: string, reason: string) => Promise<void>
 }
 
 const DataContext = createContext<DataContextValue | null>(null)
@@ -247,41 +85,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>([])
   const [questions, setQuestions] = useState<Question[]>([])
   const [exams, setExams] = useState<Exam[]>([])
-
-  // 场景任务测评状态
-  const [evaluationCategories, setEvaluationCategories] = useState<EvaluationMethodCategory[]>([])
-  const [evaluationMethods, setEvaluationMethods] = useState<EvaluationMethod[]>([])
-  const [sceneTasks, setSceneTasks] = useState<SceneTask[]>([])
-  const [sceneEvaluationResults, setSceneEvaluationResults] = useState<SceneEvaluationResult[]>([])
-  const [jobAbilityResults, setJobAbilityResults] = useState<JobAbilityResult[]>([])
-  const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>([])
-
-  // 毕业设计管理状态
-  const [graduationProjectTopics, setGraduationProjectTopics] = useState<GraduationProjectTopic[]>(
-    [],
-  )
-  const [graduationProjectArchives, setGraduationProjectArchives] = useState<
-    GraduationProjectArchive[]
-  >([])
-  const [graduationProjectEvaluations, setGraduationProjectEvaluations] = useState<
-    GraduationProjectEvaluation[]
-  >([])
-  const [graduationQueryResults, setGraduationQueryResults] = useState<GraduationQueryResult[]>([])
-  const [processEvaluations, setProcessEvaluations] = useState<ProcessEvaluation[]>([])
-  const [rectificationDetails, setRectificationDetails] = useState<RectificationDetail[]>([])
-  const [appealRecords, setAppealRecords] = useState<AppealRecord[]>([])
-  const [evaluationStandards, setEvaluationStandards] = useState<EvaluationStandard[]>([])
-
-  // 学生能力画像管理状态
-  const [studentAbilityArchives, setStudentAbilityArchives] = useState<StudentAbilityArchive[]>([])
-  const [studentAbilityPortraits, setStudentAbilityPortraits] = useState<StudentAbilityPortrait[]>(
-    [],
-  )
-  const [creditConversionRules, setCreditConversionRules] = useState<CreditConversionRule[]>([])
-  const [archiveVersions, setArchiveVersions] = useState<StudentAbilityArchive[]>([])
-
-  // 微证书管理状态
-  const [certIssuanceRecords, setCertIssuanceRecords] = useState<CertIssuanceRecord[]>([])
 
   // ==================== Data loading ====================
   const loadQuestionBanks = useCallback(async () => {
@@ -303,123 +106,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setExams(res.items.map(parseExam))
   }, [])
 
-  const loadEvaluationMethods = useCallback(async () => {
-    const [categoriesRes, methodsRes] = await Promise.all([
-      evaluationMethodApi.listCategories(),
-      evaluationMethodApi.listMethods(),
-    ])
-    setEvaluationCategories(categoriesRes.items)
-    setEvaluationMethods(methodsRes.items)
-  }, [])
-
-  const loadSceneResults = useCallback(async () => {
-    const res = await evaluationResultApi.list()
-    setSceneEvaluationResults(res.items.map(parseSceneResult))
-  }, [])
-
-  const loadSceneTasks = useCallback(async () => {
-    const [tasksRes, scenariosRes] = await Promise.all([taskApi.list(), scenarioApi.list()])
-    const scenarioMap = new Map(scenariosRes.items.map((s) => [s.id, s.name]))
-    setSceneTasks(
-      tasksRes.items.map((t) => ({
-        id: t.id,
-        name: t.name,
-        sceneName: scenarioMap.get(t.scenarioId) || t.scenarioId,
-        methodIds: [],
-      })),
-    )
-  }, [])
-
-  const loadJobAbilityResults = useCallback(async () => {
-    const res = await jobAbilityResultApi.list({ limit: 200 })
-    setJobAbilityResults(
-      res.items.map((r) => ({
-        ...r,
-        evaluationTime: parseDate(r.evaluationTime),
-      })),
-    )
-  }, [])
-
-  const loadApprovalItems = useCallback(async () => {
-    const [banks, exams] = await Promise.all([
-      approvalApi.list({ targetType: 'question_bank', limit: 200 }),
-      approvalApi.list({ targetType: 'exam', limit: 200 }),
-    ])
-    setApprovalItems([...banks.items, ...exams.items].map(mapApprovalRecord))
-  }, [])
-
-  const loadGraduationTopics = useCallback(async () => {
-    const res = await graduationApi.listTopics()
-    setGraduationProjectTopics(res.items.map(parseTopic))
-  }, [])
-
-  const loadGraduationArchives = useCallback(async () => {
-    const res = await graduationApi.listArchives()
-    setGraduationProjectArchives(res.items.map(parseArchive))
-  }, [])
-
-  const loadGraduationEvaluations = useCallback(async () => {
-    const res = await graduationApi.listEvaluations()
-    setGraduationProjectEvaluations(res.items.map(parseEvaluation))
-  }, [])
-
-  const loadGraduationQueryResults = useCallback(async () => {
-    const res = await graduationApi.queryResults()
-    setGraduationQueryResults(res.items)
-  }, [])
-
-  const loadStudentAbilityArchives = useCallback(async () => {
-    const res = await portraitApi.listArchives()
-    const parsed = res.items.map(parseStudentArchive)
-    setStudentAbilityArchives(parsed)
-    setArchiveVersions(parsed)
-  }, [])
-
-  const loadStudentAbilityPortraits = useCallback(async () => {
-    const res = await portraitApi.list()
-    setStudentAbilityPortraits(res.items.map(parsePortrait))
-  }, [])
-
-  const loadCertIssuanceRecords = useCallback(async () => {
-    const res = await microCertApi.listHistory()
-    const parsed = res.items.map(parseCertRecord)
-    setCertIssuanceRecords(parsed)
-    return parsed
-  }, [])
-
   const isPortal = pathname.startsWith('/portal')
-  const shouldLoadEvaluation = pathname.startsWith('/evaluation')
-  const shouldLoadScene = pathname.startsWith('/scene')
-  const shouldLoadGraduation = pathname.startsWith('/graduation')
-  const shouldLoadPortrait =
-    pathname.startsWith('/portrait') || pathname.startsWith('/student-ability')
 
   useEffect(() => {
     if (isPortal) return
 
-    const tasks: (() => Promise<void>)[] = []
-    if (shouldLoadEvaluation || shouldLoadScene) {
-      tasks.push(
-        loadQuestionBanks,
-        loadExams,
-        loadEvaluationMethods,
-        loadSceneTasks,
-        loadSceneResults,
-        loadJobAbilityResults,
-        loadApprovalItems,
-      )
-    }
-    if (shouldLoadGraduation) {
-      tasks.push(
-        loadGraduationTopics,
-        loadGraduationArchives,
-        loadGraduationEvaluations,
-        loadGraduationQueryResults,
-      )
-    }
-    if (shouldLoadPortrait) {
-      tasks.push(loadStudentAbilityArchives, loadStudentAbilityPortraits)
-    }
+    const tasks: (() => Promise<void>)[] = [loadQuestionBanks, loadExams]
     if (tasks.length === 0) return
 
     let cancelled = false
@@ -439,63 +131,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [
-    isPortal,
-    shouldLoadEvaluation,
-    shouldLoadScene,
-    shouldLoadGraduation,
-    shouldLoadPortrait,
-    loadQuestionBanks,
-    loadExams,
-    loadEvaluationMethods,
-    loadSceneTasks,
-    loadSceneResults,
-    loadJobAbilityResults,
-    loadApprovalItems,
-    loadGraduationTopics,
-    loadGraduationArchives,
-    loadGraduationEvaluations,
-    loadGraduationQueryResults,
-    loadStudentAbilityArchives,
-    loadStudentAbilityPortraits,
-    loadCertIssuanceRecords,
-  ])
-
-  // ==================== Approval actions ====================
-  const approveItem = useCallback(
-    async (id: string, remark?: string) => {
-      await approvalApi.review(id, { status: 'approved', comment: remark })
-      await loadApprovalItems()
-    },
-    [loadApprovalItems],
-  )
-
-  const rejectItem = useCallback(
-    async (id: string, remark?: string) => {
-      await approvalApi.review(id, { status: 'rejected', comment: remark })
-      await loadApprovalItems()
-    },
-    [loadApprovalItems],
-  )
+  }, [isPortal, loadQuestionBanks, loadExams])
 
   // ==================== Question bank actions ====================
   const getQuestionBank = useCallback(
     (id: string) => questionBanks.find((bank) => bank.id === id),
     [questionBanks],
-  )
-
-  const createQuestionBank = useCallback(
-    async (data: QuestionBankFormData): Promise<QuestionBank> => {
-      const created = await questionBankApi.create({
-        ...data,
-        status: 'draft',
-        version: 'v0.1.0',
-        ownerType: 'mine',
-      } as Omit<QuestionBank, 'id' | 'questionCount' | 'createdAt' | 'updatedAt'>)
-      await loadQuestionBanks()
-      return parseQuestionBank(created)
-    },
-    [loadQuestionBanks],
   )
 
   const updateQuestionBank = useCallback(
@@ -506,78 +147,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [loadQuestionBanks],
   )
 
-  const deleteQuestionBank = useCallback(
-    async (id: string) => {
-      const bank = questionBanks.find((b) => b.id === id)
-      if (bank?.isDraftPool) return
-      await questionBankApi.delete(id)
-      await loadQuestionBanks()
-    },
-    [questionBanks, loadQuestionBanks],
-  )
-
-  const updateQuestionBankStatus = useCallback(
-    async (id: string, action: StatusAction) => {
-      const bank = questionBanks.find((b) => b.id === id)
-      switch (action) {
-        case 'save_draft':
-          await questionBankApi.saveDraft(id)
-          break
-        case 'submit': {
-          if (!bank?.batchId) {
-            toast({
-              variant: 'destructive',
-              title: '无法提交',
-              description: '该题库未关联批次，无法提交审批',
-            })
-            return
-          }
-          const batch = await evaluationBatchApi.get(bank.batchId)
-          await questionBankApi.submit(id)
-          await approvalApi.create({
-            targetType: 'question_bank',
-            targetId: id,
-            workflowId: batch.workflowId,
-          })
-          break
-        }
-        case 'withdraw':
-          await questionBankApi.withdraw(id)
-          break
-        case 'approve':
-        case 'reject': {
-          const records = await approvalApi.list({
-            targetType: 'question_bank',
-            targetId: id,
-            status: 'pending',
-            limit: 1,
-          })
-          if (records.items.length > 0) {
-            await approvalApi.review(records.items[0].id, {
-              status: action === 'approve' ? 'approved' : 'rejected',
-            })
-          }
-          break
-        }
-        case 'publish':
-          await questionBankApi.publish(id)
-          break
-        case 'unpublish':
-          await questionBankApi.unpublish(id)
-          break
-      }
-      await loadQuestionBanks()
-    },
-    [loadQuestionBanks, questionBanks, toast],
-  )
-
   // ==================== Question actions ====================
   const getQuestionsByBank = useCallback(
     (bankId: string) => questions.filter((q) => q.bankId === bankId),
     [questions],
   )
-
-  const getQuestion = useCallback((id: string) => questions.find((q) => q.id === id), [questions])
 
   const createQuestion = useCallback(
     async (bankId: string, data: QuestionFormData): Promise<Question> => {
@@ -595,30 +169,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const updateQuestion = useCallback(
     async (id: string, data: QuestionFormData) => {
       await questionApi.update(id, data)
-      const q = getQuestion(id)
+      const q = questions.find((item) => item.id === id)
       if (q) await loadBankQuestions(q.bankId)
     },
-    [getQuestion, loadBankQuestions],
-  )
-
-  const updateQuestionStatus = useCallback(
-    async (id: string, action: StatusAction) => {
-      if (!canPerformAction(getQuestion(id)?.status || 'draft', action)) return
-      await questionApi.update(id, { status: getNextStatus(action) })
-      const q = getQuestion(id)
-      if (q) await loadBankQuestions(q.bankId)
-    },
-    [getQuestion, loadBankQuestions],
+    [questions, loadBankQuestions],
   )
 
   const deleteQuestion = useCallback(
     async (id: string) => {
-      const q = getQuestion(id)
+      const q = questions.find((item) => item.id === id)
       if (!q) return
       await questionApi.delete(id)
       await Promise.all([loadBankQuestions(q.bankId), loadQuestionBanks()])
     },
-    [getQuestion, loadBankQuestions, loadQuestionBanks],
+    [questions, loadBankQuestions, loadQuestionBanks],
   )
 
   const moveQuestions = useCallback(
@@ -628,7 +192,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const sourceBankIds = new Set<string>()
       await Promise.all(
         questionIds.map((qid) => {
-          const q = getQuestion(qid)
+          const q = questions.find((item) => item.id === qid)
           if (!q) return Promise.resolve()
           sourceBankIds.add(q.bankId)
           return questionApi.update(qid, {
@@ -650,38 +214,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
       await Promise.all([...reloads, loadQuestionBanks()])
     },
-    [questionBanks, getQuestion, loadBankQuestions, loadQuestionBanks],
+    [questionBanks, questions, loadBankQuestions, loadQuestionBanks],
   )
 
   // ==================== Exam actions ====================
   const getExam = useCallback((id: string) => exams.find((exam) => exam.id === id), [exams])
 
-  const createExam = useCallback(
-    async (data: ExamFormData): Promise<Exam> => {
-      const created = await examApi.create({
-        ...data,
-        status: 'draft',
-        version: 'v0.1.0',
-        ownerType: 'mine',
-        questions: [],
-      } as Omit<Exam, 'id' | 'totalScore' | 'createdAt' | 'updatedAt'>)
-      await loadExams()
-      return parseExam(created)
-    },
-    [loadExams],
-  )
-
   const updateExam = useCallback(
     async (id: string, data: Partial<Exam>) => {
       await examApi.update(id, data)
-      await loadExams()
-    },
-    [loadExams],
-  )
-
-  const deleteExam = useCallback(
-    async (id: string) => {
-      await examApi.delete(id)
       await loadExams()
     },
     [loadExams],
@@ -803,280 +344,54 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<DataContextValue>(
     () => ({
-    evaluationLoading,
-    questionBanks,
-    getQuestionBank,
-    createQuestionBank,
-    updateQuestionBank,
-    deleteQuestionBank,
-    updateQuestionBankStatus,
-    loadQuestionBanks,
-    questions,
-    getQuestionsByBank,
-    getQuestion,
-    createQuestion,
-    updateQuestion,
-    deleteQuestion,
-    updateQuestionStatus,
-    moveQuestions,
-    loadBankQuestions,
-    exams,
-    loadExams,
-    getExam,
-    createExam,
-    updateExam,
-    deleteExam,
-    updateExamStatus,
-    addQuestionToExam,
-    removeQuestionFromExam,
-    updateExamQuestionScore,
-    updateExamQuestionScores,
-    reorderExamQuestions,
-    evaluationCategories,
-    evaluationMethods,
-    sceneTasks,
-    sceneEvaluationResults,
-    jobAbilityResults,
-    approvalItems,
-    approveItem,
-    rejectItem,
-    graduationProjectTopics,
-    graduationProjectArchives,
-    graduationProjectEvaluations,
-    graduationQueryResults,
-    processEvaluations,
-    rectificationDetails,
-    appealRecords,
-    evaluationStandards,
-    createProcessEvaluation: (data: Record<string, unknown>) => {
-      // TODO: 后端暂无过程评价持久化端点，当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
-      const newEval: ProcessEvaluation = {
-        id: `pe-${Date.now()}`,
-        archiveId: data.archiveId as string,
-        studentName: data.studentName as string,
-        topicName: data.topicName as string,
-        phase: data.phase as ProcessEvaluation['phase'],
-        advisorScore: data.advisorScore as number,
-        comment: data.comment as string,
-        evaluatedAt: new Date(),
-      }
-      setProcessEvaluations((prev) => [...prev, newEval])
-      return newEval
-    },
-    createRectificationDetail: (data: Record<string, unknown>) => {
-      // TODO: 后端暂无整改记录持久化端点，当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
-      const newRect: RectificationDetail = {
-        id: `rect-${Date.now()}`,
-        archiveId: data.archiveId as string,
-        studentId: data.studentId as string,
-        studentName: data.studentName as string,
-        topicName: data.topicName as string,
-        requirement: data.requirement as string,
-        deadline: new Date(data.deadline as string),
-        status: 'pending',
-        studentResponse: data.studentResponse as string,
-        submittedAt: data.submittedAt ? new Date(data.submittedAt as string) : undefined,
-      }
-      setRectificationDetails((prev) => [...prev, newRect])
-      return newRect
-    },
-    updateRectificationDetail: (id: string, data: Partial<RectificationDetail>) => {
-      // TODO: 后端暂无整改记录更新端点，当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
-      setRectificationDetails((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)))
-    },
-    createAppealRecord: (data: Record<string, unknown>) => {
-      const newAppeal: AppealRecord = {
-        id: `appeal-${Date.now()}`,
-        studentId: data.studentId as string,
-        studentName: data.studentName as string,
-        type: data.type as AppealRecord['type'],
-        reason: data.reason as string,
-        status: 'pending',
-        createdAt: new Date(),
-      }
-      setAppealRecords((prev) => [...prev, newAppeal])
-      // 持久化到后端（POST /evaluation/appeals，后端以 userId 标识学生），返回后回填真实 id，失败仅记录错误不影响本地展示
-      request<{
-        id: string
-        userId: string
-        status: string
-        createdAt: string
-      }>('/evaluation/appeals', {
-        method: 'POST',
-        body: JSON.stringify({
-          userId: data.studentId as string,
-          type: data.type as string,
-          reason: data.reason as string,
-        }),
-      })
-        .then((created) => {
-          setAppealRecords((prev) =>
-            prev.map((a) =>
-              a.id === newAppeal.id
-                ? {
-                    ...a,
-                    id: created.id,
-                    studentId: created.userId,
-                    status: created.status as AppealRecord['status'],
-                    createdAt: new Date(created.createdAt),
-                  }
-                : a,
-            ),
-          )
-        })
-        .catch((err) => reportError(err, '创建申诉记录'))
-      return newAppeal
-    },
-    updateAppealRecord: (id: string, data: Partial<AppealRecord>) => {
-      // TODO: 后端仅有 approved/rejected 处理端点（POST /evaluation/appeals/{id}/process），与通用局部更新语义不符，暂仅更新本地 state
-      setAppealRecords((prev) => prev.map((a) => (a.id === id ? { ...a, ...data } : a)))
-    },
-    updateEvaluationStandard: (id: string, data: Partial<EvaluationStandard>) => {
-      // TODO: 后端暂无评价标准持久化端点，当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
-      setEvaluationStandards((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)))
-    },
-    creditConversionRules,
-    archiveVersions,
-    studentAbilityArchives,
-    studentAbilityPortraits,
-
-    updateGraduationProjectArchive: async (data: Partial<GraduationProjectArchive>) => {
-      await graduationApi.upsertArchive(data)
-      await loadGraduationArchives()
-    },
-    updateGraduationProjectEvaluation: async (data: Partial<GraduationProjectEvaluation>) => {
-      await graduationApi.upsertEvaluation({ ...data, status: 'completed' })
-      await loadGraduationEvaluations()
-    },
-
-    createStudentAbilityArchive: async (
-      data: Record<string, unknown>,
-    ): Promise<StudentAbilityArchive> => {
-      const created = await portraitApi.upsertArchive({
-        studentName: data.studentName as string,
-        studentId: data.studentId as string,
-        className: data.className as string,
-        materialType: data.materialType as string,
-        materialName: data.materialName as string,
-        issuingOrg: data.issuingOrg as string,
-        obtainDate: data.obtainDate ? new Date(data.obtainDate as string) : new Date(),
-        auditStatus: 'pending',
-        convertedCredit: 0,
-        direction: (data.direction as string) || 'positive',
-        isEnabled: true,
-      } as Partial<StudentAbilityArchive>)
-      await loadStudentAbilityArchives()
-      return parseStudentArchive(created)
-    },
-    updateStudentAbilityArchive: async (id: string, data: Partial<StudentAbilityArchive>) => {
-      await portraitApi.upsertArchive({ id, ...data })
-      await loadStudentAbilityArchives()
-    },
-    deleteStudentAbilityArchive: async (id: string) => {
-      await portraitApi.deleteArchive(id)
-      await loadStudentAbilityArchives()
-    },
-    updateCreditConversionRules: (rules: CreditConversionRule[]) => {
-      setCreditConversionRules(rules)
-    },
-
-    certIssuanceRecords,
-    issueCert: async (data: { templateId: string; studentId: string }): Promise<CertIssuanceRecord> => {
-      await microCertApi.issue(data.templateId, [data.studentId])
-      const records = await loadCertIssuanceRecords()
-      const record = records.find(
-        (r) => r.templateId === data.templateId && r.studentId === data.studentId,
-      )
-      if (!record) {
-        throw new Error('证书签发成功，但未能在签发记录中找到对应记录')
-      }
-      return record
-    },
-    issueBatchCerts: async (records: Array<{ templateId: string; studentId: string }>): Promise<CertIssuanceRecord[]> => {
-      const groups = new Map<string, string[]>()
-      records.forEach((r) => {
-        const list = groups.get(r.templateId) || []
-        list.push(r.studentId)
-        groups.set(r.templateId, list)
-      })
-      await Promise.all(
-        Array.from(groups.entries()).map(([templateId, userIds]) =>
-          microCertApi.issue(templateId, userIds),
-        ),
-      )
-      const allRecords = await loadCertIssuanceRecords()
-      return allRecords.filter((r) =>
-        records.some((req) => req.templateId === r.templateId && req.studentId === r.studentId),
-      )
-    },
-    revokeCert: async (id: string, reason: string) => {
-      // TODO: 后端暂无证书吊销端点（microCertApi 仅支持模板/签发/历史查询），当前仅更新本地 state，刷新后丢失；待后端提供接口后接入
-      setCertIssuanceRecords((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? { ...r, status: 'revoked' as const, revokedAt: new Date(), revokeReason: reason }
-            : r,
-        ),
-      )
-    },
-  }),
-  [
-    evaluationLoading,
-    questionBanks,
-    questions,
-    exams,
-    evaluationCategories,
-    evaluationMethods,
-    sceneTasks,
-    sceneEvaluationResults,
-    jobAbilityResults,
-    approvalItems,
-    graduationProjectTopics,
-    graduationProjectArchives,
-    graduationProjectEvaluations,
-    graduationQueryResults,
-    processEvaluations,
-    rectificationDetails,
-    appealRecords,
-    evaluationStandards,
-    studentAbilityArchives,
-    studentAbilityPortraits,
-    creditConversionRules,
-    archiveVersions,
-    certIssuanceRecords,
-    loadQuestionBanks,
-    loadBankQuestions,
-    loadExams,
-    loadGraduationArchives,
-    loadGraduationEvaluations,
-    loadStudentAbilityArchives,
-    loadCertIssuanceRecords,
-    approveItem,
-    rejectItem,
-    getQuestionBank,
-    createQuestionBank,
-    updateQuestionBank,
-    deleteQuestionBank,
-    updateQuestionBankStatus,
-    getQuestionsByBank,
-    getQuestion,
-    createQuestion,
-    updateQuestion,
-    updateQuestionStatus,
-    deleteQuestion,
-    moveQuestions,
-    getExam,
-    createExam,
-    updateExam,
-    deleteExam,
-    updateExamStatus,
-    addQuestionToExam,
-    removeQuestionFromExam,
-    updateExamQuestionScore,
-    updateExamQuestionScores,
-    reorderExamQuestions,
-  ],
-)
+      evaluationLoading,
+      questionBanks,
+      getQuestionBank,
+      updateQuestionBank,
+      loadQuestionBanks,
+      questions,
+      getQuestionsByBank,
+      createQuestion,
+      updateQuestion,
+      deleteQuestion,
+      moveQuestions,
+      loadBankQuestions,
+      exams,
+      loadExams,
+      getExam,
+      updateExam,
+      updateExamStatus,
+      addQuestionToExam,
+      removeQuestionFromExam,
+      updateExamQuestionScore,
+      updateExamQuestionScores,
+      reorderExamQuestions,
+    }),
+    [
+      evaluationLoading,
+      questionBanks,
+      questions,
+      exams,
+      getQuestionBank,
+      updateQuestionBank,
+      loadQuestionBanks,
+      getQuestionsByBank,
+      createQuestion,
+      updateQuestion,
+      deleteQuestion,
+      moveQuestions,
+      loadBankQuestions,
+      loadExams,
+      getExam,
+      updateExam,
+      updateExamStatus,
+      addQuestionToExam,
+      removeQuestionFromExam,
+      updateExamQuestionScore,
+      updateExamQuestionScores,
+      reorderExamQuestions,
+    ],
+  )
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }
