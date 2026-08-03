@@ -50,11 +50,6 @@ func (s *ScenarioService) IncrementView(ctx context.Context, targetID string, us
 	return s.st.Scenarios().IncrementView(ctx, targetID, userID, tenantID)
 }
 
-// Queryer 暴露底层查询器（供 contentActions 使用）。
-func (s *ScenarioService) Queryer() store.Queryer {
-	return s.st.Q()
-}
-
 // CloneScenario 克隆场景及全部关联，返回新场景 ID 与 code。
 func (s *ScenarioService) CloneScenario(ctx context.Context, tenantID, oldScenarioID, newName, creatorID string) (string, string, error) {
 	src, err := s.st.ScenarioClone().FetchSource(ctx, oldScenarioID)
@@ -134,8 +129,10 @@ func (s *ScenarioService) ReorderTasks(ctx context.Context, scenarioID string, t
 	})
 }
 
-// BatchQueryer 暴露批次查询器。
-func (s *ScenarioService) BatchQueryer() store.Queryer { return s.st.Q() }
+// BatchList 分页查询批次（通用批次处理器使用）。
+func (s *ScenarioService) BatchList(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[any]) ([]any, int, error) {
+	return store.ExecuteListQuery(ctx, s.st.Q(), p, cfg)
+}
 
 // BatchTenantOf 查询批次租户。
 func (s *ScenarioService) BatchTenantOf(ctx context.Context, table, id string) (string, error) {

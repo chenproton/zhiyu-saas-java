@@ -6,7 +6,6 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
-	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type NodeEvaluationResultHandler struct {
@@ -40,7 +39,7 @@ func (h *NodeEvaluationResultHandler) List(w http.ResponseWriter, r *http.Reques
 		params.Values["isStudent"] = "true"
 		params.Values["studentUserId"] = claims.UserID
 	}
-	items, total, err := store.ExecuteListQuery(r.Context(), h.Service.Queryer(), params, cfg)
+	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询节点测评结果失败")
 		return

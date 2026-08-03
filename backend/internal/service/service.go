@@ -29,6 +29,6 @@ func (s *Service) Store() *store.Store {
 }
 
 // GenerateEntityCode 生成唯一业务编码（service 层封装，handler 不再直调 store）。
-func (s *Service) GenerateEntityCode(ctx context.Context, q store.Queryer, prefix, table, tenantID string) (string, error) {
-	return store.GenerateUniqueEntityCode(ctx, q, prefix, table, tenantID)
+func (s *Service) GenerateEntityCode(ctx context.Context, prefix, table, tenantID string) (string, error) {
+	return store.GenerateUniqueEntityCode(ctx, s.store.Q(), prefix, table, tenantID)
 }

@@ -101,7 +101,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.Answer = domain.JSONSlice{}
 	}
 
-	code, err := h.Service.GenerateEntityCode(r.Context(), h.Service.Queryer(), "TM", "questions", tenantID)
+	code, err := h.Service.GenerateEntityCode(r.Context(), "TM", "questions", tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "生成题目编码失败")
 		return

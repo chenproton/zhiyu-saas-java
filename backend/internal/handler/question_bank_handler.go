@@ -91,7 +91,7 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code, err := h.Service.GenerateEntityCode(r.Context(), h.Service.Queryer(), "TK", "question_banks", tenantID)
+	code, err := h.Service.GenerateEntityCode(r.Context(), "TK", "question_banks", tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "生成question bank code失败")
 		return

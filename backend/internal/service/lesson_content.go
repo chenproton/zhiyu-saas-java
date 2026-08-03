@@ -337,11 +337,6 @@ func (s *LessonContentService) DeleteCourse(ctx context.Context, id, tenantID st
 	return s.st.Courses().Delete(ctx, id, tenantID)
 }
 
-// Queryer 暴露底层查询器。
-func (s *LessonContentService) Queryer() store.Queryer {
-	return s.st.Q()
-}
-
 // ===== 课程/节点作业 =====
 
 // SubmitCourseHomework 提交课程作业。

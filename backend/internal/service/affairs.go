@@ -143,11 +143,6 @@ func (s *AffairsService) PlanEntryCourseID(ctx context.Context, entryID string) 
 	return s.st.Scheduling().PlanEntryCourseID(ctx, s.st.Q(), entryID)
 }
 
-// Queryer 暴露查询器。
-func (s *AffairsService) Queryer() store.Queryer {
-	return s.st.Q()
-}
-
 // ListTimetableEntries 查询课表条目。
 func (s *AffairsService) ListTimetableEntries(ctx context.Context, tenantID, termID, classNodeID, teacherID, status string) ([]domain.ScheduleEntry, error) {
 	return s.st.Scheduling().ListTimetableEntries(ctx, tenantID, termID, classNodeID, teacherID, status)

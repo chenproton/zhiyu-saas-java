@@ -6,9 +6,9 @@ import (
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
-// BatchQueryer 暴露批次查询器。
-func (s *PositionService) BatchQueryer() store.Queryer {
-	return s.st.Q()
+// BatchList 分页查询批次（通用批次处理器使用）。
+func (s *PositionService) BatchList(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[any]) ([]any, int, error) {
+	return store.ExecuteListQuery(ctx, s.st.Q(), p, cfg)
 }
 
 // BatchTenantOf 查询批次租户。

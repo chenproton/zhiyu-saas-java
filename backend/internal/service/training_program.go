@@ -48,11 +48,6 @@ func (s *PositionService) PutTrainingProgramCourses(ctx context.Context, program
 	})
 }
 
-// TrainingProgramQueryer 暴露查询器（actions 用）。
-func (s *PositionService) TrainingProgramQueryer() store.Queryer {
-	return s.st.Q()
-}
-
 // GetTrainingProgramByID 按 ID 查询（contentActions 用）。
 func (s *PositionService) GetTrainingProgramByID(ctx context.Context, id string) (*domain.TrainingProgram, error) {
 	return s.st.TrainingPrograms().GetByID(ctx, id)

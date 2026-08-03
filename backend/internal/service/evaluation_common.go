@@ -6,13 +6,10 @@ import (
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
-// Queryer 暴露底层查询器（contentActions 用）。
-func (s *EvaluationService) Queryer() store.Queryer {
-	return s.st.Q()
+// BatchList 分页查询批次（通用批次处理器使用）。
+func (s *EvaluationService) BatchList(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[any]) ([]any, int, error) {
+	return store.ExecuteListQuery(ctx, s.st.Q(), p, cfg)
 }
-
-// BatchQueryer 暴露批次查询器。
-func (s *EvaluationService) BatchQueryer() store.Queryer { return s.st.Q() }
 
 // BatchTenantOf 查询批次租户。
 func (s *EvaluationService) BatchTenantOf(ctx context.Context, table, id string) (string, error) {

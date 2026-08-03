@@ -119,11 +119,6 @@ func (s *PositionService) SaveFull(ctx context.Context, tenantID, positionID str
 	})
 }
 
-// Queryer 暴露查询器（contentActions 用）。
-func (s *PositionService) Queryer() store.Queryer {
-	return s.st.Q()
-}
-
 // GetFavorite 查询收藏状态。
 func (s *PositionService) GetFavorite(ctx context.Context, userID, positionID string) (bool, error) {
 	return s.st.Positions().GetFavorite(ctx, userID, positionID)

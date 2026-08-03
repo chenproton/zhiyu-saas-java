@@ -15,7 +15,7 @@ import (
 
 // batchService 是批次类 handler 需要的通用服务接口。
 type batchService interface {
-	BatchQueryer() store.Queryer
+	BatchList(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[any]) ([]any, int, error)
 	BatchTenantOf(ctx context.Context, table, id string) (string, error)
 	BatchCreate(ctx context.Context, table string, fields store.BatchCreateFields, id string, tenantID *string, tenantScoped bool, extraCols []string, extraVals []any) error
 	BatchUpdate(ctx context.Context, table string, fields store.BatchUpdateFields, id string) error
@@ -92,7 +92,7 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	items, total, err := store.ExecuteListQuery(r.Context(), h.Service.BatchQueryer(), params, cfg)
+	items, total, err := h.Service.BatchList(r.Context(), params, cfg)
 	if err != nil {
 		slog.Error("batch list failed", "entity", h.Config.EntityName, "error", err)
 		if errors.Is(err, store.ErrMissingTenant) {

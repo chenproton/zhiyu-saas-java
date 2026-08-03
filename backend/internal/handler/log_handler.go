@@ -14,7 +14,12 @@ type LogHandler struct {
 }
 
 func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.LoginLog](r.Context(), h.Service.Queryer(), r, store.LoginLogsListConfig())
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListLoginLogs(r.Context(), params)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -28,7 +33,12 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OperationLog](r.Context(), h.Service.Queryer(), r, store.OperationLogsListConfig())
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListOperationLogs(r.Context(), params)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
