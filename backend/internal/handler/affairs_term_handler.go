@@ -132,7 +132,11 @@ func (h *AffairsTermHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteTerm(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusBadRequest, "该学期已被教学计划或排课引用，无法删除")
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusBadRequest, "该学期已被教学计划或排课引用，无法删除")
+			return
+		}
+		respondServerError(w, r, err, "删除学期失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

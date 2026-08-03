@@ -237,7 +237,7 @@
 
 ### 3.5 错误分类不当（内部错误映射为 400/404）
 
-`training_program_handler.go:193`、`affairs_term_handler.go:134`、`scheduling_handler.go:146`、`cert_grade_handler.go:57`、`alliance_crud_handler.go:45-53`、`question_export_handler.go:40-44`、`position_responsibility_handler.go:48-52`、`random_draw_question_handler.go:57-61`、`appeal_handler.go:55-58`、`user_relation_handler.go:87-90`、`position_export_handler.go:66`
+`training_program_handler.go:193`、`affairs_term_handler.go:134`、`scheduling_handler.go:146` ✅ 已修复（外键冲突 23503→400，其余→500）、`cert_grade_handler.go:57`、`alliance_crud_handler.go:45-53`、`question_export_handler.go:40-44`、`position_responsibility_handler.go:48-52`、`random_draw_question_handler.go:57-61`、`appeal_handler.go:55-58`、`user_relation_handler.go:87-90`、`position_export_handler.go:66`（其余为 404/400 判定模式，待办）
 
 ---
 
