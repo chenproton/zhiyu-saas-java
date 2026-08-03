@@ -35,7 +35,8 @@ func LandingExamsKey() KeyFunc {
 	}
 }
 
-// DashboardKey 工作台仪表盘缓存键：按租户+用户隔离，避免跨用户串数据。
+// DashboardKey 工作台仪表盘缓存键：按租户+用户+角色隔离，避免跨用户/跨角色串数据
+// （同一用户切换角色时视图不同，role 缺失会命中对方视图缓存）。
 func DashboardKey() KeyFunc {
 	return func(r *http.Request) string {
 		claims := authmw.CurrentUser(r)
@@ -47,7 +48,8 @@ func DashboardKey() KeyFunc {
 		if claims != nil {
 			userID = claims.UserID
 		}
-		return "zhiyu:" + tenant + ":dashboard:" + userID
+		role := r.URL.Query().Get("role")
+		return "zhiyu:" + tenant + ":dashboard:" + userID + ":role:" + role
 	}
 }
 
