@@ -284,7 +284,7 @@
 
 ## 6. 后端测试问题
 
-- **[严重] `handler/testhelper/setup.go:48-51`**：TEST_DATABASE_URL 未设置时回退 DATABASE_URL（生产库）→ 测试会对生产库执行 migration 与 DELETE 种子数据。缺省必须 `t.Skip`
+- **[严重] `handler/testhelper/setup.go:48-51`**：TEST_DATABASE_URL 未设置时回退 DATABASE_URL（生产库）→ 测试会对生产库执行 migration 与 DELETE 种子数据。缺省必须 `t.Skip` ✅ 已修复（不回退 DATABASE_URL，缺失即 t.Skip）
 - **[中] `setup.go:476-485`**：清理表清单不全（缺 lesson_batches、micro_cert、exam_usages、certification_*、appeal_records、users）→ 断言失败时数据跨运行累积
 - **[中] `lesson_handler_test.go:574`**：过期的 `t.Skip`（lesson_batches 表已存在），测试未启用
 - **[中] `user_management_handler_test.go:57-60,284-293`**：defer 清理注册在断言之后，断言失败即泄漏用户行

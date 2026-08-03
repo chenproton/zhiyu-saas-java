@@ -47,10 +47,9 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 	dbURL := os.Getenv("TEST_DATABASE_URL")
 	if dbURL == "" {
-		dbURL = os.Getenv("DATABASE_URL")
-	}
-	if dbURL == "" {
-		t.Skip("TEST_DATABASE_URL or DATABASE_URL not set, skipping integration test")
+		// 安全红线：绝不回退 DATABASE_URL（生产库）。测试会对库执行迁移与 DELETE 种子数据，
+		// 误连生产库会造成不可逆数据损失。未显式配置测试库时直接跳过。
+		t.Skip("TEST_DATABASE_URL not set, skipping integration test")
 	}
 
 	config, err := pgxpool.ParseConfig(dbURL)
