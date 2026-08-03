@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { portalRequest } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 
 export function useSubscriptionModules(tenantId?: string): Record<string, boolean> | null {
   const [modules, setModules] = useState<Record<string, boolean> | null>(null)
@@ -24,9 +25,11 @@ export function useSubscriptionModules(tenantId?: string): Record<string, boolea
         } else {
           setModules({})
         }
-      } catch {
+      } catch (err) {
         if (cancelled) return
-        setModules({})
+        // 接口失败时保持 null（跳过套餐校验），避免失败态成为最严拦截态隐藏全部菜单
+        reportError(err, '加载订阅模块')
+        setModules(null)
       }
     })()
     return () => {

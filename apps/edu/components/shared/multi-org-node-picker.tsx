@@ -184,7 +184,7 @@ export function MultiOrgNodePicker({
   const [search, setSearch] = useState('')
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const { orgs, orgTypeMap, typeNameMap, loading: orgLoading } = useOrgTree(tenantId)
-  const [pendingIds, setPendingIds] = useState<string[]>([])
+  const [pendingIds, setPendingIds] = useState<string[] | null>(null)
 
   const getNodeName = useCallback(
     (id: string) => {
@@ -235,7 +235,7 @@ export function MultiOrgNodePicker({
   }, [orgs, search])
 
   const selectedSet = useMemo(
-    () => new Set(pendingIds.length > 0 ? pendingIds : value),
+    () => new Set(pendingIds !== null ? pendingIds : value),
     [pendingIds, value],
   )
 
@@ -248,20 +248,24 @@ export function MultiOrgNodePicker({
   }
 
   const handleToggleSelect = (id: string) => {
-    setPendingIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    setPendingIds((prev) => {
+      const current = prev ?? []
+      return current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
+    })
   }
 
   const handleBatchSelect = (ids: string[]) => {
     setPendingIds((prev) => {
-      const add = ids.filter((id) => !prev.includes(id))
-      const remove = new Set(ids.filter((id) => prev.includes(id)))
-      return [...prev.filter((id) => !remove.has(id)), ...add]
+      const current = prev ?? []
+      const add = ids.filter((id) => !current.includes(id))
+      const remove = new Set(ids.filter((id) => current.includes(id)))
+      return [...current.filter((id) => !remove.has(id)), ...add]
     })
   }
 
   const handleConfirm = () => {
-    onChange(pendingIds)
-    setPendingIds([])
+    onChange(pendingIds ?? [])
+    setPendingIds(null)
     setOpen(false)
   }
 
@@ -353,7 +357,7 @@ export function MultiOrgNodePicker({
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               取消
             </Button>
-            <Button onClick={handleConfirm}>确认 ({pendingIds.length})</Button>
+            <Button onClick={handleConfirm}>确认 ({pendingIds?.length ?? value.length})</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

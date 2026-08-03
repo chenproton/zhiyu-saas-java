@@ -46,7 +46,7 @@ export default function JobAbilityPage() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([positionApi.list(), certApi.listRules()])
+    Promise.all([positionApi.list({ limit: 200 }), certApi.listRules({ limit: 200 })])
       .then(async ([positionRes, ruleRes]) => {
         if (cancelled) return
         setPositions(positionRes.items)

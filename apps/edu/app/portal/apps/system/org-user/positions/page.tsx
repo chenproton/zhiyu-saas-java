@@ -47,7 +47,7 @@ export default function PositionsPage() {
     setLoading(true)
     setError(undefined)
     try {
-      const res = await portalStaffTitleApi.list({ tenantId, limit: 1000 })
+      const res = await portalStaffTitleApi.list({ tenantId, limit: 200 })
       setPositions(res.items)
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载失败')
@@ -100,7 +100,8 @@ export default function PositionsPage() {
     setLoadingUsers(true)
     setTitleUsers([])
     try {
-      const res = await portalUserManagementApi.list({ tenantId, limit: 1000 })
+      // TODO: 按 titleIds 的前端过滤依赖全量用户列表，超 200 人时关联用户不完整，需服务端按职位筛选
+      const res = await portalUserManagementApi.list({ tenantId, limit: 200 })
       const filtered = res.items.filter((u) => u.titleIds?.includes(position.id))
       setTitleUsers(filtered)
     } catch (err) {

@@ -47,7 +47,7 @@
 | `app/portal/apps/system/resource/package/page.tsx:112-116,28-41` | onRetry 不发起请求（点重试永久转圈）；未开通模块被 filter 掉，"未开通"徽标永不出现 |
 | `components/evaluation/question-form-dialog.tsx:212` | `score: 0` 硬编码 → 编辑题目分值被重置为 0 ✅ 已修复（score state 回填） |
 | `components/evaluation/question-form-dialog.tsx:141-143,580-600` + `question-preview.tsx:32` | 判断题 answer 为数组 `["true"]`，代码按字符串比较 → 编辑回显失败、预览恒显示"错误" |
-| `app/portal/workspace/_components/schedule-grid.tsx:270-272,378` | WeekView 事件匹配只看 dayOfWeek/period 与当前日期无关 → 切周/翻月课表内容不变 |
+| `app/portal/workspace/_components/schedule-grid.tsx:270-272,378` | WeekView 事件匹配只看 dayOfWeek/period 与当前日期无关 → 切周/翻月课表内容不变 ✅ 已修复（周范围过滤） |
 | `app/scene/scenarios/[id]/edit/tasks/page.tsx:507-563,735-791` | 克隆后权重不重分配（总权重>100%）；临时任务 delete 必失败；保存部分失败留脏（下次保存重复创建）；任务级 weight 不持久化 |
 | `app/affairs/programs/[id]/page.tsx` | `importEntityName/exportEntityName` 传空串 → 导出必然 404（content-list-page 无守卫） |
 | `app/portal/apps/system/org-user/roles/page.tsx:242-259` | permissions.menus 不存在时全选所有菜单 → 新建/旧角色默认全量权限 ✅ 已修复（menus 缺失时不授予任何菜单） |
@@ -77,8 +77,8 @@
 | `app/lesson/admin/system/add/page.tsx:1078-1082` | 动态拼接 Tailwind 类名（hover:border-xxx）JIT 不生成 → hover 样式全失效 |
 | `app/lesson/admin/granular/add/page.tsx:231,95-97` | 自定义知识点 sourceId 匹配逻辑失效 → 刷新后自定义标记丢失 |
 | `app/evaluation/landing/exams/[id]/page.tsx:127` | usageIdFromQuery 未命中时静默回退第一条 → 可能开始错误的考试 |
-| `components/shared/multi-org-node-picker.tsx:238-240` | 取消全选后回退显示初始 value，勾选框"复活" |
-| `components/shared/user-selector.tsx:200-265` | 无防抖搜索 + limit 200 无分页；N+1 回显；value 引用变化重置用户勾选 |
+| `components/shared/multi-org-node-picker.tsx:238-240` | 取消全选后回退显示初始 value，勾选框"复活" ✅ 已修复（取消全选显示空） |
+| `components/shared/user-selector.tsx:200-265` | 无防抖搜索 + limit 200 无分页；N+1 回显；value 引用变化重置用户勾选 ✅ 部分修复（300ms 防抖 + limit 对齐） |
 | `components/shared/content-list-page.tsx:337-343,989-1007` | CSV 重复导入确认弹窗被 hasExcel 门控永不弹出（死路） |
 | `components/shared/content-list-page.tsx:739-753` | 非 Excel 实体导出全部数据与"导出需选中"语义矛盾 |
 | `components/shared/content-list-page.tsx:350` | `limit: 1000` 硬编码无翻页，超 1000 条静默截断（多处同类：hooks 3 个、select 组件、页面等约 20 处） |
@@ -93,13 +93,13 @@
 | `app/portal/workspace/_components/community-tab.tsx:13-137` | 学习小组/导师/话题全 mock + 死按钮 |
 | `app/portal/workspace/_components/teacher-profile-tab.tsx:13-14,104-129` | 通知偏好/账号安全全 mock 占位 |
 | `app/portal/workspace/_components/profile-tab.tsx:23-47` | "我的荣誉奖励"全写死假数据（含假附件名） |
-| `components/providers/data-provider.tsx:850-901,976-984` | createProcessEvaluation/createAppealRecord 等 7 个函数只改本地 state 不调 API → 刷新即丢 |
+| `components/providers/data-provider.tsx:850-901,976-984` | createProcessEvaluation/createAppealRecord 等 7 个函数只改本地 state 不调 API → 刷新即丢 ✅ 部分修复（createAppealRecord 补真实 API；其余 6 个后端无端点标注 TODO） |
 | `components/providers/data-provider.tsx:342-348` | 审批中心不拉 online_exam 类型 |
 | `components/providers/data-provider.tsx:130-143` | submitterName 用审批人姓名冒充提交人 |
 | `app/evaluation/question-banks/[id]/page.tsx:316-366` | 批量删除/复制/移动 forEach 不 await 无 catch，失败静默 |
-| `app/portal/apps/system/logs/login/page.tsx:61-66`、`operation/page.tsx:61-67` | 搜索只过滤当前页 20 条（跨页搜不到）与分页总数矛盾 |
-| `app/scene/scenarios/[id]/edit/tasks/page.tsx:1590-1592` | saveMethods 二次失败吞错，examId 未持久化 |
-| `app/job/student/[id]/page.tsx:109-125` | 单任务失败清空全部 scenarios |
+| `app/portal/apps/system/logs/login/page.tsx:61-66`、`operation/page.tsx:61-67` | 搜索只过滤当前页 20 条（跨页搜不到）与分页总数矛盾 ✅ 已修复（搜索时全量拉取+内存过滤分页） |
+| `app/scene/scenarios/[id]/edit/tasks/page.tsx:1590-1592` | saveMethods 二次失败吞错，examId 未持久化 ✅ 已修复（reportError） |
+| `app/job/student/[id]/page.tsx:109-125` | 单任务失败清空全部 scenarios ✅ 已修复（逐任务容错，保留已加载部分） |
 | `app/scene/landing/[id]/learn/page.tsx:1048,1080` | 文件上传/测评提交 catch 全吞无反馈；maxScore 硬编码 100 |
 | `app/portal/apps/alliance/enterprises/page.tsx:53-58` | 4 列表 Promise.all 任一失败整页报错 |
 | `app/evaluation/job-ability/results/page.tsx:126-129` | summary 返回覆盖用户手动选择的岗位 |
@@ -110,12 +110,12 @@
 |-----------|------|
 | `app/job/student/[id]/learn/page.tsx:55-57`、`job-home.tsx:95-99`、`learn-roads/page.tsx:577-580`、`scene/landing/[id]/page.tsx:424-437`、`student/[id]/page.tsx:109-125` | 每场景一个 taskApi.list 的 N+1 扇出（最多上千并发） |
 | `components/shared/user-selector.tsx:245-263` | 每个缺失 id 一个 get 请求 |
-| `components/portal/top-nav.tsx:43-61` | setInterval 每秒 setState 整树重渲染 |
+| `components/portal/top-nav.tsx:43-61` | setInterval 每秒 setState 整树重渲染 ✅ 已修复（仅页面可见时更新） |
 | `app/evaluation/job-ability/page.tsx:56-65` | 逐规则串行 getFullRule |
 | `app/portal/apps/system/org-user/positions/page.tsx:103-105` | limit 1000 后客户端过滤，超限不完整 |
 | `app/portal/apps/alliance/agreements/page.tsx:40-44` | 企业+项目各 limit 1000 全量仅做名称映射 |
-| `components/shared/approval-list-page.tsx:81` | mapRecord 引用变化使 useMemo 失效 |
-| `app/portal/apps/system/tenant/_components/school-admin-manager.tsx:74-82` | adminFetcher 每渲染重建 → 父组件任何 state 变化重复拉取管理员列表 |
+| `components/shared/approval-list-page.tsx:81` | mapRecord 引用变化使 useMemo 失效 ✅ 已修复（5 个调用方 useCallback 稳定引用） |
+| `app/portal/apps/system/tenant/_components/school-admin-manager.tsx:74-82` | adminFetcher 每渲染重建 → 父组件任何 state 变化重复拉取管理员列表 ✅ 已修复（useCallback 稳定化） |
 
 ### 3.3 组件/状态 bug
 
@@ -124,16 +124,16 @@
 | `components/shared/portal-sidebar-crud-page.tsx:186,217-226` | 组织筛选纯前端但 total/totalPages 服务端分页 → 可翻到空页 |
 | `components/shared/alliance-detail-shell.tsx:46-53` | tabs 异步加载时 activeTab 空 → 渲染空内容 |
 | `components/shared/brand-relation-select.tsx:71,78` | 两个 SelectItem 同 value="__none"（Radix 行为异常） |
-| `components/shared/resource-selector.tsx:374-403` | 创建失败仍弹"已上传并选中"，提交后端不存在的 id |
+| `components/shared/resource-selector.tsx:374-403` | 创建失败仍弹"已上传并选中"，提交后端不存在的 id ✅ 已修复（失败不加入选中） |
 | `components/shared/resource-selector.tsx:691-787` | venue/facility/software 表单字段从未提交（metadata 丢失） |
-| `hooks/use-org-tree.ts:42-72` | 登出后 loading 永久 true（UI 永远转圈） |
-| `hooks/use-subscription-modules.ts:27-30` | 订阅接口失败 → 全部菜单隐藏（失败态成最严拦截态） |
+| `hooks/use-org-tree.ts:42-72` | 登出后 loading 永久 true（UI 永远转圈） ✅ 已修复（无租户分支 loading 兜底） |
+| `hooks/use-subscription-modules.ts:27-30` | 订阅接口失败 → 全部菜单隐藏（失败态成最严拦截态） ✅ 已修复（失败跳过套餐校验并 reportError） |
 | `ui/PlatformSideNav.tsx:73-81` | 手动折叠的分组在导航后被强制重新展开 |
 | `lib/external-links.ts:13-48` | 8 个平台地址硬编码 http://111.170.170.202:xxxx 内网 IP（公网不可达/mixed content） |
 | `components/evaluation-rules/evaluation-rules-editor.tsx:1916` | 试卷详情"关闭"按钮操作无用的 setPaperDetailOpen → 弹窗关不掉 |
 | `components/evaluation-rules/evaluation-rules-editor.tsx:311-312,1957-1985` | 题库答题方式/正确率仅存本地 state 未写入 config → 保存丢失 |
 | `components/evaluation-rules/evaluation-rules-editor.tsx:3220-3232,2438-2440` | 替换模板只改本地不调 API；API 失败仍本地更新（假成功） |
-| `components/evaluation-rules/evaluation-rules-editor.tsx:202-240` | 默认评审步骤不进 config.reviewSteps → 落库缺步骤 |
+| `components/evaluation-rules/evaluation-rules-editor.tsx:202-240` | 默认评审步骤不进 config.reviewSteps → 落库缺步骤 ✅ 已修复（空时写入默认步骤） |
 | `app/lesson/admin/_components/assessment/course-evaluation-rules-dialog.tsx:48` | liveConfig 跨开关持久，重新打开不重置 |
 | `app/affairs/teaching-plans/[id]/page.tsx:354-357` | 编辑态改教师立即持久化，"取消"不回滚 |
 | `app/portal/apps/alliance/agreements/new/page.tsx:71` | 非函数式 setState 快速输入丢字段 |

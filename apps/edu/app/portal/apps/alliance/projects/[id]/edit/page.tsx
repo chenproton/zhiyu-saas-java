@@ -65,7 +65,7 @@ export default function AllianceProjectEditPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceProjectApi.get(id),
-      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceEnterpriseApi.list({ limit: 200 }),
     ])
       .then(([p, ents]) => {
         setItem(p)

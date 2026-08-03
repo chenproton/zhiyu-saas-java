@@ -70,7 +70,7 @@ export default function AllianceProjectNewPage() {
 
   useEffect(() => {
     allianceEnterpriseApi
-      .list({ limit: 1000 })
+      .list({ limit: 200 })
       .then((res) => setEnterprises((res.items || []).map((e) => ({ label: e.name, value: e.id }))))
       .catch((err) => {
         reportError(err, '加载企业下拉数据')

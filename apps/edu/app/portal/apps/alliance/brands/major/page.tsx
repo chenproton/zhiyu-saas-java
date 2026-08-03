@@ -191,7 +191,7 @@ export default function AllianceMajorBrandPage() {
               label="关联专业"
               value={item.majorId || ''}
               onChange={(v: any) => setItem({ ...item, majorId: v })}
-              fetchUrl="/majors?limit=1000"
+              fetchUrl="/majors?limit=200"
             />
           </div>
         </div>

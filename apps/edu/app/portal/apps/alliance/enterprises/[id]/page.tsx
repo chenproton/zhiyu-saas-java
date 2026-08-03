@@ -67,9 +67,9 @@ export default function AllianceEnterpriseDetailPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceEnterpriseApi.get(id),
-      allianceAgreementApi.list({ limit: 1000 }),
-      allianceProjectApi.list({ limit: 1000 }),
-      allianceAchievementApi.list({ limit: 1000 }),
+      allianceAgreementApi.list({ limit: 200 }),
+      allianceProjectApi.list({ limit: 200 }),
+      allianceAchievementApi.list({ limit: 200 }),
     ])
       .then(([ent, agr, proj, ach]) => {
         setEnterprise(ent)

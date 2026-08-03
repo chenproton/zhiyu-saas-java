@@ -143,6 +143,7 @@ export function UserSelector({
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
+  const [debouncedUserSearch, setDebouncedUserSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>(value)
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const fetchedIdsRef = useRef<Set<string>>(new Set())
@@ -186,7 +187,7 @@ export function UserSelector({
     try {
       const [treeRes, typesRes] = await Promise.all([
         orgApi.tree(tenantId ? { tenantId } : undefined),
-        orgTypeApi.list({ tenantId, limit: 1000 }),
+        orgTypeApi.list({ tenantId, limit: 200 }),
       ])
       setOrgs(treeRes.items)
       setOrgTypes(typesRes.items)
@@ -197,11 +198,17 @@ export function UserSelector({
     }
   }, [tenantId])
 
+  // 搜索输入 300ms 防抖，避免每次击键触发一次用户列表请求
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedUserSearch(userSearch), 300)
+    return () => clearTimeout(timer)
+  }, [userSearch])
+
   const loadUsers = useCallback(async () => {
     setUsersLoading(true)
     setUsersError(null)
     try {
-      const params: any = { limit: 200, search: userSearch || undefined }
+      const params: any = { limit: 200, search: debouncedUserSearch || undefined }
       if (selectedOrgId) {
         params.orgNodeId = selectedOrgId
       }
@@ -223,7 +230,7 @@ export function UserSelector({
     } finally {
       setUsersLoading(false)
     }
-  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, mergeUserCache])
+  }, [selectedOrgId, debouncedUserSearch, tenantId, usePortalApi, excludeStudent, mergeUserCache])
 
   useEffect(() => {
     ;(async () => {

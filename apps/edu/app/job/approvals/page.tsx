@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { positionApi, batchApi } from '@/lib/api'
@@ -96,23 +96,26 @@ export default function JobApprovalsPage() {
     },
   ]
 
-  const mapRecord = (a: any): ApprovalView => {
-    const position = positionMap.get(a.targetId)
-    const batch = position?.batchId ? batchMap.get(position.batchId) : undefined
-    return {
-      id: a.id,
-      positionId: a.targetId,
-      positionName: position?.name || a.targetId,
-      shortName: position?.shortName || '-',
-      version: position?.version || '-',
-      batchName: batch?.name,
-      submitterId: a.submitterId,
-      status: a.status,
-      submittedAt: new Date(a.createdAt).toLocaleDateString(),
-      stepInfo: getStepInfo(a),
-      history: a.history,
-    }
-  }
+  const mapRecord = useCallback(
+    (a: any): ApprovalView => {
+      const position = positionMap.get(a.targetId)
+      const batch = position?.batchId ? batchMap.get(position.batchId) : undefined
+      return {
+        id: a.id,
+        positionId: a.targetId,
+        positionName: position?.name || a.targetId,
+        shortName: position?.shortName || '-',
+        version: position?.version || '-',
+        batchName: batch?.name,
+        submitterId: a.submitterId,
+        status: a.status,
+        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        stepInfo: getStepInfo(a),
+        history: a.history,
+      }
+    },
+    [positionMap, batchMap, getStepInfo],
+  )
 
   return (
     <ApprovalListPage<ApprovalView>

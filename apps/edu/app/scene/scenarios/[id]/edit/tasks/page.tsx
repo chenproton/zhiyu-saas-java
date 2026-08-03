@@ -1587,8 +1587,8 @@ function EditCardDialog({
           })
           currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
           updateState({ evalMethodVersion: currentVersion })
-        } catch {
-          /* ignore */
+        } catch (err) {
+          reportError(err, '评价规则二次保存失败')
         }
       }
       // Ensure exam usage exists for paper so students can access it from the landing page

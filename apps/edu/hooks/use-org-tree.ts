@@ -45,6 +45,8 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
       if (!tenantId) {
         setOrgs([])
         setOrgTypes([])
+        setError(undefined)
+        setLoading(false)
         return
       }
 

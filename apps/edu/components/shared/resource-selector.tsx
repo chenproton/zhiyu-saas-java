@@ -379,7 +379,9 @@ export function ResourceSelector({
           await nodeResourceApi.bind({ nodeId: effectiveNodeId, resourceId: created.id })
         }
       } catch (e: any) {
-        toast({ title: e.message || '资源保存失败，已转为本地资源', variant: 'destructive' })
+        toast({ title: e.message || '资源保存失败', variant: 'destructive' })
+        setNewResUploading(false)
+        return
       }
     }
 

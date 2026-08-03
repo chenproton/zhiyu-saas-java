@@ -80,7 +80,7 @@ export default function AllianceExpertEditPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceExpertApi.get(id),
-      allianceEnterpriseApi.list({ limit: 1000 }),
+      allianceEnterpriseApi.list({ limit: 200 }),
     ])
       .then(([expert, ents]) => {
         setItem({

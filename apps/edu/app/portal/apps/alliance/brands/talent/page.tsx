@@ -191,7 +191,7 @@ export default function AllianceTalentBrandPage() {
               label="关联学生"
               value={item.studentId || ''}
               onChange={(v: any) => setItem({ ...item, studentId: v })}
-              fetchUrl="/users?role=student&limit=1000"
+              fetchUrl="/users?role=student&limit=200"
             />
           </div>
           <div className="grid gap-2">
@@ -200,7 +200,7 @@ export default function AllianceTalentBrandPage() {
               label="关联专业"
               value={item.majorId || ''}
               onChange={(v: any) => setItem({ ...item, majorId: v })}
-              fetchUrl="/majors?limit=1000"
+              fetchUrl="/majors?limit=200"
             />
           </div>
         </div>

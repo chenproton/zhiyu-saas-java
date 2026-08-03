@@ -39,8 +39,8 @@ export default function AllianceAgreementsPage() {
     try {
       const [data, ents, projs] = await Promise.all([
         allianceAgreementApi.list(),
-        allianceEnterpriseApi.list({ limit: 1000 }),
-        allianceProjectApi.list({ limit: 1000 }),
+        allianceEnterpriseApi.list({ limit: 200 }),
+        allianceProjectApi.list({ limit: 200 }),
       ])
       setItems(data.items || [])
       setEnterprises(ents.items || [])

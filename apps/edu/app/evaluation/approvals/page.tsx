@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { questionBankApi, examApi, evaluationBatchApi, approvalApi } from '@/lib/api'
 import type { QuestionBank, Exam, EvaluationBatch } from '@/lib/types'
@@ -78,11 +78,14 @@ export default function EvaluationApprovalsPage() {
 
   const allRecords = useMemo(() => [...bankRecords, ...examRecords], [bankRecords, examRecords])
 
-  const getStepInfoFn = (a: any) => {
-    // Determine which records array this belongs to
-    if (bankRecords.includes(a)) return getBankStepInfo(a)
-    return getExamStepInfo(a)
-  }
+  const getStepInfoFn = useCallback(
+    (a: any) => {
+      // Determine which records array this belongs to
+      if (bankRecords.includes(a)) return getBankStepInfo(a)
+      return getExamStepInfo(a)
+    },
+    [bankRecords, getBankStepInfo, getExamStepInfo],
+  )
 
   const columns: ApprovalColumn<ApprovalView>[] = [
     { header: '资源名称', cell: (i) => <span className="font-medium">{i.targetName}</span> },
@@ -132,38 +135,41 @@ export default function EvaluationApprovalsPage() {
     },
   ]
 
-  const mapRecord = (a: any): ApprovalView => {
-    const isBank = bankRecords.includes(a)
-    const targetType = isBank ? ('question_bank' as const) : ('exam' as const)
-    let targetName = a.targetId
-    let version = '-'
-    let batchName: string | undefined
+  const mapRecord = useCallback(
+    (a: any): ApprovalView => {
+      const isBank = bankRecords.includes(a)
+      const targetType = isBank ? ('question_bank' as const) : ('exam' as const)
+      let targetName = a.targetId
+      let version = '-'
+      let batchName: string | undefined
 
-    if (isBank) {
-      const bank = bankMap.get(a.targetId)
-      targetName = bank?.name || a.targetId
-      version = bank?.version || '-'
-      batchName = bank?.batchId ? batchMap.get(bank.batchId)?.name : undefined
-    } else {
-      const exam = examMap.get(a.targetId)
-      targetName = exam?.name || a.targetId
-      batchName = exam?.batchId ? batchMap.get(exam.batchId)?.name : undefined
-    }
+      if (isBank) {
+        const bank = bankMap.get(a.targetId)
+        targetName = bank?.name || a.targetId
+        version = bank?.version || '-'
+        batchName = bank?.batchId ? batchMap.get(bank.batchId)?.name : undefined
+      } else {
+        const exam = examMap.get(a.targetId)
+        targetName = exam?.name || a.targetId
+        batchName = exam?.batchId ? batchMap.get(exam.batchId)?.name : undefined
+      }
 
-    return {
-      id: a.id,
-      targetType,
-      targetId: a.targetId,
-      targetName,
-      version,
-      batchName,
-      submitterId: a.submitterId,
-      status: a.status,
-      submittedAt: new Date(a.createdAt).toLocaleDateString(),
-      stepInfo: getStepInfoFn(a),
-      history: a.history,
-    }
-  }
+      return {
+        id: a.id,
+        targetType,
+        targetId: a.targetId,
+        targetName,
+        version,
+        batchName,
+        submitterId: a.submitterId,
+        status: a.status,
+        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        stepInfo: getStepInfoFn(a),
+        history: a.history,
+      }
+    },
+    [bankRecords, bankMap, examMap, batchMap, getStepInfoFn],
+  )
 
   const handleApprove = async (id: string, comment: string) => {
     const record = allRecords.find((r) => r.id === id)

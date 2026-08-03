@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { programApi, batchApi } from '@/lib/api'
 import type { TrainingProgram } from '@/lib/types'
@@ -62,21 +62,24 @@ export default function AffairsApprovalsPage() {
     { header: '状态', className: 'text-center', cell: (i) => <StatusBadge status={i.status} /> },
   ]
 
-  const mapRecord = (a: any): ApprovalView => {
-    const program = programMap.get(a.targetId)
-    const batch = program?.batchId ? batchMap.get(program.batchId) : undefined
-    return {
-      id: a.id,
-      programId: a.targetId,
-      programName: program?.name || a.targetId,
-      batchName: batch?.name,
-      submitterId: a.submitterId,
-      status: a.status,
-      submittedAt: new Date(a.createdAt).toLocaleDateString(),
-      stepInfo: getStepInfo(a),
-      history: a.history,
-    }
-  }
+  const mapRecord = useCallback(
+    (a: any): ApprovalView => {
+      const program = programMap.get(a.targetId)
+      const batch = program?.batchId ? batchMap.get(program.batchId) : undefined
+      return {
+        id: a.id,
+        programId: a.targetId,
+        programName: program?.name || a.targetId,
+        batchName: batch?.name,
+        submitterId: a.submitterId,
+        status: a.status,
+        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        stepInfo: getStepInfo(a),
+        history: a.history,
+      }
+    },
+    [programMap, batchMap, getStepInfo],
+  )
 
   return (
     <ApprovalListPage<ApprovalView>

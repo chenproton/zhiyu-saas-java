@@ -55,8 +55,8 @@ export default function AllianceAchievementNewPage() {  const { toast } = useToa
 
   useEffect(() => {
     Promise.all([
-      allianceEnterpriseApi.list({ limit: 1000 }),
-      allianceProjectApi.list({ limit: 1000 }),
+      allianceEnterpriseApi.list({ limit: 200 }),
+      allianceProjectApi.list({ limit: 200 }),
     ])
       .then(([ents, projs]) => {
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))

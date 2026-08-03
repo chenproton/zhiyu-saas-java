@@ -54,8 +54,8 @@ export default function AllianceAgreementEditPage() {
     if (!id) return
     Promise.all([
       allianceAgreementApi.get(id),
-      allianceEnterpriseApi.list({ limit: 1000 }),
-      allianceProjectApi.list({ limit: 1000 }),
+      allianceEnterpriseApi.list({ limit: 200 }),
+      allianceProjectApi.list({ limit: 200 }),
     ])
       .then(([a, ents, projs]) => {
         setItem({

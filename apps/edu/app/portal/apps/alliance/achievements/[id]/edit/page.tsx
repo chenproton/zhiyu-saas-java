@@ -53,8 +53,8 @@ export default function AllianceAchievementEditPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceAchievementApi.get(id),
-      allianceEnterpriseApi.list({ limit: 1000 }),
-      allianceProjectApi.list({ limit: 1000 }),
+      allianceEnterpriseApi.list({ limit: 200 }),
+      allianceProjectApi.list({ limit: 200 }),
     ])
       .then(([a, ents, projs]) => {
         setItem(a)

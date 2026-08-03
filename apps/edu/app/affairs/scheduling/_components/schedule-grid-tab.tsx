@@ -84,7 +84,8 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     }
     setGridLoading(true)
     try {
-      setScheduleEntries((await scheduleApi.list({ termId: plan.termId, limit: 500 })).items)
+      // TODO: 场地筛选在前端进行，超过 200 条时筛选结果不完整，需改为服务端筛选/分页
+      setScheduleEntries((await scheduleApi.list({ termId: plan.termId, limit: 200 })).items)
     } catch (err) {
       reportError(err, '加载排课数据')
     } finally {
@@ -96,7 +97,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     try {
       const [s, v] = await Promise.all([
         periodSlotApi.list({ limit: 100 }),
-        venueApi.list({ limit: 500 }),
+        venueApi.list({ limit: 200 }),
       ])
       setPeriodSlots(s.items)
       setVenues(v.items)

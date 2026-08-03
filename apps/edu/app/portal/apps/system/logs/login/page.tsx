@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { Input } from '@/components/ui/input'
@@ -29,10 +29,12 @@ export default function LoginLogsPage() {
       setLoading(true)
       setError(null)
       try {
+        // 后端登录日志接口不支持 free-text search，搜索时全量拉取后由前端过滤分页
+        const searching = searchTerm.trim() !== ''
         const res = await portalLogApi.loginLogs({
           tenantId,
-          limit: PAGE_SIZE,
-          offset: (targetPage - 1) * PAGE_SIZE,
+          limit: searching ? 10000 : PAGE_SIZE,
+          offset: searching ? 0 : (targetPage - 1) * PAGE_SIZE,
         })
         setLogs(res.items)
         setTotal(res.total)
@@ -42,7 +44,7 @@ export default function LoginLogsPage() {
         setLoading(false)
       }
     },
-    [tenantId, page],
+    [tenantId, page, searchTerm],
   )
 
   useEffect(() => {
@@ -54,18 +56,30 @@ export default function LoginLogsPage() {
   const handleRefresh = () => loadLogs()
 
   const handlePageChange = (newPage: number) => {
-    if (newPage < 1 || newPage > Math.ceil(total / PAGE_SIZE)) return
+    if (newPage < 1 || newPage > totalPages) return
     setPage(newPage)
   }
 
-  const filteredLogs = logs.filter(
-    (log) =>
-      (log.userName || '').includes(searchTerm) ||
-      (log.userId || '').includes(searchTerm) ||
-      (log.ip || '').includes(searchTerm),
-  )
+  const searchFiltered = useMemo(() => {
+    const keyword = searchTerm.trim()
+    if (!keyword) return logs
+    return logs.filter(
+      (log) =>
+        (log.userName || '').includes(keyword) ||
+        (log.userId || '').includes(keyword) ||
+        (log.ip || '').includes(keyword),
+    )
+  }, [logs, searchTerm])
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const searching = searchTerm.trim() !== ''
+  const displayLogs = searching
+    ? searchFiltered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    : searchFiltered
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil((searching ? searchFiltered.length : total) / PAGE_SIZE),
+  )
 
   const columns: LogColumn<LoginLog>[] = [
     {
@@ -128,7 +142,10 @@ export default function LoginLogsPage() {
           <Input
             placeholder="搜索用户名或IP..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setPage(1)
+            }}
             className="pl-9"
           />
         </div>
@@ -149,10 +166,10 @@ export default function LoginLogsPage() {
 
       <LogTableShell
         loading={loading}
-        items={filteredLogs}
+        items={displayLogs}
         columns={columns}
         emptyText="暂无登录日志"
-        total={total}
+        total={searching ? searchFiltered.length : total}
         page={page}
         totalPages={totalPages}
         onPageChange={handlePageChange}

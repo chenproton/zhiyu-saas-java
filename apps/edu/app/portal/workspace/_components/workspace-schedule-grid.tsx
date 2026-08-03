@@ -96,6 +96,21 @@ function getWeekEnd(weekStart: Date) {
   return end
 }
 
+function dateKey(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// 事件可带可选的 date（单次安排）；未带 date 的事件视为每周重复安排，始终显示
+function isEventInWeek(event: ScheduleEvent, weekStart: Date, weekEnd: Date): boolean {
+  const date = (event as ScheduleEvent & { date?: string }).date
+  if (!date) return true
+  const key = date.slice(0, 10)
+  return key >= dateKey(weekStart) && key <= dateKey(weekEnd)
+}
+
 function getWeeksInMonth(year: number, month: number) {
   const firstDay = new Date(year, month - 1, 1)
   const lastDay = new Date(year, month, 0)
@@ -267,7 +282,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
       </div>
 
       {/* 视图内容 */}
-      {view === 'week' && <WeekView events={events} />}
+      {view === 'week' && <WeekView events={events} weekStart={weekStart} weekEnd={weekEnd} />}
       {view === 'month' && <MonthView year={year} month={month} events={events} />}
       {view === 'year' && <YearView events={events} />}
     </div>
@@ -352,7 +367,17 @@ function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; child
   )
 }
 
-function WeekView({ events }: { events: ScheduleEvent[] }) {
+function WeekView({
+  events,
+  weekStart,
+  weekEnd,
+}: {
+  events: ScheduleEvent[]
+  weekStart: Date
+  weekEnd: Date
+}) {
+  // 事件需属于当前周（weekStart ~ weekEnd）才显示，避免其他周的安排出现在本周视图
+  const weekEvents = events.filter((e) => isEventInWeek(e, weekStart, weekEnd))
   return (
     <div className="border border-gray-200 rounded-xl overflow-x-auto bg-white shadow-sm">
       <div className="grid grid-cols-8 min-w-[760px] bg-gray-50">
@@ -375,7 +400,9 @@ function WeekView({ events }: { events: ScheduleEvent[] }) {
             {period}
           </div>
           {[1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => {
-            const event = events.find((e) => e.dayOfWeek === dayOfWeek && e.period === period)
+            const event = weekEvents.find(
+              (e) => e.dayOfWeek === dayOfWeek && e.period === period,
+            )
             const card = event ? (
               <div
                 className={cn(

@@ -119,6 +119,35 @@ interface ReviewStep {
   weight: number
 }
 
+function buildDefaultReviewSteps(): ReviewStep[] {
+  return [
+    {
+      id: uid('rs'),
+      label: '学生自评',
+      desc: '学生根据量规进行自我评价',
+      enabled: true,
+      subjectType: 'self',
+      weight: 20,
+    },
+    {
+      id: uid('rs'),
+      label: '小组互评',
+      desc: '小组内成员互相评价',
+      enabled: false,
+      subjectType: 'peer',
+      weight: 0,
+    },
+    {
+      id: uid('rs'),
+      label: '教师评审',
+      desc: '教师根据提交材料和表现评分',
+      enabled: true,
+      subjectType: 'teacher',
+      weight: 80,
+    },
+  ]
+}
+
 export function EvaluationRulesEditor({
   evaluationMethods,
   config: configProp,
@@ -211,32 +240,7 @@ export function EvaluationRulesEditor({
         weight: rs.weight,
       }))
     }
-    return [
-      {
-        id: uid('rs'),
-        label: '学生自评',
-        desc: '学生根据量规进行自我评价',
-        enabled: true,
-        subjectType: 'self',
-        weight: 20,
-      },
-      {
-        id: uid('rs'),
-        label: '小组互评',
-        desc: '小组内成员互相评价',
-        enabled: false,
-        subjectType: 'peer',
-        weight: 0,
-      },
-      {
-        id: uid('rs'),
-        label: '教师评审',
-        desc: '教师根据提交材料和表现评分',
-        enabled: true,
-        subjectType: 'teacher',
-        weight: 80,
-      },
-    ]
+    return buildDefaultReviewSteps()
   })
 
   const lastSyncedReviewStepsRef = useRef<EvalRuleReviewStepInput[] | null>(null)
@@ -259,7 +263,23 @@ export function EvaluationRulesEditor({
       })
     if (!changed) return
     lastSyncedReviewStepsRef.current = incoming
-    if (incoming.length === 0) return
+    if (incoming.length === 0) {
+      // 默认评审步骤需要写入 config.reviewSteps，否则保存时不会随 onChange 持久化
+      const defaults = buildDefaultReviewSteps()
+      queueMicrotask(() => {
+        store.setReviewSteps(
+          defaults.map((rs, i) => ({
+            label: rs.label,
+            description: rs.desc || null,
+            enabled: rs.enabled,
+            subjectType: rs.subjectType || null,
+            weight: rs.weight,
+            sortOrder: i,
+          })),
+        )
+      })
+      return
+    }
     // Defer state update to avoid cascading renders while still syncing external prop changes.
     queueMicrotask(() => {
       setReviewSteps(
@@ -273,7 +293,7 @@ export function EvaluationRulesEditor({
         })),
       )
     })
-  }, [configProp.reviewSteps])
+  }, [configProp.reviewSteps, store])
 
   // 用户操作驱动本地 state 与 store 同步，避免 useEffect 双向同步导致的无限重渲染
   const setReviewStepsAndSync = useCallback(

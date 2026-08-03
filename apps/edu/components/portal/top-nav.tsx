@@ -44,6 +44,7 @@ export function TopNav() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mounted 标志用于避免 hydration 不一致，需在挂载后置位
     setMounted(true)
     const updateTime = () => {
+      if (document.visibilityState !== 'visible') return
       const now = new Date()
       const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
       const year = now.getFullYear()
@@ -55,9 +56,17 @@ export function TopNav() {
       const seconds = String(now.getSeconds()).padStart(2, '0')
       setCurrentTime(`${year}年${month}月${day}日 ${weekDay} ${hours}:${minutes}:${seconds}`)
     }
+    // 仅在页面可见时更新时钟，后台标签页跳过 setState，避免每秒触发整树重渲染
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') updateTime()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
     updateTime()
     const timer = setInterval(updateTime, 1000)
-    return () => clearInterval(timer)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      clearInterval(timer)
+    }
   }, [])
 
   const isActive = (href: string) => {
