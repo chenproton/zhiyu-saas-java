@@ -87,7 +87,15 @@ func (s *PositionService) IncrementView(ctx context.Context, targetID string, us
 func (s *PositionService) SaveFull(ctx context.Context, tenantID, positionID string, p *store.FullPositionSaveParams) error {
 	abilityPointMap := make(map[string]string)
 	for _, b := range p.AbilityBindings {
-		if b.Source == "public" || b.Source == "" {
+		if b.Source == "public" {
+			if b.PublicAbilityID != "" {
+				abilityPointMap[b.ID] = b.PublicAbilityID
+			} else if b.AbilityPointID != "" {
+				abilityPointMap[b.ID] = b.AbilityPointID
+			}
+			continue
+		}
+		if b.Source != "custom" {
 			continue
 		}
 		pointID, err := s.st.Positions().PrepareAbilityPoint(ctx, tenantID, b.Name, b.Description, b.Category, b.Attributes)

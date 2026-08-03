@@ -399,6 +399,10 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	}
 	abilityBindings := make([]store.FullPositionAbilityBindingItem, 0, len(req.AbilityBindings))
 	for _, b := range req.AbilityBindings {
+		publicAbilityID := ""
+		if b.PublicAbilityID != nil {
+			publicAbilityID = *b.PublicAbilityID
+		}
 		abilityPointID := ""
 		if b.AbilityPointID != nil {
 			abilityPointID = *b.AbilityPointID
@@ -413,7 +417,8 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		abilityBindings = append(abilityBindings, store.FullPositionAbilityBindingItem{
 			ID: b.ID, ResponsibilityID: b.ResponsibilityID, Source: b.Source,
 			Name: b.Name, Category: b.Category, Description: b.Description,
-			AbilityPointID: abilityPointID, Domain: domainField, RequiredLevel: b.Level,
+			PublicAbilityID: publicAbilityID, AbilityPointID: abilityPointID,
+			Domain: domainField, RequiredLevel: b.Level,
 			RubricDescription: rubricDesc, Attributes: coalesceStringSlice(b.Attributes),
 		})
 	}
