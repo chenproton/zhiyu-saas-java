@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 // fakeApprovalTx 记录 Exec 的 SQL（白名单校验通过后才触达 Exec）。
@@ -71,3 +72,20 @@ func TestSyncEntityStatusRejectsUnknownType(t *testing.T) {
 		}
 	}
 }
+
+// TestApprovalCreateRejectsUnknownType 未知目标类型在创建时即拒绝，防止评审 500。
+func TestApprovalCreateRejectsUnknownType(t *testing.T) {
+	s := NewApprovalStore(&fakeApprovalTx{})
+	_, err := s.Create(context.Background(), strPtr("tenant-1"), &ApprovalCreateParams{
+		TargetType:  "career_position; DROP TABLE users",
+		TargetID:    "id-1",
+		Status:      string(domain.ApprovalStatusPending),
+		SubmitterID: "u-1",
+		History:     domain.JSONSlice{},
+	})
+	if err == nil {
+		t.Fatal("未知目标类型应被拒绝")
+	}
+}
+
+func strPtr(s string) *string { return &s }

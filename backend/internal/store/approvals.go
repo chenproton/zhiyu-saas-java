@@ -82,7 +82,11 @@ func (s *ApprovalStore) Get(ctx context.Context, id string) (*domain.ApprovalRec
 }
 
 // Create 创建审批记录（同一目标仅允许一条 pending 记录，唯一索引兜底）。
+// 目标类型必须能映射实体表，否则拒绝创建，避免评审时才 500。
 func (s *ApprovalStore) Create(ctx context.Context, tenantID *string, p *ApprovalCreateParams) (*domain.ApprovalRecord, error) {
+	if _, ok := approvalTargetTypeToTable[p.TargetType]; !ok {
+		return nil, fmt.Errorf("invalid target type: %s", p.TargetType)
+	}
 	if p.Status == string(domain.ApprovalStatusPending) {
 		exists, err := s.ExistsPending(ctx, p.TargetType, p.TargetID)
 		if err != nil {
