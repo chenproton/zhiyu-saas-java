@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"math"
 	"strings"
 
@@ -148,7 +149,9 @@ func (s *EvaluationService) syncExamResultScore(ctx context.Context, taskID, met
 	if err != nil || examResultID == "" {
 		return
 	}
-	s.st.EvaluationResults().UpdateExamResultScore(ctx, examResultID, score)
+	if err := s.st.EvaluationResults().UpdateExamResultScore(ctx, examResultID, score); err != nil {
+		slog.Warn("同步考试结果分数失败", "examResultID", examResultID, "error", err)
+	}
 }
 
 // isCorrect 判断客观题答案是否正确。

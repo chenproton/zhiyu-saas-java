@@ -146,8 +146,9 @@ func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, taskID
 }
 
 // UpdateExamResultScore 更新考试结果分数。
-func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examResultID string, score float64) {
-	_, _ = s.q.Exec(ctx, `UPDATE exam_results SET score = $1, updated_at = NOW() WHERE id = $2`, score, examResultID)
+func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examResultID string, score float64) error {
+	_, err := s.q.Exec(ctx, `UPDATE exam_results SET score = $1, updated_at = NOW() WHERE id = $2`, score, examResultID)
+	return err
 }
 
 // EvaluationResultGradeTarget 评分目标（task/method/evaluatee）。

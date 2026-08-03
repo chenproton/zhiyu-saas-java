@@ -49,8 +49,8 @@ func (s *EvaluationService) DeleteQuestionBank(ctx context.Context, id, tenantID
 }
 
 // EnsureDraftPool 确保用户草稿池存在。
-func (s *EvaluationService) EnsureDraftPool(ctx context.Context, tenantID, userID string) {
-	s.st.QuestionBanks().EnsureDraftPool(ctx, tenantID, userID)
+func (s *EvaluationService) EnsureDraftPool(ctx context.Context, tenantID, userID string) error {
+	return s.st.QuestionBanks().EnsureDraftPool(ctx, tenantID, userID)
 }
 
 // IsDraftPool 查询是否草稿池。

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -37,7 +38,9 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	h.Service.EnsureDraftPool(r.Context(), effectiveTenantID, claims.UserID)
+	if err := h.Service.EnsureDraftPool(r.Context(), effectiveTenantID, claims.UserID); err != nil {
+		slog.Warn("确保草稿池失败", "error", err)
+	}
 
 	cfg := h.Service.Store().QuestionBanks().ListConfig()
 	params, ok := listParamsFromRequest(r, true)

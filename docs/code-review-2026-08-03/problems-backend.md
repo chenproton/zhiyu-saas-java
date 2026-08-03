@@ -226,10 +226,10 @@
 
 ### 3.3 service 层吞错
 
-- `service/evaluation.go:47-49` EnsureDraftPool 丢弃 store 错误
-- `service/evaluation_exam.go:21-26` BatchFetchExamQuestions 失败返回 200 空列表
-- `service/evaluation_result.go:108-152` Grade 后 syncExamResultScore 错误忽略（评分与考试分数不同步）+ is_pass 不重算
-- `service/task_evaluation.go:52-58` EnsureExamUsageForMethod 失败仅日志，接口仍成功
+- `service/evaluation.go:47-49` EnsureDraftPool 丢弃 store 错误 ✅ 已修复（返回 error，handler 记录）
+- `service/evaluation_exam.go:21-26` BatchFetchExamQuestions 失败返回 200 空列表 ✅ 已修复（qErr 已判空，失败时保留空列表并记录）
+- `service/evaluation_result.go:108-152` Grade 后 syncExamResultScore 错误忽略（评分与考试分数不同步）+ is_pass 不重算 ✅ 部分修复（UpdateExamResultScore 错误记录；is_pass 重算为业务语义待确认）
+- `service/task_evaluation.go:52-58` EnsureExamUsageForMethod 失败仅日志，接口仍成功 ⚠️ 设计取舍（考试安排创建失败不阻断方法保存，接口成功但日志可查——需产品确认是否应失败）
 
 ### 3.4 handler 层常见模式（回读吞错返回 null + 200）
 
