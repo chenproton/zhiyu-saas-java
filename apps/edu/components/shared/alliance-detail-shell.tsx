@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Pencil } from 'lucide-react'
+import { LoadingView } from '@zhiyu/ui'
 
 export interface AllianceDetailShellTab<T extends string = string> {
   key: T
@@ -53,7 +54,7 @@ export function AllianceDetailShell<T extends string = string>({
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+    return <LoadingView />
   }
 
   if (notFound) {

@@ -14,6 +14,7 @@ import type {
   AllianceAchievement,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { LoadingView } from '@zhiyu/ui'
 
 interface HomeData {
   stats: AlliancePublicStats | null
@@ -58,7 +59,7 @@ export default function AlliancePublicHomePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <LoadingView />
 
   return (
     <div className="space-y-10">

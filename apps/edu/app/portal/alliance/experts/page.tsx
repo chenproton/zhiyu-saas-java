@@ -8,6 +8,7 @@ import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceExpert } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { LoadingView } from '@zhiyu/ui'
 
 export default function AlliancePublicExpertsPage() {
   const [items, setItems] = useState<AllianceExpert[]>([])
@@ -22,7 +23,7 @@ export default function AlliancePublicExpertsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <LoadingView />
 
   return (
     <div className="space-y-6">

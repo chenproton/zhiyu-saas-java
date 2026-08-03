@@ -21,7 +21,7 @@ import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2, X, Plus } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, LoadingView} from '@zhiyu/ui'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -149,7 +149,7 @@ export default function AllianceExpertEditPage() {
     }
   }
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <LoadingView />
 
   return (
     <div className="space-y-6">

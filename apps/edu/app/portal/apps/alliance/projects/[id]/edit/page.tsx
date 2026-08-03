@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Loader2, Send } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, LoadingView} from '@zhiyu/ui'
 import type { AllianceProject } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
@@ -92,7 +92,7 @@ export default function AllianceProjectEditPage() {
     }
   }
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <LoadingView />
   if (!item) return <div className="text-center py-12 text-muted-foreground">项目不存在</div>
 
   const setField = (field: string, value: any) =>

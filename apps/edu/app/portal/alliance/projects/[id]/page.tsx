@@ -11,6 +11,7 @@ import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceProject } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { LoadingView } from '@zhiyu/ui'
 
 export default function AlliancePublicProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,7 +28,7 @@ export default function AlliancePublicProjectDetailPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <LoadingView />
   if (!project) return <div className="text-center py-12 text-muted-foreground">项目不存在</div>
 
   return (

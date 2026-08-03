@@ -21,7 +21,7 @@ import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, LoadingView} from '@zhiyu/ui'
 import type { AllianceEnterprise } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
@@ -70,7 +70,7 @@ export default function AllianceEnterpriseEditPage() {
     }
   }
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <LoadingView />
   if (!item) return <div className="text-center py-12 text-muted-foreground">企业不存在</div>
 
   const setField = (field: string, value: any) =>

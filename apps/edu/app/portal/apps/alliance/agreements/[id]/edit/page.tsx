@@ -18,7 +18,7 @@ import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, LoadingView} from '@zhiyu/ui'
 
 const AGREEMENT_TYPES = [
   '战略合作协议',
@@ -95,7 +95,7 @@ export default function AllianceAgreementEditPage() {
     }
   }
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <LoadingView />
 
   return (
     <div className="space-y-6">

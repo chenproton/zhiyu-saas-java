@@ -11,6 +11,7 @@ import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceAchievement } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { LoadingView } from '@zhiyu/ui'
 
 export default function AlliancePublicAchievementDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,7 +28,7 @@ export default function AlliancePublicAchievementDetailPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+  if (loading) return <LoadingView />
   if (!achievement) return <div className="text-center py-12 text-muted-foreground">成果不存在</div>
 
   return (
