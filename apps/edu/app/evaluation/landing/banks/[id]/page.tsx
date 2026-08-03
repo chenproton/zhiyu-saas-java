@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { questionBankApi, questionApi, knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
+import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
@@ -51,12 +52,6 @@ const questionTypeColors: Record<string, string> = {
   fill: 'bg-emerald-50 text-emerald-600 border-emerald-100',
   essay: 'bg-rose-50 text-rose-600 border-rose-100',
   short_answer: 'bg-cyan-50 text-cyan-600 border-cyan-100',
-}
-
-const difficultyMap: Record<string, { color: string; label: string }> = {
-  easy: { color: '#22c55e', label: '简单' },
-  medium: { color: '#f59e0b', label: '中等' },
-  hard: { color: '#ef4444', label: '困难' },
 }
 
 function AnswerPreview({ question }: { question: Question }) {
@@ -392,7 +387,7 @@ export default function BankDetailPage() {
             ) : (
               <div className="space-y-3">
                 {filteredQuestions.map((q, idx) => {
-                  const diff = difficultyMap[q.difficulty || 'medium']
+                  const diff = { label: DIFFICULTY_LABELS[q.difficulty || 'medium'], color: DIFFICULTY_COLORS[q.difficulty || 'medium'] }
                   const IconComp = questionTypeIcons[q.type] || HelpCircle
                   return (
                     <div

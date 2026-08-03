@@ -44,6 +44,22 @@ export interface ScenarioTask {
   evalData?: Record<string, any>
 }
 
+// 场景难度（1-5 级）统一展示配置：标签 + 配色，消除各页面重复副本。
+export interface SceneDifficultyConfig {
+  label: string
+  color: string
+  bg: string
+  border: string
+}
+
+export const SCENE_DIFFICULTY: Record<number, SceneDifficultyConfig> = {
+  1: { label: '入门', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+  2: { label: '初级', color: '#ca8a04', bg: '#fefce8', border: '#fde047' },
+  3: { label: '中级', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
+  4: { label: '高级', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  5: { label: '专家', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+}
+
 export interface TaskDeliverable {
   id: string
   taskId: string

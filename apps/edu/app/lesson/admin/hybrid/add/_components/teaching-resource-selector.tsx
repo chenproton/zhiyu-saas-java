@@ -35,6 +35,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceItem } from './atomic-modules'
 
 // ==================== Types ====================
@@ -67,6 +68,12 @@ type ResourceType =
 
 // ==================== Constants ====================
 
+// 资源类型标签：'all' 为"全部"筛选项，其余与共享 RESOURCE_TYPE_LABELS 一致。
+const resourceTypeLabels: Record<string, string> = {
+  all: '全部',
+  ...RESOURCE_TYPE_LABELS,
+}
+
 const resourceTypeIcons: Record<string, React.ReactNode> = {
   document: <FileText className="h-4 w-4 text-blue-500" />,
   spreadsheet: <Table className="h-4 w-4 text-teal-500" />,
@@ -79,21 +86,6 @@ const resourceTypeIcons: Record<string, React.ReactNode> = {
   facility: <Building2 className="h-4 w-4 text-rose-500" />,
   software: <Globe className="h-4 w-4 text-purple-500" />,
   other: <Package className="h-4 w-4 text-gray-500" />,
-}
-
-const resourceTypeLabels: Record<string, string> = {
-  all: '全部',
-  document: '文档资源',
-  spreadsheet: '表格资源',
-  image: '图片资源',
-  link: '链接资源',
-  audio: '音频资源',
-  video: '视频资源',
-  archive: '压缩包资源',
-  venue: '场地资源',
-  facility: '设施设备资源',
-  software: '软件资源',
-  other: '其他资源',
 }
 
 const resourceTypeColors: Record<string, string> = {

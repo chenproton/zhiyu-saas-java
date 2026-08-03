@@ -41,6 +41,7 @@ import {
   nodeEvaluationResultApi,
 } from '@/lib/api'
 import type { Course, NodeResource, KnowledgePoint } from '@/lib/types'
+import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import type {
   CourseAssessmentsResponse,
@@ -73,29 +74,6 @@ const courseTypeLabels: Record<string, string> = {
   system: '体系课',
   granular: '颗粒课',
   hybrid: '混合课',
-}
-
-const difficultyMap: Record<number, { color: string; label: string }> = {
-  1: { color: '#22c55e', label: '入门' },
-  2: { color: '#eab308', label: '初级' },
-  3: { color: '#f97316', label: '中级' },
-  4: { color: '#ef4444', label: '高级' },
-  5: { color: '#8b5cf6', label: '专家' },
-}
-
-const resourceTypeLabels: Record<string, string> = {
-  document: '文档',
-  video: '视频',
-  link: '链接',
-  file: '文件',
-  spreadsheet: '表格',
-  presentation: '演示',
-  image: '图片',
-  audio: '音频',
-  pdf: 'PDF',
-  venue: '场所',
-  facility: '设施',
-  software: '软件',
 }
 
 function KnowledgeTab({ knowledgeList }: { knowledgeList: KnowledgePoint[] }) {
@@ -322,7 +300,7 @@ export default function CourseDetailPage() {
     return count
   }, [nodes])
 
-  const diff = difficultyMap[course?.difficulty ?? 3] || difficultyMap[3]
+  const diff = SCENE_DIFFICULTY[course?.difficulty ?? 3] || SCENE_DIFFICULTY[3]
 
   const evalMethodLabels: Record<string, string> = {
     paper: '试卷',
@@ -636,7 +614,7 @@ export default function CourseDetailPage() {
                                       <span
                                         className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || 'bg-slate-100 text-slate-500 border-slate-200'}`}
                                       >
-                                        {resourceTypeLabels[r.type] || r.type}
+                                        {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
                                       </span>
                                       {r.size && (
                                         <span>

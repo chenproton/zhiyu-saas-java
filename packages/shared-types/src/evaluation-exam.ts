@@ -9,6 +9,13 @@ export const DIFFICULTY_LABELS: Record<string, string> = {
   hard: '困难',
 }
 
+// 题目难度配色，与 DIFFICULTY_LABELS 配套。
+export const DIFFICULTY_COLORS: Record<string, string> = {
+  easy: '#22c55e',
+  medium: '#f59e0b',
+  hard: '#ef4444',
+}
+
 // 题目类型枚举
 export type QuestionType = 'single' | 'multiple' | 'judge' | 'fill' | 'essay' | 'short_answer'
 

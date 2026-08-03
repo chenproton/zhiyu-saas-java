@@ -33,6 +33,7 @@ import type {
   KnowledgePoint,
   AbilityPoint,
 } from '@/lib/types'
+import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { SceneKnowledgeGraph } from '@/components/scene/student/knowledge-graph'
 import {
@@ -57,29 +58,9 @@ const coverGradients = [
   'linear-gradient(135deg,#30cfd0,#330867)',
 ]
 
-const difficultyMap: Record<number, { color: string; label: string }> = {
-  1: { color: '#22c55e', label: '入门' },
-  2: { color: '#eab308', label: '初级' },
-  3: { color: '#f97316', label: '中级' },
-  4: { color: '#ef4444', label: '高级' },
-  5: { color: '#8b5cf6', label: '专家' },
-}
-
 const taskTypeLabels: Record<string, string> = {
   assessment: '考核',
   training: '训练',
-}
-
-const resourceTypeLabels: Record<string, string> = {
-  document: '文档',
-  video: '视频',
-  link: '链接',
-  file: '文件',
-  spreadsheet: '表格',
-  presentation: '演示',
-  image: '图片',
-  audio: '音频',
-  pdf: 'PDF',
 }
 
 const evalMethodLabels: Record<string, string> = {
@@ -512,7 +493,7 @@ export default function SceneDetailPage() {
       .filter(Boolean) as TaskResource[]
   }
 
-  const diff = difficultyMap[scenario?.difficulty ?? 3] || difficultyMap[3]
+  const diff = SCENE_DIFFICULTY[scenario?.difficulty ?? 3] || SCENE_DIFFICULTY[3]
 
   if (loading) {
     return (
@@ -717,7 +698,7 @@ export default function SceneDetailPage() {
                                     <span
                                       className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || 'bg-slate-100 text-slate-500 border-slate-200'}`}
                                     >
-                                      {resourceTypeLabels[r.type] || r.type}
+                                      {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
                                     </span>
                                     {r.size && <span>{formatFileSize(r.size)}</span>}
                                   </div>

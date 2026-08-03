@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
 import type { Scenario } from '@/lib/types'
+import { SCENE_DIFFICULTY } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
 
 interface SceneCardProps {
@@ -22,21 +23,12 @@ const coverGradients = [
   'linear-gradient(135deg,#0f766e,#14b8a6)',
 ]
 
-const difficultyMap: Record<number, { color: string; label: string; bg: string; border: string }> =
-  {
-    1: { color: '#16a34a', label: '入门', bg: '#f0fdf4', border: '#bbf7d0' },
-    2: { color: '#ca8a04', label: '初级', bg: '#fefce8', border: '#fde047' },
-    3: { color: '#ea580c', label: '中级', bg: '#fff7ed', border: '#fed7aa' },
-    4: { color: '#dc2626', label: '高级', bg: '#fef2f2', border: '#fecaca' },
-    5: { color: '#7c3aed', label: '专家', bg: '#f5f3ff', border: '#ddd6fe' },
-  }
+const industryTagMap: Record<string, { bg: string; text: string; border: string }> = {
+  default: { bg: '#fff7ed', text: '#c2410c', border: '#ffedd5' },
+}
 
 const professionTagMap: Record<string, { bg: string; text: string; border: string }> = {
   default: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
-}
-
-const industryTagMap: Record<string, { bg: string; text: string; border: string }> = {
-  default: { bg: '#fff7ed', text: '#c2410c', border: '#ffedd5' },
 }
 
 export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps) {
@@ -45,7 +37,7 @@ export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps
     ? { backgroundImage: `url('${scenario.coverImage}')` }
     : { background: coverGradients[index % coverGradients.length] }
 
-  const diff = difficultyMap[scenario.difficulty] || difficultyMap[3]
+  const diff = SCENE_DIFFICULTY[scenario.difficulty] || SCENE_DIFFICULTY[3]
   const industryName =
     scenario.industryNames?.[0] || (scenario.industryIds?.length ? '已关联' : '未分类')
   const industryTag = industryTagMap.default

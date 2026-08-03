@@ -61,6 +61,7 @@ import type {
   TaskEvaluationMethod,
   SceneEvaluationResult,
 } from '@/lib/types'
+import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
@@ -72,26 +73,6 @@ import {
 } from '@/components/shared/resource-preview-modal'
 
 /* ---------- constants ---------- */
-
-const difficultyMap: Record<number, { color: string; label: string; bg: string }> = {
-  1: { color: '#16a34a', label: '入门', bg: '#f0fdf4' },
-  2: { color: '#ca8a04', label: '初级', bg: '#fefce8' },
-  3: { color: '#ea580c', label: '中级', bg: '#fff7ed' },
-  4: { color: '#dc2626', label: '高级', bg: '#fef2f2' },
-  5: { color: '#7c3aed', label: '专家', bg: '#f5f3ff' },
-}
-
-const resourceTypeLabels: Record<string, string> = {
-  document: '文档',
-  video: '视频',
-  link: '链接',
-  file: '文件',
-  spreadsheet: '表格',
-  presentation: '演示',
-  image: '图片',
-  audio: '音频',
-  pdf: 'PDF',
-}
 
 const resourceTypeIcons: Record<string, string> = {
   document: 'text-[#3b82f6] bg-blue-50',
@@ -447,7 +428,7 @@ export default function SceneLearnPage() {
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
                     <BarChart3 className="w-3.5 h-3.5 text-blue-500" />{' '}
-                    {difficultyMap[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`}
+                    {SCENE_DIFFICULTY[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
                     <Clock className="w-3.5 h-3.5 text-blue-500" /> {activeTask.estimatedHours || 0}{' '}
@@ -526,7 +507,7 @@ export default function SceneLearnPage() {
             <div className="py-1">
               {tasks.map((task, idx) => {
                 const isActive = activeTaskId === task.id
-                const diff = difficultyMap[task.difficulty] || difficultyMap[3]
+                const diff = SCENE_DIFFICULTY[task.difficulty] || SCENE_DIFFICULTY[3]
 
                 if (sidebarCollapsed) {
                   return (
@@ -837,7 +818,7 @@ export default function SceneLearnPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-700 truncate">{r.name}</p>
                             <p className="text-[11px] text-gray-400">
-                              {resourceTypeLabels[r.type] || r.type}
+                              {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
                               {r.size ? ` · ${r.size}` : ''}
                             </p>
                           </div>

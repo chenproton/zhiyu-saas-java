@@ -46,7 +46,7 @@ import {
   ResourcePreviewModal,
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
-import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
+import { RESOURCE_TYPE_LABELS, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types/library'
 import type { ResourceKind } from '@/lib/types/library'
 
 export interface ResourceItem {
@@ -89,21 +89,6 @@ const resourceTypeIcons: Record<string, React.ReactNode> = {
   facility: <Building2 className="h-4 w-4 text-rose-500" />,
   software: <Globe className="h-4 w-4 text-purple-500" />,
   other: <Package className="h-4 w-4 text-gray-500" />,
-}
-
-const resourceTypeLabels: Record<string, string> = {
-  all: '全部',
-  document: '文档',
-  spreadsheet: '表格',
-  image: '图片',
-  link: '链接',
-  audio: '音频',
-  video: '视频',
-  archive: '压缩包',
-  venue: '场地',
-  facility: '设施',
-  software: '软件',
-  other: '其他',
 }
 
 const resourceTypeColors: Record<string, string> = {
@@ -422,7 +407,7 @@ export function ResourceSelector({
               onClick={() => setResType(t)}
             >
               {resourceTypeIcons[t] && <span className="mr-1.5">{resourceTypeIcons[t]}</span>}
-              {resourceTypeLabels[t] || t}
+              {RESOURCE_TYPE_SHORT_LABELS[t] || t}
             </Button>
           ))}
         </div>
@@ -521,7 +506,7 @@ export function ResourceSelector({
                           <Badge
                             className={cn('text-[9px] border', resourceTypeColors[r.type] || '')}
                           >
-                            {resourceTypeLabels[r.type] || r.type}
+                            {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
                           </Badge>
                         </div>
                       </div>
@@ -649,7 +634,7 @@ export function ResourceSelector({
                   {resourceTypeIcons[t] || <Package className="h-5 w-5 text-gray-400" />}
                 </div>
                 <span className="text-xs font-medium text-gray-700">
-                  {resourceTypeLabels[t] || t}
+                  {RESOURCE_TYPE_SHORT_LABELS[t] || t}
                 </span>
               </button>
             ))}

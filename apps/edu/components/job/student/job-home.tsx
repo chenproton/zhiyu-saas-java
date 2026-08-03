@@ -23,6 +23,7 @@ import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi } fr
 import { useAuth } from '@/components/auth-provider'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import type { CareerPosition, Scenario } from '@/lib/types'
+import { SCENE_DIFFICULTY } from '@/lib/types'
 import { StatsBar } from './stats-bar'
 import { JobCard } from './job-card'
 import { SceneCard } from '@/components/scene/student/scene-card'
@@ -44,14 +45,6 @@ const SCENE_SORT_OPTIONS = [
   { value: 'update', label: '最近更新' },
   { value: 'tasks', label: '最多任务' },
 ]
-
-const difficultyMap: Record<number, string> = {
-  1: '入门',
-  2: '初级',
-  3: '中级',
-  4: '高级',
-  5: '专家',
-}
 
 interface JobHomeProps {
   mode?: 'job' | 'scene'
@@ -237,7 +230,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
       '全部',
       ...Array.from(nums)
         .sort()
-        .map((n) => difficultyMap[n] || String(n)),
+        .map((n) => SCENE_DIFFICULTY[n]?.label || String(n)),
     ]
   }, [scenarios])
 
@@ -280,7 +273,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
       list = list.filter((s) => s.professionNames?.includes(selectedProfession))
     }
     if (selectedDifficulty !== '全部') {
-      list = list.filter((s) => difficultyMap[s.difficulty] === selectedDifficulty)
+      list = list.filter((s) => SCENE_DIFFICULTY[s.difficulty]?.label === selectedDifficulty)
     }
     if (keyword.trim()) {
       const k = keyword.trim().toLowerCase()

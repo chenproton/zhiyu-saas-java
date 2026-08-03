@@ -25,6 +25,26 @@ export const RESOURCE_TYPE_LABELS: Record<ResourceKind, string> = {
   other: '其他资源',
 }
 
+// 资源类型短标签（落地页/选择器等紧凑场景），与 RESOURCE_TYPE_LABELS 语义对齐，
+// 并兼容课程/场景侧的遗留类型（file/presentation/pdf）与筛选键 all。
+export const RESOURCE_TYPE_SHORT_LABELS: Record<string, string> = {
+  all: '全部',
+  document: '文档',
+  spreadsheet: '表格',
+  image: '图片',
+  link: '链接',
+  audio: '音频',
+  video: '视频',
+  archive: '压缩包',
+  venue: '场地',
+  facility: '设施',
+  software: '软件',
+  other: '其他',
+  file: '文件',
+  presentation: '演示',
+  pdf: 'PDF',
+}
+
 export interface ResourceLibraryItem {
   id: string
   tenantId: string
