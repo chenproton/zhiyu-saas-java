@@ -9,23 +9,15 @@ import (
 )
 
 type LearnRoadsStore struct {
-	q Queryer
-}
-
-// Q 返回底层查询器。
-func (s *LearnRoadsStore) Q() Queryer {
-	return s.q
+	*DictStore[domain.LearnRoad]
 }
 
 func NewLearnRoadsStore(q Queryer) *LearnRoadsStore {
-	return &LearnRoadsStore{q: q}
-}
-
-// ListConfig 返回学习路径列表查询配置，SQL 片段沉淀在 store 层。
-func (s *LearnRoadsStore) ListConfig() ListQueryConfig[domain.LearnRoad] {
-	return ListQueryConfig[domain.LearnRoad]{
+	return &LearnRoadsStore{DictStore: NewDictStore(q, DictConfig[domain.LearnRoad]{
 		Table:         "learn_roads",
 		SelectColumns: "id, name, description, position_ids, steps, created_at, updated_at",
+		CreateSQL:     `INSERT INTO learn_roads (id, tenant_id, name, description, position_ids, steps) VALUES ($1,$2,$3,$4,$5,$6)`,
+		DeleteSQL:     `DELETE FROM learn_roads WHERE id = $1`,
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
@@ -33,8 +25,10 @@ func (s *LearnRoadsStore) ListConfig() ListQueryConfig[domain.LearnRoad] {
 				qb.AddCondition("name ILIKE " + qb.NextArg("%"+name+"%"))
 			}
 		},
-		ScanRows: s.ScanRows,
-	}
+		ScanRows: func(rows pgx.Rows) ([]domain.LearnRoad, error) {
+			return scanLearnRoadRows(rows)
+		},
+	})}
 }
 
 type LearnRoadCreateParams struct {
@@ -45,6 +39,12 @@ type LearnRoadCreateParams struct {
 	Steps       domain.JSONSlice
 }
 
+func (p LearnRoadCreateParams) Tenant() string { return p.TenantID }
+
+func (p LearnRoadCreateParams) Args() []any {
+	return []any{p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps}
+}
+
 type LearnRoadUpdateParams struct {
 	Name        string
 	Description *string
@@ -52,21 +52,31 @@ type LearnRoadUpdateParams struct {
 	Steps       domain.JSONSlice
 }
 
+func (p LearnRoadUpdateParams) Args() []any {
+	return []any{p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps}
+}
+
+// GetByID 带租户隔离查询（学习路径归属校验）。
 func (s *LearnRoadsStore) GetByID(ctx context.Context, id, tenantID string) (domain.LearnRoad, error) {
-	var r domain.LearnRoad
-	var desc *string
-	var posIDs []string
-	var steps domain.JSONSlice
-	err := s.q.QueryRow(ctx,
+	row := s.Q().QueryRow(ctx,
 		`SELECT id, name, description, position_ids, steps, created_at, updated_at FROM learn_roads WHERE id = $1 AND tenant_id = $2`, id, tenantID,
-	).Scan(&r.ID, &r.Name, &desc, &posIDs, &steps, &r.CreatedAt, &r.UpdatedAt)
-	if err != nil {
-		return r, err
-	}
-	r.Description = desc
-	r.PositionIDs = posIDs
-	r.Steps = steps
-	return r, nil
+	)
+	return scanLearnRoadRow(row)
+}
+
+// Update 带租户隔离更新。
+func (s *LearnRoadsStore) Update(ctx context.Context, id, tenantID string, p LearnRoadUpdateParams) error {
+	_, err := s.Q().Exec(ctx,
+		`UPDATE learn_roads SET name=$1, description=$2, position_ids=$3, steps=$4, updated_at=NOW() WHERE id=$5 AND tenant_id=$6`,
+		p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps, id, tenantID,
+	)
+	return err
+}
+
+// Delete 带租户隔离删除。
+func (s *LearnRoadsStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.Q().Exec(ctx, `DELETE FROM learn_roads WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	return err
 }
 
 func normalizePositionIDs(ids []string) []string {
@@ -80,32 +90,22 @@ func normalizePositionIDs(ids []string) []string {
 	return out
 }
 
-func (s *LearnRoadsStore) Create(ctx context.Context, p LearnRoadCreateParams) (string, error) {
-	id := uuid.NewString()
-	_, err := s.q.Exec(ctx,
-		`INSERT INTO learn_roads (id, tenant_id, name, description, position_ids, steps) VALUES ($1,$2,$3,$4,$5,$6)`,
-		id, p.TenantID, p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps,
-	)
-	if err != nil {
-		return "", err
+// scanLearnRoadRow 手动扫描：steps(jsonb→JSONSlice) 不适用位置扫描。
+func scanLearnRoadRow(row pgx.Row) (domain.LearnRoad, error) {
+	var r domain.LearnRoad
+	var desc *string
+	var posIDs []string
+	var steps domain.JSONSlice
+	if err := row.Scan(&r.ID, &r.Name, &desc, &posIDs, &steps, &r.CreatedAt, &r.UpdatedAt); err != nil {
+		return r, err
 	}
-	return id, nil
+	r.Description = desc
+	r.PositionIDs = posIDs
+	r.Steps = steps
+	return r, nil
 }
 
-func (s *LearnRoadsStore) Update(ctx context.Context, id, tenantID string, p LearnRoadUpdateParams) error {
-	_, err := s.q.Exec(ctx,
-		`UPDATE learn_roads SET name=$1, description=$2, position_ids=$3, steps=$4, updated_at=NOW() WHERE id=$5 AND tenant_id=$6`,
-		p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps, id, tenantID,
-	)
-	return err
-}
-
-func (s *LearnRoadsStore) Delete(ctx context.Context, id, tenantID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM learn_roads WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
-}
-
-func (s *LearnRoadsStore) ScanRows(rows pgx.Rows) ([]domain.LearnRoad, error) {
+func scanLearnRoadRows(rows pgx.Rows) ([]domain.LearnRoad, error) {
 	items := make([]domain.LearnRoad, 0)
 	for rows.Next() {
 		var r domain.LearnRoad

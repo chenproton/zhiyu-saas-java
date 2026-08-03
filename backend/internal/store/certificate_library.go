@@ -3,22 +3,28 @@ package store
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type CertificateLibraryStore struct {
-	q Queryer
-}
-
-// Q 返回底层查询器。
-func (s *CertificateLibraryStore) Q() Queryer {
-	return s.q
+	*DictStore[domain.CertificateLibraryItem]
 }
 
 func NewCertificateLibraryStore(q Queryer) *CertificateLibraryStore {
-	return &CertificateLibraryStore{q: q}
+	return &CertificateLibraryStore{DictStore: NewDictStore(q, DictConfig[domain.CertificateLibraryItem]{
+		Table:         "certificate_library",
+		SelectColumns: "id, tenant_id, name, url, description, image_url, creator_id, created_at",
+		CreateSQL:     `INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url, creator_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		GetByIDSQL:    `SELECT id, tenant_id, name, url, description, image_url, creator_id, created_at FROM certificate_library WHERE id = $1`,
+		DeleteSQL:     `DELETE FROM certificate_library WHERE id = $1`,
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "description"},
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if creatorID := p.Values["creatorId"]; creatorID != "" {
+				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
+			}
+		},
+	})}
 }
 
 type CertificateLibraryCreateParams struct {
@@ -27,20 +33,31 @@ type CertificateLibraryCreateParams struct {
 	URL         *string
 	Description *string
 	ImageURL    *string
-	CreatorID   string
+	CreatorID   *string
+}
+
+func (p CertificateLibraryCreateParams) Tenant() string { return p.TenantID }
+
+func (p CertificateLibraryCreateParams) Args() []any {
+	return []any{p.Name, p.URL, p.Description, p.ImageURL, p.CreatorID}
 }
 
 type CertificateLibraryUpdateParams struct {
 	Name        string
-	URL         string
+	URL         *string
 	Description *string
 	ImageURL    *string
 }
 
+func (p CertificateLibraryUpdateParams) Args() []any {
+	return []any{p.Name, p.URL, p.Description, p.ImageURL}
+}
+
+// GetByID 按租户隔离查询（证书库归属校验）。
 func (s *CertificateLibraryStore) GetByID(ctx context.Context, id, tenantID string) (domain.CertificateLibraryItem, error) {
 	var c domain.CertificateLibraryItem
 	var url, desc, img, creator *string
-	err := s.q.QueryRow(ctx,
+	err := s.Q().QueryRow(ctx,
 		`SELECT id, tenant_id, name, url, description, image_url, creator_id, created_at FROM certificate_library WHERE id = $1 AND tenant_id = $2`, id, tenantID,
 	).Scan(&c.ID, &c.TenantID, &c.Name, &url, &desc, &img, &creator, &c.CreatedAt)
 	if err != nil {
@@ -53,60 +70,17 @@ func (s *CertificateLibraryStore) GetByID(ctx context.Context, id, tenantID stri
 	return c, nil
 }
 
-func (s *CertificateLibraryStore) Create(ctx context.Context, p CertificateLibraryCreateParams) (string, error) {
-	id := uuid.NewString()
-	_, err := s.q.Exec(ctx,
-		`INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url, creator_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		id, p.TenantID, p.Name, p.URL, p.Description, p.ImageURL, p.CreatorID,
-	)
-	if err != nil {
-		return "", err
-	}
-	return id, nil
-}
-
+// Update 带租户隔离更新。
 func (s *CertificateLibraryStore) Update(ctx context.Context, id, tenantID string, p CertificateLibraryUpdateParams) error {
-	_, err := s.q.Exec(ctx,
+	_, err := s.Q().Exec(ctx,
 		`UPDATE certificate_library SET name=$1, url=COALESCE(NULLIF($2,''), url), description=$3, image_url=$4, updated_at=NOW() WHERE id=$5 AND tenant_id=$6`,
 		p.Name, p.URL, p.Description, p.ImageURL, id, tenantID,
 	)
 	return err
 }
 
+// Delete 带租户隔离删除。
 func (s *CertificateLibraryStore) Delete(ctx context.Context, id, tenantID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM certificate_library WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	_, err := s.Q().Exec(ctx, `DELETE FROM certificate_library WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
-}
-
-func (s *CertificateLibraryStore) ScanRows(rows pgx.Rows) ([]domain.CertificateLibraryItem, error) {
-	items := make([]domain.CertificateLibraryItem, 0)
-	for rows.Next() {
-		var c domain.CertificateLibraryItem
-		var url, desc, img, creator *string
-		if err := rows.Scan(&c.ID, &c.TenantID, &c.Name, &url, &desc, &img, &creator, &c.CreatedAt); err != nil {
-			return nil, err
-		}
-		c.URL = url
-		c.Description = desc
-		c.ImageURL = img
-		c.CreatorID = creator
-		items = append(items, c)
-	}
-	return items, rows.Err()
-}
-
-// ListConfig 返回证书库列表查询配置，SQL 片段沉淀在 store 层。
-func (s *CertificateLibraryStore) ListConfig() ListQueryConfig[domain.CertificateLibraryItem] {
-	return ListQueryConfig[domain.CertificateLibraryItem]{
-		Table:         "certificate_library",
-		SelectColumns: "id, tenant_id, name, url, description, image_url, creator_id, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "description"},
-		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
-			if creatorID := p.Values["creatorId"]; creatorID != "" {
-				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
-			}
-		},
-		ScanRows: s.ScanRows,
-	}
 }

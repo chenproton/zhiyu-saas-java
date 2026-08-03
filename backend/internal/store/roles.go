@@ -3,23 +3,34 @@ package store
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type RolesStore struct {
-	q        Queryer
 	beginner txBeginner
-}
-
-// Q 返回底层查询器。
-func (s *RolesStore) Q() Queryer {
-	return s.q
+	*DictStore[domain.Role]
 }
 
 func NewRolesStore(q Queryer, beginner txBeginner) *RolesStore {
-	return &RolesStore{q: q, beginner: beginner}
+	return &RolesStore{
+		beginner: beginner,
+		DictStore: NewDictStore(q, DictConfig[domain.Role]{
+			Table:         "roles",
+			SelectColumns: "id, tenant_id, code, name, description, permissions, user_count, status, created_at",
+			CreateSQL:     `INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status) VALUES ($1,$2,$3,$4,$5,$6,0,'active')`,
+			UpdateSQL:     `UPDATE roles SET name=$1, description=$2, permissions=$3 WHERE id=$4`,
+			GetByIDSQL:    `SELECT id, tenant_id, code, name, description, permissions, user_count, status, created_at FROM roles WHERE id = $1`,
+			DeleteSQL:     `DELETE FROM roles WHERE id = $1`,
+			TenantScoped:  true,
+			SearchColumns: []string{"name", "code"},
+			ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+				if status := p.Values["status"]; status != "" {
+					qb.AddCondition("status = " + qb.NextArg(status))
+				}
+			},
+		}),
+	}
 }
 
 type RoleCreateParams struct {
@@ -30,45 +41,23 @@ type RoleCreateParams struct {
 	Permissions domain.JSONMap
 }
 
+func (p RoleCreateParams) Tenant() string { return p.TenantID }
+
+func (p RoleCreateParams) Args() []any {
+	return []any{p.Code, p.Name, p.Description, p.Permissions}
+}
+
 type RoleUpdateParams struct {
 	Name        string
 	Description *string
 	Permissions domain.JSONMap
 }
 
-func (s *RolesStore) GetByID(ctx context.Context, id string) (domain.Role, error) {
-	var r domain.Role
-	var desc *string
-	err := s.q.QueryRow(ctx,
-		`SELECT id, tenant_id, code, name, description, permissions, user_count, status, created_at FROM roles WHERE id = $1`, id,
-	).Scan(&r.ID, &r.TenantID, &r.Code, &r.Name, &desc, &r.Permissions, &r.UserCount, &r.Status, &r.CreatedAt)
-	if err != nil {
-		return r, err
-	}
-	r.Description = desc
-	return r, nil
+func (p RoleUpdateParams) Args() []any {
+	return []any{p.Name, p.Description, p.Permissions}
 }
 
-func (s *RolesStore) Create(ctx context.Context, p RoleCreateParams) (string, error) {
-	id := uuid.NewString()
-	_, err := s.q.Exec(ctx,
-		`INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status) VALUES ($1,$2,$3,$4,$5,$6,0,'active')`,
-		id, p.TenantID, p.Code, p.Name, p.Description, p.Permissions,
-	)
-	if err != nil {
-		return "", err
-	}
-	return id, nil
-}
-
-func (s *RolesStore) Update(ctx context.Context, id string, p RoleUpdateParams) error {
-	_, err := s.q.Exec(ctx,
-		`UPDATE roles SET name=$1, description=$2, permissions=$3 WHERE id=$4`,
-		p.Name, p.Description, p.Permissions, id,
-	)
-	return err
-}
-
+// Delete 事务级联删除：先删 user_roles 引用，再删角色本体。
 func (s *RolesStore) Delete(ctx context.Context, id string) error {
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE role_id = $1`, id); err != nil {
@@ -84,10 +73,11 @@ func (s *RolesStore) Delete(ctx context.Context, id string) error {
 // UserTenantID 查询用户所属租户（分配角色前的归属校验用）。
 func (s *RolesStore) UserTenantID(ctx context.Context, userID string) (string, error) {
 	var tenantID string
-	err := s.q.QueryRow(ctx, `SELECT tenant_id FROM users WHERE id = $1`, userID).Scan(&tenantID)
+	err := s.Q().QueryRow(ctx, `SELECT tenant_id FROM users WHERE id = $1`, userID).Scan(&tenantID)
 	return tenantID, err
 }
 
+// Assign 为用户分配角色，维护 user_count 计数。
 func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string) error {
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
@@ -107,34 +97,4 @@ func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string
 		}
 		return nil
 	})
-}
-
-// ListConfig 返回角色列表查询配置，SQL 片段沉淀在 store 层。
-func (s *RolesStore) ListConfig() ListQueryConfig[domain.Role] {
-	return ListQueryConfig[domain.Role]{
-		Table:         "roles",
-		SelectColumns: "id, tenant_id, code, name, description, permissions, user_count, status, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		ScanRows:      s.ScanRows,
-		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-		},
-	}
-}
-
-func (s *RolesStore) ScanRows(rows pgx.Rows) ([]domain.Role, error) {
-	items := make([]domain.Role, 0)
-	for rows.Next() {
-		var r domain.Role
-		var desc *string
-		if err := rows.Scan(&r.ID, &r.TenantID, &r.Code, &r.Name, &desc, &r.Permissions, &r.UserCount, &r.Status, &r.CreatedAt); err != nil {
-			return nil, err
-		}
-		r.Description = desc
-		items = append(items, r)
-	}
-	return items, rows.Err()
 }

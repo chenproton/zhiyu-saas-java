@@ -3,22 +3,24 @@ package store
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 type StaffTitlesStore struct {
-	q Queryer
-}
-
-// Q 返回底层查询器。
-func (s *StaffTitlesStore) Q() Queryer {
-	return s.q
+	*DictStore[domain.StaffTitle]
 }
 
 func NewStaffTitlesStore(q Queryer) *StaffTitlesStore {
-	return &StaffTitlesStore{q: q}
+	return &StaffTitlesStore{DictStore: NewDictStore(q, DictConfig[domain.StaffTitle]{
+		Table:         "staff_titles",
+		SelectColumns: "id, tenant_id, code, name, description, user_count, status, created_at",
+		CreateSQL:     `INSERT INTO staff_titles (id, tenant_id, code, name, description, user_count, status) VALUES ($1,$2,$3,$4,$5,0,$6)`,
+		UpdateSQL:     `UPDATE staff_titles SET name=$1, description=$2, status=COALESCE(NULLIF($3,''), status), updated_at=NOW() WHERE id=$4`,
+		GetByIDSQL:    `SELECT id, tenant_id, code, name, description, user_count, status, created_at FROM staff_titles WHERE id = $1`,
+		DeleteSQL:     `DELETE FROM staff_titles WHERE id = $1`,
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+	})}
 }
 
 type StaffTitleCreateParams struct {
@@ -29,67 +31,42 @@ type StaffTitleCreateParams struct {
 	Status      string
 }
 
+func (p StaffTitleCreateParams) Tenant() string { return p.TenantID }
+
+func (p StaffTitleCreateParams) Args() []any {
+	return []any{p.Code, p.Name, p.Description, p.Status}
+}
+
 type StaffTitleUpdateParams struct {
 	Name        string
 	Description *string
 	Status      string
 }
 
-func (s *StaffTitlesStore) GetByID(ctx context.Context, id string) (domain.StaffTitle, error) {
-	var t domain.StaffTitle
-	var desc *string
-	err := s.q.QueryRow(ctx,
-		`SELECT id, tenant_id, code, name, description, user_count, status, created_at FROM staff_titles WHERE id = $1`, id,
-	).Scan(&t.ID, &t.TenantID, &t.Code, &t.Name, &desc, &t.UserCount, &t.Status, &t.CreatedAt)
-	if err != nil {
-		return t, err
-	}
-	t.Description = desc
-	return t, nil
+func (p StaffTitleUpdateParams) Args() []any {
+	return []any{p.Name, p.Description, p.Status}
 }
 
-func (s *StaffTitlesStore) Create(ctx context.Context, p StaffTitleCreateParams) (string, error) {
-	id := uuid.NewString()
-	_, err := s.q.Exec(ctx,
-		`INSERT INTO staff_titles (id, tenant_id, code, name, description, user_count, status) VALUES ($1,$2,$3,$4,$5,0,$6)`,
-		id, p.TenantID, p.Code, p.Name, p.Description, p.Status,
-	)
-	if err != nil {
-		return "", err
-	}
-	return id, nil
-}
-
-func (s *StaffTitlesStore) Update(ctx context.Context, id string, p StaffTitleUpdateParams) error {
-	_, err := s.q.Exec(ctx,
-		`UPDATE staff_titles SET name=$1, description=$2, status=COALESCE(NULLIF($3,''), status), updated_at=NOW() WHERE id=$4`,
-		p.Name, p.Description, p.Status, id,
-	)
-	return err
-}
-
+// UpdateStatus 仅更新启用状态（不走通用 Update 的 COALESCE 分支）。
 func (s *StaffTitlesStore) UpdateStatus(ctx context.Context, id, status string) error {
-	_, err := s.q.Exec(ctx,
+	_, err := s.Q().Exec(ctx,
 		`UPDATE staff_titles SET status=$1, updated_at=NOW() WHERE id=$2`, status, id,
 	)
 	return err
 }
 
-func (s *StaffTitlesStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM staff_titles WHERE id = $1`, id)
-	return err
-}
-
+// CountUserRefs 返回引用该职称的用户数（删除前引用检查）。
 func (s *StaffTitlesStore) CountUserRefs(ctx context.Context, tenantID, titleID string) (int, error) {
 	var count int
-	err := s.q.QueryRow(ctx,
+	err := s.Q().QueryRow(ctx,
 		`SELECT COUNT(*) FROM users WHERE tenant_id=$1 AND $2 = ANY(title_ids)`, tenantID, titleID,
 	).Scan(&count)
 	return count, err
 }
 
+// BatchCountUsersByTitle 批量统计各职称下的用户数（列表页用户数展示）。
 func (s *StaffTitlesStore) BatchCountUsersByTitle(ctx context.Context, tenantID string, titleIDs []string) (map[string]int, error) {
-	rows, err := s.q.Query(ctx,
+	rows, err := s.Q().Query(ctx,
 		`SELECT title_id, COUNT(*) FROM users, unnest(title_ids) AS title_id WHERE tenant_id=$1 AND title_id=ANY($2::uuid[]) GROUP BY title_id`,
 		tenantID, titleIDs,
 	)
@@ -107,29 +84,4 @@ func (s *StaffTitlesStore) BatchCountUsersByTitle(ctx context.Context, tenantID 
 		counts[id] = count
 	}
 	return counts, rows.Err()
-}
-
-func (s *StaffTitlesStore) ScanRows(rows pgx.Rows) ([]domain.StaffTitle, error) {
-	items := make([]domain.StaffTitle, 0)
-	for rows.Next() {
-		var t domain.StaffTitle
-		var desc *string
-		if err := rows.Scan(&t.ID, &t.TenantID, &t.Code, &t.Name, &desc, &t.UserCount, &t.Status, &t.CreatedAt); err != nil {
-			return nil, err
-		}
-		t.Description = desc
-		items = append(items, t)
-	}
-	return items, rows.Err()
-}
-
-// ListConfig 返回职称列表查询配置，SQL 片段沉淀在 store 层。
-func (s *StaffTitlesStore) ListConfig() ListQueryConfig[domain.StaffTitle] {
-	return ListQueryConfig[domain.StaffTitle]{
-		Table:         "staff_titles",
-		SelectColumns: "id, tenant_id, code, name, description, user_count, status, created_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "code"},
-		ScanRows:      s.ScanRows,
-	}
 }
