@@ -86,6 +86,7 @@ export function QuestionFormDialog({
   const [content, setContent] = useState('')
   const [options, setOptions] = useState<string[]>(['', '', '', ''])
   const [answer, setAnswer] = useState<string | string[]>('')
+  const [score, setScore] = useState(0)
   const [analysis, setAnalysis] = useState('')
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [knowledgePointIds, setKnowledgePointIds] = useState<string[]>([])
@@ -143,6 +144,7 @@ export function QuestionFormDialog({
         }
         setAnalysis(question.analysis || '')
         setDifficulty(question.difficulty || 'medium')
+        setScore(question.score ?? 0)
         setKnowledgePointIds(question.knowledgePoints || [])
       } else {
         setType(defaultType || 'single')
@@ -151,6 +153,7 @@ export function QuestionFormDialog({
         setAnswer(defaultType === 'multiple' ? [] : '')
         setAnalysis('')
         setDifficulty('medium')
+        setScore(0)
         setKnowledgePointIds([])
       }
       setKnowledgeOpen(false)
@@ -209,7 +212,7 @@ export function QuestionFormDialog({
       type,
       content: content.trim(),
       analysis: analysis.trim() || undefined,
-      score: 0,
+      score,
       answer: finalAnswer,
       difficulty,
       knowledgePoints: knowledgePointIds.length > 0 ? knowledgePointIds : undefined,

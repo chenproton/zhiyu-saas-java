@@ -34,23 +34,23 @@
 | `components/shared/rich-text-editor.tsx:46,50,57,59` | 调用 `toast.error/.success`，但 toast 是函数（无方法）→ 任何 PDF 上传动作抛 `TypeError`，上传流程整体不可用 ✅ 已修复（删除 any toast prop，改用 @zhiyu/ui toast 函数调用，2 个调用方同步清理） |
 | `app/lesson/admin/system/add/page.tsx:365,653` | 编辑模式 `contentCode` 硬编码 `'CNT-SQL001'`，保存时把假编码写回每个已有节点 → 批量污染真实编码 ✅ 已修复（编辑加载时回填 course.code） |
 | `app/lesson/admin/system/add/page.tsx:629-632,1201-1211` | 自定义知识点（kp-custom-*）保存时被过滤剔除且无创建接口调用 → 静默丢失 |
-| `app/lesson/admin/hybrid/add/page.tsx:167-494` | 编辑已有课程时表单不回填（无 effect）；节点树/模块内容从未持久化（无 courseNodeApi 调用）；`handleFinish` 保存失败也跳转丢数据 |
+| `app/lesson/admin/hybrid/add/page.tsx:167-494` | 编辑已有课程时表单不回填（无 effect）；节点树/模块内容从未持久化（无 courseNodeApi 调用）；`handleFinish` 保存失败也跳转丢数据 ✅ 部分修复（编辑回填 rootForm + handleFinish 失败不跳转；节点持久化为较大功能改动待办） |
 | `app/lesson/admin/granular/add/page.tsx:311-345` | create 分支未设 hasSavedRef，保存成功前点"取消"会删除刚创建的课程；`handleFinish` 失败仍跳转 |
 | `app/affairs/programs/[id]/_components/courses-tab.tsx:219-243` | 未关联行（linkType=none）保存时被丢弃，而后端整表 PUT → 关联被删除；岗位分组行只产生 1 条 payload |
-| `app/portal/apps/alliance/achievements/[id]/page.tsx:94` | `filter(a.type === kind)` kind 为复数 'scenes'/'courses'，枚举为单数 'scene'/'course' → 添加场景/课程功能永久不可用 |
-| `app/portal/apps/alliance/experts/[id]/edit/page.tsx:125-132` | payload 缺 expertType/professionalFields/photos/rating/positionDirection，后端全字段 UPDATE → 保存即清空专家数据 |
-| `app/portal/apps/alliance/projects/page.tsx:123,240` | 前台展示 Switch 绑定 `onToggleEnabled={async () => {}}` 空实现 → 开关不持久化、点击回弹（同类：achievements/page.tsx:232、brands/*/page.tsx 多个） |
+| `app/portal/apps/alliance/achievements/[id]/page.tsx:94` | `filter(a.type === kind)` kind 为复数 'scenes'/'courses'，枚举为单数 'scene'/'course' → 添加场景/课程功能永久不可用 ✅ 已修复（kind 映射为单数枚举） |
+| `app/portal/apps/alliance/experts/[id]/edit/page.tsx:125-132` | payload 缺 expertType/professionalFields/photos/rating/positionDirection，后端全字段 UPDATE → 保存即清空专家数据 ✅ 已修复（补齐字段与回填） |
+| `app/portal/apps/alliance/projects/page.tsx:123,240` | 前台展示 Switch 绑定 `onToggleEnabled={async () => {}}` 空实现 → 开关不持久化、点击回弹（同类：achievements/page.tsx:232、brands/*/page.tsx 多个） ✅ 部分修复（projects 已持久化；achievements/brands 同模式待办） |
 | `app/portal/workspace/_components/teacher-courses-tab.tsx:46-816` | 三块详情视图全 mock 假数据；课程类型按 index%2 伪造；备课/上课 URL 硬编码虚构 id（hybrid-1/task-1-1） |
 | `app/portal/workspace/_components/hybrid-grading-dialog.tsx:367-390,71-97` | 评分按钮无 onClick；学生名单恒空 → 评分对话框名不副实 |
 | `app/portal/workspace/_components/assessment-tab.tsx:194-198` | "进入/查看"按钮无 onClick，考试入口失效 |
-| `app/evaluation/exams/[id]/page.tsx:222-232` | onDragOver 每次拖过一行触发整卷 PUT + 重拉全量（无节流） |
+| `app/evaluation/exams/[id]/page.tsx:222-232` | onDragOver 每次拖过一行触发整卷 PUT + 重拉全量（无节流） ✅ 已修复（拖动目标行去重） |
 | `app/portal/apps/system/resource/package/page.tsx:112-116,28-41` | onRetry 不发起请求（点重试永久转圈）；未开通模块被 filter 掉，"未开通"徽标永不出现 |
-| `components/evaluation/question-form-dialog.tsx:212` | `score: 0` 硬编码 → 编辑题目分值被重置为 0 |
+| `components/evaluation/question-form-dialog.tsx:212` | `score: 0` 硬编码 → 编辑题目分值被重置为 0 ✅ 已修复（score state 回填） |
 | `components/evaluation/question-form-dialog.tsx:141-143,580-600` + `question-preview.tsx:32` | 判断题 answer 为数组 `["true"]`，代码按字符串比较 → 编辑回显失败、预览恒显示"错误" |
 | `app/portal/workspace/_components/schedule-grid.tsx:270-272,378` | WeekView 事件匹配只看 dayOfWeek/period 与当前日期无关 → 切周/翻月课表内容不变 |
 | `app/scene/scenarios/[id]/edit/tasks/page.tsx:507-563,735-791` | 克隆后权重不重分配（总权重>100%）；临时任务 delete 必失败；保存部分失败留脏（下次保存重复创建）；任务级 weight 不持久化 |
 | `app/affairs/programs/[id]/page.tsx` | `importEntityName/exportEntityName` 传空串 → 导出必然 404（content-list-page 无守卫） |
-| `app/portal/apps/system/org-user/roles/page.tsx:242-259` | permissions.menus 不存在时全选所有菜单 → 新建/旧角色默认全量权限 |
+| `app/portal/apps/system/org-user/roles/page.tsx:242-259` | permissions.menus 不存在时全选所有菜单 → 新建/旧角色默认全量权限 ✅ 已修复（menus 缺失时不授予任何菜单） |
 | `components/job/position-builder/step-ability-modeling.tsx:431-434` | 编辑职责时按 Escape 执行保存 → 空名称职责被直接删除，且 abilityBindings 未清理产生孤儿绑定 |
 
 ---

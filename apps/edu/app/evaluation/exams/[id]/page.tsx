@@ -219,9 +219,13 @@ export default function ExamComposerPage() {
     setDraggedIndex(index)
   }
 
+  const dragTargetRef = useRef<number | null>(null)
+
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault()
     if (draggedIndex === null || draggedIndex === index) return
+    if (dragTargetRef.current === index) return
+    dragTargetRef.current = index
 
     const newQuestions = [...exam.questions]
     const [dragged] = newQuestions.splice(draggedIndex, 1)
@@ -233,6 +237,7 @@ export default function ExamComposerPage() {
 
   const handleDragEnd = () => {
     setDraggedIndex(null)
+    dragTargetRef.current = null
   }
 
   const handleEvenDistribution = () => {

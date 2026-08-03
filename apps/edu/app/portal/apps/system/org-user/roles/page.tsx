@@ -254,9 +254,8 @@ export default function RolesPage() {
         }
       }
       walk(menuTree)
-    } else {
-      walkAllIds(menuTree)
     }
+    // menus 缺失/空对象时不授予任何菜单（原先 fallback 全选所有菜单，新建角色默认全量权限）
     setCheckedMenus(menuSet)
 
     const actionSet = new Set<string>()
