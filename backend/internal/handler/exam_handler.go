@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/cache"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -401,14 +402,7 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 // ===== Cache =====
 
 func (h *ExamHandler) clearLandingExamsCache(r *http.Request, tenantID string) {
-	if h.RedisClient == nil {
-		return
-	}
-	// SCAN 游标循环删除，避免超过单批数量时残留陈旧缓存
-	iter := h.RedisClient.Scan(r.Context(), 0, "zhiyu:"+tenantID+":landing:exams*", 100).Iterator()
-	for iter.Next(r.Context()) {
-		_ = h.RedisClient.Del(r.Context(), iter.Val()).Err()
-	}
+	cache.InvalidatePrefix(r.Context(), h.RedisClient, "zhiyu:"+tenantID+":landing:exams")
 }
 
 // actions 与状态流转

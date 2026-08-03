@@ -11,11 +11,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/xuri/excelize/v2"
+	"github.com/zhiyu-saas/backend/internal/cache"
 )
 
 type ScenarioImportHandler struct {
-	DB *pgxpool.Pool
+	DB          *pgxpool.Pool
+	RedisClient *redis.Client
 }
 
 type scenarioImportResult struct {
@@ -63,6 +66,11 @@ func (h *ScenarioImportHandler) processImport(r *http.Request, w http.ResponseWr
 		aggregated.Created, aggregated.Failed, aggregated.Skipped, aggregated.ScenarioCreated, aggregated.TaskCreated, len(aggregated.Errors)))
 	for _, e := range aggregated.Errors {
 		slog.Info(fmt.Sprintf("[import/scenarios] error: %s", e))
+	}
+
+	// 导入写库后失效场景列表缓存，避免用户导入后仍看到 2 分钟前的空列表
+	if aggregated.Created > 0 {
+		cache.InvalidatePrefix(ctx, h.RedisClient, "zhiyu:"+irc.TenantID+":public:scenarios")
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{

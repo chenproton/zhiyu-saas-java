@@ -14,6 +14,17 @@ import (
 
 type KeyFunc func(r *http.Request) string
 
+// InvalidatePrefix 删除匹配前缀的全部缓存键（SCAN 游标循环，避免超过单批数量时残留陈旧缓存）。
+func InvalidatePrefix(ctx context.Context, client *redis.Client, prefix string) {
+	if client == nil {
+		return
+	}
+	iter := client.Scan(ctx, 0, prefix+"*", 100).Iterator()
+	for iter.Next(ctx) {
+		_ = client.Del(ctx, iter.Val()).Err()
+	}
+}
+
 func Cached(client *redis.Client, ttl time.Duration, keyFunc KeyFunc) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/cache"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -13,8 +15,9 @@ import (
 )
 
 type ScenarioHandler struct {
-	Service *service.ScenarioService
-	DB      *store.Store
+	Service     *service.ScenarioService
+	DB          *store.Store
+	RedisClient *redis.Client
 }
 type CreateScenarioRequest struct {
 	Name             string   `json:"name"`
@@ -193,6 +196,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "创建场景方案失败")
 		return
 	}
+	h.clearScenarioListCache(r, *tenantID)
 	respondJSON(w, http.StatusCreated, scenario)
 }
 
@@ -275,6 +279,9 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "更新场景方案失败")
 		return
 	}
+	if existing.TenantID != nil {
+		h.clearScenarioListCache(r, *existing.TenantID)
+	}
 	respondJSON(w, http.StatusOK, scenario)
 }
 
@@ -297,6 +304,9 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "删除场景方案失败")
 		return
 	}
+	if existing.TenantID != nil {
+		h.clearScenarioListCache(r, *existing.TenantID)
+	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
@@ -313,34 +323,56 @@ func (h *ScenarioHandler) actions() contentActions {
 	}
 }
 
+// clearScenarioListCache 失效指定租户的场景列表缓存（写入后调用，避免读到陈旧列表）。
+func (h *ScenarioHandler) clearScenarioListCache(r *http.Request, tenantID string) {
+	cache.InvalidatePrefix(r.Context(), h.RedisClient, "zhiyu:"+tenantID+":public:scenarios")
+}
+
+// clearCurrentTenantScenarioCache 按当前用户租户失效场景列表缓存。
+func (h *ScenarioHandler) clearCurrentTenantScenarioCache(r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil {
+		return
+	}
+	h.clearScenarioListCache(r, *claims.TenantID)
+}
+
 func (h *ScenarioHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusPending)
+	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
+	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
 	h.actions().saveDraft(w, r)
+	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Review(w http.ResponseWriter, r *http.Request) {
 	h.actions().review(w, r)
+	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusPublished)
+	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
+	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
+	h.clearCurrentTenantScenarioCache(r)
 }
 
 func (h *ScenarioHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	h.actions().invite(w, r)
+	h.clearCurrentTenantScenarioCache(r)
 }
