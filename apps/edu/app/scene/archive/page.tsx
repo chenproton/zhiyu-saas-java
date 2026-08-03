@@ -1,59 +1,40 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useMemo, useState } from 'react'
 
 import { scenarioApi, sceneBatchApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
-import type { Scenario, SceneBatch } from '@/lib/types/scene'
-import { useToast } from '@zhiyu/ui'
+import type { Scenario } from '@/lib/types/scene'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { ArchiveListPage, type ArchiveColumn } from '@/components/shared/archive-list-page'
 
 export default function SceneArchivePage() {
   const { toast } = useToast()
-  const [scenarios, setScenarios] = useState<Scenario[]>([])
-  const [batches, setBatches] = useState<SceneBatch[]>([])
-  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedProfession, setSelectedProfession] = useState<string | null>(null)
   const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [scenarioRes, batchRes] = await Promise.all([
-        scenarioApi.list({ status: 'archived', limit: 1000 }),
-        sceneBatchApi.list({ limit: 1000 }),
-      ])
-      setScenarios(scenarioRes.items)
-      setBatches(batchRes.items)
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '无法获取归档数据',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
+  const { data, loading, refresh } = useAsync(async () => {
+    const [scenarioRes, batchRes] = await Promise.all([
+      scenarioApi.list({ status: 'archived', limit: 1000 }),
+      sceneBatchApi.list({ limit: 1000 }),
+    ])
+    return { scenarios: scenarioRes.items, batches: batchRes.items }
+  })
 
-  useEffect(() => {
-    ;(async () => {
-      await loadData()
-    })()
-  }, [loadData])
+  const { scenarios, batches } = data ?? {}
 
   const professions = useMemo(() => {
     const set = new Set<string>()
-    scenarios.forEach((s) => {
+    ;(scenarios ?? []).forEach((s) => {
       ;(s.professionNames || s.professionIds || []).forEach((name) => set.add(name))
     })
     return Array.from(set).sort()
   }, [scenarios])
 
   const filtered = useMemo(() => {
-    let result = scenarios
+    let result = scenarios ?? []
     if (selectedProfession) {
       result = result.filter((s) =>
         (s.professionNames || s.professionIds || []).includes(selectedProfession),
@@ -72,12 +53,12 @@ export default function SceneArchivePage() {
     return result
   }, [scenarios, selectedProfession, search])
 
-  const batchMap = useMemo(() => new Map(batches.map((b) => [b.id, b])), [batches])
+  const batchMap = useMemo(() => new Map((batches ?? []).map((b) => [b.id, b])), [batches])
 
   const handleRestore = async (scenario: Scenario) => {
     try {
       await scenarioApi.saveDraft(scenario.id)
-      await loadData()
+      await refresh()
       toast({ title: '已恢复' })
     } catch (err: any) {
       toast({
@@ -91,7 +72,7 @@ export default function SceneArchivePage() {
   const handleDelete = async (scenario: Scenario) => {
     try {
       await scenarioApi.delete(scenario.id)
-      await loadData()
+      await refresh()
       toast({ title: '已删除' })
     } catch (err: any) {
       toast({
@@ -105,7 +86,7 @@ export default function SceneArchivePage() {
   const handleBatchRestore = async (ids: string[]) => {
     const results = await Promise.allSettled(ids.map((id) => scenarioApi.saveDraft(id)))
     const failed = results.filter((r) => r.status === 'rejected').length
-    await loadData()
+    await refresh()
     if (failed === 0) {
       toast({ title: `已批量恢复 ${ids.length} 个场景` })
     } else {
@@ -125,7 +106,7 @@ export default function SceneArchivePage() {
     if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
     try {
       await Promise.all(batchDeleteTarget.map((id) => scenarioApi.delete(id)))
-      await loadData()
+      await refresh()
       toast({ title: `已批量删除 ${batchDeleteTarget.length} 个场景` })
     } catch (err: any) {
       toast({

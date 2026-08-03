@@ -1,5 +1,7 @@
 export { Toaster } from './components/ui/toaster'
 export { useToast, toast } from './hooks/use-toast'
+export { useAsync } from './hooks/use-async'
+export type { UseAsyncResult } from './hooks/use-async'
 export { useImportFlow } from './hooks/use-import-flow'
 export type { UseImportFlowOptions } from './hooks/use-import-flow'
 export { cn } from './lib/utils'

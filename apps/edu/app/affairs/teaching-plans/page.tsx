@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarPlus, Search, ClipboardList, FileEdit, CheckCircle2, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -35,33 +35,15 @@ export default function TeachingPlansPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const [items, setItems] = useState<TeachingPlan[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [generateOpen, setGenerateOpen] = useState(false)
 
-  const loadItems = useCallback(async () => {
-    try {
-      const res = await teachingPlanApi.list({ limit: 500 })
-      setItems(res.items)
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询教学计划列表失败',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
-
-  useEffect(() => {
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await loadItems()
-    })()
-  }, [loadItems])
+  const { data, loading, refresh } = useAsync(async () => {
+    const res = await teachingPlanApi.list({ limit: 500 })
+    return res.items
+  })
+  const items = useMemo(() => data ?? [], [data])
 
   const filteredItems = useMemo(() => {
     return items.filter((p) => {
@@ -87,7 +69,7 @@ export default function TeachingPlansPage() {
     try {
       await teachingPlanApi.confirm(p.id)
       toast({ title: '教学计划已确认' })
-      await loadItems()
+      await refresh()
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -241,7 +223,7 @@ export default function TeachingPlansPage() {
         open={generateOpen}
         onOpenChange={setGenerateOpen}
         onGenerated={(plan) => {
-          loadItems()
+          refresh()
           router.push(`/affairs/teaching-plans/${plan.id}`)
         }}
       />

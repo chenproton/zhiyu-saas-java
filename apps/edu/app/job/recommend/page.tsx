@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/components/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,17 +35,15 @@ import {
   Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Position, Batch, PositionRecommendation } from '@/lib/types/job-source'
 import { POSITION_TYPE_LABELS } from '@/lib/types/job-source'
-import { positionApi, batchApi, recommendApi } from '@/lib/api'
+import { positionApi, recommendApi } from '@/lib/api'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import {
   convertCareerPositionToPosition,
-  convertJobBatchToBatch,
   convertApiRecommendationToLocal,
 } from '@/lib/converters/job-converters'
 import type { PositionRecommendation as ApiPositionRecommendation } from '@/lib/types/job'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { ConfirmDialog } from '@zhiyu/ui'
 import { formatDate } from '@/lib/format-utils'
 
@@ -53,46 +51,26 @@ export default function PostRecommendPage() {
   const { toast } = useToast()
   const { user } = useAuth()
 
-  const [positions, setPositions] = useState<Position[]>([])
-  const [, setBatches] = useState<Batch[]>([])
-  const [recommendations, setRecommendations] = useState<PositionRecommendation[]>([])
-  const [loading, setLoading] = useState(false)
+  const { data, loading, refresh } = useAsync(async () => {
+    const [posRes, recRes] = await Promise.all([
+      positionApi.list({ limit: 1000 }),
+      recommendApi.list({ limit: 1000 }),
+    ])
+    return {
+      positions: posRes.items.map(convertCareerPositionToPosition),
+      recommendations: recRes.items.map(convertApiRecommendationToLocal),
+    }
+  })
+
+  const { positions, recommendations } = data ?? {}
   const industryMap = useIndustryMap()
 
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [selectedPositionId, setSelectedPositionId] = useState<string>('')
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [posRes, batchRes, recRes] = await Promise.all([
-        positionApi.list({ limit: 1000 }),
-        batchApi.list({ limit: 1000 }),
-        recommendApi.list({ limit: 1000 }),
-      ])
-      setPositions(posRes.items.map(convertCareerPositionToPosition))
-      setBatches(batchRes.items.map(convertJobBatchToBatch))
-      setRecommendations(recRes.items.map(convertApiRecommendationToLocal))
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: '加载失败',
-        description: err?.message || '请稍后重试',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
-
-  useEffect(() => {
-    ;(async () => {
-      await loadData()
-    })()
-  }, [loadData])
-
   const allRecommendations = useMemo(() => {
-    return recommendations.filter((rec) => rec.isEnabled).sort((a, b) => a.order - b.order)
+    return (recommendations ?? []).filter((rec) => rec.isEnabled).sort((a, b) => a.order - b.order)
   }, [recommendations])
 
   const recommendedPositionIds = useMemo(
@@ -101,7 +79,7 @@ export default function PostRecommendPage() {
   )
 
   const availablePositions = useMemo(() => {
-    return positions.filter((p) => p.status === 'published' && !recommendedPositionIds.has(p.id))
+    return (positions ?? []).filter((p) => p.status === 'published' && !recommendedPositionIds.has(p.id))
   }, [positions, recommendedPositionIds])
 
   const handleMove = async (index: number, direction: -1 | 1) => {
@@ -127,7 +105,7 @@ export default function PostRecommendPage() {
           } as ApiPositionRecommendation)
         }),
       )
-      await loadData()
+      await refresh()
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -140,7 +118,7 @@ export default function PostRecommendPage() {
   const handleDelete = async (id: string) => {
     try {
       await recommendApi.delete(id)
-      await loadData()
+      await refresh()
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -154,7 +132,7 @@ export default function PostRecommendPage() {
 
   const handleAdd = async () => {
     if (!selectedPositionId || !user) return
-    const position = positions.find((p) => p.id === selectedPositionId)
+    const position = (positions ?? []).find((p) => p.id === selectedPositionId)
     if (!position) return
     try {
       await recommendApi.create({
@@ -164,7 +142,7 @@ export default function PostRecommendPage() {
         isEnabled: true,
         createdBy: user.id,
       } as Omit<ApiPositionRecommendation, 'id' | 'createdAt' | 'updatedAt'>)
-      await loadData()
+      await refresh()
       setSelectedPositionId('')
       setIsAddOpen(false)
     } catch (err: any) {
@@ -176,7 +154,7 @@ export default function PostRecommendPage() {
     }
   }
 
-  const selectedPosition = positions.find((p) => p.id === selectedPositionId)
+  const selectedPosition = (positions ?? []).find((p) => p.id === selectedPositionId)
 
   const getIndustryName = (id?: string) => {
     if (!id) return '-'
@@ -321,7 +299,7 @@ export default function PostRecommendPage() {
                   </TableRow>
                 ) : (
                   allRecommendations.map((rec, index) => {
-                    const position = positions.find((p) => p.id === rec.positionId)
+                    const position = (positions ?? []).find((p) => p.id === rec.positionId)
                     return (
                       <TableRow key={rec.id} className="group">
                         <TableCell>

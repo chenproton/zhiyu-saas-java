@@ -1,58 +1,39 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { courseApi, lessonBatchApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
-import type { Course, LessonBatch } from '@/lib/types/lesson'
+import type { Course } from '@/lib/types/lesson'
 
-import { useToast, StatusBadge } from '@zhiyu/ui'
+import { useToast, StatusBadge, useAsync } from '@zhiyu/ui'
 import { ArchiveListPage, type ArchiveColumn } from '@/components/shared/archive-list-page'
 
 export default function LessonArchivePage() {
   const { toast } = useToast()
-  const [courses, setCourses] = useState<Course[]>([])
-  const [batches, setBatches] = useState<LessonBatch[]>([])
-  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [courseRes, batchRes] = await Promise.all([
-        courseApi.list({ status: 'archived', limit: 1000 }),
-        lessonBatchApi.list({ limit: 1000 }),
-      ])
-      setCourses(courseRes.items)
-      setBatches(batchRes.items)
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '无法获取归档数据',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
+  const { data, loading, refresh } = useAsync(async () => {
+    const [courseRes, batchRes] = await Promise.all([
+      courseApi.list({ status: 'archived', limit: 1000 }),
+      lessonBatchApi.list({ limit: 1000 }),
+    ])
+    return { courses: courseRes.items, batches: batchRes.items }
+  })
 
-  useEffect(() => {
-    ;(async () => {
-      await loadData()
-    })()
-  }, [loadData])
+  const { courses, batches } = data ?? {}
 
   const majors = useMemo(() => {
     const set = new Set<string>()
-    courses.forEach((c) => {
+    ;(courses ?? []).forEach((c) => {
       if (c.majorName) set.add(c.majorName)
     })
     return Array.from(set).sort()
   }, [courses])
 
   const filtered = useMemo(() => {
-    let result = courses
+    let result = courses ?? []
     if (selectedMajor) {
       result = result.filter((c) => c.majorName === selectedMajor)
     }
@@ -69,12 +50,12 @@ export default function LessonArchivePage() {
     return result
   }, [courses, selectedMajor, search])
 
-  const batchMap = useMemo(() => new Map(batches.map((b) => [b.id, b])), [batches])
+  const batchMap = useMemo(() => new Map((batches ?? []).map((b) => [b.id, b])), [batches])
 
   const handleRestore = async (course: Course) => {
     try {
       await courseApi.saveDraft(course.id)
-      await loadData()
+      await refresh()
       toast({ title: '已恢复' })
     } catch (err: any) {
       toast({

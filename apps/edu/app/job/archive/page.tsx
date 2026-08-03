@@ -1,14 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { positionApi, batchApi } from '@/lib/api'
-import type { Position, Batch } from '@/lib/types/job-source'
+import type { Position } from '@/lib/types/job-source'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
 } from '@/lib/converters/job-converters'
-import { useToast } from '@zhiyu/ui'
+import { useToast, useAsync } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useIndustryMap, useMajorMap } from '@/lib/use-resource-maps'
 import { formatDate } from '@/lib/format-utils'
@@ -16,44 +16,28 @@ import { ArchiveListPage, type ArchiveColumn } from '@/components/shared/archive
 
 export default function PositionArchivePage() {
   const { toast } = useToast()
-  const [positions, setPositions] = useState<Position[]>([])
-  const [batches, setBatches] = useState<Batch[]>([])
-  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
   const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
   const industryMap = useIndustryMap()
   const majorMap = useMajorMap()
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [posRes, batchRes] = await Promise.all([
-        positionApi.list({ status: 'archived', limit: 1000 }),
-        batchApi.list({ limit: 1000 }),
-      ])
-      setPositions(posRes.items.map(convertCareerPositionToPosition))
-      setBatches(batchRes.items.map(convertJobBatchToBatch))
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '无法获取归档数据',
-      })
-    } finally {
-      setLoading(false)
+  const { data, loading, refresh } = useAsync(async () => {
+    const [posRes, batchRes] = await Promise.all([
+      positionApi.list({ status: 'archived', limit: 1000 }),
+      batchApi.list({ limit: 1000 }),
+    ])
+    return {
+      positions: posRes.items.map(convertCareerPositionToPosition),
+      batches: batchRes.items.map(convertJobBatchToBatch),
     }
-  }, [toast])
+  })
 
-  useEffect(() => {
-    ;(async () => {
-      await loadData()
-    })()
-  }, [loadData])
+  const { positions, batches } = data ?? {}
 
   const majors = useMemo(() => {
     const set = new Set<string>()
-    positions.forEach((p) => {
+    ;(positions ?? []).forEach((p) => {
       p.majors.forEach((id) => {
         const name = majorMap.get(id)
         if (name) set.add(name)
@@ -63,7 +47,7 @@ export default function PositionArchivePage() {
   }, [positions, majorMap])
 
   const filtered = useMemo(() => {
-    let result = positions
+    let result = positions ?? []
     if (selectedMajor) {
       result = result.filter((p) => p.majors.some((id) => majorMap.get(id) === selectedMajor))
     }
@@ -80,7 +64,7 @@ export default function PositionArchivePage() {
     return result
   }, [positions, selectedMajor, search, industryMap, majorMap])
 
-  const batchMap = useMemo(() => new Map(batches.map((b) => [b.id, b])), [batches])
+  const batchMap = useMemo(() => new Map((batches ?? []).map((b) => [b.id, b])), [batches])
 
   const getMajorNames = (ids: string[]) => {
     if (ids.length === 0) return '-'
@@ -90,7 +74,7 @@ export default function PositionArchivePage() {
   const handleRestore = async (position: Position) => {
     try {
       await positionApi.saveDraft(position.id)
-      await loadData()
+      await refresh()
       toast({ title: '已恢复' })
     } catch (err: any) {
       toast({
@@ -104,7 +88,7 @@ export default function PositionArchivePage() {
   const handleDelete = async (position: Position) => {
     try {
       await positionApi.delete(position.id)
-      await loadData()
+      await refresh()
       toast({ title: '已删除' })
     } catch (err: any) {
       toast({
@@ -118,7 +102,7 @@ export default function PositionArchivePage() {
   const handleBatchRestore = async (ids: string[]) => {
     const results = await Promise.allSettled(ids.map((id) => positionApi.saveDraft(id)))
     const failed = results.filter((r) => r.status === 'rejected').length
-    await loadData()
+    await refresh()
     if (failed === 0) {
       toast({ title: `已批量恢复 ${ids.length} 个岗位` })
     } else {
@@ -138,7 +122,7 @@ export default function PositionArchivePage() {
     if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
     try {
       await Promise.all(batchDeleteTarget.map((id) => positionApi.delete(id)))
-      await loadData()
+      await refresh()
       toast({ title: `已批量删除 ${batchDeleteTarget.length} 个岗位` })
     } catch (err: any) {
       toast({
