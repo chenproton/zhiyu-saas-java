@@ -171,7 +171,8 @@ func (s *PositionStore) Update(ctx context.Context, tx Queryer, id string, p *Po
 	return s.fetchPosition(ctx, id)
 }
 
-// Delete 删除岗位（事务内同步清理无外键约束的岗位能力结果/学生画像/汇聚日志，防止孤儿数据残留）。
+// Delete 删除岗位（事务内同步清理无外键约束的岗位能力结果/学生画像/汇聚日志/
+// 认证规则链/认证等级数据，防止孤儿数据残留）。
 func (s *PositionStore) Delete(ctx context.Context, id string) error {
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM job_ability_results WHERE career_position_id = $1`, id); err != nil {
@@ -182,6 +183,17 @@ func (s *PositionStore) Delete(ctx context.Context, id string) error {
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM job_ability_aggregate_logs WHERE career_position_id = $1`, id); err != nil {
 			return fmt.Errorf("cleanup job ability aggregate logs: %w", err)
+		}
+		// certification_weights 无 rule_id 外键需显式删除；certification_rules 级联删
+		// ability_items → ability_points → related_tasks；grade_data 级联删 leaderboard/competency
+		if _, err := tx.Exec(ctx, `DELETE FROM certification_weights WHERE rule_id IN (SELECT id FROM certification_rules WHERE career_position_id = $1)`, id); err != nil {
+			return fmt.Errorf("cleanup certification weights: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM certification_grade_data WHERE position_id = $1`, id); err != nil {
+			return fmt.Errorf("cleanup certification grade data: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM certification_rules WHERE career_position_id = $1`, id); err != nil {
+			return fmt.Errorf("cleanup certification rules: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, id); err != nil {
 			return fmt.Errorf("delete position: %w", err)
