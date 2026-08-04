@@ -9,6 +9,7 @@ export type {
   EvalPointField,
   EvalPoint,
   EvalRuleConfig,
+  EvalRuleScoreRule,
   EvalRuleSubjectConfig,
   EvalRuleReviewStepInput,
   GradeMapping,

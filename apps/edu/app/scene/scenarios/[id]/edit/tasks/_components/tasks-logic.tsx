@@ -13,6 +13,7 @@ import {
 import {
   type EvalRuleConfig,
   type EvalRuleReviewStepInput,
+  type EvalRuleScoreRule,
 } from '@/components/evaluation-rules'
 import { uid } from '@/components/evaluation-rules/utils'
 import type { TaskEvaluationMethod } from '@/lib/types/scene'
@@ -153,9 +154,15 @@ export interface TaskState {
   randomDrawEvalPoints: EvalPoint[]
   randomDrawScoreType: 'eval_points' | 'ability_levels'
   randomDrawRubricId: string | null
+  randomDrawStandardName?: string
+  randomDrawStandardMode?: 'rubric' | 'score_rule'
+  randomDrawScoreRules?: EvalRuleScoreRule[]
   reviewEvalPoints: EvalPoint[]
   reviewScoreType: 'eval_points' | 'ability_levels'
   reviewRubricId: string | null
+  reviewStandardName?: string
+  reviewStandardMode?: 'rubric' | 'score_rule'
+  reviewScoreRules?: EvalRuleScoreRule[]
   paperIds: string[]
   paperWeights: Record<string, number>
   paperEvalPoints: EvalPoint[]
@@ -164,9 +171,15 @@ export interface TaskState {
   outcomeEvalPoints: EvalPoint[]
   outcomeScoreType: 'eval_points' | 'ability_levels'
   outcomeRubricId: string | null
+  outcomeStandardName?: string
+  outcomeStandardMode?: 'rubric' | 'score_rule'
+  outcomeScoreRules?: EvalRuleScoreRule[]
   homeworkEvalPoints: EvalPoint[]
   homeworkScoreType: 'eval_points' | 'ability_levels'
   homeworkRubricId: string | null
+  homeworkStandardName?: string
+  homeworkStandardMode?: 'rubric' | 'score_rule'
+  homeworkScoreRules?: EvalRuleScoreRule[]
   quizQuestions: string[]
   quizEvalPoints: EvalPoint[]
   weight: number
@@ -211,9 +224,15 @@ export function taskStateToEvalRuleConfig(state: TaskState): EvalRuleConfig {
     randomDrawEvalPoints: state.randomDrawEvalPoints,
     randomDrawScoreType: state.randomDrawScoreType,
     randomDrawRubricId: state.randomDrawRubricId,
+    randomDrawStandardName: state.randomDrawStandardName,
+    randomDrawStandardMode: state.randomDrawStandardMode,
+    randomDrawScoreRules: state.randomDrawScoreRules,
     reviewEvalPoints: state.reviewEvalPoints,
     reviewScoreType: state.reviewScoreType,
     reviewRubricId: state.reviewRubricId,
+    reviewStandardName: state.reviewStandardName,
+    reviewStandardMode: state.reviewStandardMode,
+    reviewScoreRules: state.reviewScoreRules,
     paperIds: state.paperIds,
     paperWeights: state.paperWeights,
     paperEvalPoints: state.paperEvalPoints,
@@ -222,9 +241,15 @@ export function taskStateToEvalRuleConfig(state: TaskState): EvalRuleConfig {
     outcomeEvalPoints: state.outcomeEvalPoints,
     outcomeScoreType: state.outcomeScoreType,
     outcomeRubricId: state.outcomeRubricId,
+    outcomeStandardName: state.outcomeStandardName,
+    outcomeStandardMode: state.outcomeStandardMode,
+    outcomeScoreRules: state.outcomeScoreRules,
     homeworkEvalPoints: state.homeworkEvalPoints,
     homeworkScoreType: state.homeworkScoreType,
     homeworkRubricId: state.homeworkRubricId,
+    homeworkStandardName: state.homeworkStandardName,
+    homeworkStandardMode: state.homeworkStandardMode,
+    homeworkScoreRules: state.homeworkScoreRules,
     quizQuestions: state.quizQuestions,
     quizEvalPoints: state.quizEvalPoints,
     gradeMapping: state.gradeMapping,
@@ -267,9 +292,15 @@ export function evalRuleConfigToTaskStateUpdates(config: EvalRuleConfig): Partia
     randomDrawEvalPoints: config.randomDrawEvalPoints as EvalPoint[],
     randomDrawScoreType: config.randomDrawScoreType,
     randomDrawRubricId: config.randomDrawRubricId,
+    randomDrawStandardName: config.randomDrawStandardName,
+    randomDrawStandardMode: config.randomDrawStandardMode,
+    randomDrawScoreRules: config.randomDrawScoreRules,
     reviewEvalPoints: config.reviewEvalPoints as EvalPoint[],
     reviewScoreType: config.reviewScoreType,
     reviewRubricId: config.reviewRubricId,
+    reviewStandardName: config.reviewStandardName,
+    reviewStandardMode: config.reviewStandardMode,
+    reviewScoreRules: config.reviewScoreRules,
     paperIds: config.paperIds,
     paperWeights: config.paperWeights,
     paperEvalPoints: config.paperEvalPoints as EvalPoint[],
@@ -278,9 +309,15 @@ export function evalRuleConfigToTaskStateUpdates(config: EvalRuleConfig): Partia
     outcomeEvalPoints: config.outcomeEvalPoints as EvalPoint[],
     outcomeScoreType: config.outcomeScoreType,
     outcomeRubricId: config.outcomeRubricId,
+    outcomeStandardName: config.outcomeStandardName,
+    outcomeStandardMode: config.outcomeStandardMode,
+    outcomeScoreRules: config.outcomeScoreRules,
     homeworkEvalPoints: config.homeworkEvalPoints as EvalPoint[],
     homeworkScoreType: config.homeworkScoreType,
     homeworkRubricId: config.homeworkRubricId,
+    homeworkStandardName: config.homeworkStandardName,
+    homeworkStandardMode: config.homeworkStandardMode,
+    homeworkScoreRules: config.homeworkScoreRules,
     quizQuestions: config.quizQuestions,
     quizEvalPoints: config.quizEvalPoints as EvalPoint[],
     gradeMapping: config.gradeMapping,

@@ -78,9 +78,9 @@ import {
 import {
   type EvalObjectType,
   type EvalSubType,
-  type ScoreRuleItem,
   type RubricScheme,
   type EvalPoint,
+  type EvalRuleScoreRule,
   type EvalRuleSubjectConfig,
   type EvalRuleReviewStepInput,
 } from './types'
@@ -102,6 +102,11 @@ export interface EvaluationRulesEditorProps {
   inline?: boolean
   className?: string
   title?: string
+  /**
+   * 评价标准表单「保存」回调：把当前方法的评价标准立即关联到任务/节点。
+   * 不传时仅通过 onChange 上抛配置（如课程侧由父组件统一持久化）。
+   */
+  onPersistStandard?: (methodKey: string, config: EvalRuleConfig) => Promise<void> | void
 }
 
 interface ReviewStep {
@@ -151,6 +156,7 @@ export function EvaluationRulesEditor({
   inline,
   className,
   title = '配置评价规则',
+  onPersistStandard,
 }: EvaluationRulesEditorProps) {
   const { toast } = useToast()
   const knowledgePoints = useMemo(() => kpProp || [], [kpProp])
@@ -215,11 +221,15 @@ export function EvaluationRulesEditor({
   const [rubricAbSearch, setRubricAbSearch] = useState('')
 
   const [newPointName, setNewPointName] = useState('')
-  const [editingRubricId, setEditingRubricId] = useState<string | null>(null)
   const [methodDialogViews, setMethodDialogViews] = useState<
     Record<string, 'list' | 'edit' | 'template'>
   >({})
   const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
+  // 评价标准编辑表单草稿（任务侧标准名称/类型，rubric | score_rule）
+  const [stdDraft, setStdDraft] = useState<{ name: string; mode: 'rubric' | 'score_rule' }>({
+    name: '',
+    mode: 'rubric',
+  })
 
   const [reviewSteps, setReviewSteps] = useState<ReviewStep[]>(() => {
     const incoming = configProp.reviewSteps || []
@@ -327,12 +337,6 @@ export function EvaluationRulesEditor({
   // MethodDialogContent 状态（从内部组件提升）
   const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
   const [editingGradeMappingPointId, setEditingGradeMappingPointId] = useState<string | null>(null)
-  const [localDraft, setLocalDraft] = useState<{
-    name: string
-    mode: 'rubric' | 'score_rule'
-    types: EvalSubType[]
-    scoreRuleItems: ScoreRuleItem[]
-  }>({ name: '', mode: 'rubric', types: [], scoreRuleItems: [] })
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false)
   const [saveTemplateMode, setSaveTemplateMode] = useState<'new' | 'replace'>('new')
   const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
@@ -758,6 +762,28 @@ export function EvaluationRulesEditor({
   const openDialog = (type: 'object' | 'subject' | 'resource' | 'method', methodKey: string) => {
     setErDialogMethod(methodKey)
     setErDialogOpen(type)
+    if (type === 'method') {
+      const nameField =
+        methodKey === 'random_draw'
+          ? 'randomDrawStandardName'
+          : methodKey === 'review'
+            ? 'reviewStandardName'
+            : methodKey === 'outcome'
+              ? 'outcomeStandardName'
+              : 'homeworkStandardName'
+      const modeField =
+        methodKey === 'random_draw'
+          ? 'randomDrawStandardMode'
+          : methodKey === 'review'
+            ? 'reviewStandardMode'
+            : methodKey === 'outcome'
+              ? 'outcomeStandardMode'
+              : 'homeworkStandardMode'
+      setStdDraft({
+        name: ((config as any)[nameField] as string) || '',
+        mode: ((config as any)[modeField] as 'rubric' | 'score_rule') || 'rubric',
+      })
+    }
   }
 
   const methodWeightTotal = config.evaluationMethods.reduce(
@@ -2359,161 +2385,181 @@ export function EvaluationRulesEditor({
   const methodDialogContent = erDialogMethod
     ? (() => {
         const info = getMethodEvalInfo(erDialogMethod)
-        const rubricIdField =
+        const standardNameField =
           erDialogMethod === 'random_draw'
-            ? 'randomDrawRubricId'
+            ? 'randomDrawStandardName'
             : erDialogMethod === 'review'
-              ? 'reviewRubricId'
+              ? 'reviewStandardName'
               : erDialogMethod === 'outcome'
-                ? 'outcomeRubricId'
-                : erDialogMethod === 'homework'
-                  ? 'homeworkRubricId'
-                  : 'reviewRubricId'
-        const currentRubricId = (config as any)[rubricIdField] as string | null
-        const view = methodDialogViews[erDialogMethod] || 'list'
+                ? 'outcomeStandardName'
+                : 'homeworkStandardName'
+        const standardModeField =
+          erDialogMethod === 'random_draw'
+            ? 'randomDrawStandardMode'
+            : erDialogMethod === 'review'
+              ? 'reviewStandardMode'
+              : erDialogMethod === 'outcome'
+                ? 'outcomeStandardMode'
+                : 'homeworkStandardMode'
+        const scoreRulesField =
+          erDialogMethod === 'random_draw'
+            ? 'randomDrawScoreRules'
+            : erDialogMethod === 'review'
+              ? 'reviewScoreRules'
+              : erDialogMethod === 'outcome'
+                ? 'outcomeScoreRules'
+                : 'homeworkScoreRules'
+        const taskScoreRules = ((config as any)[scoreRulesField] as EvalRuleScoreRule[]) || []
+        const view = methodDialogViews[erDialogMethod] || 'edit'
         const setView = (v: 'list' | 'edit' | 'template') =>
           setMethodDialogViews((prev) => ({ ...prev, [erDialogMethod]: v }))
 
+        const setTaskScoreRules = (items: EvalRuleScoreRule[]) =>
+          updateConfig({ [scoreRulesField]: items } as any)
+
+        // 使用模板 = 把模板内容完整复制到当前任务的评价标准表单（量规/评分规则），不保留任何引用
         const applyScheme = (schemeId: string) => {
           const scheme = rubricLibrary.find((s) => s.id === schemeId)
           if (!scheme) return
-          updateConfig({ [rubricIdField]: schemeId } as any)
-          if (scheme.mode === 'rubric')
+          setStdDraft({ name: scheme.name, mode: scheme.mode })
+          updateConfig({
+            [standardNameField]: scheme.name,
+            [standardModeField]: scheme.mode,
+          } as any)
+          if (scheme.mode === 'rubric') {
             setEvalPoints(
               info.field,
               scheme.points.map((p) => ({ ...p, id: uid('ep') })),
             )
-          else setEvalPoints(info.field, [])
-          setEditingRubricId(schemeId)
-        }
-
-        const enterEdit = (schemeId: string | null) => {
-          if (schemeId) {
-            const scheme = rubricLibrary.find((s) => s.id === schemeId)
-            if (scheme) {
-              setEvalPoints(info.field, JSON.parse(JSON.stringify(scheme.points)))
-              setLocalDraft({
-                name: scheme.name,
-                mode: scheme.mode,
-                types: scheme.types,
-                scoreRuleItems: scheme.scoreRuleItems || [],
-              })
-            }
+            setTaskScoreRules([])
           } else {
             setEvalPoints(info.field, [])
-            setLocalDraft({ name: '', mode: 'rubric', types: [], scoreRuleItems: [] })
+            setTaskScoreRules(
+              (scheme.scoreRuleItems || []).map((it) => ({ ...it, id: uid('sr') })),
+            )
           }
-          setEditingRubricId(schemeId)
-          setView('edit')
         }
 
-        const saveRubricToLibrary = async (
-          schemeId: string | null,
-          updates: Partial<RubricScheme>,
-        ) => {
-          try {
-            if (schemeId) {
-              const data = {
-                name: updates.name || '',
-                mode: updates.mode || 'rubric',
-                types: updates.types || [],
-                description: updates.desc || '',
-                data:
-                  updates.mode === 'score_rule'
-                    ? { scoreRuleItems: updates.scoreRuleItems || [] }
-                    : {
-                        points: info.points.map((p) => ({
-                          id: p.id,
-                          name: p.name,
-                          description: p.desc || '',
-                          types: p.types || (p.subType ? [p.subType] : []),
-                          weight: p.weight || 0,
-                          scoringMethod: p.scoringMethod || 'level',
-                          gradeMapping: p.gradeMapping || [],
-                          knowledgePointIds: p.knowledgePointIds || [],
-                          abilityPointIds: p.abilityPointIds || [],
-                        })),
-                      },
-              }
-              await taskEvaluationApi
-                .updateTemplate(schemeId, data)
-                .catch((err) => reportError(err, { source: '更新评价标准模板' }))
-              setRubricLibrary((prev) =>
-                prev.map((s) => (s.id === schemeId ? ({ ...s, ...updates } as RubricScheme) : s)),
-              )
-            } else {
-              const data = {
-                name: updates.name || '新建评价标准',
-                mode: updates.mode || 'rubric',
-                types: updates.types || [],
-                description: updates.desc || '',
-                data:
-                  updates.mode === 'score_rule'
-                    ? { scoreRuleItems: updates.scoreRuleItems || [] }
-                    : {
-                        points: info.points.map((p) => ({
-                          id: p.id,
-                          name: p.name,
-                          description: p.desc || '',
-                          types: p.types || (p.subType ? [p.subType] : []),
-                          weight: p.weight || 0,
-                          scoringMethod: p.scoringMethod || 'level',
-                          gradeMapping: p.gradeMapping || [],
-                          knowledgePointIds: p.knowledgePointIds || [],
-                          abilityPointIds: p.abilityPointIds || [],
-                        })),
-                      },
-              }
-              const created = await taskEvaluationApi.createTemplate(data).catch((err) => {
-                reportError(err, { source: '创建评价标准模板' })
-                return null
-              })
-              if (created) {
-                const newScheme: RubricScheme = {
-                  id: created.id,
-                  name: created.name || updates.name || '新建评价标准',
-                  types: updates.types || [],
-                  desc: created.description || '',
-                  points: info.points.map((p) => ({ ...p })),
-                  mode: updates.mode || 'rubric',
-                  scoreRuleItems: updates.scoreRuleItems || [],
+        const buildTemplatePayload = (mode: 'rubric' | 'score_rule') => ({
+          name: stdDraft.name || '新建评价标准',
+          mode,
+          types: [] as string[],
+          description: '',
+          data:
+            mode === 'score_rule'
+              ? {
+                  scoreRuleItems: taskScoreRules.map((sr) => ({
+                    id: sr.id,
+                    name: sr.name,
+                    desc: sr.desc,
+                    rule: sr.rule || '',
+                    weight: sr.weight || 0,
+                  })),
                 }
-                setRubricLibrary((prev) => [...prev, newScheme])
-                updateConfig({ [rubricIdField]: created.id } as any)
-              }
-            }
-          } catch (err) {
-            reportError(err, { source: '保存评价标准模板' })
+              : {
+                  points: info.points.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    description: p.desc || '',
+                    types: p.types || (p.subType ? [p.subType] : []),
+                    weight: p.weight || 0,
+                    scoringMethod: p.scoringMethod || 'level',
+                    gradeMapping: p.gradeMapping || [],
+                    knowledgePointIds: p.knowledgePointIds || [],
+                    abilityPointIds: p.abilityPointIds || [],
+                  })),
+                },
+        })
+
+        // 「保存」：把评价标准（名称/类型/量规或评分规则）立即关联到当前任务×当前测评方式
+        const handleSaveStandard = async () => {
+          updateConfig({
+            [standardNameField]: stdDraft.name,
+            [standardModeField]: stdDraft.mode,
+          } as any)
+          try {
+            await onPersistStandard?.(erDialogMethod, {
+              ...config,
+              [standardNameField]: stdDraft.name,
+              [standardModeField]: stdDraft.mode,
+            } as EvalRuleConfig)
+            toast({ title: '评价标准已保存' })
+          } catch (err: any) {
+            toast({ variant: 'destructive', title: '保存失败', description: err.message })
           }
         }
 
-        const editingScheme = editingRubricId
-          ? rubricLibrary.find((s) => s.id === editingRubricId)
-          : null
-        const draftScheme = editingScheme
-          ? {
-              name: editingScheme.name,
-              types: editingScheme.types,
-              mode: editingScheme.mode,
-              scoreRuleItems: editingScheme.scoreRuleItems || [],
+        const handleSaveTemplate = async () => {
+          try {
+            const payload = buildTemplatePayload(stdDraft.mode)
+            if (saveTemplateMode === 'new') {
+              const created = await taskEvaluationApi.createTemplate(payload)
+              const newScheme: RubricScheme = {
+                id: created.id,
+                name: payload.name,
+                types: [],
+                desc: '',
+                points: info.points.map((p) => ({ ...p })),
+                mode: payload.mode,
+                scoreRuleItems: payload.data.scoreRuleItems,
+              }
+              setRubricLibrary((prev) => [...prev, newScheme])
+            } else if (selectedReplaceTemplateId) {
+              await taskEvaluationApi.updateTemplate(selectedReplaceTemplateId, payload)
+              setRubricLibrary((prev) =>
+                prev.map((s) =>
+                  s.id === selectedReplaceTemplateId
+                    ? {
+                        ...s,
+                        name: payload.name,
+                        types: [],
+                        desc: '',
+                        points: info.points.map((p) => ({ ...p })),
+                        mode: payload.mode,
+                        scoreRuleItems: payload.data.scoreRuleItems,
+                      }
+                    : s,
+                ),
+              )
             }
-          : localDraft
+            toast({ title: '模板已保存' })
+            setSaveTemplateDialogOpen(false)
+          } catch (err: any) {
+            toast({ variant: 'destructive', title: '模板保存失败', description: err.message })
+          }
+        }
 
         if (view === 'edit') {
           return (
             <div className="space-y-4">
-              <div className="flex items-center justify-end mb-2">
+              <div className="flex items-center justify-end gap-2 mb-2">
                 <Button
                   variant="outline"
                   size="sm"
                   className="text-xs h-8"
                   onClick={() => {
                     setView('template')
-                    setEditingRubricId(null)
                   }}
                 >
                   <BookOpen className="h-3.5 w-3.5 mr-1" />
-                  选择评价标准模板覆盖
+                  从模板库选择
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-8 text-red-500 hover:text-red-600"
+                  onClick={() => {
+                    setStdDraft({ name: '', mode: 'rubric' })
+                    updateConfig({
+                      [standardNameField]: undefined,
+                      [standardModeField]: undefined,
+                      [scoreRulesField]: [],
+                    } as any)
+                    setEvalPoints(info.field, [])
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  清除评价标准
                 </Button>
               </div>
               <div className="border rounded-xl p-4 bg-gray-50/50">
@@ -2524,16 +2570,8 @@ export function EvaluationRulesEditor({
                     labelClassName="text-xs text-gray-500"
                   >
                     <Input
-                      value={draftScheme.name}
-                      onChange={(e) => {
-                        if (editingRubricId)
-                          setRubricLibrary((prev) =>
-                            prev.map((s) =>
-                              s.id === editingRubricId ? { ...s, name: e.target.value } : s,
-                            ),
-                          )
-                        else setLocalDraft((prev) => ({ ...prev, name: e.target.value }))
-                      }}
+                      value={stdDraft.name}
+                      onChange={(e) => setStdDraft((prev) => ({ ...prev, name: e.target.value }))}
                       className="text-sm"
                       placeholder="输入评价标准名称"
                     />
@@ -2542,18 +2580,10 @@ export function EvaluationRulesEditor({
                     <Label className="text-xs text-gray-500">评价标准类型</Label>
                     <div className="flex gap-3 mt-1">
                       <button
-                        onClick={() => {
-                          if (editingRubricId)
-                            setRubricLibrary((prev) =>
-                              prev.map((s) =>
-                                s.id === editingRubricId ? { ...s, mode: 'rubric' } : s,
-                              ),
-                            )
-                          else setLocalDraft((prev) => ({ ...prev, mode: 'rubric' }))
-                        }}
+                        onClick={() => setStdDraft((prev) => ({ ...prev, mode: 'rubric' }))}
                         className={cn(
                           'px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5',
-                          draftScheme.mode === 'rubric'
+                          stdDraft.mode === 'rubric'
                             ? 'bg-primary/10 text-primary border-primary'
                             : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
                         )}
@@ -2561,10 +2591,10 @@ export function EvaluationRulesEditor({
                         <div
                           className={cn(
                             'w-3.5 h-3.5 rounded-full border flex items-center justify-center',
-                            draftScheme.mode === 'rubric' ? 'border-primary' : 'border-gray-300',
+                            stdDraft.mode === 'rubric' ? 'border-primary' : 'border-gray-300',
                           )}
                         >
-                          {draftScheme.mode === 'rubric' && (
+                          {stdDraft.mode === 'rubric' && (
                             <div className="w-2 h-2 rounded-full bg-primary" />
                           )}
                         </div>
@@ -2572,40 +2602,15 @@ export function EvaluationRulesEditor({
                       </button>
                       <button
                         onClick={() => {
-                          if (editingRubricId)
-                            setRubricLibrary((prev) =>
-                              prev.map((s) =>
-                                s.id === editingRubricId
-                                  ? {
-                                      ...s,
-                                      mode: 'score_rule',
-                                      scoreRuleItems: s.scoreRuleItems?.length
-                                        ? s.scoreRuleItems
-                                        : [
-                                            {
-                                              id: uid('sr'),
-                                              name: '',
-                                              desc: '',
-                                              rule: '',
-                                              weight: 0,
-                                            },
-                                          ],
-                                    }
-                                  : s,
-                              ),
-                            )
-                          else
-                            setLocalDraft((prev) => ({
-                              ...prev,
-                              mode: 'score_rule',
-                              scoreRuleItems: prev.scoreRuleItems?.length
-                                ? prev.scoreRuleItems
-                                : [{ id: uid('sr'), name: '', desc: '', rule: '', weight: 0 }],
-                            }))
+                          setStdDraft((prev) => ({ ...prev, mode: 'score_rule' }))
+                          if (taskScoreRules.length === 0)
+                            setTaskScoreRules([
+                              { id: uid('sr'), name: '', desc: '', rule: '', weight: 0 },
+                            ])
                         }}
                         className={cn(
                           'px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5',
-                          draftScheme.mode === 'score_rule'
+                          stdDraft.mode === 'score_rule'
                             ? 'bg-primary/10 text-primary border-primary'
                             : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
                         )}
@@ -2613,12 +2618,10 @@ export function EvaluationRulesEditor({
                         <div
                           className={cn(
                             'w-3.5 h-3.5 rounded-full border flex items-center justify-center',
-                            draftScheme.mode === 'score_rule'
-                              ? 'border-primary'
-                              : 'border-gray-300',
+                            stdDraft.mode === 'score_rule' ? 'border-primary' : 'border-gray-300',
                           )}
                         >
-                          {draftScheme.mode === 'score_rule' && (
+                          {stdDraft.mode === 'score_rule' && (
                             <div className="w-2 h-2 rounded-full bg-primary" />
                           )}
                         </div>
@@ -2629,7 +2632,7 @@ export function EvaluationRulesEditor({
                   </div>
                 </div>
               </div>
-              {draftScheme.mode === 'rubric' ? (
+              {stdDraft.mode === 'rubric' ? (
                 <div className="border rounded-xl p-4 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium">评价量规配置表</p>
@@ -2660,7 +2663,7 @@ export function EvaluationRulesEditor({
                         onClick={() =>
                           addEvalPoint(info.field, {
                             name: '',
-                            types: draftScheme.types.length ? draftScheme.types : undefined,
+                            types: undefined,
                           })
                         }
                       >
@@ -2756,7 +2759,7 @@ export function EvaluationRulesEditor({
                       onClick={() =>
                         addEvalPoint(info.field, {
                           name: '',
-                          types: draftScheme.types.length ? draftScheme.types : undefined,
+                          types: undefined,
                         })
                       }
                       className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1"
@@ -2801,7 +2804,7 @@ export function EvaluationRulesEditor({
                         size="sm"
                         className="text-xs h-8"
                         onClick={() => {
-                          const items = draftScheme.scoreRuleItems || []
+                          const items = taskScoreRules
                           const count = items.length
                           if (count === 0) return
                           const base = Math.floor(100 / count)
@@ -2810,13 +2813,7 @@ export function EvaluationRulesEditor({
                             ...it,
                             weight: base + (i < remainder ? 1 : 0),
                           }))
-                          if (editingRubricId)
-                            setRubricLibrary((prev) =>
-                              prev.map((s) =>
-                                s.id === editingRubricId ? { ...s, scoreRuleItems: newItems } : s,
-                              ),
-                            )
-                          else setLocalDraft((prev) => ({ ...prev, scoreRuleItems: newItems }))
+                          setTaskScoreRules(newItems)
                         }}
                       >
                         <RotateCcw className="h-3.5 w-3.5 mr-1" />
@@ -2827,26 +2824,14 @@ export function EvaluationRulesEditor({
                         size="sm"
                         className="text-xs h-8"
                         onClick={() => {
-                          const newItem: ScoreRuleItem = {
+                          const newItem: EvalRuleScoreRule = {
                             id: uid('sr'),
                             name: '',
                             desc: '',
                             rule: '',
                             weight: 0,
                           }
-                          if (editingRubricId)
-                            setRubricLibrary((prev) =>
-                              prev.map((s) =>
-                                s.id === editingRubricId
-                                  ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] }
-                                  : s,
-                              ),
-                            )
-                          else
-                            setLocalDraft((prev) => ({
-                              ...prev,
-                              scoreRuleItems: [...(prev.scoreRuleItems || []), newItem],
-                            }))
+                          setTaskScoreRules([...taskScoreRules, newItem])
                         }}
                       >
                         <Plus className="h-3.5 w-3.5 mr-1" />
@@ -2868,7 +2853,7 @@ export function EvaluationRulesEditor({
                         </tr>
                       </thead>
                       <tbody>
-                        {(draftScheme.scoreRuleItems || []).map((item, idx) => (
+                        {taskScoreRules.map((item, idx) => (
                           <tr
                             key={item.id}
                             className="border-b hover:bg-gray-50/50 transition-colors"
@@ -2883,30 +2868,13 @@ export function EvaluationRulesEditor({
                                   const lines = e.target.value.split('\n')
                                   const newName = lines[0] || ''
                                   const newDesc = lines.slice(1).join('\n')
-                                  if (editingRubricId)
-                                    setRubricLibrary((prev) =>
-                                      prev.map((s) =>
-                                        s.id === editingRubricId
-                                          ? {
-                                              ...s,
-                                              scoreRuleItems: (s.scoreRuleItems || []).map((it) =>
-                                                it.id === item.id
-                                                  ? { ...it, name: newName, desc: newDesc }
-                                                  : it,
-                                              ),
-                                            }
-                                          : s,
-                                      ),
-                                    )
-                                  else
-                                    setLocalDraft((prev) => ({
-                                      ...prev,
-                                      scoreRuleItems: (prev.scoreRuleItems || []).map((it) =>
-                                        it.id === item.id
-                                          ? { ...it, name: newName, desc: newDesc }
-                                          : it,
-                                      ),
-                                    }))
+                                  setTaskScoreRules(
+                                    taskScoreRules.map((it) =>
+                                      it.id === item.id
+                                        ? { ...it, name: newName, desc: newDesc }
+                                        : it,
+                                    ),
+                                  )
                                 }}
                                 className="text-sm min-h-[60px]"
                                 placeholder="请输入评分描述"
@@ -2915,31 +2883,14 @@ export function EvaluationRulesEditor({
                             </td>
                             <td className="py-3 px-2">
                               <Textarea
-                                value={item.rule}
-                                onChange={(e) => {
-                                  if (editingRubricId)
-                                    setRubricLibrary((prev) =>
-                                      prev.map((s) =>
-                                        s.id === editingRubricId
-                                          ? {
-                                              ...s,
-                                              scoreRuleItems: (s.scoreRuleItems || []).map((it) =>
-                                                it.id === item.id
-                                                  ? { ...it, rule: e.target.value }
-                                                  : it,
-                                              ),
-                                            }
-                                          : s,
-                                      ),
-                                    )
-                                  else
-                                    setLocalDraft((prev) => ({
-                                      ...prev,
-                                      scoreRuleItems: (prev.scoreRuleItems || []).map((it) =>
-                                        it.id === item.id ? { ...it, rule: e.target.value } : it,
-                                      ),
-                                    }))
-                                }}
+                                value={item.rule || ''}
+                                onChange={(e) =>
+                                  setTaskScoreRules(
+                                    taskScoreRules.map((it) =>
+                                      it.id === item.id ? { ...it, rule: e.target.value } : it,
+                                    ),
+                                  )
+                                }
                                 className="text-sm min-h-[60px]"
                                 placeholder="输入加减分规则"
                                 rows={2}
@@ -2954,26 +2905,11 @@ export function EvaluationRulesEditor({
                                     0,
                                     Math.min(100, parseInt(e.target.value) || 0),
                                   )
-                                  if (editingRubricId)
-                                    setRubricLibrary((prev) =>
-                                      prev.map((s) =>
-                                        s.id === editingRubricId
-                                          ? {
-                                              ...s,
-                                              scoreRuleItems: (s.scoreRuleItems || []).map((it) =>
-                                                it.id === item.id ? { ...it, weight: val } : it,
-                                              ),
-                                            }
-                                          : s,
-                                      ),
-                                    )
-                                  else
-                                    setLocalDraft((prev) => ({
-                                      ...prev,
-                                      scoreRuleItems: (prev.scoreRuleItems || []).map((it) =>
-                                        it.id === item.id ? { ...it, weight: val } : it,
-                                      ),
-                                    }))
+                                  setTaskScoreRules(
+                                    taskScoreRules.map((it) =>
+                                      it.id === item.id ? { ...it, weight: val } : it,
+                                    ),
+                                  )
                                 }}
                                 className="h-8 text-sm text-center"
                               />
@@ -2981,28 +2917,9 @@ export function EvaluationRulesEditor({
                             <td className="py-3 px-2 text-center">
                               <button
                                 className="text-red-500 hover:text-red-600 text-xs"
-                                onClick={() => {
-                                  if (editingRubricId)
-                                    setRubricLibrary((prev) =>
-                                      prev.map((s) =>
-                                        s.id === editingRubricId
-                                          ? {
-                                              ...s,
-                                              scoreRuleItems: (s.scoreRuleItems || []).filter(
-                                                (it) => it.id !== item.id,
-                                              ),
-                                            }
-                                          : s,
-                                      ),
-                                    )
-                                  else
-                                    setLocalDraft((prev) => ({
-                                      ...prev,
-                                      scoreRuleItems: (prev.scoreRuleItems || []).filter(
-                                        (it) => it.id !== item.id,
-                                      ),
-                                    }))
-                                }}
+                                onClick={() =>
+                                  setTaskScoreRules(taskScoreRules.filter((it) => it.id !== item.id))
+                                }
                               >
                                 删除
                               </button>
@@ -3015,60 +2932,41 @@ export function EvaluationRulesEditor({
                   <div className="mt-3 space-y-2">
                     <button
                       onClick={() => {
-                        const newItem: ScoreRuleItem = {
+                        const newItem: EvalRuleScoreRule = {
                           id: uid('sr'),
                           name: '',
                           desc: '',
                           rule: '',
                           weight: 0,
                         }
-                        if (editingRubricId)
-                          setRubricLibrary((prev) =>
-                            prev.map((s) =>
-                              s.id === editingRubricId
-                                ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] }
-                                : s,
-                            ),
-                          )
-                        else
-                          setLocalDraft((prev) => ({
-                            ...prev,
-                            scoreRuleItems: [...(prev.scoreRuleItems || []), newItem],
-                          }))
+                        setTaskScoreRules([...taskScoreRules, newItem])
                       }}
                       className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1"
                     >
                       <Plus className="h-4 w-4" />
                       添加评价项
                     </button>
-                    {(draftScheme.scoreRuleItems || []).length > 0 && (
+                    {taskScoreRules.length > 0 && (
                       <div className="flex justify-end text-xs items-center gap-1">
                         <span className="text-gray-500">分值合计：</span>
                         <span
                           className={cn(
                             'font-semibold',
-                            (draftScheme.scoreRuleItems || []).reduce(
-                              (sum, it) => sum + (it.weight || 0),
-                              0,
-                            ) === 100
+                            taskScoreRules.reduce((sum, it) => sum + (it.weight || 0), 0) === 100
                               ? 'text-green-600'
                               : 'text-red-500',
                           )}
                         >
-                          {(draftScheme.scoreRuleItems || []).reduce(
-                            (sum, it) => sum + (it.weight || 0),
-                            0,
-                          )}
+                          {taskScoreRules.reduce((sum, it) => sum + (it.weight || 0), 0)}
                           %
                         </span>
-                        {(draftScheme.scoreRuleItems || []).reduce(
-                          (sum, it) => sum + (it.weight || 0),
-                          0,
-                        ) !== 100 && <span className="text-red-500">⚠️（需等于100%）</span>}
+                        {taskScoreRules.reduce((sum, it) => sum + (it.weight || 0), 0) !== 100 && (
+                          <span className="text-red-500">⚠️（需等于100%）</span>
+                        )}
                       </div>
                     )}
                   </div>
-                  {(draftScheme.scoreRuleItems || []).length === 0 && (
+                  {taskScoreRules.length === 0 && (
                     <div className="text-center text-gray-400 py-8">
                       <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">尚未添加评价项</p>
@@ -3081,26 +2979,7 @@ export function EvaluationRulesEditor({
                 <Button
                   size="sm"
                   className="text-xs h-8"
-                  onClick={() => {
-                    if (editingRubricId)
-                      setRubricLibrary((prev) =>
-                        prev.map((s) =>
-                          s.id === editingRubricId
-                            ? { ...s, points: info.points.map((p) => ({ ...p })) }
-                            : s,
-                        ),
-                      )
-                    else
-                      saveRubricToLibrary(null, {
-                        name: draftScheme.name || '新建评价标准',
-                        types: draftScheme.types,
-                        desc: '',
-                        mode: draftScheme.mode,
-                        scoreRuleItems: draftScheme.scoreRuleItems,
-                      })
-                    setView('list')
-                    setEditingRubricId(null)
-                  }}
+                  onClick={() => void handleSaveStandard()}
                 >
                   保存
                 </Button>
@@ -3153,16 +3032,10 @@ export function EvaluationRulesEditor({
                         labelClassName="text-xs text-gray-500"
                       >
                         <Input
-                          value={draftScheme.name}
-                          onChange={(e) => {
-                            if (editingRubricId)
-                              setRubricLibrary((prev) =>
-                                prev.map((s) =>
-                                  s.id === editingRubricId ? { ...s, name: e.target.value } : s,
-                                ),
-                              )
-                            else setLocalDraft((prev) => ({ ...prev, name: e.target.value }))
-                          }}
+                          value={stdDraft.name}
+                          onChange={(e) =>
+                            setStdDraft((prev) => ({ ...prev, name: e.target.value }))
+                          }
                           className="text-sm"
                           placeholder="输入模板名称"
                         />
@@ -3204,32 +3077,7 @@ export function EvaluationRulesEditor({
                     <Button
                       size="sm"
                       className="text-xs"
-                      onClick={() => {
-                        if (saveTemplateMode === 'new')
-                          saveRubricToLibrary(null, {
-                            name: draftScheme.name || '新建评价标准',
-                            types: draftScheme.types,
-                            desc: '',
-                            mode: draftScheme.mode,
-                            scoreRuleItems: draftScheme.scoreRuleItems,
-                          })
-                        else if (selectedReplaceTemplateId)
-                          setRubricLibrary((prev) =>
-                            prev.map((s) =>
-                              s.id === selectedReplaceTemplateId
-                                ? {
-                                    ...s,
-                                    points: info.points.map((p) => ({ ...p })),
-                                    mode: draftScheme.mode,
-                                    scoreRuleItems: draftScheme.scoreRuleItems || [],
-                                  }
-                                : s,
-                            ),
-                          )
-                        setSaveTemplateDialogOpen(false)
-                        setView('list')
-                        setEditingRubricId(null)
-                      }}
+                      onClick={() => void handleSaveTemplate()}
                       disabled={saveTemplateMode === 'replace' && !selectedReplaceTemplateId}
                     >
                       确认保存
@@ -3453,134 +3301,7 @@ export function EvaluationRulesEditor({
           )
         }
 
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">选择评价标准方案</p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8"
-                  onClick={() => {
-                    setView('template')
-                    setEditingRubricId(null)
-                  }}
-                >
-                  <BookOpen className="h-3.5 w-3.5 mr-1" />
-                  选择评价标准模板覆盖
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8"
-                  onClick={() => enterEdit(null)}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  添加评价标准
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              {rubricLibrary.map((scheme) => {
-                const isSelected = currentRubricId === scheme.id
-                return (
-                  <div
-                    key={scheme.id}
-                    className={cn(
-                      'p-4 rounded-xl border transition-all cursor-pointer',
-                      isSelected
-                        ? 'border-primary bg-white ring-1 ring-primary/20 shadow-sm'
-                        : 'border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm',
-                    )}
-                    onClick={() => {
-                      if (isSelected) {
-                        updateConfig({ [rubricIdField]: null } as any)
-                        setEvalPoints(info.field, [])
-                      } else applyScheme(scheme.id)
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <p className="text-sm font-semibold">{scheme.name}</p>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-[10px]',
-                              scheme.mode === 'rubric'
-                                ? 'bg-purple-50 text-purple-600 border-purple-200'
-                                : 'bg-blue-50 text-blue-600 border-blue-200',
-                            )}
-                          >
-                            {scheme.mode === 'rubric' ? '评价量规' : '评分规则'}
-                          </Badge>
-                          {isSelected && (
-                            <div className="flex items-center gap-1 text-primary text-xs font-medium bg-primary/5 px-2 py-0.5 rounded-full">
-                              <CheckCircle2 className="h-3 w-3" />
-                              已选用
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {scheme.types.map((type) => (
-                            <Badge
-                              key={type}
-                              variant="outline"
-                              className={cn('text-[10px]', evalSubTypeColors[type])}
-                            >
-                              {evalSubTypeLabels[type]}
-                            </Badge>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1.5">
-                          {scheme.mode === 'rubric'
-                            ? `${scheme.points.length} 个评价点`
-                            : `${scheme.scoreRuleItems?.length || 0} 个评价项`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                        <Button
-                          size="sm"
-                          variant={isSelected ? 'outline' : 'default'}
-                          className="h-7 text-[11px] px-2.5"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (isSelected) {
-                              updateConfig({ [rubricIdField]: null } as any)
-                              setEvalPoints(info.field, [])
-                            } else applyScheme(scheme.id)
-                          }}
-                        >
-                          {isSelected ? '取消选用' : '选用'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-[11px] px-2.5"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            enterEdit(scheme.id)
-                          }}
-                        >
-                          编辑
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            {!currentRubricId && (
-              <div className="text-center text-gray-400 py-6">
-                <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">尚未选用评价标准</p>
-                <p className="text-xs mt-1">请从上方列表中选用一个评价标准方案</p>
-              </div>
-            )}
-          </div>
-        )
+        return null
       })()
     : null
 
@@ -3719,38 +3440,44 @@ export function EvaluationRulesEditor({
 
   const MethodCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
     const info = getMethodEvalInfo(methodKey)
-    const rubricIdField =
+    const nameField =
       methodKey === 'random_draw'
-        ? 'randomDrawRubricId'
+        ? 'randomDrawStandardName'
         : methodKey === 'review'
-          ? 'reviewRubricId'
+          ? 'reviewStandardName'
           : methodKey === 'outcome'
-            ? 'outcomeRubricId'
-            : methodKey === 'homework'
-              ? 'homeworkRubricId'
-              : null
-    const currentRubricId = rubricIdField ? ((config as any)[rubricIdField] as string | null) : null
-    const currentScheme = currentRubricId ? rubricLibrary.find((s) => s.id === currentRubricId) : null
-    const isScoreRule = currentScheme?.mode === 'score_rule'
-    const scoreRuleItems = currentScheme?.scoreRuleItems || []
-    // 已关联模板但模板库尚未加载完成或模板不在当前列表时，避免回显为「未配置评价点」
-    const hasRubricIdButMissingScheme = currentRubricId && !currentScheme
+            ? 'outcomeStandardName'
+            : 'homeworkStandardName'
+    const modeField =
+      methodKey === 'random_draw'
+        ? 'randomDrawStandardMode'
+        : methodKey === 'review'
+          ? 'reviewStandardMode'
+          : methodKey === 'outcome'
+            ? 'outcomeStandardMode'
+            : 'homeworkStandardMode'
+    const rulesField =
+      methodKey === 'random_draw'
+        ? 'randomDrawScoreRules'
+        : methodKey === 'review'
+          ? 'reviewScoreRules'
+          : methodKey === 'outcome'
+            ? 'outcomeScoreRules'
+            : 'homeworkScoreRules'
+    const standardMode = (config as any)[modeField] as 'rubric' | 'score_rule' | undefined
+    const standardName = (config as any)[nameField] as string | undefined
+    const scoreRules = ((config as any)[rulesField] as EvalRuleScoreRule[]) || []
 
     let summary: string
     let description: string
     let badge: string | undefined
     let configured: boolean
 
-    if (hasRubricIdButMissingScheme) {
-      summary = '已选用评价标准'
-      description = '点击修改评价标准'
-      badge = '已配置'
-      configured = true
-    } else if (isScoreRule) {
-      summary = scoreRuleItems.length === 0 ? '未配置评分项' : `${scoreRuleItems.length} 个评分项`
-      description = '评分规则'
-      badge = scoreRuleItems.length > 0 ? `${scoreRuleItems.length} 项` : undefined
-      configured = scoreRuleItems.length > 0
+    if (standardMode === 'score_rule') {
+      summary = scoreRules.length === 0 ? '未配置评分项' : `${scoreRules.length} 个评分项`
+      description = standardName ? `${standardName} · 评分规则` : '评分规则'
+      badge = scoreRules.length > 0 ? `${scoreRules.length} 项` : undefined
+      configured = scoreRules.length > 0
     } else {
       const subTypeCount = Object.entries(
         info.points.reduce(
@@ -3762,7 +3489,11 @@ export function EvaluationRulesEditor({
         ),
       ).map(([k, v]) => `${evalSubTypeLabels[k as EvalSubType]}${v}`)
       summary = info.points.length === 0 ? '未配置评价点' : `${info.points.length} 个评价点`
-      description = subTypeCount.length === 0 ? '点击配置评价标准' : subTypeCount.join(' · ')
+      description = standardName
+        ? standardName
+        : subTypeCount.length === 0
+          ? '点击配置评价标准'
+          : subTypeCount.join(' · ')
       badge = info.points.length > 0 ? `${info.points.length} 点` : undefined
       configured = info.points.length > 0
     }

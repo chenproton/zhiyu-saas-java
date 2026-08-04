@@ -3,6 +3,7 @@ import type {
   EvalRuleConfig,
   EvalRuleMethodKey,
   EvalRulePoint as EvalPoint,
+  EvalRuleScoreRule,
   EvalRuleSubjectConfig,
   EvalRuleReviewStepInput,
 } from '@/lib/types/evaluation'
@@ -38,6 +39,8 @@ export interface RubricScheme {
   scoreRuleItems?: ScoreRuleItem[]
   isDeleted?: boolean
 }
+
+export type { EvalRuleScoreRule }
 
 export type EvalPointField =
   | 'randomDrawEvalPoints'
