@@ -625,6 +625,136 @@ func TestExamUsage_StartWindow(t *testing.T) {
 	}
 }
 
+func TestTaskDelete_CleansExamUsage(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	createScenario := func(name string) domain.Scenario {
+		w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
+			"name":       name,
+			"difficulty": 3,
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create scenario: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		s, _ := testhelper.Unmarshal[domain.Scenario](w)
+		return s
+	}
+	createTask := func(scenarioID, name string) domain.ScenarioTask {
+		w := env.Do("POST", "/api/v1/scene/tasks", map[string]interface{}{
+			"scenarioId": scenarioID,
+			"name":       name,
+			"code":       "T-" + name,
+			"taskType":   "training",
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create task: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		tt, _ := testhelper.Unmarshal[domain.ScenarioTask](w)
+		return tt
+	}
+	createTempExam := func(name string) domain.Exam {
+		w := env.Do("POST", "/api/v1/evaluation/exams", map[string]interface{}{
+			"name":     name,
+			"duration": 60,
+			"isTemp":   true,
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create temp exam: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		e, _ := testhelper.Unmarshal[domain.Exam](w)
+		return e
+	}
+	createUsage := func(examID, targetType string, targetIDs []string) domain.ExamUsage {
+		w := env.Do("POST", "/api/v1/evaluation/exam-usages", map[string]interface{}{
+			"examId":     examID,
+			"name":       "Usage-" + examID,
+			"targetType": targetType,
+			"targetIds":  targetIDs,
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create usage: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		u, _ := testhelper.Unmarshal[domain.ExamUsage](w)
+		return u
+	}
+
+	// 场景 1：删除任务 → 任务安排与独占临时考试一并清理
+	sc1 := createScenario("Cleanup-Scene-1")
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", sc1.ID)
+	task1 := createTask(sc1.ID, "Task-1")
+	exam1 := createTempExam("Temp-Exam-1")
+	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = $1", exam1.ID)
+	usage1 := createUsage(exam1.ID, "task", []string{task1.ID})
+	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = $1", usage1.ID)
+
+	w := env.Do("DELETE", "/api/v1/scene/tasks/"+task1.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("delete task: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	w = env.Do("GET", "/api/v1/evaluation/exam-usages?examId="+exam1.ID, nil)
+	_, total, _ := testhelper.UnmarshalList[domain.ExamUsage](w)
+	if total != 0 {
+		t.Fatalf("expected 0 usages after task delete, got %d", total)
+	}
+	w = env.Do("GET", "/api/v1/evaluation/exams/"+exam1.ID, nil)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected temp exam 404 after task delete, got %d", w.Code)
+	}
+
+	// 场景 2：删除场景 → 任务安排清理；仍被其他安排引用的临时考试保留
+	sc2 := createScenario("Cleanup-Scene-2")
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", sc2.ID)
+	task2 := createTask(sc2.ID, "Task-2")
+	exam2 := createTempExam("Temp-Exam-2")
+	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = $1", exam2.ID)
+	createUsage(exam2.ID, "task", []string{task2.ID})
+	keepUsage := createUsage(exam2.ID, "public", []string{task2.ID})
+	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = $1", keepUsage.ID)
+
+	w = env.Do("DELETE", "/api/v1/scene/scenarios/"+sc2.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("delete scenario: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	w = env.Do("GET", "/api/v1/evaluation/exam-usages?examId="+exam2.ID, nil)
+	items, total, _ := testhelper.UnmarshalList[domain.ExamUsage](w)
+	if total != 1 || items[0].ID != keepUsage.ID {
+		t.Fatalf("expected only the public usage to remain, got %d items", total)
+	}
+	w = env.Do("GET", "/api/v1/evaluation/exams/"+exam2.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected temp exam kept while referenced, got %d", w.Code)
+	}
+
+	// 移除剩余引用后，再次删除该场景（场景已删，直接走任务清理路径不可行；
+	// 此处验证正式试卷不受任务删除影响）
+	sc3 := createScenario("Cleanup-Scene-3")
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", sc3.ID)
+	task3 := createTask(sc3.ID, "Task-3")
+	w = env.Do("POST", "/api/v1/evaluation/exams", map[string]interface{}{
+		"name":     "Real Exam",
+		"duration": 60,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create real exam: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	realExam, _ := testhelper.Unmarshal[domain.Exam](w)
+	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = $1", realExam.ID)
+	createUsage(realExam.ID, "task", []string{task3.ID})
+
+	w = env.Do("DELETE", "/api/v1/scene/tasks/"+task3.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("delete task 3: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.Do("GET", "/api/v1/evaluation/exams/"+realExam.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("real exam must survive task delete, got %d", w.Code)
+	}
+}
+
 func TestEvaluationResult(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
