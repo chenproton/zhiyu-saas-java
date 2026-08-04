@@ -1,69 +1,16 @@
 'use client'
 
-import { Database, FileQuestion, FileText, PenTool, BookOpen, ClipboardList } from 'lucide-react'
 import type { GradeMapping } from '@/lib/types/lesson'
 import type { EvalRuleSubjectConfig, EvalRulePoint } from '@/lib/types/evaluation'
 import { DEFAULT_EVAL_RULE_GRADE_MAPPING, DEFAULT_EVAL_RULE_SUBJECTS } from '@/lib/types/evaluation'
+import { EVALUATION_METHOD_OPTIONS } from '@/components/shared/eval-method-selector'
 import type { EvalSubType } from './types'
 
-export const evaluationMethodOptions = [
-  {
-    key: 'question_bank',
-    label: '题库',
-    icon: <Database className="h-5 w-5" />,
-    color: 'bg-orange-50 text-orange-600 border-orange-200',
-    available: true,
-    desc: '从题库选题组成测评资源',
-  },
-  {
-    key: 'paper',
-    label: '试卷',
-    icon: <ClipboardList className="h-5 w-5" />,
-    color: 'bg-green-50 text-green-600 border-green-200',
-    available: true,
-    desc: '使用固定试卷进行考核',
-  },
-  {
-    key: 'random_draw',
-    label: '现场问答',
-    icon: <FileQuestion className="h-5 w-5" />,
-    color: 'bg-blue-50 text-blue-600 border-blue-200',
-    available: true,
-    desc: '从题库抽取题目，教师现场提问',
-  },
-  {
-    key: 'review',
-    label: '现场评审',
-    icon: <PenTool className="h-5 w-5" />,
-    color: 'bg-purple-50 text-purple-600 border-purple-200',
-    available: true,
-    desc: '教师根据表现/材料给评价点打分',
-  },
-  {
-    key: 'outcome',
-    label: '成果评价',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-    available: true,
-    desc: '对学生成果进行评价',
-  },
-  {
-    key: 'homework',
-    label: '作业',
-    icon: <BookOpen className="h-5 w-5" />,
-    color: 'bg-pink-50 text-pink-600 border-pink-200',
-    available: true,
-    desc: '学生提交作业进行评价',
-  },
-  {
-    key: 'quiz',
-    label: '随堂测',
-    icon: <FileQuestion className="h-5 w-5" />,
-    color: 'bg-red-50 text-red-600 border-red-200',
-    available: true,
-    desc: '课堂即时测验',
-  },
-]
+// 测评方式选项唯一数据源：shared/eval-method-selector 的 EVALUATION_METHOD_OPTIONS，
+// 此处仅保留平台侧选项（与任务/课程共用，避免多份数据漂移）
+export const evaluationMethodOptions = EVALUATION_METHOD_OPTIONS.filter(
+  (o) => o.primaryCategory === 'platform',
+)
 
 export const evalSubTypeLabels: Record<EvalSubType, string> = {
   knowledge_mastery: '知识掌握',
