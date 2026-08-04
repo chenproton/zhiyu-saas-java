@@ -95,7 +95,7 @@ function AddSystemPageInner() {
   const isNewCourse = searchParams.get('new') === 'true'
 
   /* ========== global config (collapsible) ========== */
-  const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
+  const [globalInfoOpen, setGlobalInfoOpen] = useState(false)
   const [courseId, setCourseId] = useState(editId || '')
   const [courseName, setCourseName] = useState('')
   // 内容（课程）编码：新建自动生成，编辑回填真实编码
@@ -892,86 +892,94 @@ function AddSystemPageInner() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-                <FormFieldRow label="课程名称" labelClassName="text-xs">
-                  <Input
-                    value={courseName}
-                    onChange={(e) => setCourseName(e.target.value)}
-                    placeholder="请输入课程名称"
-                    className="h-9 text-sm"
-                  />
-                </FormFieldRow>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">适用专业</Label>
-                  <MajorSelect
-                    value={major}
-                    onChange={(v) => setMajor(v || '')}
-                    placeholder="请选择适用专业"
-                    className="h-9 text-sm"
-                  />
-                </div>
-                <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
-                <div className="space-y-1.5">
-                  <Label className="text-xs">封面图片</Label>
-                  <div className="flex items-start gap-4">
-                    {coverImage ? (
-                      <div className="relative w-[200px] h-[120px] rounded-lg overflow-hidden border border-gray-200">
-                        <Image src={coverImage} alt="封面预览" fill className="object-cover" />
-                        <button
-                          onClick={() => setCoverImage('')}
-                          className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/70"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-[200px] h-[120px] rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
-                      >
-                        <ImageUp className="w-8 h-8 text-gray-400" />
-                        <span className="text-xs text-gray-400 mt-1">点击上传封面</span>
-                      </div>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          const reader = new FileReader()
-                          reader.onload = (ev) => setCoverImage(ev.target?.result as string)
-                          reader.readAsDataURL(file)
-                        }
-                      }}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left: 课程名称 + 课程简介 */}
+                <div className="space-y-4 min-w-0">
+                  <FormFieldRow label="课程名称" labelClassName="text-xs">
+                    <Input
+                      value={courseName}
+                      onChange={(e) => setCourseName(e.target.value)}
+                      placeholder="请输入课程名称"
+                      className="h-9 text-sm"
+                    />
+                  </FormFieldRow>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">课程简介</Label>
+                    <RichTextEditor
+                      value={courseDescription}
+                      onChange={setCourseDescription}
+                      placeholder="请输入课程简介..."
+                      minHeight={280}
+                      pdfUrl={courseDescriptionPdf}
+                      onPdfChange={setCourseDescriptionPdf}
                     />
                   </div>
                 </div>
-                <div className="md:col-span-4 space-y-1.5">
-                  <Label className="text-xs">课程简介</Label>
-                  <RichTextEditor
-                    value={courseDescription}
-                    onChange={setCourseDescription}
-                    placeholder="请输入课程简介..."
-                    minHeight={280}
-                    pdfUrl={courseDescriptionPdf}
-                    onPdfChange={setCourseDescriptionPdf}
-                  />
-                </div>
-                <div className="md:col-span-4 space-y-1.5">
-                  <Label className="text-xs">关联能力点（用于岗位能力汇聚）</Label>
-                  <AbilityPointSelector
-                    selected={abilityPoints}
-                    pool={abilityPool}
-                    onChange={setAbilityPoints}
-                    onAddCustom={(name, description) => {
-                      const newAp = { id: `ap-custom-${Date.now()}`, name, description }
-                      setAbilityPoints((prev) => [...prev, newAp])
-                      setAbilityPool((prev) => [...prev, newAp])
-                    }}
-                  />
+                {/* Right: 封面图片 + 适用专业 + 所属批次 + 关联能力点 */}
+                <div className="space-y-4 min-w-0">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">封面图片</Label>
+                    <div className="flex items-start gap-4">
+                      {coverImage ? (
+                        <div className="relative w-[200px] h-[120px] rounded-lg overflow-hidden border border-gray-200">
+                          <Image src={coverImage} alt="封面预览" fill className="object-cover" />
+                          <button
+                            onClick={() => setCoverImage('')}
+                            className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/70"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-[200px] h-[120px] rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+                        >
+                          <ImageUp className="w-8 h-8 text-gray-400" />
+                          <span className="text-xs text-gray-400 mt-1">点击上传封面</span>
+                        </div>
+                      )}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            const reader = new FileReader()
+                            reader.onload = (ev) => setCoverImage(ev.target?.result as string)
+                            reader.readAsDataURL(file)
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">适用专业</Label>
+                      <MajorSelect
+                        value={major}
+                        onChange={(v) => setMajor(v || '')}
+                        placeholder="请选择适用专业"
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">关联能力点（用于岗位能力汇聚）</Label>
+                    <AbilityPointSelector
+                      selected={abilityPoints}
+                      pool={abilityPool}
+                      onChange={setAbilityPoints}
+                      onAddCustom={(name, description) => {
+                        const newAp = { id: `ap-custom-${Date.now()}`, name, description }
+                        setAbilityPoints((prev) => [...prev, newAp])
+                        setAbilityPool((prev) => [...prev, newAp])
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
