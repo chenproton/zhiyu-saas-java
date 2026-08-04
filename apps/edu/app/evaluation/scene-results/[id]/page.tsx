@@ -587,6 +587,100 @@ function EvalPointGradingCard({
 }
 
 // ============================================================================
+// 评分规则项评分卡片（score_rule 模式）
+// ============================================================================
+
+function ScoreRuleGradingCard({
+  scoreRule,
+  score,
+  comment,
+  isGraded,
+  onChange,
+}: {
+  scoreRule: { id: string; name: string; description?: string; rule?: string; weight: number }
+  score: number
+  comment: string
+  isGraded: boolean
+  onChange: (id: string, score: number, comment: string) => void
+}) {
+  const [localScore, setLocalScore] = useState(score.toString())
+  const [localComment, setLocalComment] = useState(comment)
+
+  const commitIfValid = (val: string, newComment?: string) => {
+    const num = parseFloat(val)
+    const max = scoreRule.weight || 0
+    const cmt = newComment !== undefined ? newComment : localComment
+    if (!isNaN(num) && num >= 0 && num <= max) {
+      onChange(scoreRule.id, num, cmt)
+      return true
+    }
+    return false
+  }
+
+  const handleScoreInput = (val: string) => {
+    setLocalScore(val)
+    if (val === String(scoreRule.weight || 100)) {
+      commitIfValid(val)
+    }
+  }
+
+  const handleScoreBlur = () => {
+    if (!commitIfValid(localScore)) {
+      setLocalScore(score.toString())
+    }
+  }
+
+  return (
+    <Card className="border-slate-200">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-gray-800 text-sm">{scoreRule.name}</h4>
+            {scoreRule.description && (
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                {scoreRule.description}
+              </p>
+            )}
+            {scoreRule.rule && (
+              <p className="text-xs text-blue-600 mt-1 leading-relaxed bg-blue-50 border border-blue-100 rounded px-2 py-1">
+                加减分规则：{scoreRule.rule}
+              </p>
+            )}
+          </div>
+          <Badge variant="outline" className="text-[10px] h-5 px-1.5 shrink-0">
+            {scoreRule.weight || 0} 分
+          </Badge>
+        </div>
+        <div className="flex flex-col gap-3 bg-slate-50 rounded-lg border border-slate-100 p-3">
+          <div className="flex items-center gap-3">
+            <Label className="text-xs text-slate-600 font-medium shrink-0">评分</Label>
+            <ScoreInput
+              value={localScore}
+              max={scoreRule.weight || 100}
+              disabled={isGraded}
+              onChange={handleScoreInput}
+              onBlur={handleScoreBlur}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-slate-600 font-medium">评语</Label>
+            <Textarea
+              placeholder="请输入评分说明或改进建议..."
+              value={localComment}
+              onChange={(e) => setLocalComment(e.target.value)}
+              onBlur={() => onChange(scoreRule.id, score, localComment)}
+              disabled={isGraded}
+              rows={2}
+              className="text-sm resize-none bg-white border-slate-300 focus-visible:ring-primary"
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ============================================================================
 // 现场问答抽题卡片
 // ============================================================================
 
@@ -890,6 +984,9 @@ export default function GradingDetailPage() {
   const isMaterialMethod = isReview || isOutcome || isHomework
 
   const evalPoints = useMemo(() => methodConfig?.evalPoints || [], [methodConfig])
+  const scoreRules = useMemo(() => methodConfig?.scoreRules || [], [methodConfig])
+  const isScoreRuleMode =
+    methodConfig?.standardMode === 'score_rule' || scoreRules.length > 0
   const reviewSteps = useMemo(() => methodConfig?.reviewSteps || [], [methodConfig])
   const subjectiveContent = useMemo(
     () => (result?.subjectiveContent || {}) as Record<string, any>,
@@ -925,12 +1022,18 @@ export default function GradingDetailPage() {
     examQuestions.reduce((sum: number, q: any) => sum + (q.score || 0), 0)
 
   const evalPointTotal = useMemo(() => {
+    if (isScoreRuleMode) {
+      return scoreRules.reduce((sum, sr) => sum + (pointScores[sr.id] ?? 0), 0)
+    }
     return evalPoints.reduce((sum, ep) => sum + (pointScores[ep.id] ?? 0), 0)
-  }, [evalPoints, pointScores])
+  }, [isScoreRuleMode, scoreRules, evalPoints, pointScores])
 
   const evalPointMaxTotal = useMemo(() => {
+    if (isScoreRuleMode) {
+      return scoreRules.reduce((sum, sr) => sum + (sr.weight || 0), 0)
+    }
     return evalPoints.reduce((sum, ep) => sum + (ep.weight || 0), 0)
-  }, [evalPoints])
+  }, [isScoreRuleMode, scoreRules, evalPoints])
 
   const computedTotal = isExamMethod ? examTotal : evalPointTotal
   const maxScore = (isExamMethod ? examMaxScore : evalPointMaxTotal) || result?.maxScore || 100
@@ -939,12 +1042,15 @@ export default function GradingDetailPage() {
     ? examQuestions
         .filter((q: any) => !isAutoQuestion(q))
         .every((q: any) => (pointScores[q.id] ?? 0) > 0 || q.score === 0)
-    : isReview
-      ? (evalPoints.length === 0 ||
-          evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)) &&
-        (reviewSteps.length === 0 || Object.values(selectedReviewSteps).some(Boolean))
-      : evalPoints.length === 0 ||
-        evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)
+    : isScoreRuleMode
+      ? scoreRules.length === 0 ||
+        scoreRules.every((sr) => (pointScores[sr.id] ?? 0) > 0 || sr.weight === 0)
+      : isReview
+        ? (evalPoints.length === 0 ||
+            evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)) &&
+          (reviewSteps.length === 0 || Object.values(selectedReviewSteps).some(Boolean))
+        : evalPoints.length === 0 ||
+          evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)
 
   const pendingQuestions = useMemo(() => {
     return examQuestions.filter((q: any) => !isAutoQuestion(q) && (pointScores[q.id] ?? 0) === 0)
@@ -1301,7 +1407,25 @@ export default function GradingDetailPage() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
-          {evalPoints.length > 0 ? (
+          {isScoreRuleMode ? (
+            scoreRules.length > 0 ? (
+              scoreRules.map((sr) => (
+                <ScoreRuleGradingCard
+                  key={sr.id}
+                  scoreRule={sr}
+                  score={pointScores[sr.id] ?? 0}
+                  comment={pointComments[sr.id] ?? ''}
+                  isGraded={saved}
+                  onChange={handleEvalPointChange}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-dashed">
+                <Star className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">该任务未配置评分项</p>
+              </div>
+            )
+          ) : evalPoints.length > 0 ? (
             evalPoints.map((ep) => (
               <EvalPointGradingCard
                 key={ep.id}
