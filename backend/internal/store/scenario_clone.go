@@ -246,7 +246,7 @@ func (s *ScenarioCloneStore) cloneTaskEvaluationMethods(ctx context.Context, tx 
 	for rows.Next() {
 		var r row
 		if err := rows.Scan(&r.oldConfigID, &r.methodKey, &r.weight, &r.evalObject, &r.scoreType, &r.evalSubjects, &r.standardName, &r.standardMode, &r.resourceConfig, &r.version, &r.isEnabled); err != nil {
-			continue
+			return err
 		}
 		data = append(data, r)
 	}
@@ -293,7 +293,7 @@ func (s *ScenarioCloneStore) cloneTaskScoreRules(ctx context.Context, tx Queryer
 	for rows.Next() {
 		var r row
 		if err := rows.Scan(&r.name, &r.description, &r.rule, &r.weight, &r.sortOrder); err != nil {
-			continue
+			return err
 		}
 		data = append(data, r)
 	}
@@ -333,7 +333,7 @@ func (s *ScenarioCloneStore) cloneTaskEvalPoints(ctx context.Context, tx Queryer
 	for rows.Next() {
 		var r row
 		if err := rows.Scan(&r.name, &r.description, &r.subType, &r.types, &r.weight, &r.scoringMethod, &r.gradeMapping, &r.knowledgePointIDs, &r.abilityPointIDs, &r.sortOrder); err != nil {
-			continue
+			return err
 		}
 		data = append(data, r)
 	}
@@ -372,7 +372,7 @@ func (s *ScenarioCloneStore) cloneTaskReviewSteps(ctx context.Context, tx Querye
 	for rows.Next() {
 		var r row
 		if err := rows.Scan(&r.label, &r.description, &r.enabled, &r.subjectType, &r.weight, &r.sortOrder); err != nil {
-			continue
+			return err
 		}
 		data = append(data, r)
 	}

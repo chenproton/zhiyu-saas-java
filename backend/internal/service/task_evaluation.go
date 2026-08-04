@@ -60,14 +60,10 @@ func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskI
 		if err := txStore.TaskEval().LockTaskEval(ctx, txStore.Q(), tenantID, taskID); err != nil {
 			return err
 		}
-		if version > 0 {
-			currentVersion, err := txStore.TaskEval().MaxMethodVersion(ctx, taskID, tenantID)
-			if err != nil {
-				return err
-			}
-			if currentVersion > version {
-				return ErrMethodVersionConflict
-			}
+		if currentVersion, err := txStore.TaskEval().MaxMethodVersion(ctx, taskID, tenantID); err != nil {
+			return err
+		} else if currentVersion > version {
+			return ErrMethodVersionConflict
 		}
 		for _, m := range inputs {
 			evalSubjects := JSONRawToJSONSlice(m.EvalSubjects)

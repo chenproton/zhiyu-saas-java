@@ -230,6 +230,8 @@ export function EvaluationRulesEditor({
     name: '',
     mode: 'rubric',
   })
+  // 评价标准「保存」防重入：连点两次不会基于旧 state 重复提交
+  const [isSavingStandard, setIsSavingStandard] = useState(false)
 
   const [reviewSteps, setReviewSteps] = useState<ReviewStep[]>(() => {
     const incoming = configProp.reviewSteps || []
@@ -2473,11 +2475,13 @@ export function EvaluationRulesEditor({
 
         // 「保存」：把评价标准（名称/类型/量规或评分规则）立即关联到当前任务×当前测评方式
         const handleSaveStandard = async () => {
-          updateConfig({
-            [standardNameField]: stdDraft.name,
-            [standardModeField]: stdDraft.mode,
-          } as any)
+          if (isSavingStandard) return
+          setIsSavingStandard(true)
           try {
+            updateConfig({
+              [standardNameField]: stdDraft.name,
+              [standardModeField]: stdDraft.mode,
+            } as any)
             await onPersistStandard?.(erDialogMethod, {
               ...config,
               [standardNameField]: stdDraft.name,
@@ -2486,6 +2490,8 @@ export function EvaluationRulesEditor({
             toast({ title: '评价标准已保存' })
           } catch (err: any) {
             toast({ variant: 'destructive', title: '保存失败', description: err.message })
+          } finally {
+            setIsSavingStandard(false)
           }
         }
 
@@ -2980,8 +2986,9 @@ export function EvaluationRulesEditor({
                   size="sm"
                   className="text-xs h-8"
                   onClick={() => void handleSaveStandard()}
+                  disabled={isSavingStandard}
                 >
-                  保存
+                  {isSavingStandard ? '保存中…' : '保存'}
                 </Button>
                 <Button
                   size="sm"

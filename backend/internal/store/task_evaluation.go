@@ -143,7 +143,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 		ORDER BY sort_order
 	`, configIDs)
 	if err != nil {
-		return methods, nil
+		return nil, err
 	}
 	defer epRows.Close()
 	for epRows.Next() {
@@ -161,7 +161,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 		ORDER BY sort_order
 	`, configIDs)
 	if err != nil {
-		return methods, nil
+		return nil, err
 	}
 	defer srRows.Close()
 	for srRows.Next() {
@@ -179,7 +179,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 		ORDER BY sort_order
 	`, configIDs)
 	if err != nil {
-		return methods, nil
+		return nil, err
 	}
 	defer rsRows.Close()
 	for rsRows.Next() {
@@ -238,7 +238,8 @@ func (s *TaskEvaluationStore) SaveTaskMethod(ctx context.Context, tx Queryer, te
 			standard_mode = EXCLUDED.standard_mode,
 			resource_config = EXCLUDED.resource_config,
 			version = EXCLUDED.version,
-			is_enabled = EXCLUDED.is_enabled
+			is_enabled = EXCLUDED.is_enabled,
+			updated_at = now()
 		RETURNING id
 	`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, m.EvalSubjects, m.StandardName, m.StandardMode, m.ResourceConfig, newVersion, m.IsEnabled).Scan(&configID)
 	if err != nil {
@@ -246,6 +247,15 @@ func (s *TaskEvaluationStore) SaveTaskMethod(ctx context.Context, tx Queryer, te
 	}
 
 	if !m.IsEnabled {
+		if _, err := tx.Exec(ctx, `DELETE FROM task_eval_points WHERE config_id = $1`, configID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM task_eval_score_rules WHERE config_id = $1`, configID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM task_review_steps WHERE config_id = $1`, configID); err != nil {
+			return err
+		}
 		return nil
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM task_eval_points WHERE config_id = $1`, configID); err != nil {
@@ -367,7 +377,7 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 			} else if d, ok := resourceConfig["timeLimit"].(float64); ok && d > 0 {
 				duration = int(d)
 			}
-			name := fmt.Sprintf("%s-%s-%s", taskName, label, taskID[:8])
+			name := fmt.Sprintf("%s-%s-%s", taskName, label, taskID)
 			id, err := s.createTempExam(ctx, tx, tenantID, name, duration, creatorID)
 			if err != nil {
 				return resourceConfig, err
@@ -423,6 +433,12 @@ func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, te
 
 func (s *TaskEvaluationStore) ensureExamQuestions(ctx context.Context, tx Queryer, tenantID, examID string, questionIDs []string, resourceConfig domain.JSONMap) error {
 	questionScores := getFloatMapFromJSONMap(resourceConfig, "questionScores")
+
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM exam_questions WHERE exam_id = $1 AND NOT (question_id = ANY($2))
+	`, examID, questionIDs); err != nil {
+		return fmt.Errorf("prune exam questions: %w", err)
+	}
 
 	rows, err := tx.Query(ctx, `
 		SELECT id, type, content, options, answer, analysis, score
