@@ -17,13 +17,13 @@ import { certApi } from '@/lib/api'
 import type { LevelMapping } from '@zhiyu/shared-types'
 import { cn } from '@/lib/utils'
 
-/** 掌握程度五档（代码、标签、系统默认最低分 60/70/80/90/100） */
+/** 掌握程度五档（代码、标签、系统默认最低分 50/60/70/80/90） */
 const LEVEL_ORDER: { level: string; label: string; defaultMin: number }[] = [
-  { level: 'understand', label: '了解L1', defaultMin: 60 },
-  { level: 'comprehend', label: '理解L2', defaultMin: 70 },
-  { level: 'master', label: '掌握L3', defaultMin: 80 },
-  { level: 'proficient', label: '熟练L4', defaultMin: 90 },
-  { level: 'expert', label: '精通L5', defaultMin: 100 },
+  { level: 'understand', label: '了解L1', defaultMin: 50 },
+  { level: 'comprehend', label: '理解L2', defaultMin: 60 },
+  { level: 'master', label: '掌握L3', defaultMin: 70 },
+  { level: 'proficient', label: '熟练L4', defaultMin: 80 },
+  { level: 'expert', label: '精通L5', defaultMin: 90 },
 ]
 
 interface LevelConfigDialogProps {
@@ -170,7 +170,7 @@ function LevelConfigForm({
         <div className="flex items-center justify-between pt-1">
           <Button variant="outline" size="sm" onClick={resetDefault}>
             <RotateCcw className="mr-2 h-4 w-4" />
-            恢复默认（60/70/80/90/100）
+            恢复默认（50/60/70/80/90）
           </Button>
           <span className={cn('text-xs', error ? 'text-red-600' : 'text-muted-foreground')}>
             {error ?? '档位区间连续覆盖 1-100 分'}
