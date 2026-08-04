@@ -161,6 +161,12 @@ export default function CourseDetailPage() {
   const [gradeComment, setGradeComment] = useState('')
   const [grading, setGrading] = useState(false)
 
+  // 作业批改分数校验：0~100 之间的有效数字
+  const isValidGrade = (v: string) => {
+    const n = parseFloat(v)
+    return !isNaN(n) && n >= 0 && n <= 100
+  }
+
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null)
   const [activeNodeHomework, setActiveNodeHomework] = useState<NodeHomework | null>(null)
   const [nodeSubmitOpen, setNodeSubmitOpen] = useState(false)
@@ -1088,6 +1094,8 @@ export default function CourseDetailPage() {
                   <Label className="text-xs">得分</Label>
                   <Input
                     type="number"
+                    min={0}
+                    max={100}
                     value={gradeScore}
                     onChange={(e) => setGradeScore(e.target.value)}
                     placeholder="0-100"
@@ -1142,7 +1150,7 @@ export default function CourseDetailPage() {
                 </Button>
                 <Button
                   size="sm"
-                  disabled={grading || gradeScore === ''}
+                  disabled={grading || !isValidGrade(gradeScore)}
                   onClick={async () => {
                     if (!activeHomework || !gradeSubmission) return
                     setGrading(true)
@@ -1277,6 +1285,8 @@ export default function CourseDetailPage() {
                   <Label className="text-xs">得分</Label>
                   <Input
                     type="number"
+                    min={0}
+                    max={100}
                     value={nodeGradeScore}
                     onChange={(e) => setNodeGradeScore(e.target.value)}
                     placeholder="0-100"
@@ -1331,7 +1341,7 @@ export default function CourseDetailPage() {
                 </Button>
                 <Button
                   size="sm"
-                  disabled={nodeGrading || nodeGradeScore === ''}
+                  disabled={nodeGrading || !isValidGrade(nodeGradeScore)}
                   onClick={async () => {
                     if (!activeNodeId || !activeNodeHomework || !nodeGradeSubmission) return
                     setNodeGrading(true)

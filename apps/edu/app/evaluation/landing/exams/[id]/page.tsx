@@ -193,13 +193,14 @@ export default function ExamDetailPage() {
 
   const handleStart = () => {
     setStarted(true)
-    setTimeLeft(examDuration * 60)
+    // 时长为 0/未配置视为不限时（-1 表示不限时，不触发自动交卷）
+    setTimeLeft(examDuration > 0 ? examDuration * 60 : -1)
   }
 
   useEffect(() => {
     if (started && exam && !submitted) {
       const timer = setInterval(() => {
-        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : prev))
       }, 1000)
       return () => clearInterval(timer)
     }
@@ -207,7 +208,7 @@ export default function ExamDetailPage() {
 
   // 倒计时归零时自动提交（通过 ref 防止重复提交）
   useEffect(() => {
-    if (started && exam && !submitted && !submittedRef.current && timeLeft <= 0) {
+    if (started && exam && !submitted && !submittedRef.current && timeLeft === 0) {
       submittedRef.current = true
       handleSubmitRef.current()
     }
@@ -337,10 +338,11 @@ export default function ExamDetailPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                color: timeLeft < 300 ? '#dc2626' : '#8f959e',
+                color: timeLeft >= 0 && timeLeft < 300 ? '#dc2626' : '#8f959e',
               }}
             >
-              <Clock style={{ width: 16, height: 16 }} /> 剩余 {fmtTime(timeLeft)}
+              <Clock style={{ width: 16, height: 16 }} /> 剩余{' '}
+              {timeLeft < 0 ? '不限时' : fmtTime(timeLeft)}
             </span>
             <span style={{ color: '#8f959e' }}>
               已答 {answeredCount} / {questions.length} 题

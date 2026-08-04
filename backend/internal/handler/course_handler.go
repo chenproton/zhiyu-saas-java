@@ -541,6 +541,10 @@ func (h *CourseHandler) GradeHomeworkSubmission(w http.ResponseWriter, r *http.R
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	if req.Score < 0 || req.Score > 100 {
+		respondError(w, http.StatusBadRequest, "分数必须在 0~100 之间")
+		return
+	}
 
 	err := h.Service.GradeCourseHomework(r.Context(), claims.UserID, *claims.TenantID, courseID, homeworkID, submissionID, req.Score, req.Comment)
 	if err != nil {
@@ -653,6 +657,10 @@ func (h *CourseHandler) GradeNodeHomeworkSubmission(w http.ResponseWriter, r *ht
 		Comment string  `json:"comment"`
 	}
 	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.Score < 0 || req.Score > 100 {
+		respondError(w, http.StatusBadRequest, "分数必须在 0~100 之间")
 		return
 	}
 

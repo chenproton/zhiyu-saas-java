@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ExamResultHandler struct {
@@ -81,6 +83,10 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Service.SubmitExamResult(r.Context(), tenantID, claims.UserID, req.ExamUsageID, req.Answers, req.MethodKey)
 	if err != nil {
+		if errors.Is(err, store.ErrAlreadyGraded) {
+			respondError(w, http.StatusConflict, "该测评已完成评分，无法重新提交")
+			return
+		}
 		if err == pgx.ErrNoRows {
 			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return

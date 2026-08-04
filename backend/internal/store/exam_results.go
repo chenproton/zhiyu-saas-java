@@ -63,6 +63,30 @@ type ExamQuestionAnswer struct {
 	Score  float64
 }
 
+// UsageGradedByUser 查询该考试安排对应的场景评价是否已完成评分（重交保护）。
+// 仅当考试目标为任务且该方式已评分时返回 true；课程/节点目标或未评分返回 false。
+func (s *ExamResultStore) UsageGradedByUser(ctx context.Context, usageID, userID, methodKey string) (bool, error) {
+	var exists bool
+	err := s.q.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM exam_usages eu
+			JOIN task_evaluation_methods tem
+				ON tem.task_id = ANY(eu.target_ids) AND tem.method_key = $3
+				AND eu.exam_id = COALESCE(
+					NULLIF(tem.resource_config->>'paperId', ''),
+					NULLIF(tem.resource_config->>'examId', '')
+				)::uuid
+			JOIN scene_evaluation_results ser ON ser.task_id = tem.task_id AND ser.evaluatee_id = $2 AND ser.method_key = $3
+			WHERE eu.id = $1 AND ser.status = 'evaluated'
+		)
+	`, usageID, userID, methodKey).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 // FetchExamQuestions 查询考试题目答案与分数。
 func (s *ExamResultStore) FetchExamQuestions(ctx context.Context, examID string) ([]ExamQuestionAnswer, error) {
 	rows, err := s.q.Query(ctx, `
@@ -177,7 +201,7 @@ func (s *ExamResultStore) SyncCourseEvaluation(ctx context.Context, tenantID, us
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
 		DO UPDATE SET
-			total_score = EXCLUDED.total_score,
+			total_score = CASE WHEN course_evaluation_results.status = 'evaluated' THEN course_evaluation_results.total_score ELSE EXCLUDED.total_score END,
 			max_score = EXCLUDED.max_score,
 			status = CASE WHEN course_evaluation_results.status = 'evaluated' THEN 'evaluated' ELSE EXCLUDED.status END,
 			objective_answers = EXCLUDED.objective_answers,
@@ -217,7 +241,7 @@ func (s *ExamResultStore) SyncNodeEvaluation(ctx context.Context, tenantID, usag
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key)
 		DO UPDATE SET
-			total_score = EXCLUDED.total_score,
+			total_score = CASE WHEN node_evaluation_results.status = 'evaluated' THEN node_evaluation_results.total_score ELSE EXCLUDED.total_score END,
 			max_score = EXCLUDED.max_score,
 			status = CASE WHEN node_evaluation_results.status = 'evaluated' THEN 'evaluated' ELSE EXCLUDED.status END,
 			objective_answers = EXCLUDED.objective_answers,
@@ -279,7 +303,7 @@ func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usa
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			ON CONFLICT (tenant_id, task_id, evaluatee_id, method_key)
 			DO UPDATE SET
-				total_score = EXCLUDED.total_score,
+				total_score = CASE WHEN scene_evaluation_results.status = 'evaluated' THEN scene_evaluation_results.total_score ELSE EXCLUDED.total_score END,
 				max_score = EXCLUDED.max_score,
 				status = CASE WHEN scene_evaluation_results.status = 'evaluated' THEN 'evaluated' ELSE EXCLUDED.status END,
 				objective_answers = EXCLUDED.objective_answers,

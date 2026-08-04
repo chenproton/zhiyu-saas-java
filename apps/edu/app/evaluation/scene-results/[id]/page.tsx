@@ -862,6 +862,8 @@ export default function GradingDetailPage() {
 
   const [pointScores, setPointScores] = useState<Record<string, number>>({})
   const [pointComments, setPointComments] = useState<Record<string, string>>({})
+  // 已提交过评分（含 0 分）的题目/评价点 id，用于区分“未评分”与“评 0 分”
+  const [gradedIds, setGradedIds] = useState<Set<string>>(new Set())
   const [oralAnswers, setOralAnswers] = useState<Record<string, string>>({})
   const [selectedReviewSteps, setSelectedReviewSteps] = useState<Record<string, boolean>>({})
   const [comment, setComment] = useState('')
@@ -887,6 +889,7 @@ export default function GradingDetailPage() {
         })
         setPointScores(scores)
         setPointComments(comments)
+        if (Object.keys(eps).length > 0) setGradedIds(new Set(Object.keys(eps)))
 
         const dq = (res.drawnQuestions as Record<string, any>) || {}
         const oral: Record<string, string> = {}
@@ -1050,20 +1053,22 @@ export default function GradingDetailPage() {
   const allScored = isExamMethod
     ? examQuestions
         .filter((q: any) => !isAutoQuestion(q))
-        .every((q: any) => (pointScores[q.id] ?? 0) > 0 || q.score === 0)
+        .every((q: any) => gradedIds.has(q.id) || q.score === 0)
     : isScoreRuleMode
       ? scoreRules.length === 0 ||
-        scoreRules.every((sr) => (pointScores[sr.id] ?? 0) > 0 || sr.weight === 0)
+        scoreRules.every((sr) => gradedIds.has(sr.id) || sr.weight === 0)
       : isReview
         ? (evalPoints.length === 0 ||
-            evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)) &&
+            evalPoints.every((ep) => gradedIds.has(ep.id) || ep.weight === 0)) &&
           (reviewSteps.length === 0 || Object.values(selectedReviewSteps).some(Boolean))
         : evalPoints.length === 0 ||
-          evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)
+          evalPoints.every((ep) => gradedIds.has(ep.id) || ep.weight === 0)
 
   const pendingQuestions = useMemo(() => {
-    return examQuestions.filter((q: any) => !isAutoQuestion(q) && (pointScores[q.id] ?? 0) === 0)
-  }, [examQuestions, pointScores])
+    return examQuestions.filter(
+      (q: any) => !isAutoQuestion(q) && !gradedIds.has(q.id) && (pointScores[q.id] ?? 0) === 0,
+    )
+  }, [examQuestions, pointScores, gradedIds])
 
   const displayedQuestions = useMemo(() => {
     return questionFilter === 'all' ? examQuestions : pendingQuestions
@@ -1071,11 +1076,13 @@ export default function GradingDetailPage() {
 
   const handleScoreChange = (id: string, score: number) => {
     setPointScores((prev) => ({ ...prev, [id]: score }))
+    setGradedIds((prev) => new Set(prev).add(id))
   }
 
   const handleEvalPointChange = (id: string, score: number, comment: string) => {
     setPointScores((prev) => ({ ...prev, [id]: score }))
     setPointComments((prev) => ({ ...prev, [id]: comment }))
+    setGradedIds((prev) => new Set(prev).add(id))
   }
 
   const handleOralAnswerChange = (questionId: string, oralAnswer: string) => {

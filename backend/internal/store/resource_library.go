@@ -12,6 +12,9 @@ import (
 // ErrNotFound is returned by Get when the row does not exist.
 var ErrNotFound = errors.New("not found")
 
+// ErrAlreadyGraded 记录已被评分，禁止覆盖（重交保护）。
+var ErrAlreadyGraded = errors.New("already graded")
+
 const resourceSelectColumns = `
 	rl.id, rl.tenant_id, rl.name, rl.resource_type, rl.url, rl.description,
 	rl.thumbnail, rl.file_size, rl.metadata, rl.uploaded_by,
