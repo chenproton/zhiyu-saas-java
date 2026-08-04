@@ -135,6 +135,12 @@ func (s *CourseAssessmentStore) CreateTempExam(ctx context.Context, q Queryer, t
 
 // EnsureExamQuestions 同步考试题目并重算总分。
 func (s *CourseAssessmentStore) EnsureExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, questionIDs []string) error {
+	if _, err := q.Exec(ctx, `
+		DELETE FROM exam_questions WHERE exam_id = $1 AND NOT (question_id = ANY($2))
+	`, examID, questionIDs); err != nil {
+		return fmt.Errorf("删除旧考试题目失败: %w", err)
+	}
+
 	rows, err := q.Query(ctx, `
 		SELECT id, type, content, options, answer, analysis, score
 		FROM questions
@@ -158,7 +164,7 @@ func (s *CourseAssessmentStore) EnsureExamQuestions(ctx context.Context, q Query
 		var qq question
 		var optionsStr, answerStr *string
 		if err := rows.Scan(&qq.id, &qq.qType, &qq.content, &optionsStr, &answerStr, &qq.analysis, &qq.score); err != nil {
-			continue
+			return err
 		}
 		if optionsStr != nil {
 			qq.options = []byte(*optionsStr)
