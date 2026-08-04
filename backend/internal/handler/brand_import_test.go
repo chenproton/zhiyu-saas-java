@@ -75,7 +75,7 @@ func TestBrandImportAllFields(t *testing.T) {
 	env.DB.Exec(ctx, `DELETE FROM alliance_brands WHERE tenant_id=$1`, tenantID)
 	env.DB.Exec(ctx, `DELETE FROM alliance_enterprises WHERE tenant_id=$1 AND name=$2`, tenantID, "测试关联企业")
 
-	// 准备关联对象
+	// 准备关联对象（users 无 student/teacher 角色，按姓名匹配任意角色用户）
 	studentID := uuid.NewString()
 	teacherID := uuid.NewString()
 	entID := uuid.NewString()
@@ -84,9 +84,9 @@ func TestBrandImportAllFields(t *testing.T) {
 	expID := uuid.NewString()
 	pw := "x"
 	env.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1,$2,'student','saas','tstu','tstu',$3,'测试学生甲','active','{}')`, studentID, tenantID, pw)
+		VALUES ($1,$2,'operator','saas','tstu','tstu',$3,'测试学生甲','active','{}')`, studentID, tenantID, pw)
 	env.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1,$2,'teacher','saas','tteach','tteach',$3,'测试教师甲','active','{}')`, teacherID, tenantID, pw)
+		VALUES ($1,$2,'operator','saas','tteach','tteach',$3,'测试教师甲','active','{}')`, teacherID, tenantID, pw)
 	env.DB.Exec(ctx, `INSERT INTO alliance_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`, entID, tenantID, "测试关联企业")
 	env.DB.Exec(ctx, `INSERT INTO career_positions (id, tenant_id, name, position_type, version, status, created_by)
 		VALUES ($1,$2,$3,'profession','v1','published',$4)`, posID, tenantID, "测试关联岗位", testhelper.TestOperatorID)

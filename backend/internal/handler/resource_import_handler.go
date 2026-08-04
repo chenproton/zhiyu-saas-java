@@ -1496,11 +1496,11 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 		isPublic := parseBoolDefault(col(row, 4), false)
 		isFeatured := parseBoolDefault(col(row, 5), false)
 		coverImage := nullableStr(col(row, 6))
-		studentID := lookupUserIDByRole(ctx, h.DB, tenantID, col(row, 7), "student")
+		studentID := lookupSingleIDByName(ctx, h.DB, "users", tenantID, col(row, 7))
 		enterpriseID := lookupSingleIDByName(ctx, h.DB, "alliance_enterprises", tenantID, col(row, 8))
 		positionID := lookupSingleIDByName(ctx, h.DB, "career_positions", tenantID, col(row, 9))
 		majorID := lookupSingleIDByName(ctx, h.DB, "majors", tenantID, col(row, 10))
-		teacherID := lookupUserIDByRole(ctx, h.DB, tenantID, col(row, 11), "teacher")
+		teacherID := lookupSingleIDByName(ctx, h.DB, "users", tenantID, col(row, 11))
 		expertID := lookupSingleIDByName(ctx, h.DB, "alliance_experts", tenantID, col(row, 12))
 
 		var existingID string
