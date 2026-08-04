@@ -113,63 +113,65 @@ export default function AllianceProjectNewPage() {
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
-            <FormFieldGrid>
-              <FormFieldRow label="项目名称" required>
-                <Input
-                  value={item.name}
-                  onChange={(e) => setField('name', e.target.value)}
-                  placeholder="请输入项目名称"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="合作类型">
-                <Select value={item.type} onValueChange={(v) => setField('type', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROJECT_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="项目阶段">
-                <Select value={item.phase} onValueChange={(v) => setField('phase', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="initiation">启动</SelectItem>
-                    <SelectItem value="execution">执行中</SelectItem>
-                    <SelectItem value="acceptance">验收</SelectItem>
-                    <SelectItem value="closure">关闭</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="预算">
-                <Input
-                  value={item.budget}
-                  onChange={(e) => setField('budget', e.target.value)}
-                  placeholder="如：50万"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="开始日期">
-                <Input
-                  value={item.startDate}
-                  onChange={(e) => setField('startDate', e.target.value)}
-                  type="date"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="结束日期">
-                <Input
-                  value={item.endDate}
-                  onChange={(e) => setField('endDate', e.target.value)}
-                  type="date"
-                />
-              </FormFieldRow>
-            </FormFieldGrid>
+            <CardContent>
+              <FormFieldGrid>
+                <FormFieldRow label="项目名称" required>
+                  <Input
+                    value={item.name}
+                    onChange={(e) => setField('name', e.target.value)}
+                    placeholder="请输入项目名称"
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="合作类型">
+                  <Select value={item.type} onValueChange={(v) => setField('type', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECT_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="项目阶段">
+                  <Select value={item.phase} onValueChange={(v) => setField('phase', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="initiation">启动</SelectItem>
+                      <SelectItem value="execution">执行中</SelectItem>
+                      <SelectItem value="acceptance">验收</SelectItem>
+                      <SelectItem value="closure">关闭</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="预算">
+                  <Input
+                    value={item.budget}
+                    onChange={(e) => setField('budget', e.target.value)}
+                    placeholder="如：50万"
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="开始日期">
+                  <Input
+                    value={item.startDate}
+                    onChange={(e) => setField('startDate', e.target.value)}
+                    type="date"
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="结束日期">
+                  <Input
+                    value={item.endDate}
+                    onChange={(e) => setField('endDate', e.target.value)}
+                    type="date"
+                  />
+                </FormFieldRow>
+              </FormFieldGrid>
+            </CardContent>
           </Card>
 
           <Card>

@@ -103,57 +103,59 @@ export default function AllianceAgreementNewPage() {
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
-            <FormFieldGrid>
-              <FormFieldRow label="协议名称" required>
-                <Input
-                  value={item.name}
-                  onChange={(e) => setField('name', e.target.value)}
-                  placeholder="请输入协议名称"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="协议类型">
-                <Select value={item.type} onValueChange={(v) => setField('type', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AGREEMENT_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="协议状态">
-                <Select value={item.status} onValueChange={(v) => setField('status', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">草稿</SelectItem>
-                    <SelectItem value="active">生效中</SelectItem>
-                    <SelectItem value="expired">已失效</SelectItem>
-                    <SelectItem value="renewed">已续签</SelectItem>
-                    <SelectItem value="terminated">已终止</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="生效日期" required>
-                <Input
-                  type="date"
-                  value={item.startDate}
-                  onChange={(e) => setField('startDate', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="到期日期" required>
-                <Input
-                  type="date"
-                  value={item.endDate}
-                  onChange={(e) => setField('endDate', e.target.value)}
-                />
-              </FormFieldRow>
-            </FormFieldGrid>
+            <CardContent>
+              <FormFieldGrid>
+                <FormFieldRow label="协议名称" required>
+                  <Input
+                    value={item.name}
+                    onChange={(e) => setField('name', e.target.value)}
+                    placeholder="请输入协议名称"
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="协议类型">
+                  <Select value={item.type} onValueChange={(v) => setField('type', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AGREEMENT_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="协议状态">
+                  <Select value={item.status} onValueChange={(v) => setField('status', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">草稿</SelectItem>
+                      <SelectItem value="active">生效中</SelectItem>
+                      <SelectItem value="expired">已失效</SelectItem>
+                      <SelectItem value="renewed">已续签</SelectItem>
+                      <SelectItem value="terminated">已终止</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="生效日期" required>
+                  <Input
+                    type="date"
+                    value={item.startDate}
+                    onChange={(e) => setField('startDate', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="到期日期" required>
+                  <Input
+                    type="date"
+                    value={item.endDate}
+                    onChange={(e) => setField('endDate', e.target.value)}
+                  />
+                </FormFieldRow>
+              </FormFieldGrid>
+            </CardContent>
           </Card>
 
           <Card>

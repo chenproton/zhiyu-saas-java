@@ -20,7 +20,7 @@ import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
-import { useToast, LoadingView} from '@zhiyu/ui'
+import { useToast, LoadingView } from '@zhiyu/ui'
 import type { AllianceAchievement } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
@@ -104,31 +104,33 @@ export default function AllianceAchievementEditPage() {
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
-            <FormFieldGrid>
-              <FormFieldRow label="成果名称" required>
-                <Input value={item.title} onChange={(e) => setField('title', e.target.value)} />
-              </FormFieldRow>
-              <FormFieldRow label="成果类型">
-                <Select value={item.type} onValueChange={(v) => setField('type', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="job">岗位</SelectItem>
-                    <SelectItem value="scene">场景</SelectItem>
-                    <SelectItem value="course">课程</SelectItem>
-                    <SelectItem value="custom">自定义</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="成果日期">
-                <Input
-                  value={item.achievementDate || ''}
-                  onChange={(e) => setField('achievementDate', e.target.value)}
-                  type="date"
-                />
-              </FormFieldRow>
-            </FormFieldGrid>
+            <CardContent>
+              <FormFieldGrid>
+                <FormFieldRow label="成果名称" required>
+                  <Input value={item.title} onChange={(e) => setField('title', e.target.value)} />
+                </FormFieldRow>
+                <FormFieldRow label="成果类型">
+                  <Select value={item.type} onValueChange={(v) => setField('type', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="job">岗位</SelectItem>
+                      <SelectItem value="scene">场景</SelectItem>
+                      <SelectItem value="course">课程</SelectItem>
+                      <SelectItem value="custom">自定义</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="成果日期">
+                  <Input
+                    value={item.achievementDate || ''}
+                    onChange={(e) => setField('achievementDate', e.target.value)}
+                    type="date"
+                  />
+                </FormFieldRow>
+              </FormFieldGrid>
+            </CardContent>
           </Card>
 
           <Card>

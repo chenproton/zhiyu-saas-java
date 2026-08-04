@@ -21,7 +21,7 @@ import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi } from '@/lib/api'
-import { useToast, LoadingView} from '@zhiyu/ui'
+import { useToast, LoadingView } from '@zhiyu/ui'
 import type { AllianceEnterprise } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
@@ -50,7 +50,8 @@ export default function AllianceEnterpriseEditPage() {
 
   useEffect(() => {
     if (!tenantId || !id) return
-    allianceEnterpriseApi.get(id)
+    allianceEnterpriseApi
+      .get(id)
       .then((data) => setItem(data))
       .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
@@ -96,92 +97,100 @@ export default function AllianceEnterpriseEditPage() {
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
-            <FormFieldGrid>
-              <FormFieldRow label="企业名称" required>
-                <Input value={item.name || ''} onChange={(e) => setField('name', e.target.value)} />
-              </FormFieldRow>
-              <FormFieldRow label="统一社会信用代码">
-                <Input
-                  value={(item as any).unifiedSocialCreditCode || ''}
-                  onChange={(e) => setField('unifiedSocialCreditCode', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="企业类型">
-                <Select
-                  value={item.enterpriseType || 'cooperation'}
-                  onValueChange={(v) => setField('enterpriseType', v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cooperation">合作企业</SelectItem>
-                    <SelectItem value="third-party">第三方雇主企业</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="所属行业">
-                <Input
-                  value={item.industry || ''}
-                  onChange={(e) => setField('industry', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="所在地区">
-                <Input
-                  value={item.region || ''}
-                  onChange={(e) => setField('region', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="合作状态">
-                <Select
-                  value={item.status || 'negotiating'}
-                  onValueChange={(v) => setField('status', v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="negotiating">洽谈中</SelectItem>
-                    <SelectItem value="active">合作中</SelectItem>
-                    <SelectItem value="paused">已暂停</SelectItem>
-                    <SelectItem value="terminated">已终止</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="合作评级">
-                <Select
-                  value={item.rating || 'general'}
-                  onValueChange={(v) => setField('rating', v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="strategic">战略合作</SelectItem>
-                    <SelectItem value="deep">深度合作</SelectItem>
-                    <SelectItem value="general">一般合作</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="成立年份">
-                <Input
-                  type="number"
-                  value={(item as any).establishedYear ?? ''}
-                  onChange={(e) =>
-                    setField('establishedYear', e.target.value ? Number(e.target.value) : undefined)
-                  }
-                />
-              </FormFieldRow>
-              <FormFieldRow label="企业规模（人数）">
-                <Input
-                  type="number"
-                  value={(item as any).employeeCount ?? ''}
-                  onChange={(e) =>
-                    setField('employeeCount', e.target.value ? Number(e.target.value) : undefined)
-                  }
-                />
-              </FormFieldRow>
-            </FormFieldGrid>
+            <CardContent>
+              <FormFieldGrid>
+                <FormFieldRow label="企业名称" required>
+                  <Input
+                    value={item.name || ''}
+                    onChange={(e) => setField('name', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="统一社会信用代码">
+                  <Input
+                    value={(item as any).unifiedSocialCreditCode || ''}
+                    onChange={(e) => setField('unifiedSocialCreditCode', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="企业类型">
+                  <Select
+                    value={item.enterpriseType || 'cooperation'}
+                    onValueChange={(v) => setField('enterpriseType', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cooperation">合作企业</SelectItem>
+                      <SelectItem value="third-party">第三方雇主企业</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="所属行业">
+                  <Input
+                    value={item.industry || ''}
+                    onChange={(e) => setField('industry', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="所在地区">
+                  <Input
+                    value={item.region || ''}
+                    onChange={(e) => setField('region', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="合作状态">
+                  <Select
+                    value={item.status || 'negotiating'}
+                    onValueChange={(v) => setField('status', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="negotiating">洽谈中</SelectItem>
+                      <SelectItem value="active">合作中</SelectItem>
+                      <SelectItem value="paused">已暂停</SelectItem>
+                      <SelectItem value="terminated">已终止</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="合作评级">
+                  <Select
+                    value={item.rating || 'general'}
+                    onValueChange={(v) => setField('rating', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="strategic">战略合作</SelectItem>
+                      <SelectItem value="deep">深度合作</SelectItem>
+                      <SelectItem value="general">一般合作</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="成立年份">
+                  <Input
+                    type="number"
+                    value={(item as any).establishedYear ?? ''}
+                    onChange={(e) =>
+                      setField(
+                        'establishedYear',
+                        e.target.value ? Number(e.target.value) : undefined,
+                      )
+                    }
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="企业规模（人数）">
+                  <Input
+                    type="number"
+                    value={(item as any).employeeCount ?? ''}
+                    onChange={(e) =>
+                      setField('employeeCount', e.target.value ? Number(e.target.value) : undefined)
+                    }
+                  />
+                </FormFieldRow>
+              </FormFieldGrid>
+            </CardContent>
           </Card>
 
           <Card>
@@ -229,32 +238,34 @@ export default function AllianceEnterpriseEditPage() {
             <CardHeader>
               <CardTitle>联系信息</CardTitle>
             </CardHeader>
-            <FormFieldGrid>
-              <FormFieldRow label="联系人">
-                <Input
-                  value={item.contactPerson || ''}
-                  onChange={(e) => setField('contactPerson', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="联系电话">
-                <Input
-                  value={item.contactPhone || ''}
-                  onChange={(e) => setField('contactPhone', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="联系邮箱">
-                <Input
-                  value={item.contactEmail || ''}
-                  onChange={(e) => setField('contactEmail', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="详细地址">
-                <Input
-                  value={item.address || ''}
-                  onChange={(e) => setField('address', e.target.value)}
-                />
-              </FormFieldRow>
-            </FormFieldGrid>
+            <CardContent>
+              <FormFieldGrid>
+                <FormFieldRow label="联系人">
+                  <Input
+                    value={item.contactPerson || ''}
+                    onChange={(e) => setField('contactPerson', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="联系电话">
+                  <Input
+                    value={item.contactPhone || ''}
+                    onChange={(e) => setField('contactPhone', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="联系邮箱">
+                  <Input
+                    value={item.contactEmail || ''}
+                    onChange={(e) => setField('contactEmail', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="详细地址">
+                  <Input
+                    value={item.address || ''}
+                    onChange={(e) => setField('address', e.target.value)}
+                  />
+                </FormFieldRow>
+              </FormFieldGrid>
+            </CardContent>
           </Card>
 
           <Card>

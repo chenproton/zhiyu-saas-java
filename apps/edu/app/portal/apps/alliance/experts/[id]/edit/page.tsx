@@ -21,7 +21,7 @@ import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2, X, Plus } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
-import { useToast, LoadingView} from '@zhiyu/ui'
+import { useToast, LoadingView } from '@zhiyu/ui'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -78,10 +78,7 @@ export default function AllianceExpertEditPage() {
 
   useEffect(() => {
     if (!tenantId || !id) return
-    Promise.all([
-      allianceExpertApi.get(id),
-      allianceEnterpriseApi.list({ limit: 200 }),
-    ])
+    Promise.all([allianceExpertApi.get(id), allianceEnterpriseApi.list({ limit: 200 })])
       .then(([expert, ents]) => {
         setItem({
           name: expert.name || '',
@@ -167,70 +164,75 @@ export default function AllianceExpertEditPage() {
             <CardHeader>
               <CardTitle>基础信息</CardTitle>
             </CardHeader>
-            <FormFieldGrid>
-              <FormFieldRow label="姓名" required>
-                <Input value={item.name} onChange={(e) => setField('name', e.target.value)} />
-              </FormFieldRow>
-              <FormFieldRow label="性别">
-                <Select value={item.gender} onValueChange={(v) => setField('gender', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">男</SelectItem>
-                    <SelectItem value="female">女</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="年龄">
-                <Input
-                  type="number"
-                  value={item.age ?? ''}
-                  onChange={(e) =>
-                    setField('age', e.target.value ? Number(e.target.value) : undefined)
-                  }
-                />
-              </FormFieldRow>
-              <FormFieldRow label="所在城市">
-                <Input value={item.city} onChange={(e) => setField('city', e.target.value)} />
-              </FormFieldRow>
-              <FormFieldRow label="职称/职位">
-                <Input
-                  value={item.title}
-                  onChange={(e) => setField('title', e.target.value)}
-                  placeholder="如：高级工程师"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="任职岗位">
-                <Input
-                  value={item.position}
-                  onChange={(e) => setField('position', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="从业年限">
-                <Input
-                  type="number"
-                  value={item.experienceYears ?? ''}
-                  onChange={(e) =>
-                    setField('experienceYears', e.target.value ? Number(e.target.value) : undefined)
-                  }
-                />
-              </FormFieldRow>
-              <FormFieldRow label="教育背景">
-                <Input
-                  value={item.education}
-                  onChange={(e) => setField('education', e.target.value)}
-                  placeholder="如：XX大学 硕士"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="行业方向">
-                <Input
-                  value={item.industry}
-                  onChange={(e) => setField('industry', e.target.value)}
-                  placeholder="如：智能制造"
-                />
-              </FormFieldRow>
-            </FormFieldGrid>
+            <CardContent>
+              <FormFieldGrid>
+                <FormFieldRow label="姓名" required>
+                  <Input value={item.name} onChange={(e) => setField('name', e.target.value)} />
+                </FormFieldRow>
+                <FormFieldRow label="性别">
+                  <Select value={item.gender} onValueChange={(v) => setField('gender', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">男</SelectItem>
+                      <SelectItem value="female">女</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="年龄">
+                  <Input
+                    type="number"
+                    value={item.age ?? ''}
+                    onChange={(e) =>
+                      setField('age', e.target.value ? Number(e.target.value) : undefined)
+                    }
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="所在城市">
+                  <Input value={item.city} onChange={(e) => setField('city', e.target.value)} />
+                </FormFieldRow>
+                <FormFieldRow label="职称/职位">
+                  <Input
+                    value={item.title}
+                    onChange={(e) => setField('title', e.target.value)}
+                    placeholder="如：高级工程师"
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="任职岗位">
+                  <Input
+                    value={item.position}
+                    onChange={(e) => setField('position', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="从业年限">
+                  <Input
+                    type="number"
+                    value={item.experienceYears ?? ''}
+                    onChange={(e) =>
+                      setField(
+                        'experienceYears',
+                        e.target.value ? Number(e.target.value) : undefined,
+                      )
+                    }
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="教育背景">
+                  <Input
+                    value={item.education}
+                    onChange={(e) => setField('education', e.target.value)}
+                    placeholder="如：XX大学 硕士"
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="行业方向">
+                  <Input
+                    value={item.industry}
+                    onChange={(e) => setField('industry', e.target.value)}
+                    placeholder="如：智能制造"
+                  />
+                </FormFieldRow>
+              </FormFieldGrid>
+            </CardContent>
           </Card>
 
           <Card>

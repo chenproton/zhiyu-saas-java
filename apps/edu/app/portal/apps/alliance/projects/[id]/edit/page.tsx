@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Loader2, Send } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
-import { useToast, LoadingView} from '@zhiyu/ui'
+import { useToast, LoadingView } from '@zhiyu/ui'
 import type { AllianceProject } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
@@ -63,10 +63,7 @@ export default function AllianceProjectEditPage() {
 
   useEffect(() => {
     if (!tenantId || !id) return
-    Promise.all([
-      allianceProjectApi.get(id),
-      allianceEnterpriseApi.list({ limit: 200 }),
-    ])
+    Promise.all([allianceProjectApi.get(id), allianceEnterpriseApi.list({ limit: 200 })])
       .then(([p, ents]) => {
         setItem(p)
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
@@ -119,61 +116,63 @@ export default function AllianceProjectEditPage() {
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
-            <FormFieldGrid>
-              <FormFieldRow label="项目名称" required>
-                <Input value={item.name} onChange={(e) => setField('name', e.target.value)} />
-              </FormFieldRow>
-              <FormFieldRow label="合作类型">
-                <Select
-                  value={item.type || PROJECT_TYPES[0]}
-                  onValueChange={(v) => setField('type', v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROJECT_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="项目阶段">
-                <Select value={item.phase} onValueChange={(v) => setField('phase', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="initiation">启动</SelectItem>
-                    <SelectItem value="execution">执行中</SelectItem>
-                    <SelectItem value="acceptance">验收</SelectItem>
-                    <SelectItem value="closure">关闭</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
-              <FormFieldRow label="预算">
-                <Input
-                  value={item.budget || ''}
-                  onChange={(e) => setField('budget', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label="开始日期">
-                <Input
-                  value={item.startDate || ''}
-                  onChange={(e) => setField('startDate', e.target.value)}
-                  type="date"
-                />
-              </FormFieldRow>
-              <FormFieldRow label="结束日期">
-                <Input
-                  value={item.endDate || ''}
-                  onChange={(e) => setField('endDate', e.target.value)}
-                  type="date"
-                />
-              </FormFieldRow>
-            </FormFieldGrid>
+            <CardContent>
+              <FormFieldGrid>
+                <FormFieldRow label="项目名称" required>
+                  <Input value={item.name} onChange={(e) => setField('name', e.target.value)} />
+                </FormFieldRow>
+                <FormFieldRow label="合作类型">
+                  <Select
+                    value={item.type || PROJECT_TYPES[0]}
+                    onValueChange={(v) => setField('type', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECT_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="项目阶段">
+                  <Select value={item.phase} onValueChange={(v) => setField('phase', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="initiation">启动</SelectItem>
+                      <SelectItem value="execution">执行中</SelectItem>
+                      <SelectItem value="acceptance">验收</SelectItem>
+                      <SelectItem value="closure">关闭</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormFieldRow>
+                <FormFieldRow label="预算">
+                  <Input
+                    value={item.budget || ''}
+                    onChange={(e) => setField('budget', e.target.value)}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="开始日期">
+                  <Input
+                    value={item.startDate || ''}
+                    onChange={(e) => setField('startDate', e.target.value)}
+                    type="date"
+                  />
+                </FormFieldRow>
+                <FormFieldRow label="结束日期">
+                  <Input
+                    value={item.endDate || ''}
+                    onChange={(e) => setField('endDate', e.target.value)}
+                    type="date"
+                  />
+                </FormFieldRow>
+              </FormFieldGrid>
+            </CardContent>
           </Card>
 
           <Card>
