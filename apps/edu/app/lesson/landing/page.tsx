@@ -44,12 +44,18 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
     <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
       <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-emerald-200 hover:-translate-y-0.5 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
         <div
-          className="h-[120px] flex items-center justify-center shrink-0 relative"
-          style={{ background: coverGradients[index % coverGradients.length] }}
+          className="h-[120px] flex items-center justify-center shrink-0 relative bg-cover bg-center"
+          style={
+            course.coverImage
+              ? { backgroundImage: `url('${course.coverImage}')` }
+              : { background: coverGradients[index % coverGradients.length] }
+          }
         >
-          <span className="text-white text-lg font-bold drop-shadow-lg">
-            {course.name.slice(0, 8)}
-          </span>
+          {!course.coverImage && (
+            <span className="text-white text-lg font-bold drop-shadow-lg">
+              {course.name.slice(0, 8)}
+            </span>
+          )}
           <span className="absolute top-3 right-3 bg-white/25 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
             已发布
           </span>
