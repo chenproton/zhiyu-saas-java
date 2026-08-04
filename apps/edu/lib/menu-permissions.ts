@@ -54,6 +54,11 @@ export function buildMenuTree(): MenuTreeItem[] {
   resource.children?.push({ id: 'resource-landing', label: '前台落地页', href: '/library/landing' })
   const affairs = platformGroup('affairs', '教务管理服务平台', affairsNavigationConfig)
   const alliance = platformGroup('alliance', '产教融合与就业服务平台', allianceNavigationConfig)
+  alliance.children?.push({
+    id: 'alliance-landing',
+    label: '前台落地页',
+    href: '/portal/alliance/landing',
+  })
 
   return [
     {
