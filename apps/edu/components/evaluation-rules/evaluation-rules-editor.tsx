@@ -74,6 +74,7 @@ import {
   evalSubTypeLabels,
   evalSubTypeColors,
   defaultGradeMapping,
+  defaultEvalSubjects,
 } from './constants'
 import {
   type EvalObjectType,
@@ -661,10 +662,13 @@ export function EvaluationRulesEditor({
     }
   }
 
-  // 评价主体取值：methodEvalSubjects 中的空数组视为未配置，回退到全局默认主体
+  // 评价主体取值：methodEvalSubjects 中的空数组视为未配置，逐级回退到全局默认主体
   const getMethodSubjects = (methodKey: string) => {
     const ms = config.methodEvalSubjects[methodKey]
-    return ms && ms.length > 0 ? ms : config.evalSubjects
+    if (ms && ms.length > 0) return ms
+    return config.evalSubjects && config.evalSubjects.length > 0
+      ? config.evalSubjects
+      : defaultEvalSubjects
   }
 
   const updateMethodEvalSubject = (

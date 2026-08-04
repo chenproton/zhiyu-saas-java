@@ -5,7 +5,7 @@ import { PenTool } from 'lucide-react'
 import { EvalMethodSelector } from './eval-method-selector'
 import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluation-rules-dialog'
 import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
-import { mergeEvalRuleMethods } from '@/lib/types/evaluation'
+import { mergeEvalRuleMethods, DEFAULT_EVAL_RULE_SUBJECTS } from '@/lib/types/evaluation'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 
 export interface EvalMethodConfigModuleProps {
@@ -33,7 +33,7 @@ export function EvalMethodConfigModule({
         methodWeights: {},
         evalObject: 'individual',
         methodEvalObjects: {},
-        evalSubjects: [],
+        evalSubjects: JSON.parse(JSON.stringify(DEFAULT_EVAL_RULE_SUBJECTS)),
         methodEvalSubjects: {},
         randomDrawQuestions: [],
         randomDrawCustomQuestions: [],
