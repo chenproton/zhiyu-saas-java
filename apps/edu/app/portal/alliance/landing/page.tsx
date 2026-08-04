@@ -161,7 +161,7 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
   const img = enterprise.coverImage
   return (
     <Link href={`/portal/alliance/enterprises/${enterprise.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full">
         <div className="relative h-44 overflow-hidden">
           {img ? (
             <img
@@ -229,7 +229,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
   const progress = getProjectProgress(project)
   return (
     <Link href={`/portal/alliance/projects/${project.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
         <div className="relative h-48 overflow-hidden">
           {project.coverImage ? (
             <img
@@ -293,7 +293,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
 function AchievementCard({ achievement }: { achievement: AllianceAchievement }) {
   return (
     <Link href={`/portal/alliance/achievements/${achievement.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full">
         <div className="relative h-44 overflow-hidden">
           {achievement.coverImage ? (
             <img
@@ -340,7 +340,7 @@ function AchievementCard({ achievement }: { achievement: AllianceAchievement }) 
 function ExpertCard({ expert }: { expert: AllianceExpert }) {
   return (
     <Link href={`/portal/alliance/experts/${expert.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col">
         <div className="h-20 relative">
           <GradientPlaceholder seed={expert.industry} className="absolute inset-0 w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -402,7 +402,7 @@ function ExpertCard({ expert }: { expert: AllianceExpert }) {
 function BrandCard({ brand }: { brand: AllianceBrand }) {
   return (
     <Link href={`/portal/alliance/brands/${brand.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
         <div className="relative h-44 overflow-hidden">
           {brand.coverImage ? (
             <img
@@ -505,7 +505,7 @@ function SectionAnchorNav() {
 function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null }) {
   if (!schoolInfo) {
     return (
-      <Card className="border border-white/10 shadow-2xl rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl">
+      <Card className="border border-white/10 shadow-2xl shadow-black/20 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl">
         <CardContent className="p-7">
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 rounded-xl border border-white/20 shadow-md bg-gradient-to-br from-blue-500 to-indigo-600" />
@@ -537,7 +537,7 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
   const collegeCount = schoolInfo.secondaryColleges?.length ?? 0
 
   return (
-    <Card className="border border-white/10 shadow-2xl rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl">
+    <Card className="border border-white/10 shadow-2xl shadow-black/20 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl">
       <CardContent className="p-7">
         <div className="flex items-start gap-4">
           {schoolInfo.logoUrl ? (
@@ -754,7 +754,7 @@ export default function AllianceLandingPage() {
                       className="text-center group p-3 rounded-2xl hover:bg-slate-50/80 transition-colors duration-300"
                     >
                       <div
-                        className={`inline-flex items-center justify-center w-13 h-13 rounded-2xl bg-gradient-to-br ${STAT_COLORS[idx]} text-white mb-4 shadow-md shadow-slate-200/60 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300`}
+                        className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br ${STAT_COLORS[idx]} text-white mb-4 shadow-md shadow-slate-200/60 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300`}
                       >
                         <Icon className="h-5 w-5" />
                       </div>
@@ -774,8 +774,9 @@ export default function AllianceLandingPage() {
       {/* 产教融合成果库 */}
       <section
         id="achievement-library"
-        className="py-20 bg-gradient-to-b from-slate-50/80 via-white to-blue-50/30"
+        className="relative py-20 bg-gradient-to-b from-slate-50/90 via-white to-blue-50/30 overflow-hidden"
       >
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading
             title="产教融合成果库"
@@ -849,8 +850,9 @@ export default function AllianceLandingPage() {
       {/* 产教品牌库 */}
       <section
         id="brand-library"
-        className="py-20 bg-gradient-to-b from-white via-slate-50/40 to-white"
+        className="relative py-20 bg-gradient-to-b from-white via-slate-50/50 to-white overflow-hidden"
       >
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading
             title="产教品牌库"
@@ -863,9 +865,9 @@ export default function AllianceLandingPage() {
               const Icon = cat.icon
               return (
                 <Link key={cat.id} href={cat.href}>
-                  <div className="group flex items-center gap-3 px-5 py-3 rounded-full border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-300">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
-                      <Icon className="h-4.5 w-4.5 text-blue-600" />
+                  <div className="group flex items-center gap-3 px-5 py-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:shadow-blue-900/5 hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-300 hover:-translate-y-0.5">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center group-hover:from-blue-100 group-hover:to-indigo-100 transition-colors">
+                      <Icon className="h-[18px] w-[18px] text-blue-600" />
                     </div>
                     <span className="font-medium text-slate-700 group-hover:text-blue-700 transition-colors">
                       {cat.title}
