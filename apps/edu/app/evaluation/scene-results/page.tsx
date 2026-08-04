@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   BookOpen,
@@ -68,6 +69,16 @@ interface ScenarioGroup {
 }
 
 export default function GradingPage() {
+  return (
+    <Suspense fallback={null}>
+      <GradingPageContent />
+    </Suspense>
+  )
+}
+
+function GradingPageContent() {
+  const searchParams = useSearchParams()
+  const urlSceneId = searchParams.get('sceneId')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
@@ -101,7 +112,13 @@ export default function GradingPage() {
             positionName: pMap.get(s.careerPositionId) || '未分类',
           }))
         setScenarios(loadedScenarios)
-        setSelectedScenarioId((prev) => prev ?? loadedScenarios[0]?.id ?? null)
+        setSelectedScenarioId((prev) => {
+          if (prev) return prev
+          // 优先恢复 URL 中 sceneId 指定的场景（评分详情页返回时携带），否则默认第一个
+          const fromUrl =
+            urlSceneId && loadedScenarios.some((s) => s.id === urlSceneId) ? urlSceneId : null
+          return fromUrl ?? loadedScenarios[0]?.id ?? null
+        })
 
         const uMap = new Map<string, any>()
         ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
@@ -116,7 +133,7 @@ export default function GradingPage() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [urlSceneId])
 
   useEffect(() => {
     if (!selectedScenarioId) return

@@ -1470,7 +1470,13 @@ export default function GradingDetailPage() {
         {/* 顶部导航 */}
         <div className="bg-white border-b px-4 py-2 flex items-center gap-3 shrink-0">
           <Button variant="ghost" size="sm" asChild className="h-8">
-            <Link href="/evaluation/scene-results">
+            <Link
+              href={
+                result?.sceneId
+                  ? `/evaluation/scene-results?sceneId=${result.sceneId}`
+                  : '/evaluation/scene-results'
+              }
+            >
               <ArrowLeft className="mr-1 h-4 w-4" />
               返回
             </Link>
@@ -1659,7 +1665,15 @@ export default function GradingDetailPage() {
             </div>
           )}
           <Button variant="outline" size="sm" asChild className="shrink-0 h-9">
-            <Link href="/evaluation/scene-results">取消</Link>
+            <Link
+              href={
+                result?.sceneId
+                  ? `/evaluation/scene-results?sceneId=${result.sceneId}`
+                  : '/evaluation/scene-results'
+              }
+            >
+              取消
+            </Link>
           </Button>
           {!saved && (
             <Button
