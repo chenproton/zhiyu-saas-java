@@ -85,14 +85,57 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// 允许直接输出的文件扩展名白名单（防存储型 XSS：HTML/SVG/JS 等可执行类型禁止直接服务）
+// 允许直接输出的文件扩展名白名单，与 kkFileView 4.4.0 支持的全部格式对齐
+// （来源：kkFileView FileType.java 及 application.properties 的 simText/media 配置）
+// 其中 html/htm/svg/xml/xbrl 等可执行类型由 Serve 附加 CSP sandbox + nosniff 头防存储型 XSS
 var allowedServeExts = map[string]bool{
-	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".bmp": true,
-	".pdf": true,
-	".doc": true, ".docx": true, ".xls": true, ".xlsx": true, ".ppt": true, ".pptx": true,
-	".txt": true, ".csv": true,
-	".mp3": true, ".wav": true, ".mp4": true, ".webm": true,
-	".zip": true, ".rar": true, ".7z": true,
+	// kkFileView PICTURE
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".bmp": true, ".webp": true,
+	".ico": true, ".jfif": true,
+	// kkFileView PDF / OFD / TIFF / SVG
+	".pdf": true, ".ofd": true, ".tif": true, ".tiff": true, ".svg": true,
+	// kkFileView SIMTEXT/XML：直开有 XSS 风险，Serve 时附加 CSP sandbox 头
+	".html": true, ".htm": true, ".xml": true, ".xbrl": true,
+	// kkFileView OFFICE（LibreOffice 转换）
+	".doc": true, ".docx": true, ".docm": true, ".dot": true, ".dotx": true, ".dotm": true,
+	".wps": true, ".wpt": true,
+	".xls": true, ".xlsx": true, ".xlsm": true, ".xlt": true, ".xltx": true, ".xltm": true,
+	".xlam": true, ".xla": true, ".et": true, ".ett": true, ".ods": true, ".ots": true,
+	".csv": true, ".tsv": true,
+	".ppt": true, ".pptx": true, ".dps": true, ".odp": true, ".otp": true, ".sxi": true,
+	".rtf": true, ".odt": true, ".ott": true, ".vsd": true, ".vsdx": true, ".fodt": true,
+	".fods": true, ".pages": true,
+	".wmf": true, ".emf": true, ".tga": true, ".psd": true, ".eps": true,
+	// kkFileView COMPRESS
+	".zip": true, ".rar": true, ".7z": true, ".jar": true, ".tar": true, ".gzip": true,
+	// kkFileView CAD（aspose-cad 转 svg）
+	".dwg": true, ".dxf": true, ".dwf": true, ".dwfx": true, ".dwt": true, ".dng": true,
+	".cf2": true, ".plt": true,
+	// kkFileView ONLINE3D（three.js 在线渲染）
+	".stl": true, ".obj": true, ".3ds": true, ".ply": true, ".off": true, ".3dm": true,
+	".fbx": true, ".dae": true, ".wrl": true, ".3mf": true, ".glb": true, ".gltf": true,
+	".o3dv": true, ".stp": true, ".step": true, ".iges": true, ".igs": true, ".brep": true,
+	".bim": true, ".fcstd": true, ".ifc": true,
+	// kkFileView MEDIA / MEDIACONVERT（ffmpeg 转码）
+	".mp3": true, ".wav": true, ".m4a": true, ".mp4": true, ".webm": true, ".flv": true,
+	".mpeg": true, ".mpd": true, ".m3u8": true, ".ts": true,
+	".avi": true, ".mov": true, ".wmv": true, ".mkv": true, ".3gp": true, ".rm": true,
+	// kkFileView 文本 / 代码（simText / code 高亮预览）
+	".txt": true, ".md": true, ".log": true, ".json": true, ".properties": true,
+	".yaml": true, ".yml": true, ".gitignore": true,
+	".java": true, ".py": true, ".c": true, ".cpp": true, ".h": true, ".php": true,
+	".go": true, ".js": true, ".css": true, ".lua": true, ".sh": true, ".rb": true,
+	".sql": true, ".bat": true, ".m": true, ".bas": true, ".prg": true, ".cmd": true,
+	".cs": true, ".ftl": true, ".asp": true, ".jsp": true, ".aspx": true,
+	// kkFileView 其他（EML / XMIND / EPUB / DCM / DRAWIO / XML / BPMN）
+	".eml": true, ".xmind": true, ".epub": true, ".dcm": true, ".drawio": true,
+	".bpmn": true,
+}
+
+// 浏览器可直接执行/渲染的文件类型：直开存在存储型 XSS 风险，
+// 通过 CSP sandbox 禁止脚本执行，nosniff 阻止类型混淆
+var xssRiskyExts = map[string]bool{
+	".html": true, ".htm": true, ".svg": true, ".xml": true, ".xbrl": true,
 }
 
 func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
@@ -114,6 +157,10 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	if err != nil || info.IsDir() {
 		respondError(w, http.StatusNotFound, "文件不存在")
 		return
+	}
+	if xssRiskyExts[strings.ToLower(filepath.Ext(name))] {
+		w.Header().Set("Content-Security-Policy", "sandbox")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 	}
 	http.ServeFile(w, r, path)
 }
