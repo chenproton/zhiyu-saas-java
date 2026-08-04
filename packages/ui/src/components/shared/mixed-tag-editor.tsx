@@ -164,7 +164,9 @@ export function MixedTagEditor({
       .join('')
     const textChanged = domText !== (text || '')
 
-    // 异步数据（knowledgePoints/abilityPoints）到达后，补渲染已登记但未生成 span 的标签
+    // 异步数据（knowledgePoints/abilityPoints）到达后，补渲染已登记但未生成 span 的标签。
+    // 仅限 prevTags 中已登记过的 id：新增 id 由下方 newKpIds/newAbIds 追加，
+    // 若同时进入 missing 集合会被双重追加导致重复插入。
     const kpSpanIds = new Set(
       Array.from(el.children)
         .filter((n) => (n as HTMLElement).dataset.type === 'kp' && (n as HTMLElement).dataset.id)
@@ -175,8 +177,12 @@ export function MixedTagEditor({
         .filter((n) => (n as HTMLElement).dataset.type === 'ab' && (n as HTMLElement).dataset.id)
         .map((n) => (n as HTMLElement).dataset.id as string),
     )
-    const missingKpIds = knowledgePointIds.filter((id) => !kpSpanIds.has(id))
-    const missingAbIds = abilityPointIds.filter((id) => !abSpanIds.has(id))
+    const missingKpIds = knowledgePointIds.filter(
+      (id) => prevTags.current.kp.includes(id) && !kpSpanIds.has(id),
+    )
+    const missingAbIds = abilityPointIds.filter(
+      (id) => prevTags.current.ab.includes(id) && !abSpanIds.has(id),
+    )
 
     if (
       !kpChanged &&
@@ -269,8 +275,10 @@ export function MixedTagEditor({
       else if (node.nodeType === Node.ELEMENT_NODE) {
         const dataset = (node as HTMLElement).dataset
         if (dataset.tag) {
-          if (dataset.type === 'kp' && dataset.id) newKpIds.push(dataset.id)
-          if (dataset.type === 'ab' && dataset.id) newAbIds.push(dataset.id)
+          if (dataset.type === 'kp' && dataset.id && !newKpIds.includes(dataset.id))
+            newKpIds.push(dataset.id)
+          if (dataset.type === 'ab' && dataset.id && !newAbIds.includes(dataset.id))
+            newAbIds.push(dataset.id)
         }
       }
     })
