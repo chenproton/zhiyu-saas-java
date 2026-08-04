@@ -520,7 +520,8 @@ function EvalPointGradingCard({
 
   const commitIfValid = (val: string, newComment?: string) => {
     const num = parseFloat(val)
-    const max = evalPoint.weight || 0
+    // 权重为 0（未配置）时按 100 分上限校验，与输入框 max 保持一致，避免失焦后分数被清空
+    const max = evalPoint.weight || 100
     const cmt = newComment !== undefined ? newComment : localComment
     if (!isNaN(num) && num >= 0 && num <= max) {
       onChange(evalPoint.id, num, cmt)
@@ -608,7 +609,8 @@ function ScoreRuleGradingCard({
 
   const commitIfValid = (val: string, newComment?: string) => {
     const num = parseFloat(val)
-    const max = scoreRule.weight || 0
+    // 权重为 0（未配置）时按 100 分上限校验，与输入框 max 保持一致
+    const max = scoreRule.weight || 100
     const cmt = newComment !== undefined ? newComment : localComment
     if (!isNaN(num) && num >= 0 && num <= max) {
       onChange(scoreRule.id, num, cmt)
@@ -1410,7 +1412,7 @@ export default function GradingDetailPage() {
           <div className="text-sm text-gray-600">
             已评分：
             <span className="font-semibold text-gray-900">
-              {evalPointTotal} / {evalPointMaxTotal}
+              {evalPointTotal} / {evalPointMaxTotal || 100}
             </span>
           </div>
         </div>
