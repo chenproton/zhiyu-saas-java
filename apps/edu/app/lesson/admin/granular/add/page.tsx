@@ -108,26 +108,34 @@ function AddGranularPageInner() {
         }))
         setKnowledgePool(pool)
 
-        setCourseResourcePool([])
-        ;(libRes.items || []).forEach((r: any) => {
-          setCourseResourcePool((prev) => [
-            ...prev,
-            {
-              id: r.id,
-              name: r.name,
-              type: r.resourceType || r.type,
-              url: r.url,
-              description: r.description,
-              size: r.fileSize !== undefined ? r.fileSize : r.size,
-            } as ResourceItem,
-          ])
-        })
+        const libItems = (libRes.items || []).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          type: r.resourceType || r.type,
+          url: r.url,
+          description: r.description,
+          size: r.fileSize !== undefined ? r.fileSize : r.size,
+        }))
+        // 课程已绑定的资源（含本地上传后已入库的）并入资源池，保证刷新后选中项可解析
+        const boundItems = editId
+          ? ((await courseResourceApi.list({ courseId: editId, limit: 200 })).items || []).map(
+              (r: any) => ({
+                id: r.id,
+                name: r.name,
+                type: r.resourceType || r.type,
+                url: r.url,
+                description: r.description,
+                size: r.size !== undefined ? r.size : r.fileSize,
+              }),
+            )
+          : []
+        const mergedPool: ResourceItem[] = [...libItems, ...boundItems].filter(
+          (r, i, arr) => arr.findIndex((x) => x.id === r.id) === i,
+        )
+        setCourseResourcePool(mergedPool)
 
         if (editId) {
-          const [c, courseRes] = await Promise.all([
-            courseApi.get(editId),
-            courseResourceApi.list({ courseId: editId, limit: 200 }),
-          ])
+          const c = await courseApi.get(editId)
           setCourse(c)
           setCourseName(c.name)
           setHours(String(c.onlineHours ?? c.offlineHours ?? ''))
@@ -139,22 +147,6 @@ function AddGranularPageInner() {
           setCoverImage(c.coverImage || '')
           if (c.batchId) setBatchId(c.batchId)
 
-          // 课程已绑定的资源（含本地上传后已入库的）并入资源池，保证刷新后选中项可解析
-          setCourseResourcePool((prev) => {
-            const existing = new Set(prev.map((x) => x.id))
-            const toAdd = ((courseRes.items || []) as any[])
-              .map((r) => ({
-                id: r.id,
-                name: r.name,
-                type: r.resourceType || r.type,
-                url: r.url,
-                description: r.description,
-                size: r.size !== undefined ? r.size : r.fileSize,
-              }))
-              .filter((r) => !existing.has(r.id))
-            return [...prev, ...toAdd]
-          })
-
           const selectedKpIds = new Set(
             (c.knowledgePointIds || []).filter((id): id is string => !!id),
           )
@@ -162,7 +154,7 @@ function AddGranularPageInner() {
 
           const resIds = new Set((c.resourceIds || []).filter((id): id is string => !!id))
           setSelectedResourceIds(
-            Array.from(resIds).filter((id) => courseResourcePool.some((r) => r.id === id)),
+            Array.from(resIds).filter((id) => mergedPool.some((r) => r.id === id)),
           )
         }
       } catch (err: any) {
