@@ -1682,6 +1682,18 @@ function EditCardDialog({
     return exam.id
   }
 
+  // 评价标准表单「保存」：把当前方法的评价标准立即落库到当前任务×当前测评方式
+  const handlePersistStandard = async (
+    _methodKey: string,
+    next: import('@/lib/types/evaluation').EvalRuleConfig,
+  ) => {
+    const nextState = { ...state, ...evalRuleConfigToTaskStateUpdates(next) }
+    const methodsInput = taskStateToMethodsInput(nextState)
+    if (methodsInput.length === 0) return
+    const newVersion = await saveMethodsWithRetry(taskId, state.evalMethodVersion, methodsInput)
+    updateState({ ...evalRuleConfigToTaskStateUpdates(next), evalMethodVersion: newVersion })
+  }
+
   const handleSave = async () => {
     if (isSavingCard) return
     setIsSavingCard(true)
@@ -2292,6 +2304,7 @@ function EditCardDialog({
             abilityPoints={
               datasets.abilityPoints as { id: string; name: string; description?: string }[]
             }
+            onPersistStandard={handlePersistStandard}
           />
         )
       case 'weight':
