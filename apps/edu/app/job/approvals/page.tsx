@@ -130,7 +130,7 @@ export default function JobApprovalsPage() {
       onBatchApprove={batchApprove}
       onBatchReject={batchReject}
       mapRecord={mapRecord}
-      detailHref={(item) => `/job/positions/${item.positionId}/edit`}
+      detailHref={(item) => `/job/landing/${item.positionId}`}
       columns={columns}
     />
   )

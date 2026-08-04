@@ -94,7 +94,6 @@ export default function AffairsApprovalsPage() {
       onBatchApprove={batchApprove}
       onBatchReject={batchReject}
       mapRecord={mapRecord}
-      detailHref={(item) => `/affairs/programs/${item.programId}`}
       columns={columns}
     />
   )

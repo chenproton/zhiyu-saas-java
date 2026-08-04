@@ -224,8 +224,8 @@ export default function EvaluationApprovalsPage() {
       mapRecord={mapRecord}
       detailHref={(item) =>
         item.targetType === 'question_bank'
-          ? `/evaluation/question-banks/${item.targetId}`
-          : `/evaluation/exams/${item.targetId}`
+          ? `/evaluation/landing/banks/${item.targetId}`
+          : `/evaluation/landing/exams/${item.targetId}`
       }
       columns={columns}
     />

@@ -42,7 +42,7 @@ export interface ApprovalListPageProps<
   onBatchReject: (ids: string[], comment: string) => Promise<void>
 
   mapRecord: (record: any) => T
-  detailHref: (item: T) => string
+  detailHref?: (item: T) => string
   columns: ApprovalColumn<T>[]
 }
 
@@ -198,12 +198,14 @@ export function ApprovalListPage<
                         </TableCell>
                       ))}
                       <TableRowActions className="sticky right-0 bg-white shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={detailHref(item)}>
-                            <Eye className="mr-1 h-3 w-3" />
-                            查看
-                          </Link>
-                        </Button>
+                        {detailHref ? (
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={detailHref(item)}>
+                              <Eye className="mr-1 h-3 w-3" />
+                              查看
+                            </Link>
+                          </Button>
+                        ) : null}
                         {approveAction ? (
                           <div className="inline-flex" onClick={() => setCurrentItem(item)}>
                             {approveAction(item.status)}

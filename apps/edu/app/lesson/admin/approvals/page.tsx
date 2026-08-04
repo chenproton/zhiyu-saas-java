@@ -142,7 +142,7 @@ export default function CourseApprovalsPage() {
       onBatchApprove={batchApprove}
       onBatchReject={batchReject}
       mapRecord={mapRecord}
-      detailHref={(item) => `/lesson/admin/courses/${item.courseId}/edit`}
+      detailHref={(item) => `/lesson/landing/${item.courseId}`}
       columns={columns}
     />
   )

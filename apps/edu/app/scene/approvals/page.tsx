@@ -134,7 +134,7 @@ export default function SceneApprovalsPage() {
       onBatchApprove={batchApprove}
       onBatchReject={batchReject}
       mapRecord={mapRecord}
-      detailHref={(item) => `/scene/scenarios/${item.scenarioId}/edit`}
+      detailHref={(item) => `/scene/landing/${item.scenarioId}`}
       columns={columns}
     />
   )
