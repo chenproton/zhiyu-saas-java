@@ -1,9 +1,8 @@
 'use client'
 
-import Image from 'next/image'
 import { useEffect, useState, useRef, Suspense, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { BookOpen, GraduationCap, ImageUp, Plus, X } from 'lucide-react'
+import { BookOpen, GraduationCap, Plus, X } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,6 +40,7 @@ import { RichTextEditor } from '../../_components/common/rich-text-editor'
 import PublishCheckPanel from '../../system/add/_components/PublishCheckPanel'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
+import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { usePreviewResources } from '@/components/shared/resource-preview-modal'
 import { reportError } from '@/lib/error-handling'
 
@@ -72,17 +72,15 @@ function AddGranularPageInner() {
   const [majorId, setMajorId] = useState('')
   const [difficulty, setDifficulty] = useState<number>(0)
   const [coverImage, setCoverImage] = useState('')
+  const [coverUploading, setCoverUploading] = useState(false)
   const [batchId, setBatchId] = useState('')
 
-  /* module 2: knowledge points */
-  const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
+  /* module 2: knowledge points */  const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
 
   /* module 3: resources */
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
-
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -441,46 +439,25 @@ function AddGranularPageInner() {
                   </FormFieldRow>
                 </div>
                 {/* 右列：封面图片（桌面端位于课程名称右侧，移动端单列排布） */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs">封面图片</Label>
-                  <div className="flex items-start gap-4">
-                    {coverImage ? (
-                      <div className="relative w-[200px] h-[120px] rounded-lg overflow-hidden border border-gray-200">
-                        <Image src={coverImage} alt="封面预览" fill className="object-cover" />
-                        <button
-                          onClick={() => setCoverImage('')}
-                          className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/70"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-[200px] h-[120px] rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
-                      >
-                        <ImageUp className="w-8 h-8 text-gray-400" />
-                        <span className="text-xs text-gray-400 mt-1">点击上传封面</span>
-                      </div>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          try {
-                            const res = await fileApi.upload(file)
-                            setCoverImage(res.url)
-                          } catch (err: any) {
-                            toast({ title: err.message || '封面上传失败', variant: 'destructive' })
-                          }
-                        }
-                      }}
-                    />
-                  </div>
+                <div className="max-w-[400px]">
+                  <CoverImageUpload
+                    imageUrl={coverImage}
+                    uploading={coverUploading}
+                    label="课程封面"
+                    alt="课程封面"
+                    onUpload={async (file) => {
+                      setCoverUploading(true)
+                      try {
+                        const res = await fileApi.upload(file)
+                        setCoverImage(res.url)
+                      } catch (err: any) {
+                        toast({ title: err.message || '封面上传失败', variant: 'destructive' })
+                      } finally {
+                        setCoverUploading(false)
+                      }
+                    }}
+                    onRemove={() => setCoverImage('')}
+                  />
                 </div>
                 <div className="md:col-span-2">
                   <TaskInfoCard

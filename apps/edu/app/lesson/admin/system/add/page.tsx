@@ -2,7 +2,6 @@
 
 import { useState, useRef, Suspense, useMemo, useCallback, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
 import {
   BookOpen,
   GraduationCap,
@@ -10,7 +9,6 @@ import {
   ChevronDown,
   ChevronRight,
   Info,
-  ImageUp,
   Upload,
   Copy,
   Link2,
@@ -48,6 +46,7 @@ import { RichTextEditor } from '../../_components/common/rich-text-editor'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
 import { MajorSelect } from '@/components/shared/major-select'
+import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 
 import CourseNodeTree from './_components/CourseNodeTree'
 import PublishCheckPanel from './_components/PublishCheckPanel'
@@ -106,11 +105,11 @@ function AddSystemPageInner() {
   const [majors, setMajors] = useState<Major[]>([])
   const [courseDescription, setCourseDescription] = useState('')
   const [coverImage, setCoverImage] = useState('')
+  const [coverUploading, setCoverUploading] = useState(false)
   const [batchId, setBatchId] = useState('')
   const [originalStatus, setOriginalStatus] = useState('draft')
   const [courseDescriptionPdf, setCourseDescriptionPdf] = useState<string | null>(null)
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const hasSavedRef = useRef(false)
   const [, setLoadingEdit] = useState(false)
 
@@ -917,43 +916,24 @@ function AddSystemPageInner() {
                 </div>
                 {/* Right: 封面图片 + 适用专业 + 所属批次 + 关联能力点 */}
                 <div className="space-y-4 min-w-0">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">封面图片</Label>
-                    <div className="flex items-start gap-4">
-                      {coverImage ? (
-                        <div className="relative w-[200px] h-[120px] rounded-lg overflow-hidden border border-gray-200">
-                          <Image src={coverImage} alt="封面预览" fill className="object-cover" />
-                          <button
-                            onClick={() => setCoverImage('')}
-                            className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/70"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <div
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-[200px] h-[120px] rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
-                        >
-                          <ImageUp className="w-8 h-8 text-gray-400" />
-                          <span className="text-xs text-gray-400 mt-1">点击上传封面</span>
-                        </div>
-                      )}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            const reader = new FileReader()
-                            reader.onload = (ev) => setCoverImage(ev.target?.result as string)
-                            reader.readAsDataURL(file)
-                          }
-                        }}
-                      />
-                    </div>
+                  <div className="max-w-[400px]">
+                    <CoverImageUpload
+                      imageUrl={coverImage}
+                      uploading={coverUploading}
+                      label="课程封面"
+                      alt="课程封面"
+                      onUpload={(file) => {
+                        setCoverUploading(true)
+                        const reader = new FileReader()
+                        reader.onload = (ev) => {
+                          setCoverUploading(false)
+                          setCoverImage(ev.target?.result as string)
+                        }
+                        reader.onerror = () => setCoverUploading(false)
+                        reader.readAsDataURL(file)
+                      }}
+                      onRemove={() => setCoverImage('')}
+                    />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
