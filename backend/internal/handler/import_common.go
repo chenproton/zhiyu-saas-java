@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -48,6 +49,49 @@ func lookupIDByName(ctx context.Context, db *pgxpool.Pool, tableName, tenantID, 
 		return "", err
 	}
 	return id, nil
+}
+
+// splitNames 将名称字符串按中文/英文分号拆分为列表，空项忽略。
+func splitNames(s string) []string {
+	return splitTrim(strings.ReplaceAll(s, "；", ";"), ";")
+}
+
+// lookupIDsByNames 按租户+名称批量查找记录 ID（名称多值用分号分隔），
+// 未命中的名称忽略，返回命中的 ID 列表。
+// 仅供 import/export 豁免区使用。
+func lookupIDsByNames(ctx context.Context, db *pgxpool.Pool, table, tenantID, names string) []string {
+	var ids []string
+	for _, name := range splitNames(names) {
+		id, err := lookupIDByName(ctx, db, table, tenantID, name)
+		if err != nil || id == "" {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// lookupSingleIDByName 按租户+名称查找单个记录 ID（名称多值时取第一个），
+// 未命中时返回 nil。
+// 仅供 import/export 豁免区使用。
+func lookupSingleIDByName(ctx context.Context, db *pgxpool.Pool, table, tenantID, names string) *string {
+	for _, name := range splitNames(names) {
+		id, err := lookupIDByName(ctx, db, table, tenantID, name)
+		if err == nil && id != "" {
+			return &id
+		}
+	}
+	return nil
+}
+
+// jsonBytes 将任意值序列化为 JSON 字节，序列化失败时返回 "[]"。
+// 仅供 import/export 豁免区使用。
+func jsonBytes(v any) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return []byte("[]")
+	}
+	return b
 }
 
 // ImportPreviewItem 单条重复记录预览信息。
