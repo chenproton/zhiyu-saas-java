@@ -102,16 +102,24 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
   // The initial data load may run before useAuth resolves user, leaving the
   // custom set empty. This recompute ensures KPs created by the current user are
   // marked as custom without waiting for a full reload.
+  // Note: loadDatasets may already have added these ids to the custom set without
+  // persisted flags (pre-fill path), so persisted flags must be tracked via the
+  // persisted set itself rather than the custom set membership.
   useEffect(() => {
     if (!userId || knowledgePoints.length === 0) return
     setCustomKnowledgePointIds((prev: Set<string>) => {
       const next = new Set(prev)
       let changed = false
       knowledgePoints.forEach((kp) => {
-        if (kp.creatorId && kp.creatorId === userId && !next.has(kp.id)) {
-          next.add(kp.id)
-          persistedCustomKnowledgePointIds.current.add(kp.id)
-          changed = true
+        if (kp.creatorId && kp.creatorId === userId) {
+          if (!next.has(kp.id)) {
+            next.add(kp.id)
+            changed = true
+          }
+          if (!persistedCustomKnowledgePointIds.current.has(kp.id)) {
+            persistedCustomKnowledgePointIds.current.add(kp.id)
+            changed = true
+          }
         }
       })
       return changed ? next : prev
@@ -172,7 +180,10 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
             setKnowledgePoints(nextKp)
             setCustomKnowledgePointIds((prev) => {
               const next = new Set(prev)
-              creatorCustomIds.forEach((id) => next.add(id))
+              creatorCustomIds.forEach((id) => {
+                next.add(id)
+                persistedCustomKnowledgePointIds.current.add(id)
+              })
               return next
             })
             setGranularLessons((glRes.items || []) as Course[])
