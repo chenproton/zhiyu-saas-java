@@ -124,11 +124,24 @@ export interface TaskEvaluationMethod {
   scoreType?: string
   evalSubjects: Record<string, any>[]
   rubricTemplateId?: string
+  standardName?: string
+  standardMode?: 'rubric' | 'score_rule'
   resourceConfig: Record<string, any>
   version: number
   isEnabled: boolean
   evalPoints: TaskEvalPoint[]
+  scoreRules?: TaskScoreRule[]
   reviewSteps: TaskReviewStep[]
+}
+
+export interface TaskScoreRule {
+  id: string
+  configId: string
+  name: string
+  description?: string
+  rule?: string
+  weight: number
+  sortOrder: number
 }
 
 export interface TaskEvalPoint {

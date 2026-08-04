@@ -31,6 +31,16 @@ export interface EvalRulePoint {
   weight?: number
 }
 
+export type EvalStandardMode = 'rubric' | 'score_rule'
+
+export interface EvalRuleScoreRule {
+  id: string
+  name: string
+  desc: string
+  rule?: string
+  weight?: number
+}
+
 export interface EvalRuleReviewStep {
   id: string
   label: string
@@ -60,9 +70,15 @@ export interface EvalRuleConfig {
   randomDrawEvalPoints: EvalRulePoint[]
   randomDrawScoreType: EvalScoreType
   randomDrawRubricId: string | null
+  randomDrawStandardName?: string
+  randomDrawStandardMode?: EvalStandardMode
+  randomDrawScoreRules?: EvalRuleScoreRule[]
   reviewEvalPoints: EvalRulePoint[]
   reviewScoreType: EvalScoreType
   reviewRubricId: string | null
+  reviewStandardName?: string
+  reviewStandardMode?: EvalStandardMode
+  reviewScoreRules?: EvalRuleScoreRule[]
   reviewSteps: EvalRuleReviewStepInput[]
   paperIds: string[]
   paperWeights: Record<string, number>
@@ -72,9 +88,15 @@ export interface EvalRuleConfig {
   outcomeEvalPoints: EvalRulePoint[]
   outcomeScoreType: EvalScoreType
   outcomeRubricId: string | null
+  outcomeStandardName?: string
+  outcomeStandardMode?: EvalStandardMode
+  outcomeScoreRules?: EvalRuleScoreRule[]
   homeworkEvalPoints: EvalRulePoint[]
   homeworkScoreType: EvalScoreType
   homeworkRubricId: string | null
+  homeworkStandardName?: string
+  homeworkStandardMode?: EvalStandardMode
+  homeworkScoreRules?: EvalRuleScoreRule[]
   quizQuestions: string[]
   quizEvalPoints: EvalRulePoint[]
   gradeMapping: GradeMapping[]
@@ -87,11 +109,21 @@ export interface EvalRuleMethodInput {
   evalObject: string
   scoreType?: string | null
   evalSubjects?: EvalRuleSubjectConfig[]
-  rubricTemplateId?: string | null
+  standardName?: string | null
+  standardMode?: EvalStandardMode | null
   resourceConfig?: Record<string, any>
   isEnabled: boolean
   evalPoints?: EvalRulePointInput[]
+  scoreRules?: EvalRuleScoreRuleInput[]
   reviewSteps?: EvalRuleReviewStepInput[]
+}
+
+export interface EvalRuleScoreRuleInput {
+  name: string
+  description?: string | null
+  rule?: string | null
+  weight: number
+  sortOrder: number
 }
 
 export interface EvalRulePointInput {
@@ -266,6 +298,8 @@ export function methodsToEvalRuleConfig(
     scoreType?: string | null
     evalSubjects?: EvalRuleSubjectConfig[]
     rubricTemplateId?: string | null
+    standardName?: string | null
+    standardMode?: string | null
     resourceConfig?: Record<string, any>
     isEnabled?: boolean
     evalPoints?: Array<{
@@ -279,6 +313,14 @@ export function methodsToEvalRuleConfig(
       gradeMapping?: GradeMapping[]
       knowledgePointIds?: string[]
       abilityPointIds?: string[]
+      sortOrder: number
+    }>
+    scoreRules?: Array<{
+      id: string
+      name: string
+      description?: string | null
+      rule?: string | null
+      weight: number
       sortOrder: number
     }>
     reviewSteps?: Array<{
@@ -322,12 +364,25 @@ export function methodsToEvalRuleConfig(
       gradeMapping: ep.gradeMapping,
       weight: ep.weight,
     })
+    const toLocalScoreRule = (sr: any): EvalRuleScoreRule => ({
+      id: sr.id || uid('sr'),
+      name: sr.name,
+      desc: sr.description || '',
+      rule: sr.rule || '',
+      weight: sr.weight,
+    })
+    const standardName = m.standardName || undefined
+    const standardMode = (m.standardMode === 'score_rule' ? 'score_rule' : m.standardMode === 'rubric' ? 'rubric' : undefined)
+    const scoreRules = (m.scoreRules || []).map(toLocalScoreRule)
     switch (mk) {
       case 'random_draw':
         state.randomDrawEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         state.randomDrawScoreType =
           m.scoreType === 'ability_levels' ? 'ability_levels' : 'eval_points'
         state.randomDrawRubricId = m.rubricTemplateId || null
+        state.randomDrawStandardName = standardName
+        state.randomDrawStandardMode = standardMode
+        state.randomDrawScoreRules = scoreRules
         if (resourceConfig.selectedQuestionIds)
           state.randomDrawSelectedIds = resourceConfig.selectedQuestionIds
         if (resourceConfig.customQuestions)
@@ -337,6 +392,9 @@ export function methodsToEvalRuleConfig(
         state.reviewEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         state.reviewScoreType = m.scoreType === 'ability_levels' ? 'ability_levels' : 'eval_points'
         state.reviewRubricId = m.rubricTemplateId || null
+        state.reviewStandardName = standardName
+        state.reviewStandardMode = standardMode
+        state.reviewScoreRules = scoreRules
         state.reviewSteps = (m.reviewSteps || []).map((rs: any, i: number) => ({
           label: rs.label,
           description: rs.description || null,
@@ -361,12 +419,18 @@ export function methodsToEvalRuleConfig(
         state.outcomeEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         state.outcomeScoreType = m.scoreType === 'ability_levels' ? 'ability_levels' : 'eval_points'
         state.outcomeRubricId = m.rubricTemplateId || null
+        state.outcomeStandardName = standardName
+        state.outcomeStandardMode = standardMode
+        state.outcomeScoreRules = scoreRules
         break
       case 'homework':
         state.homeworkEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         state.homeworkScoreType =
           m.scoreType === 'ability_levels' ? 'ability_levels' : 'eval_points'
         state.homeworkRubricId = m.rubricTemplateId || null
+        state.homeworkStandardName = standardName
+        state.homeworkStandardMode = standardMode
+        state.homeworkScoreRules = scoreRules
         break
       case 'quiz':
         state.quizEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
@@ -393,11 +457,23 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
     outcome: 'outcomeScoreType',
     homework: 'homeworkScoreType',
   }
-  const rubricFieldMap: Record<string, keyof EvalRuleConfig> = {
-    random_draw: 'randomDrawRubricId',
-    review: 'reviewRubricId',
-    outcome: 'outcomeRubricId',
-    homework: 'homeworkRubricId',
+  const standardNameFieldMap: Record<string, keyof EvalRuleConfig> = {
+    random_draw: 'randomDrawStandardName',
+    review: 'reviewStandardName',
+    outcome: 'outcomeStandardName',
+    homework: 'homeworkStandardName',
+  }
+  const standardModeFieldMap: Record<string, keyof EvalRuleConfig> = {
+    random_draw: 'randomDrawStandardMode',
+    review: 'reviewStandardMode',
+    outcome: 'outcomeStandardMode',
+    homework: 'homeworkStandardMode',
+  }
+  const scoreRulesFieldMap: Record<string, keyof EvalRuleConfig> = {
+    random_draw: 'randomDrawScoreRules',
+    review: 'reviewScoreRules',
+    outcome: 'outcomeScoreRules',
+    homework: 'homeworkScoreRules',
   }
 
   const allMethodKeys = Array.from(
@@ -428,9 +504,23 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
     const scoreType = scoreTypeFieldMap[mk]
       ? ((config as any)[scoreTypeFieldMap[mk]] as EvalScoreType | null)
       : null
-    const rubricId = rubricFieldMap[mk]
-      ? ((config as any)[rubricFieldMap[mk]] as string | null)
-      : null
+    const standardName = standardNameFieldMap[mk]
+      ? ((config as any)[standardNameFieldMap[mk]] as string | undefined)
+      : undefined
+    const standardMode = standardModeFieldMap[mk]
+      ? ((config as any)[standardModeFieldMap[mk]] as EvalStandardMode | undefined)
+      : undefined
+    const scoreRules = (scoreRulesFieldMap[mk]
+      ? ((config as any)[scoreRulesFieldMap[mk]] as EvalRuleScoreRule[] | undefined)
+      : []
+    )
+      ?.map((sr, i) => ({
+        name: sr.name,
+        description: sr.desc || null,
+        rule: sr.rule || null,
+        weight: sr.weight || 0,
+        sortOrder: i,
+      }))
 
     const resourceConfig: Record<string, any> = { ...(config.methodResourceConfigs?.[mk] || {}) }
     if (mk === 'paper') {
@@ -455,9 +545,11 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
       evalObject: config.methodEvalObjects[mk] || config.evalObject || 'individual',
       scoreType,
       evalSubjects: config.methodEvalSubjects[mk] || config.evalSubjects || [],
-      rubricTemplateId: rubricId || null,
+      standardName: standardName || null,
+      standardMode: standardMode || null,
       isEnabled: config.evaluationMethods.includes(mk),
-      evalPoints,
+      evalPoints: standardMode === 'score_rule' ? [] : evalPoints,
+      scoreRules: standardMode === 'score_rule' ? scoreRules || [] : [],
       reviewSteps: mk === 'review' ? config.reviewSteps || [] : [],
       resourceConfig,
     }
