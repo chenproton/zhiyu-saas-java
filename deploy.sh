@@ -139,9 +139,11 @@ prune_old_images() {
   local used ids id
   used=$(docker ps -a --format '{{.Image}}' 2>/dev/null | grep -E "^${repo}:" | \
            while read -r img; do docker images -q "$img" 2>/dev/null; done | sort -u)
-  # 按创建时间倒序，再按 ID 去重取最新记录；行序即新旧顺序
+  # 按创建时间倒序，再用 awk 按 ID 去重（保留首次出现=最新记录），保持行序即新旧顺序。
+  # 注意：不能用 sort -u -k1,1 去重——它会按 ID 重新排序，破坏时间序，
+  # 导致"保留最新 keep 个"实际变成"保留 ID 最小 keep 个"，旧镜像漏删
   ids=$(docker images --format '{{.ID}}|{{.CreatedAt}}' "$repo" 2>/dev/null | \
-          sort -t'|' -k2 -r | sort -u -t'|' -k1,1 | cut -d'|' -f1 | tail -n +$((keep + 1)))
+          sort -t'|' -k2 -r | awk -F'|' '!seen[$1]++ {print $1}' | tail -n +$((keep + 1)))
   for id in $ids; do
     [[ -n "$id" ]] || continue
     if echo "$used" | grep -qx "$id"; then
@@ -831,6 +833,8 @@ for i in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && br
 BACKUP_FILE="$DEPLOY_DIR/backups/zhiyu-saas-$(date +%Y%m%d-%H%M%S).sql"
 compose exec -T postgres pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null \
   || { warn "数据库备份失败，已跳过"; rm -f "$BACKUP_FILE"; }
+# 备份仅保留最近 7 份，避免每次部署累积旧备份占用磁盘
+ls -t "$DEPLOY_DIR"/backups/zhiyu-saas-*.sql 2>/dev/null | tail -n +8 | xargs -r rm -f
 
 if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   psql "$MIGRATE_URL" -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null || true
@@ -905,6 +909,20 @@ prune_old_images "zhiyu-backend" 1
 prune_old_images "zhiyu-edu" 1
 prune_old_images "fangzhengjin/kkfileview" 1
 
+# Go 编译缓存超限（默认 2GB）时整体清理，避免无限增长（下次后端构建全量重编，可接受）
+GO_CACHE_DIR="$BUILD_CACHE/go-cache"
+GO_CACHE_LIMIT="${GO_CACHE_LIMIT_MB:-2048}"
+if [[ -d "$GO_CACHE_DIR" ]] && \
+   [[ "$(du -sm "$GO_CACHE_DIR" 2>/dev/null | awk '{print $1}')" -gt "$GO_CACHE_LIMIT" ]]; then
+  rm -rf "$GO_CACHE_DIR"
+  log "go-cache 超过 ${GO_CACHE_LIMIT}MB，已清理（下次后端构建将全量编译）"
+fi
+
+# pnpm store 清理未被任何项目引用的孤儿包（node_modules 硬链接不受影响，离线安装能力保留）
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm store prune >/dev/null 2>&1 || true
+fi
+
 # ════════════════════════════════════════════
 # 7. Nginx + 合并
 # ════════════════════════════════════════════
@@ -920,6 +938,8 @@ if [[ -f "$NGINX_CONF" ]]; then
   if [[ -f "$NGINX_DST" ]]; then
     cp -a "$NGINX_DST" "$NGINX_DST.bak.$(date +%Y%m%d%H%M%S)"
     log "已备份原 nginx 配置: $NGINX_DST.bak.$(date +%Y%m%d%H%M%S)"
+    # 配置备份仅保留最近 5 份，避免累积占用磁盘
+    ls -t "$NGINX_DST".bak.* 2>/dev/null | tail -n +6 | xargs -r rm -f
   fi
   sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
 
