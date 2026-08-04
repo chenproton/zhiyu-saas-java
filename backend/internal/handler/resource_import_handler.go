@@ -1457,7 +1457,8 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 }
 
 // Sheet: 品牌内容
-// Columns: 品牌类型*, 名称*, 描述
+// Columns: 品牌类型*, 名称*, 描述, 状态, 是否公开, 是否推荐, 封面图URL,
+//          关联学生名称, 关联企业名称, 关联岗位名称, 关联专业名称, 关联教师名称, 关联专家名称
 func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1479,8 +1480,27 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 			continue
 		}
 		brandType := mapBrandType(row[0])
+		if brandType == "" {
+			result.Failed++
+			previewRes.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("第%d行品牌类型无法识别: %s", rowNum, row[0]))
+			continue
+		}
 		name := strings.TrimSpace(row[1])
 		description := nullableStr(col(row, 2))
+		status := mapPublishStatus(col(row, 3))
+		if status == "" {
+			status = "draft"
+		}
+		isPublic := parseBoolDefault(col(row, 4), false)
+		isFeatured := parseBoolDefault(col(row, 5), false)
+		coverImage := nullableStr(col(row, 6))
+		studentID := lookupUserIDByRole(ctx, h.DB, tenantID, col(row, 7), "student")
+		enterpriseID := lookupSingleIDByName(ctx, h.DB, "alliance_enterprises", tenantID, col(row, 8))
+		positionID := lookupSingleIDByName(ctx, h.DB, "career_positions", tenantID, col(row, 9))
+		majorID := lookupSingleIDByName(ctx, h.DB, "majors", tenantID, col(row, 10))
+		teacherID := lookupUserIDByRole(ctx, h.DB, tenantID, col(row, 11), "teacher")
+		expertID := lookupSingleIDByName(ctx, h.DB, "alliance_experts", tenantID, col(row, 12))
 
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_brands WHERE tenant_id=$1 AND brand_type=$2 AND name=$3 LIMIT 1`, tenantID, brandType, name).Scan(&existingID)
@@ -1493,9 +1513,13 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 			}
 			if !preview {
 				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_brands SET description=$1, updated_at=NOW()
-					WHERE id=$2 AND tenant_id=$3
-				`, description, existingID, tenantID)
+					UPDATE alliance_brands SET description=$1, status=$2, is_public=$3, is_featured=$4,
+						cover_image=$5, student_id=$6, enterprise_id=$7, position_id=$8, major_id=$9,
+						teacher_id=$10, expert_id=$11, updated_at=NOW()
+					WHERE id=$12 AND tenant_id=$13
+				`, description, status, isPublic, isFeatured, coverImage,
+					studentID, enterpriseID, positionID, majorID, teacherID, expertID,
+					existingID, tenantID)
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]更新失败: %v", brandType, name, err))
@@ -1511,9 +1535,11 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 			id := uuid.NewString()
 			_, err := h.DB.Exec(ctx, `
 				INSERT INTO alliance_brands (id, tenant_id, brand_type, name, status, is_public,
-					is_featured, description, sort_order, view_count, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())
-			`, id, tenantID, brandType, name, "draft", false, false, description, 0, 0)
+					is_featured, cover_image, description, student_id, enterprise_id, position_id,
+					major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW())
+			`, id, tenantID, brandType, name, status, isPublic, isFeatured, coverImage, description,
+				studentID, enterpriseID, positionID, majorID, teacherID, expertID, 0, 0)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]创建失败: %v", brandType, name, err))

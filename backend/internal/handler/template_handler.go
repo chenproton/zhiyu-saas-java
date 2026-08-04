@@ -1632,12 +1632,12 @@ func (h *TemplateHandler) generateBrandTemplate(ctx context.Context, tenantID st
 	s1, _ := f.NewSheet("品牌内容")
 	f.SetActiveSheet(s1)
 	f.DeleteSheet("Sheet1")
-	headers := []string{"品牌类型 *", "名称 *", "描述"}
-	widths := []float64{28, 28, 48}
-	setA1("品牌内容", 3, "填写说明：\n* 必填列。\n品牌类型：人才品牌 / 雇主品牌 / 岗位品牌 / 专业品牌 / 师资品牌 / 文化品牌（或 talent / employer / job / major / teacher / culture）\n名称：品牌名称\n描述：文本，选填")
+	headers := []string{"品牌类型 *", "名称 *", "描述", "状态", "是否公开", "是否推荐", "封面图URL", "关联学生名称", "关联企业名称", "关联岗位名称", "关联专业名称", "关联教师名称", "关联专家名称"}
+	widths := []float64{22, 30, 48, 18, 14, 14, 36, 24, 32, 28, 24, 24, 24}
+	setA1("品牌内容", 13, "填写说明：\n* 必填列。\n品牌类型：人才品牌 / 雇主品牌 / 岗位品牌 / 专业品牌 / 师资品牌 / 文化品牌（或 talent / employer / job / major / teacher / culture）\n名称：品牌名称\n描述：文本，选填\n状态：草稿 / 已发布 / 已归档（或 draft / published / archived），默认为 草稿\n是否公开 / 是否推荐：是 / 否（或 true / false），默认 否\n封面图URL：图片地址，选填\n关联学生 / 企业 / 岗位 / 专业 / 教师 / 专家名称：选填，按名称匹配写入对应关联 ID，需与系统中已有记录名称一致（人才品牌关联学生与专业；雇主品牌关联企业；岗位品牌关联岗位；专业品牌关联专业；师资品牌关联教师与专家；文化品牌关联专业）")
 	setHdr("品牌内容", 2, headers, widths)
 	f.SetPanes("品牌内容", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("品牌内容", "A2:C2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("品牌内容", "A2:M2", []excelize.AutoFilterOptions{})
 
 	return f
 }
