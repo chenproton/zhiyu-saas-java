@@ -366,7 +366,7 @@ func (s *CertificationStore) ListFullItems(ctx context.Context, ruleID string) (
 				SELECT ap.name FROM certification_ability_points p
 				JOIN ability_points ap ON ap.id = p.ability_point_id
 				WHERE p.item_id = i.id
-				ORDER BY p.sort_order, p.id
+				ORDER BY p.id
 				LIMIT 1
 			), '')
 		FROM certification_ability_items i
