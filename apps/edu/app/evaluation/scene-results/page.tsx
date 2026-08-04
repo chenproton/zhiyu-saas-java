@@ -17,7 +17,6 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@zhiyu/ui'
 import { Card, CardContent } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
@@ -357,16 +356,15 @@ export default function GradingPage() {
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                  <StatusBadge
-                                    status={item.result.status === 'pending' ? 'pending' : 'graded'}
-                                    label={item.result.status === 'pending' ? '待评分' : '已评分'}
-                                    className="text-[10px] h-5 px-1 border"
-                                  />
-                                  {item.result.totalScore != null && (
-                                    <span className="text-[10px] text-gray-500">
+                                  {item.result.status === 'pending' ? (
+                                    <span className="text-[10px] text-amber-600 font-medium">
+                                      待评分
+                                    </span>
+                                  ) : item.result.totalScore != null ? (
+                                    <span className="text-[10px] text-gray-500 font-medium">
                                       得分 {item.result.totalScore}/{item.result.maxScore}
                                     </span>
-                                  )}
+                                  ) : null}
                                 </div>
                               </div>
                             </div>

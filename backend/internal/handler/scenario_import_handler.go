@@ -242,14 +242,18 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 		result.Created++
 
 		if len(evalMethodNames) > 0 {
+			validMethods := make([]string, 0, len(evalMethodNames))
 			for _, evalName := range evalMethodNames {
-				mk := mapEvalMethod(evalName)
-				if mk == "" {
-					continue
+				if mk := mapEvalMethod(evalName); mk != "" {
+					validMethods = append(validMethods, mk)
 				}
+			}
+			// 未配置权重时按等分写入（如 4 种方式各 25），避免权重恒为 0 导致均分/综合分恒为 0
+			weight := 100.0 / float64(len(validMethods))
+			for _, mk := range validMethods {
 				_, err := h.DB.Exec(ctx, `
 					INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
-					VALUES ($1,$2,$3,$4,0,'individual',NULL,'[]'::jsonb,NULL,'{}'::jsonb,1,true)
+					VALUES ($1,$2,$3,$4,$5,'individual',NULL,'[]'::jsonb,NULL,'{}'::jsonb,1,true)
 					ON CONFLICT (task_id, method_key) DO UPDATE SET
 						weight = EXCLUDED.weight,
 						eval_object = EXCLUDED.eval_object,
@@ -259,9 +263,9 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 						resource_config = EXCLUDED.resource_config,
 						version = EXCLUDED.version,
 						is_enabled = EXCLUDED.is_enabled
-				`, uuid.NewString(), tenantID, taskID, mk)
+				`, uuid.NewString(), tenantID, taskID, mk, weight)
 				if err != nil {
-					msg := fmt.Sprintf("任务[%s/%s]测评方式[%s]写入失败: %v", scenarioName, taskName, evalName, err)
+					msg := fmt.Sprintf("任务[%s/%s]测评方式[%s]写入失败: %v", scenarioName, taskName, mk, err)
 					result.Errors = append(result.Errors, msg)
 					slog.Info(fmt.Sprintf("[import/scenarios] %s", msg))
 				}
