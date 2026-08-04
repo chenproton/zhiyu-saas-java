@@ -202,18 +202,40 @@ function HybridCourseAddForm() {
   useEffect(() => {
     if (!existing || !editId) return
     queueMicrotask(() => {
-      setNodeDataMap((prev) => ({
-        ...prev,
-        [FIRST_NODE_ID]: createDefaultNodeModuleData({
-          name: existing.name,
-          code: existing.code,
-          majorId: existing.majorId || undefined,
-          majorName: existing.majorName || undefined,
-          semester: existing.semester || undefined,
-          category: existing.category as CourseBasicForm['category'],
-          coverImage: existing.coverImage || undefined,
-        }),
-      }))
+      setNodeDataMap((prev) => {
+        const next = {
+          ...prev,
+          [FIRST_NODE_ID]: createDefaultNodeModuleData({
+            name: existing.name,
+            code: existing.code,
+            majorId: existing.majorId || undefined,
+            majorName: existing.majorName || undefined,
+            semester: existing.semester || undefined,
+            category: existing.category as CourseBasicForm['category'],
+            coverImage: existing.coverImage || undefined,
+          }),
+        }
+        // 回填持久化的评价规则（按节点名匹配，根节点优先）
+        const evalRules = existing.evalData?.hybridEvalRules as
+          | Record<string, { preQuiz?: any; inClassQuiz?: any; homework?: any }>
+          | undefined
+        const rules =
+          evalRules?.[existing.name] ||
+          evalRules?.['root'] ||
+          (evalRules && Object.values(evalRules)[0])
+        if (rules) {
+          next[FIRST_NODE_ID] = {
+            ...next[FIRST_NODE_ID],
+            preQuizEvalMethods: rules.preQuiz?.methods || [],
+            preQuizEvalRules: rules.preQuiz?.evalRuleConfig,
+            inClassQuizEvalMethods: rules.inClassQuiz?.methods || [],
+            inClassQuizEvalRules: rules.inClassQuiz?.evalRuleConfig,
+            homeworkEvalMethods: rules.homework?.methods || [],
+            homeworkEvalRules: rules.homework?.evalRuleConfig,
+          }
+        }
+        return next
+      })
     })
   }, [existing, editId])
 
@@ -470,6 +492,26 @@ function HybridCourseAddForm() {
     setShareDialogOpen(false)
   }
 
+  // 混合课节点评价规则持久化到课程级 eval_data（hybrid 无独立节点表语义，规则随课程草稿保存/恢复）
+  const buildHybridEvalRules = (): Record<string, any> => {
+    const result: Record<string, any> = {}
+    Object.entries(nodeDataMap).forEach(([nodeId, d]) => {
+      const rules = {
+        preQuiz: { methods: d.preQuizEvalMethods || [], evalRuleConfig: d.preQuizEvalRules },
+        inClassQuiz: {
+          methods: d.inClassQuizEvalMethods || [],
+          evalRuleConfig: d.inClassQuizEvalRules,
+        },
+        homework: { methods: d.homeworkEvalMethods || [], evalRuleConfig: d.homeworkEvalRules },
+      }
+      if (rules.preQuiz.evalRuleConfig || rules.inClassQuiz.evalRuleConfig || rules.homework.evalRuleConfig) {
+        const nodeName = nodes.find((n) => n.id === nodeId)?.name || 'root'
+        result[nodeName] = rules
+      }
+    })
+    return result
+  }
+
   const buildCoursePayload = (): Omit<
     Course,
     'id' | 'nodeCount' | 'resourceCount' | 'studyCount' | 'createdAt' | 'updatedAt'
@@ -493,6 +535,7 @@ function HybridCourseAddForm() {
       estimatedHours: parseInt(rootForm.estimatedHours) || undefined,
       evalData: {
         learningGoal: rootForm.courseObjectives || undefined,
+        hybridEvalRules: buildHybridEvalRules(),
       },
     }) as any
 
