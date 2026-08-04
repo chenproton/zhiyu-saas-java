@@ -43,8 +43,39 @@ export function LevelConfigDialog({
   point,
   onSaved,
 }: LevelConfigDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>能力点分档配置 · {point.name}</DialogTitle>
+          <DialogDescription>
+            配置该能力点各档位最低分数线，低于最低档判定为「未达标」；修改后需在结果页重新触发汇聚生效
+          </DialogDescription>
+        </DialogHeader>
+        {/* DialogContent 仅在打开时挂载，表单状态随每次打开从最新 point 重置 */}
+        <LevelConfigForm
+          positionId={positionId}
+          point={point}
+          onSaved={onSaved}
+          onCancel={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function LevelConfigForm({
+  positionId,
+  point,
+  onSaved,
+  onCancel,
+}: {
+  positionId: string
+  point: { abilityPointId: string; name: string; levelMapping?: LevelMapping[] }
+  onSaved: () => void
+  onCancel: () => void
+}) {
   const { toast } = useToast()
-  // DialogContent 仅在打开时挂载，表单状态随每次打开重置
   const [mins, setMins] = useState<number[]>(() => {
     const configured = point.levelMapping ?? []
     if (configured.length === LEVEL_ORDER.length) {
@@ -96,7 +127,7 @@ export function LevelConfigDialog({
       await certApi.putPointLevels(positionId, point.abilityPointId, mapping)
       toast({ title: '保存成功', description: '分档配置已保存，重新汇聚后生效' })
       onSaved()
-      onOpenChange(false)
+      onCancel()
     } catch (err) {
       toast({
         title: '保存失败',
@@ -109,61 +140,52 @@ export function LevelConfigDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>能力点分档配置 · {point.name}</DialogTitle>
-          <DialogDescription>
-            配置该能力点各档位最低分数线，低于最低档判定为「未达标」；修改后需在结果页重新触发汇聚生效
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="py-2 space-y-2.5">
-          <div className="flex items-center gap-3 p-3 rounded-md bg-muted/40 border border-border">
-            <span className="w-20 text-sm font-medium">未达标</span>
-            <span className="text-sm text-muted-foreground">
-              {rows.length > 0 ? `0 ~ ${rows[0].min - 1} 分` : '—'}
-            </span>
-          </div>
-          {rows.map((row, i) => (
-            <div
-              key={row.level}
-              className="flex items-center gap-3 p-3 rounded-md bg-secondary/50 border border-border"
-            >
-              <span className="w-20 text-sm font-medium">{row.label}</span>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={row.min}
-                  onChange={(e) => handleChange(i, e.target.value)}
-                  className="w-20 h-8 text-center"
-                />
-                <span className="text-muted-foreground text-sm">~ {row.max} 分</span>
-              </div>
-            </div>
-          ))}
-          <div className="flex items-center justify-between pt-1">
-            <Button variant="outline" size="sm" onClick={resetDefault}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              恢复默认（60/70/80/90/100）
-            </Button>
-            <span className={cn('text-xs', error ? 'text-red-600' : 'text-muted-foreground')}>
-              {error ?? '档位区间连续覆盖 1-100 分'}
-            </span>
-          </div>
+    <>
+      <div className="py-2 space-y-2.5">
+        <div className="flex items-center gap-3 p-3 rounded-md bg-muted/40 border border-border">
+          <span className="w-20 text-sm font-medium">未达标</span>
+          <span className="text-sm text-muted-foreground">
+            {rows.length > 0 ? `0 ~ ${rows[0].min - 1} 分` : '—'}
+          </span>
         </div>
+        {rows.map((row, i) => (
+          <div
+            key={row.level}
+            className="flex items-center gap-3 p-3 rounded-md bg-secondary/50 border border-border"
+          >
+            <span className="w-20 text-sm font-medium">{row.label}</span>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={row.min}
+                onChange={(e) => handleChange(i, e.target.value)}
+                className="w-20 h-8 text-center"
+              />
+              <span className="text-muted-foreground text-sm">~ {row.max} 分</span>
+            </div>
+          </div>
+        ))}
+        <div className="flex items-center justify-between pt-1">
+          <Button variant="outline" size="sm" onClick={resetDefault}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            恢复默认（60/70/80/90/100）
+          </Button>
+          <span className={cn('text-xs', error ? 'text-red-600' : 'text-muted-foreground')}>
+            {error ?? '档位区间连续覆盖 1-100 分'}
+          </span>
+        </div>
+      </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            取消
-          </Button>
-          <Button onClick={handleSave} disabled={!!error || saving}>
-            {saving ? '保存中...' : '保存'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>
+          取消
+        </Button>
+        <Button onClick={handleSave} disabled={!!error || saving}>
+          {saving ? '保存中...' : '保存'}
+        </Button>
+      </DialogFooter>
+    </>
   )
 }
