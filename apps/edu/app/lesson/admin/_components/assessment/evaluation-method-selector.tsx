@@ -1,20 +1,15 @@
 'use client'
 
-import { CheckCircle2, ClipboardList, Database, BookOpen, FileQuestion } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import {
+  EVALUATION_METHOD_OPTIONS,
+  type EvaluationMethodOption,
+} from '@/components/shared/eval-method-selector'
 
-export interface EvalMethodOption {
-  key: string
-  label: string
-  icon: React.ReactNode
-  color: string
-  available: boolean
-  desc: string
-  primaryCategory: 'platform' | 'industry'
-  secondaryCategory: string
-}
+export type EvalMethodOption = EvaluationMethodOption
 
 interface EvaluationMethodSelectorProps {
   selectedKeys: string[]
@@ -22,48 +17,13 @@ interface EvaluationMethodSelectorProps {
   allowedKeys?: string[]
 }
 
-const evaluationMethodOptions: EvalMethodOption[] = [
-  {
-    key: 'paper',
-    label: '试卷',
-    icon: <ClipboardList className="h-5 w-5" />,
-    color: 'bg-green-50 text-green-600 border-green-200',
-    available: true,
-    desc: '使用固定试卷进行考核',
-    primaryCategory: 'platform',
-    secondaryCategory: '知识评价',
-  },
-  {
-    key: 'question_bank',
-    label: '题库',
-    icon: <Database className="h-5 w-5" />,
-    color: 'bg-orange-50 text-orange-600 border-orange-200',
-    available: true,
-    desc: '从题库选题组成测评资源',
-    primaryCategory: 'platform',
-    secondaryCategory: '知识评价',
-  },
-  {
-    key: 'quiz',
-    label: '随堂测',
-    icon: <FileQuestion className="h-5 w-5" />,
-    color: 'bg-purple-50 text-purple-600 border-purple-200',
-    available: true,
-    desc: '课堂即时测验',
-    primaryCategory: 'platform',
-    secondaryCategory: '知识评价',
-  },
-  {
-    key: 'exam',
-    label: '作业',
-    icon: <BookOpen className="h-5 w-5" />,
-    color: 'bg-blue-50 text-blue-600 border-blue-200',
-    available: true,
-    desc: '组织标准化作业进行考核',
-    primaryCategory: 'platform',
-    secondaryCategory: '成果评价',
-  },
-]
+// 课程原子模块可选方法集：平台侧 4 类（试卷/题库/随堂测/作业）。
+// 数据源与任务侧共用（shared/eval-method-selector），key 使用规范键 homework（不再使用旧键 exam）
+const COURSE_METHOD_KEYS = ['paper', 'question_bank', 'quiz', 'homework']
+
+const evaluationMethodOptions: EvalMethodOption[] = EVALUATION_METHOD_OPTIONS.filter(
+  (o) => o.available && COURSE_METHOD_KEYS.includes(o.key),
+)
 
 export function EvaluationMethodSelector({
   selectedKeys,
