@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@unlayer/react-image-editor": "^1.0.1",
     "@xyflow/react": "^12.11.2",
     "@zhiyu/api-client": "workspace:*",
     "@zhiyu/shared-types": "workspace:*",

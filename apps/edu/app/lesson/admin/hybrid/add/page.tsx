@@ -2,7 +2,6 @@
 
 import { Suspense, useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import NextImage from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -30,11 +29,11 @@ import {
   ClipboardList,
   ChevronDown,
   ChevronRight,
-  ImageUp,
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
 import { courseApi, fileApi, lessonBatchApi } from '@/lib/api'
 import { MajorSelect } from '@/components/shared/major-select'
+import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import type { Course } from '@/lib/types/lesson'
 import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
 import CourseNodeTree from '../../system/add/_components/CourseNodeTree'
@@ -245,6 +244,7 @@ function HybridCourseAddForm() {
   const [shareSelectedIds, setShareSelectedIds] = useState<string[]>([])
   const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [coverUploading, setCoverUploading] = useState(false)
 
   const rootForm = nodeDataMap[FIRST_NODE_ID]?.form || createDefaultNodeModuleData().form
 
@@ -783,48 +783,25 @@ function HybridCourseAddForm() {
               </FormFieldGrid>
               <div className="mt-5 space-y-1.5">
                 <Label className="text-xs">封面图片</Label>
-                <div className="flex items-start gap-4">
-                  {rootForm.coverImage ? (
-                    <div className="relative w-[200px] h-[120px] rounded-lg overflow-hidden border border-gray-200">
-                      <NextImage
-                        src={rootForm.coverImage}
-                        alt="封面预览"
-                        fill
-                        className="object-cover"
-                        sizes="200px"
-                      />
-                      <button
-                        onClick={() => updateRootForm({ coverImage: '' })}
-                        className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/70"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => document.getElementById('hybrid-cover-input')?.click()}
-                      className="w-[200px] h-[120px] rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
-                    >
-                      <ImageUp className="w-8 h-8 text-gray-400" />
-                      <span className="text-xs text-gray-400 mt-1">点击上传封面</span>
-                    </div>
-                  )}
-                  <input
-                    id="hybrid-cover-input"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
+                <div className="max-w-[400px]">
+                  <CoverImageUpload
+                    imageUrl={rootForm.coverImage}
+                    uploading={coverUploading}
+                    label="课程封面"
+                    alt="课程封面"
+                    onUpload={async (file) => {
+                      setCoverUploading(true)
                       try {
                         const res = await fileApi.upload(file)
                         updateRootForm({ coverImage: res.url })
                         toast({ title: '封面上传成功' })
                       } catch (err: any) {
                         toast({ title: err?.message || '封面上传失败', variant: 'destructive' })
+                      } finally {
+                        setCoverUploading(false)
                       }
                     }}
+                    onRemove={() => updateRootForm({ coverImage: '' })}
                   />
                 </div>
               </div>

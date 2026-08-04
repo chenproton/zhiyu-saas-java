@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -21,11 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { X, ImageIcon } from 'lucide-react'
-import Image from 'next/image'
 import type { Exam, ExamFormData } from '@/lib/types'
 import { evaluationBatchApi, fileApi } from '@/lib/api'
 import { UserSelector } from '@/components/shared/user-selector'
+import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
@@ -42,9 +41,9 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [coverUrl, setCoverUrl] = useState<string>('')
+  const [coverUploading, setCoverUploading] = useState(false)
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([])
   const [batchId, setBatchId] = useState<string>('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
   const [loadingBatches, setLoadingBatches] = useState(false)
 
@@ -99,10 +98,7 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
     onOpenChange(false)
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
+  const handleCoverUpload = async (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
       toast({ variant: 'destructive', title: '提示', description: '文件大小不能超过 5MB' })
       return
@@ -113,6 +109,7 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
       return
     }
 
+    setCoverUploading(true)
     try {
       const res = await fileApi.upload(file)
       setCoverUrl(res.url)
@@ -122,14 +119,13 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
         title: '上传失败',
         description: err instanceof Error ? err.message : '封面上传失败',
       })
+    } finally {
+      setCoverUploading(false)
     }
   }
 
   const removeCover = () => {
     setCoverUrl('')
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
   }
 
   return (
@@ -164,35 +160,16 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
             <Field>
               <FieldLabel>封面</FieldLabel>
               <FieldDescription>支持上传 5MB 以内的图片文件</FieldDescription>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              {coverUrl ? (
-                <div className="relative mt-2 h-32 w-full overflow-hidden rounded-lg border">
-                  <Image src={coverUrl} alt="封面预览" fill className="object-cover" />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute right-2 top-2 size-6"
-                    onClick={removeCover}
-                  >
-                    <X className="size-3" />
-                  </Button>
-                </div>
-              ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-2 flex h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 transition-colors hover:border-muted-foreground/50"
-                >
-                  <ImageIcon className="mb-2 size-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">点击上传封面</span>
-                </div>
-              )}
+              <div className="mt-2 max-w-[400px]">
+                <CoverImageUpload
+                  imageUrl={coverUrl}
+                  uploading={coverUploading}
+                  label="封面"
+                  alt="试卷封面"
+                  onUpload={handleCoverUpload}
+                  onRemove={removeCover}
+                />
+              </div>
             </Field>
             <Field>
               <FieldLabel>共建人</FieldLabel>

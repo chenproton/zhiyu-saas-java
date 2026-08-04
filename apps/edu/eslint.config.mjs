@@ -1,6 +1,9 @@
 import next from 'eslint-config-next'
 
 const config = [
+  {
+    ignores: ['public/**'],
+  },
   ...next,
   {
     rules: {
