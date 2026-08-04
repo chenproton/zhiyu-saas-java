@@ -1,9 +1,13 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Loader2, Upload } from 'lucide-react'
+import { toast } from '@zhiyu/ui'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+
+import { ImageEditorDialog } from './image-editor-dialog'
+import { isPassthroughImage, isUndecodableImage } from './image-upload-utils'
 
 interface CoverImageUploadProps {
   imageUrl: string
@@ -23,9 +27,32 @@ export function CoverImageUpload({
   onRemove,
 }: CoverImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [editTarget, setEditTarget] = useState<{ src: string; file: File } | null>(null)
 
   const triggerUpload = () => {
     if (!uploading) inputRef.current?.click()
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (isUndecodableImage(file)) {
+      toast({ title: '暂不支持 HEIC/HEIF 格式，请先转换后再上传', variant: 'destructive' })
+      return
+    }
+    if (isPassthroughImage(file)) {
+      onUpload(file)
+      return
+    }
+    setEditTarget({ src: URL.createObjectURL(file), file })
+  }
+
+  const finishEdit = (file?: File) => {
+    const target = editTarget
+    setEditTarget(null)
+    if (target) URL.revokeObjectURL(target.src)
+    if (file) onUpload(file)
   }
 
   return (
@@ -48,11 +75,7 @@ export function CoverImageUpload({
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) onUpload(file)
-            e.target.value = ''
-          }}
+          onChange={handleFileSelect}
         />
         {imageUrl ? (
           <>
@@ -98,6 +121,14 @@ export function CoverImageUpload({
           </div>
         )}
       </div>
+      <ImageEditorDialog
+        open={!!editTarget}
+        src={editTarget?.src || ''}
+        fileName={editTarget?.file.name || 'image'}
+        mimeType={editTarget?.file.type || 'image/png'}
+        onConfirm={(file) => finishEdit(file)}
+        onCancel={() => finishEdit()}
+      />
     </>
   )
 }

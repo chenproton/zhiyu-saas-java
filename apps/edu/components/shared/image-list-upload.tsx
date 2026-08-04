@@ -1,11 +1,15 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X, Plus, Loader2 } from 'lucide-react'
+import { toast } from '@zhiyu/ui'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fileApi } from '@zhiyu/api-client'
+
+import { ImageEditorDialog } from './image-editor-dialog'
+import { isPassthroughImage, isUndecodableImage } from './image-upload-utils'
 
 export interface UploadFieldProps {
   label: string
@@ -30,23 +34,60 @@ export function ImageListUpload({
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [urlInput, setUrlInput] = useState('')
+  const queueRef = useRef<File[]>([])
+  const [editTarget, setEditTarget] = useState<{ file: File; src: string } | null>(null)
+  const valueRef = useRef(value)
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
+
+  const uploadAndAppend = async (f: File) => {
     setUploading(true)
     try {
-      const urls: string[] = []
-      for (const f of Array.from(files)) {
-        try {
-          urls.push(await uploadFile(f))
-        } catch {
-          urls.push(URL.createObjectURL(f))
-        }
+      let url: string
+      try {
+        url = await uploadFile(f)
+      } catch {
+        url = URL.createObjectURL(f)
       }
-      onChange(multiple ? [...value, ...urls] : urls.slice(0, 1))
+      const next = multiple ? [...valueRef.current, url] : [url]
+      valueRef.current = next
+      onChange(next)
     } finally {
       setUploading(false)
-      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  const processNext = () => {
+    const next = queueRef.current.shift()
+    if (!next) return
+    if (isPassthroughImage(next)) {
+      void uploadAndAppend(next).then(processNext)
+    } else {
+      setEditTarget({ file: next, src: URL.createObjectURL(next) })
+    }
+  }
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const list = Array.from(files)
+    if (inputRef.current) inputRef.current.value = ''
+    if (list.some(isUndecodableImage)) {
+      toast({ title: '暂不支持 HEIC/HEIF 格式，请先转换后再上传', variant: 'destructive' })
+    }
+    queueRef.current = list.filter((f) => !isUndecodableImage(f))
+    processNext()
+  }
+
+  const finishEdit = (file?: File) => {
+    const target = editTarget
+    setEditTarget(null)
+    if (target) URL.revokeObjectURL(target.src)
+    if (file) {
+      void uploadAndAppend(file).then(processNext)
+    } else {
+      processNext()
     }
   }
 
@@ -83,7 +124,7 @@ export function ImageListUpload({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || !!editTarget}
             className="w-20 h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/40 disabled:opacity-50"
           >
             {uploading ? (
@@ -104,6 +145,14 @@ export function ImageListUpload({
         multiple={multiple}
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
+      />
+      <ImageEditorDialog
+        open={!!editTarget}
+        src={editTarget?.src || ''}
+        fileName={editTarget?.file.name || 'image'}
+        mimeType={editTarget?.file.type || 'image/png'}
+        onConfirm={(file) => finishEdit(file)}
+        onCancel={() => finishEdit()}
       />
       <div className="flex gap-2">
         <Input
@@ -133,9 +182,9 @@ export function SingleImageUpload({
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [urlInput, setUrlInput] = useState('')
+  const [editTarget, setEditTarget] = useState<{ file: File; src: string } | null>(null)
 
-  const handleFile = async (f: File | undefined) => {
-    if (!f) return
+  const doUpload = async (f: File) => {
     setUploading(true)
     try {
       try {
@@ -145,8 +194,28 @@ export function SingleImageUpload({
       }
     } finally {
       setUploading(false)
-      if (inputRef.current) inputRef.current.value = ''
     }
+  }
+
+  const handleFile = (f: File | undefined) => {
+    if (!f) return
+    if (inputRef.current) inputRef.current.value = ''
+    if (isUndecodableImage(f)) {
+      toast({ title: '暂不支持 HEIC/HEIF 格式，请先转换后再上传', variant: 'destructive' })
+      return
+    }
+    if (isPassthroughImage(f)) {
+      void doUpload(f)
+      return
+    }
+    setEditTarget({ file: f, src: URL.createObjectURL(f) })
+  }
+
+  const finishEdit = (file?: File) => {
+    const target = editTarget
+    setEditTarget(null)
+    if (target) URL.revokeObjectURL(target.src)
+    if (file) void doUpload(file)
   }
 
   return (
@@ -168,7 +237,7 @@ export function SingleImageUpload({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || !!editTarget}
           className="w-28 h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/40 disabled:opacity-50"
         >
           {uploading ? (
@@ -187,6 +256,14 @@ export function SingleImageUpload({
         accept="image/*"
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0])}
+      />
+      <ImageEditorDialog
+        open={!!editTarget}
+        src={editTarget?.src || ''}
+        fileName={editTarget?.file.name || 'image'}
+        mimeType={editTarget?.file.type || 'image/png'}
+        onConfirm={(file) => finishEdit(file)}
+        onCancel={() => finishEdit()}
       />
       <div className="flex gap-2">
         <Input

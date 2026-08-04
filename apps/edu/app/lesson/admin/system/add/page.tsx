@@ -69,6 +69,7 @@ import {
   lessonBatchApi,
   nodeResourceApi,
   resourceLibraryApi,
+  fileApi,
 } from '@/lib/api'
 
 /* ---------- node editing mode ---------- */
@@ -922,15 +923,16 @@ function AddSystemPageInner() {
                       uploading={coverUploading}
                       label="课程封面"
                       alt="课程封面"
-                      onUpload={(file) => {
+                      onUpload={async (file) => {
                         setCoverUploading(true)
-                        const reader = new FileReader()
-                        reader.onload = (ev) => {
+                        try {
+                          const res = await fileApi.upload(file)
+                          setCoverImage(res.url)
+                        } catch (err: any) {
+                          toast({ title: err?.message || '封面上传失败', variant: 'destructive' })
+                        } finally {
                           setCoverUploading(false)
-                          setCoverImage(ev.target?.result as string)
                         }
-                        reader.onerror = () => setCoverUploading(false)
-                        reader.readAsDataURL(file)
                       }}
                       onRemove={() => setCoverImage('')}
                     />

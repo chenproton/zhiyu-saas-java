@@ -91,7 +91,7 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 var allowedServeExts = map[string]bool{
 	// kkFileView PICTURE
 	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".bmp": true, ".webp": true,
-	".ico": true, ".jfif": true,
+	".avif": true, ".ico": true, ".jfif": true,
 	// kkFileView PDF / OFD / TIFF / SVG
 	".pdf": true, ".ofd": true, ".tif": true, ".tiff": true, ".svg": true,
 	// kkFileView SIMTEXT/XML：直开有 XSS 风险，Serve 时附加 CSP sandbox 头
