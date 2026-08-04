@@ -161,8 +161,8 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
   const img = enterprise.coverImage
   return (
     <Link href={`/portal/alliance/enterprises/${enterprise.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full">
-        <div className="relative h-44 overflow-hidden">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
+        <div className="relative h-36 overflow-hidden">
           {img ? (
             <img
               src={img}
@@ -175,50 +175,45 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
               className="w-full h-full group-hover:scale-105 transition-transform duration-500"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-11 w-11 rounded-xl border-2 border-white/80 shadow-md bg-white">
-                {enterprise.logoUrl && (
-                  <AvatarImage src={enterprise.logoUrl} className="object-cover" />
-                )}
-                <AvatarFallback className="rounded-xl bg-white text-slate-800 font-bold text-sm">
-                  {getInitials(enterprise.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h4 className="font-semibold text-white text-base leading-tight drop-shadow-md truncate">
-                  {enterprise.name}
-                </h4>
-                <p className="text-white/80 text-xs truncate">
-                  {[enterprise.industry, enterprise.region].filter(Boolean).join(' · ') ||
-                    '合作企业'}
-                </p>
-              </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/30" />
+          <div className="absolute top-3 left-3 right-3 flex items-start gap-2.5">
+            <Avatar className="h-9 w-9 rounded-lg border-2 border-white/80 shadow-md bg-white shrink-0">
+              {enterprise.logoUrl && (
+                <AvatarImage src={enterprise.logoUrl} className="object-cover" />
+              )}
+              <AvatarFallback className="rounded-lg bg-white text-slate-800 font-bold text-[10px]">
+                {getInitials(enterprise.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h4 className="font-semibold text-white text-sm leading-tight drop-shadow-md truncate">
+                {enterprise.name}
+              </h4>
+              <p className="text-white/85 text-[11px] truncate">
+                {[enterprise.industry, enterprise.region].filter(Boolean).join(' · ') || '合作企业'}
+              </p>
             </div>
           </div>
         </div>
-        <CardContent className="p-5 flex flex-col h-[calc(100%-11rem)]">
-          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed flex-1">
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3 min-h-[2.6em]">
             {enterprise.description || '暂无企业简介'}
           </p>
-          <div className="pt-4 mt-4 border-t border-slate-100">
-            {enterprise.rating ? (
-              <Badge
-                variant="outline"
-                className="text-[11px] px-3 py-1 rounded-full border-slate-200 text-slate-600"
-              >
-                {allianceLabel('enterpriseRating', enterprise.rating)}
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="text-[11px] px-3 py-1 rounded-full border-slate-200 text-slate-600"
-              >
-                {allianceLabel('enterpriseStatus', enterprise.status)}
-              </Badge>
-            )}
-          </div>
+          {enterprise.rating ? (
+            <Badge
+              variant="outline"
+              className="self-start text-[11px] px-2.5 py-0.5 rounded-full border-slate-200 text-slate-600"
+            >
+              {allianceLabel('enterpriseRating', enterprise.rating)}
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="self-start text-[11px] px-2.5 py-0.5 rounded-full border-slate-200 text-slate-600"
+            >
+              {allianceLabel('enterpriseStatus', enterprise.status)}
+            </Badge>
+          )}
         </CardContent>
       </Card>
     </Link>
@@ -230,7 +225,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
   return (
     <Link href={`/portal/alliance/projects/${project.id}`}>
       <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
-        <div className="relative h-48 overflow-hidden">
+        <div className="relative h-44 overflow-hidden">
           {project.coverImage ? (
             <img
               src={project.coverImage}
@@ -243,43 +238,37 @@ function ProjectCard({ project }: { project: AllianceProject }) {
               className="w-full h-full group-hover:scale-105 transition-transform duration-500"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-          <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-            <Badge
-              variant="outline"
-              className="bg-white/90 text-slate-800 border-0 shadow-sm text-[11px]"
-            >
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+            <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
               {allianceLabel('projectPhase', project.phase)}
             </Badge>
-            <Badge
-              variant="outline"
-              className="bg-white/90 text-slate-800 border-0 shadow-sm text-[11px]"
-            >
+            <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
               {allianceLabel('publishStatus', project.publishStatus)}
             </Badge>
           </div>
         </div>
-        <CardContent className="p-5 flex-1 flex flex-col">
-          <h4 className="font-semibold text-slate-900 text-base mb-1 group-hover:text-blue-700 transition-colors">
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <h4 className="font-semibold text-slate-900 text-sm mb-1.5 group-hover:text-blue-700 transition-colors line-clamp-1">
             {project.name}
           </h4>
-          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed flex-1">
+          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3 min-h-[2.6em]">
             {project.description || '暂无项目描述'}
           </p>
-          <div className="mt-4 space-y-3">
+          <div className="mt-auto space-y-2.5">
             {project.startDate && (
-              <div className="flex items-center gap-2 text-xs text-slate-500">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <Calendar className="h-3.5 w-3.5" />
-                <span>
+                <span className="truncate">
                   {project.startDate}
                   {project.endDate ? ` 至 ${project.endDate}` : ''}
                 </span>
               </div>
             )}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-600">
+              <div className="flex items-center justify-between text-[11px] text-slate-600">
                 <span>项目进度</span>
-                <span>{progress}%</span>
+                <span className="font-medium">{progress}%</span>
               </div>
               <Progress value={progress} className="h-1.5" />
             </div>
@@ -293,8 +282,8 @@ function ProjectCard({ project }: { project: AllianceProject }) {
 function AchievementCard({ achievement }: { achievement: AllianceAchievement }) {
   return (
     <Link href={`/portal/alliance/achievements/${achievement.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full">
-        <div className="relative h-44 overflow-hidden">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
+        <div className="relative h-36 overflow-hidden">
           {achievement.coverImage ? (
             <img
               src={achievement.coverImage}
@@ -307,24 +296,21 @@ function AchievementCard({ achievement }: { achievement: AllianceAchievement }) 
               className="w-full h-full group-hover:scale-105 transition-transform duration-500"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/40 to-transparent" />
-          <div className="absolute top-4 left-4">
-            <Badge
-              variant="outline"
-              className="bg-white/90 text-slate-800 border-0 shadow-sm text-[11px]"
-            >
+          <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/50 via-transparent to-transparent" />
+          <div className="absolute top-3 left-3">
+            <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
               {allianceLabel('achievementType', achievement.type)}
             </Badge>
           </div>
         </div>
-        <CardContent className="p-5">
-          <h4 className="font-semibold text-slate-900 text-base mb-2 group-hover:text-blue-700 transition-colors">
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <h4 className="font-semibold text-slate-900 text-sm mb-1.5 group-hover:text-blue-700 transition-colors line-clamp-1">
             {achievement.title}
           </h4>
-          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3">
+          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3 min-h-[2.6em]">
             {achievement.description || '暂无成果描述'}
           </p>
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+          <div className="mt-auto flex items-center justify-between text-xs text-slate-500 pt-2.5 border-t border-slate-100">
             <span className="flex items-center gap-1">
               <Eye className="h-3.5 w-3.5" />
               {achievement.viewCount ?? 0}
@@ -341,48 +327,47 @@ function ExpertCard({ expert }: { expert: AllianceExpert }) {
   return (
     <Link href={`/portal/alliance/experts/${expert.id}`}>
       <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col">
-        <div className="h-20 relative">
+        <div className="h-16 relative">
           <GradientPlaceholder seed={expert.industry} className="absolute inset-0 w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-          <div className="absolute -bottom-9 left-1/2 -translate-x-1/2">
-            <Avatar className="h-[72px] w-[72px] ring-4 ring-white shadow-md">
+          <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
+            <Avatar className="h-14 w-14 ring-[3px] ring-white shadow-md">
               {expert.avatarUrl && <AvatarImage src={expert.avatarUrl} />}
-              <AvatarFallback className="text-lg font-semibold bg-slate-100 text-slate-800">
+              <AvatarFallback className="text-base font-semibold bg-slate-100 text-slate-800">
                 {getInitials(expert.name)}
               </AvatarFallback>
             </Avatar>
           </div>
         </div>
-        <CardContent className="pt-11 pb-5 px-4 flex-1 flex flex-col text-left">
+        <CardContent className="pt-9 pb-4 px-3.5 flex-1 flex flex-col text-left">
           <h4 className="font-semibold text-slate-900 text-center text-sm truncate">
             {expert.name}
           </h4>
           <p className="text-xs text-slate-500 text-center truncate mt-0.5">
             {[expert.title, expert.position].filter(Boolean).join(' · ') || '企业专家'}
           </p>
-          <div className="mt-4 space-y-2 text-xs text-slate-600">
+          <div className="mt-3 space-y-1.5 text-xs text-slate-600">
             <div className="flex justify-between gap-2">
-              <span className="text-slate-400 shrink-0">所属企业</span>
+              <span className="text-slate-400 shrink-0">企业</span>
               <span className="text-right truncate">
                 {expert.organization || expert.enterpriseId || '—'}
               </span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-slate-400 shrink-0">行业方向</span>
+              <span className="text-slate-400 shrink-0">行业</span>
               <span className="text-right truncate">{expert.industry || '—'}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-slate-400 shrink-0">从业年限</span>
+              <span className="text-slate-400 shrink-0">经验</span>
               <span className="text-right">
                 {expert.experienceYears ? `${expert.experienceYears} 年` : '—'}
               </span>
             </div>
           </div>
           {expert.specialties && expert.specialties.length > 0 && (
-            <div className="mt-4">
-              <p className="text-[11px] text-slate-400 mb-1.5">擅长领域</p>
-              <div className="flex flex-wrap gap-1">
-                {expert.specialties.slice(0, 4).map((tag) => (
+            <div className="mt-3">
+              <div className="flex flex-wrap gap-1 justify-center">
+                {expert.specialties.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
                     className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium"
@@ -403,7 +388,7 @@ function BrandCard({ brand }: { brand: AllianceBrand }) {
   return (
     <Link href={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
-        <div className="relative h-44 overflow-hidden">
+        <div className="relative h-36 overflow-hidden">
           {brand.coverImage ? (
             <img
               src={brand.coverImage}
@@ -413,22 +398,22 @@ function BrandCard({ brand }: { brand: AllianceBrand }) {
           ) : (
             <GradientPlaceholder seed={brand.name} className="w-full h-full" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-          <div className="absolute top-4 left-4">
-            <Badge className="bg-white/90 text-slate-800 backdrop-blur-sm font-semibold border-0 shadow-sm text-[11px]">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute top-3 left-3">
+            <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
               {allianceLabel('brandType', brand.brandType)}
             </Badge>
           </div>
         </div>
-        <CardContent className="p-5 flex-1 flex flex-col">
-          <h4 className="font-semibold text-slate-900 text-base mb-1 group-hover:text-blue-700 transition-colors">
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <h4 className="font-semibold text-slate-900 text-sm mb-1 group-hover:text-blue-700 transition-colors line-clamp-1">
             {brand.name}
           </h4>
-          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed flex-1">
+          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-2.5 min-h-[2.6em]">
             {brand.description || '暂无品牌描述'}
           </p>
           {brand.data?.tags && Array.isArray(brand.data.tags) && brand.data.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-3">
+            <div className="mt-auto flex flex-wrap gap-1">
               {(brand.data.tags as string[]).slice(0, 3).map((tag) => (
                 <span
                   key={tag}
@@ -645,10 +630,10 @@ export default function AllianceLandingPage() {
         setData({
           schoolInfo,
           stats,
-          enterprises: enterprises?.items?.slice(0, 6) ?? [],
-          projects: projects?.items?.slice(0, 3) ?? [],
-          experts: experts?.items?.slice(0, 5) ?? [],
-          achievements: achievements?.items?.slice(0, 3) ?? [],
+          enterprises: enterprises?.items?.slice(0, 8) ?? [],
+          projects: projects?.items?.slice(0, 6) ?? [],
+          experts: experts?.items?.slice(0, 6) ?? [],
+          achievements: achievements?.items?.slice(0, 4) ?? [],
           brands: brands?.items ?? [],
         })
       })
@@ -673,7 +658,7 @@ export default function AllianceLandingPage() {
     const featured = data.brands.filter((b) => b.isFeatured || b.isPublic).slice(0, 12)
     const byType: Record<string, AllianceBrand[]> = {}
     BRAND_CATEGORIES.forEach((cat) => {
-      byType[cat.id] = featured.filter((b) => b.brandType === cat.id).slice(0, 3)
+      byType[cat.id] = featured.filter((b) => b.brandType === cat.id).slice(0, 4)
     })
     return byType
   }, [data.brands])
@@ -790,7 +775,7 @@ export default function AllianceLandingPage() {
           {data.enterprises.length === 0 ? (
             <EmptyState message="暂无合作企业" />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-20">
               {data.enterprises.map((enterprise) => (
                 <EnterpriseCard key={enterprise.id} enterprise={enterprise} />
               ))}
@@ -806,7 +791,7 @@ export default function AllianceLandingPage() {
           {data.projects.length === 0 ? (
             <EmptyState message="暂无合作项目" />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-20">
               {data.projects.map((project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
@@ -822,7 +807,7 @@ export default function AllianceLandingPage() {
           {data.achievements.length === 0 ? (
             <EmptyState message="暂无合作成果" />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-20">
               {data.achievements.map((achievement) => (
                 <AchievementCard key={achievement.id} achievement={achievement} />
               ))}
@@ -838,7 +823,7 @@ export default function AllianceLandingPage() {
           {data.experts.length === 0 ? (
             <EmptyState message="暂无专家资源" />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
               {data.experts.map((expert) => (
                 <ExpertCard key={expert.id} expert={expert} />
               ))}
@@ -902,7 +887,7 @@ export default function AllianceLandingPage() {
                     {items.length === 0 ? (
                       <EmptyState message={`暂无${cat.title}`} />
                     ) : (
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                         {items.map((brand) => (
                           <BrandCard key={brand.id} brand={brand} />
                         ))}
