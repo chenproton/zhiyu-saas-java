@@ -161,7 +161,7 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
   const img = enterprise.coverImage
   return (
     <Link href={`/portal/alliance/enterprises/${enterprise.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden bg-slate-800">
           {img ? (
             <img
@@ -170,9 +170,12 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 group-hover:scale-105 transition-transform duration-500" />
+            <GradientPlaceholder
+              seed={enterprise.industry}
+              className="w-full h-full group-hover:scale-105 transition-transform duration-500"
+            />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/55 to-black/20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/25 to-transparent" />
           <div className="absolute top-3 left-3 right-3 flex items-start gap-2.5">
             <Avatar className="h-9 w-9 rounded-lg border-2 border-white/80 shadow-md bg-white shrink-0">
               {enterprise.logoUrl && (
@@ -221,7 +224,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
   const progress = getProjectProgress(project)
   return (
     <Link href={`/portal/alliance/projects/${project.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-44 overflow-hidden">
           {project.coverImage ? (
             <img
@@ -279,7 +282,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
 function AchievementCard({ achievement }: { achievement: AllianceAchievement }) {
   return (
     <Link href={`/portal/alliance/achievements/${achievement.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden">
           {achievement.coverImage ? (
             <img
@@ -323,7 +326,7 @@ function AchievementCard({ achievement }: { achievement: AllianceAchievement }) 
 function ExpertCard({ expert }: { expert: AllianceExpert }) {
   return (
     <Link href={`/portal/alliance/experts/${expert.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col p-0 gap-0">
         <div className="h-16 relative">
           <GradientPlaceholder seed={expert.industry} className="absolute inset-0 w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -384,7 +387,7 @@ function ExpertCard({ expert }: { expert: AllianceExpert }) {
 function BrandCard({ brand }: { brand: AllianceBrand }) {
   return (
     <Link href={`/portal/alliance/brands/${brand.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden">
           {brand.coverImage ? (
             <img
