@@ -26,7 +26,8 @@ func (s *EvaluationResultStore) List(ctx context.Context, p ListParams, cfg List
 }
 
 // ListConfig 返回评价结果列表查询配置，SQL 片段沉淀在 store 层。
-// 学生（handler 注入 ownOnly=evaluateeId）仅可查看本人的评价结果，忽略其余过滤参数。
+// 学生（handler 注入 ownOnly=evaluateeId）仅可查看本人的评价结果，
+// 但仍受 taskId/sceneId 等范围过滤约束，避免串场景展示其他场景的成绩。
 func (s *EvaluationResultStore) ListConfig() ListQueryConfig[domain.SceneEvaluationResult] {
 	return ListQueryConfig[domain.SceneEvaluationResult]{
 		Table:         "scene_evaluation_results",
@@ -37,6 +38,12 @@ func (s *EvaluationResultStore) ListConfig() ListQueryConfig[domain.SceneEvaluat
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if p.Values["ownOnly"] == "true" {
 				qb.AddCondition("evaluatee_id = " + qb.NextArg(p.Values["evaluateeId"]))
+				if taskID := p.Values["taskId"]; taskID != "" {
+					qb.AddCondition("task_id = " + qb.NextArg(taskID))
+				}
+				if sceneID := p.Values["sceneId"]; sceneID != "" {
+					qb.AddCondition("scene_id = " + qb.NextArg(sceneID))
+				}
 				return
 			}
 			if taskID := p.Values["taskId"]; taskID != "" {
