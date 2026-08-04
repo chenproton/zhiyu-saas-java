@@ -71,9 +71,13 @@ func TestBrandImportAllFields(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	// 清理品牌与关联测试数据
+	// 清理品牌与关联测试数据（关联对象按名称清理，避免重复运行遗留同名记录影响匹配）
 	env.DB.Exec(ctx, `DELETE FROM alliance_brands WHERE tenant_id=$1`, tenantID)
 	env.DB.Exec(ctx, `DELETE FROM alliance_enterprises WHERE tenant_id=$1 AND name=$2`, tenantID, "测试关联企业")
+	env.DB.Exec(ctx, `DELETE FROM career_positions WHERE tenant_id=$1 AND name=$2`, tenantID, "测试关联岗位")
+	env.DB.Exec(ctx, `DELETE FROM majors WHERE tenant_id=$1 AND name=$2`, tenantID, "测试关联专业")
+	env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE tenant_id=$1 AND name=$2`, tenantID, "测试关联专家")
+	env.DB.Exec(ctx, `DELETE FROM users WHERE tenant_id=$1 AND name IN ($2,$3)`, tenantID, "测试学生甲", "测试教师甲")
 
 	// 准备关联对象（users 无 student/teacher 角色，按姓名匹配任意角色用户）
 	studentID := uuid.NewString()
@@ -88,8 +92,8 @@ func TestBrandImportAllFields(t *testing.T) {
 	env.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
 		VALUES ($1,$2,'operator','saas','tteach','tteach',$3,'测试教师甲','active','{}')`, teacherID, tenantID, pw)
 	env.DB.Exec(ctx, `INSERT INTO alliance_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`, entID, tenantID, "测试关联企业")
-	env.DB.Exec(ctx, `INSERT INTO career_positions (id, tenant_id, name, position_type, version, status, created_by)
-		VALUES ($1,$2,$3,'profession','v1','published',$4)`, posID, tenantID, "测试关联岗位", testhelper.TestOperatorID)
+	env.DB.Exec(ctx, `INSERT INTO career_positions (id, tenant_id, name, position_type, version, status, created_by, code)
+		VALUES ($1,$2,$3,'profession','v1','published',$4,$5)`, posID, tenantID, "测试关联岗位", testhelper.TestOperatorID, "TEST-POS-01")
 	env.DB.Exec(ctx, `INSERT INTO majors (id, tenant_id, code, name) VALUES ($1,$2,$3,$4)`, majorID, tenantID, "TEST-01", "测试关联专业")
 	env.DB.Exec(ctx, `INSERT INTO alliance_experts (id, tenant_id, name, status) VALUES ($1,$2,$3,'active')`, expID, tenantID, "测试关联专家")
 
