@@ -615,20 +615,39 @@ export function EvaluationRulesEditor({
       homework: '作业',
       quiz: '随堂测',
     }
+    const hasResourceContent = (methodKey: string) => {
+      const res = (config.methodResourceConfigs || {})[methodKey]
+      return !!res && typeof res === 'object' && Object.keys(res).length > 0
+    }
     const configured = (() => {
       switch (methodKey) {
         case 'random_draw':
           return config.randomDrawSelectedIds.length > 0
         case 'review':
-          return config.reviewEvalPoints.length > 0 || !!config.reviewRubricId
+          return (
+            config.reviewEvalPoints.length > 0 ||
+            !!config.reviewRubricId ||
+            (config.reviewScoreRules?.length || 0) > 0 ||
+            hasResourceContent('review')
+          )
         case 'paper':
           return config.paperIds.length > 0
         case 'question_bank':
           return config.questionBankQuestions.length > 0
         case 'outcome':
-          return config.outcomeEvalPoints.length > 0 || !!config.outcomeRubricId
+          return (
+            config.outcomeEvalPoints.length > 0 ||
+            !!config.outcomeRubricId ||
+            (config.outcomeScoreRules?.length || 0) > 0 ||
+            hasResourceContent('outcome')
+          )
         case 'homework':
-          return config.homeworkEvalPoints.length > 0 || !!config.homeworkRubricId
+          return (
+            config.homeworkEvalPoints.length > 0 ||
+            !!config.homeworkRubricId ||
+            (config.homeworkScoreRules?.length || 0) > 0 ||
+            hasResourceContent('homework')
+          )
         case 'quiz':
           return config.quizQuestions.length > 0
         default:
