@@ -413,7 +413,7 @@ const INTERNAL_ROUTES: Record<string, string> = {
   course: '/lesson/landing',
   resource: '/library/landing',
   affairs: '/affairs/programs',
-  alliance: '/portal/apps/alliance/enterprises',
+  alliance: '/portal/alliance/landing',
 }
 
 /* ─── Components ─── */
