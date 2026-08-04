@@ -1047,10 +1047,7 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     label: '产教融合与就业服务平台',
     icon: 'users',
     href: '/portal/alliance/landing',
-    subModules: [
-      ...subModulesFromNavConfig(allianceNavigationConfig),
-      { id: 'landing', label: '前台落地页', href: '/portal/alliance/landing' },
-    ],
+    subModules: subModulesFromNavConfig(allianceNavigationConfig),
   },
   ai: {
     id: 'ai',
@@ -1104,7 +1101,6 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   'affairs-teaching-approval': '维护审批流程与批次管理',
   'alliance-cooperation': '管理校企合作项目与成果',
   'alliance-brand': '管理六大品牌资源',
-  'alliance-landing': '校企合作联盟前台展示入口',
 }
 
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {
