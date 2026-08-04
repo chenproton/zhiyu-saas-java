@@ -1046,7 +1046,7 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     id: 'alliance',
     label: '产教融合与就业服务平台',
     icon: 'users',
-    href: firstHrefFromNavConfig(allianceNavigationConfig),
+    href: '/portal/alliance/landing',
     subModules: [
       ...subModulesFromNavConfig(allianceNavigationConfig),
       { id: 'landing', label: '前台落地页', href: '/portal/alliance/landing' },
