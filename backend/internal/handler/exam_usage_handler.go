@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -144,6 +145,19 @@ func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
 	if usage.Status != "draft" && usage.Status != "pending" && usage.Status != "scheduled" {
 		respondError(w, http.StatusBadRequest, "考试安排不在待开始状态")
 		return
+	}
+	now := time.Now()
+	if usage.StartTime != nil {
+		if t, err := time.Parse(time.RFC3339, *usage.StartTime); err == nil && now.Before(t) {
+			respondError(w, http.StatusBadRequest, "考试尚未开始")
+			return
+		}
+	}
+	if usage.EndTime != nil {
+		if t, err := time.Parse(time.RFC3339, *usage.EndTime); err == nil && now.After(t) {
+			respondError(w, http.StatusBadRequest, "考试已结束")
+			return
+		}
 	}
 	if err := h.Service.SetExamUsageStatus(r.Context(), id, "in_progress"); err != nil {
 		respondServerError(w, r, err, "开始考试安排失败")

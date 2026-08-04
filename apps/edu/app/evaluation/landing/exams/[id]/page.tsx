@@ -33,6 +33,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 import type { Exam, ExamUsage } from '@/lib/types'
 import { examApi, examUsageApi, examResultApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
+import { formatDateTime } from '@/lib/format-utils'
 import { useToast, StatusBadge } from '@zhiyu/ui'
 /* ─── 题型标签映射 ─── */
 const typeLabelMap: Record<string, string> = {
@@ -101,6 +102,33 @@ export default function ExamDetailPage() {
   const isSceneTask = !!taskId && !!methodKey
   const isCourseTask = !!courseId && !!nodeId
 
+  // 考试安排开放时间窗：定时启用写入 usage.startTime/endTime，其余为不限时。
+  const isUsageOpen = useCallback((u: ExamUsage) => {
+    const now = Date.now()
+    if (u.startTime && now < new Date(u.startTime).getTime()) return false
+    if (u.endTime && now > new Date(u.endTime).getTime()) return false
+    return true
+  }, [])
+
+  // 窗口状态：未到开始时间 / 已过结束时间 / 开放中。
+  const getUsageWindowState = useCallback(
+    (u: ExamUsage | null): 'open' | 'not_started' | 'ended' => {
+      if (!u) return 'open'
+      const now = Date.now()
+      if (u.startTime && now < new Date(u.startTime).getTime()) return 'not_started'
+      if (u.endTime && now > new Date(u.endTime).getTime()) return 'ended'
+      return 'open'
+    },
+    [],
+  )
+  const usageWindowState = getUsageWindowState(currentUsage)
+
+  // 考试时长优先取安排配置（任务规则里配的时长），未配置回退试卷自身时长。
+  const examDuration = useMemo(
+    () => currentUsage?.duration ?? exam?.duration ?? 0,
+    [currentUsage, exam],
+  )
+
   useEffect(() => {
     if (!examId || cachedExam) return
     const fetchExam = async () => {
@@ -126,8 +154,8 @@ export default function ExamDetailPage() {
         setUsages(items)
         let usage = items.find((u) => u.id === usageIdFromQuery) || items[0] || null
         if (usage && !currentUsage) {
-          // Auto-start draft usages coming from scene tasks.
-          if (usage.status === 'draft' && isSceneTask) {
+          // Auto-start draft usages coming from scene tasks, only within the open window.
+          if (usage.status === 'draft' && isSceneTask && isUsageOpen(usage)) {
             try {
               usage = await examUsageApi.start(usage.id)
             } catch {
@@ -141,7 +169,7 @@ export default function ExamDetailPage() {
         reportError(err, '加载考试记录')
         toast({ title: '考试记录加载失败', variant: 'destructive' })
       })
-  }, [examId, currentUsage, isSceneTask, usageIdFromQuery, toast])
+  }, [examId, currentUsage, isSceneTask, isUsageOpen, usageIdFromQuery, toast])
 
   const handleSubmit = useCallback(async () => {
     if (!currentUsage) return
@@ -165,9 +193,7 @@ export default function ExamDetailPage() {
 
   const handleStart = () => {
     setStarted(true)
-    if (exam) {
-      setTimeLeft(exam.duration * 60)
-    }
+    setTimeLeft(examDuration * 60)
   }
 
   useEffect(() => {
@@ -217,8 +243,12 @@ export default function ExamDetailPage() {
   const totalScore = questions.reduce((s, q) => s + (q.score || 0), 0)
   const answeredCount = Object.keys(answers).length
   const targetAudience = getTargetAudience()
-  // canStart 由服务端真实数据校验：考试已发布（或场景任务）且存在考试安排
-  const canStart = (isSceneTask || exam.status === 'published') && currentUsage
+  // canStart 由服务端真实数据校验：考试已发布（或场景任务）、存在考试安排，
+  // 且在开放时间窗内（已开始的进行中考试不受窗口限制，可继续作答）
+  const canStart =
+    (isSceneTask || exam.status === 'published') &&
+    currentUsage &&
+    (currentUsage.status === 'in_progress' || usageWindowState === 'open')
 
   const handleSingle = (qid: string, val: string) => setAnswers((p) => ({ ...p, [qid]: val }))
   const handleMultiple = (qid: string, opt: string, checked: boolean) => {
@@ -587,7 +617,7 @@ export default function ExamDetailPage() {
             {
               icon: <Clock style={{ width: 18, height: 18 }} />,
               label: '考试时长',
-              value: `${exam.duration} 分钟`,
+              value: `${examDuration} 分钟`,
             },
             {
               icon: <ListOrdered style={{ width: 18, height: 18 }} />,
@@ -789,6 +819,12 @@ export default function ExamDetailPage() {
             <p>3. 答题过程中请勿刷新页面或关闭浏览器。</p>
             <p>4. 提交后无法修改答案，请确认后再提交。</p>
             <p>5. 考试期间系统将自动保存答题进度。</p>
+            {(currentUsage?.startTime || currentUsage?.endTime) && (
+              <p>
+                开放时间：{formatDateTime(currentUsage?.startTime)} ~{' '}
+                {formatDateTime(currentUsage?.endTime)}
+              </p>
+            )}
           </div>
           <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
             {canStart ? (
@@ -800,13 +836,17 @@ export default function ExamDetailPage() {
                 <PlayCircle style={{ width: 20, height: 20 }} />
                 {!currentUsage
                   ? '暂无考试安排'
-                  : !isSceneTask &&
-                      (exam.status === 'draft' ||
-                        exam.status === 'pending' ||
-                        exam.status === 'rejected' ||
-                        exam.status === 'approved')
-                    ? '考试未发布'
-                    : '考试已结束'}
+                  : usageWindowState === 'not_started'
+                    ? `考试未开始（${formatDateTime(currentUsage.startTime)} 开放）`
+                    : usageWindowState === 'ended'
+                      ? '考试已结束'
+                      : !isSceneTask &&
+                          (exam.status === 'draft' ||
+                            exam.status === 'pending' ||
+                            exam.status === 'rejected' ||
+                            exam.status === 'approved')
+                        ? '考试未发布'
+                        : '考试已结束'}
               </Button>
             )}
           </div>

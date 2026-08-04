@@ -393,15 +393,61 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 	if examID == "" {
 		return resourceConfig, nil
 	}
+	startTime, endTime := extractExamUsageWindow(resourceConfig)
+	duration := extractExamUsageDuration(resourceConfig, methodKey)
 	if usageID == "" {
-		id, err := s.createTempExamUsage(ctx, tx, tenantID, examID, taskID, creatorID)
+		id, err := s.createTempExamUsage(ctx, tx, tenantID, examID, taskID, creatorID, startTime, endTime, duration)
 		if err != nil {
 			return resourceConfig, err
 		}
 		usageID = id
 		resourceConfig["usageId"] = usageID
+	} else {
+		if _, err := tx.Exec(ctx, `
+			UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, updated_at = NOW()
+			WHERE id = $4
+		`, startTime, endTime, duration, usageID); err != nil {
+			return resourceConfig, fmt.Errorf("update exam usage window: %w", err)
+		}
 	}
 	return resourceConfig, nil
+}
+
+// extractExamUsageWindow 解析考试安排开放时间窗：仅「定时启用」配置生效，其余模式不设窗口。
+func extractExamUsageWindow(resourceConfig domain.JSONMap) (*string, *string) {
+	if mode, _ := resourceConfig["activationMode"].(string); mode != "scheduled" {
+		return nil, nil
+	}
+	start, _ := resourceConfig["scheduledTime"].(string)
+	end, _ := resourceConfig["scheduledEndTime"].(string)
+	if start == "" && end == "" {
+		return nil, nil
+	}
+	var s, e *string
+	if start != "" {
+		s = &start
+	}
+	if end != "" {
+		e = &end
+	}
+	return s, e
+}
+
+// extractExamUsageDuration 解析考试安排时长（分钟）：题库/随堂测取 timeLimit，试卷取 duration，未配置返回 nil（沿用试卷自身时长）。
+func extractExamUsageDuration(resourceConfig domain.JSONMap, methodKey string) *int {
+	var d float64
+	if methodKey == "paper" {
+		d, _ = resourceConfig["duration"].(float64)
+	} else if t, ok := resourceConfig["timeLimit"].(float64); ok && t > 0 {
+		d = t
+	} else {
+		d, _ = resourceConfig["duration"].(float64)
+	}
+	if d <= 0 {
+		return nil
+	}
+	v := int(d)
+	return &v
 }
 
 func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, tenantID, name string, duration int, creatorID string) (string, error) {
@@ -431,7 +477,7 @@ func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, te
 	return id, nil
 }
 
-func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Queryer, tenantID, examID, taskID, creatorID string) (string, error) {
+func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Queryer, tenantID, examID, taskID, creatorID string, startTime, endTime *string, duration *int) (string, error) {
 	var existingID string
 	err := tx.QueryRow(ctx, `
 		SELECT id FROM exam_usages
@@ -439,6 +485,12 @@ func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Querye
 		LIMIT 1
 	`, tenantID, examID, taskID).Scan(&existingID)
 	if err == nil && existingID != "" {
+		if _, err := tx.Exec(ctx, `
+			UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, updated_at = NOW()
+			WHERE id = $4
+		`, startTime, endTime, duration, existingID); err != nil {
+			return "", fmt.Errorf("update temp exam usage: %w", err)
+		}
 		return existingID, nil
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -451,8 +503,8 @@ func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Querye
 	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'task', $5, 'draft', $6)
-	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), []string{taskID}, creator)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'task', $8, 'draft', $9)
+	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), startTime, endTime, duration, []string{taskID}, creator)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam usage: %w", err)
 	}
