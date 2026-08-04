@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"math"
 	"net/http"
 
@@ -35,6 +36,48 @@ type certificationTaskWeight struct {
 type putCertificationWeightsRequest struct {
 	PointWeights []certificationPointWeight `json:"pointWeights"`
 	TaskWeights  []certificationTaskWeight  `json:"taskWeights"`
+}
+
+type putCertificationPointLevelsRequest struct {
+	LevelMapping []domain.LevelMapping `json:"levelMapping"`
+}
+
+func (h *CertificationModelHandler) PutPointLevels(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	positionID := chi.URLParam(r, "positionId")
+	abilityPointID := chi.URLParam(r, "abilityPointId")
+
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), positionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
+		return
+	}
+
+	var req putCertificationPointLevelsRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if abilityPointID == "" {
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+
+	err = h.Service.PutCertificationPointLevels(r.Context(), tenantID, positionID, abilityPointID, req.LevelMapping)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidLevelMapping) {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		respondServerError(w, r, err, "保存分档配置失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"positionId": positionID, "abilityPointId": abilityPointID})
 }
 
 func (h *CertificationModelHandler) GetModel(w http.ResponseWriter, r *http.Request) {

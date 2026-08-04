@@ -240,7 +240,7 @@ type StudentPortraitUpsertParams struct {
 	TenantID           string
 	UserID             string
 	CareerPositionID   string
-	OverallGrade       string
+	OverallGrade       *string
 	DomainScores       []byte
 	RecommendPositions []byte
 }

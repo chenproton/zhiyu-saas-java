@@ -2,9 +2,56 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"math"
+
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
+
+// ErrInvalidLevelMapping 分档配置校验失败（handler 映射为 400）。
+var ErrInvalidLevelMapping = errors.New("分档配置不合法")
+
+// masteryLevelOrder 掌握程度五档代码顺序（分档配置必须按此顺序）。
+var masteryLevelOrder = []string{"understand", "comprehend", "master", "proficient", "expert"}
+
+// validateLevelMapping 校验能力点五档分数线：
+// 恰好 5 档且按掌握程度顺序；min/max 为 0-100 整数；min 严格递增且档位连续（本档 max = 下一档 min - 1），最高档 max = 100。
+func validateLevelMapping(mapping []domain.LevelMapping) error {
+	if len(mapping) != len(masteryLevelOrder) {
+		return fmt.Errorf("%w：分档配置需恰好 %d 档", ErrInvalidLevelMapping, len(masteryLevelOrder))
+	}
+	for i, m := range mapping {
+		if m.Level != masteryLevelOrder[i] {
+			return fmt.Errorf("%w：分档等级必须按 了解/理解/掌握/熟练/精通 顺序排列", ErrInvalidLevelMapping)
+		}
+		if m.Min != math.Trunc(m.Min) || m.Max != math.Trunc(m.Max) {
+			return fmt.Errorf("%w：分档分值必须为整数", ErrInvalidLevelMapping)
+		}
+		if m.Min < 0 || m.Min > 100 || m.Max < 0 || m.Max > 100 {
+			return fmt.Errorf("%w：分档分值必须在 0-100 之间", ErrInvalidLevelMapping)
+		}
+		if m.Min >= m.Max {
+			return fmt.Errorf("%w：分档下限必须小于上限", ErrInvalidLevelMapping)
+		}
+		if i > 0 {
+			if m.Min <= mapping[i-1].Min {
+				return fmt.Errorf("%w：分档下限必须严格递增", ErrInvalidLevelMapping)
+			}
+			if m.Min-1 != mapping[i-1].Max {
+				return fmt.Errorf("%w：分档区间必须连续（上一档上限 = 本档下限 - 1）", ErrInvalidLevelMapping)
+			}
+		}
+	}
+	if mapping[0].Min < 1 {
+		return fmt.Errorf("%w：最低档下限必须大于 0（保留未达标档）", ErrInvalidLevelMapping)
+	}
+	if mapping[len(mapping)-1].Max != 100 {
+		return fmt.Errorf("%w：最高档上限必须为 100", ErrInvalidLevelMapping)
+	}
+	return nil
+}
 
 // ListCertificationRules 查询认证规则列表。
 func (s *EvaluationService) ListCertificationRules(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.CertificationRule]) ([]domain.CertificationRule, int, error) {
@@ -159,6 +206,20 @@ func (s *EvaluationService) PutCertificationWeights(ctx context.Context, tenantI
 	return s.WithTx(ctx, func(txStore *store.Store) error {
 		_, err := txStore.Certifications().PutWeights(ctx, txStore.Q(), tenantID, positionID, pointWeights, taskWeights)
 		return err
+	})
+}
+
+// PutCertificationPointLevels 保存能力点自定义五档分数线（事务，校验后落库）。
+func (s *EvaluationService) PutCertificationPointLevels(ctx context.Context, tenantID, positionID, abilityPointID string, mapping []domain.LevelMapping) error {
+	if err := validateLevelMapping(mapping); err != nil {
+		return err
+	}
+	raw := make(domain.JSONSlice, 0, len(mapping))
+	for _, m := range mapping {
+		raw = append(raw, map[string]interface{}{"level": m.Level, "min": m.Min, "max": m.Max})
+	}
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.Certifications().UpsertPointLevels(ctx, txStore.Q(), tenantID, positionID, abilityPointID, raw)
 	})
 }
 

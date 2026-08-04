@@ -437,6 +437,11 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/job-ability/aggregate", jobAbilityResultHandler.Aggregate)
 			r.Get("/evaluation/job-ability/aggregate/status", jobAbilityResultHandler.AggregateStatus)
 
+			certificationModelHandler := &handler.CertificationModelHandler{Service: evaluationSvc}
+			r.Get("/evaluation/certifications/positions/{positionId}/model", certificationModelHandler.GetModel)
+			r.Put("/evaluation/certifications/positions/{positionId}/weights", certificationModelHandler.PutWeights)
+			r.Put("/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels", certificationModelHandler.PutPointLevels)
+
 			microCertHandler := &handler.MicroCertHandler{Store: st2.MicroCerts()}
 			r.Get("/evaluation/certificates/templates", microCertHandler.ListTemplates)
 			r.Post("/evaluation/certificates/templates", microCertHandler.CreateTemplate)

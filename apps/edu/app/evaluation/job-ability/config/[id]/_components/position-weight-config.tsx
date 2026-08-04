@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronDown, ChevronRight, Save, SlidersHorizontal } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, ListOrdered, Save, SlidersHorizontal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -21,6 +21,7 @@ import type { CertificationModelPoint, CertificationPositionModel } from '@/lib/
 import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
 import { cn } from '@/lib/utils'
 import { WeightConfigDialog } from './weight-config-dialog'
+import { LevelConfigDialog } from './level-config-dialog'
 
 function taskKey(abilityPointId: string, taskId: string): string {
   return `${abilityPointId}:${taskId}`
@@ -47,6 +48,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [pointDialogOpen, setPointDialogOpen] = useState(false)
   const [taskDialogPoint, setTaskDialogPoint] = useState<DomainPoint | null>(null)
+  const [levelDialogPoint, setLevelDialogPoint] = useState<DomainPoint | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -218,7 +220,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
                     <TableHead className="w-[100px]">掌握程度</TableHead>
                     <TableHead>胜任标准</TableHead>
                     <TableHead className="w-[90px]">权重</TableHead>
-                    <TableHead className="w-[110px] text-right">操作</TableHead>
+                    <TableHead className="w-[190px] text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -239,6 +241,9 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
                           domainName={domain.name}
                           domainCount={domain.points.length}
                           isFirstInDomain={idx === 0}
+                          onOpenLevels={() =>
+                            setLevelDialogPoint({ ...point, domainName: domain.name })
+                          }
                         />
                       )
                     }),
@@ -292,6 +297,28 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
           })
         }}
       />
+
+      {/* 单个能力点的五档分数线弹窗 */}
+      <LevelConfigDialog
+        open={levelDialogPoint !== null}
+        onOpenChange={(open) => {
+          if (!open) setLevelDialogPoint(null)
+        }}
+        positionId={positionId}
+        point={
+          levelDialogPoint
+            ? {
+                abilityPointId: levelDialogPoint.abilityPointId,
+                name: levelDialogPoint.name,
+                levelMapping: levelDialogPoint.levelMapping,
+              }
+            : { abilityPointId: '', name: '' }
+        }
+        onSaved={() => {
+          setLoading(true)
+          setReloadKey((k) => k + 1)
+        }}
+      />
     </div>
   )
 }
@@ -303,6 +330,7 @@ function PointRows({
   taskWeights,
   onToggle,
   onOpenTaskWeights,
+  onOpenLevels,
   domainName,
   domainCount,
   isFirstInDomain,
@@ -313,6 +341,7 @@ function PointRows({
   taskWeights: Record<string, number>
   onToggle: () => void
   onOpenTaskWeights: () => void
+  onOpenLevels: () => void
   domainName: string
   domainCount: number
   isFirstInDomain: boolean
@@ -361,6 +390,15 @@ function PointRows({
           <span className="text-sm font-medium">{pointWeight}%</span>
         </TableCell>
         <TableCell className="text-right">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={onOpenLevels}
+          >
+            <ListOrdered className="mr-1 h-3 w-3" />
+            分档配置
+          </Button>
           <Button
             variant="ghost"
             size="sm"

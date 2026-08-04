@@ -14,13 +14,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Table,
   TableBody,
   TableCell,
@@ -42,25 +35,6 @@ const PAGE_SIZE = 20
 const AGGREGATE_POLL_INTERVAL_MS = 3000
 const AGGREGATE_POLL_MAX_ATTEMPTS = 15
 
-const GRADE_OPTIONS = ['了解', '理解', '掌握', '熟练', '精通'] as const
-
-function gradeBadgeClass(grade?: string): string {
-  switch (grade) {
-    case '精通':
-      return 'bg-purple-50 text-purple-600 border-purple-200'
-    case '熟练':
-      return 'bg-green-50 text-green-600 border-green-200'
-    case '掌握':
-      return 'bg-blue-50 text-blue-600 border-blue-200'
-    case '理解':
-      return 'bg-amber-50 text-amber-600 border-amber-200'
-    case '了解':
-      return 'bg-gray-50 text-gray-500 border-gray-200'
-    default:
-      return 'bg-gray-50 text-gray-500 border-gray-200'
-  }
-}
-
 function JobAbilityResultsContent() {
   const searchParams = useSearchParams()
   const positionIdParam = searchParams.get('positionId')
@@ -77,7 +51,6 @@ function JobAbilityResultsContent() {
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [gradeFilter, setGradeFilter] = useState<string>('all')
 
   const [aggregating, setAggregating] = useState(false)
   const aggregateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -105,7 +78,6 @@ function JobAbilityResultsContent() {
   const applyFilters = (updates: {
     positionId?: string
     search?: string
-    grade?: string
     page?: number
   }) => {
     setLoading(true)
@@ -113,7 +85,6 @@ function JobAbilityResultsContent() {
     else setPage(1)
     if (updates.positionId !== undefined) setSelectedPositionId(updates.positionId)
     if (updates.search !== undefined) setSearch(updates.search)
-    if (updates.grade !== undefined) setGradeFilter(updates.grade)
   }
 
   // 左侧岗位汇总
@@ -154,7 +125,6 @@ function JobAbilityResultsContent() {
         const res = await jobAbilityResultApi.list({
           careerPositionId: selectedPositionId,
           search: debouncedSearch || undefined,
-          grade: gradeFilter === 'all' ? undefined : gradeFilter,
           page,
           limit: PAGE_SIZE,
         })
@@ -178,7 +148,7 @@ function JobAbilityResultsContent() {
     return () => {
       cancelled = true
     }
-  }, [selectedPositionId, debouncedSearch, gradeFilter, page, listReloadKey, toast])
+  }, [selectedPositionId, debouncedSearch, page, listReloadKey, toast])
 
   const selectedPosition = useMemo(
     () => summary.find((s) => s.positionId === selectedPositionId),
@@ -363,19 +333,6 @@ function JobAbilityResultsContent() {
               className="pl-9"
             />
           </div>
-          <Select value={gradeFilter} onValueChange={(value) => applyFilters({ grade: value })}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="等级筛选" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部等级</SelectItem>
-              {GRADE_OPTIONS.map((grade) => (
-                <SelectItem key={grade} value={grade}>
-                  {grade}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {/* 结果表格 */}
@@ -390,7 +347,6 @@ function JobAbilityResultsContent() {
                   <TableHead className="w-[130px]">专业</TableHead>
                   <TableHead className="w-[130px]">能力点达成</TableHead>
                   <TableHead className="w-[90px]">达标率</TableHead>
-                  <TableHead className="w-[90px]">等级</TableHead>
                   <TableHead className="sticky right-0 w-[120px] bg-white text-right">
                     操作
                   </TableHead>
@@ -399,13 +355,13 @@ function JobAbilityResultsContent() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : results.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       {selectedPositionId ? '暂无符合条件的认定结果' : '请在左侧选择岗位'}
                     </TableCell>
                   </TableRow>
@@ -431,18 +387,6 @@ function JobAbilityResultsContent() {
                         <span className="text-sm font-medium">
                           {(result.achievementRate ?? 0).toFixed(1)}%
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        {result.grade ? (
-                          <Badge
-                            variant="outline"
-                            className={cn('text-xs', gradeBadgeClass(result.grade))}
-                          >
-                            {result.grade}
-                          </Badge>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
                       </TableCell>
                       <TableRowActions className="sticky right-0 bg-white">
                         <Button
@@ -497,11 +441,6 @@ function JobAbilityResultsContent() {
                 <span className="text-muted-foreground">
                   达标率 {(detail.achievementRate ?? 0).toFixed(1)}%
                 </span>
-                {detail.grade && (
-                  <Badge variant="outline" className={cn('text-xs', gradeBadgeClass(detail.grade))}>
-                    {detail.grade}
-                  </Badge>
-                )}
                 <span className="text-muted-foreground">
                   认定时间 {formatDateTime(detail.evaluationTime)}
                 </span>
@@ -513,6 +452,7 @@ function JobAbilityResultsContent() {
                       <TableRow>
                         <TableHead>能力点</TableHead>
                         <TableHead className="w-[100px]">得分</TableHead>
+                        <TableHead className="w-[110px]">档位</TableHead>
                         <TableHead className="w-[100px]">权重</TableHead>
                         <TableHead className="w-[100px]">是否达成</TableHead>
                       </TableRow>
@@ -525,6 +465,23 @@ function JobAbilityResultsContent() {
                             {point.maxScore != null
                               ? `${point.score}/${point.maxScore}`
                               : point.score}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {point.levelLabel ? (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'text-xs',
+                                  point.levelLabel === '未达标'
+                                    ? 'bg-red-50 text-red-600 border-red-200'
+                                    : 'bg-indigo-50 text-indigo-600 border-indigo-200',
+                                )}
+                              >
+                                {point.levelLabel}
+                              </Badge>
+                            ) : (
+                              '-'
+                            )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {point.weight != null ? `${point.weight}%` : '-'}

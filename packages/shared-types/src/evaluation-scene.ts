@@ -58,6 +58,10 @@ export interface JobAbilityPointDetail {
   maxScore?: number
   weight?: number
   achieved: boolean
+  requiredLevel?: string
+  requiredLevelLabel?: string
+  /** 能力点档位标签（自定义分档：未达标/了解L1/…/精通L5；默认：了解/理解/掌握/熟练/精通） */
+  levelLabel?: string
 }
 
 // 岗位能力测评结果
