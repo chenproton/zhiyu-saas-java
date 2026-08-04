@@ -104,6 +104,10 @@ function getProjectProgress(project: AllianceProject) {
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="text-center mb-14">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-medium mb-4">
+        <Sparkles className="w-3.5 h-3.5" />
+        {title}
+      </div>
       <h2 className="text-3xl md:text-4xl font-semibold text-slate-900 mb-3 tracking-tight">
         {title}
       </h2>
@@ -118,7 +122,7 @@ function SectionSubHeading({ title, action }: { title: string; action?: React.Re
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
       <div className="flex items-center gap-3">
-        <div className="h-6 w-1 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
+        <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
         <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
       </div>
       {action}
@@ -130,13 +134,25 @@ function SectionDivider() {
   return <div className="border-t border-slate-100 pt-16 mt-16" />
 }
 
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="text-center py-16 px-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 mb-20">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-100 text-slate-400 mb-3">
+        <Sparkles className="h-5 w-5" />
+      </div>
+      <p className="text-sm text-slate-500 font-medium">{message}</p>
+    </div>
+  )
+}
+
 function ViewAllLink({ href }: { href: string }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+      className="group inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
     >
-      查看全部 <ArrowUpRight className="h-4 w-4" />
+      查看全部
+      <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
     </Link>
   )
 }
@@ -670,28 +686,30 @@ export default function AllianceLandingPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800" />
         <div
-          className="absolute inset-0 opacity-10"
+          className="absolute inset-0 opacity-[0.07]"
           style={{
             backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)',
-            backgroundSize: '48px 48px',
+              'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)',
+            backgroundSize: '40px 40px',
           }}
         />
-        <div className="absolute top-24 right-24 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-16 left-16 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/30 to-slate-950/60" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/15 rounded-full blur-[140px] -translate-y-1/3 translate-x-1/4" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-600/5 rounded-full blur-[160px]" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 lg:pb-32">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs border border-white/20 mb-6">
-                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs border border-white/15 mb-6 shadow-sm shadow-black/20">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 产教融合 · 协同育人 · 互利共赢
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white mb-6 leading-[1.15] tracking-tight">
                 搭建产教融合桥梁
-                <span className="block mt-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-indigo-300">
+                <span className="block mt-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-300 via-indigo-300 to-violet-300">
                   共育产业英才
                 </span>
               </h1>
@@ -701,14 +719,14 @@ export default function AllianceLandingPage() {
               <div className="flex flex-wrap gap-4">
                 <Button
                   asChild
-                  className="rounded-full px-7 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-200 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                  className="rounded-full px-7 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-950/60 transition-all hover:shadow-xl hover:shadow-blue-950/50 hover:-translate-y-0.5"
                 >
                   <Link href="/portal/alliance/enterprises">探索合作企业</Link>
                 </Button>
                 <Button
                   asChild
                   variant="outline"
-                  className="rounded-full px-7 py-5 text-sm font-semibold border-2 border-white/30 text-white bg-transparent hover:bg-white/10 hover:border-white/50 transition-all backdrop-blur-sm"
+                  className="rounded-full px-7 py-5 text-sm font-semibold border border-white/25 text-white bg-white/5 hover:bg-white/10 hover:border-white/40 transition-all backdrop-blur-sm shadow-sm shadow-black/10"
                 >
                   <Link href="/portal/alliance/projects">浏览合作项目</Link>
                 </Button>
@@ -723,22 +741,27 @@ export default function AllianceLandingPage() {
       </section>
 
       {/* Stats */}
-      <section className="relative -mt-10 z-10 pb-20">
+      <section className="relative -mt-12 z-10 pb-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="border border-slate-100 shadow-xl shadow-slate-200/30 rounded-2xl bg-white">
+          <Card className="border border-slate-100/80 shadow-2xl shadow-slate-200/40 rounded-2xl bg-white/95 backdrop-blur-sm">
             <CardContent className="p-6 md:p-10">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 md:gap-8">
                 {statsList.map((stat, idx) => {
                   const Icon = stat.icon
                   return (
-                    <div key={stat.label} className="text-center group">
+                    <div
+                      key={stat.label}
+                      className="text-center group p-3 rounded-2xl hover:bg-slate-50/80 transition-colors duration-300"
+                    >
                       <div
-                        className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${STAT_COLORS[idx]} text-white mb-3 shadow-md group-hover:scale-105 transition-transform duration-300`}
+                        className={`inline-flex items-center justify-center w-13 h-13 rounded-2xl bg-gradient-to-br ${STAT_COLORS[idx]} text-white mb-4 shadow-md shadow-slate-200/60 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300`}
                       >
                         <Icon className="h-5 w-5" />
                       </div>
-                      <p className="text-2xl md:text-3xl font-bold text-slate-900">{stat.value}+</p>
-                      <p className="text-sm text-slate-500 mt-1 font-medium">{stat.label}</p>
+                      <p className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-slate-900 to-slate-700">
+                        {stat.value}+
+                      </p>
+                      <p className="text-sm text-slate-500 mt-1.5 font-medium">{stat.label}</p>
                     </div>
                   )
                 })}
@@ -764,7 +787,7 @@ export default function AllianceLandingPage() {
             action={<ViewAllLink href="/portal/alliance/enterprises" />}
           />
           {data.enterprises.length === 0 ? (
-            <p className="text-muted-foreground mb-20">暂无合作企业</p>
+            <EmptyState message="暂无合作企业" />
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
               {data.enterprises.map((enterprise) => (
@@ -780,7 +803,7 @@ export default function AllianceLandingPage() {
             action={<ViewAllLink href="/portal/alliance/projects" />}
           />
           {data.projects.length === 0 ? (
-            <p className="text-muted-foreground mb-20">暂无合作项目</p>
+            <EmptyState message="暂无合作项目" />
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
               {data.projects.map((project) => (
@@ -796,7 +819,7 @@ export default function AllianceLandingPage() {
             action={<ViewAllLink href="/portal/alliance/achievements" />}
           />
           {data.achievements.length === 0 ? (
-            <p className="text-muted-foreground mb-20">暂无合作成果</p>
+            <EmptyState message="暂无合作成果" />
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
               {data.achievements.map((achievement) => (
@@ -812,7 +835,7 @@ export default function AllianceLandingPage() {
             action={<ViewAllLink href="/portal/alliance/experts" />}
           />
           {data.experts.length === 0 ? (
-            <p className="text-muted-foreground">暂无专家资源</p>
+            <EmptyState message="暂无专家资源" />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
               {data.experts.map((expert) => (
@@ -875,7 +898,7 @@ export default function AllianceLandingPage() {
                 return (
                   <TabsContent key={cat.id} value={cat.id}>
                     {items.length === 0 ? (
-                      <p className="text-muted-foreground">暂无{cat.title}</p>
+                      <EmptyState message={`暂无${cat.title}`} />
                     ) : (
                       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                         {items.map((brand) => (
@@ -892,17 +915,25 @@ export default function AllianceLandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-gradient-to-b from-blue-50/50 via-indigo-50/30 to-violet-50/40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-semibold text-slate-900 mb-4">
+      <section className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/80 via-indigo-50/50 to-violet-50/60" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-400/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-1/4 w-[400px] h-[200px] bg-indigo-400/10 rounded-full blur-[100px]" />
+
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-blue-100 text-blue-600 text-xs font-medium mb-5 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" />
+            共建生态
+          </div>
+          <h2 className="text-3xl md:text-4xl font-semibold text-slate-900 mb-4 tracking-tight">
             加入产教融合生态
           </h2>
-          <p className="text-slate-500 text-base md:text-lg mb-8 max-w-2xl mx-auto">
+          <p className="text-slate-500 text-base md:text-lg mb-10 max-w-2xl mx-auto leading-relaxed">
             无论您是企业、学校还是行业专家，都可以在这里找到合作机会，共同推动人才培养与产业升级。
           </p>
           <Button
             asChild
-            className="rounded-full px-7 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-200 transition-all hover:shadow-xl hover:-translate-y-0.5"
+            className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-200/70 transition-all hover:shadow-xl hover:shadow-blue-200/60 hover:-translate-y-0.5"
           >
             <Link href="/portal/alliance/brands">探索更多品牌</Link>
           </Button>
