@@ -108,7 +108,7 @@ type RubricTemplateParams struct {
 // FetchTaskMethods 查询任务全部测评方式（含评估点/评审步骤）。
 func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tenantID string) ([]domain.TaskEvaluationMethod, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled
+		SELECT id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, standard_name, standard_mode, resource_config, version, is_enabled
 		FROM task_evaluation_methods
 		WHERE task_id = $1 AND tenant_id = $2
 		ORDER BY method_key
@@ -122,7 +122,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 	var configIDs []string
 	for rows.Next() {
 		var m domain.TaskEvaluationMethod
-		if err := rows.Scan(&m.ID, &m.TaskID, &m.MethodKey, &m.Weight, &m.EvalObject, &m.ScoreType, &m.EvalSubjects, &m.RubricTemplateID, &m.ResourceConfig, &m.Version, &m.IsEnabled); err != nil {
+		if err := rows.Scan(&m.ID, &m.TaskID, &m.MethodKey, &m.Weight, &m.EvalObject, &m.ScoreType, &m.EvalSubjects, &m.RubricTemplateID, &m.StandardName, &m.StandardMode, &m.ResourceConfig, &m.Version, &m.IsEnabled); err != nil {
 			return nil, err
 		}
 		methods = append(methods, m)
@@ -133,6 +133,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 	}
 
 	evalPointsByConfig := make(map[string][]domain.TaskEvalPoint)
+	scoreRulesByConfig := make(map[string][]domain.TaskScoreRule)
 	reviewStepsByConfig := make(map[string][]domain.TaskReviewStep)
 
 	epRows, err := s.q.Query(ctx, `
@@ -151,6 +152,24 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 			continue
 		}
 		evalPointsByConfig[p.ConfigID] = append(evalPointsByConfig[p.ConfigID], p)
+	}
+
+	srRows, err := s.q.Query(ctx, `
+		SELECT id, config_id, name, description, rule, weight, sort_order
+		FROM task_eval_score_rules
+		WHERE config_id = ANY($1)
+		ORDER BY sort_order
+	`, configIDs)
+	if err != nil {
+		return methods, nil
+	}
+	defer srRows.Close()
+	for srRows.Next() {
+		var sr domain.TaskScoreRule
+		if err := srRows.Scan(&sr.ID, &sr.ConfigID, &sr.Name, &sr.Description, &sr.Rule, &sr.Weight, &sr.SortOrder); err != nil {
+			continue
+		}
+		scoreRulesByConfig[sr.ConfigID] = append(scoreRulesByConfig[sr.ConfigID], sr)
 	}
 
 	rsRows, err := s.q.Query(ctx, `
@@ -173,6 +192,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 
 	for i := range methods {
 		methods[i].EvalPoints = evalPointsByConfig[methods[i].ID]
+		methods[i].ScoreRules = scoreRulesByConfig[methods[i].ID]
 		methods[i].ReviewSteps = reviewStepsByConfig[methods[i].ID]
 	}
 	return methods, nil
@@ -200,25 +220,27 @@ func (s *TaskEvaluationStore) TaskName(ctx context.Context, taskID string) (stri
 	return name, err
 }
 
-// SaveTaskMethod 保存单个测评方式（upsert 方法 + 重写评估点/评审步骤）。
+// SaveTaskMethod 保存单个测评方式（upsert 方法 + 重写评估点/评分规则/评审步骤）。
 // 只按 payload 更新方法本身，不触碰 payload 之外的方法：前端状态缺失（如导入期间页面已打开）时，
 // 保存不会把未知方法静默禁用。
+// 评价标准为"纯复制"语义：任务侧独立保存标准信息与量规/评分规则数据，不保留模板引用（rubric_template_id 恒为 NULL）。
 func (s *TaskEvaluationStore) SaveTaskMethod(ctx context.Context, tx Queryer, tenantID, taskID string, newVersion int, m *TaskMethodInput) error {
 	var configID string
 	err := tx.QueryRow(ctx, `
-		INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (task_id, method_key) DO UPDATE SET
 			weight = EXCLUDED.weight,
 			eval_object = EXCLUDED.eval_object,
 			score_type = EXCLUDED.score_type,
 			eval_subjects = EXCLUDED.eval_subjects,
-			rubric_template_id = EXCLUDED.rubric_template_id,
+			standard_name = EXCLUDED.standard_name,
+			standard_mode = EXCLUDED.standard_mode,
 			resource_config = EXCLUDED.resource_config,
 			version = EXCLUDED.version,
 			is_enabled = EXCLUDED.is_enabled
 		RETURNING id
-	`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, m.EvalSubjects, m.RubricTemplateID, m.ResourceConfig, newVersion, m.IsEnabled).Scan(&configID)
+	`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, m.EvalSubjects, m.StandardName, m.StandardMode, m.ResourceConfig, newVersion, m.IsEnabled).Scan(&configID)
 	if err != nil {
 		return err
 	}
@@ -239,6 +261,17 @@ func (s *TaskEvaluationStore) SaveTaskMethod(ctx context.Context, tx Queryer, te
 			return err
 		}
 	}
+	if _, err := tx.Exec(ctx, `DELETE FROM task_eval_score_rules WHERE config_id = $1`, configID); err != nil {
+		return err
+	}
+	for _, sr := range m.ScoreRules {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO task_eval_score_rules (tenant_id, config_id, name, description, rule, weight, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, tenantID, configID, sr.Name, sr.Description, sr.Rule, sr.Weight, sr.SortOrder); err != nil {
+			return err
+		}
+	}
 	if _, err := tx.Exec(ctx, `DELETE FROM task_review_steps WHERE config_id = $1`, configID); err != nil {
 		return err
 	}
@@ -255,16 +288,27 @@ func (s *TaskEvaluationStore) SaveTaskMethod(ctx context.Context, tx Queryer, te
 
 // TaskMethodInput 测评方法输入（service 层组装）。
 type TaskMethodInput struct {
-	MethodKey        string
-	Weight           float64
-	EvalObject       string
-	ScoreType        *string
-	EvalSubjects     domain.JSONSlice
-	RubricTemplateID *string
-	ResourceConfig   domain.JSONMap
-	IsEnabled        bool
-	EvalPoints       []TaskEvalPointInput
-	ReviewSteps      []TaskReviewStepInput
+	MethodKey      string
+	Weight         float64
+	EvalObject     string
+	ScoreType      *string
+	EvalSubjects   domain.JSONSlice
+	StandardName   *string
+	StandardMode   *string
+	ResourceConfig domain.JSONMap
+	IsEnabled      bool
+	EvalPoints     []TaskEvalPointInput
+	ScoreRules     []TaskScoreRuleInput
+	ReviewSteps    []TaskReviewStepInput
+}
+
+// TaskScoreRuleInput 评分规则项输入。
+type TaskScoreRuleInput struct {
+	Name        string
+	Description *string
+	Rule        *string
+	Weight      float64
+	SortOrder   int
 }
 
 // TaskEvalPointInput 评估点输入。

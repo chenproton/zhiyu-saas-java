@@ -25,16 +25,26 @@ type SaveTaskEvaluationMethodsRequest struct {
 }
 
 type TaskEvaluationMethodInput struct {
-	MethodKey        string            `json:"methodKey"`
-	Weight           float64           `json:"weight"`
-	EvalObject       string            `json:"evalObject"`
-	ScoreType        *string           `json:"scoreType"`
-	EvalSubjects     json.RawMessage   `json:"evalSubjects"`
-	RubricTemplateID *string           `json:"rubricTemplateId"`
-	ResourceConfig   json.RawMessage   `json:"resourceConfig"`
-	IsEnabled        bool              `json:"isEnabled"`
-	EvalPoints       []EvalPointInput  `json:"evalPoints"`
-	ReviewSteps      []ReviewStepInput `json:"reviewSteps"`
+	MethodKey      string            `json:"methodKey"`
+	Weight         float64           `json:"weight"`
+	EvalObject     string            `json:"evalObject"`
+	ScoreType      *string           `json:"scoreType"`
+	EvalSubjects   json.RawMessage   `json:"evalSubjects"`
+	StandardName   *string           `json:"standardName"`
+	StandardMode   *string           `json:"standardMode"`
+	ResourceConfig json.RawMessage   `json:"resourceConfig"`
+	IsEnabled      bool              `json:"isEnabled"`
+	EvalPoints     []EvalPointInput  `json:"evalPoints"`
+	ScoreRules     []ScoreRuleInput  `json:"scoreRules"`
+	ReviewSteps    []ReviewStepInput `json:"reviewSteps"`
+}
+
+type ScoreRuleInput struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Rule        *string `json:"rule"`
+	Weight      float64 `json:"weight"`
+	SortOrder   int     `json:"sortOrder"`
 }
 
 type EvalPointInput struct {
@@ -143,17 +153,29 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 				SortOrder:   rs.SortOrder,
 			})
 		}
+		scoreRules := make([]service.ScoreRuleSaveInput, 0, len(m.ScoreRules))
+		for _, sr := range m.ScoreRules {
+			scoreRules = append(scoreRules, service.ScoreRuleSaveInput{
+				Name:        sr.Name,
+				Description: sr.Description,
+				Rule:        sr.Rule,
+				Weight:      sr.Weight,
+				SortOrder:   sr.SortOrder,
+			})
+		}
 		inputs = append(inputs, &service.MethodSaveInput{
-			MethodKey:        m.MethodKey,
-			Weight:           m.Weight,
-			EvalObject:       m.EvalObject,
-			ScoreType:        m.ScoreType,
-			EvalSubjects:     m.EvalSubjects,
-			RubricTemplateID: m.RubricTemplateID,
-			ResourceConfig:   m.ResourceConfig,
-			IsEnabled:        m.IsEnabled,
-			EvalPoints:       evalPoints,
-			ReviewSteps:      reviewSteps,
+			MethodKey:      m.MethodKey,
+			Weight:         m.Weight,
+			EvalObject:     m.EvalObject,
+			ScoreType:      m.ScoreType,
+			EvalSubjects:   m.EvalSubjects,
+			StandardName:   m.StandardName,
+			StandardMode:   m.StandardMode,
+			ResourceConfig: m.ResourceConfig,
+			IsEnabled:      m.IsEnabled,
+			EvalPoints:     evalPoints,
+			ScoreRules:     scoreRules,
+			ReviewSteps:    reviewSteps,
 		})
 	}
 

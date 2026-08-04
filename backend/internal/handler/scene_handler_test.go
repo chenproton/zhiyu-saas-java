@@ -482,6 +482,98 @@ func TestTaskEvaluationMethod(t *testing.T) {
 	}
 }
 
+func TestTaskEvaluationMethod_ScoreRules(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	suffix := t.Name()
+	scCode := fmt.Sprintf("test-evm-sr-%s", suffix)
+
+	w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
+		"name": "Eval SR Scenario", "code": scCode, "difficulty": 1, "version": "v1.0",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create scenario: expected 201, got %d", w.Code)
+	}
+	scenario, _ := testhelper.Unmarshal[domain.Scenario](w)
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", scenario.ID)
+
+	taskCode := fmt.Sprintf("tsk-evm-sr-%s", suffix)
+	w = env.Do("POST", "/api/v1/scene/tasks", map[string]interface{}{
+		"scenarioId": scenario.ID, "name": "Eval SR Task", "code": taskCode, "taskType": "assessment", "difficulty": 2,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create task: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	task, _ := testhelper.Unmarshal[domain.ScenarioTask](w)
+	taskID := task.ID
+	defer env.DB.Exec(ctx, "DELETE FROM scenario_tasks WHERE id = $1", taskID)
+	defer env.DB.Exec(ctx, "DELETE FROM task_evaluation_methods WHERE task_id = $1", taskID)
+
+	// 评分规则(score_rule)模式：任务侧独立保存标准信息 + 评分规则项，rubricTemplateId 引用不落库
+	stdName := "作业评分标准"
+	stdMode := "score_rule"
+	methods := []map[string]interface{}{
+		{
+			"methodKey":        "homework",
+			"weight":           100,
+			"evalObject":       "individual",
+			"evalSubjects":     []interface{}{},
+			"isEnabled":        true,
+			"standardName":     stdName,
+			"standardMode":     stdMode,
+			"rubricTemplateId": "00000000-0000-0000-0000-000000000001",
+			"evalPoints":       []map[string]interface{}{},
+			"scoreRules": []map[string]interface{}{
+				{"name": "完整性", "description": "材料完整", "rule": "缺一项扣5分", "weight": 60, "sortOrder": 0},
+				{"name": "规范性", "description": "格式规范", "rule": "格式不符扣10分", "weight": 40, "sortOrder": 1},
+			},
+			"reviewSteps":    []map[string]interface{}{},
+			"resourceConfig": map[string]interface{}{},
+		},
+	}
+	w = env.Do("PUT", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", map[string]interface{}{
+		"methods": methods,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("save methods: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	w = env.Do("GET", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list methods: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	resp, _ := testhelper.Unmarshal[struct {
+		Methods []domain.TaskEvaluationMethod `json:"methods"`
+	}](w)
+	if len(resp.Methods) != 1 {
+		t.Fatalf("expected 1 method, got %d", len(resp.Methods))
+	}
+	m := resp.Methods[0]
+	if m.StandardName == nil || *m.StandardName != stdName {
+		t.Fatalf("standardName mismatch: %v", m.StandardName)
+	}
+	if m.StandardMode == nil || *m.StandardMode != stdMode {
+		t.Fatalf("standardMode mismatch: %v", m.StandardMode)
+	}
+	if m.RubricTemplateID != nil {
+		t.Fatalf("rubricTemplateId should be NULL (pure copy), got %v", *m.RubricTemplateID)
+	}
+	if len(m.ScoreRules) != 2 {
+		t.Fatalf("expected 2 score rules, got %d", len(m.ScoreRules))
+	}
+	if m.ScoreRules[0].Name != "完整性" || m.ScoreRules[0].Weight != 60 {
+		t.Fatalf("score rule 0 mismatch: %+v", m.ScoreRules[0])
+	}
+	if m.ScoreRules[1].Name != "规范性" || m.ScoreRules[1].Rule == nil || *m.ScoreRules[1].Rule != "格式不符扣10分" {
+		t.Fatalf("score rule 1 mismatch: %+v", m.ScoreRules[1])
+	}
+	if len(m.EvalPoints) != 0 {
+		t.Fatalf("score_rule mode should not persist eval points, got %d", len(m.EvalPoints))
+	}
+}
+
 func TestTaskEvaluationMethod_TempExamIdempotent(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

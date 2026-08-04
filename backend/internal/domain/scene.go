@@ -73,11 +73,24 @@ type TaskEvaluationMethod struct {
 	ScoreType        *string          `json:"scoreType,omitempty"`
 	EvalSubjects     JSONSlice        `json:"evalSubjects"`
 	RubricTemplateID *string          `json:"rubricTemplateId,omitempty"`
+	StandardName     *string          `json:"standardName,omitempty"`
+	StandardMode     *string          `json:"standardMode,omitempty"`
 	ResourceConfig   JSONMap          `json:"resourceConfig"`
 	Version          int              `json:"version"`
 	IsEnabled        bool             `json:"isEnabled"`
 	EvalPoints       []TaskEvalPoint  `json:"evalPoints,omitempty"`
+	ScoreRules       []TaskScoreRule  `json:"scoreRules,omitempty"`
 	ReviewSteps      []TaskReviewStep `json:"reviewSteps,omitempty"`
+}
+
+type TaskScoreRule struct {
+	ID          string  `json:"id"`
+	ConfigID    string  `json:"configId"`
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Rule        *string `json:"rule,omitempty"`
+	Weight      float64 `json:"weight"`
+	SortOrder   int     `json:"sortOrder"`
 }
 
 type TaskEvalPoint struct {

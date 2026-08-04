@@ -223,7 +223,7 @@ func (s *ScenarioCloneStore) cloneTaskDeliverables(ctx context.Context, tx Query
 
 func (s *ScenarioCloneStore) cloneTaskEvaluationMethods(ctx context.Context, tx Queryer, oldTaskID, newTaskID, tenantID string) error {
 	rows, err := tx.Query(ctx, `
-		SELECT id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled
+		SELECT id, method_key, weight, eval_object, score_type, eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled
 		FROM task_evaluation_methods WHERE task_id = $1 AND tenant_id = $2
 	`, oldTaskID, tenantID)
 	if err != nil {
@@ -236,7 +236,8 @@ func (s *ScenarioCloneStore) cloneTaskEvaluationMethods(ctx context.Context, tx 
 		evalObject             string
 		scoreType              *string
 		evalSubjects           []byte
-		rubricTemplateID       *string
+		standardName           *string
+		standardMode           *string
 		resourceConfig         []byte
 		version                int
 		isEnabled              bool
@@ -244,7 +245,7 @@ func (s *ScenarioCloneStore) cloneTaskEvaluationMethods(ctx context.Context, tx 
 	var data []row
 	for rows.Next() {
 		var r row
-		if err := rows.Scan(&r.oldConfigID, &r.methodKey, &r.weight, &r.evalObject, &r.scoreType, &r.evalSubjects, &r.rubricTemplateID, &r.resourceConfig, &r.version, &r.isEnabled); err != nil {
+		if err := rows.Scan(&r.oldConfigID, &r.methodKey, &r.weight, &r.evalObject, &r.scoreType, &r.evalSubjects, &r.standardName, &r.standardMode, &r.resourceConfig, &r.version, &r.isEnabled); err != nil {
 			continue
 		}
 		data = append(data, r)
@@ -255,15 +256,55 @@ func (s *ScenarioCloneStore) cloneTaskEvaluationMethods(ctx context.Context, tx 
 	for _, r := range data {
 		newConfigID := uuid.NewString()
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-		`, newConfigID, tenantID, newTaskID, r.methodKey, r.weight, r.evalObject, r.scoreType, r.evalSubjects, r.rubricTemplateID, r.resourceConfig, r.version, r.isEnabled); err != nil {
+			INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		`, newConfigID, tenantID, newTaskID, r.methodKey, r.weight, r.evalObject, r.scoreType, r.evalSubjects, r.standardName, r.standardMode, r.resourceConfig, r.version, r.isEnabled); err != nil {
 			return err
 		}
 		if err := s.cloneTaskEvalPoints(ctx, tx, r.oldConfigID, newConfigID, tenantID); err != nil {
 			return err
 		}
+		if err := s.cloneTaskScoreRules(ctx, tx, r.oldConfigID, newConfigID, tenantID); err != nil {
+			return err
+		}
 		if err := s.cloneTaskReviewSteps(ctx, tx, r.oldConfigID, newConfigID, tenantID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *ScenarioCloneStore) cloneTaskScoreRules(ctx context.Context, tx Queryer, oldConfigID, newConfigID, tenantID string) error {
+	rows, err := tx.Query(ctx, `
+		SELECT name, description, rule, weight, sort_order
+		FROM task_eval_score_rules WHERE config_id = $1
+	`, oldConfigID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	type row struct {
+		name              string
+		description, rule *string
+		weight            float64
+		sortOrder         int
+	}
+	var data []row
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.name, &r.description, &r.rule, &r.weight, &r.sortOrder); err != nil {
+			continue
+		}
+		data = append(data, r)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, r := range data {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO task_eval_score_rules (id, tenant_id, config_id, name, description, rule, weight, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`, uuid.NewString(), tenantID, newConfigID, r.name, r.description, r.rule, r.weight, r.sortOrder); err != nil {
 			return err
 		}
 	}

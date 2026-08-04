@@ -74,16 +74,18 @@ func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskI
 			resourceConfig := JSONRawToJSONMap(m.ResourceConfig)
 
 			if err := txStore.TaskEval().SaveTaskMethod(ctx, txStore.Q(), tenantID, taskID, newVersion, &store.TaskMethodInput{
-				MethodKey:        m.MethodKey,
-				Weight:           m.Weight,
-				EvalObject:       m.EvalObject,
-				ScoreType:        m.ScoreType,
-				EvalSubjects:     evalSubjects,
-				RubricTemplateID: m.RubricTemplateID,
-				ResourceConfig:   resourceConfig,
-				IsEnabled:        m.IsEnabled,
-				EvalPoints:       convertEvalPoints(m.EvalPoints),
-				ReviewSteps:      convertReviewSteps(m.ReviewSteps),
+				MethodKey:      m.MethodKey,
+				Weight:         m.Weight,
+				EvalObject:     m.EvalObject,
+				ScoreType:      m.ScoreType,
+				EvalSubjects:   evalSubjects,
+				StandardName:   m.StandardName,
+				StandardMode:   m.StandardMode,
+				ResourceConfig: resourceConfig,
+				IsEnabled:      m.IsEnabled,
+				EvalPoints:     convertEvalPoints(m.EvalPoints),
+				ScoreRules:     convertScoreRules(m.ScoreRules),
+				ReviewSteps:    convertReviewSteps(m.ReviewSteps),
 			}); err != nil {
 				return err
 			}
@@ -123,16 +125,27 @@ func (s *TaskEvaluationService) DeleteTemplate(ctx context.Context, id string) e
 
 // MethodSaveInput 保存方法输入。
 type MethodSaveInput struct {
-	MethodKey        string
-	Weight           float64
-	EvalObject       string
-	ScoreType        *string
-	EvalSubjects     json.RawMessage
-	RubricTemplateID *string
-	ResourceConfig   json.RawMessage
-	IsEnabled        bool
-	EvalPoints       []EvalPointSaveInput
-	ReviewSteps      []ReviewStepSaveInput
+	MethodKey      string
+	Weight         float64
+	EvalObject     string
+	ScoreType      *string
+	EvalSubjects   json.RawMessage
+	StandardName   *string
+	StandardMode   *string
+	ResourceConfig json.RawMessage
+	IsEnabled      bool
+	EvalPoints     []EvalPointSaveInput
+	ScoreRules     []ScoreRuleSaveInput
+	ReviewSteps    []ReviewStepSaveInput
+}
+
+// ScoreRuleSaveInput 评分规则项输入。
+type ScoreRuleSaveInput struct {
+	Name        string
+	Description *string
+	Rule        *string
+	Weight      float64
+	SortOrder   int
 }
 
 // EvalPointSaveInput 评估点输入。
@@ -197,6 +210,20 @@ func convertEvalPoints(pts []EvalPointSaveInput) []store.TaskEvalPointInput {
 			KnowledgePointIDs: p.KnowledgePointIDs,
 			AbilityPointIDs:   p.AbilityPointIDs,
 			SortOrder:         p.SortOrder,
+		})
+	}
+	return out
+}
+
+func convertScoreRules(rules []ScoreRuleSaveInput) []store.TaskScoreRuleInput {
+	out := make([]store.TaskScoreRuleInput, 0, len(rules))
+	for _, r := range rules {
+		out = append(out, store.TaskScoreRuleInput{
+			Name:        r.Name,
+			Description: r.Description,
+			Rule:        r.Rule,
+			Weight:      r.Weight,
+			SortOrder:   r.SortOrder,
 		})
 	}
 	return out
