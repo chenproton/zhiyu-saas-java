@@ -116,7 +116,7 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 	}
 	recordViewAsync(h.Service.IncrementView, id, claims.UserID, tenantID)
 	pos, err := h.Service.Get(r.Context(), id)
-	if err != nil || pos.Status != domain.StatusPublished {
+	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}

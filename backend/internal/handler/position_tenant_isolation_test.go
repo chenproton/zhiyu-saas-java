@@ -141,3 +141,74 @@ func containsPosition(items []domain.CareerPosition, id string) bool {
 	}
 	return false
 }
+
+// TestPublicGetAllowsUnpublishedPreview 验证未发布岗位可通过前台详情接口预览（同租户登录用户）：
+// 前台列表不应包含未发布岗位（无入口），但详情页允许预览。
+func TestPublicGetAllowsUnpublishedPreview(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	var positionID string
+
+	t.Run("CreateDraft", func(t *testing.T) {
+		w := env.Do("POST", "/api/v1/job/positions", map[string]interface{}{
+			"name":         "Draft Preview Position",
+			"positionType": "enterprise",
+			"version":      "v1.0",
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		pos, err := testhelper.Unmarshal[domain.CareerPosition](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		positionID = pos.ID
+		if pos.Status != domain.CareerPositionStatusDraft {
+			t.Fatalf("new position status = %q, want %q", pos.Status, domain.CareerPositionStatusDraft)
+		}
+	})
+	defer func() {
+		if positionID != "" {
+			env.DB.Exec(ctx, "DELETE FROM career_positions WHERE id = $1", positionID)
+		}
+	}()
+
+	t.Run("PublicListExcludesDraft", func(t *testing.T) {
+		w := env.Do("GET", "/api/v1/job/public/positions?limit=200", nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("public list: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		items, _, err := testhelper.UnmarshalList[domain.CareerPosition](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if containsPosition(items, positionID) {
+			t.Fatalf("public list should not contain draft position %s", positionID)
+		}
+	})
+
+	t.Run("PublicGetAllowsDraftForSameTenant", func(t *testing.T) {
+		w := env.Do("GET", fmt.Sprintf("/api/v1/job/public/positions/%s", positionID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("public get draft: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		pos, err := testhelper.Unmarshal[domain.CareerPosition](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if pos.ID != positionID {
+			t.Fatalf("got position %q, want %q", pos.ID, positionID)
+		}
+	})
+
+	t.Run("PublicGetRejectsDraftForOtherTenant", func(t *testing.T) {
+		otherTenantID := "cccccccc-cccc-cccc-cccc-cccccccccccc"
+		otherToken := env.NewUserToken("cccccccc-cccc-cccc-cccc-ccccccccccc1", otherTenantID, domain.UserRoleOperator, nil)
+		w := env.DoWithToken("GET", fmt.Sprintf("/api/v1/job/public/positions/%s", positionID), nil, otherToken)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("other tenant public get draft: expected 403, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+}
