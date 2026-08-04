@@ -162,7 +162,7 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
   return (
     <Link href={`/portal/alliance/enterprises/${enterprise.id}`}>
       <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="relative h-36 overflow-hidden bg-slate-800">
+        <div className="relative h-44 overflow-hidden bg-slate-800">
           {img ? (
             <img
               src={img}
@@ -175,41 +175,44 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
               className="w-full h-full group-hover:scale-105 transition-transform duration-500"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/25 to-transparent" />
-          <div className="absolute top-3 left-3 right-3 flex items-start gap-2.5">
-            <Avatar className="h-9 w-9 rounded-lg border-2 border-white/80 shadow-md bg-white shrink-0">
-              {enterprise.logoUrl && (
-                <AvatarImage src={enterprise.logoUrl} className="object-cover" />
-              )}
-              <AvatarFallback className="rounded-lg bg-white text-slate-800 font-bold text-[10px]">
-                {getInitials(enterprise.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <h4 className="font-semibold text-white text-sm leading-tight drop-shadow-md truncate">
-                {enterprise.name}
-              </h4>
-              <p className="text-white/85 text-[11px] truncate">
-                {[enterprise.industry, enterprise.region].filter(Boolean).join(' · ') || '合作企业'}
-              </p>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute bottom-4 left-4 right-4">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 rounded-xl border-2 border-white/80 shadow-md bg-white shrink-0">
+                {enterprise.logoUrl && (
+                  <AvatarImage src={enterprise.logoUrl} className="object-cover" />
+                )}
+                <AvatarFallback className="rounded-xl bg-white text-slate-800 font-bold text-sm">
+                  {getInitials(enterprise.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-semibold text-white text-base leading-tight drop-shadow-md truncate">
+                  {enterprise.name}
+                </h4>
+                <p className="text-white/85 text-xs truncate">
+                  {[enterprise.industry, enterprise.region].filter(Boolean).join(' · ') ||
+                    '合作企业'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-        <CardContent className="p-4 flex-1 flex flex-col">
-          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3 min-h-[2.6em]">
+        <CardContent className="p-5 flex-1 flex flex-col">
+          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-4 min-h-[2.6em]">
             {enterprise.description || '暂无企业简介'}
           </p>
           {enterprise.rating ? (
             <Badge
               variant="outline"
-              className="self-start text-[11px] px-2.5 py-0.5 rounded-full border-slate-200 text-slate-600"
+              className="self-start text-xs px-3 py-1 rounded-full border-slate-200 text-slate-600"
             >
               {allianceLabel('enterpriseRating', enterprise.rating)}
             </Badge>
           ) : (
             <Badge
               variant="outline"
-              className="self-start text-[11px] px-2.5 py-0.5 rounded-full border-slate-200 text-slate-600"
+              className="self-start text-xs px-3 py-1 rounded-full border-slate-200 text-slate-600"
             >
               {allianceLabel('enterpriseStatus', enterprise.status)}
             </Badge>
@@ -225,7 +228,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
   return (
     <Link href={`/portal/alliance/projects/${project.id}`}>
       <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="relative h-44 overflow-hidden">
+        <div className="relative h-36 overflow-hidden">
           {project.coverImage ? (
             <img
               src={project.coverImage}
@@ -630,10 +633,10 @@ export default function AllianceLandingPage() {
         setData({
           schoolInfo,
           stats,
-          enterprises: enterprises?.items?.slice(0, 8) ?? [],
-          projects: projects?.items?.slice(0, 6) ?? [],
+          enterprises: enterprises?.items?.slice(0, 6) ?? [],
+          projects: projects?.items?.slice(0, 8) ?? [],
           experts: experts?.items?.slice(0, 6) ?? [],
-          achievements: achievements?.items?.slice(0, 4) ?? [],
+          achievements: achievements?.items?.slice(0, 8) ?? [],
           brands: brands?.items ?? [],
         })
       })
@@ -775,7 +778,7 @@ export default function AllianceLandingPage() {
           {data.enterprises.length === 0 ? (
             <EmptyState message="暂无合作企业" />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-20">
               {data.enterprises.map((enterprise) => (
                 <EnterpriseCard key={enterprise.id} enterprise={enterprise} />
               ))}
@@ -791,7 +794,7 @@ export default function AllianceLandingPage() {
           {data.projects.length === 0 ? (
             <EmptyState message="暂无合作项目" />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
               {data.projects.map((project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
@@ -807,7 +810,7 @@ export default function AllianceLandingPage() {
           {data.achievements.length === 0 ? (
             <EmptyState message="暂无合作成果" />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
               {data.achievements.map((achievement) => (
                 <AchievementCard key={achievement.id} achievement={achievement} />
               ))}
