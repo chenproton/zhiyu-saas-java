@@ -55,14 +55,51 @@ export const TYPE_BG: Record<string, string> = {
   other: 'bg-stone-50',
 }
 
+// 与 kkFileView 4.4.0 支持的全部格式对齐（后端 /uploads 直出白名单同源）
+// document 含文字/演示/文本代码/PDF/电子书及 CAD/3D 工程文件
+export const DOCUMENT_EXTS = [
+  'pdf', 'doc', 'docx', 'docm', 'dot', 'dotx', 'dotm', 'wps', 'wpt',
+  'rtf', 'odt', 'ott', 'fodt', 'pages',
+  'ppt', 'pptx', 'dps', 'odp', 'otp', 'sxi', 'vsd', 'vsdx',
+  'txt', 'md', 'log', 'json', 'properties', 'yaml', 'yml', 'gitignore',
+  'xml', 'xbrl', 'html', 'htm',
+  'java', 'py', 'c', 'cpp', 'h', 'php', 'go', 'js', 'css', 'lua', 'sh',
+  'rb', 'sql', 'bat', 'm', 'bas', 'prg', 'cmd', 'cs', 'ftl', 'asp', 'jsp', 'aspx',
+  'ofd', 'epub', 'eml', 'xmind', 'drawio', 'bpmn', 'dcm',
+  'dwg', 'dxf', 'dwf', 'dwfx', 'dwt', 'dng', 'cf2', 'plt',
+  'stl', 'obj', '3ds', 'ply', 'off', '3dm', 'fbx', 'dae', 'wrl', '3mf',
+  'glb', 'gltf', 'o3dv', 'stp', 'step', 'iges', 'igs', 'brep', 'bim', 'fcstd', 'ifc',
+]
+
+export const SPREADSHEET_EXTS = [
+  'xls', 'xlsx', 'xlsm', 'xlt', 'xltx', 'xltm', 'xlam', 'xla',
+  'et', 'ett', 'ods', 'ots', 'csv', 'tsv',
+]
+
+export const IMAGE_EXTS = [
+  'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'ico', 'jfif',
+  'svg', 'tif', 'tiff', 'tga', 'psd', 'eps', 'wmf', 'emf',
+]
+
+export const AUDIO_EXTS = ['mp3', 'wav', 'm4a', 'flac', 'aac', 'ogg']
+
+export const VIDEO_EXTS = [
+  'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'mpeg', '3gp', 'rm',
+  'mpd', 'm3u8', 'ts',
+]
+
+export const ARCHIVE_EXTS = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'jar', 'gzip']
+
+export const SOFTWARE_EXTS = ['exe', 'dmg', 'pkg', 'deb', 'rpm', 'zip', 'msi', 'apk']
+
 export const resourceTypeAccept: Record<string, string> = {
-  document: '.pdf,.doc,.docx,.txt,.ppt,.pptx,.md',
-  spreadsheet: '.xls,.xlsx,.csv',
-  image: '.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp',
-  audio: '.mp3,.wav,.ogg,.m4a,.flac,.aac',
-  video: '.mp4,.webm,.mov,.avi,.mkv,.flv',
-  archive: '.zip,.rar,.7z,.tar,.gz,.bz2',
-  software: '.exe,.dmg,.pkg,.deb,.rpm,.zip,.msi,.apk',
+  document: DOCUMENT_EXTS.map((e) => `.${e}`).join(','),
+  spreadsheet: SPREADSHEET_EXTS.map((e) => `.${e}`).join(','),
+  image: IMAGE_EXTS.map((e) => `.${e}`).join(','),
+  audio: AUDIO_EXTS.map((e) => `.${e}`).join(','),
+  video: VIDEO_EXTS.map((e) => `.${e}`).join(','),
+  archive: ARCHIVE_EXTS.map((e) => `.${e}`).join(','),
+  software: SOFTWARE_EXTS.map((e) => `.${e}`).join(','),
   other: '',
   link: '',
   venue: '',
@@ -70,13 +107,13 @@ export const resourceTypeAccept: Record<string, string> = {
 }
 
 export const resourceTypeExtensionMap: Record<string, string[]> = {
-  document: ['pdf', 'doc', 'docx', 'txt', 'ppt', 'pptx', 'md'],
-  spreadsheet: ['xls', 'xlsx', 'csv'],
-  image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'],
-  audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'],
-  video: ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'],
-  archive: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'],
-  software: ['exe', 'dmg', 'pkg', 'deb', 'rpm', 'zip', 'msi', 'apk'],
+  document: DOCUMENT_EXTS,
+  spreadsheet: SPREADSHEET_EXTS,
+  image: IMAGE_EXTS,
+  audio: AUDIO_EXTS,
+  video: VIDEO_EXTS,
+  archive: ARCHIVE_EXTS,
+  software: SOFTWARE_EXTS,
   other: [],
   link: [],
   venue: [],

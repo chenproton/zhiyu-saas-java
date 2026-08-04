@@ -493,17 +493,30 @@ func findOrCreateResources(ctx context.Context, db *pgxpool.Pool, tenantID strin
 func resourceTypeByExt(name string) string {
 	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
 	switch ext {
-	case "pdf", "doc", "docx", "txt", "ppt", "pptx", "md":
+	case "pdf", "doc", "docx", "docm", "dot", "dotx", "dotm", "wps", "wpt",
+		"rtf", "odt", "ott", "fodt", "pages",
+		"ppt", "pptx", "dps", "odp", "otp", "sxi", "vsd", "vsdx",
+		"txt", "md", "log", "json", "properties", "yaml", "yml", "gitignore",
+		"xml", "xbrl", "html", "htm",
+		"java", "py", "c", "cpp", "h", "php", "go", "js", "css", "lua", "sh",
+		"rb", "sql", "bat", "m", "bas", "prg", "cmd", "cs", "ftl", "asp", "jsp", "aspx",
+		"ofd", "epub", "eml", "xmind", "drawio", "bpmn", "dcm",
+		"dwg", "dxf", "dwf", "dwfx", "dwt", "dng", "cf2", "plt",
+		"stl", "obj", "3ds", "ply", "off", "3dm", "fbx", "dae", "wrl", "3mf",
+		"glb", "gltf", "o3dv", "stp", "step", "iges", "igs", "brep", "bim", "fcstd", "ifc":
 		return string(domain.ResourceTypeDocument)
-	case "xls", "xlsx", "csv":
+	case "xls", "xlsx", "xlsm", "xlt", "xltx", "xltm", "xlam", "xla",
+		"et", "ett", "ods", "ots", "csv", "tsv":
 		return string(domain.ResourceTypeSpreadsheet)
-	case "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp":
+	case "jpg", "jpeg", "png", "gif", "bmp", "webp", "ico", "jfif",
+		"svg", "tif", "tiff", "tga", "psd", "eps", "wmf", "emf":
 		return string(domain.ResourceTypeImage)
-	case "mp3", "wav", "ogg", "m4a", "flac", "aac":
+	case "mp3", "wav", "m4a", "flac", "aac", "ogg":
 		return string(domain.ResourceTypeAudio)
-	case "mp4", "webm", "mov", "avi", "mkv", "flv":
+	case "mp4", "webm", "mov", "avi", "mkv", "flv", "wmv", "mpeg", "3gp", "rm",
+		"mpd", "m3u8", "ts":
 		return string(domain.ResourceTypeVideo)
-	case "zip", "rar", "7z", "tar", "gz", "bz2":
+	case "zip", "rar", "7z", "tar", "gz", "bz2", "jar", "gzip":
 		return string(domain.ResourceTypeArchive)
 	case "exe", "dmg", "pkg", "deb", "rpm", "msi", "apk":
 		return string(domain.ResourceTypeSoftware)

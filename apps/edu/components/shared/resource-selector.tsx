@@ -47,6 +47,18 @@ import {
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
 import { RESOURCE_TYPE_LABELS, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types/library'
+import {
+  resourceTypeAccept,
+  resourceTypeExtensionMap,
+  RESOURCE_MAX_FILE_SIZE,
+  DOCUMENT_EXTS,
+  SPREADSHEET_EXTS,
+  IMAGE_EXTS,
+  AUDIO_EXTS,
+  VIDEO_EXTS,
+  ARCHIVE_EXTS,
+  SOFTWARE_EXTS,
+} from '@/lib/resource-type-constants'
 import type { ResourceKind } from '@/lib/types/library'
 
 export interface ResourceItem {
@@ -104,30 +116,6 @@ const resourceTypeColors: Record<string, string> = {
   software: 'bg-purple-50 text-purple-600 border-purple-200',
   other: 'bg-gray-50 text-gray-600 border-gray-200',
 }
-
-const resourceTypeAccept: Record<string, string> = {
-  document: '.pdf,.doc,.docx,.txt,.ppt,.pptx,.md',
-  spreadsheet: '.xls,.xlsx,.csv',
-  image: '.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp',
-  audio: '.mp3,.wav,.ogg,.m4a,.flac,.aac',
-  video: '.mp4,.webm,.mov,.avi,.mkv,.flv',
-  archive: '.zip,.rar,.7z,.tar,.gz,.bz2',
-  other: '',
-  software: '.exe,.dmg,.pkg,.deb,.rpm,.zip,.msi,.apk',
-}
-
-const resourceTypeExtensionMap: Record<string, string[]> = {
-  document: ['pdf', 'doc', 'docx', 'txt', 'ppt', 'pptx', 'md'],
-  spreadsheet: ['xls', 'xlsx', 'csv'],
-  image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'],
-  audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'],
-  video: ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'],
-  archive: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'],
-  other: [],
-  software: ['exe', 'dmg', 'pkg', 'deb', 'rpm', 'zip', 'msi', 'apk'],
-}
-
-const RESOURCE_MAX_FILE_SIZE = 100 * 1024 * 1024
 
 export function ResourceSelector({
   pool: externalPool,
@@ -250,12 +238,13 @@ export function ResourceSelector({
 
   const inferTypeFromName = (name: string): string => {
     const ext = name.split('.').pop()?.toLowerCase() || ''
-    if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'video'
-    if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(ext)) return 'audio'
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return 'image'
-    if (['pdf', 'doc', 'docx', 'txt', 'ppt', 'pptx', 'md'].includes(ext)) return 'document'
-    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'spreadsheet'
-    if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) return 'archive'
+    if (VIDEO_EXTS.includes(ext)) return 'video'
+    if (AUDIO_EXTS.includes(ext)) return 'audio'
+    if (IMAGE_EXTS.includes(ext)) return 'image'
+    if (DOCUMENT_EXTS.includes(ext)) return 'document'
+    if (SPREADSHEET_EXTS.includes(ext)) return 'spreadsheet'
+    if (ARCHIVE_EXTS.includes(ext)) return 'archive'
+    if (SOFTWARE_EXTS.includes(ext)) return 'software'
     return 'other'
   }
 
