@@ -11,6 +11,7 @@ import {
   Eye,
   HelpCircle,
   Loader2,
+  Upload,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -60,6 +61,7 @@ import {
 } from '@/lib/resource-type-constants'
 import { useResourceCrud } from './use-resource-crud'
 import { ResourceUploadZone } from './resource-upload-zone'
+import { ResourceBatchImportDialog } from './resource-batch-import-dialog'
 
 const TYPE_LABEL_MAP: Record<string, string> = RESOURCE_TYPE_LABELS
 // 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
@@ -80,6 +82,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const [typeFilters, setTypeFilters] = useState<string[]>([])
   const [dialogType, setDialogType] = useState('document')
+  const [batchOpen, setBatchOpen] = useState(false)
 
   const {
     items: allItems,
@@ -106,6 +109,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
     handleResFileDrop,
     handleFileSelect,
     handleSubmit,
+    loadItems,
   } = useResourceCrud(resourceType)
 
   // 单类型视图提交类型固定；总览视图跟随弹窗内选择
@@ -245,10 +249,16 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
           <CardTitle className="text-base font-semibold">
             {isTypeView ? typeLabel : '教学资源库'}
           </CardTitle>
-          <Button onClick={handleOpenAddWithType} size="sm">
-            <Plus className="size-4 mr-1" />
-            新增资源
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setBatchOpen(true)}>
+              <Upload className="size-4 mr-1" />
+              批量导入
+            </Button>
+            <Button onClick={handleOpenAddWithType} size="sm">
+              <Plus className="size-4 mr-1" />
+              新增资源
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -395,6 +405,13 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
           </div>
         </CardContent>
       </Card>
+
+      <ResourceBatchImportDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        resourceType={resourceType}
+        onImported={loadItems}
+      />
 
       <ConfirmDialog
         open={deleteTarget !== null}

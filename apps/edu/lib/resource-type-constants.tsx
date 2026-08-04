@@ -96,6 +96,17 @@ export const fileTypesWithUpload = [
 
 export const RESOURCE_MAX_FILE_SIZE = 100 * 1024 * 1024
 
+export function validateResourceFile(file: File, type: string): string | null {
+  if (file.size > RESOURCE_MAX_FILE_SIZE) return '文件大小超过 100MB'
+  const allowed = resourceTypeExtensionMap[type] || []
+  if (allowed.length === 0) return null
+  const ext = file.name.split('.').pop()?.toLowerCase() || ''
+  if (!allowed.includes(ext)) {
+    return `不支持的文件格式，请上传 ${allowed.map((e) => `.${e}`).join('、')} 文件`
+  }
+  return null
+}
+
 export function formatSize(bytes?: number) {
   if (!bytes) return '-'
   if (bytes < 1024) return `${bytes} B`

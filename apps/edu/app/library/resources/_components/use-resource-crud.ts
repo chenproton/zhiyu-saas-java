@@ -2,11 +2,7 @@ import { useCallback, useEffect, useState, useRef } from 'react'
 import { resourceLibraryApi, fileApi } from '@/lib/api'
 import { type ResourceLibraryItem } from '@/lib/types/library'
 import { useToast } from '@zhiyu/ui'
-import {
-  resourceTypeExtensionMap,
-  fileTypesWithUpload,
-  RESOURCE_MAX_FILE_SIZE,
-} from '@/lib/resource-type-constants'
+import { fileTypesWithUpload, validateResourceFile } from '@/lib/resource-type-constants'
 
 export function useResourceCrud(resourceType?: string) {
   const { toast } = useToast()
@@ -89,17 +85,6 @@ export function useResourceCrud(resourceType?: string) {
     } finally {
       setDeleteTarget(null)
     }
-  }
-
-  const validateResourceFile = (file: File, type: string): string | null => {
-    if (file.size > RESOURCE_MAX_FILE_SIZE) return '文件大小超过 100MB'
-    const allowed = resourceTypeExtensionMap[type] || []
-    if (allowed.length === 0) return null
-    const ext = file.name.split('.').pop()?.toLowerCase() || ''
-    if (!allowed.includes(ext)) {
-      return `不支持的文件格式，请上传 ${allowed.map((e) => `.${e}`).join('、')} 文件`
-    }
-    return null
   }
 
   const handleResFileDrop = (e: React.DragEvent, fileType: string) => {
