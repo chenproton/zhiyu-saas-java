@@ -600,52 +600,39 @@ export function EvaluationRulesEditor({
   }
 
   const getMethodConfigSummary = (methodKey: string) => {
-    switch (methodKey) {
-      case 'random_draw':
-        return {
-          title: '现场问答',
-          summary: `${config.randomDrawSelectedIds.length} 题 / ${config.randomDrawEvalPoints.length} 个评价点`,
-          configured:
-            config.randomDrawSelectedIds.length > 0 || config.randomDrawEvalPoints.length > 0,
-        }
-      case 'review':
-        return {
-          title: '现场评审',
-          summary: `${config.reviewEvalPoints.length} 个评价点`,
-          configured: config.reviewEvalPoints.length > 0,
-        }
-      case 'paper':
-        return {
-          title: '试卷',
-          summary: config.paperIds.length > 0 ? `已选 ${config.paperIds.length} 张试卷` : '未选择',
-          configured: config.paperIds.length > 0,
-        }
-      case 'question_bank':
-        return {
-          title: '题库',
-          summary: `${config.questionBankQuestions.length} 题`,
-          configured: config.questionBankQuestions.length > 0,
-        }
-      case 'outcome':
-        return {
-          title: '成果评价',
-          summary: `${config.outcomeEvalPoints.length} 个评价点`,
-          configured: config.outcomeEvalPoints.length > 0,
-        }
-      case 'homework':
-        return {
-          title: '作业',
-          summary: `${config.homeworkEvalPoints.length} 个评价点`,
-          configured: config.homeworkEvalPoints.length > 0,
-        }
-      case 'quiz':
-        return {
-          title: '随堂测',
-          summary: `${config.quizQuestions.length} 题`,
-          configured: config.quizQuestions.length > 0,
-        }
-      default:
-        return { title: '', summary: '', configured: false }
+    const titleMap: Record<string, string> = {
+      random_draw: '现场问答',
+      review: '现场评审',
+      paper: '试卷',
+      question_bank: '题库',
+      outcome: '成果评价',
+      homework: '作业',
+      quiz: '随堂测',
+    }
+    const configured = (() => {
+      switch (methodKey) {
+        case 'random_draw':
+          return config.randomDrawSelectedIds.length > 0
+        case 'review':
+          return config.reviewEvalPoints.length > 0 || !!config.reviewRubricId
+        case 'paper':
+          return config.paperIds.length > 0
+        case 'question_bank':
+          return config.questionBankQuestions.length > 0
+        case 'outcome':
+          return config.outcomeEvalPoints.length > 0 || !!config.outcomeRubricId
+        case 'homework':
+          return config.homeworkEvalPoints.length > 0 || !!config.homeworkRubricId
+        case 'quiz':
+          return config.quizQuestions.length > 0
+        default:
+          return false
+      }
+    })()
+    return {
+      title: titleMap[methodKey] || '',
+      summary: configured ? '已配置' : '未配置',
+      configured,
     }
   }
 
@@ -2554,37 +2541,35 @@ export function EvaluationRulesEditor({
                   <div>
                     <Label className="text-xs text-gray-500">评价标准类型</Label>
                     <div className="flex gap-3 mt-1">
-                      {erDialogMethod !== 'homework' && (
-                        <button
-                          onClick={() => {
-                            if (editingRubricId)
-                              setRubricLibrary((prev) =>
-                                prev.map((s) =>
-                                  s.id === editingRubricId ? { ...s, mode: 'rubric' } : s,
-                                ),
-                              )
-                            else setLocalDraft((prev) => ({ ...prev, mode: 'rubric' }))
-                          }}
+                      <button
+                        onClick={() => {
+                          if (editingRubricId)
+                            setRubricLibrary((prev) =>
+                              prev.map((s) =>
+                                s.id === editingRubricId ? { ...s, mode: 'rubric' } : s,
+                              ),
+                            )
+                          else setLocalDraft((prev) => ({ ...prev, mode: 'rubric' }))
+                        }}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5',
+                          draftScheme.mode === 'rubric'
+                            ? 'bg-primary/10 text-primary border-primary'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
+                        )}
+                      >
+                        <div
                           className={cn(
-                            'px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5',
-                            draftScheme.mode === 'rubric'
-                              ? 'bg-primary/10 text-primary border-primary'
-                              : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
+                            'w-3.5 h-3.5 rounded-full border flex items-center justify-center',
+                            draftScheme.mode === 'rubric' ? 'border-primary' : 'border-gray-300',
                           )}
                         >
-                          <div
-                            className={cn(
-                              'w-3.5 h-3.5 rounded-full border flex items-center justify-center',
-                              draftScheme.mode === 'rubric' ? 'border-primary' : 'border-gray-300',
-                            )}
-                          >
-                            {draftScheme.mode === 'rubric' && (
-                              <div className="w-2 h-2 rounded-full bg-primary" />
-                            )}
-                          </div>
-                          评价量规
-                        </button>
-                      )}
+                          {draftScheme.mode === 'rubric' && (
+                            <div className="w-2 h-2 rounded-full bg-primary" />
+                          )}
+                        </div>
+                        评价量规
+                      </button>
                       <button
                         onClick={() => {
                           if (editingRubricId)
@@ -2640,9 +2625,7 @@ export function EvaluationRulesEditor({
                         评分规则
                       </button>
                     </div>
-                    {erDialogMethod === 'homework' && (
-                      <p className="text-[10px] text-gray-400 mt-1">作业测评仅需使用评分规则即可</p>
-                    )}
+
                   </div>
                 </div>
               </div>
