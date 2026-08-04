@@ -57,6 +57,6 @@ func (p OrgTypeUpdateParams) Args() []any {
 // CountOrgRefs 返回引用该组织类型的组织数（删除前引用检查）。
 func (s *OrgTypesStore) CountOrgRefs(ctx context.Context, orgTypeID string) (int, error) {
 	var count int
-	err := s.Q().QueryRow(ctx, `SELECT COUNT(*) FROM organizations WHERE org_type_id = $1`, orgTypeID).Scan(&count)
+	err := s.Q().QueryRow(ctx, `SELECT COUNT(*) FROM organizations WHERE type_id = $1`, orgTypeID).Scan(&count)
 	return count, err
 }
