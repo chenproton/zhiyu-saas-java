@@ -21,7 +21,7 @@ import {
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { getPlatformCardModules } from '@/lib/navigation-config'
+import { getPlatformCardModules, platformModuleDefs } from '@/lib/navigation-config'
 
 const menuItems = [
   { id: 'system', label: '系统管理', icon: Settings },
@@ -75,6 +75,7 @@ interface ModuleItem {
 interface ModuleSection {
   id: string
   label: string
+  href: string
   icon: typeof Settings
   iconColor: string
   iconBg: string
@@ -149,6 +150,7 @@ export default function AppsPage() {
         return {
           id: item.id,
           label: item.label,
+          href: platformModuleDefs[item.id]?.href ?? '#',
           icon: item.icon,
           ...platformStyles[item.id],
           modules,
@@ -310,7 +312,16 @@ export default function AppsPage() {
                       >
                         <SectionIcon className={cn('w-5 h-5', section.iconColor)} />
                       </div>
-                      <h2 className="text-base font-semibold text-foreground">{section.label}</h2>
+                      {section.href && section.href !== '#' ? (
+                        <Link
+                          href={section.href}
+                          className="text-base font-semibold text-foreground hover:text-primary transition-colors"
+                        >
+                          {section.label}
+                        </Link>
+                      ) : (
+                        <h2 className="text-base font-semibold text-foreground">{section.label}</h2>
+                      )}
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                         {section.modules.length} 个模块
                       </span>
