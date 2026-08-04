@@ -5,6 +5,7 @@ import {
   taskStateToEvalRuleConfig,
   evalRuleConfigToTaskStateUpdates,
   taskStateFromMethods,
+  taskStateToMethodsInput,
   defaultGradeMapping,
   type TaskState,
 } from './tasks-logic'
@@ -48,12 +49,12 @@ describe('taskStateToEvalRuleConfig', () => {
 })
 
 describe('evalRuleConfigToTaskStateUpdates', () => {
-  it('homework 方法还原为 exam', () => {
+  it('homework 方法保持为 homework', () => {
     const state = makeDefaultTaskState(1, 0)
     state.evaluationMethods = ['homework'] as TaskState['evaluationMethods']
     const config = taskStateToEvalRuleConfig(state)
     const updates = evalRuleConfigToTaskStateUpdates(config)
-    expect(updates.evaluationMethods).toEqual(['exam'])
+    expect(updates.evaluationMethods).toEqual(['homework'])
   })
 
   it('round-trip 保持方法权重', () => {
@@ -63,6 +64,33 @@ describe('evalRuleConfigToTaskStateUpdates', () => {
     const config = taskStateToEvalRuleConfig(state)
     const back = evalRuleConfigToTaskStateUpdates(config)
     expect(back.methodWeights).toEqual({ random_draw: 50, review: 50 })
+  })
+
+  it('round-trip 评价规则资源/对象/主体均保持 homework 键', () => {
+    const state = makeDefaultTaskState(1, 0)
+    state.evaluationMethods = ['homework'] as TaskState['evaluationMethods']
+    state.methodWeights = { homework: 100 }
+    state.methodEvalObjects = { homework: 'group' }
+    state.methodEvalSubjects = { homework: [{ type: 'teacher', enabled: true, params: { weightPercent: 100 } }] }
+    state.methodResourceConfigs = { homework: { requiresMaterial: true, deadlineDays: 3 } }
+    state.homeworkEvalPoints = [
+      { id: 'ep-1', name: '完成度', desc: '', weight: 100, scoringMethod: 'score', gradeMapping: [] },
+    ] as TaskState['homeworkEvalPoints']
+
+    const config = taskStateToEvalRuleConfig(state)
+    const back = evalRuleConfigToTaskStateUpdates(config)
+    expect(back.evaluationMethods).toEqual(['homework'])
+    expect(back.methodWeights).toEqual({ homework: 100 })
+    expect(back.methodEvalObjects).toEqual({ homework: 'group' })
+    expect(back.methodEvalSubjects).toEqual({ homework: [{ type: 'teacher', enabled: true, params: { weightPercent: 100 } }] })
+    expect(back.methodResourceConfigs).toEqual({ homework: { requiresMaterial: true, deadlineDays: 3 } })
+
+    const methods = taskStateToMethodsInput({ ...state, ...back } as TaskState)
+    const homeworkMethod = methods.find((m) => m.methodKey === 'homework')
+    expect(homeworkMethod).toBeDefined()
+    expect(homeworkMethod?.evalObject).toBe('group')
+    expect(homeworkMethod?.resourceConfig).toEqual({ requiresMaterial: true, deadlineDays: 3 })
+    expect(homeworkMethod?.evalPoints).toHaveLength(1)
   })
 })
 
@@ -105,5 +133,29 @@ describe('taskStateFromMethods', () => {
     const state = taskStateFromMethods(methods)
     expect(state.evaluationMethods).toContain('random_draw')
     expect(state.evaluationMethods).toContain('review')
+  })
+
+  it('历史 exam 方法加载后归一化为 homework', () => {
+    const methods: TaskEvaluationMethod[] = [
+      {
+        id: 'm-old',
+        taskId: 't1',
+        methodKey: 'exam',
+        weight: 100,
+        evalObject: 'individual',
+        evalSubjects: [{ type: 'teacher', enabled: true, params: { weightPercent: 100 } }],
+        resourceConfig: { requiresMaterial: true, deadlineDays: 3 },
+        version: 1,
+        isEnabled: true,
+        evalPoints: [{ id: 'ep-1', configId: 'm-old', name: '完成度', weight: 100, scoringMethod: 'score', sortOrder: 0 }],
+        reviewSteps: [],
+      },
+    ]
+    const state = taskStateFromMethods(methods)
+    expect(state.evaluationMethods).toEqual(['homework'])
+    expect(state.methodEvalObjects).toEqual({ homework: 'individual' })
+    expect(state.methodEvalSubjects).toEqual({ homework: [{ type: 'teacher', enabled: true, params: { weightPercent: 100 } }] })
+    expect(state.methodResourceConfigs).toEqual({ homework: { requiresMaterial: true, deadlineDays: 3 } })
+    expect(state.homeworkEvalPoints).toHaveLength(1)
   })
 })

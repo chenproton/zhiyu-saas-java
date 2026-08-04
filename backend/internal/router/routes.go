@@ -100,6 +100,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/lesson/nodes", h.courseNodeHandler.List)
 				r.Get("/lesson/nodes/{id}", h.courseNodeHandler.Get)
 				r.Get("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.List)
+				r.Post("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.Submit)
 				r.Post("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submit", h.courseHandler.SubmitNodeHomework)
 
 				// 学生提交/查看本人的场景测评结果；评分仍限 businessUser

@@ -237,4 +237,19 @@ export const nodeEvaluationResultApi = {
     request<{ items: NodeEvaluationResult[]; total: number }>(
       `/lesson/node-evaluation-results${buildQuery(params || {})}`,
     ),
+  submit: (req: {
+    nodeId: string
+    methodKey: string
+    evaluateeId: string
+    evaluatorId?: string
+    evaluatorType?: string
+    maxScore?: number
+    objectiveAnswers?: Record<string, any>
+    subjectiveContent?: Record<string, any>
+    drawnQuestions?: Record<string, any>
+    evalPointScores?: Record<string, any>
+  }) => request<NodeEvaluationResult>('/lesson/node-evaluation-results', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  }),
 }

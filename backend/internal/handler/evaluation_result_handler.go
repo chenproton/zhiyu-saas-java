@@ -18,6 +18,7 @@ type EvaluationResultHandler struct {
 
 type SubmitResultRequest struct {
 	TaskID            string          `json:"taskId"`
+	NodeID            string          `json:"nodeId"`
 	SceneID           *string         `json:"sceneId,omitempty"`
 	MethodKey         string          `json:"methodKey"`
 	EvaluateeID       string          `json:"evaluateeId"`

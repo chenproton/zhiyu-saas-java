@@ -292,21 +292,24 @@ export function methodsToEvalRuleConfig(
     }>
   }>,
 ): EvalRuleConfig {
-  const allKeys = methods.map((m) => m.methodKey as EvalRuleMethodKey)
+  // 兼容历史数据：后端/旧状态可能使用 exam 作为 homework 的别名
+  const normalizeMethod = (m: string) => (m === 'exam' ? 'homework' : m)
+  const allKeys = methods.map((m) => normalizeMethod(m.methodKey) as EvalRuleMethodKey)
   const state = makeDefaultEvalRuleConfig(allKeys)
   if (!methods || methods.length === 0) return state
   state.evaluationMethods = methods
     .filter((m) => m.isEnabled !== false)
-    .map((m) => m.methodKey as EvalRuleMethodKey)
+    .map((m) => normalizeMethod(m.methodKey) as EvalRuleMethodKey)
   state.disabledEvaluationMethods = methods
     .filter((m) => m.isEnabled === false)
-    .map((m) => m.methodKey as EvalRuleMethodKey)
+    .map((m) => normalizeMethod(m.methodKey) as EvalRuleMethodKey)
   methods.forEach((m) => {
-    state.methodWeights[m.methodKey] = m.weight
-    state.methodEvalObjects[m.methodKey] = (m.evalObject as EvalObjectType) || 'individual'
-    state.methodEvalSubjects[m.methodKey] = (m.evalSubjects || []) as EvalRuleSubjectConfig[]
+    const mk = normalizeMethod(m.methodKey)
+    state.methodWeights[mk] = m.weight
+    state.methodEvalObjects[mk] = (m.evalObject as EvalObjectType) || 'individual'
+    state.methodEvalSubjects[mk] = (m.evalSubjects || []) as EvalRuleSubjectConfig[]
     const resourceConfig = m.resourceConfig || {}
-    state.methodResourceConfigs[m.methodKey] = resourceConfig
+    state.methodResourceConfigs[mk] = resourceConfig
     const toLocalEvalPoint = (ep: any): EvalRulePoint => ({
       id: ep.id || uid('ep'),
       name: ep.name,
@@ -319,7 +322,7 @@ export function methodsToEvalRuleConfig(
       gradeMapping: ep.gradeMapping,
       weight: ep.weight,
     })
-    switch (m.methodKey) {
+    switch (mk) {
       case 'random_draw':
         state.randomDrawEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         state.randomDrawScoreType =

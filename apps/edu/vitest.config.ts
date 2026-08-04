@@ -5,7 +5,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['lib/**/*.test.ts', 'app/scene/scenarios/[id]/edit/tasks/_components/**/*.test.ts'],
+    include: [
+      'lib/**/*.test.ts',
+      'app/scene/scenarios/[id]/edit/tasks/_components/**/*.test.ts',
+      'app/lesson/admin/system/add/_components/**/*.test.ts',
+    ],
   },
   resolve: {
     alias: [

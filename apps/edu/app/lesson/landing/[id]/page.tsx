@@ -57,9 +57,9 @@ import { formatDate } from '@/lib/format-utils'
 
 const TABS = [
   { value: 'nodes', label: '课程目录', icon: ListChecks },
-  { value: 'resources', label: '课程资源', icon: FolderOpen },
-  { value: 'knowledge', label: '知识图谱', icon: GitBranch },
+  { value: 'resources', label: '资源中心', icon: FolderOpen },
   { value: 'evaluation', label: '评价标准', icon: Target },
+  { value: 'knowledge', label: '知识图谱', icon: GitBranch },
 ]
 
 const coverGradients = [
@@ -885,9 +885,11 @@ export default function CourseDetailPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-3 mt-auto pt-5">
-                      <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
-                        <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
-                      </Button>
+                      <Link href={`/lesson/landing/${id}/learn`}>
+                        <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
+                          <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </div>

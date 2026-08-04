@@ -228,7 +228,7 @@ export function taskStateToEvalRuleConfig(state: TaskState): EvalRuleConfig {
     quizQuestions: state.quizQuestions,
     quizEvalPoints: state.quizEvalPoints,
     gradeMapping: state.gradeMapping,
-    methodResourceConfigs: state.methodResourceConfigs,
+    methodResourceConfigs: normalizeMap(state.methodResourceConfigs || {}),
     reviewSteps: (state.reviewSteps || []).map((rs: any, i: number) => ({
       label: rs.label,
       description: rs.desc || null,
@@ -241,7 +241,8 @@ export function taskStateToEvalRuleConfig(state: TaskState): EvalRuleConfig {
 }
 
 export function evalRuleConfigToTaskStateUpdates(config: EvalRuleConfig): Partial<TaskState> {
-  const normalizeMethod = (m: string) => (m === 'homework' ? 'exam' : m)
+  // 只保留 exam -> homework 的正向归一化，确保 TaskState 中始终使用规范键 homework
+  const normalizeMethod = (m: string) => (m === 'exam' ? 'homework' : m)
   const normalizeMap = <T,>(record: Record<string, T>): Record<string, T> => {
     const next: Record<string, T> = {}
     Object.entries(record || {}).forEach(([k, v]) => {
@@ -283,7 +284,7 @@ export function evalRuleConfigToTaskStateUpdates(config: EvalRuleConfig): Partia
     quizQuestions: config.quizQuestions,
     quizEvalPoints: config.quizEvalPoints as EvalPoint[],
     gradeMapping: config.gradeMapping,
-    methodResourceConfigs: config.methodResourceConfigs,
+    methodResourceConfigs: normalizeMap(config.methodResourceConfigs || {}),
     reviewSteps: (config.reviewSteps || []).map((rs: EvalRuleReviewStepInput) => ({
       id: (rs as { id?: string }).id || uid('rs'),
       label: rs.label,
@@ -409,15 +410,25 @@ export function taskStateFromMethods(methods: TaskEvaluationMethod[]): TaskState
 }
 
 export function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] }): any[] {
+  // 防御性归一化：不允许任何旧的 exam 键写入后端
+  const normalizeMethod = (m: string) => (m === 'exam' ? 'homework' : m)
+  const normalizeMap = <T,>(record: Record<string, T>): Record<string, T> => {
+    const next: Record<string, T> = {}
+    Object.entries(record || {}).forEach(([k, v]) => {
+      next[normalizeMethod(k)] = v
+    })
+    return next
+  }
+
   const evalConfig = methodsToEvalRuleConfig([])
   Object.assign(evalConfig, {
-    evaluationMethods: ts.evaluationMethods,
-    disabledEvaluationMethods: ts.disabledEvaluationMethods || [],
-    methodWeights: ts.methodWeights,
+    evaluationMethods: (ts.evaluationMethods || []).map(normalizeMethod),
+    disabledEvaluationMethods: (ts.disabledEvaluationMethods || []).map(normalizeMethod),
+    methodWeights: normalizeMap(ts.methodWeights || {}),
     evalObject: ts.evalObject,
-    methodEvalObjects: ts.methodEvalObjects,
+    methodEvalObjects: normalizeMap(ts.methodEvalObjects || {}),
     evalSubjects: ts.evalSubjects,
-    methodEvalSubjects: ts.methodEvalSubjects,
+    methodEvalSubjects: normalizeMap(ts.methodEvalSubjects || {}),
     randomDrawQuestions: ts.randomDrawQuestions,
     randomDrawCustomQuestions: ts.randomDrawCustomQuestions,
     randomDrawSelectedIds: ts.randomDrawSelectedIds,
@@ -441,13 +452,13 @@ export function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: a
     quizQuestions: ts.quizQuestions,
     quizEvalPoints: ts.quizEvalPoints,
     gradeMapping: ts.gradeMapping,
-    methodResourceConfigs: ts.methodResourceConfigs,
+    methodResourceConfigs: normalizeMap(ts.methodResourceConfigs || {}),
   })
 
   const methods = evalRuleConfigToMethods(evalConfig)
 
   // 恢复评审步骤到 review 方法
-  if (ts.evaluationMethods.includes('review')) {
+  if (evalConfig.evaluationMethods.includes('review')) {
     const reviewIdx = methods.findIndex((m) => m.methodKey === 'review')
     if (reviewIdx >= 0) {
       const reviewSteps = extra?.reviewSteps ?? ts.reviewSteps

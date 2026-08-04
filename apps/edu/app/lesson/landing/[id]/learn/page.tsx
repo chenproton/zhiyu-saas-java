@@ -9,7 +9,6 @@ import {
   FileText,
   Clock,
   FolderOpen,
-  Target,
   BrainCircuit,
   BarChart3,
   ListChecks,
@@ -26,6 +25,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
+import { evalRuleConfigToMethods } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
@@ -44,25 +44,14 @@ import {
   UploadedFile,
 } from '@/components/shared/eval-method-card'
 
-import {
-  scenarioApi,
-  taskApi,
-  resourceLibraryApi,
-  knowledgeApi,
-  abilityApi,
-  taskEvaluationApi,
-  evaluationResultApi,
-  fileApi,
-} from '@/lib/api'
+import { courseApi, courseNodeApi, nodeEvaluationResultApi, fileApi } from '@/lib/api'
+import type { Course } from '@/lib/types'
 import type {
-  Scenario,
-  ScenarioTask,
-  TaskResource,
-  KnowledgePoint,
-  AbilityPoint,
-  TaskEvaluationMethod,
-  SceneEvaluationResult,
-} from '@/lib/types'
+  SystemCourseNode,
+  KnowledgePoint as NodeKnowledgePoint,
+  NodeResource,
+} from '@/lib/types/lesson-source'
+import type { NodeEvaluationResult } from '@zhiyu/api-client'
 
 /* ---------- constants ---------- */
 
@@ -80,36 +69,32 @@ const resourceTypeIcons: Record<string, string> = {
 
 /* ---------- page ---------- */
 
-export default function SceneLearnPage() {
+export default function LessonLearnPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const id = params.id as string
-  const targetTaskId = searchParams.get('task')
+  const targetNodeId = searchParams.get('node')
   const { toast } = useToast()
   const { user } = useAuth()
 
-  const [scenario, setScenario] = useState<Scenario | null>(null)
-  const [tasks, setTasks] = useState<ScenarioTask[]>([])
+  const [course, setCourse] = useState<Course | null>(null)
+  const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(targetTaskId || null)
+  const [activeNodeId, setActiveNodeId] = useState<string | null>(targetNodeId || null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
-  const [resourceMap, setResourceMap] = useState<Map<string, TaskResource>>(new Map())
-  const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
-  const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
-  const [evalMethods, setEvalMethods] = useState<TaskEvaluationMethod[]>([])
-  const [myResults, setMyResults] = useState<SceneEvaluationResult[]>([])
+  const [myResults, setMyResults] = useState<NodeEvaluationResult[]>([])
 
   useEffect(() => {
     ;(async () => {
       if (!id) return
       setLoading(true)
       try {
-        const s = await scenarioApi.get(id)
-        setScenario(s)
+        const c = await courseApi.get(id)
+        setCourse(c)
       } catch {
-        setScenario(null)
+        setCourse(null)
       } finally {
         setLoading(false)
       }
@@ -117,118 +102,74 @@ export default function SceneLearnPage() {
   }, [id])
 
   useEffect(() => {
-    if (!id || !scenario) return
-    taskApi
-      .list({ scenarioId: id, limit: 1000 })
+    if (!id || !course) return
+    courseNodeApi
+      .list({ courseId: id, limit: 1000 })
       .then((res) => {
-        const tList = res.items || []
-        setTasks(tList)
-        setActiveTaskId((prev) => {
-          if (targetTaskId && tList.find((t) => t.id === targetTaskId)) {
-            return targetTaskId
+        const list = (res.items || []).sort((a, b) => (a.order || 0) - (b.order || 0))
+        setNodes(list)
+        setActiveNodeId((prev) => {
+          if (targetNodeId && list.find((n) => n.id === targetNodeId)) {
+            return targetNodeId
           }
-          if (tList.length > 0 && !prev) {
-            return tList[0].id
+          if (list.length > 0 && !prev) {
+            return list[0].id
           }
           return prev
         })
       })
-      .catch(() => setTasks([]))
-  }, [id, scenario, targetTaskId])
+      .catch(() => setNodes([]))
+  }, [id, course, targetNodeId])
+
+  const activeNode = useMemo(
+    () => nodes.find((n) => n.id === activeNodeId),
+    [nodes, activeNodeId],
+  )
+  const totalHours = useMemo(
+    () => nodes.reduce((s, n) => s + (n.estimatedHours || 0), 0),
+    [nodes],
+  )
+
+  const evalMethods = useMemo(() => {
+    const config = activeNode?.evalData?.evalRuleConfig
+    if (!config || !Array.isArray(config.evaluationMethods)) return []
+    try {
+      return evalRuleConfigToMethods(config as any).filter((m) => m.isEnabled !== false)
+    } catch (err) {
+      reportError(err, '解析节点测评配置')
+      return []
+    }
+  }, [activeNode])
 
   useEffect(() => {
-    if (!id || !scenario) return
-    resourceLibraryApi
-      .list({ limit: 10000 })
-      .then((res) => {
-        const rMap = new Map<string, TaskResource>()
-        ;(res.items || []).forEach((r: any) => {
-          rMap.set(r.id, {
-            ...r,
-            type: r.resourceType || r.type,
-            size: r.fileSize !== undefined ? String(r.fileSize) : r.size,
-          } as TaskResource)
-        })
-        setResourceMap(rMap)
-      })
-      .catch(() => setResourceMap(new Map()))
-
-    Promise.all([
-      knowledgeApi.list({ limit: 1000 }).catch(() => ({ items: [] as KnowledgePoint[], total: 0 })),
-      abilityApi.list({ limit: 1000 }).catch(() => ({ items: [] as AbilityPoint[], total: 0 })),
-    ])
-      .then(([kRes, aRes]) => {
-        const kMap = new Map<string, KnowledgePoint>()
-        ;(kRes.items || []).forEach((k) => kMap.set(k.id, k))
-        setKnowledgeMap(kMap)
-        const aMap = new Map<string, AbilityPoint>()
-        ;(aRes.items || []).forEach((a) => aMap.set(a.id, a))
-        setAbilityMap(aMap)
-      })
-      .catch((err) => {
-        reportError(err, '加载知识点/能力点数据')
-        toast({ title: '部分数据加载失败', variant: 'destructive' })
-      })
-  }, [id, scenario, toast])
-
-  useEffect(() => {
-    ;(async () => {
-      if (!activeTaskId) return
-      setEvalMethods([])
-      try {
-        const res = await taskEvaluationApi.listMethods(activeTaskId)
-        setEvalMethods(
-          (res.methods || []).filter((m: TaskEvaluationMethod) => m.isEnabled !== false),
-        )
-      } catch {
-        setEvalMethods([])
-      }
-    })()
-  }, [activeTaskId])
-
-  useEffect(() => {
-    if (!activeTaskId) return
-    evaluationResultApi
-      .list({ taskId: activeTaskId, evaluateeId: user?.id, limit: 50 })
+    if (!activeNodeId) return
+    nodeEvaluationResultApi
+      .list({ nodeId: activeNodeId, evaluateeId: user?.id, limit: 50 })
       .then((res) => setMyResults(res.items || []))
       .catch((err) => {
-        reportError(err, '加载我的评估结果')
-        toast({ title: '评估结果加载失败', variant: 'destructive' })
+        reportError(err, '加载我的测评结果')
+        toast({ title: '测评结果加载失败', variant: 'destructive' })
       })
-  }, [activeTaskId, user?.id, toast])
+  }, [activeNodeId, user?.id, toast])
 
-  const activeTask = useMemo(() => tasks.find((t) => t.id === activeTaskId), [tasks, activeTaskId])
-  const totalHours = useMemo(() => tasks.reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
+  const nodeKnowledgePoints = useMemo(() => {
+    if (!activeNode) return []
+    return (activeNode.knowledgePoints || []) as NodeKnowledgePoint[]
+  }, [activeNode])
 
-  const taskKnowledgePoints = useMemo(() => {
-    if (!activeTask) return []
-    return (activeTask.knowledgePointIds || [])
-      .map((kid) => knowledgeMap.get(kid))
-      .filter(Boolean) as KnowledgePoint[]
-  }, [activeTask, knowledgeMap])
+  const nodeResources = useMemo(() => {
+    if (!activeNode) return []
+    return (activeNode.resources || []) as NodeResource[]
+  }, [activeNode])
 
-  const taskAbilityPoints = useMemo(() => {
-    if (!activeTask) return []
-    return (activeTask.abilityPointIds || [])
-      .map((aid) => abilityMap.get(aid))
-      .filter(Boolean) as AbilityPoint[]
-  }, [activeTask, abilityMap])
-
-  const taskResources = useMemo(() => {
-    if (!activeTask) return []
-    return (activeTask.resourceIds || [])
-      .map((rid) => resourceMap.get(rid))
-      .filter(Boolean) as TaskResource[]
-  }, [activeTask, resourceMap])
-
-  const taskEvalMethods = useMemo(() => {
+  const nodeEvalMethods = useMemo(() => {
     return {
       methods: evalMethods.map((m) => m.methodKey),
       weights: Object.fromEntries(evalMethods.map((m) => [m.methodKey, m.weight])),
     }
   }, [evalMethods])
 
-  const taskAggregate = useMemo(() => {
+  const nodeAggregate = useMemo(() => {
     let totalScore = 0
     let totalWeight = 0
     let evaluatedCount = 0
@@ -253,8 +194,8 @@ export default function SceneLearnPage() {
     }
   }, [evalMethods, myResults])
 
-  const selectTask = useCallback((taskId: string) => {
-    setActiveTaskId(taskId)
+  const selectNode = useCallback((nodeId: string) => {
+    setActiveNodeId(nodeId)
   }, [])
 
   /* ---------- eval method submit dialog state ---------- */
@@ -268,7 +209,7 @@ export default function SceneLearnPage() {
     [evalMethods, activeMethodKey],
   )
 
-  const toEvalMethodView = (m: TaskEvaluationMethod): EvalMethodViewModel => ({
+  const toEvalMethodView = (m: any): EvalMethodViewModel => ({
     methodKey: m.methodKey,
     weight: m.weight,
     resourceConfig: m.resourceConfig,
@@ -276,7 +217,7 @@ export default function SceneLearnPage() {
     evalPoints: m.evalPoints,
   })
 
-  const toEvalResultModel = (r?: SceneEvaluationResult): EvalMethodResultModel | undefined => {
+  const toEvalResultModel = (r?: NodeEvaluationResult): EvalMethodResultModel | undefined => {
     if (!r) return undefined
     return {
       status: r.status,
@@ -285,21 +226,20 @@ export default function SceneLearnPage() {
     }
   }
 
-  const getExamHref = (m: TaskEvaluationMethod) => {
+  const getExamHref = (m: any, nodeId: string, courseId: string) => {
     const isExamMethod = ['paper', 'question_bank', 'quiz'].includes(m.methodKey)
     if (!isExamMethod) return undefined
     const examId =
       m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
     const usageId = m.resourceConfig?.usageId
     if (!examId) return undefined
-    return `/evaluation/landing/exams/${examId}?task=${activeTaskId}&scene=${id}&method=${m.methodKey}&usage=${usageId || ''}`
+    return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${m.methodKey}&usage=${usageId || ''}&course=${courseId}`
   }
 
   const handleSubmitMethod = async (payload: EvalMethodSubmitPayload) => {
-    if (!user?.id || !activeTaskId) return
-    await evaluationResultApi.submit({
-      taskId: activeTaskId,
-      sceneId: id,
+    if (!user?.id || !activeNodeId) return
+    await nodeEvaluationResultApi.submit({
+      nodeId: activeNodeId,
       methodKey: payload.methodKey,
       evaluateeId: user.id,
       maxScore: payload.maxScore,
@@ -343,7 +283,7 @@ export default function SceneLearnPage() {
     )
   }
 
-  if (!scenario) {
+  if (!course) {
     return (
       <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
         <div className="fixed inset-0 pointer-events-none z-0">
@@ -358,12 +298,12 @@ export default function SceneLearnPage() {
               <BookOpen className="w-12 h-12 text-blue-400/70" />
             </div>
           </div>
-          <div className="text-lg font-semibold text-gray-600">场景不存在</div>
+          <div className="text-lg font-semibold text-gray-600">课程不存在</div>
           <Link
-            href="/scene/landing"
+            href="/lesson/landing"
             className="text-blue-600 hover:text-blue-700 mt-2 text-sm font-medium transition-colors"
           >
-            返回场景列表
+            返回课程列表
           </Link>
         </div>
         <PlatformFooter />
@@ -393,45 +333,42 @@ export default function SceneLearnPage() {
             <div className="flex items-center gap-4">
               <Link
                 replace
-                href={`/scene/landing/${id}`}
+                href={`/lesson/landing/${id}`}
                 className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-blue-600 transition-all duration-200"
               >
                 <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-600 transition-all duration-200">
                   <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
                 </span>
                 <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-blue-600 transition-colors">
-                  {scenario.name}
+                  {course.name}
                 </span>
               </Link>
             </div>
             <div className="flex items-center gap-2">
-              {activeTask && (
+              {activeNode && (
                 <>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
-                    <Target className="w-3.5 h-3.5 text-blue-500" />{' '}
-                    {activeTask.taskType === 'assessment' ? '考核' : '训练'}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
                     <BarChart3 className="w-3.5 h-3.5 text-blue-500" />{' '}
-                    {SCENE_DIFFICULTY[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`}
+                    {SCENE_DIFFICULTY[activeNode.difficulty ?? 3]?.label ||
+                      `Lv.${activeNode.difficulty ?? 3}`}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
-                    <Clock className="w-3.5 h-3.5 text-blue-500" /> {activeTask.estimatedHours || 0}{' '}
+                    <Clock className="w-3.5 h-3.5 text-blue-500" /> {activeNode.estimatedHours || 0}{' '}
                     课时
                   </span>
                 </>
               )}
               <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <ListChecks className="w-3.5 h-3.5 text-blue-500" /> {tasks.length} 个任务
+                <ListChecks className="w-3.5 h-3.5 text-blue-500" /> {nodes.length} 个节点
               </span>
               <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
                 <Clock className="w-3.5 h-3.5 text-blue-500" /> {totalHours} 课时
               </span>
             </div>
           </div>
-          {activeTask?.background && (
+          {activeNode?.background && (
             <div className="text-sm text-gray-600 leading-relaxed line-clamp-2 whitespace-pre-line">
-              {activeTask.background}
+              {activeNode.background}
             </div>
           )}
         </div>
@@ -439,7 +376,7 @@ export default function SceneLearnPage() {
 
       {/* ---------- body ---------- */}
       <div className="relative z-10 flex-1 flex max-w-[1400px] mx-auto w-full">
-        {/* ---------- left sidebar: task list ---------- */}
+        {/* ---------- left sidebar: node list ---------- */}
         <aside
           className={cn(
             'flex flex-shrink-0 flex-col rounded-2xl border border-[#e7e5e4] bg-white shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-all duration-300 sticky self-start mx-4 mt-4 overflow-hidden',
@@ -460,7 +397,7 @@ export default function SceneLearnPage() {
                 <div className="flex-1 flex items-center gap-3">
                   <span className="flex items-center gap-1 text-xs text-gray-400">
                     <Layers className="w-3 h-3" />
-                    {tasks.length} 个任务
+                    {nodes.length} 个节点
                   </span>
                   <span className="flex items-center gap-1 text-xs text-gray-400">
                     <Clock className="w-3 h-3" />
@@ -476,7 +413,7 @@ export default function SceneLearnPage() {
                     ? 'w-9 h-9 text-gray-500 hover:text-blue-600'
                     : 'w-8 h-8 ml-auto',
                 )}
-                title={sidebarCollapsed ? '展开任务列表' : '折叠任务列表'}
+                title={sidebarCollapsed ? '展开节点列表' : '折叠节点列表'}
               >
                 {sidebarCollapsed ? (
                   <PanelLeftOpen className="h-5 w-5" />
@@ -487,25 +424,25 @@ export default function SceneLearnPage() {
             </div>
           </div>
 
-          {/* task list */}
+          {/* node list */}
           <ScrollArea className="flex-1">
             <div className="py-1">
-              {tasks.map((task, idx) => {
-                const isActive = activeTaskId === task.id
-                const diff = SCENE_DIFFICULTY[task.difficulty] || SCENE_DIFFICULTY[3]
+              {nodes.map((node, idx) => {
+                const isActive = activeNodeId === node.id
+                const diff = SCENE_DIFFICULTY[node.difficulty ?? 3] || SCENE_DIFFICULTY[3]
 
                 if (sidebarCollapsed) {
                   return (
-                    <div key={task.id} className="flex justify-center py-1.5">
+                    <div key={node.id} className="flex justify-center py-1.5">
                       <button
-                        onClick={() => selectTask(task.id)}
+                        onClick={() => selectNode(node.id)}
                         className={cn(
                           'flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-bold transition-all duration-200',
                           isActive
                             ? 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/30'
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600 hover:-translate-y-0.5',
                         )}
-                        title={`${idx + 1}. ${task.name} (${diff.label}, ${task.estimatedHours || 0}h)`}
+                        title={`${idx + 1}. ${node.name} (${diff.label}, ${node.estimatedHours || 0}h)`}
                       >
                         {idx + 1}
                       </button>
@@ -515,8 +452,8 @@ export default function SceneLearnPage() {
 
                 return (
                   <button
-                    key={task.id}
-                    onClick={() => selectTask(task.id)}
+                    key={node.id}
+                    onClick={() => selectNode(node.id)}
                     className={cn(
                       'relative flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 group',
                       isActive
@@ -544,12 +481,12 @@ export default function SceneLearnPage() {
                           isActive ? 'text-blue-700' : 'text-gray-700 group-hover:text-gray-900',
                         )}
                       >
-                        {task.name}
+                        {node.name}
                       </div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-[10px] text-gray-400 flex items-center gap-1">
                           <Clock className="h-2.5 w-2.5" />
-                          {task.estimatedHours || 0}h
+                          {node.estimatedHours || 0}h
                         </span>
                         <span
                           className="text-[10px] flex items-center gap-1"
@@ -557,15 +494,6 @@ export default function SceneLearnPage() {
                         >
                           <BarChart3 className="h-2.5 w-2.5" />
                           {diff.label}
-                        </span>
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                          style={{
-                            backgroundColor: task.taskType === 'assessment' ? '#fef2f2' : '#eff6ff',
-                            color: task.taskType === 'assessment' ? '#dc2626' : '#2563eb',
-                          }}
-                        >
-                          {task.taskType === 'assessment' ? '考核' : '训练'}
                         </span>
                       </div>
                     </div>
@@ -578,7 +506,7 @@ export default function SceneLearnPage() {
 
         {/* ---------- right main area ---------- */}
         <main className="flex flex-1 flex-col overflow-y-auto relative">
-          {!activeTask ? (
+          {!activeNode ? (
             <div className="flex flex-col items-center justify-center flex-1 p-8">
               <div className="relative w-28 h-28 mb-6">
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-200 to-indigo-200 opacity-40 blur-xl animate-pulse" />
@@ -587,8 +515,8 @@ export default function SceneLearnPage() {
                   <BookOpen className="w-12 h-12 text-blue-400/70" />
                 </div>
               </div>
-              <p className="text-base font-semibold text-gray-600">选择一个任务开始学习</p>
-              <p className="text-sm text-gray-400 mt-1.5">从左侧任务列表中点击任务</p>
+              <p className="text-base font-semibold text-gray-600">选择一个节点开始学习</p>
+              <p className="text-sm text-gray-400 mt-1.5">从左侧节点列表中点击节点</p>
             </div>
           ) : (
             <>
@@ -596,23 +524,23 @@ export default function SceneLearnPage() {
               <div className="flex flex-1 gap-4 p-4">
                 {/* left column: 2 cards */}
                 <div className="flex-1 space-y-4">
-                  {/* 任务说明书 */}
+                  {/* 节点说明书 */}
                   <Card className="rounded-2xl border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] transition-all duration-300 py-0 gap-0 flex flex-col bg-white">
                     <CardHeader className="border-b border-gray-100 px-6 py-5 shrink-0 bg-white">
                       <CardTitle className="text-base flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
                           <FileText className="h-4 w-4" />
                         </div>
-                        <span className="text-gray-800 font-semibold text-lg">任务说明书</span>
-                        {activeTask.descriptionPdf && (
+                        <span className="text-gray-800 font-semibold text-lg">节点说明书</span>
+                        {activeNode.descriptionPdf && (
                           <button
                             onClick={() =>
                               addPreviewResource({
                                 id: `pdf-${Date.now()}`,
-                                url: activeTask.descriptionPdf,
-                                name: '任务说明书 PDF',
+                                url: activeNode.descriptionPdf,
+                                name: '节点说明书 PDF',
                                 type: 'pdf',
-                              } as TaskResource)
+                              } as any)
                             }
                             className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 shadow-sm transition-all"
                           >
@@ -624,41 +552,41 @@ export default function SceneLearnPage() {
                     </CardHeader>
                     <CardContent className="p-8 flex-1 bg-white">
                       <ScrollArea className="h-full">
-                        {activeTask.detailedDescription || activeTask.description ? (
+                        {activeNode.detailedDescription ? (
                           <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line leading-loose">
-                            {activeTask.detailedDescription || activeTask.description}
+                            {activeNode.detailedDescription}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-400">暂无任务说明书</p>
+                          <p className="text-xs text-gray-400">暂无节点说明书</p>
                         )}
                       </ScrollArea>
                     </CardContent>
                   </Card>
 
-                  {/* 任务测评 */}
+                  {/* 节点测评 */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 px-1">
                       <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
                         <ClipboardList className="h-4 w-4" />
                       </div>
-                      <h3 className="text-base font-semibold text-gray-800">任务测评</h3>
-                      {taskAggregate.totalMethods > 0 && (
+                      <h3 className="text-base font-semibold text-gray-800">节点测评</h3>
+                      {nodeAggregate.totalMethods > 0 && (
                         <div className="ml-auto flex items-center gap-3">
                           <span className="text-xs text-gray-500">
-                            已评分 {taskAggregate.evaluatedCount}/{taskAggregate.totalMethods}
+                            已评分 {nodeAggregate.evaluatedCount}/{nodeAggregate.totalMethods}
                           </span>
-                          {taskAggregate.evaluatedCount > 0 && (
+                          {nodeAggregate.evaluatedCount > 0 && (
                             <span className="text-sm font-semibold text-blue-600">
-                              综合 {taskAggregate.score}/{taskAggregate.maxScore}
+                              综合 {nodeAggregate.score}/{nodeAggregate.maxScore}
                             </span>
                           )}
                         </div>
                       )}
                     </div>
 
-                    {taskEvalMethods.methods.length > 0 ? (
+                    {nodeEvalMethods.methods.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {taskEvalMethods.methods.map((mk) => {
+                        {nodeEvalMethods.methods.map((mk) => {
                           const method = evalMethods.find((m) => m.methodKey === mk)
                           if (!method) return null
                           const r = myResults.find((x) => x.methodKey === mk)
@@ -674,7 +602,7 @@ export default function SceneLearnPage() {
                               key={mk}
                               method={toEvalMethodView(method)}
                               result={overriddenResult}
-                              examHref={getExamHref(method)}
+                              examHref={getExamHref(method, activeNodeId!, id)}
                               onAction={() => {
                                 setActiveMethodKey(mk)
                                 setSubmitDialogOpen(true)
@@ -690,7 +618,7 @@ export default function SceneLearnPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-700">
-                            该任务暂未设置评价方式
+                            该节点暂未设置评价方式
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
                             教师配置后，测评入口将显示在此处
@@ -706,7 +634,7 @@ export default function SceneLearnPage() {
         </main>
 
         {/* right panel: sticky tabs - outside main, same level as sidebar */}
-        {sidebarCollapsed && activeTask && (
+        {sidebarCollapsed && activeNode && (
           <div
             className="flex w-[360px] flex-shrink-0 sticky self-start mx-4 mt-4"
             style={{ top: '7rem', maxHeight: 'calc(100vh - 8rem)' }}
@@ -723,13 +651,6 @@ export default function SceneLearnPage() {
                       知识点
                     </TabsTrigger>
                     <TabsTrigger
-                      value="collapsed-ability"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
-                    >
-                      <Target className="mr-1 h-3.5 w-3.5" />
-                      能力点
-                    </TabsTrigger>
-                    <TabsTrigger
                       value="collapsed-resource"
                       className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
                     >
@@ -740,8 +661,8 @@ export default function SceneLearnPage() {
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-3">
                   <TabsContent value="collapsed-knowledge" className="mt-0 space-y-2">
-                    {taskKnowledgePoints.length > 0 ? (
-                      taskKnowledgePoints.map((kp, i) => (
+                    {nodeKnowledgePoints.length > 0 ? (
+                      nodeKnowledgePoints.map((kp, i) => (
                         <div
                           key={kp.id}
                           className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer"
@@ -763,47 +684,13 @@ export default function SceneLearnPage() {
                       <p className="text-xs text-gray-400 text-center py-8">暂无知识点</p>
                     )}
                   </TabsContent>
-                  <TabsContent value="collapsed-ability" className="mt-0 space-y-2">
-                    {taskAbilityPoints.length > 0 ? (
-                      taskAbilityPoints.map((ap, i) => {
-                        const cat = (
-                          {
-                            knowledge: { label: '知识', color: '#2563eb' },
-                            skill: { label: '技能', color: '#16a34a' },
-                            quality: { label: '素养', color: '#7c3aed' },
-                          } as any
-                        )[ap.category] || { label: ap.category, color: '#94a3b8' }
-                        return (
-                          <div
-                            key={ap.id}
-                            className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer"
-                          >
-                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-                              {i + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-700">{ap.name}</p>
-                              <span
-                                className="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5"
-                                style={{ backgroundColor: cat.color + '15', color: cat.color }}
-                              >
-                                {cat.label}
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })
-                    ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">暂无能力点</p>
-                    )}
-                  </TabsContent>
                   <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
-                    {taskResources.length > 0 ? (
-                      taskResources.map((r) => (
+                    {nodeResources.length > 0 ? (
+                      nodeResources.map((r) => (
                         <div
                           key={r.id}
                           className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer"
-                          onClick={() => addPreviewResource(r)}
+                          onClick={() => addPreviewResource(r as any)}
                         >
                           <div
                             className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${resourceTypeIcons[r.type] || 'text-gray-400 bg-gray-50'}`}
@@ -860,4 +747,3 @@ export default function SceneLearnPage() {
     </div>
   )
 }
-

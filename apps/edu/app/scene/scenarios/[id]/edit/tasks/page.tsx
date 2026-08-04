@@ -66,6 +66,7 @@ import {
   scenarioWeightApi,
   examApi,
   examUsageApi,
+  resourceLibraryApi,
 } from '@/lib/api'
 import type { ScenarioTask as ApiScenarioTask } from '@/lib/types/scene'
 import { EvaluationRulesEditor } from '@/components/evaluation-rules'
@@ -80,6 +81,7 @@ import {
   useTaskDatasets,
   type TaskResourceItem,
   type UseTaskDatasetsResult,
+  type TaskKnowledgePointItem,
 } from './_components/hooks/use-task-datasets'
 import { TaskInfoCard } from './_components/task-info-card'
 import { TaskDescriptionCard } from './_components/task-description-card'
@@ -629,6 +631,49 @@ export default function TasksEditPage() {
   }
 
   const saveTasksToBackend = async () => {
+    // 兜底：409 且本地无同名记录时，按名称查后端并复用已有记录
+    const findExistingKnowledgePointByName = async (
+      name: string,
+    ): Promise<TaskKnowledgePointItem | undefined> => {
+      try {
+        const res = await knowledgeApi.list({ search: name, limit: 10 })
+        const found = (res.items || []).find((k) => k.name === name)
+        if (found) {
+          return {
+            id: found.id,
+            name: found.name,
+            code: found.code ?? undefined,
+            description: found.description ?? undefined,
+            linked: found.linked ?? false,
+            granularLessons: (found.granularLessonIds as string[]) || [],
+          } as TaskKnowledgePointItem
+        }
+      } catch {
+        /* ignore */
+      }
+      return undefined
+    }
+    const findExistingAbilityByName = async (name: string) => {
+      try {
+        const res = await abilityApi.list({ search: name, limit: 10 })
+        return (res.items || []).find((a) => (a as { name: string }).name === name) as
+          | { id: string; name: string }
+          | undefined
+      } catch {
+        return undefined
+      }
+    }
+    const findExistingResourceByName = async (name: string) => {
+      try {
+        const res = await resourceLibraryApi.list({ search: name, limit: 10 })
+        return (res.items || []).find((r) => r.name === name) as
+          | TaskResourceItem
+          | undefined
+      } catch {
+        return undefined
+      }
+    }
+
     // Persist custom knowledge points added in this session and map their IDs
     const kpIdMapping: Record<string, string> = {}
     const failedCreateIds: string[] = []
@@ -677,9 +722,15 @@ export default function TasksEditPage() {
               targetId = created.id
             } catch (err: any) {
               // 兜底：并发等场景下仍可能撞名，按后端提示合并到已有知识点
-              const existing = nextKnowledgePoints.find(
+              let existing = nextKnowledgePoints.find(
                 (k) => k.id !== kpId && k.name === kp.name,
               )
+              if (!existing && String(err?.message || '').includes('已存在')) {
+                existing = await findExistingKnowledgePointByName(kp.name)
+                if (existing) {
+                  nextKnowledgePoints.push(existing)
+                }
+              }
               if (existing && String(err?.message || '').includes('已存在')) {
                 targetId = existing.id
               }
@@ -741,9 +792,15 @@ export default function TasksEditPage() {
           } as any)
           targetId = created.id
         } catch (err: any) {
-          const existing = nextAbilityPoints.find(
+          let existing = nextAbilityPoints.find(
             (a) => (a as { id: string }).id !== abId && (a as { name: string }).name === (ap as { name: string }).name,
           )
+          if (!existing && String(err?.message || '').includes('已存在')) {
+            existing = await findExistingAbilityByName((ap as { name: string }).name)
+            if (existing) {
+              nextAbilityPoints.push(existing)
+            }
+          }
           if (existing && String(err?.message || '').includes('已存在')) {
             targetId = (existing as { id: string }).id
           }
@@ -775,6 +832,7 @@ export default function TasksEditPage() {
     for (const resId of Array.from(datasets.customResourceIds)) {
       const res = nextLearningResources.find((r) => r.id === resId)
       if (!res) continue
+      let targetId = ''
       try {
         const created = await taskResourceApi.create({
           name: res.name,
@@ -787,13 +845,27 @@ export default function TasksEditPage() {
           extraData: res.extraData,
           uploadedBy: res.uploadedBy,
         } as any)
-        resourceIdMapping[resId] = created.id
-        const idx = nextLearningResources.findIndex((r) => r.id === resId)
-        if (idx >= 0) nextLearningResources[idx] = { ...nextLearningResources[idx], id: created.id }
-        nextCustomResourceIds.delete(resId)
+        targetId = created.id
       } catch (err: any) {
-        failedResourceIds.push(resId)
+        // 兜底：资源名冲突时复用已有资源
+        if (String(err?.message || '').includes('已存在')) {
+          const existing =
+            nextLearningResources.find((r) => r.id !== resId && r.name === res.name) ||
+            (await findExistingResourceByName(res.name))
+          if (existing) {
+            targetId = existing.id
+            nextLearningResources.push(existing)
+          }
+        }
       }
+      if (!targetId) {
+        failedResourceIds.push(resId)
+        continue
+      }
+      resourceIdMapping[resId] = targetId
+      const idx = nextLearningResources.findIndex((r) => r.id === resId)
+      if (idx >= 0) nextLearningResources[idx] = { ...nextLearningResources[idx], id: targetId }
+      nextCustomResourceIds.delete(resId)
     }
     datasets.setLearningResources(nextLearningResources)
     datasets.setCustomResourceIds(nextCustomResourceIds)

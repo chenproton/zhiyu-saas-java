@@ -37,12 +37,13 @@ import {
 import { cn } from '@/lib/utils'
 import type { SystemCourseNode, NodeResource, NodeRefType } from '@/lib/types/lesson-source'
 
-import { KnowledgeSelector } from '../../_components/knowledge/knowledge-selector'
+import { KnowledgeSelector } from '@/components/shared/knowledge-selector'
 import { AbilityPointSelector } from '../../_components/ability/ability-point-selector'
 import { EvalMethodConfigModule } from '@/components/shared/eval-method-config-module'
 import { TaskInfoCard } from '@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card'
+import { TaskDescriptionCard } from '@/app/scene/scenarios/[id]/edit/tasks/_components/task-description-card'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
-import { ResourceSelector, type ResourceItem } from '../../_components/resources/resource-selector'
+import { ResourceSelector, type ResourceItem } from '@/components/shared/resource-selector'
 import { RichTextEditor } from '../../_components/common/rich-text-editor'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
@@ -53,6 +54,12 @@ import PublishCheckPanel from './_components/PublishCheckPanel'
 
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { Major } from '@/lib/types/backend'
+import {
+  type NodeDraft,
+  buildNodeSavePayload,
+  resolveKnowledgePointIds,
+  resolveResourceIds,
+} from './_components/lesson-save-utils'
 import { reportError } from '@/lib/error-handling'
 import {
   courseApi,
@@ -68,22 +75,6 @@ import {
 /* ---------- node editing mode ---------- */
 
 type AddMode = 'upload' | 'clone' | 'quote'
-
-interface NodeDraft {
-  hours: string
-  learningGoal: string
-  learningGoalPdf: string | null
-  detailedDescription: string
-  background: string
-  estimatedHours: string
-  knowledgePoints: KnowledgePointItem[]
-  selectedResourceIds: string[]
-  selectedEvalMethods: string[]
-  evalRules?: EvalRuleConfig
-  evalData?: { methods: string[]; evalRuleConfig?: EvalRuleConfig }
-  difficulty: number
-  coverImage?: string
-}
 
 interface GrainCourseOption {
   id: string
@@ -648,53 +639,25 @@ function AddSystemPageInner() {
             reportError(createErr, '创建自定义知识点')
           }
         }
-        const knowledgePointIds = kpList
-          .map((kp) => kpIdMapping.get(kp.id) || kp.id)
-          .filter((id) => !id.startsWith('kp-custom-'))
+        const knowledgePointIds = resolveKnowledgePointIds(kpList, kpIdMapping)
 
         // 资源：已入库的资源直接走绑定，本地临时资源等节点创建后再上传
         const resIds = draft?.selectedResourceIds || node.resources?.map((r) => r.id) || []
-        const existingResourceIds: string[] = []
-        const localResources: ResourceItem[] = []
-        for (const resId of resIds) {
-          const localRes = resourcePool.find((r) => r.id === resId)
-          if (localRes && (resId.startsWith('res-') || !node.id)) {
-            localResources.push(localRes)
-          } else {
-            existingResourceIds.push(resId)
-          }
-        }
+        const { existingResourceIds, localResources } = resolveResourceIds(
+          resIds,
+          resourcePool,
+          node.id,
+        )
 
-        const refType: 'normal' | 'original' = node.type === 'original' ? 'original' : 'normal'
-        const isQuoteNode = refType === 'original'
-        const nodePayload: any = {
-          courseId: effectiveCourseId,
+        const nodePayload = buildNodeSavePayload({
+          node,
+          draft,
+          effectiveCourseId,
           parentId: realParentId,
-          name: node.name,
-          code: contentCode,
-          sortOrder: Math.round(node.order),
-          refType,
-          sourceId: node.sourceId,
-          sourceName: node.sourceName,
-          evalData: draft?.evalData || node.evalData || {},
-          status: node.status || 'draft',
-        }
-        if (!isQuoteNode) {
-          Object.assign(nodePayload, {
-            teachingGoals: draft?.learningGoal || node.teachingGoals,
-            descriptionPdf: draft?.learningGoalPdf || node.descriptionPdf || undefined,
-            detailedDescription: draft?.detailedDescription || node.detailedDescription,
-            background: draft?.background || node.background,
-            estimatedHours:
-              draft?.estimatedHours || node.estimatedHours
-                ? parseFloat(draft?.estimatedHours || String(node.estimatedHours || ''))
-                : undefined,
-            duration: draft?.hours ? parseFloat(draft.hours) : node.duration,
-            difficulty: draft?.difficulty ?? node.difficulty,
-            knowledgePointIds,
-            resourceIds: existingResourceIds,
-          })
-        }
+          contentCode,
+          resolvedKnowledgePointIds: knowledgePointIds,
+          existingResourceIds,
+        })
 
         let realNodeId = node.id
         if (isTempId) {
@@ -1187,13 +1150,13 @@ function AddSystemPageInner() {
                                 />
                               </div>
                               <div className="md:col-span-2 space-y-1.5">
-                                <Label className="text-xs">学习目标</Label>
-                                <RichTextEditor
-                                  value={learningGoal}
-                                  onChange={setLearningGoal}
-                                  minHeight={280}
-                                  pdfUrl={learningGoalPdf}
-                                  onPdfChange={setLearningGoalPdf}
+                                <Label className="text-xs">节点详细说明</Label>
+                                <TaskDescriptionCard
+                                  description={detailedDescription}
+                                  onDescriptionChange={setDetailedDescription}
+                                  descriptionPdf={learningGoalPdf}
+                                  onDescriptionPdfChange={setLearningGoalPdf}
+                                  toast={toast}
                                 />
                               </div>
                             </div>
