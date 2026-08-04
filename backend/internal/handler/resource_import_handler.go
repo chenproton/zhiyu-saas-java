@@ -991,6 +991,10 @@ func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *e
 		contactPhone := nullableStr(col(row, 7))
 		contactEmail := nullableStr(col(row, 8))
 		address := nullableStr(col(row, 9))
+		creditCode := nullableStr(col(row, 10))
+		establishedYear := parseNullableInt(col(row, 11))
+		employeeCount := parseNullableInt(col(row, 12))
+		description := nullableStr(col(row, 13))
 
 		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_enterprises", tenantID, name)
 		if existingID != "" {
@@ -1004,9 +1008,11 @@ func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *e
 				_, err := h.DB.Exec(ctx, `
 					UPDATE alliance_enterprises SET enterprise_type=$1, industry=$2, region=$3,
 						status=$4, rating=$5, contact_person=$6, contact_phone=$7,
-						contact_email=$8, address=$9, updated_at=NOW()
-					WHERE id=$10 AND tenant_id=$11
-				`, entType, industry, region, status, rating, contactPerson, contactPhone, contactEmail, address, existingID, tenantID)
+						contact_email=$8, address=$9, unified_social_credit_code=$10,
+						established_year=$11, employee_count=$12, description=$13, updated_at=NOW()
+					WHERE id=$14 AND tenant_id=$15
+				`, entType, industry, region, status, rating, contactPerson, contactPhone, contactEmail, address,
+					creditCode, establishedYear, employeeCount, description, existingID, tenantID)
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("企业[%s]更新失败: %v", name, err))
@@ -1022,12 +1028,14 @@ func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *e
 			id := uuid.NewString()
 			_, err := h.DB.Exec(ctx, `
 				INSERT INTO alliance_enterprises (id, tenant_id, name, enterprise_type, industry, region, status, rating,
-					contact_person, contact_phone, contact_email, address, cooperation_types,
+					contact_person, contact_phone, contact_email, address, unified_social_credit_code,
+					established_year, employee_count, description, cooperation_types,
 					business_license_photos, qualification_photos, intellectual_property_photos, cover_photos,
 					secondary_colleges, is_public, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW())
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,NOW(),NOW())
 			`, id, tenantID, name, entType, industry, region, status, rating,
 				contactPerson, contactPhone, contactEmail, address,
+				creditCode, establishedYear, employeeCount, description,
 				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), false)
 			if err != nil {
 				result.Failed++
@@ -1043,7 +1051,7 @@ func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *e
 }
 
 // Sheet: 合作项目
-// Columns: 项目名称*, 项目类型, 项目阶段, 开始日期, 结束日期, 描述
+// Columns: 项目名称*, 项目类型, 项目阶段, 开始日期, 结束日期, 描述, 预算, 关联合作企业
 func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1073,6 +1081,8 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 		startDate := nullableStr(col(row, 3))
 		endDate := nullableStr(col(row, 4))
 		description := nullableStr(col(row, 5))
+		budget := nullableStr(col(row, 6))
+		enterpriseIDs := lookupIDsByNames(ctx, h.DB, "alliance_enterprises", tenantID, col(row, 7))
 
 		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_projects", tenantID, name)
 		if existingID != "" {
@@ -1085,9 +1095,9 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 			if !preview {
 				_, err := h.DB.Exec(ctx, `
 					UPDATE alliance_projects SET type=$1, phase=$2, start_date=$3, end_date=$4,
-						description=$5, updated_at=NOW()
-					WHERE id=$6 AND tenant_id=$7
-				`, projType, phase, startDate, endDate, description, existingID, tenantID)
+						description=$5, budget=$6, enterprise_ids=$7, updated_at=NOW()
+					WHERE id=$8 AND tenant_id=$9
+				`, projType, phase, startDate, endDate, description, budget, jsonBytes(enterpriseIDs), existingID, tenantID)
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("项目[%s]更新失败: %v", name, err))
@@ -1103,12 +1113,12 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 			id := uuid.NewString()
 			_, err := h.DB.Exec(ctx, `
 				INSERT INTO alliance_projects (id, tenant_id, name, type, description, phase, publish_status,
-					start_date, end_date, enterprise_ids, agreement_ids, secondary_colleges, is_public,
+					start_date, end_date, budget, enterprise_ids, agreement_ids, secondary_colleges, is_public,
 					created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW(),NOW())
 			`, id, tenantID, name, projType, description, phase, "draft",
-				startDate, endDate,
-				[]byte("[]"), []byte("[]"), []byte("[]"), false)
+				startDate, endDate, budget, jsonBytes(enterpriseIDs),
+				[]byte("[]"), []byte("[]"), false)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("项目[%s]创建失败: %v", name, err))
@@ -1123,7 +1133,7 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 }
 
 // Sheet: 合作成果
-// Columns: 成果名称*, 成果类型, 描述, 成果日期
+// Columns: 成果名称*, 成果类型, 描述, 成果日期, 关联归属项目, 关联合作企业
 func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1151,6 +1161,8 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 		}
 		description := nullableStr(col(row, 2))
 		achievementDate := nullableStr(col(row, 3))
+		projectIDs := lookupIDsByNames(ctx, h.DB, "alliance_projects", tenantID, col(row, 4))
+		enterpriseIDs := lookupIDsByNames(ctx, h.DB, "alliance_enterprises", tenantID, col(row, 5))
 
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_achievements WHERE tenant_id=$1 AND title=$2 LIMIT 1`, tenantID, title).Scan(&existingID)
@@ -1164,9 +1176,9 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 			if !preview {
 				_, err := h.DB.Exec(ctx, `
 					UPDATE alliance_achievements SET type=$1, description=$2, achievement_date=$3,
-						updated_at=NOW()
-					WHERE id=$4 AND tenant_id=$5
-				`, achType, description, achievementDate, existingID, tenantID)
+						project_ids=$4, enterprise_ids=$5, updated_at=NOW()
+					WHERE id=$6 AND tenant_id=$7
+				`, achType, description, achievementDate, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), existingID, tenantID)
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("成果[%s]更新失败: %v", title, err))
@@ -1187,7 +1199,8 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 					secondary_colleges, is_public, created_at, updated_at)
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW())
 			`, id, tenantID, title, achType, description, achievementDate,
-				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"),
+				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"),
+				jsonBytes(enterpriseIDs), jsonBytes(projectIDs),
 				[]byte("[]"), []byte("[]"), []byte("[]"), "draft", 0,
 				[]byte("[]"), false)
 			if err != nil {
@@ -1204,7 +1217,7 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 }
 
 // Sheet: 专家资源
-// Columns: 姓名*, 头衔, 职位, 行业, 城市, 简介
+// Columns: 姓名*, 头衔, 职位, 行业, 城市, 简介, 年龄, 从业年限, 关联合作企业, 擅长领域, 从业经历
 func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1231,6 +1244,11 @@ func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excel
 		industry := nullableStr(col(row, 3))
 		city := nullableStr(col(row, 4))
 		introduction := nullableStr(col(row, 5))
+		age := parseNullableInt(col(row, 6))
+		experienceYears := parseNullableInt(col(row, 7))
+		enterpriseID := lookupSingleIDByName(ctx, h.DB, "alliance_enterprises", tenantID, col(row, 8))
+		specialties := jsonBytes(splitNames(col(row, 9)))
+		workExperience := nullableStr(col(row, 10))
 
 		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_experts", tenantID, name)
 		if existingID != "" {
@@ -1243,9 +1261,11 @@ func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excel
 			if !preview {
 				_, err := h.DB.Exec(ctx, `
 					UPDATE alliance_experts SET title=$1, position=$2, industry=$3, city=$4,
-						introduction=$5, updated_at=NOW()
-					WHERE id=$6 AND tenant_id=$7
-				`, title, position, industry, city, introduction, existingID, tenantID)
+						introduction=$5, age=$6, experience_years=$7, enterprise_id=$8,
+						specialties=$9, work_experience=$10, updated_at=NOW()
+					WHERE id=$11 AND tenant_id=$12
+				`, title, position, industry, city, introduction, age, experienceYears,
+					enterpriseID, specialties, workExperience, existingID, tenantID)
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("专家[%s]更新失败: %v", name, err))
@@ -1261,12 +1281,13 @@ func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excel
 			id := uuid.NewString()
 			_, err := h.DB.Exec(ctx, `
 				INSERT INTO alliance_experts (id, tenant_id, name, title, position, expert_type, industry,
-					introduction, city, professional_fields, specialties, photos, attachments,
-					secondary_colleges, status, is_public, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW(),NOW())
+					introduction, city, age, experience_years, enterprise_id, specialties, work_experience,
+					professional_fields, photos, attachments, secondary_colleges, status, is_public,
+					created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,NOW(),NOW())
 			`, id, tenantID, name, title, position, nullableStr(""), industry,
-				introduction, city,
-				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"),
+				introduction, city, age, experienceYears, enterpriseID, specialties, workExperience,
+				[]byte("[]"), []byte("[]"), []byte("[]"),
 				[]byte("[]"), "active", false)
 			if err != nil {
 				result.Failed++
@@ -1282,7 +1303,7 @@ func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excel
 }
 
 // Sheet: 合作协议
-// Columns: 协议名称*, 协议类型, 开始日期, 结束日期, 状态, 内容
+// Columns: 协议名称*, 协议类型, 开始日期, 结束日期, 状态, 内容, 关联归属项目, 关联合作企业
 func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1312,6 +1333,8 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 			status = "draft"
 		}
 		content := nullableStr(col(row, 5))
+		projectIDs := lookupIDsByNames(ctx, h.DB, "alliance_projects", tenantID, col(row, 6))
+		enterpriseIDs := lookupIDsByNames(ctx, h.DB, "alliance_enterprises", tenantID, col(row, 7))
 
 		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_agreements", tenantID, name)
 		if existingID != "" {
@@ -1324,9 +1347,9 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 			if !preview {
 				_, err := h.DB.Exec(ctx, `
 					UPDATE alliance_agreements SET type=$1, start_date=$2, end_date=$3,
-						status=$4, content=$5, updated_at=NOW()
-					WHERE id=$6 AND tenant_id=$7
-				`, agmtType, startDate, endDate, status, content, existingID, tenantID)
+						status=$4, content=$5, project_ids=$6, enterprise_ids=$7, updated_at=NOW()
+					WHERE id=$8 AND tenant_id=$9
+				`, agmtType, startDate, endDate, status, content, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), existingID, tenantID)
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]更新失败: %v", name, err))
@@ -1342,10 +1365,10 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 			id := uuid.NewString()
 			_, err := h.DB.Exec(ctx, `
 				INSERT INTO alliance_agreements (id, tenant_id, name, type, content, start_date,
-					end_date, status, enterprise_ids, attachments, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())
+					end_date, status, enterprise_ids, project_ids, attachments, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())
 			`, id, tenantID, name, agmtType, content, startDate, endDate,
-				status, []byte("[]"), []byte("[]"))
+				status, jsonBytes(enterpriseIDs), jsonBytes(projectIDs), []byte("[]"))
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]创建失败: %v", name, err))
