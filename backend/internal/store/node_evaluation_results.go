@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
@@ -51,13 +52,14 @@ func (s *NodeEvaluationResultStore) Get(ctx context.Context, id string) (*domain
 	var comment *string
 	var gradedAt *time.Time
 	var gradedBy *string
+	var evaluatorID, evaluatorType pgtype.Text
 	err := s.q.QueryRow(ctx, `
 		SELECT id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
 			total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions,
 			comment, graded_at, graded_by
 		FROM node_evaluation_results WHERE id = $1
 	`, id).Scan(
-		&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &r.EvaluatorID, &r.EvaluatorType, &r.Status,
+		&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &evaluatorID, &evaluatorType, &r.Status,
 		&totalScore, &r.MaxScore, &r.EvalPointScores, &r.ObjectiveAnswers, &r.SubjectiveContent, &r.DrawnQuestions,
 		&comment, &gradedAt, &gradedBy,
 	)
@@ -67,6 +69,8 @@ func (s *NodeEvaluationResultStore) Get(ctx context.Context, id string) (*domain
 	if err != nil {
 		return nil, err
 	}
+	r.EvaluatorID = evaluatorID.String
+	r.EvaluatorType = evaluatorType.String
 	if totalScore != nil {
 		r.TotalScore = totalScore
 	}
@@ -134,13 +138,16 @@ func ScanNodeEvaluationResultRows(rows pgx.Rows) ([]domain.NodeEvaluationResult,
 		var comment *string
 		var gradedAt *time.Time
 		var gradedBy *string
+		var evaluatorID, evaluatorType pgtype.Text
 		if err := rows.Scan(
-			&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &r.EvaluatorID, &r.EvaluatorType, &r.Status,
+			&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &evaluatorID, &evaluatorType, &r.Status,
 			&totalScore, &r.MaxScore, &r.EvalPointScores, &r.ObjectiveAnswers, &r.SubjectiveContent, &r.DrawnQuestions,
 			&comment, &gradedAt, &gradedBy,
 		); err != nil {
 			return nil, err
 		}
+		r.EvaluatorID = evaluatorID.String
+		r.EvaluatorType = evaluatorType.String
 		if totalScore != nil {
 			r.TotalScore = totalScore
 		}
