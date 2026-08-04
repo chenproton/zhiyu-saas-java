@@ -349,7 +349,10 @@ export function methodsToEvalRuleConfig(
     const mk = normalizeMethod(m.methodKey)
     state.methodWeights[mk] = m.weight
     state.methodEvalObjects[mk] = (m.evalObject as EvalObjectType) || 'individual'
-    state.methodEvalSubjects[mk] = (m.evalSubjects || []) as EvalRuleSubjectConfig[]
+    // 空数组视为未配置：不写入 key，让编辑器回退到全局默认评价主体
+    if (m.evalSubjects && m.evalSubjects.length > 0) {
+      state.methodEvalSubjects[mk] = m.evalSubjects as EvalRuleSubjectConfig[]
+    }
     const resourceConfig = m.resourceConfig || {}
     state.methodResourceConfigs[mk] = resourceConfig
     const toLocalEvalPoint = (ep: any): EvalRulePoint => ({
@@ -544,7 +547,11 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
       weight: config.methodWeights[mk] || 0,
       evalObject: config.methodEvalObjects[mk] || config.evalObject || 'individual',
       scoreType,
-      evalSubjects: config.methodEvalSubjects[mk] || config.evalSubjects || [],
+      // 空数组视为未配置，回退全局默认主体，避免把空数组持久化到后端
+      evalSubjects:
+        (config.methodEvalSubjects[mk]?.length
+          ? config.methodEvalSubjects[mk]
+          : config.evalSubjects) || [],
       standardName: standardName || null,
       standardMode: standardMode || null,
       isEnabled: config.evaluationMethods.includes(mk),

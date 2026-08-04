@@ -661,12 +661,18 @@ export function EvaluationRulesEditor({
     }
   }
 
+  // 评价主体取值：methodEvalSubjects 中的空数组视为未配置，回退到全局默认主体
+  const getMethodSubjects = (methodKey: string) => {
+    const ms = config.methodEvalSubjects[methodKey]
+    return ms && ms.length > 0 ? ms : config.evalSubjects
+  }
+
   const updateMethodEvalSubject = (
     methodKey: string,
     idx: number,
     updates: Partial<EvalRuleSubjectConfig>,
   ) => {
-    const baseSubjects = config.methodEvalSubjects[methodKey] || config.evalSubjects
+    const baseSubjects = getMethodSubjects(methodKey)
     const newSubjects = [...baseSubjects]
     newSubjects[idx] = { ...newSubjects[idx], ...updates }
     updateConfig({ methodEvalSubjects: { ...config.methodEvalSubjects, [methodKey]: newSubjects } })
@@ -3426,11 +3432,8 @@ export function EvaluationRulesEditor({
   }
 
   const SubjectCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
-    const currentSubjects = config.methodEvalSubjects[methodKey] || config.evalSubjects
-    const evalObject = config.methodEvalObjects[methodKey] || config.evalObject
-    const enabledSubjects = currentSubjects.filter(
-      (s) => s.enabled && !(s.type === 'peer' && evalObject !== 'group'),
-    )
+    const currentSubjects = getMethodSubjects(methodKey)
+    const enabledSubjects = currentSubjects.filter((s) => s.enabled)
     const totalWeight = enabledSubjects.reduce((s, sub) => s + (sub.params?.weightPercent || 0), 0)
     return (
       <StepCard
@@ -3597,8 +3600,7 @@ export function EvaluationRulesEditor({
   }
 
   const renderSubjectDialogContent = (methodKey: string) => {
-    const currentSubjects = config.methodEvalSubjects[methodKey] || config.evalSubjects
-    const evalObject = config.methodEvalObjects[methodKey] || config.evalObject
+    const currentSubjects = getMethodSubjects(methodKey)
     const displayTypes = ['teacher', 'enterprise_mentor', 'self', 'peer'] as const
 
     const handleDistributeWeights = () => {
@@ -3620,16 +3622,6 @@ export function EvaluationRulesEditor({
       })
     }
 
-    const allowedSubjectsForMethod: Record<string, string[]> = {
-      paper: ['teacher', 'enterprise_mentor'],
-      question_bank: ['teacher', 'enterprise_mentor'],
-      quiz: ['teacher', 'enterprise_mentor'],
-      random_draw: ['teacher', 'enterprise_mentor', 'self', 'peer'],
-      review: ['teacher', 'enterprise_mentor', 'self', 'peer'],
-      outcome: ['teacher', 'enterprise_mentor'],
-      homework: ['teacher', 'enterprise_mentor'],
-    }
-
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -3649,37 +3641,29 @@ export function EvaluationRulesEditor({
             .filter((s) => displayTypes.includes(s.type as (typeof displayTypes)[number]))
             .map((subject) => {
               const originalIdx = currentSubjects.findIndex((s) => s.type === subject.type)
-              const methodAllowed = (allowedSubjectsForMethod[methodKey] || []).includes(
-                subject.type,
-              )
-              const peerAllowed = subject.type !== 'peer' || evalObject === 'group'
-              const allowed = methodAllowed && peerAllowed
               return (
                 <div
                   key={subject.type}
                   className={cn(
                     'p-3 rounded-lg border transition-all',
-                    !allowed
-                      ? 'opacity-50 bg-gray-50 border-gray-200'
-                      : subject.enabled
-                        ? 'border-primary bg-primary/[0.03]'
-                        : 'border-gray-200 bg-white',
+                    subject.enabled
+                      ? 'border-primary bg-primary/[0.03]'
+                      : 'border-gray-200 bg-white',
                   )}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={subject.enabled}
-                        disabled={!allowed}
                         onCheckedChange={(v) =>
                           updateMethodEvalSubject(methodKey, originalIdx, { enabled: v })
                         }
                       />
-                      <span className={cn('text-xs font-medium', !allowed && 'text-gray-400')}>
+                      <span className="text-xs font-medium">
                         {subjectLabels[subject.type]}
                       </span>
                     </div>
-                    {subject.enabled && allowed && subject.params?.weightPercent !== undefined && (
+                    {subject.enabled && subject.params?.weightPercent !== undefined && (
                       <Badge variant="outline" className="text-[10px]">
                         权重 {subject.params.weightPercent}%
                       </Badge>
