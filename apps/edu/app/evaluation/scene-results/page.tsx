@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -70,6 +70,14 @@ interface ScenarioGroup {
 }
 
 export default function GradingPage() {
+  return (
+    <Suspense fallback={null}>
+      <GradingPageContent />
+    </Suspense>
+  )
+}
+
+function GradingPageContent() {
   const searchParams = useSearchParams()
   const urlSceneId = searchParams.get('sceneId')
   const [searchQuery, setSearchQuery] = useState('')
