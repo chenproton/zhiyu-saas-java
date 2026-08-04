@@ -39,12 +39,16 @@ func (s *AbilityStore) Get(ctx context.Context, id, tenantID string) (*domain.Ab
 
 // Create 创建能力点。
 func (s *AbilityStore) Create(ctx context.Context, tenantID string, p *AbilityPointParams) (*domain.AbilityPoint, error) {
+	code, err := GenerateUniqueEntityCode(ctx, s.q, "NL", "ability_points", tenantID)
+	if err != nil {
+		code = GenerateEntityCode("NL")
+	}
 	var id string
-	err := s.q.QueryRow(ctx, `
-		INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public, creator_id)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
+	err = s.q.QueryRow(ctx, `
+		INSERT INTO ability_points (id, tenant_id, name, code, description, category, attributes, is_public, creator_id)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id
-	`, tenantID, p.Name, p.Description, p.Category, p.Attributes, p.IsPublic, p.CreatorID).Scan(&id)
+	`, tenantID, p.Name, code, p.Description, p.Category, p.Attributes, p.IsPublic, p.CreatorID).Scan(&id)
 	if err != nil {
 		return nil, err
 	}

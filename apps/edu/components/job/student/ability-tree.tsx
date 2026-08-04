@@ -136,9 +136,11 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
                           </div>
                         )}
                       </div>
-                      <span className="text-[10px] text-[#94a3b8] truncate font-mono">
-                        ID：{ab.abilityPointId}
-                      </span>
+                      {info?.code && (
+                        <span className="text-[10px] text-[#94a3b8] truncate font-mono">
+                          编码：{info.code}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )

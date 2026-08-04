@@ -401,11 +401,15 @@ func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, tenantID, name 
 		return existingID, nil
 	}
 	newID := uuid.NewString()
+	code, err := GenerateUniqueEntityCode(ctx, s.q, "NL", "ability_points", tenantID)
+	if err != nil {
+		code = GenerateEntityCode("NL")
+	}
 	if _, err := s.q.Exec(ctx, `
-		INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO ability_points (id, tenant_id, name, code, description, category, attributes, is_public)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (tenant_id, name) DO NOTHING
-	`, newID, tenantID, name, description, category, attributes, true); err != nil {
+	`, newID, tenantID, name, code, description, category, attributes, true); err != nil {
 		return "", err
 	}
 	_ = s.q.QueryRow(ctx, `

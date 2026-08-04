@@ -10,6 +10,7 @@ const entityCodeAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // allowedUniqueCodeTables lists the tables that may be passed to GenerateUniqueEntityCode.
 var allowedUniqueCodeTables = []string{
+	"ability_points",
 	"career_positions",
 	"courses",
 	"exams",
