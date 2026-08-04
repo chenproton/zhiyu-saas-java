@@ -167,7 +167,6 @@ body{
           <div class="r"><span class="k">所属班级</span><span class="v" id="biClass">--</span></div>
           <div class="r"><span class="k">班级排名</span><span class="v" id="biClassRank" style="color:#e8748a">--</span></div>
           <div class="r"><span class="k">专业排名</span><span class="v" id="biMajorRank" style="color:#e8748a">--</span></div>
-          <div class="r"><span class="k">岗位认定等级</span><span class="v" id="biGrade">--</span></div>
         </div>
       </div>
 
@@ -206,7 +205,6 @@ body{
             <div class="stat-row">
               <div class="stat s1"><span class="glow"></span><div class="v" id="statRate">--%</div><div class="l">岗位能力达成率</div></div>
               <div class="stat s2"><span class="glow"></span><div class="v" id="statPoints">--</div><div class="l">已达成 / 总能力点</div></div>
-              <div class="stat s3"><span class="glow"></span><div class="v" id="statGrade">--</div><div class="l">认知专业等级</div></div>
               <div class="stat s4"><span class="glow"></span><div class="v" id="statDomainCount">--</div><div class="l">能力域覆盖</div></div>
             </div>
             <div class="note" id="infoNote" style="border-radius:13px;padding:14px 15px;background:linear-gradient(120deg,#f6f8ff,#f9f7ff);border:1px solid var(--line);">
@@ -253,12 +251,13 @@ body{
               <tr>
                 <th>能力点</th>
                 <th class="c" style="width:80px">得分</th>
+                <th class="c" style="width:90px">档位</th>
                 <th>权重</th>
                 <th class="c" style="width:80px">达成</th>
               </tr>
             </thead>
             <tbody id="pointTableBody">
-              <tr><td colspan="4" class="empty-state">暂无能力点详情数据</td></tr>
+              <tr><td colspan="5" class="empty-state">暂无能力点详情数据</td></tr>
             </tbody>
           </table>
         </div>
@@ -354,7 +353,6 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
 
   function updateLeftFromPortrait(p,jr){
     if(!p)return;
-    document.getElementById('biGrade').textContent=p.overallGrade||'未认定';
     if(p.classRank) document.getElementById('biClassRank').textContent='第 '+p.classRank+' / '+(p.classTotal||'-')+' 名';
     else document.getElementById('biClassRank').textContent='--';
     if(p.majorRank) document.getElementById('biMajorRank').textContent='第 '+p.majorRank+' / '+(p.majorTotal||'-')+' 名';
@@ -459,7 +457,6 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
   function renderHeroStats(jr,p){
     document.getElementById('statRate').textContent=(jr?jr.achievementRate.toFixed(0):'--')+'%';
     document.getElementById('statPoints').textContent=(jr?jr.achievedAbilityPoints:'--')+' / '+(jr?jr.totalAbilityPoints:'--');
-    document.getElementById('statGrade').textContent=(p&&p.overallGrade)||'未认定';
     var ds=p&&p.domainScores||[];
     document.getElementById('statDomainCount').textContent=ds.length;
   }
@@ -484,7 +481,7 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
   function renderPointTable(abilityPoints){
     var tbody=document.getElementById('pointTableBody');
     if(!abilityPoints||!abilityPoints.length){
-      tbody.innerHTML='<tr><td colspan="4" class="empty-state">暂无能力点详情数据</td></tr>';
+      tbody.innerHTML='<tr><td colspan="5" class="empty-state">暂无能力点详情数据</td></tr>';
       return;
     }
     tbody.innerHTML=abilityPoints.map(function(ap){
@@ -492,6 +489,7 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
       return '<tr>'
         +'<td style="font-weight:600">'+(ap.abilityPointName||ap.name||'')+'</td>'
         +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
+        +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap.levelLabel||'-')+'</span></td>'
         +'<td class="c" style="color:var(--ink2)">'+(ap.weight!=null?ap.weight.toFixed(1):'-')+'</td>'
         +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap.achieved?'达成':'未达成')+'</span></td>'
         +'</tr>';
@@ -501,7 +499,6 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
   function renderInfoNote(jr,domainScores){
     var posName=jr?jr.positionName:'';
     var rate=jr?jr.achievementRate.toFixed(0):'--';
-    var gradeText=jr&&jr.grade?jr.grade:'--';
     var achieved=jr?jr.achievedAbilityPoints:0, total=jr?jr.totalAbilityPoints:0;
     var exceedNames=[], belowNames=[];
     domainScores.forEach(function(d){
@@ -532,7 +529,7 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
       return '<div class="jc '+bgCls+'">'
         +'<div class="jtp"><span class="jn">'+(r.positionName||'')+'</span><span class="mt2 '+cls+'">匹配 '+(rate).toFixed(0)+'%</span></div>'
         +'<div class="jbar"><i class="'+cls+'" style="width:'+Math.min(rate,100)+'%"></i></div>'
-        +'<div class="jdsc"><b style="color:'+levelColor+'">'+(r.grade||levelLabel)+'</b></div>'
+        +'<div class="jdsc"><b style="color:'+levelColor+'">'+levelLabel+'</b></div>'
         +'</div>';
     }).join('');
   }

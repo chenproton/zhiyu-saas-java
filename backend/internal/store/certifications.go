@@ -682,6 +682,45 @@ type CertificationWeightItem struct {
 	Weight         float64
 }
 
+// ===== 能力点分档配置 =====
+
+// ListPointLevels 查询岗位下所有能力点的自定义五档分数线（key=ability_point_id）。
+func (s *CertificationStore) ListPointLevels(ctx context.Context, tenantID, positionID string) (map[string]domain.JSONSlice, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT ability_point_id, level_mapping FROM certification_point_levels
+		WHERE tenant_id = $1 AND career_position_id = $2
+	`, tenantID, positionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make(map[string]domain.JSONSlice)
+	for rows.Next() {
+		var apID string
+		var mapping domain.JSONSlice
+		if err := rows.Scan(&apID, &mapping); err != nil {
+			return nil, err
+		}
+		result[apID] = mapping
+	}
+	return result, rows.Err()
+}
+
+// UpsertPointLevels 保存单个能力点的自定义五档分数线（事务内调用）。
+func (s *CertificationStore) UpsertPointLevels(ctx context.Context, tx Queryer, tenantID, positionID, abilityPointID string, mapping domain.JSONSlice) error {
+	if mapping == nil {
+		mapping = domain.JSONSlice{}
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO certification_point_levels (tenant_id, career_position_id, ability_point_id, level_mapping)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (tenant_id, career_position_id, ability_point_id) DO UPDATE SET
+			level_mapping = EXCLUDED.level_mapping,
+			updated_at = NOW()
+	`, tenantID, positionID, abilityPointID, mapping)
+	return err
+}
+
 // LoadModel 组装岗位能力认定模型：关联链（岗位→能力域→能力点→关联任务）。
 // 全部从已有数据读取，仅两级权重来自 certification_weights；ruleID 为空或权重缺失时
 // 走默认均分（点按点数均分 100、点内任务按任务数均分 100，余数补第一个）。
@@ -724,6 +763,17 @@ func (s *CertificationStore) LoadModel(ctx context.Context, tenantID, positionID
 	}
 	if len(points) == 0 {
 		return []domain.CertificationModelDomain{}, nil
+	}
+
+	// 1a. 能力点自定义五档分数线（无配置为空，前端显示"使用系统默认"）
+	pointLevels, err := s.ListPointLevels(ctx, tenantID, positionID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range points {
+		if mapping, ok := pointLevels[points[i].point.AbilityPointID]; ok {
+			points[i].point.LevelMapping = mapping
+		}
 	}
 
 	pointIDs := make([]string, len(points))

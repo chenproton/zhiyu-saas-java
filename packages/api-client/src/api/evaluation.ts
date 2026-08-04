@@ -327,6 +327,15 @@ export const certApi = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+  /** 保存能力点自定义五档分数线（[{level,min,max}×5]，未达标 = 低于最低档） */
+  putPointLevels: (positionId: string, abilityPointId: string, levelMapping: LevelMapping[]) =>
+    request<{ positionId: string; abilityPointId: string }>(
+      `/evaluation/certifications/positions/${positionId}/points/${abilityPointId}/levels`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ levelMapping }),
+      },
+    ),
 }
 
 export interface LandingExamItem {

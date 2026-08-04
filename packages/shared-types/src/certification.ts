@@ -138,6 +138,8 @@ export interface CertificationModelPoint {
   /** 能力点得分占岗位总评的权重（岗位内合计 100，后端缺省时给均分默认） */
   weight: number
   tasks: CertificationModelTask[]
+  /** 能力点自定义五档分数线（[{level,min,max}×5]）；空数组表示使用系统默认档位 */
+  levelMapping?: LevelMapping[]
 }
 
 /** 能力域分组 */

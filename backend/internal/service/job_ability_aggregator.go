@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strconv"
 	"sync"
 
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -46,6 +47,15 @@ type aggPoint struct {
 	requiredLevel  string // 掌握程度代码（understand/comprehend/master/proficient/expert）
 	weight         float64
 	tasks          []aggTask
+	// levels 自定义五档分数线（[{level,min,max}×5]）；为空使用系统默认档位
+	levels []levelMapping
+}
+
+// levelMapping 能力点自定义分档配置项（与 domain.LevelMapping 同构，避免引入 JSON 依赖）。
+type levelMapping struct {
+	Level string  `json:"level"`
+	Min   float64 `json:"min"`
+	Max   float64 `json:"max"`
 }
 
 type aggTask struct {
@@ -144,6 +154,14 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				requiredLevel:  p.RequiredLevel,
 				weight:         p.Weight,
 			}
+			if len(p.LevelMapping) > 0 {
+				var ls []levelMapping
+				if raw, mErr := json.Marshal(p.LevelMapping); mErr == nil {
+					if uErr := json.Unmarshal(raw, &ls); uErr == nil && len(ls) > 0 {
+						ap.levels = ls
+					}
+				}
+			}
 			for _, t := range p.Tasks {
 				ap.tasks = append(ap.tasks, aggTask{taskID: t.TaskID, weight: t.Weight})
 				taskIDSet[t.TaskID] = true
@@ -205,7 +223,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		return 0, 0, err
 	}
 
-	// 3. 逐学生计算并 upsert（评级固定为掌握程度五档，不再有可配置等级映射）
+	// 3. 逐学生计算并 upsert（岗位总评 grade 已停用，不再计算/写入；能力点按分档判定达成）
 	updated := 0
 	for _, studentID := range studentIDs {
 		type pointDetail struct {
@@ -216,6 +234,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 			RequiredLevel      string  `json:"requiredLevel"`
 			RequiredLevelLabel string  `json:"requiredLevelLabel,omitempty"`
 			Achieved           bool    `json:"achieved"`
+			LevelLabel         string  `json:"levelLabel,omitempty"`
 		}
 		details := make([]pointDetail, 0, len(points))
 		pointValid := make([]bool, 0, len(points))
@@ -237,14 +256,20 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				posWeightSum += p.weight
 			}
 			pointValid = append(pointValid, valid)
-			// 达成判定：能力点定级档位 >= binding.required_level 档位；requiredLevel 无法解析时回退 60 分线
+			// 达成判定：有自定义分档时用配置档位（分数档位 >= 要求档位），无配置时回退系统固定五档；
+			// requiredLevel 无法解析时回退 60 分线
 			pointAchieved := false
 			if valid {
-				requiredRank := masteryCodeRank(p.requiredLevel)
-				if requiredRank >= 0 {
-					pointAchieved = masteryScoreRank(pointScore) >= requiredRank
+				if len(p.levels) > 0 {
+					requiredRank := customLevelRankByCode(p.levels, p.requiredLevel)
+					pointAchieved = requiredRank >= 0 && customLevelRank(p.levels, pointScore) >= requiredRank
 				} else {
-					pointAchieved = pointScore >= 60
+					requiredRank := masteryCodeRank(p.requiredLevel)
+					if requiredRank >= 0 {
+						pointAchieved = masteryScoreRank(pointScore) >= requiredRank
+					} else {
+						pointAchieved = pointScore >= 60
+					}
 				}
 			}
 			if pointAchieved {
@@ -258,6 +283,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				RequiredLevel:      p.requiredLevel,
 				RequiredLevelLabel: masteryCodeLabel(p.requiredLevel),
 				Achieved:           pointAchieved,
+				LevelLabel:         pointLevelLabel(p.levels, pointScore),
 			})
 		}
 		if posWeightSum == 0 {
@@ -266,7 +292,6 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 
 		positionScore := posWeightedSum / posWeightSum
 		rate := math.Round(positionScore*100) / 100
-		grade := masteryGrade(positionScore)
 
 		// 按能力域（position_ability_bindings.domain）汇总域内能力点加权平均分
 		domainScores := make([]portraitDomainScore, 0)
@@ -322,7 +347,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				TotalAbilityPoints:    len(points),
 				AchievedAbilityPoints: achieved,
 				AchievementRate:       rate,
-				Grade:                 grade,
+				Grade:                 nil, // 岗位总评已停用，列保留置空
 				AbilityPointDetails:   detailsJSON,
 			}); err != nil {
 				return err
@@ -344,7 +369,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				TenantID:           tenantID,
 				UserID:             studentID,
 				CareerPositionID:   careerPositionID,
-				OverallGrade:       grade,
+				OverallGrade:       nil, // 岗位总评已停用，列保留置空
 				DomainScores:       domainScoresJSON,
 				RecommendPositions: recommendsJSON,
 			})
@@ -407,4 +432,38 @@ func masteryCodeLabel(code string) string {
 		return masteryLevels[i].label
 	}
 	return ""
+}
+
+// customLevelRank 自定义分档下分数落档（0-4，低于最低档返回 -1）。
+func customLevelRank(levels []levelMapping, score float64) int {
+	rank := -1
+	for i, l := range levels {
+		if score >= l.Min {
+			rank = i
+		}
+	}
+	return rank
+}
+
+// customLevelRankByCode 自定义分档下等级代码→档位，未命中返回 -1。
+func customLevelRankByCode(levels []levelMapping, code string) int {
+	for i, l := range levels {
+		if l.Level == code {
+			return i
+		}
+	}
+	return -1
+}
+
+// pointLevelLabel 能力点档位标签：有自定义分档时返回"未达标/了解L1/…/精通L5"，
+// 无自定义时返回系统默认档位标签（了解/理解/掌握/熟练/精通）。
+func pointLevelLabel(levels []levelMapping, score float64) string {
+	if len(levels) > 0 {
+		rank := customLevelRank(levels, score)
+		if rank < 0 {
+			return "未达标"
+		}
+		return masteryCodeLabel(levels[rank].Level) + "L" + strconv.Itoa(rank+1)
+	}
+	return masteryGrade(score)
 }

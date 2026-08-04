@@ -301,8 +301,9 @@ type JobAbilityResultUpsertParams struct {
 	TotalAbilityPoints    int
 	AchievedAbilityPoints int
 	AchievementRate       float64
-	Grade                 string
-	AbilityPointDetails   []byte
+	// Grade 岗位总评（已停用：不再计算/写入，列保留置空）
+	Grade               *string
+	AbilityPointDetails []byte
 }
 
 // UpsertResult 插入或更新岗位能力结果。
@@ -323,14 +324,6 @@ func (s *JobAbilityResultStore) UpsertResult(ctx context.Context, p *JobAbilityR
 			achievement_rate = EXCLUDED.achievement_rate,
 			grade = EXCLUDED.grade,
 			ability_point_details = EXCLUDED.ability_point_details,
-			grade_history = CASE
-				WHEN job_ability_results.grade IS NOT NULL AND job_ability_results.grade IS DISTINCT FROM EXCLUDED.grade
-				THEN job_ability_results.grade_history || jsonb_build_array(jsonb_build_object(
-					'grade', job_ability_results.grade,
-					'achievementRate', job_ability_results.achievement_rate,
-					'evaluatedAt', job_ability_results.evaluated_at))
-				ELSE job_ability_results.grade_history
-			END,
 			evaluated_at = EXCLUDED.evaluated_at
 	`, p.TenantID, p.CareerPositionID, p.UserID, p.ClassName, p.MajorID, p.MajorName,
 		p.TotalAbilityPoints, p.AchievedAbilityPoints, p.AchievementRate, p.Grade, p.AbilityPointDetails)

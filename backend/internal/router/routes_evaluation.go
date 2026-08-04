@@ -49,6 +49,7 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Get("/evaluation/certifications", h.certificationHandler.ListRules)
 	r.Get("/evaluation/certifications/positions/{positionId}/model", h.certificationModelHandler.GetModel)
 	r.Put("/evaluation/certifications/positions/{positionId}/weights", h.certificationModelHandler.PutWeights)
+	r.Put("/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels", h.certificationModelHandler.PutPointLevels)
 	r.Get("/evaluation/certifications/{id}", h.certificationHandler.GetRule)
 	r.Post("/evaluation/certifications", h.certificationHandler.CreateRule)
 	r.Put("/evaluation/certifications/{id}", h.certificationHandler.UpdateRule)
