@@ -917,6 +917,30 @@ export default function TasksEditPage() {
     })
     setTaskStates(updatedTaskStates)
 
+    const saveMethodsWithRetry = async (tid: string, ts: TaskState): Promise<number> => {
+      const methodsInput = taskStateToMethodsInput(ts)
+      if (methodsInput.length === 0) return ts.evalMethodVersion
+      const doSave = async (version: number) => {
+        const savedRes = await taskEvaluationApi.saveMethods(tid, {
+          version,
+          methods: methodsInput,
+        })
+        return (savedRes.methods || []).reduce((max, m) => Math.max(max, m.version || 0), 0)
+      }
+      try {
+        return await doSave(ts.evalMethodVersion)
+      } catch (err: any) {
+        if (err.message === '评价规则已被其他会话修改') {
+          const freshRes = await taskEvaluationApi.listMethods(tid)
+          const freshState = taskStateFromMethods(freshRes.methods || [])
+          const freshVersion = freshState.evalMethodVersion
+          updatedTaskStates[tid] = { ...updatedTaskStates[tid], ...freshState }
+          return await doSave(freshVersion)
+        }
+        throw err
+      }
+    }
+
     const newTasks: Task[] = []
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i]
@@ -948,14 +972,7 @@ export default function TasksEditPage() {
         // 临时 ID 创建的 task 需要把 state key 迁移到真实 ID，否则后续状态丢失
         updatedTaskStates[newTask.id] = { ...ts, evalMethodVersion: ts.evalMethodVersion }
         delete updatedTaskStates[oldId]
-        const savedRes = await taskEvaluationApi.saveMethods(newTask.id, {
-          version: ts.evalMethodVersion,
-          methods: taskStateToMethodsInput(ts),
-        })
-        const newVersion = (savedRes.methods || []).reduce(
-          (max, m) => Math.max(max, m.version || 0),
-          0,
-        )
+        const newVersion = await saveMethodsWithRetry(newTask.id, ts)
         updatedTaskStates[newTask.id] = {
           ...updatedTaskStates[newTask.id],
           evalMethodVersion: newVersion,
@@ -963,15 +980,7 @@ export default function TasksEditPage() {
       } else {
         await taskApi.update(t.id, payload)
         newTasks.push(t)
-        const methodsInput = taskStateToMethodsInput(ts)
-        const savedRes = await taskEvaluationApi.saveMethods(t.id, {
-          version: ts.evalMethodVersion,
-          methods: methodsInput,
-        })
-        const newVersion = (savedRes.methods || []).reduce(
-          (max, m) => Math.max(max, m.version || 0),
-          0,
-        )
+        const newVersion = await saveMethodsWithRetry(t.id, ts)
         updatedTaskStates[t.id] = { ...updatedTaskStates[t.id], evalMethodVersion: newVersion }
       }
     }
@@ -1600,6 +1609,7 @@ function EditCardDialog({
   const [abilityDetailOpen, setAbilityDetailOpen] = useState(false)
   const [selectedAbilityForDetail] = useState<string | null>(null)
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
+  const [isSavingCard, setIsSavingCard] = useState(false)
 
   // For random draw custom questions (现场问答题)
 
@@ -1662,6 +1672,9 @@ function EditCardDialog({
   }
 
   const handleSave = async () => {
+    if (isSavingCard) return
+    setIsSavingCard(true)
+    try {
     if (cardType === 'info') {
       updateTask({
         name: localTask.name,
@@ -1791,6 +1804,9 @@ function EditCardDialog({
           /* ignore */
         }
       }
+    }
+    } finally {
+      setIsSavingCard(false)
     }
     onClose()
   }
@@ -2314,7 +2330,9 @@ function EditCardDialog({
           <Button variant="outline" onClick={onClose}>
             取消
           </Button>
-          <Button onClick={handleSave}>保存</Button>
+          <Button onClick={handleSave} disabled={isSavingCard}>
+            {isSavingCard ? '保存中...' : '保存'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
