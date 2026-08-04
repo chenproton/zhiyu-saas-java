@@ -120,6 +120,7 @@ export default function SuperAdminPage() {
 
   const [toggleTarget, setToggleTarget] = useState<AdminTenant | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminTenant | null>(null)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
 
   const [adminModalOpen, setAdminModalOpen] = useState(false)
   const [adminModalTenant, setAdminModalTenant] = useState<AdminTenant | null>(null)
@@ -518,6 +519,7 @@ export default function SuperAdminPage() {
   }
 
   const handleDeleteClick = (t: AdminTenant) => {
+    setDeleteConfirmName('')
     setDeleteTarget(t)
   }
 
@@ -984,17 +986,48 @@ export default function SuperAdminPage() {
         confirmText={toggleTarget ? (toggleTarget.status === 'active' ? '停用' : '启用') : ''}
         onConfirm={confirmToggleStatus}
       />
-      <ConfirmDialog
+      <Dialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null)
         }}
-        title="确认删除"
-        description={deleteTarget ? `确定删除租户「${deleteTarget.name}」吗？此操作不可撤销。` : ''}
-        confirmText="删除"
-        variant="destructive"
-        onConfirm={confirmDelete}
-      />
+      >
+        <DialogContent size="sm">
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+            <DialogDescription>
+              {deleteTarget
+                ? `确定删除租户「${deleteTarget.name}」吗？此操作不可撤销。请输入租户名称以确认删除。`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            <Input
+              placeholder={deleteTarget ? `请输入租户名称「${deleteTarget.name}」` : ''}
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              autoFocus
+            />
+            {deleteConfirmName.trim() !== '' &&
+              deleteTarget &&
+              deleteConfirmName.trim() !== deleteTarget.name && (
+                <p className="text-sm text-destructive">租户名称不匹配</p>
+              )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!deleteTarget || deleteConfirmName.trim() !== deleteTarget.name}
+              onClick={confirmDelete}
+            >
+              删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={adminModalOpen} onOpenChange={setAdminModalOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
