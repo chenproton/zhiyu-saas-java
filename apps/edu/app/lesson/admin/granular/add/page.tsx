@@ -124,7 +124,7 @@ function AddGranularPageInner() {
         })
 
         if (editId) {
-          const [c] = await Promise.all([
+          const [c, courseRes] = await Promise.all([
             courseApi.get(editId),
             courseResourceApi.list({ courseId: editId, limit: 200 }),
           ])
@@ -138,6 +138,22 @@ function AddGranularPageInner() {
           setDifficulty(c.difficulty || 0)
           setCoverImage(c.coverImage || '')
           if (c.batchId) setBatchId(c.batchId)
+
+          // 课程已绑定的资源（含本地上传后已入库的）并入资源池，保证刷新后选中项可解析
+          setCourseResourcePool((prev) => {
+            const existing = new Set(prev.map((x) => x.id))
+            const toAdd = ((courseRes.items || []) as any[])
+              .map((r) => ({
+                id: r.id,
+                name: r.name,
+                type: r.resourceType || r.type,
+                url: r.url,
+                description: r.description,
+                size: r.size !== undefined ? r.size : r.fileSize,
+              }))
+              .filter((r) => !existing.has(r.id))
+            return [...prev, ...toAdd]
+          })
 
           const selectedKpIds = new Set(
             (c.knowledgePointIds || []).filter((id): id is string => !!id),
@@ -214,6 +230,33 @@ function AddGranularPageInner() {
     selectedResourceIds,
   ])
 
+  // 本地上传资源（res- 临时 ID）入库并绑定课程，返回临时 ID → 真实 ID 映射。
+  // 自定义文件上传只落在组件状态，刷新后无法解析，必须在保存时持久化到资源库。
+  const persistLocalResources = async (courseId: string): Promise<Record<string, string>> => {
+    const idMap: Record<string, string> = {}
+    for (const rid of selectedResourceIds) {
+      if (!rid.startsWith('res-')) continue
+      const r = courseResourcePool.find((x) => x.id === rid)
+      if (!r) continue
+      try {
+        const created = await courseResourceApi.create({
+          courseId,
+          name: r.name,
+          type: r.type,
+          url: r.url || '',
+          description: r.description,
+          size: r.size != null ? Number(r.size) : undefined,
+        })
+        idMap[rid] = created.id
+        setCourseResourcePool((prev) => [...prev.filter((x) => x.id !== rid), { ...r, id: created.id }])
+      } catch (err: any) {
+        toast({ title: `资源「${r.name}」保存失败: ${err.message}`, variant: 'destructive' })
+        throw err
+      }
+    }
+    return idMap
+  }
+
   const handleSave = async () => {
     if (!courseName) {
       toast({ title: '请输入课程名称', variant: 'destructive' })
@@ -258,6 +301,15 @@ function AddGranularPageInner() {
       const knowledgePointIds = knowledgePoints
         .map((kp) => kpIdMapping[kp.id] || kp.id)
         .filter((id) => !id.startsWith('kp-custom-'))
+      const tempResourceIds = selectedResourceIds.filter((id) => id.startsWith('res-'))
+      const savedResourceIds = selectedResourceIds.filter((id) => !id.startsWith('res-'))
+      const persistNewResources = async (courseId: string) => {
+        if (tempResourceIds.length === 0) return savedResourceIds
+        const idMap = await persistLocalResources(courseId)
+        const realIds = [...savedResourceIds, ...Object.values(idMap)]
+        setSelectedResourceIds(realIds)
+        return realIds
+      }
       const payload: Partial<
         Omit<
           Course,
@@ -293,10 +345,11 @@ function AddGranularPageInner() {
           descriptionPdf: learningGoalPdf || undefined,
         },
         knowledgePointIds,
-        resourceIds: selectedResourceIds,
+        resourceIds: savedResourceIds,
       } as any
       if (editId) {
-        await courseApi.update(editId, payload)
+        const realIds = await persistNewResources(editId)
+        await courseApi.update(editId, { ...payload, resourceIds: realIds })
         hasSavedRef.current = true
         if (course?.status !== 'draft') {
           await courseApi.saveDraft(editId)
@@ -309,12 +362,14 @@ function AddGranularPageInner() {
           )
         }
       } else {
-        const c = await courseApi.create(
-          payload as Omit<
-            Course,
-            'id' | 'nodeCount' | 'resourceCount' | 'studyCount' | 'createdAt' | 'updatedAt'
-          >,
-        )
+        const c = await courseApi.create(payload as Omit<
+          Course,
+          'id' | 'nodeCount' | 'resourceCount' | 'studyCount' | 'createdAt' | 'updatedAt'
+        >)
+        if (tempResourceIds.length > 0) {
+          const realIds = await persistNewResources(c.id)
+          await courseApi.update(c.id, { resourceIds: realIds })
+        }
         router.replace(`/lesson/admin/granular/add?id=${c.id}`)
         toast({ title: '草稿已保存' })
       }
