@@ -7,6 +7,7 @@ export default defineConfig({
     globals: true,
     include: [
       'lib/**/*.test.ts',
+      'components/shared/**/*.test.ts',
       'app/scene/scenarios/[id]/edit/tasks/_components/**/*.test.ts',
       'app/lesson/admin/system/add/_components/**/*.test.ts',
     ],

@@ -29,6 +29,9 @@ importers:
       d3:
         specifier: ^7.9.0
         version: 7.9.0
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       lucide-react:
         specifier: ^0.564.0
         version: 0.564.0(react@19.2.7)
@@ -4423,6 +4426,10 @@ packages:
     dependencies:
       reusify: 1.1.0
     dev: true
+
+  /fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+    dev: false
 
   /fdir@6.5.0(picomatch@4.0.5):
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}

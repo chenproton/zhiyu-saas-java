@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import ZipPreview, { isZipUrl } from '@/components/shared/zip-preview'
 import {
   Eye,
   Search,
@@ -1086,12 +1087,17 @@ export default function LibraryLandingPage() {
               </button>
             </div>
           </div>
-          {kkFileViewUrl && (
+          {kkFileViewUrl && !isZipUrl(previewResource?.url) && (
             <iframe
               src={kkFileViewUrl}
               style={{ width: '100%', height: 'calc(100% - 64px)', border: 'none' }}
               title="资源预览"
             />
+          )}
+          {previewResource?.url && isZipUrl(previewResource.url) && (
+            <div style={{ width: '100%', height: 'calc(100% - 64px)', border: 'none' }}>
+              <ZipPreview key={previewResource.url} url={previewResource.url} name={previewResource.name} />
+            </div>
           )}
         </DialogContent>
       </Dialog>

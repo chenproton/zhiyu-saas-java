@@ -8,6 +8,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { cn } from '@/lib/utils'
 import type { TaskResource } from '@/lib/types'
 import { isSafeExternalUrl } from '@/lib/format-utils'
+import ZipPreview, { isZipUrl } from '@/components/shared/zip-preview'
 
 const MIN_WIDTH = 320
 const MIN_HEIGHT = 200
@@ -245,15 +246,19 @@ function ResourcePreviewModalInner({
 
         <div className="flex-1 min-h-0 mt-2 border rounded overflow-hidden bg-gray-100">
           {resource?.url ? (
-            <iframe
-              ref={iframeRef}
-              src={buildKkFileViewUrl(resource.url)}
-              title={resource.name}
-              className="w-full h-full border-0"
-              allowFullScreen
-              loading="lazy"
-              style={{ pointerEvents: dragging || resizing ? 'none' : 'auto' }}
-            />
+            isZipUrl(resource.url) ? (
+              <ZipPreview key={resource.url} url={resource.url} name={resource.name} />
+            ) : (
+              <iframe
+                ref={iframeRef}
+                src={buildKkFileViewUrl(resource.url)}
+                title={resource.name}
+                className="w-full h-full border-0"
+                allowFullScreen
+                loading="lazy"
+                style={{ pointerEvents: dragging || resizing ? 'none' : 'auto' }}
+              />
+            )
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 h-full text-gray-400">
               <FileText className="h-10 w-10 opacity-40" />
