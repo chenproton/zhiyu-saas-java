@@ -300,6 +300,71 @@ func TestOrg_Delete(t *testing.T) {
 	}
 }
 
+func TestOrg_Update_ParentCycleCheck(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+	schoolAdminToken := env.NewTokenWithIdentity("school-admin-001", testhelper.TestTenantID, domain.UserRoleSchool, nil, "school_admin")
+	do := func(method, path string, body interface{}) *httptest.ResponseRecorder {
+		return env.DoWithToken(method, path, body, schoolAdminToken)
+	}
+
+	typeID := createTestOrgType(t, env)
+	create := func(name string, parentID *string) *domain.Organization {
+		t.Helper()
+		body := map[string]interface{}{"tenantId": testhelper.TestTenantID, "name": name, "typeId": typeID}
+		if parentID != nil {
+			body["parentId"] = *parentID
+		}
+		w := do("POST", "/api/v1/organizations", body)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create %s: %d %s", name, w.Code, testhelper.ErrMsg(w))
+		}
+		org, err := testhelper.Unmarshal[domain.Organization](w)
+		if err != nil {
+			t.Fatalf("unmarshal %s: %v", name, err)
+		}
+		t.Cleanup(func() {
+			env.DB.Exec(ctx, "DELETE FROM organizations WHERE id = $1", org.ID)
+		})
+		return &org
+	}
+
+	parent := create("ParentOrg", nil)
+	child := create("ChildOrg", &parent.ID)
+	grandchild := create("GrandChildOrg", &child.ID)
+
+	// 保持原父节点（父节点是当前节点的祖先）应允许保存
+	w := do("PUT", "/api/v1/organizations/"+child.ID, map[string]interface{}{
+		"name":     "ChildOrgRenamed",
+		"typeId":   typeID,
+		"parentId": parent.ID,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("update with ancestor parent: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// 移到自身后代（孙节点）下应被拒绝，防止成环
+	w = do("PUT", "/api/v1/organizations/"+child.ID, map[string]interface{}{
+		"name":     "ChildOrg",
+		"typeId":   typeID,
+		"parentId": grandchild.ID,
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("update with descendant parent: expected 400, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// 调整为一级节点应允许保存
+	w = do("PUT", "/api/v1/organizations/"+child.ID, map[string]interface{}{
+		"name":     "ChildOrg",
+		"typeId":   typeID,
+		"parentId": nil,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("update to root: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+}
+
 func TestOrgType_CRUD(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
