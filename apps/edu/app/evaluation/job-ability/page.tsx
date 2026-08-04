@@ -51,13 +51,13 @@ export default function JobAbilityPage() {
         if (cancelled) return
         setPositions(positionRes.items)
         setRules(ruleRes.items)
-        // 统计每条规则下已配置的能力点数
+        // 统计每条规则对应岗位下已配置的能力点数（以岗位能力绑定为准）
         const counts: Record<string, number> = {}
         await Promise.all(
           ruleRes.items.map(async (rule) => {
             try {
-              const full = await certApi.getFullRule(rule.id)
-              counts[rule.id] = full.items.reduce((sum, item) => sum + item.points.length, 0)
+              const model = await certApi.getPositionModel(rule.careerPositionId)
+              counts[rule.id] = model.domains.reduce((sum, d) => sum + d.points.length, 0)
             } catch {
               counts[rule.id] = 0
             }
