@@ -2240,8 +2240,8 @@ function EditCardDialog({
           <EvalMethodSelector
             value={state.evaluationMethods}
             onChange={(newMethods) => {
-              const newDisabled = (state.disabledEvaluationMethods || []).filter((d: string) =>
-                newMethods.includes(d),
+              const newDisabled = (state.disabledEvaluationMethods || []).filter(
+                (d: string) => !newMethods.includes(d),
               )
               // 取消勾选的方法保留在 disabled 列表，确保保存 payload 始终包含全量方法，
               // 后端只更新 payload 内的方法，缺省不会误禁用其他方法
