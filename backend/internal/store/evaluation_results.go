@@ -151,9 +151,9 @@ func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, taskID
 	return examResultID, nil
 }
 
-// UpdateExamResultScore 更新考试结果分数。
+// UpdateExamResultScore 更新考试结果分数，并同步及格判定（60% 及格线，与提交时一致）。
 func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examResultID string, score float64) error {
-	_, err := s.q.Exec(ctx, `UPDATE exam_results SET score = $1, updated_at = NOW() WHERE id = $2`, score, examResultID)
+	_, err := s.q.Exec(ctx, `UPDATE exam_results SET score = $1, is_pass = ($1 >= total_score * 0.6), updated_at = NOW() WHERE id = $2`, score, examResultID)
 	return err
 }
 

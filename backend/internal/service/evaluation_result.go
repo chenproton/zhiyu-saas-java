@@ -17,6 +17,14 @@ func (s *EvaluationService) ListExamResults(ctx context.Context, p store.ListPar
 
 // SubmitExamResult 提交考试结果（评分编排：拉取题目→判分→写结果→同步 3 类评价，全部写在同一事务）。
 func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, userID, usageID string, answers map[string]interface{}, methodKey string) (*domain.ExamResult, error) {
+	// 重交保护：该方式的场景评价已评分时拒绝覆盖教师成绩
+	graded, err := s.st.ExamResults().UsageGradedByUser(ctx, usageID, userID, methodKey)
+	if err != nil {
+		return nil, err
+	}
+	if graded {
+		return nil, store.ErrAlreadyGraded
+	}
 	examID, totalScore, err := s.st.ExamResults().UsageExamInfo(ctx, usageID)
 	if err != nil {
 		return nil, err
@@ -159,7 +167,19 @@ func isCorrect(qType string, correct []string, raw interface{}) bool {
 	switch qType {
 	case string(domain.QuestionTypeSingle), string(domain.QuestionTypeJudge):
 		s, _ := raw.(string)
-		return len(correct) > 0 && strings.EqualFold(s, correct[0])
+		if len(correct) == 0 {
+			return false
+		}
+		s = strings.TrimSpace(s)
+		c := correct[0]
+		if strings.EqualFold(s, c) {
+			return true
+		}
+		// 与前端判分一致：判断题支持“正确/错误”与 true/false 互认
+		if (s == "正确" && strings.EqualFold(c, "true")) || (s == "错误" && strings.EqualFold(c, "false")) {
+			return true
+		}
+		return false
 	case string(domain.QuestionTypeMultiple):
 		var given []string
 		switch v := raw.(type) {
