@@ -430,6 +430,13 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/portraits/archives", studentPortraitHandler.ListArchives)
 			r.Post("/evaluation/portraits/archives", studentPortraitHandler.CreateArchive)
 
+			jobAbilityResultHandler := handler.NewJobAbilityResultHandler(st2)
+			r.Get("/evaluation/job-ability/results/summary", jobAbilityResultHandler.Summary)
+			r.Get("/evaluation/job-ability/results", jobAbilityResultHandler.List)
+			r.Get("/evaluation/job-ability/results/{id}", jobAbilityResultHandler.Get)
+			r.Post("/evaluation/job-ability/aggregate", jobAbilityResultHandler.Aggregate)
+			r.Get("/evaluation/job-ability/aggregate/status", jobAbilityResultHandler.AggregateStatus)
+
 			microCertHandler := &handler.MicroCertHandler{Store: st2.MicroCerts()}
 			r.Get("/evaluation/certificates/templates", microCertHandler.ListTemplates)
 			r.Post("/evaluation/certificates/templates", microCertHandler.CreateTemplate)

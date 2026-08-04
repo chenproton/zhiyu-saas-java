@@ -129,15 +129,19 @@ type JobAbilitySummaryRow struct {
 	AvgRate      float64
 }
 
-// Summary 查询岗位能力汇总。
+// Summary 查询岗位能力汇总：以已发布认证规则的岗位为基准，左连接汇聚结果统计人数/达标率，
+// 未汇聚过（结果为空）的岗位也返回，便于前端选中后手动触发汇聚。
 func (s *JobAbilityResultStore) Summary(ctx context.Context, tenantID string) ([]JobAbilitySummaryRow, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT r.career_position_id, COALESCE(cp.name, ''), COUNT(*), COALESCE(AVG(r.achievement_rate), 0)
-		FROM job_ability_results r
+		SELECT r.career_position_id, COALESCE(cp.name, ''),
+			COUNT(ja.id), COALESCE(AVG(ja.achievement_rate), 0)
+		FROM certification_rules r
 		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
-		WHERE r.tenant_id = $1
+		LEFT JOIN job_ability_results ja
+			ON ja.career_position_id = r.career_position_id AND ja.tenant_id = r.tenant_id
+		WHERE r.tenant_id = $1 AND r.status = 'published'
 		GROUP BY r.career_position_id, cp.name
-		ORDER BY COUNT(*) DESC
+		ORDER BY COUNT(ja.id) DESC
 	`, tenantID)
 	if err != nil {
 		return nil, err
