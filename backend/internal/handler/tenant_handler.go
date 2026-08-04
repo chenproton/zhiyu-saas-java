@@ -53,6 +53,11 @@ type UpdateTenantStatusRequest struct {
 	Status domain.TenantStatus `json:"status"`
 }
 
+// SetPasswordRequest 手动修改学校管理员密码的请求体。
+type SetPasswordRequest struct {
+	Password string `json:"password"`
+}
+
 type CreateTenantResponse struct {
 	Tenant    domain.Tenant  `json:"tenant"`
 	AdminUser *adminUserInfo `json:"adminUser,omitempty"`
@@ -510,7 +515,7 @@ func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "deleted": "true"})
 }
 
-// AdminResetPassword generates a new random password for a school admin.
+// AdminResetPassword sets a school admin's password to the given plaintext password.
 func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Request) {
 	tenantID := chi.URLParam(r, "tenantId")
 	adminID := chi.URLParam(r, "id")
@@ -524,12 +529,20 @@ func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	newPassword, err := h.AdminService.ResetPassword(r.Context(), adminID)
-	if err != nil {
+	var req SetPasswordRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.AdminService.SetPassword(r.Context(), adminID, req.Password); err != nil {
 		respondServerError(w, r, err, "保存password失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "newPassword": newPassword})
+	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "updated": "true"})
 }
 
 // ListSchoolAdmins lists all school_admin users for the current tenant.
@@ -633,7 +646,7 @@ func (h *TenantHandler) DeleteSchoolAdmin(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "deleted": "true"})
 }
 
-// ResetSchoolAdminPassword resets a school admin's password and returns the new one.
+// ResetSchoolAdminPassword sets a school admin's password to the given plaintext password.
 func (h *TenantHandler) ResetSchoolAdminPassword(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
@@ -646,15 +659,18 @@ func (h *TenantHandler) ResetSchoolAdminPassword(w http.ResponseWriter, r *http.
 		return
 	}
 
-	newPassword, err := h.AdminService.ResetPassword(r.Context(), adminID)
-	if err != nil {
+	var req SetPasswordRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.AdminService.SetPassword(r.Context(), adminID, req.Password); err != nil {
 		respondServerError(w, r, err, "保存password失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "newPassword": newPassword})
-}
-
-// PreviewSchoolAdminPassword is an alias for ResetSchoolAdminPassword.
-func (h *TenantHandler) PreviewSchoolAdminPassword(w http.ResponseWriter, r *http.Request) {
-	h.ResetSchoolAdminPassword(w, r)
+	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "updated": "true"})
 }

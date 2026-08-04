@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -316,30 +315,31 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 		t.Fatalf("expected 1 default admin, got %+v", list)
 	}
 
-	// Preview default admin password.
+	// Set a manual password for the default admin.
 	defaultAdminID := list.Items[0].ID
-	wp := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/reset-password", nil)
+	setPassword := "Abc12345"
+	wp := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/reset-password", map[string]string{
+		"password": setPassword,
+	})
 	if wp.Code != http.StatusOK {
-		t.Fatalf("preview password: %d %s", wp.Code, testhelper.ErrMsg(wp))
-	}
-	var preview struct {
-		ID          string `json:"id"`
-		NewPassword string `json:"newPassword"`
-	}
-	if err := json.Unmarshal(wp.Body.Bytes(), &preview); err != nil {
-		t.Fatalf("unmarshal preview: %v", err)
-	}
-	if preview.NewPassword == "" {
-		t.Fatalf("expected non-empty new password")
+		t.Fatalf("set password: %d %s", wp.Code, testhelper.ErrMsg(wp))
 	}
 
-	// Verify the previewed password can be used to log in via portal login.
+	// Weak password should be rejected.
+	ww := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/reset-password", map[string]string{
+		"password": "weak",
+	})
+	if ww.Code != http.StatusBadRequest {
+		t.Fatalf("weak password: expected 400, got %d %s", ww.Code, testhelper.ErrMsg(ww))
+	}
+
+	// Verify the set password can be used to log in via portal login.
 	loginW := env.Do("POST", "/api/v1/auth/portal/login", map[string]string{
 		"username": list.Items[0].Username,
-		"password": preview.NewPassword,
+		"password": setPassword,
 	})
 	if loginW.Code != http.StatusOK {
-		t.Fatalf("portal login with preview password: %d %s", loginW.Code, testhelper.ErrMsg(loginW))
+		t.Fatalf("portal login with set password: %d %s", loginW.Code, testhelper.ErrMsg(loginW))
 	}
 
 	// Create a new school admin.

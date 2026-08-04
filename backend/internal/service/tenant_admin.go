@@ -71,3 +71,8 @@ func (s *TenantAdminService) ResetPassword(ctx context.Context, adminID string) 
 	}
 	return plain, nil
 }
+
+// SetPassword 将管理员密码设置为指定明文密码（由调用方校验强度后传入）。
+func (s *TenantAdminService) SetPassword(ctx context.Context, adminID, plainPassword string) error {
+	return s.st.TenantAdmins().ResetPassword(ctx, adminID, plainPassword)
+}

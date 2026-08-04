@@ -55,6 +55,17 @@ func isStrongPassword(password string) bool {
 	return false
 }
 
+// validatePassword 校验明文密码是否满足强度要求。
+func validatePassword(password string) error {
+	if password == "" {
+		return errors.New("密码不能为空")
+	}
+	if !isStrongPassword(password) {
+		return errors.New("密码长度至少 8 位，且需同时包含字母和数字")
+	}
+	return nil
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

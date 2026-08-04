@@ -38,7 +38,7 @@ import {
   Search,
   Loader2,
   Users,
-  Eye,
+  KeyRound,
   Package,
   LogIn,
   LogOut,
@@ -134,9 +134,11 @@ export default function SuperAdminPage() {
     name: string
   } | null>(null)
   const [adminInlineSubmitting, setAdminInlineSubmitting] = useState(false)
-  const [viewPassword, setViewPassword] = useState<{ admin: TenantAdmin; password: string } | null>(
-    null,
-  )
+  const [passwordAdmin, setPasswordAdmin] = useState<TenantAdmin | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false)
 
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false)
   const [subscriptionTenant, setSubscriptionTenant] = useState<AdminTenant | null>(null)
@@ -342,22 +344,42 @@ export default function SuperAdminPage() {
     }
   }
 
-  const handleResetPassword = async (a: TenantAdmin) => {
-    if (!adminModalTenant) return
+  const handlePasswordClick = (a: TenantAdmin) => {
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordError(null)
+    setPasswordAdmin(a)
+  }
+
+  const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/
+
+  const submitPassword = async () => {
+    if (!passwordAdmin) return
+    if (!newPassword) {
+      setPasswordError('请输入新密码')
+      return
+    }
+    if (!PASSWORD_RULE.test(newPassword)) {
+      setPasswordError('密码长度至少 8 位，且需同时包含字母和数字')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的密码不一致')
+      return
+    }
+    setPasswordSubmitting(true)
+    setPasswordError(null)
     try {
-      const res = await adminFetch<{ id: string; newPassword: string }>(
-        `/${adminModalTenant.id}/admins/${a.id}/reset-password`,
-        {
-          method: 'POST',
-        },
-      )
-      setViewPassword({ admin: a, password: res.newPassword })
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: '获取密码失败',
-        description: err instanceof Error ? err.message : '未知错误',
+      await adminFetch(`/${passwordAdmin.tenantId}/admins/${passwordAdmin.id}/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify({ password: newPassword }),
       })
+      toast({ title: '修改成功' })
+      setPasswordAdmin(null)
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : '修改密码失败')
+    } finally {
+      setPasswordSubmitting(false)
     }
   }
 
@@ -1187,10 +1209,10 @@ export default function SuperAdminPage() {
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 px-2 text-xs"
-                                    onClick={() => handleResetPassword(a)}
+                                    onClick={() => handlePasswordClick(a)}
                                   >
-                                    <Eye className="mr-1 h-3 w-3" />
-                                    重置密码
+                                    <KeyRound className="mr-1 h-3 w-3" />
+                                    修改密码
                                   </Button>
                                   <Button
                                     variant="ghost"
@@ -1236,29 +1258,58 @@ export default function SuperAdminPage() {
       </Dialog>
 
       <Dialog
-        open={viewPassword !== null}
+        open={passwordAdmin !== null}
         onOpenChange={(open) => {
-          if (!open) setViewPassword(null)
+          if (!open) setPasswordAdmin(null)
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent size="sm">
           <DialogHeader>
-            <DialogTitle>重置密码</DialogTitle>
+            <DialogTitle>修改密码</DialogTitle>
             <DialogDescription>
-              {viewPassword
-                ? `${viewPassword.admin.name}（${viewPassword.admin.username}）的新密码，请妥善保管，关闭后将不可再次查看`
+              {passwordAdmin
+                ? `为 ${passwordAdmin.name}（${passwordAdmin.username}）设置新密码`
                 : ''}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Input
-              readOnly
-              value={viewPassword?.password || ''}
-              onFocus={(e) => e.target.select()}
-            />
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="set-password">新密码</Label>
+              <Input
+                id="set-password"
+                type="password"
+                placeholder="至少 8 位，包含字母和数字"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="set-confirm-password">确认新密码</Label>
+              <Input
+                id="set-confirm-password"
+                type="password"
+                placeholder="再次输入新密码"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
           </div>
           <DialogFooter>
-            <Button onClick={() => setViewPassword(null)}>关闭</Button>
+            <Button
+              variant="outline"
+              onClick={() => setPasswordAdmin(null)}
+              disabled={passwordSubmitting}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={submitPassword}
+              disabled={passwordSubmitting || !newPassword || !confirmPassword}
+            >
+              {passwordSubmitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              保存
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

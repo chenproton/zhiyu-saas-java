@@ -20,9 +20,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Trash2, Loader2, Eye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, KeyRound } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { Label } from '@/components/ui/label'
 
 interface TenantAdmin {
   id: string
@@ -53,9 +54,11 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
   const [deleteTarget, setDeleteTarget] = useState<TenantAdmin | null>(null)
   const [inline, setInline] = useState<{ id?: string; username: string; name: string } | null>(null)
   const [inlineSubmitting, setInlineSubmitting] = useState(false)
-  const [viewPassword, setViewPassword] = useState<{ admin: TenantAdmin; password: string } | null>(
-    null,
-  )
+  const [passwordAdmin, setPasswordAdmin] = useState<TenantAdmin | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false)
   const { toast } = useToast()
 
   const fetchAdmins = useCallback(async () => {
@@ -145,21 +148,42 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
     }
   }
 
-  const handleViewPassword = async (a: TenantAdmin) => {
+  const handlePasswordClick = (a: TenantAdmin) => {
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordError(null)
+    setPasswordAdmin(a)
+  }
+
+  const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/
+
+  const submitPassword = async () => {
+    if (!passwordAdmin) return
+    if (!newPassword) {
+      setPasswordError('请输入新密码')
+      return
+    }
+    if (!PASSWORD_RULE.test(newPassword)) {
+      setPasswordError('密码长度至少 8 位，且需同时包含字母和数字')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的密码不一致')
+      return
+    }
+    setPasswordSubmitting(true)
+    setPasswordError(null)
     try {
-      const res = await fetcher<{ id: string; newPassword: string }>(
-        `/admins/${a.id}/preview-password`,
-        {
-          method: 'POST',
-        },
-      )
-      setViewPassword({ admin: a, password: res.newPassword })
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: '获取密码失败',
-        description: err instanceof Error ? err.message : '未知错误',
+      await fetcher(`/admins/${passwordAdmin.id}/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify({ password: newPassword }),
       })
+      toast({ title: '修改成功' })
+      setPasswordAdmin(null)
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : '修改密码失败')
+    } finally {
+      setPasswordSubmitting(false)
     }
   }
 
@@ -314,10 +338,10 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                               variant="ghost"
                               size="sm"
                               className="h-7 px-2 text-xs"
-                              onClick={() => handleViewPassword(a)}
+                              onClick={() => handlePasswordClick(a)}
                             >
-                              <Eye className="mr-1 h-3 w-3" />
-                              查看密码
+                              <KeyRound className="mr-1 h-3 w-3" />
+                              修改密码
                             </Button>
                             <Button
                               variant="ghost"
@@ -360,29 +384,58 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
       </div>
 
       <Dialog
-        open={viewPassword !== null}
+        open={passwordAdmin !== null}
         onOpenChange={(open) => {
-          if (!open) setViewPassword(null)
+          if (!open) setPasswordAdmin(null)
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent size="sm">
           <DialogHeader>
-            <DialogTitle>查看密码</DialogTitle>
+            <DialogTitle>修改密码</DialogTitle>
             <DialogDescription>
-              {viewPassword
-                ? `${viewPassword.admin.name}（${viewPassword.admin.username}）的登录密码`
+              {passwordAdmin
+                ? `为 ${passwordAdmin.name}（${passwordAdmin.username}）设置新密码`
                 : ''}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Input
-              readOnly
-              value={viewPassword?.password || ''}
-              onFocus={(e) => e.target.select()}
-            />
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="set-password">新密码</Label>
+              <Input
+                id="set-password"
+                type="password"
+                placeholder="至少 8 位，包含字母和数字"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="set-confirm-password">确认新密码</Label>
+              <Input
+                id="set-confirm-password"
+                type="password"
+                placeholder="再次输入新密码"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
           </div>
           <DialogFooter>
-            <Button onClick={() => setViewPassword(null)}>关闭</Button>
+            <Button
+              variant="outline"
+              onClick={() => setPasswordAdmin(null)}
+              disabled={passwordSubmitting}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={submitPassword}
+              disabled={passwordSubmitting || !newPassword || !confirmPassword}
+            >
+              {passwordSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              保存
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
