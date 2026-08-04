@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, ChevronDown, ChevronRight, Save, SlidersHorizontal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -207,28 +207,23 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {(model?.domains ?? []).map((domain) => (
-            <Card key={domain.name}>
-              <CardHeader className="flex-row items-center justify-between space-y-0 py-4">
-                <CardTitle className="text-base">{domain.name}</CardTitle>
-                <span className="text-xs text-muted-foreground">
-                  {domain.points.length} 个能力点
-                </span>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50">
-                      <TableHead className="w-[240px]">能力点名称</TableHead>
-                      <TableHead className="w-[100px]">掌握程度</TableHead>
-                      <TableHead>胜任标准</TableHead>
-                      <TableHead className="w-[90px]">权重</TableHead>
-                      <TableHead className="w-[110px] text-right">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {domain.points.map((point) => {
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="w-[120px]">所属能力域</TableHead>
+                    <TableHead className="w-[240px]">能力点名称</TableHead>
+                    <TableHead className="w-[100px]">掌握程度</TableHead>
+                    <TableHead>胜任标准</TableHead>
+                    <TableHead className="w-[90px]">权重</TableHead>
+                    <TableHead className="w-[110px] text-right">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(model?.domains ?? []).map((domain) =>
+                    domain.points.map((point, idx) => {
                       const isExpanded = expanded.has(point.abilityPointId)
                       return (
                         <PointRows
@@ -241,15 +236,18 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
                           onOpenTaskWeights={() =>
                             setTaskDialogPoint({ ...point, domainName: domain.name })
                           }
+                          domainName={domain.name}
+                          domainCount={domain.points.length}
+                          isFirstInDomain={idx === 0}
                         />
                       )
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    }),
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* 页面级能力点权重弹窗：全部域的能力点按域分组展示，合计 100% */}
@@ -305,6 +303,9 @@ function PointRows({
   taskWeights,
   onToggle,
   onOpenTaskWeights,
+  domainName,
+  domainCount,
+  isFirstInDomain,
 }: {
   point: CertificationModelPoint
   isExpanded: boolean
@@ -312,10 +313,23 @@ function PointRows({
   taskWeights: Record<string, number>
   onToggle: () => void
   onOpenTaskWeights: () => void
+  domainName: string
+  domainCount: number
+  isFirstInDomain: boolean
 }) {
   return (
     <>
       <TableRow>
+        {isFirstInDomain && (
+          <TableCell rowSpan={domainCount} className="align-middle">
+            <div className="flex flex-col items-start gap-1">
+              <Badge variant="outline" className="text-[10px]">
+                {domainName}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground">{domainCount} 个能力点</span>
+            </div>
+          </TableCell>
+        )}
         <TableCell>
           <button
             type="button"
@@ -360,7 +374,7 @@ function PointRows({
       </TableRow>
       {isExpanded && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={5} className="bg-muted/30 p-0">
+          <TableCell colSpan={6} className="bg-muted/30 p-0">
             {point.tasks.length === 0 ? (
               <p className="px-10 py-4 text-sm text-muted-foreground">
                 暂无关联任务（请在场景编辑页关联能力点）
