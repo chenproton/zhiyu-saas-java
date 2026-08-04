@@ -149,7 +149,7 @@ func (s *OrganizationStore) IsDescendant(ctx context.Context, id, candidateID st
 			WITH RECURSIVE subtree AS (
 				SELECT id, parent_id FROM organizations WHERE id = $1
 				UNION ALL
-				SELECT o.id, o.parent_id FROM organizations o JOIN subtree s ON o.id = s.parent_id
+				SELECT o.id, o.parent_id FROM organizations o JOIN subtree s ON o.parent_id = s.id
 			)
 			SELECT 1 FROM subtree WHERE id = $2
 		)`, id, candidateID).Scan(&isDesc)
