@@ -502,7 +502,7 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 		rc["examId"] = examID
 	}
 
-	if err := s.st.CourseAssessments().EnsureExamQuestions(ctx, q, info.TenantID, examID, questionIDs); err != nil {
+	if err := store.SyncExamQuestions(ctx, q, info.TenantID, examID, questionIDs, nil); err != nil {
 		return rc, err
 	}
 
