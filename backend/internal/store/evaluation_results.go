@@ -127,7 +127,9 @@ func (s *EvaluationResultStore) BatchGrade(ctx context.Context, tx Queryer, grad
 	return nil
 }
 
-// FindLatestExamResult 查询任务最新考试结果。
+// FindLatestExamResult 查询任务下某测评方式对应的最新考试结果。
+// 通过 resource_config 中的 paperId/examId 将考试安排绑定到该方式自身的试卷，
+// 避免任务下多个试卷方式（paper/question_bank/quiz）之间互相串用考试结果。
 func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, taskID, methodKey, evaluateeID string) (string, error) {
 	var examResultID string
 	err := s.q.QueryRow(ctx, `
@@ -136,6 +138,10 @@ func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, taskID
 		JOIN exam_usages eu ON er.exam_usage_id = eu.id
 		JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)
 		WHERE tem.task_id = $1 AND tem.method_key = $2 AND er.user_id = $3 AND eu.target_type = 'task'
+			AND eu.exam_id = COALESCE(
+				NULLIF(tem.resource_config->>'paperId', ''),
+				NULLIF(tem.resource_config->>'examId', '')
+			)::uuid
 		ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC
 		LIMIT 1
 	`, taskID, methodKey, evaluateeID).Scan(&examResultID)

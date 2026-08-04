@@ -998,14 +998,21 @@ export default function GradingDetailPage() {
   )
   const examQuestions = useMemo(() => exam?.questions || [], [exam])
 
+  // 客观题自动分以提交时存储的客观答案为唯一依据，避免读取考试结果中的
+  // score（该值可能被其他测评方式串用同步覆盖，也可能已包含教师评分导致重复累加）。
+  // 仅当试卷题目加载失败时才回退使用考试结果分数。
   const examAutoTotal = useMemo(() => {
-    if (examResult && typeof examResult.score === 'number') {
-      return examResult.score
-    }
-    return examQuestions.reduce(
+    const fromAnswers = examQuestions.reduce(
       (sum: number, q: any) => sum + getAutoScore(q, objectiveAnswers[q.id]),
       0,
     )
+    if (examQuestions.length > 0) {
+      return fromAnswers
+    }
+    if (examResult && typeof examResult.score === 'number') {
+      return examResult.score
+    }
+    return 0
   }, [examQuestions, objectiveAnswers, examResult])
 
   const examSubjectiveTotal = useMemo(() => {
@@ -1083,7 +1090,8 @@ export default function GradingDetailPage() {
       })
 
       const payload: any = {
-        score: computedTotal,
+        // 总分不超过满分，防止异常累加导致超 100
+        score: Math.min(computedTotal, maxScore),
         comment: comment || undefined,
         evalPointScores,
       }
