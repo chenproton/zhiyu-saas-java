@@ -84,4 +84,27 @@ describe('round trip: load -> save', () => {
       expect.arrayContaining(['paper', 'question_bank', 'quiz']),
     )
   })
+
+  it('保存评分规则(score_rule)后 load -> save 往返不丢失 standardMode/scoreRules', () => {
+    const methods = task11Methods()
+    const homework = methods.find((m) => m.methodKey === 'paper')!
+    homework.methodKey = 'homework'
+    homework.standardMode = 'score_rule'
+    homework.standardName = '我的评分规则'
+    homework.scoreRules = [
+      { id: 'sr1', configId: 'm1', name: '规则一', description: 'd1', rule: 'r1', weight: 60, sortOrder: 0 },
+      { id: 'sr2', configId: 'm1', name: '规则二', description: 'd2', rule: 'r2', weight: 40, sortOrder: 1 },
+    ]
+    const ts = taskStateFromMethods(methods)
+    expect(ts.homeworkStandardMode).toBe('score_rule')
+    expect(ts.homeworkStandardName).toBe('我的评分规则')
+    expect(ts.homeworkScoreRules).toHaveLength(2)
+
+    const payload = taskStateToMethodsInput(ts)
+    const saved = payload.find((m) => m.methodKey === 'homework')
+    expect(saved.standardMode).toBe('score_rule')
+    expect(saved.standardName).toBe('我的评分规则')
+    expect(saved.scoreRules).toHaveLength(2)
+    expect(saved.evalPoints).toEqual([])
+  })
 })
