@@ -162,7 +162,7 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
   return (
     <Link href={`/portal/alliance/enterprises/${enterprise.id}`}>
       <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col">
-        <div className="relative h-36 overflow-hidden">
+        <div className="relative h-36 overflow-hidden bg-slate-800">
           {img ? (
             <img
               src={img}
