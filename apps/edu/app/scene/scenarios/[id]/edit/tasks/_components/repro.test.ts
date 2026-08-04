@@ -107,4 +107,21 @@ describe('round trip: load -> save', () => {
     expect(saved.scoreRules).toHaveLength(2)
     expect(saved.evalPoints).toEqual([])
   })
+
+  it('evalSubjects 为空数组时不写入 methodEvalSubjects，保存时回退默认评价主体', () => {
+    const ts = taskStateFromMethods(task11Methods())
+    expect(ts.methodEvalSubjects['paper']).toBeUndefined()
+    expect(ts.methodEvalSubjects['question_bank']).toBeUndefined()
+    expect(ts.methodEvalSubjects['quiz']).toBeUndefined()
+
+    const config = taskStateToEvalRuleConfig(ts)
+    expect(config.methodEvalSubjects['paper']).toBeUndefined()
+
+    const payload = taskStateToMethodsInput(ts)
+    const paper = payload.find((m) => m.methodKey === 'paper')!
+    expect(paper.evalSubjects.length).toBeGreaterThan(0)
+    expect(paper.evalSubjects[0].type).toBe('teacher')
+    const questionBank = payload.find((m) => m.methodKey === 'question_bank')!
+    expect(questionBank.evalSubjects.length).toBeGreaterThan(0)
+  })
 })
