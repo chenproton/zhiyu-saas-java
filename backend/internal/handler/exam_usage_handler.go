@@ -141,7 +141,7 @@ func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return
 	}
-	if usage.Status != "scheduled" {
+	if usage.Status != "draft" && usage.Status != "pending" && usage.Status != "scheduled" {
 		respondError(w, http.StatusBadRequest, "考试安排不在待开始状态")
 		return
 	}
