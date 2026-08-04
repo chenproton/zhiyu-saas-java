@@ -158,4 +158,51 @@ describe('taskStateFromMethods', () => {
     expect(state.methodResourceConfigs).toEqual({ homework: { requiresMaterial: true, deadlineDays: 3 } })
     expect(state.homeworkEvalPoints).toHaveLength(1)
   })
+
+  it('加载后端方法后保留 disabledEvaluationMethods，确保后续保存 payload 包含全量方法', () => {
+    const methods: TaskEvaluationMethod[] = [
+      {
+        id: 'm-enabled',
+        taskId: 't1',
+        methodKey: 'question_bank',
+        weight: 100,
+        evalObject: 'individual',
+        evalSubjects: [],
+        resourceConfig: { questionIds: ['q1'] },
+        version: 1,
+        isEnabled: true,
+        evalPoints: [],
+        reviewSteps: [],
+      },
+      {
+        id: 'm-disabled',
+        taskId: 't1',
+        methodKey: 'homework',
+        weight: 0,
+        evalObject: 'individual',
+        evalSubjects: [],
+        resourceConfig: {},
+        version: 1,
+        isEnabled: false,
+        evalPoints: [],
+        reviewSteps: [],
+      },
+    ]
+    const state = taskStateFromMethods(methods)
+    expect(state.evaluationMethods).toEqual(['question_bank'])
+    expect(state.disabledEvaluationMethods).toEqual(['homework'])
+
+    // 模拟用户新增一个测评方式后，payload 仍需包含原 disabled 方法，避免后端出现版本/状态漂移
+    const stateWithNewMethod = {
+      ...state,
+      evaluationMethods: ['question_bank', 'review'],
+      disabledEvaluationMethods: ['homework'],
+      methodWeights: { question_bank: 50, review: 50 },
+    }
+    const payload = taskStateToMethodsInput(stateWithNewMethod)
+    const enabledKeys = payload.filter((m) => m.isEnabled).map((m) => m.methodKey)
+    const disabledKeys = payload.filter((m) => !m.isEnabled).map((m) => m.methodKey)
+    expect(enabledKeys.sort()).toEqual(['question_bank', 'review'])
+    expect(disabledKeys).toEqual(['homework'])
+  })
 })

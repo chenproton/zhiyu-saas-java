@@ -3750,13 +3750,20 @@ export function EvaluationRulesEditor({
     const currentScheme = currentRubricId ? rubricLibrary.find((s) => s.id === currentRubricId) : null
     const isScoreRule = currentScheme?.mode === 'score_rule'
     const scoreRuleItems = currentScheme?.scoreRuleItems || []
+    // 已关联模板但模板库尚未加载完成或模板不在当前列表时，避免回显为「未配置评价点」
+    const hasRubricIdButMissingScheme = currentRubricId && !currentScheme
 
     let summary: string
     let description: string
     let badge: string | undefined
     let configured: boolean
 
-    if (isScoreRule) {
+    if (hasRubricIdButMissingScheme) {
+      summary = '已选用评价标准'
+      description = '点击修改评价标准'
+      badge = '已配置'
+      configured = true
+    } else if (isScoreRule) {
       summary = scoreRuleItems.length === 0 ? '未配置评分项' : `${scoreRuleItems.length} 个评分项`
       description = '评分规则'
       badge = scoreRuleItems.length > 0 ? `${scoreRuleItems.length} 项` : undefined

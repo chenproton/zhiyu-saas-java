@@ -360,6 +360,7 @@ export function taskStateFromMethods(methods: TaskEvaluationMethod[]): TaskState
   // 将统一评价规则配置合并到 TaskState
   Object.assign(state, {
     evaluationMethods: evalConfig.evaluationMethods,
+    disabledEvaluationMethods: evalConfig.disabledEvaluationMethods,
     methodWeights: evalConfig.methodWeights,
     evalObject: evalConfig.evalObject,
     methodEvalObjects: evalConfig.methodEvalObjects,
