@@ -135,7 +135,7 @@ func newStore(q Queryer) *Store {
 		courseClone:      NewCourseCloneStore(q),
 		courseNodes:      NewCourseNodeStore(q),
 		taskEval:         NewTaskEvaluationStore(q),
-		positions:        NewPositionStore(q),
+		positions:        NewPositionStore(q, beginner),
 		courses:          NewCourseStore(q, beginner),
 		courseHomeworks:  NewCourseHomeworkStore(q, beginner),
 		courseAssess:     NewCourseAssessmentStore(q),

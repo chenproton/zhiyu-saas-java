@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -11,12 +12,13 @@ import (
 
 // PositionStore 岗位持久化。
 type PositionStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewPositionStore 创建岗位 store。
-func NewPositionStore(q Queryer) *PositionStore {
-	return &PositionStore{q: q}
+func NewPositionStore(q Queryer, beginner txBeginner) *PositionStore {
+	return &PositionStore{q: q, beginner: beginner}
 }
 
 // List 查询岗位列表。
@@ -169,10 +171,23 @@ func (s *PositionStore) Update(ctx context.Context, tx Queryer, id string, p *Po
 	return s.fetchPosition(ctx, id)
 }
 
-// Delete 删除岗位。
+// Delete 删除岗位（事务内同步清理无外键约束的岗位能力结果/学生画像/汇聚日志，防止孤儿数据残留）。
 func (s *PositionStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, id)
-	return err
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM job_ability_results WHERE career_position_id = $1`, id); err != nil {
+			return fmt.Errorf("cleanup job ability results: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM student_ability_portraits WHERE career_position_id = $1`, id); err != nil {
+			return fmt.Errorf("cleanup student ability portraits: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM job_ability_aggregate_logs WHERE career_position_id = $1`, id); err != nil {
+			return fmt.Errorf("cleanup job ability aggregate logs: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, id); err != nil {
+			return fmt.Errorf("delete position: %w", err)
+		}
+		return nil
+	})
 }
 
 // IncrementView 记录岗位浏览。
