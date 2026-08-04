@@ -15,6 +15,10 @@ import {
   LogIn,
   Check,
   UserCog,
+  AArrowDown,
+  AArrowUp,
+  Type,
+  RotateCcw,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -26,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/auth-provider'
+import { useFontScale } from '@/hooks/use-font-scale'
 
 const navItems = [
   { href: '/portal', label: '门户首页', icon: Home },
@@ -36,6 +41,7 @@ const navItems = [
 export function TopNav() {
   const pathname = usePathname()
   const { user, institution, roles, activeRole, setActiveRole, logout } = useAuth()
+  const { level, maxLevel, increase, decrease, reset } = useFontScale()
   const isLoggedIn = !!user
   const [currentTime, setCurrentTime] = useState('')
   const [mounted, setMounted] = useState(false)
@@ -180,6 +186,44 @@ export function TopNav() {
                 <DropdownMenuItem>
                   <Settings className="w-4 h-4 mr-2" />
                   账号设置
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Type className="w-3.5 h-3.5" />
+                  字号大小
+                </DropdownMenuLabel>
+                <div className="flex items-center gap-1 px-2 py-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-muted"
+                    onClick={decrease}
+                    disabled={level === 0}
+                    aria-label="减小字号"
+                  >
+                    <AArrowDown className="w-4 h-4" />
+                  </Button>
+                  <div className="flex-1 text-center text-sm text-foreground whitespace-nowrap">
+                    字号 {level}/{maxLevel}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-muted"
+                    onClick={increase}
+                    disabled={level === maxLevel}
+                    aria-label="增大字号"
+                  >
+                    <AArrowUp className="w-4 h-4" />
+                  </Button>
+                </div>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  disabled={level === 0}
+                  onClick={reset}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  恢复默认字号
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
