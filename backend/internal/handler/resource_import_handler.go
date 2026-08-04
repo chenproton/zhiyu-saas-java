@@ -1458,7 +1458,8 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 
 // Sheet: 品牌内容
 // Columns: 品牌类型*, 名称*, 描述, 状态, 是否公开, 是否推荐, 封面图URL,
-//          关联学生名称, 关联企业名称, 关联岗位名称, 关联专业名称, 关联教师名称, 关联专家名称
+//
+//	关联学生名称, 关联企业名称, 关联岗位名称, 关联专业名称, 关联教师名称, 关联专家名称
 func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
