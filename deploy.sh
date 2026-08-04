@@ -127,15 +127,28 @@ detect_docker_compose() {
   echo ""
 }
 
-# 保留最近 N 个镜像（按 image 创建时间），清理过旧的镜像及其所有标签
+# 清理旧构建镜像：每侧仅保留最近 keep 个（默认 1，即当前在用镜像）。
+# 历史问题：镜像同时带 IMAGE_TAG 与内容 hash 两个标签，docker rmi <id> 会因
+# "referenced in multiple repositories" 失败并被 || true 吞掉，导致旧镜像永远删不掉。
+# 修复要点：
+#   1. 先按 ID 去重再计数，避免多标签把最新镜像挤进待删列表
+#   2. 用 -f 强制删除（连带所有标签）
+#   3. 仍被任何容器（含已停止）引用的镜像不动，docker 本身也会拒绝删除
 prune_old_images() {
-  local repo="$1" keep="${2:-5}"
-  local ids
+  local repo="$1" keep="${2:-1}"
+  local used ids id
+  used=$(docker ps -a --format '{{.Image}}' 2>/dev/null | grep -E "^${repo}:" | \
+           while read -r img; do docker images -q "$img" 2>/dev/null; done | sort -u)
+  # 按创建时间倒序，再按 ID 去重取最新记录；行序即新旧顺序
   ids=$(docker images --format '{{.ID}}|{{.CreatedAt}}' "$repo" 2>/dev/null | \
-         sort -t'|' -k2 -r | tail -n +$((keep + 1)) | cut -d'|' -f1 | sort -u)
+          sort -t'|' -k2 -r | sort -u -t'|' -k1,1 | cut -d'|' -f1 | tail -n +$((keep + 1)))
   for id in $ids; do
     [[ -n "$id" ]] || continue
-    docker rmi "$id" >/dev/null 2>&1 || true
+    if echo "$used" | grep -qx "$id"; then
+      warn "镜像 $repo 的 $(echo "$id" | cut -c1-12) 正在被容器使用，跳过清理"
+      continue
+    fi
+    docker rmi -f "$id" >/dev/null 2>&1 || true
   done
 }
 
@@ -643,6 +656,10 @@ mkdir -p "$DEPLOY_DIR" "$DEPLOY_DIR/backups" "$DEPLOY_DIR/data/uploads" \
 PREV_BACKEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-backend 2>/dev/null || true)"
 PREV_FRONTEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-edu 2>/dev/null || true)"
 
+# 构建前先清理旧镜像，为本次构建腾出磁盘空间（在用镜像不受影响）
+prune_old_images "zhiyu-backend" 1
+prune_old_images "zhiyu-edu" 1
+
 # ════════════════════════════════════════════
 # 4. 构建后端（变更自动检测）
 # ════════════════════════════════════════════
@@ -883,10 +900,10 @@ fi
 # 清理悬空镜像（<none>），不影响在用镜像
 docker image prune -f >/dev/null 2>&1 || true
 
-# 清理过旧的镜像标签，每侧保留最近 5 个
-prune_old_images "zhiyu-backend" 5
-prune_old_images "zhiyu-edu" 5
-prune_old_images "fangzhengjin/kkfileview" 3
+# 清理过旧的镜像标签，每侧仅保留最新 1 个（当前在用）
+prune_old_images "zhiyu-backend" 1
+prune_old_images "zhiyu-edu" 1
+prune_old_images "fangzhengjin/kkfileview" 1
 
 # ════════════════════════════════════════════
 # 7. Nginx + 合并
