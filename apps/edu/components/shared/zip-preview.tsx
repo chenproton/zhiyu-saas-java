@@ -29,15 +29,21 @@ export function isZipUrl(url: string | undefined | null): boolean {
   return !!url && url.toLowerCase().endsWith('.zip')
 }
 
-// 中文压缩包可能用 GBK 编码文件名，出现乱码时用浏览器原生 GBK 解码兜底
-function fixName(name: string): string {
-  if (!name.includes('\uFFFD')) return name
+// macOS 生成的 zip 文件名是 UTF-8 字节但不置位 UTF-8 标志，fflate 会按 latin1
+// 逐字节解码成乱码（如 "æµ\x8Bè¯.txt"）。对全 latin1 域的名称做字节还原，
+// 再按 UTF-8 → GBK 依次尝试解码兜底。
+export function fixName(name: string): string {
+  if ([...name].some((c) => c.charCodeAt(0) > 0xff)) return name
+  const bytes = new Uint8Array(name.split('').map((c) => c.charCodeAt(0) & 0xff))
+  const asUtf8 = new TextDecoder('utf-8').decode(bytes)
+  if (!asUtf8.includes('\uFFFD')) return asUtf8
   try {
-    const bytes = new Uint8Array(name.split('').map((c) => c.charCodeAt(0) & 0xff))
-    return new TextDecoder('gbk').decode(bytes)
+    const asGbk = new TextDecoder('gbk').decode(bytes)
+    if (!asGbk.includes('\uFFFD')) return asGbk
   } catch {
-    return name
+    /* 保持原名 */
   }
+  return name
 }
 
 // 由调用方以 key={url} 挂载，保证换包时组件整体重建
@@ -67,7 +73,12 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
         const unzipped = unzipSync(buf)
         const list = Object.entries(unzipped)
           .map(([n, data]) => ({ name: fixName(n), size: data.length, data }))
-          .filter((e) => !e.name.endsWith('/'))
+          .filter(
+            (e) =>
+              !e.name.endsWith('/') &&
+              !e.name.startsWith('__MACOSX') &&
+              !e.name.endsWith('.DS_Store'),
+          )
           .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
         setEntries(list)
       } catch (e: any) {
