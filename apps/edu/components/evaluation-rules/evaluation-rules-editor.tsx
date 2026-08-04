@@ -2687,7 +2687,7 @@ export function EvaluationRulesEditor({
                             评价维度名称/关联知识点/能力点
                           </th>
                           <th className="py-2.5 px-2 text-left min-w-[320px]">评价等级</th>
-                          <th className="py-2.5 px-2 text-center w-16">权重(%)</th>
+                          <th className="py-2.5 px-2 text-center w-20">权重(%)</th>
                           <th className="py-2.5 px-2 text-center w-14">操作</th>
                         </tr>
                       </thead>
