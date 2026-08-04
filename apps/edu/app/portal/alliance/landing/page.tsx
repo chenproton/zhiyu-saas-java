@@ -170,10 +170,7 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <GradientPlaceholder
-              seed={enterprise.industry}
-              className="w-full h-full group-hover:scale-105 transition-transform duration-500"
-            />
+            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 group-hover:scale-105 transition-transform duration-500" />
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/55 to-black/20" />
           <div className="absolute top-3 left-3 right-3 flex items-start gap-2.5">
