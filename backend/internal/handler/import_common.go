@@ -84,6 +84,24 @@ func lookupSingleIDByName(ctx context.Context, db *pgxpool.Pool, table, tenantID
 	return nil
 }
 
+// lookupUserIDByRole 按租户+姓名+角色查找用户 ID，未命中返回 nil。
+// 供品牌内容导入的关联学生/教师解析使用。
+func lookupUserIDByRole(ctx context.Context, db *pgxpool.Pool, tenantID, name, role string) *string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil
+	}
+	var id string
+	err := db.QueryRow(ctx,
+		`SELECT id FROM users WHERE tenant_id=$1 AND name=$2 AND role=$3 LIMIT 1`,
+		tenantID, name, role,
+	).Scan(&id)
+	if err != nil {
+		return nil
+	}
+	return &id
+}
+
 // jsonBytes 将任意值序列化为 JSON 字节，序列化失败时返回 "[]"。
 // 仅供 import/export 豁免区使用。
 func jsonBytes(v any) []byte {
