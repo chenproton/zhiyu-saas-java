@@ -417,53 +417,31 @@ function AddGranularPageInner() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormFieldRow label="课程名称" labelClassName="text-xs">
-                  <Input
-                    value={courseName}
-                    onChange={(e) => setCourseName(e.target.value)}
-                    placeholder="请输入课程名称"
-                    className="h-9 text-sm"
-                  />
-                </FormFieldRow>
-                <FormFieldRow label="所属专业" labelClassName="text-xs">
-                  <MajorSelect
-                    value={majorId}
-                    onChange={(v, m) => {
-                      setMajorId(v || '')
-                      setMajor(m?.name || '')
-                    }}
-                    placeholder="请选择适用专业"
-                  />
-                </FormFieldRow>
-                <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
-                <div className="md:col-span-2">
-                  <TaskInfoCard
-                    name=""
-                    onNameChange={() => {}}
-                    type="training"
-                    onTypeChange={() => {}}
-                    difficulty={difficulty}
-                    onDifficultyChange={setDifficulty}
-                    hours={parseInt(hours) || 0}
-                    onHoursChange={(v) => setHours(String(v))}
-                    showBackground={false}
-                    showName={false}
-                    showType={false}
-                    hoursLabel="课时数"
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                {/* 左列：课程名称、所属批次、所属专业 */}
+                <div className="space-y-4 min-w-0">
+                  <FormFieldRow label="课程名称" labelClassName="text-xs">
+                    <Input
+                      value={courseName}
+                      onChange={(e) => setCourseName(e.target.value)}
+                      placeholder="请输入课程名称"
+                      className="h-9 text-sm"
+                    />
+                  </FormFieldRow>
+                  <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
+                  <FormFieldRow label="所属专业" labelClassName="text-xs">
+                    <MajorSelect
+                      value={majorId}
+                      onChange={(v, m) => {
+                        setMajorId(v || '')
+                        setMajor(m?.name || '')
+                      }}
+                      placeholder="请选择适用专业"
+                    />
+                  </FormFieldRow>
                 </div>
-                <div className="md:col-span-2 space-y-1.5">
-                  <Label className="text-xs">学习目标</Label>
-                  <RichTextEditor
-                    value={learningGoal}
-                    onChange={setLearningGoal}
-                    minHeight={280}
-                    pdfUrl={learningGoalPdf}
-                    onPdfChange={setLearningGoalPdf}
-                  />
-                </div>
-                <div className="md:col-span-2 space-y-1.5">
+                {/* 右列：封面图片（桌面端位于课程名称右侧，移动端单列排布） */}
+                <div className="space-y-1.5">
                   <Label className="text-xs">封面图片</Label>
                   <div className="flex items-start gap-4">
                     {coverImage ? (
@@ -503,6 +481,32 @@ function AddGranularPageInner() {
                       }}
                     />
                   </div>
+                </div>
+                <div className="md:col-span-2">
+                  <TaskInfoCard
+                    name=""
+                    onNameChange={() => {}}
+                    type="training"
+                    onTypeChange={() => {}}
+                    difficulty={difficulty}
+                    onDifficultyChange={setDifficulty}
+                    hours={parseInt(hours) || 0}
+                    onHoursChange={(v) => setHours(String(v))}
+                    showBackground={false}
+                    showName={false}
+                    showType={false}
+                    hoursLabel="课时数"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-1.5">
+                  <Label className="text-xs">学习目标</Label>
+                  <RichTextEditor
+                    value={learningGoal}
+                    onChange={setLearningGoal}
+                    minHeight={280}
+                    pdfUrl={learningGoalPdf}
+                    onPdfChange={setLearningGoalPdf}
+                  />
                 </div>
               </div>
             </CardContent>
