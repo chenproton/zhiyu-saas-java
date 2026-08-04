@@ -12,6 +12,7 @@
 | `03-合作成果导入模板-mock数据.xlsx` | `/portal/apps/alliance/achievements` | `alliance-achievements` |
 | `04-合作协议导入模板-mock数据.xlsx` | `/portal/apps/alliance/agreements` | `alliance-agreements` |
 | `05-专家资源导入模板-mock数据.xlsx` | `/portal/apps/alliance/experts` | `alliance-experts` |
+| `06-品牌内容导入模板-mock数据.xlsx` | `/portal/apps/alliance/brands/{talent,employer,job,major,teacher,culture}` | `alliance-brands` |
 
 每个文件的 Sheet 名称与表头均与系统「下载批量导入模板」生成的格式一致（第 1 行填写说明、第 2 行表头、第 3 行起为数据），可直接上传导入。
 
@@ -24,9 +25,27 @@
 | `03-合作成果` | 成果名称、成果类型、描述、成果日期 | **关联归属项目** → 成果 `project_ids`；**关联合作企业** → 成果 `enterprise_ids` |
 | `04-合作协议` | 协议名称、协议类型、开始日期、结束日期、状态、内容 | **关联归属项目** → 协议 `project_ids`；**关联合作企业** → 协议 `enterprise_ids` |
 | `05-专家资源` | 姓名、头衔、职位、行业、城市、简介、**年龄、从业年限、擅长领域、从业经历** | **关联合作企业** → 专家 `enterprise_id`（单值，多值时取第一个） |
+| `06-品牌内容` | 品牌类型、名称、描述、**状态、是否公开、是否推荐、封面图URL** | **关联学生/企业/岗位/专业/教师/专家名称** → 品牌对应 `*_id` 关联字段（见下表） |
 
-加粗字段为本批新增的导入字段。名称关联字段支持多值（除专家外）用**中文分号「；」**（或英文分号 `;`）分隔，
-导入时按同租户下已有记录的名称精确匹配，未命中的名称自动忽略。
+### 品牌内容（`06`）关联对象说明
+
+品牌内容为**共享导入模板**，`品牌类型` 列区分 6 个页面（人才/雇主/岗位/专业/师资/文化品牌），
+每个品牌类型只填写其对应的关联列（与前端表单字段一致），其余关联列留空：
+
+| 品牌类型 | 前端页面 | 关联字段 |
+|----------|----------|----------|
+| 人才品牌 | `brands/talent` | 关联学生名称 → `student_id`；关联专业名称 → `major_id` |
+| 雇主品牌 | `brands/employer` | 关联企业名称 → `enterprise_id` |
+| 岗位品牌 | `brands/job` | 关联岗位名称 → `position_id` |
+| 专业品牌 | `brands/major` | 关联专业名称 → `major_id` |
+| 师资品牌 | `brands/teacher` | 关联教师名称 → `teacher_id`；关联专家名称 → `expert_id` |
+| 文化品牌 | `brands/culture` | 关联专业名称 → `major_id` |
+
+关联名称按同租户下已有记录精确匹配（学生/教师匹配 `users` 表姓名，企业/岗位/专业/专家分别匹配对应业务表），
+未命中的名称自动忽略。
+
+> 品牌内容模板与前端字段对齐性由集成测试 `TestBrandTemplateAlignsWithFrontend`（模板表头校验）
+> 与 `TestBrandImportAllFields`（6 类品牌全字段导入与名称关联校验）保障。
 
 ## 导入顺序
 
