@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -43,10 +43,10 @@ export function TopNav() {
   const { user, institution, roles, activeRole, setActiveRole, logout } = useAuth()
   const { level, maxLevel, increase, decrease, reset } = useFontScale()
   const isLoggedIn = !!user
-  // 字号放大后导航栏空间紧张，隐藏文字只保留图标，时间一并隐藏
-  const isFontScaled = level >= 1
   const [currentTime, setCurrentTime] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [layoutTick, setLayoutTick] = useState(0)
+  const headerRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mounted 标志用于避免 hydration 不一致，需在挂载后置位
@@ -77,6 +77,31 @@ export function TopNav() {
     }
   }, [])
 
+  // 实测导航栏内容是否溢出（窗口变窄/字号放大导致文字重叠），按优先级依次隐藏文字只保留图标：
+  // 时间 → 系统名称 → 三个菜单文字 → 右侧用户信息文字
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    if (!header || !mounted) return
+    const hideables = Array.from(header.querySelectorAll<HTMLElement>('[data-hide-order]')).sort(
+      (a, b) => Number(a.dataset.hideOrder) - Number(b.dataset.hideOrder),
+    )
+    for (let lv = 0; lv <= hideables.length; lv++) {
+      hideables.forEach((el, i) => {
+        el.style.display = i < lv ? 'none' : ''
+      })
+      if (header.scrollWidth <= header.clientWidth + 1) break
+    }
+  }, [mounted, isLoggedIn, currentTime, level, layoutTick])
+
+  // 导航栏自身尺寸变化（窗口缩放/字号调整/字体加载）时触发重新计算
+  useEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+    const ro = new ResizeObserver(() => setLayoutTick((t) => t + 1))
+    ro.observe(header)
+    return () => ro.disconnect()
+  }, [mounted])
+
   const isActive = (href: string) => {
     if (href === '/portal') {
       return pathname === '/portal'
@@ -90,7 +115,10 @@ export function TopNav() {
 
   return (
     <>
-      <header className="h-14 bg-white/70 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-3 md:px-6 shrink-0 fixed top-0 left-0 right-0 z-50 shadow-sm">
+      <header
+        ref={headerRef}
+        className="h-14 bg-white/70 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-3 md:px-6 shrink-0 fixed top-0 left-0 right-0 z-50 shadow-sm"
+      >
         <div className="flex items-center gap-4 md:gap-8">
           <Link href="/portal" className="flex items-center gap-2">
             <Image
@@ -101,9 +129,8 @@ export function TopNav() {
               className="h-8 w-auto object-contain"
             />
             <span
-              className={`font-semibold text-foreground text-base whitespace-nowrap ${
-                isFontScaled ? 'hidden' : 'hidden sm:inline'
-              }`}
+              data-hide-order="2"
+              className="hidden sm:inline font-semibold text-foreground text-base whitespace-nowrap"
             >
               场景化数智教学服务平台
             </span>
@@ -126,9 +153,7 @@ export function TopNav() {
                     }`}
                   >
                     <Icon className="w-5 h-5 md:w-4 md:h-4" />
-                    <span
-                      className={`whitespace-nowrap ${isFontScaled ? 'hidden' : 'hidden md:inline'}`}
-                    >
+                    <span data-hide-order="3" className="hidden md:inline whitespace-nowrap">
                       {item.label}
                     </span>
                     {active && (
@@ -144,9 +169,8 @@ export function TopNav() {
         <div className="flex items-center gap-3 md:gap-6">
           {mounted && (
             <div
-              className={`text-sm text-muted-foreground whitespace-nowrap ${
-                isFontScaled ? 'hidden' : 'hidden md:block'
-              }`}
+              data-hide-order="1"
+              className="hidden md:block text-sm text-muted-foreground whitespace-nowrap"
             >
               {currentTime}
             </div>
@@ -162,7 +186,7 @@ export function TopNav() {
                   <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">
                     {user.name?.charAt(0).toUpperCase() || 'U'}
                   </div>
-                  <div className="hidden sm:block text-left">
+                  <div data-hide-order="4" className="hidden sm:block text-left">
                     <div className="text-sm text-foreground whitespace-nowrap">{user.name}</div>
                     <div className="text-xs text-muted-foreground whitespace-nowrap">
                       {activeRole?.name || '用户'} · {institution?.name || '组织'}
