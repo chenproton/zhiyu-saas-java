@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Lock, Scale, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -11,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 
 export interface WeightConfigItem {
   id: string
@@ -70,6 +72,8 @@ function WeightConfigForm({
     })
     return map
   })
+  // 锁定的项保持权重不变，平均分配时只重新分配未锁定项
+  const [locked, setLocked] = useState<Record<string, boolean>>({})
 
   const total = Object.values(localWeights).reduce((sum, v) => sum + (v || 0), 0)
   const isValid = total === 100
@@ -77,6 +81,27 @@ function WeightConfigForm({
   const handleChange = (id: string, value: string) => {
     const num = parseInt(value, 10)
     setLocalWeights((prev) => ({ ...prev, [id]: Number.isNaN(num) ? 0 : num }))
+  }
+
+  const toggleLock = (id: string) => {
+    setLocked((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const distribute = () => {
+    const unlocked = items.filter((item) => !locked[item.id])
+    if (unlocked.length === 0) return
+    const lockedWeight = items
+      .filter((item) => locked[item.id])
+      .reduce((sum, item) => sum + (localWeights[item.id] ?? 0), 0)
+    const remaining = 100 - lockedWeight
+    const each = Math.floor(remaining / unlocked.length)
+    setLocalWeights((prev) => {
+      const next = { ...prev }
+      unlocked.forEach((item, i) => {
+        next[item.id] = each + (i < remaining % unlocked.length ? 1 : 0)
+      })
+      return next
+    })
   }
 
   const handleSave = () => {
@@ -91,36 +116,52 @@ function WeightConfigForm({
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">暂无可配置项</p>
         ) : (
-          items.map((item, index) => (
-            <div key={item.id} className="space-y-3">
-              {item.group && (index === 0 || items[index - 1].group !== item.group) && (
-                <p className="text-xs font-medium text-muted-foreground">{item.group}</p>
-              )}
-              <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/50 border border-border">
-                <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={localWeights[item.id] ?? item.weight}
-                    onChange={(e) => handleChange(item.id, e.target.value)}
-                    className="w-20 h-8 text-center"
-                  />
-                  <span className="text-muted-foreground text-sm">%</span>
+          <>
+            <div className="flex items-center justify-between">
+              <span
+                className={cn(
+                  'text-sm font-semibold',
+                  isValid ? 'text-green-600' : 'text-red-600',
+                )}
+              >
+                当前合计：{total}% {isValid ? '✓' : '（必须为 100%）'}
+              </span>
+              <Button variant="outline" size="sm" onClick={distribute}>
+                <Scale className="mr-2 h-4 w-4" />
+                一键平均分配
+              </Button>
+            </div>
+            {items.map((item, index) => (
+              <div key={item.id} className="space-y-3">
+                {item.group && (index === 0 || items[index - 1].group !== item.group) && (
+                  <p className="text-xs font-medium text-muted-foreground">{item.group}</p>
+                )}
+                <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/50 border border-border">
+                  <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={localWeights[item.id] ?? item.weight}
+                      onChange={(e) => handleChange(item.id, e.target.value)}
+                      disabled={locked[item.id]}
+                      className={cn('w-20 h-8 text-center', locked[item.id] && 'bg-gray-50')}
+                    />
+                    <span className="text-muted-foreground text-sm">%</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleLock(item.id)}
+                    className={cn('h-8 w-8', locked[item.id] ? 'text-amber-500' : 'text-gray-400')}
+                  >
+                    {locked[item.id] ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
-            </div>
-          ))
-        )}
-        {items.length > 0 && (
-          <div
-            className={`text-sm font-medium text-right ${
-              isValid ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
-            当前合计：{total}% {isValid ? '✓' : '（必须为 100%）'}
-          </div>
+            ))}
+          </>
         )}
       </div>
       <DialogFooter>
