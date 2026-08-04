@@ -917,30 +917,6 @@ export default function TasksEditPage() {
     })
     setTaskStates(updatedTaskStates)
 
-    const saveMethodsWithRetry = async (tid: string, ts: TaskState): Promise<number> => {
-      const methodsInput = taskStateToMethodsInput(ts)
-      if (methodsInput.length === 0) return ts.evalMethodVersion
-      const doSave = async (version: number) => {
-        const savedRes = await taskEvaluationApi.saveMethods(tid, {
-          version,
-          methods: methodsInput,
-        })
-        return (savedRes.methods || []).reduce((max, m) => Math.max(max, m.version || 0), 0)
-      }
-      try {
-        return await doSave(ts.evalMethodVersion)
-      } catch (err: any) {
-        if (err.message === '评价规则已被其他会话修改') {
-          const freshRes = await taskEvaluationApi.listMethods(tid)
-          const freshState = taskStateFromMethods(freshRes.methods || [])
-          const freshVersion = freshState.evalMethodVersion
-          updatedTaskStates[tid] = { ...updatedTaskStates[tid], ...freshState }
-          return await doSave(freshVersion)
-        }
-        throw err
-      }
-    }
-
     const newTasks: Task[] = []
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i]
@@ -972,7 +948,11 @@ export default function TasksEditPage() {
         // 临时 ID 创建的 task 需要把 state key 迁移到真实 ID，否则后续状态丢失
         updatedTaskStates[newTask.id] = { ...ts, evalMethodVersion: ts.evalMethodVersion }
         delete updatedTaskStates[oldId]
-        const newVersion = await saveMethodsWithRetry(newTask.id, ts)
+        const newVersion = await saveMethodsWithRetry(
+          newTask.id,
+          ts.evalMethodVersion,
+          taskStateToMethodsInput(ts),
+        )
         updatedTaskStates[newTask.id] = {
           ...updatedTaskStates[newTask.id],
           evalMethodVersion: newVersion,
@@ -980,7 +960,11 @@ export default function TasksEditPage() {
       } else {
         await taskApi.update(t.id, payload)
         newTasks.push(t)
-        const newVersion = await saveMethodsWithRetry(t.id, ts)
+        const newVersion = await saveMethodsWithRetry(
+          t.id,
+          ts.evalMethodVersion,
+          taskStateToMethodsInput(ts),
+        )
         updatedTaskStates[t.id] = { ...updatedTaskStates[t.id], evalMethodVersion: newVersion }
       }
     }
@@ -1565,6 +1549,33 @@ const DEFAULT_HOMEWORK_RESOURCE_CONFIG = {
 
 // ============ Edit Card Dialog ============
 
+// 保存任务测评方式：遇 409（评价规则已被其他会话修改）时拉取最新版本重试一次，避免并发保存整体失败
+async function saveMethodsWithRetry(
+  tid: string,
+  version: number,
+  methods: any[],
+): Promise<number> {
+  if (methods.length === 0) return version
+  const doSave = async (v: number) => {
+    const savedRes = await taskEvaluationApi.saveMethods(tid, { version: v, methods })
+    return (savedRes.methods || []).reduce((max, m) => Math.max(max, m.version || 0), 0)
+  }
+  try {
+    return await doSave(version)
+  } catch (err: any) {
+    if (err.message === '评价规则已被其他会话修改') {
+      const freshRes = await taskEvaluationApi.listMethods(tid).catch(() => null)
+      if (!freshRes) throw err
+      const freshVersion = (freshRes.methods || []).reduce(
+        (max, m) => Math.max(max, m.version || 0),
+        0,
+      )
+      return await doSave(freshVersion)
+    }
+    throw err
+  }
+}
+
 function EditCardDialog({
   taskId,
   cardType,
@@ -1734,23 +1745,8 @@ function EditCardDialog({
           updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] }
       })
       updateState({ methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps })
-      // Persist evaluation methods (including resource config) to backend immediately
-      let currentVersion = state.evalMethodVersion
-      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
-      if (methodsInput.length > 0) {
-        try {
-          const savedRes = await taskEvaluationApi.saveMethods(taskId, {
-            version: currentVersion,
-            methods: methodsInput,
-          })
-          currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
-          updateState({ evalMethodVersion: currentVersion })
-        } catch (err: any) {
-          toast({ variant: 'destructive', title: '评价规则保存失败', description: err.message })
-          return
-        }
-      }
       // Generate temp exams for enabled question_bank / quiz and persist examId back
+      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
       const tempExamMethods = methodsInput.filter(
         (m) =>
           m.isEnabled && (m.methodKey === 'question_bank' || m.methodKey === 'quiz'),
@@ -1774,15 +1770,19 @@ function EditCardDialog({
         }
         updateState({ methodResourceConfigs: updatedRC })
         methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
+      }
+      // Persist evaluation methods (including resource config) to backend
+      if (methodsInput.length > 0) {
         try {
-          const savedRes = await taskEvaluationApi.saveMethods(taskId, {
-            version: currentVersion,
-            methods: methodsInput,
-          })
-          currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
-          updateState({ evalMethodVersion: currentVersion })
-        } catch (err) {
-          reportError(err, '评价规则二次保存失败')
+          const newVersion = await saveMethodsWithRetry(
+            taskId,
+            state.evalMethodVersion,
+            methodsInput,
+          )
+          updateState({ evalMethodVersion: newVersion })
+        } catch (err: any) {
+          toast({ variant: 'destructive', title: '评价规则保存失败', description: err.message })
+          return
         }
       }
       // Ensure exam usage exists for paper so students can access it from the landing page
