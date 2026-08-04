@@ -64,8 +64,6 @@ import {
   taskResourceApi,
   taskEvaluationApi,
   scenarioWeightApi,
-  examApi,
-  examUsageApi,
   resourceLibraryApi,
 } from '@/lib/api'
 import type { ScenarioTask as ApiScenarioTask } from '@/lib/types/scene'
@@ -1630,58 +1628,6 @@ function EditCardDialog({
 
   // For assessment config
 
-  const ensureTempExam = async (
-    mk: 'question_bank' | 'quiz',
-    currentCfg: any,
-  ): Promise<string | null> => {
-    const questionIds = mk === 'question_bank' ? state.questionBankQuestions : state.quizQuestions
-    const existingExamId = currentCfg?.examId
-    const questionScores = currentCfg?.questionScores || {}
-    const existingQuestionIds = currentCfg?.examQuestionIds || []
-    if (!questionIds || questionIds.length === 0) {
-      if (existingExamId) {
-        try {
-          const usages = await examUsageApi.list({ examId: existingExamId })
-          for (const u of usages.items || []) await examUsageApi.delete(u.id)
-          await examApi.delete(existingExamId)
-        } catch {
-          /* ignore */
-        }
-      }
-      return null
-    }
-    const sortedNew = [...questionIds].sort().join(',')
-    const sortedOld = [...existingQuestionIds].sort().join(',')
-    if (existingExamId && sortedNew === sortedOld) return existingExamId
-    if (existingExamId) {
-      try {
-        const usages = await examUsageApi.list({ examId: existingExamId })
-        for (const u of usages.items || []) await examUsageApi.delete(u.id)
-        await examApi.delete(existingExamId)
-      } catch {
-        /* ignore */
-      }
-    }
-    const label = mk === 'question_bank' ? '题库' : '随堂测'
-    // 自动生成的临时试卷名称带随机后缀，避免与历史残留考试重名触发 409
-    const examName = `${task.name}-${label}临时试卷-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
-    const exam = await examApi.create({
-      name: examName,
-      duration: currentCfg?.timeLimit || 90,
-      isTemp: true,
-    } as any)
-    for (const qid of questionIds) {
-      await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
-    }
-    await examUsageApi.create({
-      examId: exam.id,
-      name: `${exam.name} 默认安排`,
-      targetType: 'public',
-      targetIds: [taskId],
-    } as any)
-    return exam.id
-  }
-
   // 评价标准表单「保存」：把当前方法的评价标准立即落库到当前任务×当前测评方式
   const handlePersistStandard = async (
     _methodKey: string,
@@ -1757,32 +1703,8 @@ function EditCardDialog({
           updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] }
       })
       updateState({ methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps })
-      // Generate temp exams for enabled question_bank / quiz and persist examId back
-      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
-      const tempExamMethods = methodsInput.filter(
-        (m) =>
-          m.isEnabled && (m.methodKey === 'question_bank' || m.methodKey === 'quiz'),
-      )
-      if (tempExamMethods.length > 0) {
-        for (const m of tempExamMethods) {
-          try {
-            const mk = m.methodKey as 'question_bank' | 'quiz'
-            const examId = await ensureTempExam(mk, updatedRC[mk])
-            if (examId) {
-              updatedRC[mk] = {
-                ...updatedRC[mk],
-                examId,
-                examQuestionIds:
-                  mk === 'question_bank' ? state.questionBankQuestions : state.quizQuestions,
-              }
-            }
-          } catch {
-            /* temp exam creation failed, skip */
-          }
-        }
-        updateState({ methodResourceConfigs: updatedRC })
-        methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
-      }
+      // 临时考试/考试安排由后端 EnsureExamUsageForMethod 在保存测评方式时统一幂等创建
+      const methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
       // Persist evaluation methods (including resource config) to backend
       if (methodsInput.length > 0) {
         try {
@@ -1795,25 +1717,6 @@ function EditCardDialog({
         } catch (err: any) {
           toast({ variant: 'destructive', title: '评价规则保存失败', description: err.message })
           return
-        }
-      }
-      // Ensure exam usage exists for paper so students can access it from the landing page
-      if (state.evaluationMethods.includes('paper') && state.paperIds.length > 0) {
-        const paperId = state.paperIds[0]
-        try {
-          const usages = await examUsageApi.list({ examId: paperId })
-          if ((usages.items || []).length === 0) {
-            const paperCfg = updatedRC.paper || {}
-            await examUsageApi.create({
-              examId: paperId,
-              name: `${task.name}-试卷默认安排`,
-              targetType: 'public',
-              targetIds: [taskId],
-              duration: paperCfg.duration || 90,
-            } as any)
-          }
-        } catch {
-          /* ignore */
         }
       }
     }

@@ -563,3 +563,21 @@ func getFloatMapFromJSONMap(m domain.JSONMap, key string) map[string]float64 {
 	}
 	return nil
 }
+
+// CleanupTaskExamUsages 清理任务关联的考试安排（target_type='task'）及其独占的临时考试。
+// 临时考试仅在其不再被任何安排引用时删除；正式试卷（is_temp=false）不受影响。
+// 须在事务内调用（场景/任务删除共用）。
+func CleanupTaskExamUsages(ctx context.Context, tx Queryer, taskID string) error {
+	if _, err := tx.Exec(ctx, `
+		WITH task_usage AS (
+			DELETE FROM exam_usages WHERE target_type = 'task' AND $1::uuid = ANY(target_ids) RETURNING exam_id
+		)
+		DELETE FROM exams e
+		WHERE e.is_temp = TRUE
+			AND EXISTS (SELECT 1 FROM task_usage tu WHERE tu.exam_id = e.id)
+			AND NOT EXISTS (SELECT 1 FROM exam_usages eu WHERE eu.exam_id = e.id)
+	`, taskID); err != nil {
+		return fmt.Errorf("cleanup task exam usages: %w", err)
+	}
+	return nil
+}

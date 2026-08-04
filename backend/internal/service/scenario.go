@@ -117,9 +117,14 @@ func (s *ScenarioService) UpdateTask(ctx context.Context, id, tenantID string, p
 	return s.st.ScenarioTasks().Update(ctx, id, tenantID, p)
 }
 
-// DeleteTask 删除任务。
+// DeleteTask 删除任务（含关联考试安排与独占临时考试的清理）。
 func (s *ScenarioService) DeleteTask(ctx context.Context, id, tenantID string) error {
-	return s.st.ScenarioTasks().Delete(ctx, id, tenantID)
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		if err := store.CleanupTaskExamUsages(ctx, txStore.Q(), id); err != nil {
+			return err
+		}
+		return txStore.ScenarioTasks().Delete(ctx, id, tenantID)
+	})
 }
 
 // ReorderTasks 批量重排任务（事务内）。

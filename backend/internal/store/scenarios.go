@@ -107,7 +107,7 @@ func (s *ScenarioStore) Update(ctx context.Context, id string, p *ScenarioUpdate
 	return s.fetchScenario(ctx, id)
 }
 
-// Delete 删除场景（先解绑引用）。
+// Delete 删除场景（先解绑引用，再清理任务关联的考试安排与临时考试）。
 func (s *ScenarioStore) Delete(ctx context.Context, id string) error {
 	// training_program_courses.scenario_id 已于 102 迁移删除，方案-场景关联改经 position_id 链路，无需解绑
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
@@ -117,8 +117,33 @@ func (s *ScenarioStore) Delete(ctx context.Context, id string) error {
 		if _, err := tx.Exec(ctx, `UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
 			return fmt.Errorf("unbind scenario from schedules: %w", err)
 		}
-		_, err := tx.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, id)
-		return err
+		rows, err := tx.Query(ctx, `SELECT id FROM scenario_tasks WHERE scenario_id = $1`, id)
+		if err != nil {
+			return fmt.Errorf("collect scenario tasks: %w", err)
+		}
+		var taskIDs []string
+		for rows.Next() {
+			var tid string
+			if err := rows.Scan(&tid); err != nil {
+				rows.Close()
+				return err
+			}
+			taskIDs = append(taskIDs, tid)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, id); err != nil {
+			return err
+		}
+		// scenario_tasks 经外键级联删除，其关联的考试安排/临时考试在此清理
+		for _, tid := range taskIDs {
+			if err := CleanupTaskExamUsages(ctx, tx, tid); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
