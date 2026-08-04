@@ -380,6 +380,8 @@ func mapEvalMethod(t string) string {
 		return "paper"
 	case "随堂测":
 		return "quiz"
+	case "现场问答":
+		return "random_draw"
 	case "现场评审":
 		return "review"
 	case "成果评价":

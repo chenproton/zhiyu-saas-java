@@ -263,7 +263,7 @@ func mapEvalMethodToChinese(mk string) string {
 	case "homework":
 		return "作业"
 	case "random_draw":
-		return "随堂测"
+		return "现场问答"
 	default:
 		return mk
 	}
