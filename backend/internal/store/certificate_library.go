@@ -33,7 +33,7 @@ type CertificateLibraryCreateParams struct {
 	URL         *string
 	Description *string
 	ImageURL    *string
-	CreatorID   *string
+	CreatorID   string
 }
 
 func (p CertificateLibraryCreateParams) Tenant() string { return p.TenantID }
@@ -44,7 +44,7 @@ func (p CertificateLibraryCreateParams) Args() []any {
 
 type CertificateLibraryUpdateParams struct {
 	Name        string
-	URL         *string
+	URL         string
 	Description *string
 	ImageURL    *string
 }
