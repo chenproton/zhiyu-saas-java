@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -43,37 +42,6 @@ export function TopNav() {
   const { user, institution, roles, activeRole, setActiveRole, logout } = useAuth()
   const { level, maxLevel, increase, decrease, reset } = useFontScale()
   const isLoggedIn = !!user
-  const [currentTime, setCurrentTime] = useState('')
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- mounted 标志用于避免 hydration 不一致，需在挂载后置位
-    setMounted(true)
-    const updateTime = () => {
-      if (document.visibilityState !== 'visible') return
-      const now = new Date()
-      const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-      const year = now.getFullYear()
-      const month = String(now.getMonth() + 1).padStart(2, '0')
-      const day = String(now.getDate()).padStart(2, '0')
-      const weekDay = weekDays[now.getDay()]
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const seconds = String(now.getSeconds()).padStart(2, '0')
-      setCurrentTime(`${year}年${month}月${day}日 ${weekDay} ${hours}:${minutes}:${seconds}`)
-    }
-    // 仅在页面可见时更新时钟，后台标签页跳过 setState，避免每秒触发整树重渲染
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') updateTime()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-    updateTime()
-    const timer = setInterval(updateTime, 1000)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility)
-      clearInterval(timer)
-    }
-  }, [])
 
   const isActive = (href: string) => {
     if (href === '/portal') {
@@ -98,9 +66,6 @@ export function TopNav() {
               height={139}
               className="h-8 w-auto object-contain"
             />
-            <span className="hidden sm:inline font-semibold text-foreground text-base whitespace-nowrap">
-              场景化数智教学服务平台
-            </span>
           </Link>
 
           {isLoggedIn && (
@@ -113,16 +78,15 @@ export function TopNav() {
                     key={item.href}
                     href={item.href}
                     title={item.label}
-                    className={`flex items-center gap-1.5 px-3 md:px-4 py-2 text-sm rounded-md transition-colors relative whitespace-nowrap ${
+                    className={`flex items-center justify-center px-2.5 py-2 text-sm rounded-md transition-colors relative whitespace-nowrap ${
                       active
                         ? 'text-primary font-medium'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
                   >
-                    <Icon className="w-5 h-5 md:w-4 md:h-4" />
-                    <span className="hidden md:inline whitespace-nowrap">{item.label}</span>
+                    <Icon className="w-5 h-5" />
                     {active && (
-                      <span className="absolute bottom-0 left-2 right-2 md:left-4 md:right-4 h-0.5 bg-primary rounded-full" />
+                      <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full" />
                     )}
                   </Link>
                 )
@@ -132,12 +96,6 @@ export function TopNav() {
         </div>
 
         <div className="flex items-center gap-3 md:gap-6">
-          {mounted && (
-            <div className="hidden md:block text-sm text-muted-foreground whitespace-nowrap">
-              {currentTime}
-            </div>
-          )}
-
           {isLoggedIn && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
