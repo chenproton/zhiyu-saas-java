@@ -3736,23 +3736,56 @@ export function EvaluationRulesEditor({
 
   const MethodCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
     const info = getMethodEvalInfo(methodKey)
-    const subTypeCount = Object.entries(
-      info.points.reduce(
-        (acc, p) => {
-          if (p.subType) acc[p.subType] = (acc[p.subType] || 0) + 1
-          return acc
-        },
-        {} as Record<string, number>,
-      ),
-    ).map(([k, v]) => `${evalSubTypeLabels[k as EvalSubType]}${v}`)
+    const rubricIdField =
+      methodKey === 'random_draw'
+        ? 'randomDrawRubricId'
+        : methodKey === 'review'
+          ? 'reviewRubricId'
+          : methodKey === 'outcome'
+            ? 'outcomeRubricId'
+            : methodKey === 'homework'
+              ? 'homeworkRubricId'
+              : null
+    const currentRubricId = rubricIdField ? ((config as any)[rubricIdField] as string | null) : null
+    const currentScheme = currentRubricId ? rubricLibrary.find((s) => s.id === currentRubricId) : null
+    const isScoreRule = currentScheme?.mode === 'score_rule'
+    const scoreRuleItems = currentScheme?.scoreRuleItems || []
+
+    let summary: string
+    let description: string
+    let badge: string | undefined
+    let configured: boolean
+
+    if (isScoreRule) {
+      summary = scoreRuleItems.length === 0 ? '未配置评分项' : `${scoreRuleItems.length} 个评分项`
+      description = '评分规则'
+      badge = scoreRuleItems.length > 0 ? `${scoreRuleItems.length} 项` : undefined
+      configured = scoreRuleItems.length > 0
+    } else {
+      const subTypeCount = Object.entries(
+        info.points.reduce(
+          (acc, p) => {
+            if (p.subType) acc[p.subType] = (acc[p.subType] || 0) + 1
+            return acc
+          },
+          {} as Record<string, number>,
+        ),
+      ).map(([k, v]) => `${evalSubTypeLabels[k as EvalSubType]}${v}`)
+      summary = info.points.length === 0 ? '未配置评价点' : `${info.points.length} 个评价点`
+      description = subTypeCount.length === 0 ? '点击配置评价标准' : subTypeCount.join(' · ')
+      badge = info.points.length > 0 ? `${info.points.length} 点` : undefined
+      configured = info.points.length > 0
+    }
+
     return (
       <StepCard
         step={4}
         title="评价标准配置"
         icon={<Target className="h-4 w-4" />}
-        summary={info.points.length === 0 ? '未配置评价点' : `${info.points.length} 个评价点`}
-        description={subTypeCount.length === 0 ? '点击配置评价标准' : subTypeCount.join(' · ')}
-        badge={info.points.length > 0 ? `${info.points.length} 点` : undefined}
+        summary={summary}
+        description={description}
+        badge={badge}
+        configured={configured}
         onClick={onClick}
       />
     )

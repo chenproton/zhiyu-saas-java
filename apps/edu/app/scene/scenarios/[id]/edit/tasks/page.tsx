@@ -458,12 +458,19 @@ export default function TasksEditPage() {
         if (state.evaluationMethods.length === 0) return '未配置评价方式'
         const configuredMethods = state.evaluationMethods.filter((m) => {
           if (m === 'random_draw')
-            return state.randomDrawSelectedIds.length > 0 || state.randomDrawEvalPoints.length > 0
-          if (m === 'review') return state.reviewEvalPoints.length > 0
+            return (
+              state.randomDrawSelectedIds.length > 0 ||
+              state.randomDrawEvalPoints.length > 0 ||
+              !!state.randomDrawRubricId
+            )
+          if (m === 'review')
+            return state.reviewEvalPoints.length > 0 || !!state.reviewRubricId
           if (m === 'paper') return state.paperIds.length > 0
           if (m === 'question_bank') return state.questionBankQuestions.length > 0
-          if (m === 'outcome') return state.outcomeEvalPoints.length > 0
-          if (m === 'homework') return state.homeworkEvalPoints.length > 0
+          if (m === 'outcome')
+            return state.outcomeEvalPoints.length > 0 || !!state.outcomeRubricId
+          if (m === 'homework')
+            return state.homeworkEvalPoints.length > 0 || !!state.homeworkRubricId
           if (m === 'quiz') return state.quizQuestions.length > 0
           return false
         })
