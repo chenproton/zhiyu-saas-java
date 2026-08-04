@@ -106,7 +106,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setExams(res.items.map(parseExam))
   }, [])
 
-  const isPortal = pathname.startsWith('/portal')
+  const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/superadmin')
 
   useEffect(() => {
     if (isPortal) return
