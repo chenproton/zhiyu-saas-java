@@ -377,11 +377,7 @@ export default function ScenarioEditPage() {
                     )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardContent className="pt-6 space-y-4">
                 <div>
                   <Label className="block text-gray-500 text-xs">创建人</Label>
                   <p className="font-medium text-gray-800 mt-1">{creatorName}</p>
