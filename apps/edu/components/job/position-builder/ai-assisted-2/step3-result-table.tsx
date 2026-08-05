@@ -30,7 +30,14 @@ const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
   { value: 'expert', label: '精通' },
 ]
 
-const ABILITY_DOMAINS = ['岗位与行业认知', '专业知识', '职业素养/价值观', '专业技能', '通用能力']
+// 字典保存值保持以下 5 个不变，hint 仅在下拉列表中展示说明文案
+const ABILITY_DOMAINS: { value: string; hint: string }[] = [
+  { value: '岗位与行业认知', hint: '如行业常识、岗位职责、发展趋势类能力点' },
+  { value: '专业知识', hint: '如专业理论、概念、原理、标准、规范、法规等知识类能力点' },
+  { value: '专业技能', hint: '如实操、工具使用、业务处理、专项操作类能力点' },
+  { value: '通用能力', hint: '如沟通、协作、思维、学习、执行、管理等通用综合能力点' },
+  { value: '职业素养/价值观', hint: '价值观、责任心、敬业度、职业操守等素养类能力点' },
+]
 
 interface Step3ResultTableProps {
   position: Position
@@ -148,10 +155,10 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
                                 <SelectTrigger className="h-7 text-[11px] w-[110px]">
                                   <SelectValue placeholder="选择领域" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="min-w-[320px]">
                                   {ABILITY_DOMAINS.map((d) => (
-                                    <SelectItem key={d} value={d}>
-                                      {d}
+                                    <SelectItem key={d.value} value={d.value} hint={`（${d.hint}）`}>
+                                      {d.value}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
