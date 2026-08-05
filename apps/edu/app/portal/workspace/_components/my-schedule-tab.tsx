@@ -40,7 +40,9 @@ export function MyScheduleTab({ role }: MyScheduleTabProps) {
       return role === 'student' ? `/scene/landing/${entry.scenarioId}` : '/evaluation/scene-results'
     }
     if (entry.type === 'traditional' && entry.courseId) {
-      return `/lesson/landing/${entry.courseId}`
+      return role === 'student'
+        ? `/lesson/landing/${entry.courseId}`
+        : `/evaluation/lesson-results?courseId=${entry.courseId}`
     }
     return undefined
   }
