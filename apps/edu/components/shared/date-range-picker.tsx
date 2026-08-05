@@ -30,7 +30,8 @@ const rdpThemeVars = {
 } as CSSProperties
 
 /**
- * 日期范围选择：点击弹出日历，一次选择开始+结束两个日期。
+ * 日期范围选择：点击弹出日历，先选开始日期、再选结束日期，点「确定」生效。
+ * 使用 min=2 保证第一次点击只选中开始日期（否则 v10 会把 from/to 同时设为同一天）。
  */
 export function DateRangePicker({
   value,
@@ -40,10 +41,11 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false)
 
-  const handleSelect = (range: DateRange | undefined) => {
-    onChange(range)
-    if (range?.from && range?.to) setOpen(false)
-  }
+  const hint = !value?.from
+    ? '请先选择开始日期'
+    : value.to
+      ? `已选 ${format(value.from, 'yyyy-MM-dd')} ~ ${format(value.to, 'yyyy-MM-dd')}`
+      : `已选开始日期 ${format(value.from, 'yyyy-MM-dd')}，请选择结束日期`
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -74,16 +76,37 @@ export function DateRangePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0">
+        <div className="border-b px-4 py-2 text-xs text-muted-foreground">{hint}</div>
         <DayPicker
           mode="range"
           selected={value}
-          onSelect={handleSelect}
+          onSelect={onChange}
           locale={zhCN}
-          numberOfMonths={2}
+          min={2}
+          numberOfMonths={1}
           defaultMonth={value?.from}
           showOutsideDays
           style={rdpThemeVars}
         />
+        <div className="flex items-center justify-end gap-2 border-t p-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={!value?.from}
+            onClick={() => onChange(undefined)}
+          >
+            清除
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!value?.from || !value?.to}
+            onClick={() => setOpen(false)}
+          >
+            确定
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   )
