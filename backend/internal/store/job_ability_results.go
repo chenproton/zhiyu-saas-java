@@ -33,6 +33,8 @@ type JobAbilityResultRow struct {
 	AchievementRate       float64
 	Grade                 *string
 	EvaluatedAt           time.Time
+	AbilityPointDetails   domain.JSONSlice
+	GradeHistory          domain.JSONSlice
 }
 
 // JobAbilityResultFilter 结果查询过滤。
@@ -73,7 +75,8 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 	rows, err := s.q.Query(ctx, `
 		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), u.student_no,
 			r.class_name, r.major_id, r.major_name,
-			r.total_ability_points, r.achieved_ability_points, r.achievement_rate, r.grade, r.evaluated_at
+			r.total_ability_points, r.achieved_ability_points, r.achievement_rate, r.grade, r.evaluated_at,
+			r.ability_point_details, r.grade_history
 		FROM job_ability_results r
 		LEFT JOIN users u ON u.id = r.user_id
 		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
@@ -90,7 +93,8 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 		var item JobAbilityResultRow
 		if err := rows.Scan(&item.ID, &item.CareerPositionID, &item.PositionName, &item.UserID, &item.UserName, &item.StudentNo,
 			&item.ClassName, &item.MajorID, &item.MajorName,
-			&item.TotalAbilityPoints, &item.AchievedAbilityPoints, &item.AchievementRate, &item.Grade, &item.EvaluatedAt); err != nil {
+			&item.TotalAbilityPoints, &item.AchievedAbilityPoints, &item.AchievementRate, &item.Grade, &item.EvaluatedAt,
+			&item.AbilityPointDetails, &item.GradeHistory); err != nil {
 			return nil, 0, err
 		}
 		items = append(items, item)

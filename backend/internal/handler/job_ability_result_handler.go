@@ -121,6 +121,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 			ClassName: r2.ClassName, MajorID: r2.MajorID, MajorName: r2.MajorName,
 			TotalAbilityPoints: r2.TotalAbilityPoints, AchievedAbilityPoints: r2.AchievedAbilityPoints,
 			AchievementRate: r2.AchievementRate, Grade: r2.Grade, EvaluatedAt: r2.EvaluatedAt,
+			AbilityPointDetails: r2.AbilityPointDetails, GradeHistory: r2.GradeHistory,
 		})
 	}
 	respondJSON(w, http.StatusOK, ListResponse[JobAbilityResultItem]{Items: items, Total: total})
