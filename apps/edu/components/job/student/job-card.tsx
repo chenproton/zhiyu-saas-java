@@ -99,12 +99,8 @@ export function JobCard({
             </span>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500">
-              收录时间：{formatDate(position.createdAt)}
-            </span>
-            <span className="text-xs text-slate-500">
-              更新时间：{formatDate(position.updatedAt)}
-            </span>
+            <span className="text-xs text-slate-500">收录：{formatDate(position.createdAt)}</span>
+            <span className="text-xs text-slate-500">更新：{formatDate(position.updatedAt)}</span>
           </div>
         </div>
       </div>

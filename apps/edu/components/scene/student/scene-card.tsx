@@ -116,12 +116,8 @@ export function SceneCard({
             </span>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500">
-              收录时间：{formatDate(scenario.createdAt)}
-            </span>
-            <span className="text-xs text-slate-500">
-              更新时间：{formatDate(scenario.updatedAt)}
-            </span>
+            <span className="text-xs text-slate-500">收录：{formatDate(scenario.createdAt)}</span>
+            <span className="text-xs text-slate-500">更新：{formatDate(scenario.updatedAt)}</span>
           </div>
         </div>
       </div>

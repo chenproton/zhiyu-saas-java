@@ -95,12 +95,8 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
             </span>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500">
-              收录时间：{formatDate(course.createdAt)}
-            </span>
-            <span className="text-xs text-slate-500">
-              更新时间：{formatDate(course.updatedAt)}
-            </span>
+            <span className="text-xs text-slate-500">收录：{formatDate(course.createdAt)}</span>
+            <span className="text-xs text-slate-500">更新：{formatDate(course.updatedAt)}</span>
           </div>
         </div>
       </div>
