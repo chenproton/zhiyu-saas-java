@@ -217,9 +217,9 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
                   <TableRow className="bg-slate-50">
                     <TableHead className="w-[120px]">所属能力域</TableHead>
                     <TableHead className="w-[240px]">能力点名称</TableHead>
-                    <TableHead className="w-[100px]">掌握程度</TableHead>
-                    <TableHead>胜任标准</TableHead>
-                    <TableHead className="w-[90px]">权重</TableHead>
+                    <TableHead className="w-[100px]">能力点权重</TableHead>
+                    <TableHead className="w-[100px]">胜任标准</TableHead>
+                    <TableHead>胜任标准描述</TableHead>
                     <TableHead className="w-[190px] text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -374,6 +374,9 @@ function PointRows({
           </button>
         </TableCell>
         <TableCell>
+          <span className="text-sm font-medium">{pointWeight}%</span>
+        </TableCell>
+        <TableCell>
           <Badge variant="outline" className="text-xs">
             {COMPETENCY_LEVEL_LABELS[point.requiredLevel] ?? point.requiredLevel}
           </Badge>
@@ -385,9 +388,6 @@ function PointRows({
           >
             {point.rubricDescription || point.description || '-'}
           </span>
-        </TableCell>
-        <TableCell>
-          <span className="text-sm font-medium">{pointWeight}%</span>
         </TableCell>
         <TableCell className="text-right">
           <Button
