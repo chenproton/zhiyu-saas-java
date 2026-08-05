@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PositionImportHandler struct {
@@ -357,7 +358,11 @@ func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, te
 		return id
 	}
 	id = uuid.NewString()
-	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, category, is_public, attributes) VALUES ($1,$2,$3,$4,true,$5) ON CONFLICT DO NOTHING`, id, tenantID, name, category, attributes)
+	code, codeErr := store.GenerateUniqueEntityCode(ctx, h.DB, "NL", "ability_points", tenantID)
+	if codeErr != nil {
+		code = store.GenerateEntityCode("NL")
+	}
+	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, category, is_public, attributes, code) VALUES ($1,$2,$3,$4,true,$5,$6) ON CONFLICT DO NOTHING`, id, tenantID, name, category, attributes, code)
 	var existing string
 	h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 	if existing != "" {

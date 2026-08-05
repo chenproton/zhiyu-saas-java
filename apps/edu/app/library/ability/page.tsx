@@ -158,6 +158,9 @@ export default function AbilityPointsPage() {
             名称
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            编码
+          </TableHead>
+          <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             类别
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
@@ -185,6 +188,7 @@ export default function AbilityPointsPage() {
               <span className="text-sm font-medium text-slate-700">{item.name}</span>
             </div>
           </TableCell>
+          <TableCell className="p-3 text-sm text-slate-400">{item.code || '-'}</TableCell>
           <TableCell className="p-3">
             <Badge
               variant="outline"
@@ -229,6 +233,11 @@ export default function AbilityPointsPage() {
               <DialogTitle>{editingItem ? '编辑能力点' : '新增能力点'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {editingItem && (
+                <FormFieldRow label="编码">
+                  <Input value={editingItem.code || '-'} readOnly />
+                </FormFieldRow>
+              )}
               <FormFieldRow label="名称" required>
                 <Input
                   value={name}

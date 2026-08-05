@@ -443,7 +443,11 @@ func findOrCreateKnowledgePoints(ctx context.Context, db *pgxpool.Pool, tenantID
 			continue
 		}
 		id = uuid.NewString()
-		_, _ = db.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
+		code, codeErr := store.GenerateUniqueEntityCode(ctx, db, "KP", "knowledge_points", tenantID)
+		if codeErr != nil {
+			code = store.GenerateEntityCode("KP")
+		}
+		_, _ = db.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name, code) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`, id, tenantID, name, code)
 		var existing string
 		_ = db.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 		if existing != "" {

@@ -14,6 +14,7 @@ var allowedUniqueCodeTables = []string{
 	"career_positions",
 	"courses",
 	"exams",
+	"knowledge_points",
 	"question_banks",
 	"questions",
 	"scenarios",
