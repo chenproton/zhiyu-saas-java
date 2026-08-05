@@ -768,11 +768,12 @@ if $BUILD_FRONTEND; then
   [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/.next"
 
   # 离线图片编辑器资产：从 offline/image-editor 同步到前端 public（完全离线，不依赖 CDN）
-  # public/image-editor 是符号链接（指向仓库 offline/image-editor），这里先替换为真实文件，
+  # public/image-editor 在仓库中是符号链接（指向仓库 offline/image-editor），
+  # 但拷贝部署的服务器上可能被解引用成真实目录，rm -rf 两种情况都能删，这里统一替换为真实文件，
   # 保证 next build 与后续 rsync 到 standalone 时是实际文件而非断链。
   if [[ -d "$BUILD_ROOT/offline/image-editor" ]]; then
     log "  同步离线图片编辑器资产..."
-    rm -f "$EDU_DIR/public/image-editor"
+    rm -rf "$EDU_DIR/public/image-editor"
     mkdir -p "$EDU_DIR/public/image-editor"
     rsync -a --delete "$BUILD_ROOT/offline/image-editor/" "$EDU_DIR/public/image-editor/"
   fi
