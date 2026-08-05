@@ -169,7 +169,9 @@ export default function ExamCenterPage() {
                     </span>
                     <span className="flex items-center gap-1">
                       <CalendarClock className="w-3 h-3" />
-                      {item.startTime ? formatDateTime(item.startTime) : '不限时间'}
+                      {item.startTime
+                        ? `${formatDateTime(item.startTime)}${item.endTime ? ` ~ ${formatDateTime(item.endTime)}` : ''}`
+                        : '不限时间'}
                     </span>
                   </div>
                   <div className="px-5 pb-5 pt-3 flex-1 flex flex-col justify-between gap-3">

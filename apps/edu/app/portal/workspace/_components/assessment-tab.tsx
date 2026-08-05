@@ -247,7 +247,14 @@ export function AssessmentTab() {
                         />
                       </TableCell>
                       <TableCell className="text-xs text-gray-500">
-                        {exam.startTime || '-'}
+                        {exam.startTime || exam.endTime ? (
+                          <span>
+                            {exam.startTime || '-'}
+                            {exam.endTime ? ` ~ ${exam.endTime}` : ''}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
                       </TableCell>
                       <TableCell className="text-xs text-gray-500">{exam.duration}分钟</TableCell>
                       <TableCell className="text-xs text-right font-semibold">
