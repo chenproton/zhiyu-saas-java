@@ -766,6 +766,17 @@ if $BUILD_FRONTEND; then
   fi
 
   [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/.next"
+
+  # 离线图片编辑器资产：从 offline/image-editor 同步到前端 public（完全离线，不依赖 CDN）
+  # public/image-editor 是符号链接（指向仓库 offline/image-editor），这里先替换为真实文件，
+  # 保证 next build 与后续 rsync 到 standalone 时是实际文件而非断链。
+  if [[ -d "$BUILD_ROOT/offline/image-editor" ]]; then
+    log "  同步离线图片编辑器资产..."
+    rm -f "$EDU_DIR/public/image-editor"
+    mkdir -p "$EDU_DIR/public/image-editor"
+    rsync -a --delete "$BUILD_ROOT/offline/image-editor/" "$EDU_DIR/public/image-editor/"
+  fi
+
   (cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
     pnpm --filter @zhiyu/edu build) || die "前端构建失败"
 

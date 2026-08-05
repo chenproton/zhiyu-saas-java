@@ -18,6 +18,12 @@ offline/
     ├── postgres-15-alpine.tar   # docker pull postgres:15-alpine && docker save -o postgres-15-alpine.tar postgres:15-alpine
     ├── redis-7-alpine.tar       # docker pull redis:7-alpine && docker save -o redis-7-alpine.tar redis:7-alpine
     └── kkfileview-4.4.0.tar     # docker pull fangzhengjin/kkfileview:4.4.0 && docker save -o kkfileview-4.4.0.tar fangzhengjin/kkfileview:4.4.0
+└── image-editor/               # 图片编辑器（unlayer）完整离线资产（必需）
+    ├── embed.js                # 加载器（base 已改写为同源 /image-editor）
+    └── 2.2.0/
+        ├── editor.js           # 编辑器核心（~1MB）
+        └── assets/             # 字体(21) + 贴纸/相框图片(664)，共 ~17MB
+                                # 更新: 从 https://cdn.unlayer.com/image-editor/{VERSION}/assets/ 镜像
 ```
 
 ## 使用方式
@@ -25,6 +31,15 @@ offline/
 1. 在能联网的机器上按上方命令导出资源。
 2. 把 `offline/` 整个目录连同代码一起拷贝到目标服务器。
 3. 在目标服务器执行 `./deploy.sh` 即可；`deploy.sh` 会自动检测并使用本地资源。
+
+## 图片编辑器（unlayer）离线说明
+
+- 资产位于 `offline/image-editor/`，随代码提交；`deploy.sh` 构建前端时自动同步到
+  `apps/edu/public/image-editor/`（`apps/edu/public/image-editor` 是指向仓库
+  `offline/image-editor` 的符号链接，供本地 `next dev/build` 直接使用）。
+- 前端通过 `scriptUrl="/image-editor/embed.js"` + `env.IMAGE_EDITOR_BASE_URL` +
+  `offline: true` 使用本地资产，全程无外部请求（Google Fonts 的 UI 字体请求会失败，
+  自动回退系统字体，仅外观微差）。
 
 ## 注意事项
 

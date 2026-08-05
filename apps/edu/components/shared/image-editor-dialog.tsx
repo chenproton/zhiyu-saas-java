@@ -28,8 +28,10 @@ const EXT_BY_MIME: Record<string, string> = {
 
 /**
  * 通用图片编辑弹窗：裁切/旋转/滤镜/文字/贴纸/相框等。
- * 基于 @unlayer/react-image-editor，按官方 README 标准方式集成
- * （image + options + onSave({dataUrl, blob})，编辑器核心由 unlayer CDN 加载）。
+ * 基于 @unlayer/react-image-editor，完全离线模式：
+ * - scriptUrl 指向本地自托管 embed.js（offline/image-editor，部署时同步到 public/image-editor）
+ * - env.IMAGE_EDITOR_BASE_URL 指向本地资产目录（字体/贴纸/相框）
+ * - offline: true 跳过所有外部 API 调用
  */
 export function ImageEditorDialog({
   open,
@@ -75,10 +77,13 @@ export function ImageEditorDialog({
           {open && (
             <ImageEditor
               image={src}
+              scriptUrl="/image-editor/embed.js"
               minHeight={540}
               options={{
                 theme: 'light',
                 locale: 'zh',
+                offline: true,
+                env: { IMAGE_EDITOR_BASE_URL: '/image-editor/2.2.0' },
               }}
               onLoad={() => setLoaded(true)}
               onSave={handleSave}
