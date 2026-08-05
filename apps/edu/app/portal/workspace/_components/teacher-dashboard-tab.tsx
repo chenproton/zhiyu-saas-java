@@ -33,7 +33,7 @@ import { SectionCard } from './section-card'
 import { CourseDetailDialog } from './teacher-courses-tab'
 import { PrepAssociateDialog } from './prep-associate-dialog'
 import { HybridGradingDialog } from './hybrid-grading-dialog'
-import { portalApi } from '@/lib/api'
+import { portalApi, courseApi } from '@/lib/api'
 import { SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type { WorkspaceDashboard, WorkspaceScheduleEvent } from '@/lib/types'
 import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
@@ -683,26 +683,34 @@ function CourseScheduleTable({
                             size="sm"
                             variant="outline"
                             className="flex-1 justify-center text-[11px] h-7 px-2 border-amber-200 text-amber-600 hover:bg-amber-50"
-                            onClick={() => {
-                              if (urls.isHybrid) {
-                                if (onGradeRequest)
-                                  onGradeRequest(
-                                    `${event.title} · ${event.period}`,
-                                    event.className || event.tag || '',
-                                    urls.isHybrid,
-                                  )
+                            onClick={async () => {
+                              // 场景事件 → 场景任务评价
+                              if (event.type === 'scene') {
+                                router.push('/evaluation/scene-results')
                                 return
                               }
-                              // 场景事件 → 场景任务评价；课程事件 → 课程节点评价
-                              if (event.type === 'course') {
-                                router.push(
-                                  event.courseId
-                                    ? `/evaluation/lesson-results?courseId=${event.courseId}`
-                                    : '/evaluation/lesson-results',
-                                )
-                                return
+                              // 课程类事件（体系课/颗粒课/混合课）：混合课保留考勤评分，其余进课程节点测评评分
+                              if (event.courseId) {
+                                try {
+                                  const c = await courseApi.get(event.courseId)
+                                  if (c.type === 'hybrid') {
+                                    if (onGradeRequest)
+                                      onGradeRequest(
+                                        `${event.title} · ${event.period}`,
+                                        event.className || event.tag || '',
+                                        true,
+                                      )
+                                    return
+                                  }
+                                } catch {
+                                  /* 课程查询失败按非混合课处理 */
+                                }
                               }
-                              router.push('/evaluation/scene-results')
+                              router.push(
+                                event.courseId
+                                  ? `/evaluation/lesson-results?courseId=${event.courseId}`
+                                  : '/evaluation/lesson-results',
+                              )
                             }}
                           >
                             <GraduationCap className="h-3.5 w-3.5 mr-1" />

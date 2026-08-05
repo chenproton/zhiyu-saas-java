@@ -37,7 +37,7 @@ import { SectionCard } from './section-card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PrepAssociateDialog } from './prep-associate-dialog'
 import { HybridGradingDialog } from './hybrid-grading-dialog'
-import { portalApi } from '@/lib/api'
+import { portalApi, courseApi } from '@/lib/api'
 import { SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type {
   WorkspaceDashboard,
@@ -1023,16 +1023,33 @@ export function TeacherCoursesTab({
                                           size="sm"
                                           variant="outline"
                                           className="flex-1 justify-center text-[10px] h-7 px-1.5 border-amber-200 text-amber-600 hover:bg-amber-50"
-                                          onClick={() => {
-                                            if (!isHybrid) {
+                                          onClick={async () => {
+                                            // 场景 plan → 场景任务评价
+                                            if (!plan.courseId && plan.scenarioId) {
                                               router.push('/evaluation/scene-results')
                                               return
                                             }
-                                            setHybridGradeSessionTitle(
-                                              `第 ${session.week} 周 · ${session.weekday} ${session.period}`,
+                                            // 有课程 id：混合课保留考勤评分，体系课/颗粒课进课程节点测评评分
+                                            if (plan.courseId) {
+                                              try {
+                                                const c = await courseApi.get(plan.courseId)
+                                                if (c.type === 'hybrid') {
+                                                  setHybridGradeSessionTitle(
+                                                    `第 ${session.week} 周 · ${session.weekday} ${session.period}`,
+                                                  )
+                                                  setHybridGradeClassName(plan.name)
+                                                  setHybridGradeDialogOpen(true)
+                                                  return
+                                                }
+                                              } catch {
+                                                /* 课程查询失败按非混合课处理 */
+                                              }
+                                            }
+                                            router.push(
+                                              plan.courseId
+                                                ? `/evaluation/lesson-results?courseId=${plan.courseId}`
+                                                : '/evaluation/lesson-results',
                                             )
-                                            setHybridGradeClassName(plan.name)
-                                            setHybridGradeDialogOpen(true)
                                           }}
                                         >
                                           <GraduationCap className="h-3 w-3 mr-0.5" />
