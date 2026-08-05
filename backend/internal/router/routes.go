@@ -170,6 +170,15 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/majors/{id}", h.majorHandler.Get)
 				r.Get("/industries", h.industryHandler.List)
 				r.Get("/industries/{id}", h.industryHandler.Get)
+
+				// 组织架构/组织类型为业务模块共用参考数据（审批流配置选择审批人等），
+				// 对业务用户开放只读；写操作仍在 systemAdmin 组内（本组注册在后，
+				// 同 method+path 只读路由会覆盖系统管理员组的 GET，POST/PUT/DELETE 不受影响）
+				r.Get("/organizations", h.orgHandler.List)
+				r.Get("/organizations/tree", h.orgHandler.Tree)
+				r.Get("/organizations/{id}", h.orgHandler.Get)
+				r.Get("/org-types", h.orgTypeHandler.List)
+				r.Get("/org-types/{id}", h.orgTypeHandler.Get)
 			})
 
 			// 学生/企业导师等业务角色共用只读接口：在 businessUser 组之后注册，
