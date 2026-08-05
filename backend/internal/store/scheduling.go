@@ -75,7 +75,7 @@ func (s *SchedulingStore) UpdateVenue(ctx context.Context, id, tenantID string, 
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE venues SET name = $1, type = $2, capacity = $3, updated_at = NOW()
+		UPDATE venues SET name = $1, type = $2, capacity = $3
 		WHERE id = $4 AND tenant_id = $5
 	`, p.Name, p.Type, p.Capacity, id, tenantID); err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (s *SchedulingStore) UpdatePeriodSlot(ctx context.Context, id, tenantID str
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE period_slots SET name = $1, sort_order = $2, start_time = $3, end_time = $4, updated_at = NOW()
+		UPDATE period_slots SET name = $1, sort_order = $2, start_time = $3, end_time = $4
 		WHERE id = $5 AND tenant_id = $6
 	`, p.Name, p.SortOrder, p.StartTime, p.EndTime, id, tenantID); err != nil {
 		return nil, err
