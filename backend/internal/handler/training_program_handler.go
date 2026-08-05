@@ -24,6 +24,7 @@ type TrainingProgramRequest struct {
 	Duration     *int     `json:"duration"`
 	TotalCredits *float64 `json:"totalCredits"`
 	Description  *string  `json:"description"`
+	BatchID      *string  `json:"batchId"`
 }
 
 type PutProgramCoursesRequest struct {
@@ -163,10 +164,13 @@ func (h *TrainingProgramHandler) Update(w http.ResponseWriter, r *http.Request) 
 	if req.Description == nil {
 		req.Description = existing.Description
 	}
+	if req.BatchID == nil {
+		req.BatchID = existing.BatchID
+	}
 	program, err := h.Service.UpdateTrainingProgram(r.Context(), id, tenantID, &store.TrainingProgramParams{
 		Name: req.Name, Code: emptyStrToNil(req.Code), MajorID: emptyStrToNil(req.MajorID), EntryYear: req.EntryYear,
 		Level: emptyStrToNil(req.Level), Duration: req.Duration, TotalCredits: req.TotalCredits,
-		Description: emptyStrToNil(req.Description),
+		Description: emptyStrToNil(req.Description), BatchID: emptyStrToNil(req.BatchID),
 	})
 	if err != nil {
 		respondServerError(w, r, err, "更新人培方案失败")

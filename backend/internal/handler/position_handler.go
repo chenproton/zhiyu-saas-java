@@ -248,9 +248,13 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if version == "" {
 		version = existing.Version
 	}
+	batchID := req.BatchID
+	if batchID == nil {
+		batchID = existing.BatchID
+	}
 
 	pos, err := h.Service.Update(r.Context(), id, &store.PositionUpdateParams{
-		BatchID:       existing.BatchID,
+		BatchID:       batchID,
 		Name:          req.Name,
 		ShortName:     req.ShortName,
 		IndustryID:    industryID,

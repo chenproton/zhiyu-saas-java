@@ -80,10 +80,10 @@ func (s *TrainingProgramStore) Update(ctx context.Context, id, tenantID string, 
 	if _, err := s.q.Exec(ctx, `
 		UPDATE training_programs
 		SET name = $1, code = $2, major_id = $3, entry_year = $4, level = $5, duration = $6,
-			total_credits = $7, description = $8, updated_at = NOW()
-		WHERE id = $9 AND tenant_id = $10
+			total_credits = $7, description = $8, batch_id = $9, updated_at = NOW()
+		WHERE id = $10 AND tenant_id = $11
 	`, p.Name, p.Code, p.MajorID, p.EntryYear,
-		p.Level, p.Duration, p.TotalCredits, p.Description, id, tenantID); err != nil {
+		p.Level, p.Duration, p.TotalCredits, p.Description, p.BatchID, id, tenantID); err != nil {
 		return nil, err
 	}
 	return s.Get(ctx, id, tenantID)
@@ -190,6 +190,7 @@ type TrainingProgramParams struct {
 	Duration     *int
 	TotalCredits *float64
 	Description  *string
+	BatchID      *string
 	CreatedBy    string
 }
 
