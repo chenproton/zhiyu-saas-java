@@ -158,10 +158,36 @@ func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, taskID
 	return examResultID, nil
 }
 
-// UpdateExamResultScore 更新考试结果分数，并同步及格判定（60% 及格线，与提交时一致）。
+// UpdateExamResultScore 更新考试结果分数，并同步及格判定（60% 及格线，与提交时一致），
+// 同时标记教师评分时间（graded_at 非空即视为已评分，用于重交保护）。
 func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examResultID string, score float64) error {
-	_, err := s.q.Exec(ctx, `UPDATE exam_results SET score = $1, is_pass = ($1 >= total_score * 0.6), updated_at = NOW() WHERE id = $2`, score, examResultID)
+	_, err := s.q.Exec(ctx, `UPDATE exam_results SET score = $1, is_pass = ($1 >= total_score * 0.6), graded_at = NOW(), updated_at = NOW() WHERE id = $2`, score, examResultID)
 	return err
+}
+
+// FindNodeExamResult 查询节点测评方式对应的考试结果。
+// 通过节点 eval_data 中 methodResourceConfigs[methodKey].usageId 精确关联考试安排。
+func (s *EvaluationResultStore) FindNodeExamResult(ctx context.Context, nodeID, methodKey, evaluateeID string) (string, error) {
+	var examResultID string
+	err := s.q.QueryRow(ctx, `
+		SELECT er.id
+		FROM exam_results er
+		JOIN exam_usages eu ON er.exam_usage_id = eu.id
+		JOIN system_course_nodes n ON n.id = eu.target_ids[1]
+		WHERE n.id = $1 AND er.user_id = $3 AND eu.target_type = 'node'
+			AND eu.id = (
+				SELECT (rc.value->>'usageId')::uuid
+				FROM jsonb_each(COALESCE(n.eval_data->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)) rc
+				WHERE rc.key = $2 AND rc.value->>'usageId' IS NOT NULL
+				LIMIT 1
+			)
+		ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC
+		LIMIT 1
+	`, nodeID, methodKey, evaluateeID).Scan(&examResultID)
+	if err != nil {
+		return "", err
+	}
+	return examResultID, nil
 }
 
 // EvaluationResultGradeTarget 评分目标（task/method/evaluatee）。

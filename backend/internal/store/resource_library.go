@@ -18,6 +18,15 @@ var ErrAlreadyGraded = errors.New("already graded")
 // ErrForbidden 无权限执行操作（如班级不匹配禁止参加考试）。
 var ErrForbidden = errors.New("forbidden")
 
+// ErrExamNotStarted 考试尚未到开始时间。
+var ErrExamNotStarted = errors.New("exam not started")
+
+// ErrExamEnded 考试已过结束时间。
+var ErrExamEnded = errors.New("exam ended")
+
+// ErrRetakeNotAllowed 考试不允许重复作答。
+var ErrRetakeNotAllowed = errors.New("retake not allowed")
+
 const resourceSelectColumns = `
 	rl.id, rl.tenant_id, rl.name, rl.resource_type, rl.url, rl.description,
 	rl.thumbnail, rl.file_size, rl.metadata, rl.uploaded_by,

@@ -92,6 +92,18 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "该考试仅限指定班级参加")
 			return
 		}
+		if errors.Is(err, store.ErrExamNotStarted) {
+			respondError(w, http.StatusConflict, "考试尚未开始")
+			return
+		}
+		if errors.Is(err, store.ErrExamEnded) {
+			respondError(w, http.StatusConflict, "考试已结束")
+			return
+		}
+		if errors.Is(err, store.ErrRetakeNotAllowed) {
+			respondError(w, http.StatusConflict, "该考试不允许重复作答")
+			return
+		}
 		if err == pgx.ErrNoRows {
 			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return

@@ -75,8 +75,8 @@ func insertExamWithQuestions(t *testing.T, env *testhelper.TestEnv, ctx context.
 	bankID := uuid.NewString()
 	execOrFail(t, env, ctx, `
 		INSERT INTO question_banks (id, name, status, question_count, creator_id, version, owner_type, is_draft_pool, code, tenant_id)
-		VALUES ($1, '测试题库', 'published', 0, $2, 'v1', 'system', false, $3, $4)
-	`, bankID, testhelper.TestOperatorID, "BK-"+uuid.NewString()[:8], testhelper.TestTenantID)
+		VALUES ($1, $2, 'published', 0, $3, 'v1', 'system', false, $4, $5)
+	`, bankID, "测试题库-"+uuid.NewString()[:8], testhelper.TestOperatorID, "BK-"+uuid.NewString()[:8], testhelper.TestTenantID)
 	for _, q := range questions {
 		execOrFail(t, env, ctx, `
 			INSERT INTO questions (id, bank_id, type, content, answer, score, difficulty, status, code, tenant_id)

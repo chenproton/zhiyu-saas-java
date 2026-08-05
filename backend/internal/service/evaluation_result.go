@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -18,7 +19,23 @@ func (s *EvaluationService) ListExamResults(ctx context.Context, p store.ListPar
 
 // SubmitExamResult 提交考试结果（评分编排：拉取题目→判分→写结果→同步 3 类评价，全部写在同一事务）。
 func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, userID, usageID string, answers map[string]interface{}, methodKey string) (*domain.ExamResult, error) {
-	// 重交保护：该方式的场景评价已评分时拒绝覆盖教师成绩
+	// 窗口校验：未到开始时间 / 已过结束时间禁止提交（重复作答同样受限）
+	usage, err := s.st.ExamUsages().Get(ctx, usageID)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	if usage.StartTime != nil {
+		if t, perr := time.Parse(time.RFC3339, *usage.StartTime); perr == nil && now.Before(t) {
+			return nil, store.ErrExamNotStarted
+		}
+	}
+	if usage.EndTime != nil {
+		if t, perr := time.Parse(time.RFC3339, *usage.EndTime); perr == nil && now.After(t) {
+			return nil, store.ErrExamEnded
+		}
+	}
+	// 重交保护：该方式的场景评价已由教师评分时拒绝覆盖教师成绩
 	graded, err := s.st.ExamResults().UsageGradedByUser(ctx, usageID, userID, methodKey)
 	if err != nil {
 		return nil, err
@@ -26,13 +43,27 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 	if graded {
 		return nil, store.ErrAlreadyGraded
 	}
-	// 重交保护：日常考试结果已被教师评分时拒绝覆盖
-	resultGraded, err := s.st.ExamResults().ResultGraded(ctx, usageID, userID)
+	// 重交保护：考试结果已被教师评分（手动/节点/场景回写均标记 graded_at）时拒绝覆盖
+	teacherGraded, err := s.st.ExamResults().ResultTeacherGraded(ctx, usageID, userID)
 	if err != nil {
 		return nil, err
 	}
-	if resultGraded {
+	if teacherGraded {
 		return nil, store.ErrAlreadyGraded
+	}
+	// 重复作答控制：已提交过且不允许重复作答时拒绝（默认不允许，测评方式配置 allowRetake 可开启）
+	submitted, err := s.st.ExamResults().ResultSubmitted(ctx, usageID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if submitted {
+		allowRetake, rerr := s.st.ExamResults().UsageAllowRetake(ctx, usageID)
+		if rerr != nil {
+			return nil, rerr
+		}
+		if !allowRetake {
+			return nil, store.ErrRetakeNotAllowed
+		}
 	}
 	// 班级约束：班级类考试仅允许目标班级学生提交（防止绕过考试中心入口直接交卷）
 	target, err := s.st.ExamResults().UsageTarget(ctx, usageID)

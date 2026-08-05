@@ -178,8 +178,9 @@ export default function ExamDetailPage() {
     try {
       await examResultApi.submit({ examUsageId: currentUsage.id, answers, methodKey })
       setSubmitted(true)
-    } catch {
-      toast({ variant: 'destructive', title: '提交失败', description: '请重试' })
+    } catch (err: any) {
+      const msg = err?.message || '请重试'
+      toast({ variant: 'destructive', title: '提交失败', description: msg })
     } finally {
       setSubmitting(false)
     }

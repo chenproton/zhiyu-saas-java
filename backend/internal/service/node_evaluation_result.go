@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -28,9 +29,24 @@ func (s *NodeEvaluationResultService) SubmitNodeEvaluationResult(ctx context.Con
 	return s.st.NodeEvaluationResults().Submit(ctx, p)
 }
 
-// Grade 节点测评结果评分（pending→evaluated）。
+// Grade 节点测评结果评分（pending→evaluated），并回写考试结果分数（保持考试对象数据一致）。
 func (s *NodeEvaluationResultService) Grade(ctx context.Context, tenantID, id, graderID string, p *store.NodeEvaluationResultGradeParams) error {
-	return s.st.NodeEvaluationResults().Grade(ctx, tenantID, id, graderID, p)
+	result, err := s.st.NodeEvaluationResults().GetByID(ctx, tenantID, id)
+	if err != nil {
+		return err
+	}
+	if err := s.st.NodeEvaluationResults().Grade(ctx, tenantID, id, graderID, p); err != nil {
+		return err
+	}
+	// 回写考试结果：试卷/题库/随堂测方式的考试结果同步教师评分
+	examResultID, err := s.st.EvaluationResults().FindNodeExamResult(ctx, result.NodeID, result.MethodKey, result.EvaluateeID)
+	if err != nil || examResultID == "" {
+		return nil
+	}
+	if err := s.st.EvaluationResults().UpdateExamResultScore(ctx, examResultID, p.Score); err != nil {
+		slog.Warn("同步节点考试结果分数失败", "examResultID", examResultID, "nodeResultID", id, "error", err)
+	}
+	return nil
 }
 
 // ListByCourse 查询课程下全部节点的测评结果（教师评分列表用）。

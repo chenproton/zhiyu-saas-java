@@ -67,13 +67,13 @@ func (s *ExamResultStore) Get(ctx context.Context, id string) (*domain.ExamResul
 	return &r, rows.Err()
 }
 
-// ResultGraded 查询考试结果是否已被教师评分（重交保护）。
-func (s *ExamResultStore) ResultGraded(ctx context.Context, usageID, userID string) (bool, error) {
+// ResultSubmitted 是否已有提交记录（重复作答控制）。
+func (s *ExamResultStore) ResultSubmitted(ctx context.Context, usageID, userID string) (bool, error) {
 	var exists bool
 	err := s.q.QueryRow(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM exam_results
-			WHERE exam_usage_id = $1 AND user_id = $2 AND grading_status = 'evaluated'
+			WHERE exam_usage_id = $1 AND user_id = $2
 		)
 	`, usageID, userID).Scan(&exists)
 	return exists, err
@@ -142,8 +142,9 @@ type ExamQuestionAnswer struct {
 	Score  float64
 }
 
-// UsageGradedByUser 查询该考试安排对应的场景评价是否已完成评分（重交保护）。
-// 仅当考试目标为任务且该方式已评分时返回 true；课程/节点目标或未评分返回 false。
+// UsageGradedByUser 查询该考试安排对应的场景评价是否已由教师评分（重交保护）。
+// 仅当考试目标为任务且该方式已评分（graded_at 非空）时返回 true；
+// 纯客观题自动 evaluated（无 graded_at）不算教师评分，允许重复作答。
 func (s *ExamResultStore) UsageGradedByUser(ctx context.Context, usageID, userID, methodKey string) (bool, error) {
 	var exists bool
 	err := s.q.QueryRow(ctx, `
@@ -157,13 +158,66 @@ func (s *ExamResultStore) UsageGradedByUser(ctx context.Context, usageID, userID
 					NULLIF(tem.resource_config->>'examId', '')
 				)::uuid
 			JOIN scene_evaluation_results ser ON ser.task_id = tem.task_id AND ser.evaluatee_id = $2 AND ser.method_key = $3
-			WHERE eu.id = $1 AND ser.status = 'evaluated'
+			WHERE eu.id = $1 AND ser.status = 'evaluated' AND ser.graded_at IS NOT NULL
 		)
 	`, usageID, userID, methodKey).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
 	return exists, nil
+}
+
+// ResultTeacherGraded 教师是否已对该考试结果评分（graded_at 非空，重交保护）。
+func (s *ExamResultStore) ResultTeacherGraded(ctx context.Context, usageID, userID string) (bool, error) {
+	var exists bool
+	err := s.q.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM exam_results
+			WHERE exam_usage_id = $1 AND user_id = $2 AND graded_at IS NOT NULL
+		)
+	`, usageID, userID).Scan(&exists)
+	return exists, err
+}
+
+// UsageAllowRetake 查询考试安排是否允许重复作答。
+// 场景任务/课程节点从测评方式配置读取 allowRetake；未配置或手动创建（class 等）默认不允许。
+func (s *ExamResultStore) UsageAllowRetake(ctx context.Context, usageID string) (bool, error) {
+	var allow bool
+	err := s.q.QueryRow(ctx, `
+		SELECT COALESCE(
+			(
+				SELECT (tem.resource_config->>'allowRetake')::boolean
+				FROM exam_usages eu
+				JOIN task_evaluation_methods tem
+					ON tem.task_id = ANY(eu.target_ids)
+					AND eu.exam_id = COALESCE(
+						NULLIF(tem.resource_config->>'paperId', ''),
+						NULLIF(tem.resource_config->>'examId', '')
+					)::uuid
+				WHERE eu.id = $1 AND eu.target_type = 'task'
+					AND tem.resource_config->>'allowRetake' IS NOT NULL
+				LIMIT 1
+			),
+			(
+				SELECT (rc.value->>'allowRetake')::boolean
+				FROM exam_usages eu
+				JOIN system_course_nodes n ON n.id = eu.target_ids[1]
+				CROSS JOIN LATERAL jsonb_each(
+					COALESCE(n.eval_data->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)
+				) rc
+				WHERE eu.id = $1 AND eu.target_type = 'node'
+					AND rc.value->>'examId' IS NOT NULL
+					AND rc.value->>'examId' = eu.exam_id::text
+					AND rc.value->>'allowRetake' IS NOT NULL
+				LIMIT 1
+			),
+			false
+		)
+	`, usageID).Scan(&allow)
+	if err != nil {
+		return false, err
+	}
+	return allow, nil
 }
 
 // FetchExamQuestions 查询考试题目答案与分数。
