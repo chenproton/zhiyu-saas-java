@@ -616,7 +616,7 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 			}
 		}
 
-		var titleIDs []string
+		titleIDs := []string{}
 		for _, tname := range titleNames {
 			if tname == "" {
 				continue
