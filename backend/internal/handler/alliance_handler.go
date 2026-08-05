@@ -43,7 +43,7 @@ func (h *AllianceHandler) GetSchoolInfo(w http.ResponseWriter, r *http.Request) 
 
 func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -93,7 +93,7 @@ func (h *AllianceHandler) DeleteEnterprise(w http.ResponseWriter, r *http.Reques
 
 func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -117,7 +117,7 @@ func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *htt
 
 func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -154,7 +154,7 @@ func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *ht
 
 func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -190,7 +190,7 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 
 func (h *AllianceHandler) DeleteEnterpriseAgreement(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -237,7 +237,7 @@ func (h *AllianceHandler) DeleteProject(w http.ResponseWriter, r *http.Request) 
 
 func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -260,7 +260,7 @@ func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request)
 
 func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -291,7 +291,7 @@ func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request
 
 func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -318,7 +318,7 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 
 func (h *AllianceHandler) DeleteMilestone(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -404,7 +404,7 @@ func (h *AllianceHandler) DeleteAgreement(w http.ResponseWriter, r *http.Request
 
 func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -424,7 +424,7 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 
 func (h *AllianceHandler) GetPermission(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -443,7 +443,7 @@ func (h *AllianceHandler) GetPermission(w http.ResponseWriter, r *http.Request) 
 
 func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -472,7 +472,7 @@ func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Reques
 
 func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -518,7 +518,7 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 
 func (h *AllianceHandler) DeletePermission(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -553,7 +553,7 @@ func (h *AllianceHandler) ListDictionaryItems(w http.ResponseWriter, r *http.Req
 
 func (h *AllianceHandler) CreateDictionaryItem(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -596,7 +596,7 @@ func (h *AllianceHandler) CreateDictionaryItem(w http.ResponseWriter, r *http.Re
 
 func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -629,7 +629,7 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 
 func (h *AllianceHandler) DeleteDictionaryItem(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

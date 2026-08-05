@@ -40,12 +40,14 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 // crud 返回专业 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
 func (h *MajorHandler) crud() crudConfig[MajorRequest, domain.Major] {
 	return crudConfig[MajorRequest, domain.Major]{
-		NotFoundMsg:        "专业不存在",
-		CreateErrMsg:       "创建专业失败",
-		UpdateErrMsg:       "更新专业失败",
-		DeleteErrMsg:       "删除专业失败",
-		DeleteCheckErrMsg:  "检查专业引用失败",
-		Permit:             func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		NotFoundMsg:       "专业不存在",
+		CreateErrMsg:      "创建专业失败",
+		UpdateErrMsg:      "更新专业失败",
+		DeleteErrMsg:      "删除专业失败",
+		DeleteCheckErrMsg: "检查专业引用失败",
+		Permit:            func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		// 专业详情为业务模块共用参考数据，对业务角色开放只读（路由层已限定业务角色）
+		PermitGet:          func(r *http.Request) bool { return true },
 		UniqueViolationMsg: "专业代码已存在，请使用其他代码",
 		CheckOwnership:     true,
 		GetOwnership:       true,

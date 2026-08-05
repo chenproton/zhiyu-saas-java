@@ -39,12 +39,14 @@ func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 // crud 返回组织类型 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
 func (h *OrgTypeHandler) crud() crudConfig[OrgTypeRequest, domain.OrgType] {
 	return crudConfig[OrgTypeRequest, domain.OrgType]{
-		NotFoundMsg:        "组织类型不存在",
-		CreateErrMsg:       "创建组织类型失败",
-		UpdateErrMsg:       "更新组织类型失败",
-		DeleteErrMsg:       "删除组织类型失败",
-		DeleteCheckErrMsg:  "检查组织类型引用失败",
-		Permit:             func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		NotFoundMsg:       "组织类型不存在",
+		CreateErrMsg:      "创建组织类型失败",
+		UpdateErrMsg:      "更新组织类型失败",
+		DeleteErrMsg:      "删除组织类型失败",
+		DeleteCheckErrMsg: "检查组织类型引用失败",
+		Permit:            func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		// 组织类型详情为业务模块共用参考数据（审批流配置等），对业务角色开放只读（路由层已限定业务角色）
+		PermitGet:          func(r *http.Request) bool { return true },
 		UniqueViolationMsg: "组织类型名称已存在，请使用其他名称",
 		CheckOwnership:     true,
 		GetOwnership:       true,

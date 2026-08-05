@@ -472,3 +472,27 @@ func TestOrgType_CRUD(t *testing.T) {
 		}
 	})
 }
+
+// TestOrgType_TeacherReadOnly 教师角色可读组织类型详情（审批流配置等场景共用），
+// 但写操作仍限系统管理员（与 school_admin 权限对齐规则）。
+func TestOrgType_TeacherReadOnly(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	typeID := createTestOrgType(t, env)
+	teacherToken := env.NewTokenWithIdentity("teacher-001", testhelper.TestTenantID, domain.UserRoleSchool, nil, "teacher")
+
+	w := env.DoWithToken("GET", "/api/v1/org-types/"+typeID, nil, teacherToken)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	w = env.DoWithToken("POST", "/api/v1/org-types", map[string]interface{}{
+		"tenantId": testhelper.TestTenantID,
+		"name":     "教师不应创建",
+		"category": "internal",
+	}, teacherToken)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", w.Code)
+	}
+}

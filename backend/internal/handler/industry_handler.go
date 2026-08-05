@@ -41,12 +41,14 @@ func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 // crud 返回行业 CRUD 差异配置；流程骨架由 crudCreate/crudGet/crudUpdate/crudDelete 统一实现。
 func (h *IndustryHandler) crud() crudConfig[IndustryRequest, domain.Industry] {
 	return crudConfig[IndustryRequest, domain.Industry]{
-		NotFoundMsg:        "行业不存在",
-		CreateErrMsg:       "创建行业失败",
-		UpdateErrMsg:       "更新行业失败",
-		DeleteErrMsg:       "删除行业失败",
-		DeleteCheckErrMsg:  "检查子行业失败",
-		Permit:             func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		NotFoundMsg:       "行业不存在",
+		CreateErrMsg:      "创建行业失败",
+		UpdateErrMsg:      "更新行业失败",
+		DeleteErrMsg:      "删除行业失败",
+		DeleteCheckErrMsg: "检查子行业失败",
+		Permit:            func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		// 行业详情为业务模块共用参考数据，对业务角色开放只读（路由层已限定业务角色）
+		PermitGet:          func(r *http.Request) bool { return true },
 		UniqueViolationMsg: "行业代码已存在，请使用其他代码",
 		CheckOwnership:     true,
 		GetOwnership:       true,
