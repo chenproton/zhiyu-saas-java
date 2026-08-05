@@ -122,6 +122,12 @@ body{
 .lv .dot{width:6px;height:6px;border-radius:50%;}
 .lv.gray{background:#f0f2f8;color:var(--ink2);}
 .lv.gray .dot{background:#aab2c8;}
+.lv.exceed{background:rgba(39,176,138,.13);color:var(--exceed);}
+.lv.exceed .dot{background:var(--exceed);}
+.lv.meet{background:rgba(91,118,232,.13);color:var(--pri);}
+.lv.meet .dot{background:var(--pri);}
+.lv.below{background:rgba(232,155,58,.13);color:var(--below);}
+.lv.below .dot{background:var(--below);}
 
 .jc{border-radius:13px;padding:13px 14px;margin-bottom:10px;border:1px solid var(--line);background:#fff;transition:.18s;}
 .jc:hover{transform:translateY(-2px);box-shadow:0 12px 24px -14px rgba(91,118,232,.4);}
@@ -221,8 +227,8 @@ body{
           <div class="eval-top">
             <span class="mk"></span><h3>能力域达成分析</h3>
             <div class="lg">
-              <span><i style="background:var(--g-exceed)"></i>达成</span>
-              <span><i style="background:var(--g-meet)"></i>达标</span>
+              <span><i style="background:var(--g-exceed)"></i>已超越</span>
+              <span><i style="background:var(--g-meet)"></i>已达标</span>
               <span><i style="background:var(--g-below)"></i>未达标</span>
             </div>
           </div>
@@ -231,10 +237,10 @@ body{
               <tr>
                 <th style="width:130px">能力域</th>
                 <th>能力点</th>
+                <th class="c" style="width:120px">测评来源</th>
                 <th class="c" style="width:70px">得分</th>
                 <th>能力掌握度</th>
-                <th class="c" style="width:120px">测评来源</th>
-                <th class="c" style="width:80px">认定结果</th>
+                <th class="c" style="width:90px">认定结果</th>
               </tr>
             </thead>
             <tbody id="evalTableBody">
@@ -422,6 +428,38 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
     return parts.join(' · ');
   }
 
+  // 系统五档掌握程度（level_mapping 为空时使用）
+  var SYS_LEVELS=[{level:'understand',min:0},{level:'comprehend',min:60},{level:'master',min:70},{level:'proficient',min:80},{level:'expert',min:90}];
+
+  // 分数落档（0-4）：按分档配置（自定义 levelMapping 或系统五档）的 min 阈值
+  function rankOfScore(score,levels){
+    var arr=(levels&&levels.length)?levels:SYS_LEVELS;
+    var rank=-1;
+    for(var i=0;i<arr.length;i++){ if(score>=(arr[i].min!=null?arr[i].min:0)) rank=i; }
+    return rank;
+  }
+
+  // 等级代码→档位（0-4），未命中返回 -1
+  function rankOfCode(code,levels){
+    var arr=(levels&&levels.length)?levels:SYS_LEVELS;
+    for(var i=0;i<arr.length;i++){ if(arr[i].level===code) return i; }
+    return -1;
+  }
+
+  // 认定结果：能力点任务加权得分落档，与岗位预设掌握程度对比
+  // 档位低于岗位所需→未达标；等于→已达标；高于→已超越
+  function resultStatus(ap,point){
+    if(!ap) return {cls:'below',label:'未达标'};
+    var levels=(point&&point.levelMapping&&point.levelMapping.length)?point.levelMapping:null;
+    var sr=rankOfScore(ap.score||0,levels);
+    var rr=rankOfCode(ap.requiredLevel,levels);
+    if(rr<0) rr=rankOfCode(ap.requiredLevel,null);
+    if(sr<0||rr<0) return {cls:ap.achieved?'meet':'below',label:ap.achieved?'已达标':'未达标'};
+    if(sr>rr) return {cls:'exceed',label:'已超越'};
+    if(sr===rr) return {cls:'meet',label:'已达标'};
+    return {cls:'below',label:'未达标'};
+  }
+
   // 能力域 + 能力点合并表格：能力域合并单元格（得分直接数字），能力点行（得分进度条 + 来源比例）
   function renderCombinedTable(domainScores,abilityPoints,model){
     var tbody=document.getElementById('evalTableBody');
@@ -454,13 +492,14 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
           var s=ap?ap.score||0:0;
           var cls=levelCls(s);
           var source=calcSourceRatio(point);
+          var st=resultStatus(ap,point);
           html+='<tr>'
             +(idx===0?domCell:'')
             +'<td style="font-weight:600">'+(point.name||'')+'</td>'
+            +'<td class="c" style="color:var(--ink2);font-size:10.5px;">'+(source||'-')+'</td>'
             +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
             +'<td><div class="ev-bar"><div class="ev-fill '+cls+'" style="width:'+Math.min(s,100)+'%">'+s.toFixed(0)+'</div></div></td>'
-            +'<td class="c" style="color:var(--ink2);font-size:10.5px;">'+(source||'-')+'</td>'
-            +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap&&ap.achieved?'达成':'未达成')+'</span></td>'
+            +'<td class="c"><span class="lv '+st.cls+'"><span class="dot"></span>'+st.label+'</span></td>'
             +'</tr>';
         });
       });
@@ -468,11 +507,13 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
       // 无岗位模型时按能力点平铺
       html=abilityPoints.map(function(ap){
         var s=ap.score||0, cls=levelCls(s);
-        return '<tr><td class="dn">'+(ap.abilityPointName||ap.name||'')+'</td>'
+        var st=resultStatus(ap,null);
+        return '<tr><td class="dn"></td>'
+          +'<td style="font-weight:600">'+(ap.abilityPointName||ap.name||'')+'</td>'
+          +'<td class="c">-</td>'
           +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
           +'<td><div class="ev-bar"><div class="ev-fill '+cls+'" style="width:'+Math.min(s,100)+'%">'+s.toFixed(0)+'</div></div></td>'
-          +'<td class="c">-</td>'
-          +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap.achieved?'达成':'未达成')+'</span></td>'
+          +'<td class="c"><span class="lv '+st.cls+'"><span class="dot"></span>'+st.label+'</span></td>'
           +'</tr>';
       }).join('');
     } else {
