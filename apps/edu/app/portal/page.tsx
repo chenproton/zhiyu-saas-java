@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Footer } from '@/components/portal/footer'
-import { useFontScale } from '@/hooks/use-font-scale'
 
 const features = [
   { label: '以产业需求为牵引', active: true },
@@ -430,13 +429,11 @@ function GradientTile({
   variant,
   gridColumn,
   gridRow,
-  fluid,
 }: {
   item: NonNullable<ReturnType<typeof findByLabel>>
   variant: CardVariant
   gridColumn: string
   gridRow: string
-  fluid?: boolean
 }) {
   const style = CARD_STYLES[item.id]
   const isBig = variant === 'big'
@@ -464,9 +461,7 @@ function GradientTile({
   const color = style?.color || '#000'
 
   const iconH = isBig ? 'w-16 h-16 text-2xl mb-5' : 'w-[46px] h-[46px] text-xl mb-3.5'
-  const placementClass = fluid
-    ? ''
-    : `${COL_START_CLASS[gridColumn] || ''} ${ROW_START_CLASS[gridRow] || ''}`
+  const placementClass = `${COL_START_CLASS[gridColumn] || ''} ${ROW_START_CLASS[gridRow] || ''}`
 
   return (
     <Wrapper
@@ -548,9 +543,6 @@ function SectionLabel({ title }: { title: string }) {
 /* ─── Page ─── */
 export default function PortalHomePage() {
   const items = getFlatItems()
-  // 字号放大后改回流式两列布局，配合 rem 行高保证卡片文字完整展示
-  const { level } = useFontScale()
-  const isFluid = level >= 1
 
   return (
     <div className="min-h-screen relative">
@@ -610,11 +602,7 @@ export default function PortalHomePage() {
           <div key={section.title}>
             <SectionLabel title={section.title} />
 
-            <div
-              className={`grid grid-cols-1 gap-4 sm:gap-[18px] lg:auto-rows-[11.75rem] ${
-                isFluid ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-4'
-              }`}
-            >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-[18px]">
               {section.layouts.map((layout) => {
                 const item = findByLabel(items, layout.id)
                 if (!item) return null
@@ -625,7 +613,6 @@ export default function PortalHomePage() {
                     variant={layout.variant}
                     gridColumn={layout.col}
                     gridRow={layout.row}
-                    fluid={isFluid}
                   />
                 )
               })}
