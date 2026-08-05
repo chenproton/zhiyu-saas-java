@@ -127,7 +127,7 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 		qb.AddCondition("r.grade = " + qb.NextArg(f.Grade))
 	}
 	if f.Search != "" {
-		qb.AddCondition("(u.name ILIKE " + qb.NextArg("%"+f.Search+"%") + " OR u.student_no ILIKE " + qb.NextArg("%"+f.Search+"%") + ")")
+		qb.AddCondition("(u.name ILIKE " + qb.NextArg("%"+f.Search+"%") + " OR COALESCE(u.student_no, u.username, u.login_name) ILIKE " + qb.NextArg("%"+f.Search+"%") + ")")
 	}
 	where := qb.WhereClause()
 
@@ -140,7 +140,7 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 	}
 
 	rows, err := s.q.Query(ctx, `
-		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), u.student_no,
+		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), COALESCE(u.student_no, u.username, u.login_name) AS student_no,
 			r.class_name, r.major_id, r.major_name, COALESCE(dept.dept_name, ''),
 			r.total_ability_points, r.achieved_ability_points, r.achievement_rate, r.grade, r.evaluated_at,
 			r.ability_point_details, r.grade_history
@@ -175,7 +175,7 @@ func (s *JobAbilityResultStore) GetJobAbilityResult(ctx context.Context, id, ten
 	var item JobAbilityResultRow
 	var details, history domain.JSONSlice
 	err := s.q.QueryRow(ctx, `
-		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), u.student_no,
+		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), COALESCE(u.student_no, u.username, u.login_name) AS student_no,
 			r.class_name, r.major_id, r.major_name, COALESCE(dept.dept_name, ''),
 			r.total_ability_points, r.achieved_ability_points, r.achievement_rate, r.grade, r.evaluated_at,
 			r.ability_point_details, r.grade_history
