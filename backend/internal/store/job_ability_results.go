@@ -73,6 +73,7 @@ type JobAbilityResultRow struct {
 	ClassName             *string
 	MajorID               *string
 	MajorName             *string
+	DepartmentName        string
 	TotalAbilityPoints    int
 	AchievedAbilityPoints int
 	AchievementRate       float64
@@ -81,6 +82,27 @@ type JobAbilityResultRow struct {
 	AbilityPointDetails   domain.JSONSlice
 	GradeHistory          domain.JSONSlice
 }
+
+// departmentNameSQL 学生所属院系：从 users.org_node_id 沿组织树向上找类型为"二级学院"的节点。
+const departmentNameSQL = `
+LEFT JOIN LATERAL (
+	WITH RECURSIVE org_chain AS (
+		SELECT o.id, o.type_id, o.parent_id, 0 AS depth
+		FROM organizations o
+		WHERE o.id = u.org_node_id
+		UNION ALL
+		SELECT o.id, o.type_id, o.parent_id, c.depth + 1
+		FROM organizations o
+		JOIN org_chain c ON o.id = c.parent_id
+	)
+	SELECT o.name AS dept_name
+	FROM org_chain c
+	JOIN organizations o ON o.id = c.id
+	JOIN org_types t ON t.id = o.type_id AND t.tenant_id = o.tenant_id
+	WHERE t.name = '二级学院'
+	ORDER BY c.depth
+	LIMIT 1
+) dept ON true`
 
 // JobAbilityResultFilter 结果查询过滤。
 type JobAbilityResultFilter struct {
@@ -119,12 +141,13 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 
 	rows, err := s.q.Query(ctx, `
 		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), u.student_no,
-			r.class_name, r.major_id, r.major_name,
+			r.class_name, r.major_id, r.major_name, COALESCE(dept.dept_name, ''),
 			r.total_ability_points, r.achieved_ability_points, r.achievement_rate, r.grade, r.evaluated_at,
 			r.ability_point_details, r.grade_history
 		FROM job_ability_results r
 		LEFT JOIN users u ON u.id = r.user_id
 		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
+		`+departmentNameSQL+`
 		WHERE `+where+`
 		ORDER BY r.evaluated_at DESC
 		LIMIT `+Itoa(limit)+` OFFSET `+Itoa(offset), qb.Args()...)
@@ -137,7 +160,7 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 	for rows.Next() {
 		var item JobAbilityResultRow
 		if err := rows.Scan(&item.ID, &item.CareerPositionID, &item.PositionName, &item.UserID, &item.UserName, &item.StudentNo,
-			&item.ClassName, &item.MajorID, &item.MajorName,
+			&item.ClassName, &item.MajorID, &item.MajorName, &item.DepartmentName,
 			&item.TotalAbilityPoints, &item.AchievedAbilityPoints, &item.AchievementRate, &item.Grade, &item.EvaluatedAt,
 			&item.AbilityPointDetails, &item.GradeHistory); err != nil {
 			return nil, 0, err
@@ -153,15 +176,16 @@ func (s *JobAbilityResultStore) GetJobAbilityResult(ctx context.Context, id, ten
 	var details, history domain.JSONSlice
 	err := s.q.QueryRow(ctx, `
 		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), u.student_no,
-			r.class_name, r.major_id, r.major_name,
+			r.class_name, r.major_id, r.major_name, COALESCE(dept.dept_name, ''),
 			r.total_ability_points, r.achieved_ability_points, r.achievement_rate, r.grade, r.evaluated_at,
 			r.ability_point_details, r.grade_history
 		FROM job_ability_results r
 		LEFT JOIN users u ON u.id = r.user_id
 		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
+		`+departmentNameSQL+`
 		WHERE r.id = $1 AND r.tenant_id = $2
 	`, id, tenantID).Scan(&item.ID, &item.CareerPositionID, &item.PositionName, &item.UserID, &item.UserName, &item.StudentNo,
-		&item.ClassName, &item.MajorID, &item.MajorName,
+		&item.ClassName, &item.MajorID, &item.MajorName, &item.DepartmentName,
 		&item.TotalAbilityPoints, &item.AchievedAbilityPoints, &item.AchievementRate, &item.Grade, &item.EvaluatedAt,
 		&details, &history)
 	if err != nil {

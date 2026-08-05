@@ -42,6 +42,7 @@ type JobAbilityResultItem struct {
 	ClassName             *string          `json:"className,omitempty"`
 	MajorID               *string          `json:"majorId,omitempty"`
 	MajorName             *string          `json:"majorName,omitempty"`
+	DepartmentName        string           `json:"department"`
 	TotalAbilityPoints    int              `json:"totalAbilityPoints"`
 	AchievedAbilityPoints int              `json:"achievedAbilityPoints"`
 	AchievementRate       float64          `json:"achievementRate"`
@@ -165,6 +166,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 			ID: r2.ID, CareerPositionID: r2.CareerPositionID, PositionName: r2.PositionName,
 			UserID: r2.UserID, UserName: r2.UserName, StudentNo: r2.StudentNo,
 			ClassName: r2.ClassName, MajorID: r2.MajorID, MajorName: r2.MajorName,
+			DepartmentName:     r2.DepartmentName,
 			TotalAbilityPoints: r2.TotalAbilityPoints, AchievedAbilityPoints: r2.AchievedAbilityPoints,
 			AchievementRate: r2.AchievementRate, Grade: r2.Grade, EvaluatedAt: r2.EvaluatedAt,
 			AbilityPointDetails: r2.AbilityPointDetails, GradeHistory: r2.GradeHistory,
@@ -198,6 +200,7 @@ func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 		ID: row.ID, CareerPositionID: row.CareerPositionID, PositionName: row.PositionName,
 		UserID: row.UserID, UserName: row.UserName, StudentNo: row.StudentNo,
 		ClassName: row.ClassName, MajorID: row.MajorID, MajorName: row.MajorName,
+		DepartmentName:     row.DepartmentName,
 		TotalAbilityPoints: row.TotalAbilityPoints, AchievedAbilityPoints: row.AchievedAbilityPoints,
 		AchievementRate: row.AchievementRate, Grade: row.Grade, EvaluatedAt: row.EvaluatedAt,
 	}

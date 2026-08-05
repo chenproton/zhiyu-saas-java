@@ -341,13 +341,15 @@ function JobAbilityResultsContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[110px]">姓名</TableHead>
+                  <TableHead className="w-[100px]">姓名</TableHead>
                   <TableHead className="w-[110px]">学号</TableHead>
-                  <TableHead className="w-[130px]">班级</TableHead>
-                  <TableHead className="w-[130px]">专业</TableHead>
-                  <TableHead className="w-[130px]">能力点达成</TableHead>
-                  <TableHead className="w-[90px]">达标率</TableHead>
-                  <TableHead className="sticky right-0 w-[120px] bg-white text-right">
+                  <TableHead className="w-[130px]">所属院系</TableHead>
+                  <TableHead className="w-[120px]">班级</TableHead>
+                  <TableHead className="w-[110px]">专业</TableHead>
+                  <TableHead className="w-[120px]">岗位能力达成率</TableHead>
+                  <TableHead className="w-[100px]">岗位胜任度</TableHead>
+                  <TableHead className="w-[110px]">能力认知得分</TableHead>
+                  <TableHead className="sticky right-0 w-[110px] bg-white text-right">
                     操作
                   </TableHead>
                 </TableRow>
@@ -355,13 +357,13 @@ function JobAbilityResultsContent() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : results.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                       {selectedPositionId ? '暂无符合条件的认定结果' : '请在左侧选择岗位'}
                     </TableCell>
                   </TableRow>
@@ -373,19 +375,33 @@ function JobAbilityResultsContent() {
                         {result.studentId}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
+                        {result.department || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
                         {result.className || '-'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {result.majorName || '-'}
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">
-                          {result.achievedAbilityPoints}/{result.totalAbilityPoints} 能力点
+                        <span className="text-sm font-medium">
+                          {result.totalAbilityPoints > 0
+                            ? `${((result.achievedAbilityPoints / result.totalAbilityPoints) * 100).toFixed(0)}%`
+                            : '-'}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm font-medium">
-                          {(result.achievementRate ?? 0).toFixed(1)}%
+                        <span className="text-sm text-muted-foreground">
+                          {result.positionCompetency != null
+                            ? `${result.positionCompetency.toFixed(1)}%`
+                            : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {result.abilityCognitionScore != null
+                            ? result.abilityCognitionScore.toFixed(1)
+                            : '-'}
                         </span>
                       </TableCell>
                       <TableRowActions className="sticky right-0 bg-white">
