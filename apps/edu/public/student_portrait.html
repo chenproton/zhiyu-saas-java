@@ -79,7 +79,7 @@ body{
 .radar-center .sub{font-size:10.5px;color:var(--ink3);margin-top:3px;font-weight:600;letter-spacing:.5px;}
 
 .right-stack{display:flex;flex-direction:column;gap:12px;}
-.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
 .stat{position:relative;border-radius:13px;padding:15px 12px;overflow:hidden;border:1px solid;}
 .stat .v{font-size:25px;font-weight:900;line-height:1;}
 .stat .l{font-size:10.5px;color:var(--ink2);margin-top:7px;font-weight:500;}
@@ -211,6 +211,7 @@ body{
             <div class="stat-row">
               <div class="stat s1"><span class="glow"></span><div class="v" id="statRate">--%</div><div class="l">岗位能力达成率</div></div>
               <div class="stat s2"><span class="glow"></span><div class="v" id="statCompetency">--%</div><div class="l">岗位胜任度</div></div>
+              <div class="stat s4"><span class="glow"></span><div class="v" id="statCompetencyV2">--%</div><div class="l">岗位胜任度（新）</div></div>
               <div class="stat s3"><span class="glow"></span><div class="v" id="statCognition">--</div><div class="l">能力认知得分</div></div>
             </div>
             <div class="note" id="infoNote" style="border-radius:13px;padding:14px 15px;background:linear-gradient(120deg,#f6f8ff,#f9f7ff);border:1px solid var(--line);">
@@ -595,6 +596,7 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
     var rate=jr&&jr.totalAbilityPoints>0?(jr.achievedAbilityPoints/jr.totalAbilityPoints*100):0;
     document.getElementById('statRate').textContent=(jr?rate.toFixed(0):'--')+'%';
     document.getElementById('statCompetency').textContent=(jr&&jr.positionCompetency!=null?jr.positionCompetency.toFixed(1):'--')+'%';
+    document.getElementById('statCompetencyV2').textContent=(jr&&jr.positionCompetencyV2!=null?jr.positionCompetencyV2.toFixed(1):'--')+'%';
     document.getElementById('statCognition').textContent=jr&&jr.abilityCognitionScore!=null?jr.abilityCognitionScore.toFixed(1):'--';
   }
 
