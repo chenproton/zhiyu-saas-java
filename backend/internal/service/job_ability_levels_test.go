@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -141,6 +142,96 @@ func TestPointCompetencyNeed(t *testing.T) {
 		if got := pointCompetencyNeed(c.levels, c.required); got != c.want {
 			t.Errorf("%s: pointCompetencyNeed(%v, %s) = %v, want %v", c.name, c.levels, c.required, got, c.want)
 		}
+	}
+}
+
+// v2CustomMapping 用户固定表等价的自定义分档（未达标0-40 / L1 41-60 / L2 61-70 / L3 71-80 / L4 81-90 / L5 91-100）。
+func v2CustomMapping() []levelMapping {
+	return []levelMapping{
+		{Level: "understand", Min: 41, Max: 60},
+		{Level: "comprehend", Min: 61, Max: 70},
+		{Level: "master", Min: 71, Max: 80},
+		{Level: "proficient", Min: 81, Max: 90},
+		{Level: "expert", Min: 91, Max: 100},
+	}
+}
+
+func TestLevelRankByCode(t *testing.T) {
+	cases := []struct {
+		code string
+		want float64
+	}{
+		{"understand", 1},
+		{"comprehend", 2},
+		{"master", 3},
+		{"proficient", 4},
+		{"expert", 5},
+		{"unknown", 2},
+	}
+	for _, c := range cases {
+		if got := levelRankByCode(c.code); got != c.want {
+			t.Errorf("levelRankByCode(%s) = %v, want %v", c.code, got, c.want)
+		}
+	}
+}
+
+func TestLevelValue(t *testing.T) {
+	custom := v2CustomMapping()
+	cases := []struct {
+		name   string
+		levels []levelMapping
+		score  float64
+		want   float64
+	}{
+		{"自定义-未达标带", custom, 0, 0},
+		{"自定义-未达标带上限", custom, 40, 40.0 / 41},
+		{"自定义-L1起点", custom, 41, 1},
+		{"自定义-L1顶端", custom, 60, 1.95},
+		{"自定义-L2起点", custom, 61, 2},
+		{"自定义-L2顶端", custom, 70, 2.9},
+		{"自定义-L5顶端", custom, 100, 5.9},
+		{"默认-0分", nil, 0, 1},
+		{"默认-理解起点", nil, 60, 2},
+		{"默认-85分", nil, 85, 4.5},
+		{"默认-100分", nil, 100, 5 + 10.0/11},
+	}
+	for _, c := range cases {
+		if got := levelValue(c.levels, c.score); math.Abs(got-c.want) > 1e-9 {
+			t.Errorf("%s: levelValue(score=%v) = %v, want %v", c.name, c.score, got, c.want)
+		}
+	}
+}
+
+// TestCompetencyV2Examples 用用户提供的示例表验证能力点胜任度（新）：
+// 岗位要求 L2（基准等级 2.0），每跨越一个完整等级 = 50% 变化。
+func TestCompetencyV2Examples(t *testing.T) {
+	custom := v2CustomMapping()
+	cases := []struct {
+		score float64
+		want  float64
+	}{
+		{61, 100},  // 刚好达标
+		{60, 97.5}, // 差1分几乎达标
+		{45, 60},   // 差0.8个等级
+		{41, 50},   // 正好低1个等级
+		{0, 0},     // 完全不胜任
+		{70, 145},  // 在L2内接近精通
+		{80, 195},  // 超额近2个等级
+		{100, 295}, // 远超要求
+	}
+	for _, c := range cases {
+		comp := 100 + (levelValue(custom, c.score)-levelRankByCode("comprehend"))*50
+		if comp < 0 {
+			comp = 0
+		}
+		if math.Abs(comp-c.want) > 1e-9 {
+			t.Errorf("score=%v: compV2 = %v, want %v", c.score, comp, c.want)
+		}
+	}
+	// 系统默认档位：85 分落在熟练带(4.5)，要求掌握(3.0) → 100+1.5×50 = 175
+	comp := 100 + (levelValue(nil, 85)-levelRankByCode("master"))*50
+	if math.Abs(comp-175) > 1e-9 {
+		t.Errorf("默认档位 85 分/要求掌握: compV2 = %v, want 175", comp)
 	}
 }
 

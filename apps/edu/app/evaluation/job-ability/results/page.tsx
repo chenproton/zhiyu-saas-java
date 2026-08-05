@@ -347,6 +347,7 @@ function JobAbilityResultsContent() {
                   <TableHead className="w-[120px]">班级</TableHead>
                   <TableHead className="w-[120px]">岗位能力达成率</TableHead>
                   <TableHead className="w-[100px]">岗位胜任度</TableHead>
+                  <TableHead className="w-[110px]">岗位胜任度（新）</TableHead>
                   <TableHead className="w-[110px]">能力认知得分</TableHead>
                   <TableHead className="sticky right-0 w-[110px] bg-white text-right">
                     操作
@@ -356,13 +357,13 @@ function JobAbilityResultsContent() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : results.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                       {selectedPositionId ? '暂无符合条件的认定结果' : '请在左侧选择岗位'}
                     </TableCell>
                   </TableRow>
@@ -390,6 +391,13 @@ function JobAbilityResultsContent() {
                         <span className="text-sm text-muted-foreground">
                           {result.positionCompetency != null
                             ? `${result.positionCompetency.toFixed(1)}%`
+                            : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {result.positionCompetencyV2 != null
+                            ? `${result.positionCompetencyV2.toFixed(1)}%`
                             : '-'}
                         </span>
                       </TableCell>
@@ -454,6 +462,12 @@ function JobAbilityResultsContent() {
                   达标率 {(detail.achievementRate ?? 0).toFixed(1)}%
                 </span>
                 <span className="text-muted-foreground">
+                  岗位胜任度（新）{' '}
+                  {detail.positionCompetencyV2 != null
+                    ? `${detail.positionCompetencyV2.toFixed(1)}%`
+                    : '-'}
+                </span>
+                <span className="text-muted-foreground">
                   认定时间 {formatDateTime(detail.evaluationTime)}
                 </span>
               </div>
@@ -467,6 +481,7 @@ function JobAbilityResultsContent() {
                         <TableHead className="w-[110px]">档位</TableHead>
                         <TableHead className="w-[100px]">权重</TableHead>
                         <TableHead className="w-[100px]">是否达成</TableHead>
+                        <TableHead className="w-[110px]">胜任度（新）</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -510,6 +525,9 @@ function JobAbilityResultsContent() {
                             >
                               {point.achieved ? '已达成' : '未达成'}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {point.competencyV2 != null ? `${point.competencyV2.toFixed(1)}%` : '-'}
                           </TableCell>
                         </TableRow>
                       ))}

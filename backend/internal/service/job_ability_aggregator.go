@@ -235,10 +235,12 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 			RequiredLevelLabel string  `json:"requiredLevelLabel,omitempty"`
 			Achieved           bool    `json:"achieved"`
 			LevelLabel         string  `json:"levelLabel,omitempty"`
+			// CompetencyV2 能力点胜任度（新，%）：等级距离法；无效点不写入
+			CompetencyV2 *float64 `json:"competencyV2,omitempty"`
 		}
 		details := make([]pointDetail, 0, len(points))
 		pointValid := make([]bool, 0, len(points))
-		var posWeightedSum, posWeightSum, cognitionSum, cognitionWeight, competencySum float64
+		var posWeightedSum, posWeightSum, cognitionSum, cognitionWeight, competencySum, competencyV2WeightedSum, competencyV2WeightSum float64
 		achieved := 0
 		for _, p := range points {
 			var weightedSum, weightSum float64
@@ -254,6 +256,16 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				pointScore = weightedSum / weightSum
 				posWeightedSum += pointScore * p.weight
 				posWeightSum += p.weight
+			}
+			// 胜任度（新）：等级距离法，仅有效点参与（无效点剔除，不惩罚）
+			compV2 := 0.0
+			if valid && p.weight > 0 {
+				compV2 = 100 + (levelValue(p.levels, pointScore)-levelRankByCode(p.requiredLevel))*50
+				if compV2 < 0 {
+					compV2 = 0
+				}
+				competencyV2WeightedSum += compV2 * p.weight
+				competencyV2WeightSum += p.weight
 			}
 			// 认知得分/胜任度：与读取时回退口径一致，全部权重>0 的点参与（无效点按 0 分计入）
 			if p.weight > 0 {
@@ -295,6 +307,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				RequiredLevelLabel: masteryCodeLabel(p.requiredLevel),
 				Achieved:           pointAchieved,
 				LevelLabel:         pointLevelLabel(p.levels, pointScore),
+				CompetencyV2:       competencyV2Ref(valid, compV2),
 			})
 		}
 		if posWeightSum == 0 {
@@ -310,6 +323,12 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		if cognitionWeight > 0 {
 			cognition = math.Round(cognitionSum/cognitionWeight*100) / 100
 			competency = math.Round(competencySum/cognitionWeight*100) / 100
+		}
+
+		// 岗位胜任度（新，%）：有效能力点胜任度（新）加权平均
+		competencyV2 := 0.0
+		if competencyV2WeightSum > 0 {
+			competencyV2 = math.Round(competencyV2WeightedSum/competencyV2WeightSum*100) / 100
 		}
 
 		// 按能力域（position_ability_bindings.domain）汇总域内能力点加权平均分
@@ -368,6 +387,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				AchievementRate:       rate,
 				AbilityCognitionScore: cognition,
 				PositionCompetency:    competency,
+				PositionCompetencyV2:  competencyV2,
 				Grade:                 nil, // 岗位总评已停用，列保留置空
 				AbilityPointDetails:   detailsJSON,
 			}); err != nil {
@@ -457,6 +477,63 @@ func pointCompetencyNeed(levels []levelMapping, requiredLevel string) float64 {
 		}
 	}
 	return needScoreByLevel[requiredLevel]
+}
+
+// levelRankByCode 掌握程度代码→等效等级基准值（understand=1 … expert=5），
+// 未知代码回退 2（对齐旧"60 分线"回退语义，即理解档）。
+func levelRankByCode(code string) float64 {
+	switch code {
+	case "understand":
+		return 1
+	case "comprehend":
+		return 2
+	case "master":
+		return 3
+	case "proficient":
+		return 4
+	case "expert":
+		return 5
+	}
+	return 2
+}
+
+// levelValue 将 0-100 得分映射为等效等级值（等级轴，每跨越一个完整等级 = 1.0）。
+// 档位边界：有自定义分档（5 档）时用配置的 min/max；否则系统默认五档
+// （了解[0,59]/理解[60,69]/掌握[70,79]/熟练[80,89]/精通[90,100]）。
+// 公式：落在第 n 档（n=1..5）→ n + (得分-min)/(max-min+1)；低于首档（未达标带）→ 得分/首档min。
+func levelValue(levels []levelMapping, score float64) float64 {
+	bands := make([][2]float64, 5)
+	if len(levels) == 5 {
+		for i, l := range levels {
+			bands[i] = [2]float64{l.Min, l.Max}
+		}
+	} else {
+		bounds := []float64{0, 60, 70, 80, 90, 100}
+		for i := 0; i < 5; i++ {
+			max := bounds[i+1] - 1
+			if i == 4 {
+				max = 100
+			}
+			bands[i] = [2]float64{bounds[i], max}
+		}
+	}
+	if score < bands[0][0] {
+		return score / bands[0][0]
+	}
+	for i, b := range bands {
+		if score >= b[0] && score <= b[1] {
+			return float64(i+1) + (score-b[0])/(b[1]-b[0]+1)
+		}
+	}
+	return 0
+}
+
+// competencyV2Ref 有效点返回胜任度（新）指针，无效点返回 nil（明细不写入该字段）。
+func competencyV2Ref(valid bool, v float64) *float64 {
+	if !valid {
+		return nil
+	}
+	return &v
 }
 
 // masteryCodeRank 掌握程度代码→档位，无法解析返回 -1。

@@ -62,6 +62,8 @@ export interface JobAbilityPointDetail {
   requiredLevelLabel?: string
   /** 能力点档位标签（自定义分档：未达标/了解L1/…/精通L5；默认：了解/理解/掌握/熟练/精通） */
   levelLabel?: string
+  /** 能力点胜任度（新，%）：等级距离法，无效点无此字段 */
+  competencyV2?: number
 }
 
 // 岗位能力测评结果
@@ -83,6 +85,8 @@ export interface JobAbilityResult {
   grade?: string
   /** 岗位胜任度（%）：能力点胜任度加权平均，负值归零 */
   positionCompetency?: number
+  /** 岗位胜任度（新，%）：能力点胜任度（新）加权平均（等级距离法） */
+  positionCompetencyV2?: number
   /** 能力认知得分（0-100）：能力点得分加权平均 */
   abilityCognitionScore?: number
   evaluationTime: string | Date

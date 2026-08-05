@@ -51,10 +51,10 @@ func TestJobAbilityResultIndicators(t *testing.T) {
 	details := `[{"abilityPointName":"点A","score":85,"weight":0.6,"requiredLevel":"master","achieved":true},{"abilityPointName":"点B","score":55,"weight":0.4,"requiredLevel":"expert","achieved":false}]`
 	// 落库行：两指标已存储，读取直接返回
 	env.DB.Exec(ctx, `
-		INSERT INTO job_ability_results (career_position_id, user_id, total_ability_points, achieved_ability_points, achievement_rate, grade, tenant_id, ability_point_details, ability_cognition_score, position_competency)
-		VALUES ($1, $2, 2, 1, 73, '熟练', $3, $4::jsonb, 73.00, 12.86)
+		INSERT INTO job_ability_results (career_position_id, user_id, total_ability_points, achieved_ability_points, achievement_rate, grade, tenant_id, ability_point_details, ability_cognition_score, position_competency, position_competency_v2)
+		VALUES ($1, $2, 2, 1, 73, '熟练', $3, $4::jsonb, 73.00, 12.86, 105.00)
 	`, positionID, userA, testhelper.TestTenantID, details)
-	// 存量行：两指标为 NULL，读取时回退实时计算
+	// 存量行：指标列均为 NULL，读取时回退实时计算
 	env.DB.Exec(ctx, `
 		INSERT INTO job_ability_results (career_position_id, user_id, total_ability_points, achieved_ability_points, achievement_rate, grade, tenant_id, ability_point_details)
 		VALUES ($1, $2, 2, 1, 73, '熟练', $3, $4::jsonb)
@@ -81,6 +81,9 @@ func TestJobAbilityResultIndicators(t *testing.T) {
 	if stored.PositionCompetency != 12.86 || stored.AbilityCognitionScore != 73.0 {
 		t.Errorf("落库行应直接返回存储值，实际 competency=%v cognition=%v", stored.PositionCompetency, stored.AbilityCognitionScore)
 	}
+	if stored.PositionCompetencyV2 != 105.0 {
+		t.Errorf("落库行胜任度（新）应直接返回存储值 105，实际 %v", stored.PositionCompetencyV2)
+	}
 	fallback, ok := byUser[userB]
 	if !ok {
 		t.Fatal("缺少存量行结果")
@@ -91,6 +94,11 @@ func TestJobAbilityResultIndicators(t *testing.T) {
 	}
 	if math.Abs(fallback.AbilityCognitionScore-73.0) > 1e-6 {
 		t.Errorf("存量行认知得分应回退计算为 73，实际 %v", fallback.AbilityCognitionScore)
+	}
+	// 胜任度（新）回退：点A 85分→熟练带4.5、要求掌握3.0→(100+1.5×50)×0.6=105；点B 55分低于基准→0
+	wantV2 := (100+(4.5-3)*50)*0.6 + 0
+	if math.Abs(fallback.PositionCompetencyV2-wantV2) > 1e-6 {
+		t.Errorf("存量行胜任度（新）应回退计算为 %v，实际 %v", wantV2, fallback.PositionCompetencyV2)
 	}
 }
 

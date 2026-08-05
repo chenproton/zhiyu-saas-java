@@ -80,11 +80,13 @@ type JobAbilityResultRow struct {
 	// AbilityCognitionScore 能力认知得分（0-100），存量行可能为 NULL（读取时回退计算）
 	AbilityCognitionScore *float64
 	// PositionCompetency 岗位胜任度（%），存量行可能为 NULL（读取时回退计算）
-	PositionCompetency  *float64
-	Grade               *string
-	EvaluatedAt         time.Time
-	AbilityPointDetails domain.JSONSlice
-	GradeHistory        domain.JSONSlice
+	PositionCompetency *float64
+	// PositionCompetencyV2 岗位胜任度（新，%），存量行可能为 NULL（读取时回退计算）
+	PositionCompetencyV2 *float64
+	Grade                *string
+	EvaluatedAt          time.Time
+	AbilityPointDetails  domain.JSONSlice
+	GradeHistory         domain.JSONSlice
 }
 
 // departmentNameSQL 学生所属院系：从 users.org_node_id 沿组织树向上找类型为"二级学院"的节点。
@@ -147,7 +149,7 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), COALESCE(u.student_no, u.username, u.login_name) AS student_no,
 			r.class_name, r.major_id, r.major_name, COALESCE(dept.dept_name, ''),
 			r.total_ability_points, r.achieved_ability_points, r.achievement_rate,
-			r.ability_cognition_score, r.position_competency, r.grade, r.evaluated_at,
+			r.ability_cognition_score, r.position_competency, r.position_competency_v2, r.grade, r.evaluated_at,
 			r.ability_point_details, r.grade_history
 		FROM job_ability_results r
 		LEFT JOIN users u ON u.id = r.user_id
@@ -167,7 +169,7 @@ func (s *JobAbilityResultStore) ListJobAbilityResults(ctx context.Context, f Job
 		if err := rows.Scan(&item.ID, &item.CareerPositionID, &item.PositionName, &item.UserID, &item.UserName, &item.StudentNo,
 			&item.ClassName, &item.MajorID, &item.MajorName, &item.DepartmentName,
 			&item.TotalAbilityPoints, &item.AchievedAbilityPoints, &item.AchievementRate,
-			&item.AbilityCognitionScore, &item.PositionCompetency, &item.Grade, &item.EvaluatedAt,
+			&item.AbilityCognitionScore, &item.PositionCompetency, &item.PositionCompetencyV2, &item.Grade, &item.EvaluatedAt,
 			&item.AbilityPointDetails, &item.GradeHistory); err != nil {
 			return nil, 0, err
 		}
@@ -184,7 +186,7 @@ func (s *JobAbilityResultStore) GetJobAbilityResult(ctx context.Context, id, ten
 		SELECT r.id, r.career_position_id, COALESCE(cp.name, ''), r.user_id, COALESCE(u.name, ''), COALESCE(u.student_no, u.username, u.login_name) AS student_no,
 			r.class_name, r.major_id, r.major_name, COALESCE(dept.dept_name, ''),
 			r.total_ability_points, r.achieved_ability_points, r.achievement_rate,
-			r.ability_cognition_score, r.position_competency, r.grade, r.evaluated_at,
+			r.ability_cognition_score, r.position_competency, r.position_competency_v2, r.grade, r.evaluated_at,
 			r.ability_point_details, r.grade_history
 		FROM job_ability_results r
 		LEFT JOIN users u ON u.id = r.user_id
@@ -194,7 +196,7 @@ func (s *JobAbilityResultStore) GetJobAbilityResult(ctx context.Context, id, ten
 	`, id, tenantID).Scan(&item.ID, &item.CareerPositionID, &item.PositionName, &item.UserID, &item.UserName, &item.StudentNo,
 		&item.ClassName, &item.MajorID, &item.MajorName, &item.DepartmentName,
 		&item.TotalAbilityPoints, &item.AchievedAbilityPoints, &item.AchievementRate,
-		&item.AbilityCognitionScore, &item.PositionCompetency, &item.Grade, &item.EvaluatedAt,
+		&item.AbilityCognitionScore, &item.PositionCompetency, &item.PositionCompetencyV2, &item.Grade, &item.EvaluatedAt,
 		&details, &history)
 	if err != nil {
 		return nil, nil, nil, err
@@ -386,6 +388,8 @@ type JobAbilityResultUpsertParams struct {
 	AbilityCognitionScore float64
 	// PositionCompetency 岗位胜任度（%）：能力点胜任度加权平均，负值归零
 	PositionCompetency float64
+	// PositionCompetencyV2 岗位胜任度（新，%）：能力点胜任度（新）加权平均（等级距离法）
+	PositionCompetencyV2 float64
 	// Grade 岗位总评（已停用：不再计算/写入，列保留置空）
 	Grade               *string
 	AbilityPointDetails []byte
@@ -397,9 +401,9 @@ func (s *JobAbilityResultStore) UpsertResult(ctx context.Context, p *JobAbilityR
 		INSERT INTO job_ability_results (
 			tenant_id, career_position_id, user_id, class_name, major_id, major_name,
 			total_ability_points, achieved_ability_points, achievement_rate,
-			ability_cognition_score, position_competency, grade,
+			ability_cognition_score, position_competency, position_competency_v2, grade,
 			ability_point_details, evaluated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
 		ON CONFLICT (career_position_id, user_id) DO UPDATE SET
 			tenant_id = EXCLUDED.tenant_id,
 			class_name = EXCLUDED.class_name,
@@ -410,12 +414,13 @@ func (s *JobAbilityResultStore) UpsertResult(ctx context.Context, p *JobAbilityR
 			achievement_rate = EXCLUDED.achievement_rate,
 			ability_cognition_score = EXCLUDED.ability_cognition_score,
 			position_competency = EXCLUDED.position_competency,
+			position_competency_v2 = EXCLUDED.position_competency_v2,
 			grade = EXCLUDED.grade,
 			ability_point_details = EXCLUDED.ability_point_details,
 			evaluated_at = EXCLUDED.evaluated_at
 	`, p.TenantID, p.CareerPositionID, p.UserID, p.ClassName, p.MajorID, p.MajorName,
 		p.TotalAbilityPoints, p.AchievedAbilityPoints, p.AchievementRate,
-		p.AbilityCognitionScore, p.PositionCompetency, p.Grade, p.AbilityPointDetails)
+		p.AbilityCognitionScore, p.PositionCompetency, p.PositionCompetencyV2, p.Grade, p.AbilityPointDetails)
 	return err
 }
 

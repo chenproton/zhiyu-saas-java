@@ -52,6 +52,8 @@ type JobAbilityResultItem struct {
 	EvaluatedAt           time.Time        `json:"evaluationTime"`
 	// 岗位胜任度（%）：能力点胜任度加权平均，胜任度=(得分-岗位所需得分)/岗位所需得分，负值归零
 	PositionCompetency float64 `json:"positionCompetency"`
+	// 岗位胜任度（新，%）：能力点胜任度（新）加权平均（等级距离法）
+	PositionCompetencyV2 float64 `json:"positionCompetencyV2"`
 	// 能力认知得分（0-100）：能力点得分加权平均
 	AbilityCognitionScore float64 `json:"abilityCognitionScore"`
 }
@@ -79,6 +81,75 @@ func storedIndicators(storedCompetency, storedCognition *float64, details domain
 		_, cognition = computeAbilityIndicators(details)
 	}
 	return competency, cognition
+}
+
+// storedCompetencyV2 岗位胜任度（新）：优先用落库值，存量行 NULL 时回退实时计算。
+func storedCompetencyV2(stored *float64, details domain.JSONSlice) float64 {
+	if stored != nil {
+		return *stored
+	}
+	return computeCompetencyV2(details)
+}
+
+// v2LevelRankByCode 掌握程度代码→等效等级基准值（understand=1 … expert=5），未知回退 2（60 分线）。
+func v2LevelRankByCode(code string) float64 {
+	switch code {
+	case "understand":
+		return 1
+	case "comprehend":
+		return 2
+	case "master":
+		return 3
+	case "proficient":
+		return 4
+	case "expert":
+		return 5
+	}
+	return 2
+}
+
+// v2DefaultLevelValue 系统默认档位下的得分→等效等级值（了解[0,59]/理解[60,69]/掌握[70,79]/熟练[80,89]/精通[90,100]）。
+func v2DefaultLevelValue(score float64) float64 {
+	bounds := []float64{0, 60, 70, 80, 90, 100}
+	for i := 0; i < 5; i++ {
+		min := bounds[i]
+		max := bounds[i+1] - 1
+		if i == 4 {
+			max = 100
+		}
+		if score >= min && score <= max {
+			return float64(i+1) + (score-min)/(max-min+1)
+		}
+	}
+	return 0
+}
+
+// computeCompetencyV2 由能力点明细计算岗位胜任度（新，%）：等级距离法。
+// 用于存量行回退；明细无自定义分档信息，按系统默认档位映射，与存量数据生成时的配置相符。
+func computeCompetencyV2(details domain.JSONSlice) float64 {
+	var weightedSum, weightSum float64
+	for _, raw := range details {
+		m, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		score, _ := m["score"].(float64)
+		weight, _ := m["weight"].(float64)
+		requiredLevel, _ := m["requiredLevel"].(string)
+		if weight <= 0 {
+			continue
+		}
+		weightSum += weight
+		comp := 100 + (v2DefaultLevelValue(score)-v2LevelRankByCode(requiredLevel))*50
+		if comp < 0 {
+			comp = 0
+		}
+		weightedSum += comp * weight
+	}
+	if weightSum <= 0 {
+		return 0
+	}
+	return weightedSum / weightSum
 }
 
 // computeAbilityIndicators 由能力点明细计算岗位胜任度（%）与能力认知得分（0-100）。
@@ -178,6 +249,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	items := make([]JobAbilityResultItem, 0, len(rows))
 	for _, r2 := range rows {
 		competency, cognition := storedIndicators(r2.PositionCompetency, r2.AbilityCognitionScore, r2.AbilityPointDetails)
+		competencyV2 := storedCompetencyV2(r2.PositionCompetencyV2, r2.AbilityPointDetails)
 		items = append(items, JobAbilityResultItem{
 			ID: r2.ID, CareerPositionID: r2.CareerPositionID, PositionName: r2.PositionName,
 			UserID: r2.UserID, UserName: r2.UserName, StudentNo: r2.StudentNo,
@@ -187,6 +259,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 			AchievementRate: r2.AchievementRate, Grade: r2.Grade, EvaluatedAt: r2.EvaluatedAt,
 			AbilityPointDetails: r2.AbilityPointDetails, GradeHistory: r2.GradeHistory,
 			PositionCompetency: competency, AbilityCognitionScore: cognition,
+			PositionCompetencyV2: competencyV2,
 		})
 	}
 	respondJSON(w, http.StatusOK, ListResponse[JobAbilityResultItem]{Items: items, Total: total})
@@ -223,6 +296,7 @@ func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if details != nil {
 		item.AbilityPointDetails = *details
 		item.PositionCompetency, item.AbilityCognitionScore = storedIndicators(row.PositionCompetency, row.AbilityCognitionScore, *details)
+		item.PositionCompetencyV2 = storedCompetencyV2(row.PositionCompetencyV2, *details)
 	}
 	if history != nil {
 		item.GradeHistory = *history
