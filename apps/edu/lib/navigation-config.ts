@@ -423,6 +423,12 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
           matchers: ['/evaluation/lesson-results'],
         },
         {
+          id: 'daily-exam-results',
+          label: '日常考试评价',
+          href: '/evaluation/lesson-results/daily-exams',
+          matchers: ['/evaluation/lesson-results/daily-exams'],
+        },
+        {
           id: 'job-ability',
           label: '岗位能力认定规则',
           href: '/evaluation/job-ability',

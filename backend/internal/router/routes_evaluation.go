@@ -29,10 +29,13 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Post("/evaluation/exam-usages", h.examUsageHandler.Create)
 	r.Put("/evaluation/exam-usages/{id}", h.examUsageHandler.Update)
 	r.Delete("/evaluation/exam-usages/{id}", h.examUsageHandler.Delete)
+	r.Post("/evaluation/exam-usages/{id}/publish", h.examUsageHandler.Publish)
 	r.Post("/evaluation/exam-usages/{id}/finish", h.examUsageHandler.Finish)
 
 	// 考试结果的 List 保留供教师查阅，提交（Create）挂在 jobViewer 组（routes.go，含学生）
 	r.Get("/evaluation/exam-results", h.examResultHandler.List)
+	r.Get("/evaluation/exam-results/{id}", h.examResultHandler.Get)
+	r.Post("/evaluation/exam-results/{id}/grade", h.examResultHandler.Grade)
 
 	// 场景评估结果的学生可读/可提交接口挂在 jobViewer 角色组（routes.go，含学生），
 	// 评分（grade/batch-grade）仍限本组业务角色。

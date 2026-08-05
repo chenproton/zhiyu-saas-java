@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye } from 'lucide-react'
+import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -35,6 +35,8 @@ import { useData } from '@/components/providers/data-provider'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { MultiOrgNodePicker } from '@/components/shared/multi-org-node-picker'
+import { useAuth } from '@/components/auth-provider'
 import { examUsageApi } from '@/lib/api'
 import type { ExamUsage } from '@/lib/types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -48,11 +50,20 @@ const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage['targetType']>, string> =
   public: '公开',
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  draft: '草稿',
+  pending: '待开始',
+  published: '待开始',
+  in_progress: '进行中',
+  finished: '已结束',
+}
+
 type FilterStatus = ExamUsage['status'] | 'all'
 
 export default function ExamUsagePage() {
   const router = useRouter()
   const { exams } = useData()
+  const { user } = useAuth()
 
   const [usages, setUsages] = useState<ExamUsage[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,8 +82,7 @@ export default function ExamUsagePage() {
   const [formDuration, setFormDuration] = useState('')
   const [formStartTime, setFormStartTime] = useState('')
   const [formEndTime, setFormEndTime] = useState('')
-  const [formTargetType, setFormTargetType] = useState<ExamUsage['targetType']>('class')
-  const [formTargetIds, setFormTargetIds] = useState('')
+  const [formClassIds, setFormClassIds] = useState<string[]>([])
 
   const loadUsages = async () => {
     setLoading(true)
@@ -108,7 +118,12 @@ export default function ExamUsagePage() {
       const matchSearch =
         usage.name.toLowerCase().includes(search.toLowerCase()) ||
         (exam?.name || '').toLowerCase().includes(search.toLowerCase())
-      const matchStatus = statusFilter === 'all' || usage.status === statusFilter
+      const matchStatus =
+        statusFilter === 'all' ||
+        usage.status === statusFilter ||
+        // 待开始统一筛选：pending/published 归为同一状态
+        (statusFilter === 'pending' && usage.status === 'published') ||
+        (statusFilter === 'published' && usage.status === 'pending')
       return matchSearch && matchStatus
     })
   }, [search, statusFilter, usages, examMap])
@@ -117,7 +132,7 @@ export default function ExamUsagePage() {
     return {
       total: usages.length,
       draft: usages.filter((u) => u.status === 'draft').length,
-      pending: usages.filter((u) => u.status === 'pending').length,
+      pending: usages.filter((u) => u.status === 'pending' || u.status === 'published').length,
       inProgress: usages.filter((u) => u.status === 'in_progress').length,
       finished: usages.filter((u) => u.status === 'finished').length,
     }
@@ -130,8 +145,7 @@ export default function ExamUsagePage() {
     setFormDuration('')
     setFormStartTime('')
     setFormEndTime('')
-    setFormTargetType('class')
-    setFormTargetIds('')
+    setFormClassIds([])
   }
 
   const openCreateDialog = () => {
@@ -150,11 +164,8 @@ export default function ExamUsagePage() {
         duration: formDuration ? Number(formDuration) : undefined,
         startTime: formStartTime || undefined,
         endTime: formEndTime || undefined,
-        targetType: formTargetType,
-        targetIds: formTargetIds
-          .split(',')
-          .map((id) => id.trim())
-          .filter(Boolean),
+        targetType: 'class',
+        targetIds: formClassIds,
         status: 'draft',
       })
       setCreateDialogOpen(false)
@@ -165,6 +176,16 @@ export default function ExamUsagePage() {
     } finally {
       setCreateSubmitting(false)
     }
+  }
+
+  const handlePublish = async (id: string) => {
+    try {
+      await examUsageApi.publish(id)
+    } catch (err) {
+      reportError(err, '发布考试')
+      return
+    }
+    await loadUsages()
   }
 
   const handleStart = async (id: string) => {
@@ -204,11 +225,13 @@ export default function ExamUsagePage() {
     }
   }
 
-  const canStart = (status: ExamUsage['status']) => status === 'draft' || status === 'pending'
+  const canPublish = (status: ExamUsage['status']) => status === 'draft' || status === 'pending'
+  const canStart = (status: ExamUsage['status']) =>
+    status === 'draft' || status === 'pending' || status === 'published'
   const canFinish = (status: ExamUsage['status']) => status === 'in_progress'
   const canDelete = (status: ExamUsage['status']) => status === 'draft' || status === 'finished'
 
-  const isFormValid = formExamId && formName
+  const isFormValid = formExamId && formName && formClassIds.length > 0
 
   return (
     <div className="space-y-6">
@@ -276,8 +299,7 @@ export default function ExamUsagePage() {
             <SelectItem value="pending">待开始</SelectItem>
             <SelectItem value="in_progress">进行中</SelectItem>
             <SelectItem value="finished">已结束</SelectItem>
-          </SelectContent>
-        </Select>
+          </SelectContent>        </Select>
       </div>
 
       {/* 使用记录列表 */}
@@ -337,7 +359,7 @@ export default function ExamUsagePage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={usage.status} />
+                        <StatusBadge status={usage.status} label={STATUS_LABELS[usage.status]} />
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
@@ -345,6 +367,17 @@ export default function ExamUsagePage() {
                         </span>
                       </TableCell>
                       <TableRowActions className="sticky right-0 bg-white">
+                        {canPublish(usage.status) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                            onClick={() => handlePublish(usage.id)}
+                          >
+                            <Send className="mr-1 h-3 w-3" />
+                            发布
+                          </Button>
+                        )}
                         {canStart(usage.status) && (
                           <Button
                             variant="ghost"
@@ -416,11 +449,13 @@ export default function ExamUsagePage() {
                   <SelectValue placeholder="请选择一份试卷" />
                 </SelectTrigger>
                 <SelectContent>
-                  {exams.map((exam) => (
-                    <SelectItem key={exam.id} value={exam.id}>
-                      {exam.name}
-                    </SelectItem>
-                  ))}
+                  {exams
+                    .filter((exam) => exam.status === 'published')
+                    .map((exam) => (
+                      <SelectItem key={exam.id} value={exam.id}>
+                        {exam.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </Field>
@@ -475,30 +510,18 @@ export default function ExamUsagePage() {
             </div>
 
             <Field>
-              <FieldLabel>目标类型</FieldLabel>
-              <Select
-                value={formTargetType}
-                onValueChange={(v) => setFormTargetType(v as ExamUsage['targetType'])}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择目标类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="class">班级</SelectItem>
-                  <SelectItem value="major">专业</SelectItem>
-                  <SelectItem value="department">部门</SelectItem>
-                  <SelectItem value="public">公开</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Field>
-              <FieldLabel>目标ID列表</FieldLabel>
-              <Input
-                value={formTargetIds}
-                onChange={(e) => setFormTargetIds(e.target.value)}
-                placeholder="多个ID请用英文逗号分隔"
+              <FieldLabel>参与班级 *</FieldLabel>
+              <MultiOrgNodePicker
+                tenantId={user?.tenantId}
+                value={formClassIds}
+                onChange={setFormClassIds}
+                selectableTypes={['班级']}
+                title="选择参与班级"
+                maxVisible={3}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                仅所选班级的学生可见并可参加该考试
+              </p>
             </Field>
           </FieldGroup>
           <DialogFooter>

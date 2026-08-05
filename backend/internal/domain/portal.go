@@ -116,6 +116,7 @@ type WorkspaceSceneTask struct {
 
 type WorkspaceExam struct {
 	ID         string `json:"id"`
+	ExamID     string `json:"examId"`
 	Name       string `json:"name"`
 	Type       string `json:"type"`
 	Status     string `json:"status"`

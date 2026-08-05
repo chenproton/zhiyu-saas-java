@@ -4,6 +4,7 @@ import type {
   Exam,
   ExamUsage,
   ExamResult,
+  ExamCenterItem,
   SceneEvaluationResult,
   JobAbilityResult,
   JobAbilitySummaryItem,
@@ -103,19 +104,28 @@ export const examUsageApi = {
     request<{ id: string }>(`/evaluation/exam-usages/${id}`, { method: 'DELETE' }),
   start: (id: string) =>
     request<ExamUsage>(`/evaluation/exam-usages/${id}/start`, { method: 'POST' }),
+  publish: (id: string) =>
+    request<ExamUsage>(`/evaluation/exam-usages/${id}/publish`, { method: 'POST' }),
   finish: (id: string) =>
     request<ExamUsage>(`/evaluation/exam-usages/${id}/finish`, { method: 'POST' }),
+  center: () => request<ExamCenterItem[]>('/evaluation/exam-center'),
 }
 
 export const examResultApi = {
   list: (params?: { usageId?: string; limit?: number; offset?: number }) =>
     request<ListResponse<ExamResult>>(`/evaluation/exam-results${buildQuery(params || {})}`),
+  get: (id: string) => request<ExamResult>(`/evaluation/exam-results/${id}`),
   submit: (req: {
     examUsageId: string
     answers: Record<string, string | string[]>
     methodKey?: string
   }) =>
     request<ExamResult>('/evaluation/exam-results', { method: 'POST', body: JSON.stringify(req) }),
+  grade: (id: string, req: { scores: Record<string, unknown>; comment?: string }) =>
+    request<ExamResult>(`/evaluation/exam-results/${id}/grade`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
 }
 
 export const evaluationResultApi = {

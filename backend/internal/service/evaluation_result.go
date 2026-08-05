@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"math"
 	"strings"
@@ -24,6 +25,25 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 	}
 	if graded {
 		return nil, store.ErrAlreadyGraded
+	}
+	// 重交保护：日常考试结果已被教师评分时拒绝覆盖
+	resultGraded, err := s.st.ExamResults().ResultGraded(ctx, usageID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if resultGraded {
+		return nil, store.ErrAlreadyGraded
+	}
+	// 班级约束：班级类考试仅允许目标班级学生提交（防止绕过考试中心入口直接交卷）
+	target, err := s.st.ExamResults().UsageTarget(ctx, usageID)
+	if err != nil {
+		return nil, err
+	}
+	if target.TargetType != nil && *target.TargetType == "class" {
+		classNodeID := s.st.Portal().UserClassNodeID(ctx, userID, &tenantID)
+		if classNodeID == "" || !containsString(target.TargetIDs, classNodeID) {
+			return nil, store.ErrForbidden
+		}
 	}
 	examID, totalScore, err := s.st.ExamResults().UsageExamInfo(ctx, usageID)
 	if err != nil {
@@ -54,6 +74,10 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 	if !hasSubjective {
 		isPass = score >= passScore
 	}
+	gradingStatus := "evaluated"
+	if hasSubjective {
+		gradingStatus = "pending"
+	}
 
 	profile, err := s.st.ExamResults().FetchUserProfile(ctx, userID)
 	if err != nil {
@@ -68,14 +92,15 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 	var result *domain.ExamResult
 	if err := s.WithTx(ctx, func(txStore *store.Store) error {
 		r, err := txStore.ExamResults().SaveResult(ctx, tenantID, usageID, userID, &store.SaveExamResultParams{
-			StudentName: profile.Name,
-			ClassName:   profile.ClassName,
-			Grade:       profile.Grade,
-			MajorID:     profile.MajorID,
-			Score:       score,
-			TotalScore:  totalScore,
-			IsPass:      isPass,
-			Answers:     answersJSON,
+			StudentName:   profile.Name,
+			ClassName:     profile.ClassName,
+			Grade:         profile.Grade,
+			MajorID:       profile.MajorID,
+			Score:         score,
+			TotalScore:    totalScore,
+			IsPass:        isPass,
+			Answers:       answersJSON,
+			GradingStatus: gradingStatus,
 		})
 		if err != nil {
 			return err
@@ -96,6 +121,88 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 	}
 	result.MajorName = majorNamePtr
 	return result, nil
+}
+
+// GradeExamResult 教师评分日常考试结果：客观分按存储答案重算，加上教师主观题分数后落库。
+func (s *EvaluationService) GradeExamResult(ctx context.Context, id, graderID string, scores map[string]interface{}, comment *string) (*domain.ExamResult, error) {
+	result, err := s.st.ExamResults().Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	target, err := s.st.ExamResults().UsageTarget(ctx, result.ExamUsageID)
+	if err != nil {
+		return nil, err
+	}
+	if target.TargetType == nil || !isManualExamUsageTargetType(*target.TargetType) {
+		return nil, store.ErrForbidden
+	}
+	examID, totalScore, err := s.st.ExamResults().UsageExamInfo(ctx, result.ExamUsageID)
+	if err != nil {
+		return nil, err
+	}
+	questions, err := s.st.ExamResults().FetchExamQuestions(ctx, examID)
+	if err != nil {
+		return nil, err
+	}
+
+	objective := 0.0
+	for _, qq := range questions {
+		if qq.Type == string(domain.QuestionTypeFill) || qq.Type == string(domain.QuestionTypeEssay) || qq.Type == string(domain.QuestionTypeShortAnswer) {
+			continue
+		}
+		raw, ok := result.Answers[qq.ID]
+		if !ok {
+			continue
+		}
+		if isCorrect(qq.Type, qq.Answer, raw) {
+			objective += qq.Score
+		}
+	}
+	subjective := 0.0
+	for _, v := range scores {
+		switch val := v.(type) {
+		case float64:
+			subjective += val
+		case json.Number:
+			if f, err := val.Float64(); err == nil {
+				subjective += f
+			}
+		case map[string]interface{}:
+			if f, ok := val["score"].(float64); ok {
+				subjective += f
+			}
+		}
+	}
+	score := RoundScore(objective + subjective)
+	isPass := score >= totalScore*0.6
+	if err := s.st.ExamResults().Grade(ctx, id, graderID, &store.GradeExamResultParams{
+		Score:          score,
+		IsPass:         isPass,
+		GradingScores:  domain.JSONMap(scores),
+		GradingComment: comment,
+	}); err != nil {
+		return nil, err
+	}
+	return s.st.ExamResults().Get(ctx, id)
+}
+
+// isManualExamUsageTargetType 手动创建的考试安排目标类型（与 store.manualExamUsageTargetTypesSQL 一致）。
+func isManualExamUsageTargetType(t string) bool {
+	switch t {
+	case "class", "major", "department", "public":
+		return true
+	}
+	return false
+}
+
+// containsString 判断字符串切片是否包含目标值。
+func containsString(items []string, target string) bool {
+	for _, it := range items {
+		if it == target {
+			return true
+		}
+	}
+	return false
 }
 
 // ListEvaluationResults 查询评价结果列表。

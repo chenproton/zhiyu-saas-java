@@ -290,7 +290,7 @@ const scheduleTypeConfig: Record<
     bg: 'bg-purple-50',
     border: 'border-purple-200',
     badge: 'border-purple-300 text-purple-600',
-    label: '检查',
+    label: '考试',
   },
   todo: {
     bg: 'bg-gray-50',

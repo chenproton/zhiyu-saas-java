@@ -14,8 +14,8 @@ func (s *PositionService) DraftCourseCount(ctx context.Context, userID string, t
 }
 
 // UpcomingExamCount 待参加考试数。
-func (s *PositionService) UpcomingExamCount(ctx context.Context, tenantID *string, now time.Time) int {
-	return s.st.Portal().UpcomingExamCount(ctx, tenantID, now)
+func (s *PositionService) UpcomingExamCount(ctx context.Context, tenantID *string, now time.Time, classNodeID string) int {
+	return s.st.Portal().UpcomingExamCount(ctx, tenantID, now, classNodeID)
 }
 
 // ListTeacherSchedules 教师排课事件。
@@ -33,9 +33,9 @@ func (s *PositionService) ListStudentSchedules(ctx context.Context, classNodeID 
 	return s.st.Portal().ListStudentSchedules(ctx, classNodeID, tenantID)
 }
 
-// ListExamEvents 考试事件。
-func (s *PositionService) ListExamEvents(ctx context.Context, tenantID *string) ([]store.ExamEventRow, error) {
-	return s.st.Portal().ListExamEvents(ctx, tenantID)
+// ListExamEvents 考试事件。classNodeID 非空时（学生）按班级过滤班级类考试。
+func (s *PositionService) ListExamEvents(ctx context.Context, tenantID *string, classNodeID string) ([]store.ExamEventRow, error) {
+	return s.st.Portal().ListExamEvents(ctx, tenantID, classNodeID)
 }
 
 // TeacherStats 教师统计。
@@ -84,8 +84,8 @@ func (s *PositionService) ListSceneTasks(ctx context.Context, userID string, ten
 }
 
 // ListStudentExams 学生考试。
-func (s *PositionService) ListStudentExams(ctx context.Context, userID string, tenantID *string) ([]store.ExamRow, error) {
-	return s.st.Portal().ListStudentExams(ctx, userID, tenantID)
+func (s *PositionService) ListStudentExams(ctx context.Context, userID string, tenantID *string, classNodeID string) ([]store.ExamRow, error) {
+	return s.st.Portal().ListStudentExams(ctx, userID, tenantID, classNodeID)
 }
 
 // ListTeacherCourses 教师课程。

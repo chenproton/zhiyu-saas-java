@@ -142,7 +142,7 @@ func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return
 	}
-	if usage.Status != "draft" && usage.Status != "pending" && usage.Status != "scheduled" {
+	if usage.Status != "draft" && usage.Status != "pending" && usage.Status != "published" && usage.Status != "scheduled" {
 		respondError(w, http.StatusBadRequest, "考试安排不在待开始状态")
 		return
 	}
@@ -187,4 +187,49 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 	}
 	usage, _ = h.Service.GetExamUsage(r.Context(), id)
 	respondJSON(w, http.StatusOK, usage)
+}
+
+// Publish 发布考试安排：草稿/待开始 -> 已发布（学生端可见为待考）。
+func (h *ExamUsageHandler) Publish(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	usage, err := h.Service.GetExamUsage(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "考试安排不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, usage.TenantID) {
+		return
+	}
+	if usage.Status != "draft" && usage.Status != "pending" {
+		respondError(w, http.StatusBadRequest, "考试安排不在草稿状态")
+		return
+	}
+	if err := h.Service.SetExamUsageStatus(r.Context(), id, "published"); err != nil {
+		respondServerError(w, r, err, "发布考试安排失败")
+		return
+	}
+	usage, _ = h.Service.GetExamUsage(r.Context(), id)
+	respondJSON(w, http.StatusOK, usage)
+}
+
+// ExamCenter 考试中心列表（全部考试 + 可参加标记）。
+func (h *ExamUsageHandler) ExamCenter(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	isStudent := false
+	for _, c := range claims.RoleCodes {
+		if c == domain.RoleStudent {
+			isStudent = true
+			break
+		}
+	}
+	items, err := h.Service.ListExamCenter(r.Context(), *claims.TenantID, claims.UserID, isStudent)
+	if err != nil {
+		respondServerError(w, r, err, "查询考试中心失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, items)
 }

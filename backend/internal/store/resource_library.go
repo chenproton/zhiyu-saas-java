@@ -15,6 +15,9 @@ var ErrNotFound = errors.New("not found")
 // ErrAlreadyGraded 记录已被评分，禁止覆盖（重交保护）。
 var ErrAlreadyGraded = errors.New("already graded")
 
+// ErrForbidden 无权限执行操作（如班级不匹配禁止参加考试）。
+var ErrForbidden = errors.New("forbidden")
+
 const resourceSelectColumns = `
 	rl.id, rl.tenant_id, rl.name, rl.resource_type, rl.url, rl.description,
 	rl.thumbnail, rl.file_size, rl.metadata, rl.uploaded_by,

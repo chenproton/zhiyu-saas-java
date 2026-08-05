@@ -91,6 +91,7 @@ export interface WorkspaceSceneTask {
 
 export interface WorkspaceExam {
   id: string
+  examId: string
   name: string
   type: '随堂测' | '单元测试' | '在线测评' | '岗位能力认定'
   status: '待考' | '进行中' | '已完成'

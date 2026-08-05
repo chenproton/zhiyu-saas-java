@@ -29,7 +29,7 @@ func (s *ExamResultStore) List(ctx context.Context, p ListParams, cfg ListQueryC
 func (s *ExamResultStore) ListConfig() ListQueryConfig[domain.ExamResult] {
 	return ListQueryConfig[domain.ExamResult]{
 		Table:         "exam_results er LEFT JOIN majors m ON m.id = er.major_id",
-		SelectColumns: "er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at",
+		SelectColumns: "er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.grading_status, er.grading_scores, er.grading_comment, er.grader_id, er.graded_at, er.submit_time, er.created_at",
 		TenantScoped:  true,
 		TenantColumn:  "er.tenant_id",
 		OrderBy:       "er.score DESC, er.submit_time ASC",
@@ -38,6 +38,85 @@ func (s *ExamResultStore) ListConfig() ListQueryConfig[domain.ExamResult] {
 			qb.AddCondition("er.exam_usage_id = " + qb.NextArg(p.Values["usageId"]))
 		},
 	}
+}
+
+// Get 查询单个考试结果。
+func (s *ExamResultStore) Get(ctx context.Context, id string) (*domain.ExamResult, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT er.id, er.tenant_id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id,
+			COALESCE(m.name, ''), er.score, er.total_score, er.is_pass, er.answers,
+			er.grading_status, er.grading_scores, er.grading_comment, er.grader_id, er.graded_at,
+			er.submit_time, er.created_at
+		FROM exam_results er
+		LEFT JOIN majors m ON m.id = er.major_id
+		WHERE er.id = $1
+	`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return nil, pgx.ErrNoRows
+	}
+	var r domain.ExamResult
+	var tenantID *string
+	if err := rows.Scan(&r.ID, &tenantID, &r.ExamUsageID, &r.UserID, &r.StudentName, &r.ClassName, &r.Grade, &r.MajorID, &r.MajorName, &r.Score, &r.TotalScore, &r.IsPass, &r.Answers, &r.GradingStatus, &r.GradingScores, &r.GradingComment, &r.GraderID, &r.GradedAt, &r.SubmitTime, &r.CreatedAt); err != nil {
+		return nil, err
+	}
+	r.TenantID = tenantID
+	return &r, rows.Err()
+}
+
+// ResultGraded 查询考试结果是否已被教师评分（重交保护）。
+func (s *ExamResultStore) ResultGraded(ctx context.Context, usageID, userID string) (bool, error) {
+	var exists bool
+	err := s.q.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM exam_results
+			WHERE exam_usage_id = $1 AND user_id = $2 AND grading_status = 'evaluated'
+		)
+	`, usageID, userID).Scan(&exists)
+	return exists, err
+}
+
+// Grade 教师评分：更新总分/及格/评分状态与逐题分数。
+func (s *ExamResultStore) Grade(ctx context.Context, id, graderID string, p *GradeExamResultParams) error {
+	_, err := s.q.Exec(ctx, `
+		UPDATE exam_results SET
+			score = $2, is_pass = $3, grading_status = 'evaluated',
+			grading_scores = $4, grading_comment = $5, grader_id = $6, graded_at = NOW(),
+			updated_at = NOW()
+		WHERE id = $1
+	`, id, p.Score, p.IsPass, p.GradingScores, p.GradingComment, graderID)
+	return err
+}
+
+// GradeExamResultParams 教师评分参数。
+type GradeExamResultParams struct {
+	Score          float64
+	IsPass         bool
+	GradingScores  domain.JSONMap
+	GradingComment *string
+}
+
+// ExamUsageTarget 考试安排的目标信息（用于班级可参加校验）。
+type ExamUsageTarget struct {
+	TargetType *string
+	TargetIDs  []string
+}
+
+// UsageTarget 查询考试安排目标类型与目标列表。
+func (s *ExamResultStore) UsageTarget(ctx context.Context, usageID string) (*ExamUsageTarget, error) {
+	var t ExamUsageTarget
+	var targetType *string
+	err := s.q.QueryRow(ctx, `
+		SELECT target_type, target_ids FROM exam_usages WHERE id = $1
+	`, usageID).Scan(&targetType, &t.TargetIDs)
+	if err != nil {
+		return nil, err
+	}
+	t.TargetType = targetType
+	return &t, nil
 }
 
 // UsageExamInfo 查询考试安排的 exam_id 与总分。
@@ -134,17 +213,17 @@ func (s *ExamResultStore) FetchUserProfile(ctx context.Context, userID string) (
 	return &p, nil
 }
 
-// SaveResult 写入考试结果（幂等 upsert）。
+// SaveResult 写入考试结果（幂等 upsert）。gradingStatus 由服务层按是否有主观题决定。
 func (s *ExamResultStore) SaveResult(ctx context.Context, tenantID, usageID, userID string, p *SaveExamResultParams) (*domain.ExamResult, error) {
 	var result domain.ExamResult
 	var submitTime, createdAt time.Time
 	err := s.q.QueryRow(ctx, `
-		INSERT INTO exam_results (tenant_id, exam_usage_id, user_id, student_name, class_name, grade, major_id, score, total_score, is_pass, answers)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO exam_results (tenant_id, exam_usage_id, user_id, student_name, class_name, grade, major_id, score, total_score, is_pass, answers, grading_status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (exam_usage_id, user_id)
-		DO UPDATE SET score = EXCLUDED.score, total_score = EXCLUDED.total_score, is_pass = EXCLUDED.is_pass, answers = EXCLUDED.answers, submit_time = NOW()
+		DO UPDATE SET score = EXCLUDED.score, total_score = EXCLUDED.total_score, is_pass = EXCLUDED.is_pass, answers = EXCLUDED.answers, grading_status = EXCLUDED.grading_status, submit_time = NOW()
 		RETURNING id, submit_time, created_at
-	`, tenantID, usageID, userID, p.StudentName, p.ClassName, p.Grade, p.MajorID, p.Score, p.TotalScore, p.IsPass, p.Answers).Scan(&result.ID, &submitTime, &createdAt)
+	`, tenantID, usageID, userID, p.StudentName, p.ClassName, p.Grade, p.MajorID, p.Score, p.TotalScore, p.IsPass, p.Answers, p.GradingStatus).Scan(&result.ID, &submitTime, &createdAt)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +237,7 @@ func (s *ExamResultStore) SaveResult(ctx context.Context, tenantID, usageID, use
 	result.TotalScore = p.TotalScore
 	result.IsPass = p.IsPass
 	result.Answers = p.Answers
+	result.GradingStatus = p.GradingStatus
 	result.SubmitTime = submitTime
 	result.CreatedAt = createdAt
 	return &result, nil
@@ -165,14 +245,15 @@ func (s *ExamResultStore) SaveResult(ctx context.Context, tenantID, usageID, use
 
 // SaveExamResultParams 保存考试结果参数。
 type SaveExamResultParams struct {
-	StudentName string
-	ClassName   string
-	Grade       string
-	MajorID     *string
-	Score       float64
-	TotalScore  float64
-	IsPass      bool
-	Answers     domain.JSONMap
+	StudentName   string
+	ClassName     string
+	Grade         string
+	MajorID       *string
+	Score         float64
+	TotalScore    float64
+	IsPass        bool
+	Answers       domain.JSONMap
+	GradingStatus string
 }
 
 // SyncCourseEvaluation 同步课程统一评价（考试目标为课程时）。
@@ -325,12 +406,23 @@ func ScanExamResultRows(rows pgx.Rows) ([]domain.ExamResult, error) {
 	var items []domain.ExamResult
 	for rows.Next() {
 		var r domain.ExamResult
-		var answers domain.JSONMap
-		if err := rows.Scan(&r.ID, &r.ExamUsageID, &r.UserID, &r.StudentName, &r.ClassName, &r.Grade, &r.MajorID, &r.MajorName, &r.Score, &r.TotalScore, &r.IsPass, &answers, &r.SubmitTime, &r.CreatedAt); err != nil {
+		if err := scanExamResultRow(rows, &r); err != nil {
 			return nil, err
 		}
-		r.Answers = answers
 		items = append(items, r)
 	}
 	return items, nil
+}
+
+// scanExamResultRow 扫描单行考试结果（含评分字段）。
+func scanExamResultRow(rows pgx.Rows, r *domain.ExamResult) error {
+	var answers, gradingScores domain.JSONMap
+	var gradedAt *time.Time
+	if err := rows.Scan(&r.ID, &r.ExamUsageID, &r.UserID, &r.StudentName, &r.ClassName, &r.Grade, &r.MajorID, &r.MajorName, &r.Score, &r.TotalScore, &r.IsPass, &answers, &r.GradingStatus, &gradingScores, &r.GradingComment, &r.GraderID, &gradedAt, &r.SubmitTime, &r.CreatedAt); err != nil {
+		return err
+	}
+	r.Answers = answers
+	r.GradingScores = gradingScores
+	r.GradedAt = gradedAt
+	return nil
 }

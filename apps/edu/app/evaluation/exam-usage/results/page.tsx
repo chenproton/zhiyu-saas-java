@@ -42,6 +42,7 @@ interface ExamStudentResult {
   totalScore: number
   submitTime: Date
   isPass: boolean
+  gradingStatus?: string
   rank: number
 }
 
@@ -78,6 +79,7 @@ function ExamResultsContent() {
             totalScore: r.totalScore,
             submitTime: new Date(r.submitTime),
             isPass: r.isPass,
+            gradingStatus: r.gradingStatus,
             rank: idx + 1,
           })),
         )
@@ -270,6 +272,7 @@ function ExamResultsContent() {
                     考试得分
                   </div>
                 </TableHead>
+                <TableHead className="w-[100px]">评分状态</TableHead>
                 <TableHead className="w-[100px]">是否及格</TableHead>
                 <TableHead className="sticky right-0 w-[100px] bg-white text-right">操作</TableHead>
               </TableRow>
@@ -277,7 +280,7 @@ function ExamResultsContent() {
             <TableBody>
               {filteredResults.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                     {results.length === 0 ? '暂无考试结果' : '没有找到匹配的结果'}
                   </TableCell>
                 </TableRow>
@@ -319,6 +322,18 @@ function ExamResultsContent() {
                           style={{ width: `${(result.score / result.totalScore) * 100}%` }}
                         />
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {result.gradingStatus === 'evaluated' ? (
+                        <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-200 bg-emerald-50">
+                          <CheckCircle2 className="size-3" />
+                          已评分
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1 text-amber-600 border-amber-200 bg-amber-50">
+                          待评分
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {result.isPass ? (
