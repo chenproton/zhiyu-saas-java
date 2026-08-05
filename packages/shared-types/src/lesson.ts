@@ -26,6 +26,7 @@ export interface Course {
   abilityPointIds?: string[]
   resourceIds?: string[]
   creatorId: string
+  creatorName?: string
   coCreatorIds: string[]
   batchId?: string
   batchName?: string
@@ -33,6 +34,7 @@ export interface Course {
   nodeCount: number
   resourceCount: number
   studyCount: number
+  viewCount?: number
   createdAt: string
   updatedAt: string
 }

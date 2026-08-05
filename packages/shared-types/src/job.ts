@@ -22,6 +22,7 @@ export interface CareerPosition {
   collaboratorNames?: string[]
   favoriteCount?: number
   viewCount?: number
+  abilityCount?: number
   createdAt: string
   updatedAt: string
 }

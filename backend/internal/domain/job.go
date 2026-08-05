@@ -45,6 +45,7 @@ type CareerPosition struct {
 	CollaboratorNames []string             `json:"collaboratorNames,omitempty"`
 	FavoriteCount     int                  `json:"favoriteCount"`
 	ViewCount         int                  `json:"viewCount"`
+	AbilityCount      int                  `json:"abilityCount"`
 	CreatedAt         time.Time            `json:"createdAt"`
 	UpdatedAt         time.Time            `json:"updatedAt"`
 }

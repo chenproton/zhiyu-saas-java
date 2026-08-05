@@ -11,9 +11,7 @@ import {
   Layers,
   FileText,
   GraduationCap,
-  Clock,
   Sparkles,
-  MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +20,7 @@ import type { Course } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
+import { formatDate } from '@/lib/format-utils'
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
@@ -40,62 +39,67 @@ const coverGradients = [
 ]
 
 function CourseCard({ course, index }: { course: Course; index: number }) {
+  const creatorName = course.creatorName || course.creatorId?.slice(0, 8) || '-'
+  const coverStyle = course.coverImage
+    ? { backgroundImage: `url('${course.coverImage}')` }
+    : { background: coverGradients[index % coverGradients.length] }
+
   return (
     <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
-      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-emerald-200 hover:-translate-y-0.5 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-emerald-200 cursor-pointer h-full flex flex-col">
         <div
-          className="h-[120px] flex items-center justify-center shrink-0 relative bg-cover bg-center"
-          style={
-            course.coverImage
-              ? { backgroundImage: `url('${course.coverImage}')` }
-              : { background: coverGradients[index % coverGradients.length] }
-          }
+          className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4 text-white"
+          style={coverStyle}
         >
-          {!course.coverImage && (
-            <span className="text-white text-lg font-bold drop-shadow-lg">
-              {course.name.slice(0, 8)}
-            </span>
-          )}
-          <span className="absolute top-3 right-3 bg-white/25 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
-            已发布
-          </span>
-          {course.batchName && (
-            <span className="absolute bottom-3 left-3 bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] border border-white/10">
-              {course.batchName}
-            </span>
-          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.88)] via-[rgba(15,23,42,0.35)] to-transparent" />
+          <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
+            <div className="flex gap-1.5">
+              <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
+                {course.version || 'v1.0'}
+              </span>
+              <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
+                创建人：{creatorName}
+              </span>
+            </div>
+          </div>
+          <div className="relative z-10">
+            <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-emerald-100 transition-colors">
+              {course.name}
+            </div>
+            <div className="text-xs text-white/80">
+              课程编码：{course.code || course.id.slice(0, 8)}
+            </div>
+          </div>
         </div>
         <div className="p-5 flex-1 flex flex-col">
-          <h3 className="text-[15px] font-semibold text-slate-800 mb-1.5 truncate">
-            {course.name}
-          </h3>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {course.majorName && (
-              <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> {course.majorName}
-              </span>
-            )}
-            {course.industryName && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-100">
-                {course.industryName}
-              </span>
-            )}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+              <div className="text-lg font-bold text-slate-800">{course.viewCount ?? 0}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">浏览次数</div>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+              <div className="text-lg font-bold text-slate-800">{course.nodeCount}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">关联节点</div>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+              <div className="text-lg font-bold text-slate-800">{course.resourceCount}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">关联资源</div>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
-            {course.description || '暂无课程描述'}
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-400 border-t border-slate-50 pt-3">
-            <span className="flex items-center gap-1">
-              <Layers className="w-3 h-3" /> {course.nodeCount} 节点
+          <div className="flex flex-wrap gap-2 mb-4">
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 font-medium">
+              面向行业：{course.industryName || '未分类'}
             </span>
-            <span className="flex items-center gap-1">
-              <FileText className="w-3 h-3" /> {course.resourceCount} 资源
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium">
+              适用专业：{course.majorName || '未分类'}
             </span>
-            <span className="flex items-center gap-1">
-              <GraduationCap className="w-3 h-3" /> {course.studyCount} 人次
+          </div>
+          <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
+            <span className="text-xs text-slate-500">
+              收录时间：{formatDate(course.createdAt)}
             </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {course.onlineHours || 0}h
+            <span className="text-xs text-slate-500">
+              更新时间：{formatDate(course.updatedAt)}
             </span>
           </div>
         </div>
