@@ -446,6 +446,8 @@ func (s *LessonContentService) ensureNodePaperUsage(ctx context.Context, q store
 	if len(paperIDs) == 0 {
 		return rc, nil
 	}
+	startTime, endTime := store.ExtractExamUsageWindow(rc)
+	duration := store.ExtractExamUsageDuration(rc, "paper")
 	for _, paperID := range paperIDs {
 		if paperID == "" {
 			continue
@@ -459,11 +461,15 @@ func (s *LessonContentService) ensureNodePaperUsage(ctx context.Context, q store
 			return rc, err
 		}
 		if usageID == "" {
-			usageID, err = s.st.CourseAssessments().CreateNodeUsage(ctx, q, info.TenantID, paperID, n.ID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, examName), info.CreatorID)
+			usageID, err = s.st.CourseAssessments().CreateNodeUsage(ctx, q, info.TenantID, paperID, n.ID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, examName), info.CreatorID, startTime, endTime, duration)
 			if err != nil {
 				return rc, err
 			}
 			rc["usageId"] = usageID
+		} else if startTime != nil || endTime != nil || duration != nil {
+			if err := s.st.CourseAssessments().UpdateUsageWindow(ctx, q, usageID, startTime, endTime, duration); err != nil {
+				return rc, err
+			}
 		}
 	}
 	return rc, nil
@@ -486,15 +492,17 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 
 	examID, _ := rc["examId"].(string)
 	usageID, _ := rc["usageId"].(string)
+	startTime, endTime := store.ExtractExamUsageWindow(rc)
+	duration := store.ExtractExamUsageDuration(rc, methodKey)
 
 	if examID == "" {
-		duration := 90
+		examDuration := 90
 		if d, ok := rc["duration"].(float64); ok && d > 0 {
-			duration = int(d)
+			examDuration = int(d)
 		} else if d, ok := rc["timeLimit"].(float64); ok && d > 0 {
-			duration = int(d)
+			examDuration = int(d)
 		}
-		newID, err := s.st.CourseAssessments().CreateTempExam(ctx, q, info.TenantID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, label), duration, info.CreatorID)
+		newID, err := s.st.CourseAssessments().CreateTempExam(ctx, q, info.TenantID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, label), examDuration, info.CreatorID)
 		if err != nil {
 			return rc, err
 		}
@@ -507,12 +515,16 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 	}
 
 	if usageID == "" {
-		newID, err := s.st.CourseAssessments().CreateExamUsage(ctx, q, info.TenantID, examID, "node", n.ID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, label), info.CreatorID)
+		newID, err := s.st.CourseAssessments().CreateExamUsage(ctx, q, info.TenantID, examID, "node", n.ID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, label), info.CreatorID, startTime, endTime, duration)
 		if err != nil {
 			return rc, err
 		}
 		usageID = newID
 		rc["usageId"] = usageID
+	} else if startTime != nil || endTime != nil || duration != nil {
+		if err := s.st.CourseAssessments().UpdateUsageWindow(ctx, q, usageID, startTime, endTime, duration); err != nil {
+			return rc, err
+		}
 	}
 	return rc, nil
 }

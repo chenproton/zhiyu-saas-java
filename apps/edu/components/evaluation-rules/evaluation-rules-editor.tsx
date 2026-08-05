@@ -52,6 +52,7 @@ import { cn } from '@/lib/utils'
 import { useToast, MixedTagEditor } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { ExamActivationConfig } from '@/components/evaluation-rules/exam-activation-config'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
 import { useEvalRuleStore } from '@/lib/evaluation-rule-store'
@@ -537,6 +538,9 @@ export function EvaluationRulesEditor({
     retakeCount: 3,
     shuffleQuestions: true,
     showResult: true,
+    activationMode: 'manual' as string,
+    scheduledTime: '',
+    scheduledEndTime: '',
     questionScores: {} as Record<string, number>,
   })
   const setMockResQuestionBank = useCallback(
@@ -575,6 +579,9 @@ export function EvaluationRulesEditor({
     retakeCount: 3,
     shuffleQuestions: true,
     showResult: true,
+    activationMode: 'manual' as string,
+    scheduledTime: '',
+    scheduledEndTime: '',
     questionScores: {} as Record<string, number>,
   })
   const setMockResQuiz = useCallback(
@@ -1862,72 +1869,10 @@ export function EvaluationRulesEditor({
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t">
-                  <Label className="text-xs text-gray-500 mb-2">试卷启用条件</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-                    {[
-                      { key: 'manual', label: '手动启用', desc: '老师手动开启后学生可作答' },
-                      {
-                        key: 'scheduled',
-                        label: '定时启用',
-                        desc: '预设开始结束时间，到时间自动开启关闭',
-                      },
-                      {
-                        key: 'always',
-                        label: '随时作答',
-                        desc: '创建后立即开放，学生随时可进入作答',
-                      },
-                    ].map((mode) => (
-                      <button
-                        key={mode.key}
-                        onClick={() => setPaperCfg({ activationMode: mode.key })}
-                        className={cn(
-                          'w-full text-left p-3 rounded-lg border transition-all',
-                          (paperCfg.activationMode ?? 'manual') === mode.key
-                            ? 'border-primary bg-primary/5 text-primary'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300',
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              'w-4 h-4 rounded-full border flex items-center justify-center shrink-0',
-                              (paperCfg.activationMode ?? 'manual') === mode.key
-                                ? 'bg-primary border-primary'
-                                : 'border-gray-300',
-                            )}
-                          >
-                            {(paperCfg.activationMode ?? 'manual') === mode.key && (
-                              <div className="w-2 h-2 rounded-full bg-white" />
-                            )}
-                          </div>
-                          <span className="text-xs font-medium">{mode.label}</span>
-                        </div>
-                        <p className="text-[11px] text-gray-400 mt-1 ml-6">{mode.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                  {(paperCfg.activationMode ?? 'manual') === 'scheduled' && (
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <FormFieldRow label="启用时间" labelClassName="text-xs text-gray-500">
-                        <Input
-                          type="datetime-local"
-                          value={paperCfg.scheduledTime ?? ''}
-                          onChange={(e) => setPaperCfg({ scheduledTime: e.target.value })}
-                          onFocus={(e) => e.currentTarget.showPicker?.()}
-                          className="text-sm"
-                        />
-                      </FormFieldRow>
-                      <FormFieldRow label="停用时间" labelClassName="text-xs text-gray-500">
-                        <Input
-                          type="datetime-local"
-                          value={paperCfg.scheduledEndTime ?? ''}
-                          onChange={(e) => setPaperCfg({ scheduledEndTime: e.target.value })}
-                          onFocus={(e) => e.currentTarget.showPicker?.()}
-                          className="text-sm"
-                        />
-                      </FormFieldRow>
-                    </div>
-                  )}
+                  <ExamActivationConfig
+                    value={paperCfg}
+                    onChange={(updates) => setPaperCfg(updates)}
+                  />
                 </div>
               </div>
               <ExamFormDialog
@@ -2098,6 +2043,10 @@ export function EvaluationRulesEditor({
                     </FormFieldRow>
                   </div>
                 )}
+                <ExamActivationConfig
+                  value={mockResQuestionBank}
+                  onChange={(updates) => setMockResQuestionBank({ ...mockResQuestionBank, ...updates })}
+                />
               </div>
             </div>
           )
@@ -2379,6 +2328,10 @@ export function EvaluationRulesEditor({
                     <span className="text-xs text-gray-600">提交后展示成绩</span>
                   </div>
                 </div>
+                <ExamActivationConfig
+                  value={mockResQuiz}
+                  onChange={(updates) => setMockResQuiz({ ...mockResQuiz, ...updates })}
+                />
               </div>
             </div>
           )

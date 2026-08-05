@@ -98,8 +98,8 @@ func (s *CourseAssessmentStore) FindNodeUsage(ctx context.Context, q Queryer, ex
 	return usageID, err
 }
 
-// CreateNodeUsage 创建节点考试安排（published）。
-func (s *CourseAssessmentStore) CreateNodeUsage(ctx context.Context, q Queryer, tenantID, examID, nodeID, name, creatorID string) (string, error) {
+// CreateNodeUsage 创建节点考试安排（published），startTime/endTime/duration 为空时表示不限时。
+func (s *CourseAssessmentStore) CreateNodeUsage(ctx context.Context, q Queryer, tenantID, examID, nodeID, name, creatorID string, startTime, endTime *string, duration *int) (string, error) {
 	usageID := uuid.NewString()
 	var creator any
 	if creatorID != "" {
@@ -107,8 +107,8 @@ func (s *CourseAssessmentStore) CreateNodeUsage(ctx context.Context, q Queryer, 
 	}
 	_, err := q.Exec(ctx, `
 		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'node', $5, 'published', $6)
-	`, usageID, tenantID, examID, name, []string{nodeID}, creator)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'node', $8, 'published', $9)
+	`, usageID, tenantID, examID, name, startTime, endTime, duration, []string{nodeID}, creator)
 	if err != nil {
 		return "", err
 	}
@@ -133,8 +133,8 @@ func (s *CourseAssessmentStore) CreateTempExam(ctx context.Context, q Queryer, t
 	return id, nil
 }
 
-// CreateExamUsage 创建通用考试安排（published）。
-func (s *CourseAssessmentStore) CreateExamUsage(ctx context.Context, q Queryer, tenantID, examID, targetType, targetID, name, creatorID string) (string, error) {
+// CreateExamUsage 创建通用考试安排（published），startTime/endTime/duration 为空时表示不限时。
+func (s *CourseAssessmentStore) CreateExamUsage(ctx context.Context, q Queryer, tenantID, examID, targetType, targetID, name, creatorID string, startTime, endTime *string, duration *int) (string, error) {
 	id := uuid.NewString()
 	var creator any
 	if creatorID != "" {
@@ -142,12 +142,21 @@ func (s *CourseAssessmentStore) CreateExamUsage(ctx context.Context, q Queryer, 
 	}
 	_, err := q.Exec(ctx, `
 		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, $5, $6, 'published', $7)
-	`, id, tenantID, examID, name, targetType, []string{targetID}, creator)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, $8, $9, 'published', $10)
+	`, id, tenantID, examID, name, startTime, endTime, duration, targetType, []string{targetID}, creator)
 	if err != nil {
 		return "", fmt.Errorf("创建考试安排失败: %w", err)
 	}
 	return id, nil
+}
+
+// UpdateUsageWindow 更新考试安排开放时间窗与时长（测评方式配置变更后同步）。
+func (s *CourseAssessmentStore) UpdateUsageWindow(ctx context.Context, q Queryer, usageID string, startTime, endTime *string, duration *int) error {
+	_, err := q.Exec(ctx, `
+		UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, updated_at = NOW()
+		WHERE id = $4
+	`, startTime, endTime, duration, usageID)
+	return err
 }
 
 // NodeHomeworkExists 查询节点是否已有作业。
