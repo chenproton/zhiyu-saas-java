@@ -237,6 +237,16 @@ export const nodeEvaluationResultApi = {
     request<{ items: NodeEvaluationResult[]; total: number }>(
       `/lesson/node-evaluation-results${buildQuery(params || {})}`,
     ),
+  listByCourse: (courseId: string) =>
+    request<{ items: NodeEvaluationResult[]; total: number }>(
+      `/lesson/course-node-evaluation-results${buildQuery({ courseId })}`,
+    ),
+  get: (id: string) => request<NodeEvaluationResult>(`/lesson/node-evaluation-results/${id}`),
+  grade: (id: string, req: { score: number; comment?: string }) =>
+    request<{ ok: boolean }>(`/lesson/node-evaluation-results/${id}/grade`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
   submit: (req: {
     nodeId: string
     methodKey: string

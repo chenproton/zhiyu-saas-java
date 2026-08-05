@@ -684,16 +684,25 @@ function CourseScheduleTable({
                             variant="outline"
                             className="flex-1 justify-center text-[11px] h-7 px-2 border-amber-200 text-amber-600 hover:bg-amber-50"
                             onClick={() => {
-                              if (!urls.isHybrid) {
-                                router.push('/evaluation/scene-results')
+                              if (urls.isHybrid) {
+                                if (onGradeRequest)
+                                  onGradeRequest(
+                                    `${event.title} · ${event.period}`,
+                                    event.className || event.tag || '',
+                                    urls.isHybrid,
+                                  )
                                 return
                               }
-                              if (onGradeRequest)
-                                onGradeRequest(
-                                  `${event.title} · ${event.period}`,
-                                  event.className || event.tag || '',
-                                  urls.isHybrid,
+                              // 场景事件 → 场景任务评价；课程事件 → 课程节点评价
+                              if (event.type === 'course') {
+                                router.push(
+                                  event.courseId
+                                    ? `/evaluation/lesson-results?courseId=${event.courseId}`
+                                    : '/evaluation/lesson-results',
                                 )
+                                return
+                              }
+                              router.push('/evaluation/scene-results')
                             }}
                           >
                             <GraduationCap className="h-3.5 w-3.5 mr-1" />

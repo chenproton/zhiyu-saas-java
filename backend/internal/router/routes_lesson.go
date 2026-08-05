@@ -14,6 +14,11 @@ func registerLessonRoutes(r chi.Router, h *Handlers) {
 	r.Get("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submissions", h.courseHandler.ListNodeHomeworkSubmissions)
 	r.Post("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submissions/{submissionId}/grade", h.courseHandler.GradeNodeHomeworkSubmission)
 
+	// 节点测评结果评分（教师端）
+	r.Get("/lesson/course-node-evaluation-results", h.nodeEvaluationResultHandler.ListByCourse)
+	r.Get("/lesson/node-evaluation-results/{id}", h.nodeEvaluationResultHandler.Get)
+	r.Post("/lesson/node-evaluation-results/{id}/grade", h.nodeEvaluationResultHandler.Grade)
+
 	// 知识点只读接口挂在 jobViewer 角色组（routes.go，含学生），供学生场景学习页使用
 	r.Post("/lesson/knowledge-points", h.knowledgePointHandler.Create)
 	r.Put("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Update)

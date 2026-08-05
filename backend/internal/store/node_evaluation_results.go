@@ -114,6 +114,89 @@ func (s *NodeEvaluationResultStore) Submit(ctx context.Context, p *NodeEvaluatio
 	return s.Get(ctx, id)
 }
 
+// GetByID 按租户+ID 查询单条节点测评结果。
+func (s *NodeEvaluationResultStore) GetByID(ctx context.Context, tenantID, id string) (*domain.NodeEvaluationResult, error) {
+	var r domain.NodeEvaluationResult
+	var totalScore *float64
+	var comment *string
+	var gradedAt *time.Time
+	var gradedBy *string
+	var evaluatorID, evaluatorType pgtype.Text
+	err := s.q.QueryRow(ctx, `
+		SELECT id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
+			total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions,
+			comment, graded_at, graded_by
+		FROM node_evaluation_results WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(
+		&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &evaluatorID, &evaluatorType, &r.Status,
+		&totalScore, &r.MaxScore, &r.EvalPointScores, &r.ObjectiveAnswers, &r.SubjectiveContent, &r.DrawnQuestions,
+		&comment, &gradedAt, &gradedBy,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	r.EvaluatorID = evaluatorID.String
+	r.EvaluatorType = evaluatorType.String
+	if totalScore != nil {
+		r.TotalScore = totalScore
+	}
+	if comment != nil {
+		r.Comment = comment
+	}
+	if gradedAt != nil {
+		r.GradedAt = gradedAt
+	}
+	if gradedBy != nil {
+		r.GradedBy = gradedBy
+	}
+	return &r, nil
+}
+
+// Grade 评分（pending→evaluated），租户隔离 + 仅可评未评分结果。
+func (s *NodeEvaluationResultStore) Grade(ctx context.Context, tenantID, id, graderID string, p *NodeEvaluationResultGradeParams) error {
+	tag, err := s.q.Exec(ctx, `
+		UPDATE node_evaluation_results
+		SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated',
+			graded_at = NOW(), graded_by = $4, updated_at = NOW()
+		WHERE id = $5 AND tenant_id = $6 AND status = 'pending'
+	`, p.Score, p.Comment, p.EvalPointScores, graderID, id, tenantID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// ListByCourse 查询课程下全部节点的测评结果（教师评分列表用）。
+func (s *NodeEvaluationResultStore) ListByCourse(ctx context.Context, tenantID, courseID string) ([]domain.NodeEvaluationResult, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT ner.id, ner.node_id, ner.method_key, ner.evaluatee_id, ner.evaluator_id, ner.evaluator_type, ner.status,
+			ner.total_score, ner.max_score, ner.eval_point_scores, ner.objective_answers, ner.subjective_content, ner.drawn_questions,
+			ner.comment, ner.graded_at, ner.graded_by
+		FROM node_evaluation_results ner
+		JOIN system_course_nodes n ON n.id = ner.node_id
+		WHERE ner.tenant_id = $1 AND n.course_id = $2
+		ORDER BY ner.created_at DESC
+	`, tenantID, courseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return ScanNodeEvaluationResultRows(rows)
+}
+
+// NodeEvaluationResultGradeParams 评分参数。
+type NodeEvaluationResultGradeParams struct {
+	Score           float64
+	Comment         *string
+	EvalPointScores domain.JSONMap
+}
+
 // NodeEvaluationResultSubmitParams 提交参数。
 type NodeEvaluationResultSubmitParams struct {
 	TenantID          string
