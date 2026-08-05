@@ -39,7 +39,8 @@ export function LandingPagination({
   if (totalPages <= 1) return null
 
   const cls = ACCENT_CLASSES[accentColor] || ACCENT_CLASSES.blue
-  const pageBtn = `min-w-[36px] h-9 px-2.5 rounded-xl border text-[13px] flex items-center justify-center transition-all bg-white border-slate-200 text-slate-500 ${cls.hover}`
+  const pageBtn = `min-w-[36px] h-9 px-2.5 rounded-xl border text-[13px] flex items-center justify-center transition-all ${cls.hover}`
+  const pageBtnIdle = 'bg-white border-slate-200 text-slate-500'
   const arrowBtn = `w-9 h-9 border border-slate-200 rounded-xl bg-white text-slate-500 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed ${cls.hover}`
 
   const pages: (number | string)[] = []
@@ -77,7 +78,7 @@ export function LandingPagination({
             <button
               key={p}
               onClick={() => onPageChange(p as number)}
-              className={`${pageBtn} ${currentPage === p ? `${cls.active} font-semibold` : ''}`}
+              className={`${pageBtn} ${currentPage === p ? `${cls.active} font-semibold` : pageBtnIdle}`}
             >
               {p}
             </button>
