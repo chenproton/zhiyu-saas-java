@@ -372,14 +372,20 @@ const BENTO_LAYOUT: CardLayout[] = [
   { id: 'career', col: '2', row: '1', variant: 'small' },
   { id: 'scene', col: '3', row: '1', variant: 'small' },
   { id: 'ability', col: '4', row: '1', variant: 'small' },
-  { id: 'opc', col: '1', row: '2', variant: 'small' },
-  { id: 'course', col: '2', row: '2', variant: 'small' },
-  { id: 'resource', col: '3', row: '2', variant: 'small' },
-  { id: 'mall', col: '4', row: '2', variant: 'small' },
+  { id: 'ai', col: '1', row: '1', variant: 'small' },
+  { id: 'course', col: '2', row: '1', variant: 'small' },
+  { id: 'resource', col: '3', row: '1', variant: 'small' },
+  { id: 'mall', col: '4', row: '1', variant: 'small' },
   { id: 'affairs', col: '1', row: '1', variant: 'small' },
   { id: 'research', col: '2', row: '1', variant: 'small' },
   { id: 'decision', col: '3', row: '1', variant: 'small' },
-  { id: 'ai', col: '4', row: '1', variant: 'small' },
+  { id: 'opc', col: '4', row: '1', variant: 'small' },
+]
+
+const SECTIONS: { title: string; layouts: CardLayout[] }[] = [
+  { title: '产教协同育人生态', layouts: BENTO_LAYOUT.slice(0, 4) },
+  { title: '教学资源保障生态', layouts: BENTO_LAYOUT.slice(4, 8) },
+  { title: '教学治理服务生态', layouts: BENTO_LAYOUT.slice(8) },
 ]
 
 /* ─── helpers ─── */
@@ -527,7 +533,7 @@ function GradientTile({
 }
 
 /* ─── Section label ─── */
-function SectionLabel({ title, tag }: { title: string; tag: string }) {
+function SectionLabel({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3 mb-[18px] mt-9">
       <h3 className="text-base font-bold text-[#141a2e] flex items-center gap-2.5">
@@ -535,9 +541,6 @@ function SectionLabel({ title, tag }: { title: string; tag: string }) {
         {title}
       </h3>
       <span className="flex-1 h-px bg-[#e9edf4]" />
-      <span className="text-xs text-[#8590a6] bg-white/70 border border-[#e9edf4] px-3 py-0.5 rounded-full">
-        {tag}
-      </span>
     </div>
   )
 }
@@ -603,51 +606,32 @@ export default function PortalHomePage() {
 
       {/* Main content */}
       <main className="max-w-[1312px] mx-auto px-4 sm:px-10 relative" style={{ zIndex: 2 }}>
-        <SectionLabel title="场景应用生态" tag="" />
+        {SECTIONS.map((section) => (
+          <div key={section.title}>
+            <SectionLabel title={section.title} />
 
-        <div
-          className={`grid grid-cols-1 gap-4 sm:gap-[18px] lg:auto-rows-[11.75rem] ${
-            isFluid ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-4'
-          }`}
-        >
-          {BENTO_LAYOUT.slice(0, 8).map((layout) => {
-            const item = findByLabel(items, layout.id)
-            if (!item) return null
-            return (
-              <GradientTile
-                key={layout.id}
-                item={item}
-                variant={layout.variant}
-                gridColumn={layout.col}
-                gridRow={layout.row}
-                fluid={isFluid}
-              />
-            )
-          })}
-        </div>
-
-        <SectionLabel title="教学资源保障生态" tag="" />
-
-        <div
-          className={`grid grid-cols-1 gap-4 sm:gap-[18px] lg:auto-rows-[11.75rem] ${
-            isFluid ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-4'
-          }`}
-        >
-          {BENTO_LAYOUT.slice(8).map((layout) => {
-            const item = findByLabel(items, layout.id)
-            if (!item) return null
-            return (
-              <GradientTile
-                key={layout.id}
-                item={item}
-                variant={layout.variant}
-                gridColumn={layout.col}
-                gridRow={layout.row}
-                fluid={isFluid}
-              />
-            )
-          })}
-        </div>
+            <div
+              className={`grid grid-cols-1 gap-4 sm:gap-[18px] lg:auto-rows-[11.75rem] ${
+                isFluid ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-4'
+              }`}
+            >
+              {section.layouts.map((layout) => {
+                const item = findByLabel(items, layout.id)
+                if (!item) return null
+                return (
+                  <GradientTile
+                    key={layout.id}
+                    item={item}
+                    variant={layout.variant}
+                    gridColumn={layout.col}
+                    gridRow={layout.row}
+                    fluid={isFluid}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </main>
 
       <Footer />
