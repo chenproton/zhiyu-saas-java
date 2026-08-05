@@ -43,16 +43,39 @@ export function useFontScale(): UseFontScaleResult {
     } else {
       document.documentElement.style.fontSize = `${BASE_FONT_SIZE_PX * scale}px`
     }
+  }, [level])
+
+  // 仅在用户操作时持久化档位，避免挂载时用初始值 0 覆盖已存储的档位
+  const persist = (next: number) => {
     try {
-      window.localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(level))
+      window.localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(next))
     } catch {
       // localStorage 不可用时忽略，仅本次生效
     }
-  }, [level])
+  }
 
-  const increase = useCallback(() => setLevel((l) => Math.min(MAX_FONT_SCALE_LEVEL, l + 1)), [])
-  const decrease = useCallback(() => setLevel((l) => Math.max(0, l - 1)), [])
-  const reset = useCallback(() => setLevel(0), [])
+  const increase = useCallback(
+    () =>
+      setLevel((l) => {
+        const next = Math.min(MAX_FONT_SCALE_LEVEL, l + 1)
+        persist(next)
+        return next
+      }),
+    [],
+  )
+  const decrease = useCallback(
+    () =>
+      setLevel((l) => {
+        const next = Math.max(0, l - 1)
+        persist(next)
+        return next
+      }),
+    [],
+  )
+  const reset = useCallback(() => {
+    setLevel(0)
+    persist(0)
+  }, [])
 
   return { level, maxLevel: MAX_FONT_SCALE_LEVEL, increase, decrease, reset }
 }
