@@ -25,13 +25,21 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatFileSize } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
-import { scenarioApi, taskApi, resourceLibraryApi, knowledgeApi, abilityApi } from '@/lib/api'
+import {
+  scenarioApi,
+  taskApi,
+  resourceLibraryApi,
+  knowledgeApi,
+  abilityApi,
+  courseApi,
+} from '@/lib/api'
 import type {
   Scenario,
   ScenarioTask,
   TaskResource,
   KnowledgePoint,
   AbilityPoint,
+  Course,
 } from '@/lib/types'
 import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS, EVAL_METHOD_LABELS, EVAL_METHOD_COLORS } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
@@ -352,6 +360,7 @@ export default function SceneDetailPage() {
   const [tasks, setTasks] = useState<ScenarioTask[]>([])
   const [allResourceMap, setAllResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
+  const [courseMap, setCourseMap] = useState<Map<string, Course>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [abilityDomainMap, setAbilityDomainMap] = useState<Map<string, string>>(new Map())
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
@@ -401,17 +410,21 @@ export default function SceneDetailPage() {
     Promise.all([
       knowledgeApi.list({ limit: 200 }).catch(() => ({ items: [], total: 0 })),
       abilityApi.list({ limit: 200 }).catch(() => ({ items: [], total: 0 })),
+      courseApi.list({ type: 'granular', limit: 1000 }).catch(() => ({ items: [], total: 0 })),
     ])
-      .then(([kRes, aRes]) => {
+      .then(([kRes, aRes, cRes]) => {
         const kMap = new Map<string, KnowledgePoint>()
         ;(kRes.items || []).forEach((k) => kMap.set(k.id, k))
         setKnowledgeMap(kMap)
         const aMap = new Map<string, AbilityPoint>()
         ;(aRes.items || []).forEach((a) => aMap.set(a.id, a))
         setAbilityMap(aMap)
+        const cMap = new Map<string, Course>()
+        ;(cRes.items || []).forEach((c) => cMap.set(c.id, c))
+        setCourseMap(cMap)
       })
       .catch((err) => {
-        reportError(err, '加载知识点/能力点数据')
+        reportError(err, '加载知识点/能力点/颗粒课数据')
         toast({ title: '部分数据加载失败', variant: 'destructive' })
       })
   }, [id, scenario, toast])
@@ -719,7 +732,14 @@ export default function SceneDetailPage() {
         return <EvaluationTab tasks={tasks} totalEvalConfigs={totalEvalConfigs} />
 
       case 'knowledge':
-        return <SceneKnowledgeGraph scenario={scenario} tasks={tasks} knowledgeMap={knowledgeMap} />
+        return (
+          <SceneKnowledgeGraph
+            scenario={scenario}
+            tasks={tasks}
+            knowledgeMap={knowledgeMap}
+            courseMap={courseMap}
+          />
+        )
 
       default:
         return null

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { Scenario, ScenarioTask, KnowledgePoint } from '@/lib/types'
+import type { Scenario, ScenarioTask, KnowledgePoint, Course } from '@/lib/types'
 import type { GraphNode, GraphEdge } from '@/components/knowledge-graph/types'
 import { KnowledgeGraphShell } from '@/components/knowledge-graph/knowledge-graph-shell'
 
@@ -16,12 +16,25 @@ interface SceneKnowledgeGraphProps {
   scenario: Scenario
   tasks: ScenarioTask[]
   knowledgeMap: Map<string, KnowledgePoint>
+  courseMap: Map<string, Course>
 }
 
-export function SceneKnowledgeGraph({ scenario, tasks, knowledgeMap }: SceneKnowledgeGraphProps) {
+export function SceneKnowledgeGraph({
+  scenario,
+  tasks,
+  knowledgeMap,
+  courseMap,
+}: SceneKnowledgeGraphProps) {
   const { nodes, edges } = useMemo(() => {
     const graphNodes: GraphNode[] = []
     const graphEdges: GraphEdge[] = []
+    const edgeKeys = new Set<string>()
+    const pushEdge = (source: string, target: string) => {
+      const key = `${source}->${target}`
+      if (edgeKeys.has(key)) return
+      edgeKeys.add(key)
+      graphEdges.push({ source, target })
+    }
 
     const allKnowledgeIds = new Set<string>()
     tasks.forEach((t) => {
@@ -38,28 +51,47 @@ export function SceneKnowledgeGraph({ scenario, tasks, knowledgeMap }: SceneKnow
       type: 'position',
     })
 
+    const knowledgeNodeIds = new Set<string>()
     tasks.forEach((task) => {
       graphNodes.push({
         id: task.id,
         label: task.name || task.code || '任务',
         type: 'domain',
       })
-      graphEdges.push({ source: scenario.id, target: task.id })
+      pushEdge(scenario.id, task.id)
 
       task.knowledgePointIds?.forEach((kid) => {
         const kp = knowledgeMap.get(kid)
         if (!kp) return
-        graphNodes.push({
-          id: kp.id,
-          label: kp.name || kp.code || '知识点',
-          type: 'knowledge',
-        })
-        graphEdges.push({ source: task.id, target: kp.id })
+        if (!knowledgeNodeIds.has(kid)) {
+          knowledgeNodeIds.add(kid)
+          graphNodes.push({
+            id: kp.id,
+            label: kp.name || kp.code || '知识点',
+            type: 'knowledge',
+          })
+        }
+        pushEdge(task.id, kp.id)
+      })
+    })
+
+    // 知识点 → 颗粒课：知识点绑定的颗粒课
+    const courseNodeIds = new Set<string>()
+    knowledgeNodeIds.forEach((kid) => {
+      const kp = knowledgeMap.get(kid)
+      ;(kp?.granularLessonIds || []).forEach((cid) => {
+        const course = courseMap.get(cid)
+        if (!course) return
+        if (!courseNodeIds.has(cid)) {
+          courseNodeIds.add(cid)
+          graphNodes.push({ id: cid, label: course.name || '颗粒课', type: 'course' })
+        }
+        pushEdge(kid, cid)
       })
     })
 
     return { nodes: graphNodes, edges: graphEdges }
-  }, [scenario, tasks, knowledgeMap])
+  }, [scenario, tasks, knowledgeMap, courseMap])
 
   const emptyView = (
     <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
@@ -72,7 +104,7 @@ export function SceneKnowledgeGraph({ scenario, tasks, knowledgeMap }: SceneKnow
       nodes={nodes}
       edges={edges}
       title="知识图谱"
-      description="场景 → 任务 → 知识点的关联网络"
+      description="场景 → 任务 → 知识点 → 颗粒课的关联网络"
       nodeLabels={NODE_LABELS}
       emptyView={emptyView}
     />
