@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { BarChart3, BookOpen, Clock, Layers, Play } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import type { WorkspaceCourse, WorkspaceSceneTask } from '@/lib/types'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
 
 export function LearningTab() {
+  const router = useRouter()
   const [courses, setCourses] = useState<WorkspaceCourse[]>([])
   const [sceneTasks, setSceneTasks] = useState<WorkspaceSceneTask[]>([])
   const [loading, setLoading] = useState(true)
@@ -192,7 +194,11 @@ export function LearningTab() {
                       )}
                     </div>
                   </div>
-                  <Button size="sm" className="shrink-0 bg-emerald-600 hover:bg-emerald-700">
+                  <Button
+                    size="sm"
+                    className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => router.push(`/scene/landing/${task.scenarioId}`)}
+                  >
                     <Play className="w-3.5 h-3.5 mr-1" />
                     {task.status === '已完成' ? '查看' : '继续'}
                   </Button>
@@ -284,7 +290,11 @@ export function LearningTab() {
                       </div>
                     )}
                   </div>
-                  <Button size="sm" className="shrink-0 bg-blue-600 hover:bg-blue-700">
+                  <Button
+                    size="sm"
+                    className="shrink-0 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => router.push(`/lesson/landing/${course.id}`)}
+                  >
                     <Play className="w-3.5 h-3.5 mr-1" />
                     {course.status === '已完成' ? '复习' : '学习'}
                   </Button>
