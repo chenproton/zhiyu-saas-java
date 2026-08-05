@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -168,12 +168,26 @@ export function StepBasicInfo({
     setIsGenerating(null)
   }
 
-  const addResponsibility = () => {
+  // 回车新增行后聚焦到新输入框
+  const pendingFocusIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const id = pendingFocusIdRef.current
+    if (!id) return
+    const el = document.querySelector<HTMLTextAreaElement>(`[data-focus-id="${id}"]`)
+    if (el) {
+      pendingFocusIdRef.current = null
+      el.focus()
+    }
+  }, [position.responsibilities, position.requirements])
+
+  const addResponsibility = (focusNew = false) => {
     const newItem: PositionResponsibility = {
-      id: `resp-${Date.now()}`,
+      id: `resp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: '',
       description: '',
     }
+    if (focusNew) pendingFocusIdRef.current = newItem.id
     onUpdate({ responsibilities: [...position.responsibilities, newItem] })
   }
 
@@ -181,8 +195,10 @@ export function StepBasicInfo({
     onUpdate({ responsibilities: position.responsibilities.filter((_, i) => i !== index) })
   }
 
-  const addRequirement = () => {
-    onUpdate({ requirements: [...position.requirements, ''] })
+  const addRequirement = (focusNew = false) => {
+    const next = [...position.requirements, '']
+    if (focusNew) pendingFocusIdRef.current = `req-${next.length - 1}`
+    onUpdate({ requirements: next })
   }
 
   const removeRequirement = (index: number) => {
@@ -449,6 +465,13 @@ export function StepBasicInfo({
                     )
                     onUpdate({ responsibilities: next })
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault()
+                      addResponsibility(true)
+                    }
+                  }}
+                  data-focus-id={item.id}
                   className="text-sm min-h-8 py-1"
                 />
                 <Button
@@ -463,7 +486,7 @@ export function StepBasicInfo({
             ))}
             <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
               {!isCreate && <span />}
-              <Button variant="outline" className="h-8 border-dashed" onClick={addResponsibility}>
+              <Button variant="outline" className="h-8 border-dashed" onClick={() => addResponsibility()}>
                 <Plus className="h-4 w-4 mr-2" />
                 添加工作职责
               </Button>
@@ -496,6 +519,13 @@ export function StepBasicInfo({
                     )
                     onUpdate({ requirements: next })
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault()
+                      addRequirement(true)
+                    }
+                  }}
+                  data-focus-id={`req-${index}`}
                   className="text-sm min-h-8 py-1"
                 />
                 <Button
@@ -510,7 +540,7 @@ export function StepBasicInfo({
             ))}
             <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
               {!isCreate && <span />}
-              <Button variant="outline" className="h-8 border-dashed" onClick={addRequirement}>
+              <Button variant="outline" className="h-8 border-dashed" onClick={() => addRequirement()}>
                 <Plus className="h-4 w-4 mr-2" />
                 添加任职要求
               </Button>

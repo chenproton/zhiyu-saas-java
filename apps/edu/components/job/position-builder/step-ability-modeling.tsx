@@ -103,6 +103,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
   const [abilityPoolPositions, setAbilityPoolPositions] = useState<{ id: string; name: string }[]>(
     [],
   )
+  const [hoveredRespId, setHoveredRespId] = useState<string | null>(null)
 
   const contentRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -531,6 +532,8 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                     ref={(el) => {
                       sectionRefs.current[resp.id] = el
                     }}
+                    onMouseEnter={() => setHoveredRespId(resp.id)}
+                    onMouseLeave={() => setHoveredRespId(null)}
                     className={`${isSelectedGroup ? 'bg-indigo-50/40 rounded-2xl' : ''} px-4 py-3`}
                   >
                     <div className="flex items-center gap-2 mb-3 px-1">
@@ -544,12 +547,13 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                         </span>
                       )}
                       <div className="flex-1" />
-                      {isSelectedGroup && (
+                      {hoveredRespId === resp.id && (
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Button
                             size="sm"
                             className="h-7 text-xs rounded-full"
                             onClick={() => {
+                              setSelectedRespId(resp.id)
                               setAbilityPoolSearch('')
                               setAbilityPoolFilterAttr(null)
                               setAbilityPoolFilterPosition(null)
@@ -564,6 +568,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                             size="sm"
                             className="h-7 text-xs rounded-full"
                             onClick={() => {
+                              setSelectedRespId(resp.id)
                               setDuplicateName(null)
                               setShowCreateDialog(true)
                             }}
