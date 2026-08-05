@@ -416,11 +416,13 @@ export default function ExamUsagePage() {
                   <SelectValue placeholder="请选择一份试卷" />
                 </SelectTrigger>
                 <SelectContent>
-                  {exams.map((exam) => (
-                    <SelectItem key={exam.id} value={exam.id}>
-                      {exam.name}
-                    </SelectItem>
-                  ))}
+                  {exams
+                    .filter((exam) => exam.status === 'published')
+                    .map((exam) => (
+                      <SelectItem key={exam.id} value={exam.id}>
+                        {exam.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </Field>
