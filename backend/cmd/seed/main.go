@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/zhiyu-saas/backend/internal/config"
 	"github.com/zhiyu-saas/backend/internal/db"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,7 +28,7 @@ func main() {
 
 	ctx := context.Background()
 
-	operatorTenantID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	operatorTenantID := uuid.MustParse(domain.OperatorTenantID)
 	platformAdminRoleID := uuid.MustParse("00000000-0000-0000-0000-000000000002")
 	platformAdminUserID := uuid.MustParse("00000000-0000-0000-0000-000000000003")
 

@@ -30,6 +30,9 @@ const (
 	RoleEnterpriseMentor = "enterprise_mentor"
 )
 
+// OperatorTenantID 运营方（平台）租户固定 ID，seed 创建与超管控制台列表过滤共用。
+const OperatorTenantID = "00000000-0000-0000-0000-000000000001"
+
 type UserPlatform string
 
 const (

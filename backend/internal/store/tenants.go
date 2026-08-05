@@ -54,6 +54,8 @@ func (s *TenantStore) AdminListConfig() ListQueryConfig[domain.Tenant] {
 			if status := p.Values["status"]; status != "" {
 				qb.AddCondition("status = " + qb.NextArg(status))
 			}
+			// 运营方租户不出现在超管控制台列表（避免误删导致平台管理员丢失）
+			qb.AddCondition("id <> " + qb.NextArg(domain.OperatorTenantID))
 		},
 	}
 }
