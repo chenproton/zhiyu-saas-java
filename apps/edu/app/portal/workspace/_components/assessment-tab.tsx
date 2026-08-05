@@ -1,13 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Award, FileCheck, GraduationCap, Target } from 'lucide-react'
+import { Award, Eye, FileCheck, GraduationCap } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StatusBadge } from '@zhiyu/ui'
 import { SectionCard } from './section-card'
-import { portalApi } from '@/lib/api'
-import type { WorkspaceExam } from '@/lib/types'
+import { portalApi, jobAbilityResultApi } from '@/lib/api'
+import type { WorkspaceExam, JobAbilityResult } from '@/lib/types'
+import { cn } from '@/lib/utils'
+import { formatDateTime } from '@/lib/format-utils'
 import {
   Table,
   TableBody,
@@ -16,23 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-
-// ==================== Mock 岗位认定数据 ====================
-
-interface AssessmentIndicator {
-  label: string
-  value: string
-}
-
-interface PositionAssessment {
-  id: string
-  positionName: string
-  indicators: AssessmentIndicator[]
-  details: { name: string; score: number; level: string; required: string; passed: boolean }[]
-}
-
-// 岗位能力认定数据应由后端测评结果 API 提供，默认空状态
-const emptyPositionAssessments: PositionAssessment[] = []
 
 const typeIconMap: Record<string, typeof GraduationCap> = {
   随堂测: FileCheck,
@@ -45,6 +38,12 @@ export function AssessmentTab() {
   const [exams, setExams] = useState<WorkspaceExam[]>([])
   const [loading, setLoading] = useState(true)
   const [examFilter, setExamFilter] = useState('all')
+
+  const [results, setResults] = useState<JobAbilityResult[]>([])
+  const [resultsLoading, setResultsLoading] = useState(true)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detail, setDetail] = useState<JobAbilityResult | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -64,44 +63,112 @@ export function AssessmentTab() {
     }
   }, [])
 
+  // 岗位能力认定结果：学生仅可查看本人的认定结果（后端按角色过滤）
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setResultsLoading(true)
+      try {
+        const res = await jobAbilityResultApi.list({ page: 1, limit: 50 })
+        if (!cancelled) setResults(res.items || [])
+      } catch {
+        if (!cancelled) setResults([])
+      } finally {
+        if (!cancelled) setResultsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const openDetail = async (id: string) => {
+    setDetailOpen(true)
+    setDetailLoading(true)
+    setDetail(null)
+    try {
+      setDetail(await jobAbilityResultApi.get(id))
+    } catch {
+      // 明细加载失败保持弹窗打开，展示兜底文案
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
   const filteredExams = examFilter === 'all' ? exams : exams.filter((e) => e.status === examFilter)
 
   return (
     <div className="space-y-5">
       {/* ===== 岗位能力认定结果 ===== */}
       <SectionCard title="岗位能力认定结果" icon={Award} iconColor="amber">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {emptyPositionAssessments.length === 0 && (
-            <div className="col-span-full py-8 text-center text-xs text-gray-400">
-              暂无岗位能力认定结果
-            </div>
-          )}
-          {emptyPositionAssessments.map((pa) => (
-            <div
-              key={pa.id}
-              className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden"
-            >
-              {/* 岗位头 */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-4 py-3">
-                <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-amber-500" />
-                  {pa.positionName}
-                </h4>
-              </div>
-              {/* 四项指标 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
-                {pa.indicators.map((ind) => (
-                  <div
-                    key={ind.label}
-                    className="rounded-lg border border-gray-200 p-2.5 text-center"
-                  >
-                    <p className="text-xs text-gray-500 leading-tight">{ind.label}</p>
-                    <p className="text-lg font-bold leading-tight mt-0.5">{ind.value}</p>
-                  </div>
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="text-xs">岗位名称</TableHead>
+                <TableHead className="text-xs">姓名</TableHead>
+                <TableHead className="text-xs">学号</TableHead>
+                <TableHead className="text-xs">所属院系</TableHead>
+                <TableHead className="text-xs">班级</TableHead>
+                <TableHead className="text-xs">岗位能力达成率</TableHead>
+                <TableHead className="text-xs">岗位胜任度</TableHead>
+                <TableHead className="text-xs">能力认知得分</TableHead>
+                <TableHead className="text-xs text-right w-20">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {resultsLoading && (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-xs text-gray-400 py-10">
+                    加载中...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!resultsLoading &&
+                results.map((result) => (
+                  <TableRow key={result.id}>
+                    <TableCell className="text-sm font-medium">{result.positionName}</TableCell>
+                    <TableCell className="text-sm">{result.studentName}</TableCell>
+                    <TableCell className="text-xs text-gray-500">{result.studentId}</TableCell>
+                    <TableCell className="text-xs text-gray-500">
+                      {result.department || '-'}
+                    </TableCell>
+                    <TableCell className="text-xs text-gray-500">
+                      {result.className || '-'}
+                    </TableCell>
+                    <TableCell className="text-xs font-semibold">
+                      {result.totalAbilityPoints > 0
+                        ? `${((result.achievedAbilityPoints / result.totalAbilityPoints) * 100).toFixed(0)}%`
+                        : '-'}
+                    </TableCell>
+                    <TableCell className="text-xs text-gray-500">
+                      {result.positionCompetency != null
+                        ? `${result.positionCompetency.toFixed(1)}%`
+                        : '-'}
+                    </TableCell>
+                    <TableCell className="text-xs text-gray-500">
+                      {result.abilityCognitionScore != null
+                        ? result.abilityCognitionScore.toFixed(1)
+                        : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-[10px] h-7 px-2"
+                        onClick={() => openDetail(result.id)}
+                      >
+                        <Eye className="mr-1 w-3 h-3" />
+                        查看明细
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </div>
-            </div>
-          ))}
+            </TableBody>
+          </Table>
+          {!resultsLoading && results.length === 0 && (
+            <div className="py-10 text-center text-xs text-gray-400">暂无岗位能力认定结果</div>
+          )}
         </div>
       </SectionCard>
 
@@ -206,6 +273,101 @@ export function AssessmentTab() {
           )}
         </div>
       </SectionCard>
+
+      {/* ===== 能力点认定明细弹窗 ===== */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>能力点认定明细</DialogTitle>
+            <DialogDescription>
+              {detail
+                ? `${detail.studentName}（${detail.studentId}）· ${detail.positionName}`
+                : '加载中...'}
+            </DialogDescription>
+          </DialogHeader>
+          {detailLoading ? (
+            <div className="py-10 text-center text-sm text-gray-400">加载中...</div>
+          ) : detail ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-gray-500">
+                  能力点达成 {detail.achievedAbilityPoints}/{detail.totalAbilityPoints}
+                </span>
+                <span className="text-gray-500">
+                  达标率 {(detail.achievementRate ?? 0).toFixed(1)}%
+                </span>
+                <span className="text-gray-500">
+                  认定时间 {formatDateTime(detail.evaluationTime)}
+                </span>
+              </div>
+              {detail.abilityPointDetails && detail.abilityPointDetails.length > 0 ? (
+                <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>能力点</TableHead>
+                        <TableHead className="w-[100px]">得分</TableHead>
+                        <TableHead className="w-[110px]">档位</TableHead>
+                        <TableHead className="w-[100px]">权重</TableHead>
+                        <TableHead className="w-[100px]">是否达成</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {detail.abilityPointDetails.map((point, index) => (
+                        <TableRow key={point.abilityPointId || index}>
+                          <TableCell className="text-sm">{point.abilityPointName}</TableCell>
+                          <TableCell className="text-sm">
+                            {point.maxScore != null
+                              ? `${point.score}/${point.maxScore}`
+                              : point.score}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {point.levelLabel ? (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'text-xs',
+                                  point.levelLabel === '未达标'
+                                    ? 'bg-red-50 text-red-600 border-red-200'
+                                    : 'bg-indigo-50 text-indigo-600 border-indigo-200',
+                                )}
+                              >
+                                {point.levelLabel}
+                              </Badge>
+                            ) : (
+                              '-'
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {point.weight != null ? `${point.weight}%` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'text-xs',
+                                point.achieved
+                                  ? 'bg-green-50 text-green-600 border-green-200'
+                                  : 'bg-red-50 text-red-600 border-red-200',
+                              )}
+                            >
+                              {point.achieved ? '已达成' : '未达成'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="py-8 text-center text-sm text-gray-400">暂无能力点明细</div>
+              )}
+            </div>
+          ) : (
+            <div className="py-10 text-center text-sm text-gray-400">未找到结果明细</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
