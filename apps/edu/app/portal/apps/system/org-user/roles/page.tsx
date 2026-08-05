@@ -24,7 +24,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Pencil, Trash2, Upload, Download, Settings, Users, LayoutDashboard } from 'lucide-react'
+import {
+  Pencil,
+  Trash2,
+  Upload,
+  Download,
+  Settings,
+  Users,
+  LayoutDashboard,
+  Folder,
+} from 'lucide-react'
 import { roleApi, portalUserManagementApi, type User } from '@/lib/api'
 import type { Role } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -74,31 +83,61 @@ function SystemCard({
   checked: Set<string>
   onCheck: (id: string) => void
 }) {
-  const childPages = useMemo(() => {
+  const collectPages = (items: MenuTreeItem[]): MenuTreeItem[] => {
     const pages: MenuTreeItem[] = []
-    const walk = (items: MenuTreeItem[]) => {
-      for (const item of items) {
+    const walk = (list: MenuTreeItem[]) => {
+      for (const item of list) {
         if (item.href) pages.push(item)
         if (item.children) walk(item.children)
       }
     }
-    if (node.children) walk(node.children)
+    walk(items)
     return pages
-  }, [node])
+  }
 
-  const checkedCount = childPages.filter((p) => checked.has(p.id)).length
-  const allChecked = checkedCount === childPages.length && childPages.length > 0
+  const allPages = useMemo(() => collectPages(node.children ?? []), [node])
+
+  const groups = useMemo(
+    () =>
+      (node.children ?? [])
+        .filter((item) => item.children?.length)
+        .map((item) => ({ item, pages: collectPages(item.children ?? []) })),
+    [node],
+  )
+
+  const directPages = useMemo(
+    () => (node.children ?? []).filter((item) => !item.children?.length && item.href),
+    [node],
+  )
+
+  const checkedCount = allPages.filter((p) => checked.has(p.id)).length
+  const allChecked = checkedCount === allPages.length && allPages.length > 0
   const someChecked = checkedCount > 0 && !allChecked
 
-  const handleSystemToggle = () => {
-    const shouldCheck = !allChecked
-    childPages.forEach((p) => {
+  const togglePages = (pages: MenuTreeItem[], shouldCheck: boolean) => {
+    pages.forEach((p) => {
       if (shouldCheck && !checked.has(p.id)) onCheck(p.id)
       else if (!shouldCheck && checked.has(p.id)) onCheck(p.id)
     })
   }
 
-  if (childPages.length === 0) return null
+  const handleSystemToggle = () => togglePages(allPages, !allChecked)
+
+  if (allPages.length === 0) return null
+
+  const renderPageGrid = (pages: MenuTreeItem[]) => (
+    <div className="grid grid-cols-6 gap-1.5">
+      {pages.map((page) => (
+        <label
+          key={page.id}
+          className="flex items-center gap-1.5 p-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+        >
+          <Checkbox checked={checked.has(page.id)} onCheckedChange={() => onCheck(page.id)} />
+          <span className="truncate">{page.label}</span>
+        </label>
+      ))}
+    </div>
+  )
 
   return (
     <div className="rounded-lg border border-border p-4">
@@ -110,19 +149,32 @@ function SystemCard({
         <LayoutDashboard className="w-4 h-4 text-primary" />
         <span className="text-sm font-medium">{node.label}</span>
         <span className="text-xs text-muted-foreground">
-          （{checkedCount}/{childPages.length}）
+          （{checkedCount}/{allPages.length}）
         </span>
       </div>
-      <div className="grid grid-cols-6 gap-1.5">
-        {childPages.map((page) => (
-          <label
-            key={page.id}
-            className="flex items-center gap-1.5 p-1.5 rounded hover:bg-accent cursor-pointer text-sm"
-          >
-            <Checkbox checked={checked.has(page.id)} onCheckedChange={() => onCheck(page.id)} />
-            <span className="truncate">{page.label}</span>
-          </label>
-        ))}
+      <div className="space-y-3">
+        {directPages.length > 0 && renderPageGrid(directPages)}
+        {groups.map(({ item, pages }) => {
+          const groupCheckedCount = pages.filter((p) => checked.has(p.id)).length
+          const groupAll = groupCheckedCount === pages.length
+          const groupSome = groupCheckedCount > 0 && !groupAll
+          return (
+            <div key={item.id} className="rounded-md bg-muted/50 p-2.5">
+              <div className="flex items-center gap-2 mb-2">
+                <Checkbox
+                  checked={groupAll ? true : groupSome ? 'indeterminate' : false}
+                  onCheckedChange={() => togglePages(pages, !groupAll)}
+                />
+                <Folder className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-sm font-medium">{item.label}</span>
+                <span className="text-xs text-muted-foreground">
+                  （{groupCheckedCount}/{pages.length}）
+                </span>
+              </div>
+              {renderPageGrid(pages)}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
