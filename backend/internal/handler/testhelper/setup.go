@@ -450,6 +450,12 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/job-ability/aggregate", jobAbilityResultHandler.Aggregate)
 			r.Get("/evaluation/job-ability/aggregate/status", jobAbilityResultHandler.AggregateStatus)
 
+			studentHonorHandler := handler.NewStudentHonorHandler(st2)
+			r.Get("/portal/workspace/honors", studentHonorHandler.List)
+			r.Post("/portal/workspace/honors", studentHonorHandler.Create)
+			r.Put("/portal/workspace/honors/{id}", studentHonorHandler.Update)
+			r.Delete("/portal/workspace/honors/{id}", studentHonorHandler.Delete)
+
 			certificationModelHandler := &handler.CertificationModelHandler{Service: evaluationSvc}
 			r.Get("/evaluation/certifications/positions/{positionId}/model", certificationModelHandler.GetModel)
 			r.Put("/evaluation/certifications/positions/{positionId}/weights", certificationModelHandler.PutWeights)

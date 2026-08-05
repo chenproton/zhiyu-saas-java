@@ -26,6 +26,31 @@ func (s *EvaluationService) ListStudentCourseScores(ctx context.Context, tenantI
 	return s.st.JobAbilityResults().ListStudentCourseScores(ctx, tenantID, userID)
 }
 
+// ListHonors 查询学生荣誉。
+func (s *EvaluationService) ListHonors(ctx context.Context, tenantID, userID string) ([]store.StudentHonor, error) {
+	return s.st.StudentHonors().ListHonors(ctx, tenantID, userID)
+}
+
+// GetHonor 查询单条荣誉。
+func (s *EvaluationService) GetHonor(ctx context.Context, id, tenantID string) (*store.StudentHonor, error) {
+	return s.st.StudentHonors().GetHonor(ctx, id, tenantID)
+}
+
+// CreateHonor 新增荣誉。
+func (s *EvaluationService) CreateHonor(ctx context.Context, p *store.HonorUpsertParams) (string, error) {
+	return s.st.StudentHonors().CreateHonor(ctx, p)
+}
+
+// UpdateHonor 更新荣誉（本人限定）。
+func (s *EvaluationService) UpdateHonor(ctx context.Context, p *store.HonorUpsertParams) error {
+	return s.st.StudentHonors().UpdateHonor(ctx, p)
+}
+
+// DeleteHonor 删除荣誉（本人限定）。
+func (s *EvaluationService) DeleteHonor(ctx context.Context, id, tenantID, userID string) error {
+	return s.st.StudentHonors().DeleteHonor(ctx, id, tenantID, userID)
+}
+
 // CountStudentScenes 学生有已评评分记录的去重场景数。
 func (s *EvaluationService) CountStudentScenes(ctx context.Context, tenantID, userID string) (int, error) {
 	return s.st.Portal().CountStudentScenes(ctx, tenantID, userID)
