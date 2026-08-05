@@ -64,6 +64,26 @@ export function StatusActionBar({
   extraActions,
 }: StatusActionBarProps) {
   if (isDraftPool) {
+    return (
+      <HoverActionBar>
+        {onView && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={(e) => {
+              e.stopPropagation()
+              onView()
+            }}
+          >
+            <Eye className="mr-1 h-3 w-3" />
+            查看
+          </Button>
+        )}
+      </HoverActionBar>
+    )
+  }
+
   if (isPublicPool) {
     return (
       <HoverActionBar>
@@ -93,26 +113,6 @@ export function StatusActionBar({
           >
             <Copy className="mr-1 h-3 w-3" />
             克隆
-          </Button>
-        )}
-      </HoverActionBar>
-    )
-  }
-
-  return (
-      <HoverActionBar>
-        {onView && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={(e) => {
-              e.stopPropagation()
-              onView()
-            }}
-          >
-            <Eye className="mr-1 h-3 w-3" />
-            查看
           </Button>
         )}
       </HoverActionBar>
