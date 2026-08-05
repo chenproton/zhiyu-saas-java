@@ -360,6 +360,68 @@ func TestPosition_SaveFull(t *testing.T) {
 			t.Errorf("ability points not reused: %q != %q", items[0].AbilityPointID, items[1].AbilityPointID)
 		}
 	})
+
+	// Regression: 空名称的 custom 绑定必须被跳过，不得创建空名能力点
+	// （此前会 INSERT name='' 的 ability_points，导致岗位能力点显示无名称）。
+	t.Run("SaveFull_EmptyAbilityName", func(t *testing.T) {
+		before, err := env.DB.Query(context.Background(), `SELECT COUNT(*) FROM ability_points WHERE tenant_id = $1`, testhelper.TestTenantID)
+		if err != nil {
+			t.Fatalf("count ability points: %v", err)
+		}
+		defer before.Close()
+		var countBefore int
+		before.Next()
+		before.Scan(&countBefore)
+
+		body := map[string]interface{}{
+			"batchId":       "",
+			"name":          "Updated Full Position",
+			"shortName":     "Updated",
+			"industry":      "",
+			"majors":        []string{},
+			"positionType":  "enterprise",
+			"salaryRange":   [2]int{5000, 10000},
+			"description":   "updated description",
+			"requirements":  []string{"req1", "req2"},
+			"careerPath":    "updated path",
+			"version":       "v1.0",
+			"collaborators": []string{},
+			"responsibilities": []map[string]interface{}{
+				{"id": "resp-1", "name": "Responsibility 1", "description": "desc 1"},
+			},
+			"certificates": []map[string]interface{}{},
+			"abilityBindings": []map[string]interface{}{
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "custom", "name": "Custom Ability", "level": "master"},
+				{"id": "bind-empty", "responsibilityId": "resp-1", "source": "custom", "name": "", "level": "understand"},
+				{"id": "bind-space", "responsibilityId": "resp-1", "source": "custom", "name": "   ", "level": "understand"},
+			},
+			"abilityDomains": []map[string]interface{}{},
+		}
+		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/positions/%s/save-full", createdID), body)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+
+		w = env.Do("GET", fmt.Sprintf("/api/v1/job/position-abilities?careerPositionId=%s", createdID), nil)
+		items, total, err := testhelper.UnmarshalList[domain.PositionAbilityBinding](w)
+		if err != nil {
+			t.Fatalf("unmarshal list: %v", err)
+		}
+		if total != 1 {
+			t.Errorf("total = %d, want 1 (empty-name bindings skipped)", total)
+		}
+		for _, it := range items {
+			if it.AbilityName == nil || *it.AbilityName != "Custom Ability" {
+				t.Errorf("unexpected binding abilityName: %v", it.AbilityName)
+			}
+		}
+
+		var countAfter int
+		env.DB.QueryRow(context.Background(), `SELECT COUNT(*) FROM ability_points WHERE tenant_id = $1`, testhelper.TestTenantID).Scan(&countAfter)
+		if countAfter != countBefore {
+			t.Errorf("ability_points count = %d, want %d (no empty-name point created)", countAfter, countBefore)
+		}
+	})
 }
 
 // Regression: 从能力点库添加的 public 来源绑定在 SaveFull 后必须持久化，

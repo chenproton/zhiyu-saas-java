@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -90,6 +91,9 @@ func (s *PositionService) SaveFull(ctx context.Context, tenantID, positionID str
 			continue
 		}
 		if b.Source != "custom" {
+			continue
+		}
+		if strings.TrimSpace(b.Name) == "" {
 			continue
 		}
 		pointID, err := s.st.Positions().PrepareAbilityPoint(ctx, tenantID, b.Name, b.Description, b.Attributes)

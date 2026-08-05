@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -419,6 +420,9 @@ func (s *PositionStore) SaveFull(ctx context.Context, tx Queryer, tenantID, posi
 
 // PrepareAbilityPoint 查找或创建能力点，返回 ID。
 func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, tenantID, name string, description *string, attributes []string) (string, error) {
+	if strings.TrimSpace(name) == "" {
+		return "", errors.New("ability point name is empty")
+	}
 	var existingID string
 	err := s.q.QueryRow(ctx, `
 		SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
