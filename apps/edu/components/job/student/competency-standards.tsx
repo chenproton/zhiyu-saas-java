@@ -105,9 +105,9 @@ export function CompetencyStandards({
         </span>
       </div>
 
-      <div className="flex gap-6 h-[600px]">
-        {/* Sidebar */}
-        <div className="w-60 shrink-0 bg-[#fafafa] rounded-xl p-2 border border-[#f5f5f4] h-full overflow-y-auto">
+      <div className="flex gap-6 md:h-[600px]">
+        {/* Sidebar（移动端隐藏，只展示能力点卡片） */}
+        <div className="hidden md:block w-60 shrink-0 bg-[#fafafa] rounded-xl p-2 border border-[#f5f5f4] h-full overflow-y-auto">
           {groups.map((g) => (
             <button
               key={g.duty}
@@ -124,14 +124,14 @@ export function CompetencyStandards({
         </div>
 
         {/* Content */}
-        <div ref={contentRef} className="flex-1 h-full overflow-y-auto pr-4">
+        <div ref={contentRef} className="flex-1 md:h-full md:overflow-y-auto pr-4">
           {groups.map((g) => (
             <div key={g.duty} id={`comp-sec-${g.duty}`} className="mb-10 pt-2">
               <div className="text-base font-semibold text-[#1f2937] mb-4 pb-3 border-b border-[#f5f5f4] flex items-center gap-2">
                 <Target className="w-4 h-4 text-blue-500" />
                 {g.duty}
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-4">
                 {g.items.map((item) => {
                   const targetIdx = resolveLevelIndex(item.requiredLevel)
                   const targetLabel = LEVELS[targetIdx]?.label || item.requiredLevel
