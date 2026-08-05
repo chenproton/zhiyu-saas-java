@@ -18,7 +18,6 @@ type AbilityHandler struct {
 type AbilityRequest struct {
 	Name        string   `json:"name"`
 	Description *string  `json:"description"`
-	Category    string   `json:"category"`
 	Attributes  []string `json:"attributes"`
 	IsPublic    bool     `json:"isPublic"`
 }
@@ -51,7 +50,7 @@ func (h *AbilityHandler) crud() crudConfig[AbilityRequest, domain.AbilityPoint] 
 		DeleteErrMsg:       "删除能力点失败",
 		UniqueViolationMsg: "能力点名称已存在，请使用其他名称",
 		ValidateCreate: func(t *AbilityRequest) string {
-			if t.Name == "" || t.Category == "" {
+			if t.Name == "" {
 				return "缺少必填字段"
 			}
 			return ""
@@ -60,7 +59,7 @@ func (h *AbilityHandler) crud() crudConfig[AbilityRequest, domain.AbilityPoint] 
 			return requireTenant(w, r)
 		},
 		ValidateUpdate: func(t *AbilityRequest) string {
-			if t.Name == "" || t.Category == "" {
+			if t.Name == "" {
 				return "缺少必填字段"
 			}
 			return ""
@@ -69,7 +68,6 @@ func (h *AbilityHandler) crud() crudConfig[AbilityRequest, domain.AbilityPoint] 
 			d, err := h.Service.CreateAbility(ctx, tenantID, &store.AbilityPointParams{
 				Name:        t.Name,
 				Description: t.Description,
-				Category:    t.Category,
 				Attributes:  coalesceStringSlice(t.Attributes),
 				IsPublic:    t.IsPublic,
 				CreatorID:   userID,
@@ -83,7 +81,6 @@ func (h *AbilityHandler) crud() crudConfig[AbilityRequest, domain.AbilityPoint] 
 			_, err := h.Service.UpdateAbility(ctx, id, tenantID, &store.AbilityPointParams{
 				Name:        t.Name,
 				Description: t.Description,
-				Category:    t.Category,
 				Attributes:  coalesceStringSlice(t.Attributes),
 				IsPublic:    t.IsPublic,
 			})

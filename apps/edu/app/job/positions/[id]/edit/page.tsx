@@ -127,7 +127,6 @@ function PositionEditPageContent({ params }: PageProps) {
           const ability = abilityMap.get(b.abilityPointId)
           if (ability) {
             local.name = ability.name
-            local.category = ability.category
             local.description = ability.description
           } else if (b.source === 'custom') {
             // Try to fetch custom ability details if not in public list

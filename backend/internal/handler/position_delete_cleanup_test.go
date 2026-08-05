@@ -33,8 +33,8 @@ func TestPositionDeleteCleansAbilityData(t *testing.T) {
 
 	// 认证权重引用能力点，先建能力点
 	env.DB.Exec(ctx, `
-		INSERT INTO ability_points (id, tenant_id, name, code, category)
-		VALUES ($1, $2, '测试能力点', 'CLN-AP', 'core')
+		INSERT INTO ability_points (id, tenant_id, name, code)
+		VALUES ($1, $2, '测试能力点', 'CLN-AP')
 	`, abilityPointID, testhelper.TestTenantID)
 
 	env.DB.Exec(ctx, `

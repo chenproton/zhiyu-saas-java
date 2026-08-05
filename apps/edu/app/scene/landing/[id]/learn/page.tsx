@@ -792,13 +792,10 @@ export default function SceneLearnPage() {
                   <TabsContent value="collapsed-ability" className="mt-0 space-y-2">
                     {taskAbilityPoints.length > 0 ? (
                       taskAbilityPoints.map((ap, i) => {
-                        const cat = (
-                          {
-                            knowledge: { label: '知识', color: '#2563eb' },
-                            skill: { label: '技能', color: '#16a34a' },
-                            quality: { label: '素养', color: '#7c3aed' },
-                          } as any
-                        )[ap.category] || { label: ap.category, color: '#94a3b8' }
+                        const cat = {
+                          label: ap.attributes?.[0] || '能力点',
+                          color: '#2563eb',
+                        }
                         return (
                           <div
                             key={ap.id}

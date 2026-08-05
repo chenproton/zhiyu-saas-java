@@ -71,7 +71,6 @@ export interface PositionCertificate {
 export interface Ability {
   id: string
   name: string
-  category: string
   code?: string
   description: string
   attributes: string[]
@@ -102,7 +101,6 @@ export interface PositionAbilityBinding {
   publicAbilityId?: string // 公共池能力ID（source=public时）
   abilityPointId?: string // 后端能力点ID（source=custom时由保存创建）
   name: string // 能力名称
-  category: string // 能力分类
   level: CompetencyLevel
   rubricDescription: string // 量规表现描述
   description?: string // 能力描述

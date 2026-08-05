@@ -21,7 +21,6 @@ export interface AbilityPointItem {
   name: string
   code?: string
   description?: string
-  category?: string
 }
 
 interface AbilityPointSelectorProps {

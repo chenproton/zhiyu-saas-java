@@ -139,14 +139,14 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(category::text,'') FROM ability_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(array_to_string(attributes, ','), '') FROM ability_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return
 	}
 	for rows.Next() {
-		var n, c string
-		rows.Scan(&n, &c)
-		abilityPoints = append(abilityPoints, [2]string{n, c})
+		var n, a string
+		rows.Scan(&n, &a)
+		abilityPoints = append(abilityPoints, [2]string{n, a})
 	}
 	rows.Close()
 
@@ -251,7 +251,7 @@ func (h *TemplateHandler) generatePositionTemplate(ctx context.Context, tenantID
 		func() [][]string {
 			var data [][]string
 			for _, v := range abilityPoints {
-				cat := catToChinese(v[1])
+				cat := v[1]
 				data = append(data, []string{v[0], cat})
 			}
 			return data
@@ -355,7 +355,7 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 		func() [][]string {
 			var data [][]string
 			for _, v := range abilityPoints {
-				cat := catToChinese(v[1])
+				cat := v[1]
 				data = append(data, []string{v[0], cat})
 			}
 			return data
@@ -585,7 +585,7 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 		func() [][]string {
 			var data [][]string
 			for _, v := range abilityPoints {
-				cat := catToChinese(v[1])
+				cat := v[1]
 				data = append(data, []string{v[0], cat})
 			}
 			return data
@@ -1260,22 +1260,6 @@ func (h *TemplateHandler) queryOrgPaths(ctx context.Context, tenantID string) []
 		paths = append(paths, []string{buildPath(n.id)})
 	}
 	return paths
-}
-
-func catToChinese(c string) string {
-	switch c {
-	case "knowledge", "technical":
-		return "知识"
-	case "skill":
-		return "技能"
-	case "quality":
-		return "素质"
-	default:
-		if c == "" {
-			return "技能"
-		}
-		return c
-	}
 }
 
 // ===== Alliance Template Handlers =====

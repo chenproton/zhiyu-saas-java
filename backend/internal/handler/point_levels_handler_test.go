@@ -34,8 +34,8 @@ func TestPutPointLevels(t *testing.T) {
 		VALUES ($1, 'LVL-TEST', '分档测试岗位', 'job', '{}', 'v1', 'published', $2, $3)
 	`, positionID, testhelper.TestOperatorID, testhelper.TestTenantID)
 	env.DB.Exec(ctx, `
-		INSERT INTO ability_points (id, tenant_id, name, category, code)
-		VALUES ($1, $2, '测试能力点', 'core', 'LVL-AP')
+		INSERT INTO ability_points (id, tenant_id, name, code)
+		VALUES ($1, $2, '测试能力点', 'LVL-AP')
 	`, abilityPointID, testhelper.TestTenantID)
 	env.DB.Exec(ctx, `
 		INSERT INTO position_responsibilities (id, career_position_id, name, tenant_id)

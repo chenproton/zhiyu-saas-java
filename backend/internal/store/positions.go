@@ -290,7 +290,6 @@ type FullPositionAbilityBindingItem struct {
 	ResponsibilityID  string
 	Source            string
 	Name              string
-	Category          string
 	Description       *string
 	PublicAbilityID   string
 	AbilityPointID    string
@@ -419,7 +418,7 @@ func (s *PositionStore) SaveFull(ctx context.Context, tx Queryer, tenantID, posi
 }
 
 // PrepareAbilityPoint 查找或创建能力点，返回 ID。
-func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, tenantID, name string, description *string, category string, attributes []string) (string, error) {
+func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, tenantID, name string, description *string, attributes []string) (string, error) {
 	var existingID string
 	err := s.q.QueryRow(ctx, `
 		SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
@@ -433,10 +432,10 @@ func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, tenantID, name 
 		code = GenerateEntityCode("NL")
 	}
 	if _, err := s.q.Exec(ctx, `
-		INSERT INTO ability_points (id, tenant_id, name, code, description, category, attributes, is_public)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO ability_points (id, tenant_id, name, code, description, attributes, is_public)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (tenant_id, name) DO NOTHING
-	`, newID, tenantID, name, code, description, category, attributes, true); err != nil {
+	`, newID, tenantID, name, code, description, attributes, true); err != nil {
 		return "", err
 	}
 	_ = s.q.QueryRow(ctx, `

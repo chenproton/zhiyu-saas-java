@@ -24,8 +24,8 @@ func TestAbilityPoint_AutoCode(t *testing.T) {
 
 	t.Run("CreateGeneratesNLCode", func(t *testing.T) {
 		w := env.Do("POST", "/api/v1/job/abilities", map[string]interface{}{
-			"name":     "Auto Code Ability Point",
-			"category": "skill",
+			"name": "Auto Code Ability Point",
+
 			"isPublic": true,
 		})
 		if w.Code != http.StatusCreated {
@@ -70,7 +70,6 @@ func TestAbilityPoint_AutoCode(t *testing.T) {
 					"responsibilityId": "",
 					"source":           "custom",
 					"name":             "SaveFull Custom Ability",
-					"category":         "skill",
 					"level":            "A",
 					"attributes":       []string{"知识"},
 				},

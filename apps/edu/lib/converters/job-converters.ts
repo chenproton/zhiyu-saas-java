@@ -90,7 +90,6 @@ export function convertApiAbilityToLocal(a: AbilityPoint): Ability {
   return {
     id: a.id,
     name: a.name,
-    category: a.category,
     code: a.code,
     description: a.description ?? '',
     attributes: a.attributes || [],
@@ -153,7 +152,6 @@ export function convertApiAbilityBindingToLocal(
     publicAbilityId: b.source === 'public' ? b.abilityPointId : undefined,
     abilityPointId: b.abilityPointId,
     name: '', // filled by caller from ability point map if needed
-    category: '',
     level: b.requiredLevel as PositionAbilityBinding['level'],
     rubricDescription: b.rubricDescription ?? '',
     description: b.rubricDescription ?? '',

@@ -59,7 +59,6 @@ export const positionApi = {
         publicAbilityId?: string
         abilityPointId?: string
         name: string
-        category: string
         level: string
         rubricDescription?: string
         description?: string

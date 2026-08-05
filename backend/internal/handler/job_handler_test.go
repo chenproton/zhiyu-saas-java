@@ -254,7 +254,7 @@ func TestPosition_SaveFull(t *testing.T) {
 				{"id": "cert-1", "name": "Certificate 1", "url": "https://example.com"},
 			},
 			"abilityBindings": []map[string]interface{}{
-				{"id": "bind-1", "responsibilityId": "resp-1", "source": "custom", "name": "Custom Ability", "category": "专业技能", "level": "master", "rubricDescription": "rubric", "attributes": []string{"技能"}, "domain": "业务洞察"},
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "custom", "name": "Custom Ability", "level": "master", "rubricDescription": "rubric", "attributes": []string{"技能"}, "domain": "业务洞察"},
 			},
 			"abilityDomains": []map[string]interface{}{
 				{"id": "domain-1", "name": "Domain 1", "bindingIds": []string{"bind-1"}},
@@ -326,9 +326,9 @@ func TestPosition_SaveFull(t *testing.T) {
 			},
 			"abilityBindings": []map[string]interface{}{
 				// Existing binding from the previous SaveFull call.
-				{"id": "bind-1", "responsibilityId": "resp-1", "source": "custom", "name": "Custom Ability", "category": "专业技能", "level": "master", "rubricDescription": "rubric", "attributes": []string{"技能"}, "domain": "业务洞察"},
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "custom", "name": "Custom Ability", "level": "master", "rubricDescription": "rubric", "attributes": []string{"技能"}, "domain": "业务洞察"},
 				// New binding referencing the same ability name under a different responsibility.
-				{"id": "bind-2", "responsibilityId": "resp-2", "source": "custom", "name": "Custom Ability", "category": "专业技能", "level": "understand", "rubricDescription": "", "attributes": []string{"技能"}, "domain": ""},
+				{"id": "bind-2", "responsibilityId": "resp-2", "source": "custom", "name": "Custom Ability", "level": "understand", "rubricDescription": "", "attributes": []string{"技能"}, "domain": ""},
 			},
 			"abilityDomains": []map[string]interface{}{
 				{"id": "domain-1", "name": "Domain 1", "bindingIds": []string{"bind-1", "bind-2"}},
@@ -394,8 +394,8 @@ func TestPosition_SaveFull_PublicBinding(t *testing.T) {
 
 	t.Run("CreatePublicAbility", func(t *testing.T) {
 		w := env.Do("POST", "/api/v1/job/abilities", map[string]interface{}{
-			"name":     "Pool Ability Point",
-			"category": "skill",
+			"name": "Pool Ability Point",
+
 			"isPublic": true,
 		})
 		if w.Code != http.StatusCreated {
@@ -435,7 +435,7 @@ func TestPosition_SaveFull_PublicBinding(t *testing.T) {
 			"certificates": []map[string]interface{}{},
 			"abilityBindings": []map[string]interface{}{
 				// 模拟前端从能力点库新添加的绑定：只带 publicAbilityId，不带 abilityPointId
-				{"id": "bind-1", "responsibilityId": "resp-1", "source": "public", "publicAbilityId": abilityPointID, "name": "Pool Ability Point", "category": "skill", "level": "understand", "rubricDescription": "", "description": ""},
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "public", "publicAbilityId": abilityPointID, "name": "Pool Ability Point", "level": "understand", "rubricDescription": "", "description": ""},
 			},
 			"abilityDomains": []map[string]interface{}{},
 		}
@@ -483,7 +483,7 @@ func TestPosition_SaveFull_PublicBinding(t *testing.T) {
 			"certificates": []map[string]interface{}{},
 			"abilityBindings": []map[string]interface{}{
 				// 模拟从后端加载后再保存：只回传 abilityPointId
-				{"id": "bind-1", "responsibilityId": "resp-1", "source": "public", "abilityPointId": abilityPointID, "name": "Pool Ability Point", "category": "skill", "level": "understand", "rubricDescription": "", "description": ""},
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "public", "abilityPointId": abilityPointID, "name": "Pool Ability Point", "level": "understand", "rubricDescription": "", "description": ""},
 			},
 			"abilityDomains": []map[string]interface{}{},
 		}
@@ -555,8 +555,8 @@ func TestAbility_CRUD(t *testing.T) {
 
 	t.Run("Create", func(t *testing.T) {
 		body := map[string]interface{}{
-			"name":     "Test Ability",
-			"category": "skill",
+			"name": "Test Ability",
+
 			"isPublic": true,
 		}
 		w := env.Do("POST", "/api/v1/job/abilities", body)
@@ -570,9 +570,7 @@ func TestAbility_CRUD(t *testing.T) {
 		if a.Name != "Test Ability" {
 			t.Errorf("name = %q, want %q", a.Name, "Test Ability")
 		}
-		if string(a.Category) != "skill" {
-			t.Errorf("category = %q, want skill", a.Category)
-		}
+
 		if !a.IsPublic {
 			t.Errorf("isPublic = %v, want true", a.IsPublic)
 		}
@@ -606,7 +604,7 @@ func TestAbility_CRUD(t *testing.T) {
 	})
 
 	t.Run("List_WithFilter", func(t *testing.T) {
-		w := env.Do("GET", "/api/v1/job/abilities?category=skill&search=Test", nil)
+		w := env.Do("GET", "/api/v1/job/abilities?search=Test", nil)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 		}
@@ -636,8 +634,8 @@ func TestAbility_CRUD(t *testing.T) {
 
 	t.Run("Update", func(t *testing.T) {
 		body := map[string]interface{}{
-			"name":     "Updated Ability",
-			"category": "knowledge",
+			"name": "Updated Ability",
+
 			"isPublic": false,
 		}
 		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/abilities/%s", abilityID), body)
@@ -651,9 +649,7 @@ func TestAbility_CRUD(t *testing.T) {
 		if a.Name != "Updated Ability" {
 			t.Errorf("name = %q, want %q", a.Name, "Updated Ability")
 		}
-		if string(a.Category) != "knowledge" {
-			t.Errorf("category = %q, want knowledge", a.Category)
-		}
+
 	})
 
 	t.Run("Delete", func(t *testing.T) {
@@ -686,8 +682,8 @@ func TestAbilityDomain_CRUD(t *testing.T) {
 	defer env.DB.Exec(context.Background(), "DELETE FROM career_positions WHERE id = $1", positionID)
 
 	abilityBody := map[string]interface{}{
-		"name":     "Domain Ability",
-		"category": "skill",
+		"name": "Domain Ability",
+
 		"isPublic": true,
 	}
 	w = env.Do("POST", "/api/v1/job/abilities", abilityBody)

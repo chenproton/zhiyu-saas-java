@@ -14,13 +14,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FormFieldRow } from '@/components/shared/form-field-row'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { abilityApi } from '@/lib/api'
@@ -29,35 +22,21 @@ import { useToast } from '@zhiyu/ui'
 import { useLibraryCrud } from '../_components/use-library-crud'
 import { LibraryPageShell } from '../_components/library-page-shell'
 
-const CATEGORY_LABELS: Record<string, string> = {
-  knowledge: '知识',
-  skill: '技能',
-  quality: '素质',
-}
-const CATEGORY_COLORS: Record<string, string> = {
-  knowledge: '#7c3aed',
-  skill: '#f97316',
-  quality: '#06b6d4',
-}
-
 export default function AbilityPointsPage() {
   const { toast } = useToast()
-  const [categoryFilter, setCategoryFilter] = useState('')
   const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
     abilityApi.list,
     {
-      getParams: () => (categoryFilter ? { category: categoryFilter } : {}),
       autoLoad: false,
     },
   )
   useEffect(() => {
     void loadItems()
-  }, [loadItems, categoryFilter])
+  }, [loadItems])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<AbilityPoint | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('knowledge')
   const [isPublic, setIsPublic] = useState(false)
   const [attributes, setAttributes] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -66,7 +45,6 @@ export default function AbilityPointsPage() {
     setEditingItem(null)
     setName('')
     setDescription('')
-    setCategory('knowledge')
     setIsPublic(false)
     setAttributes('')
     setIsDialogOpen(true)
@@ -75,7 +53,6 @@ export default function AbilityPointsPage() {
     setEditingItem(item)
     setName(item.name)
     setDescription(item.description || '')
-    setCategory(item.category)
     setIsPublic(item.isPublic)
     setAttributes(item.attributes?.join(', ') || '')
     setIsDialogOpen(true)
@@ -108,7 +85,6 @@ export default function AbilityPointsPage() {
         await abilityApi.update(editingItem.id, {
           name: name.trim(),
           description: description.trim() || undefined,
-          category,
           isPublic,
           attributes: attrList,
         } as any)
@@ -117,7 +93,6 @@ export default function AbilityPointsPage() {
         await abilityApi.create({
           name: name.trim(),
           description: description.trim() || undefined,
-          category,
           isPublic,
           attributes: attrList,
         } as any)
@@ -160,9 +135,6 @@ export default function AbilityPointsPage() {
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             编码
           </TableHead>
-          <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            类别
-          </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
             描述
           </TableHead>
@@ -181,26 +153,11 @@ export default function AbilityPointsPage() {
         <TableRow key={item.id} className="hover:bg-slate-50/50">
           <TableCell className="p-3">
             <div className="flex items-center gap-2">
-              <Lightbulb
-                className="size-4"
-                style={{ color: CATEGORY_COLORS[item.category] || '#6366f1' }}
-              />
+              <Lightbulb className="size-4 text-purple-500" />
               <span className="text-sm font-medium text-slate-700">{item.name}</span>
             </div>
           </TableCell>
           <TableCell className="p-3 text-sm text-slate-400">{item.code || '-'}</TableCell>
-          <TableCell className="p-3">
-            <Badge
-              variant="outline"
-              className="text-xs"
-              style={{
-                color: CATEGORY_COLORS[item.category],
-                borderColor: CATEGORY_COLORS[item.category],
-              }}
-            >
-              {CATEGORY_LABELS[item.category] || item.category}
-            </Badge>
-          </TableCell>
           <TableCell className="p-3 text-sm text-slate-400 hidden md:table-cell max-w-[200px] truncate">
             {item.description || '-'}
           </TableCell>
@@ -245,20 +202,6 @@ export default function AbilityPointsPage() {
                   placeholder="能力点名称"
                 />
               </FormFieldRow>
-              <FormFieldRow label="类别" required>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormFieldRow>
               <FormFieldRow label="描述">
                 <Input
                   value={description}
@@ -289,29 +232,12 @@ export default function AbilityPointsPage() {
       }
     >
       <div className="flex gap-3">
-        <Select
-          value={categoryFilter}
-          onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}
-        >
-          <SelectTrigger className="w-28">
-            <SelectValue placeholder="类别" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部</SelectItem>
-            {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>
-                {v}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {(searchQuery || categoryFilter) && (
+        {searchQuery && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
               setSearchQuery('')
-              setCategoryFilter('')
             }}
           >
             清除

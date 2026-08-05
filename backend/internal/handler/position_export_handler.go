@@ -163,7 +163,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		}
 
 		bindRows, err := h.DB.Query(ctx, `
-			SELECT pr.name, ap.name, ap.category, pab.attributes, pab.domain, pab.required_level, COALESCE(pab.rubric_description,'')
+			SELECT pr.name, ap.name, ap.attributes, pab.attributes, pab.domain, pab.required_level, COALESCE(pab.rubric_description,'')
 			FROM position_ability_bindings pab
 			JOIN position_responsibilities pr ON pr.id = pab.responsibility_id
 			JOIN ability_points ap ON ap.id = pab.ability_point_id
@@ -175,16 +175,16 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			continue
 		}
 		for bindRows.Next() {
-			var respName, abilityName, category, domain, level, rubricDesc string
-			var attributes []string
-			if err := bindRows.Scan(&respName, &abilityName, &category, &attributes, &domain, &level, &rubricDesc); err != nil {
+			var respName, abilityName, domain, level, rubricDesc string
+			var attributes, abilityAttrs []string
+			if err := bindRows.Scan(&respName, &abilityName, &abilityAttrs, &attributes, &domain, &level, &rubricDesc); err != nil {
 				slog.Warn("导出岗位能力绑定行扫描失败", "positionId", pid, "error", err)
 				continue
 			}
 
 			attrStr := strings.Join(attributes, ",")
 			if attrStr == "" {
-				attrStr = mapAbilityCategoryToChinese(category)
+				attrStr = strings.Join(abilityAttrs, ",")
 			}
 
 			setCell("工作职责与能力点", fmt.Sprintf("A%d", bindRow), positionName)
@@ -211,19 +211,6 @@ func mapPositionTypeToChinese(t string) string {
 		return "教学岗位"
 	default:
 		return "其他"
-	}
-}
-
-func mapAbilityCategoryToChinese(c string) string {
-	switch c {
-	case "knowledge":
-		return "知识"
-	case "skill":
-		return "技能"
-	case "quality":
-		return "素质"
-	default:
-		return c
 	}
 }
 

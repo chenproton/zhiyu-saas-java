@@ -229,7 +229,6 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		if len(attributes) == 0 {
 			attributes = []string{}
 		}
-		abilityCategory := inferAbilityCategory(attributes)
 		domainName := col(row, 4)
 		requiredLevel := mapRequiredLevel(col(row, 5))
 		rubricDescription := nullableStr(col(row, 6))
@@ -275,7 +274,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		abilityKey := tenantID + "|" + abilityName
 		abilityID, ok := seenAbility[abilityKey]
 		if !ok {
-			abilityID = h.findOrCreateAbilityPoint(ctx, tenantID, abilityName, abilityCategory, attributes)
+			abilityID = h.findOrCreateAbilityPoint(ctx, tenantID, abilityName, attributes)
 			seenAbility[abilityKey] = abilityID
 		}
 
@@ -347,7 +346,7 @@ func (h *PositionImportHandler) findOrCreateCert(ctx context.Context, tenantID, 
 	return id
 }
 
-func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, tenantID, name, category string, attributes []string) string {
+func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, tenantID, name string, attributes []string) string {
 	var id string
 	err := h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 	if err == nil {
@@ -362,7 +361,7 @@ func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, te
 	if codeErr != nil {
 		code = store.GenerateEntityCode("NL")
 	}
-	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, category, is_public, attributes, code) VALUES ($1,$2,$3,$4,true,$5,$6) ON CONFLICT DO NOTHING`, id, tenantID, name, category, attributes, code)
+	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, is_public, attributes, code) VALUES ($1,$2,$3,true,$4,$5) ON CONFLICT DO NOTHING`, id, tenantID, name, attributes, code)
 	var existing string
 	h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 	if existing != "" {
@@ -427,20 +426,6 @@ func mapPositionType(t string) string {
 		}
 		return "other"
 	}
-}
-
-func inferAbilityCategory(attrs []string) string {
-	for _, a := range attrs {
-		switch strings.TrimSpace(a) {
-		case "技能":
-			return "skill"
-		case "知识":
-			return "knowledge"
-		case "素质", "素养":
-			return "quality"
-		}
-	}
-	return "skill"
 }
 
 func mapRequiredLevel(l string) string {

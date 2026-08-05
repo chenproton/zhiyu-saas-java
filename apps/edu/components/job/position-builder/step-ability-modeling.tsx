@@ -84,7 +84,6 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
   const [isInitialized, setIsInitialized] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newAbilityName, setNewAbilityName] = useState('')
-  const [newAbilityCategory] = useState('专业技能')
   const [aiNotice] = useState<string | null>(null)
   const [editingRespId, setEditingRespId] = useState<string | null>(null)
   const [editRespName, setEditRespName] = useState('')
@@ -153,8 +152,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
     return abilities.filter((a) => {
       if (
         abilityPoolSearch.trim() &&
-        !a.name.toLowerCase().includes(abilityPoolSearch.toLowerCase()) &&
-        !a.category.toLowerCase().includes(abilityPoolSearch.toLowerCase())
+        !a.name.toLowerCase().includes(abilityPoolSearch.toLowerCase())
       )
         return false
       if (abilityPoolFilterAttr && !(a.attributes || []).includes(abilityPoolFilterAttr))
@@ -202,7 +200,6 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       source: 'public',
       publicAbilityId: ability.id,
       name: ability.name,
-      category: ability.category,
       level: 'understand',
       rubricDescription: '',
       description: '',
@@ -234,7 +231,6 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       responsibilityId: selectedRespId,
       source: 'custom',
       name: trimmed,
-      category: newAbilityCategory,
       level: 'understand',
       rubricDescription: '',
       description: '',
@@ -345,7 +341,6 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
     try {
       await abilityApi.update(abilityId, {
         name: trimmed,
-        category: (current?.category || '专业技能') as any,
         attributes: editAbilityAttributes,
       })
       setAbilities((prev) =>

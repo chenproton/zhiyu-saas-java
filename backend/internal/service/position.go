@@ -92,7 +92,7 @@ func (s *PositionService) SaveFull(ctx context.Context, tenantID, positionID str
 		if b.Source != "custom" {
 			continue
 		}
-		pointID, err := s.st.Positions().PrepareAbilityPoint(ctx, tenantID, b.Name, b.Description, b.Category, b.Attributes)
+		pointID, err := s.st.Positions().PrepareAbilityPoint(ctx, tenantID, b.Name, b.Description, b.Attributes)
 		if err != nil {
 			continue
 		}

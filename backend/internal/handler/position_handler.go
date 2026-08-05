@@ -322,7 +322,6 @@ type FullPositionAbilityBinding struct {
 	PublicAbilityID   *string  `json:"publicAbilityId"`
 	AbilityPointID    *string  `json:"abilityPointId"`
 	Name              string   `json:"name"`
-	Category          string   `json:"category"`
 	Level             string   `json:"level"`
 	RubricDescription *string  `json:"rubricDescription"`
 	Description       *string  `json:"description"`
@@ -441,7 +440,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		}
 		abilityBindings = append(abilityBindings, store.FullPositionAbilityBindingItem{
 			ID: b.ID, ResponsibilityID: b.ResponsibilityID, Source: b.Source,
-			Name: b.Name, Category: b.Category, Description: b.Description,
+			Name: b.Name, Description: b.Description,
 			PublicAbilityID: publicAbilityID, AbilityPointID: abilityPointID,
 			Domain: domainField, RequiredLevel: b.Level,
 			RubricDescription: rubricDesc, Attributes: coalesceStringSlice(b.Attributes),

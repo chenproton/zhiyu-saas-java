@@ -314,13 +314,7 @@ export default function MyResourcesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="p-3 text-sm text-slate-400">
-                      <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                        {item.category === 'knowledge'
-                          ? '知识'
-                          : item.category === 'skill'
-                            ? '技能'
-                            : '素养'}
-                      </span>
+                      {item.attributes?.join('、') || '-'}
                     </TableCell>
                     <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">
                       {item.description || '-'}

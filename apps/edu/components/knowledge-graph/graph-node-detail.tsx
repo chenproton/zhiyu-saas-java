@@ -222,7 +222,6 @@ export function GraphNodeDetail({
       <div className="space-y-4">
         <div className="divide-y">
           <Field label="能力点编码" value={unit?.code} />
-          <Field label="能力类别" value={unit?.category} />
         </div>
         {unit?.description && (
           <Section title="能力说明">

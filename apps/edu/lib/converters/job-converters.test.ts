@@ -139,7 +139,6 @@ describe('convertApiAbilityBindingToLocal', () => {
     const r = convertApiAbilityBindingToLocal(b)
     expect(r.publicAbilityId).toBe('ap1')
     expect(r.name).toBe('')
-    expect(r.category).toBe('')
     expect(r.level).toBe('3')
     expect(r.description).toBe('')
   })

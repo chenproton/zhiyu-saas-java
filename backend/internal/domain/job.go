@@ -11,14 +11,6 @@ const (
 	PositionTypeTeaching   PositionType = "teaching"
 )
 
-type AbilityCategory string
-
-const (
-	AbilityCategoryKnowledge AbilityCategory = "knowledge"
-	AbilityCategorySkill     AbilityCategory = "skill"
-	AbilityCategoryQuality   AbilityCategory = "quality"
-)
-
 type AbilityPointSource string
 
 const (
@@ -87,15 +79,14 @@ type PositionResponsibility struct {
 }
 
 type AbilityPoint struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Description *string         `json:"description,omitempty"`
-	Category    AbilityCategory `json:"category"`
-	Code        *string         `json:"code,omitempty"`
-	Attributes  []string        `json:"attributes"`
-	IsPublic    bool            `json:"isPublic"`
-	CreatorID   *string         `json:"creatorId,omitempty"`
-	CreatedAt   time.Time       `json:"createdAt"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description,omitempty"`
+	Code        *string   `json:"code,omitempty"`
+	Attributes  []string  `json:"attributes"`
+	IsPublic    bool      `json:"isPublic"`
+	CreatorID   *string   `json:"creatorId,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 type PositionAbilityBinding struct {

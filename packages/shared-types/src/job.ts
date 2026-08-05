@@ -60,7 +60,6 @@ export interface AbilityPoint {
   name: string
   code?: string
   description?: string
-  category: 'knowledge' | 'skill' | 'quality'
   attributes: string[]
   isPublic: boolean
   creatorId?: string
