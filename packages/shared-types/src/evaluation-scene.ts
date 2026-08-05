@@ -81,6 +81,10 @@ export interface JobAbilityResult {
   achievedAbilityPoints: number
   achievementRate: number
   grade?: string
+  /** 岗位胜任度（%）：能力点胜任度加权平均，负值归零 */
+  positionCompetency?: number
+  /** 能力认知得分（0-100）：能力点得分加权平均 */
+  abilityCognitionScore?: number
   evaluationTime: string | Date
   abilityPointDetails?: JobAbilityPointDetail[]
   createdAt?: string
