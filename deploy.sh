@@ -429,8 +429,19 @@ if ! command -v node >/dev/null 2>&1; then
     tar -C /usr/local --strip-components=1 -xJf "$NODE_TARBALL" && rm -f "$NODE_TARBALL"
   fi
 fi
-if ! command -v pnpm >/dev/null 2>&1; then
-  local_pnpm_tgz=""
+# pnpm 版本与仓库 packageManager（pnpm-lock.yaml lockfileVersion 9.0）对齐，
+# 避免新版 pnpm 报 ERR_PNPM_LOCKFILE_BREAKING_CHANGE 并降级 --no-frozen-lockfile 重写 lockfile
+PNPM_VERSION="${PNPM_VERSION:-9.15.9}"
+ensure_pnpm() {
+  local current
+  current=$(command -v pnpm >/dev/null 2>&1 && pnpm --version 2>/dev/null || true)
+  if [[ "$current" == "$PNPM_VERSION" ]]; then
+    return 0
+  fi
+  if [[ -n "$current" ]]; then
+    warn "pnpm 版本不匹配（当前 ${current}，需要 ${PNPM_VERSION}），安装指定版本..."
+  fi
+  local local_pnpm_tgz=""
   for f in "$OFFLINE_DIR"/pnpm-*.tgz; do
     [[ -f "$f" ]] && { local_pnpm_tgz="$f"; break; }
   done
@@ -438,9 +449,12 @@ if ! command -v pnpm >/dev/null 2>&1; then
     log "  使用本地 pnpm 安装包: $local_pnpm_tgz"
     npm install -g "$local_pnpm_tgz" 2>/dev/null || die "本地 pnpm 安装失败"
   else
-    npm install -g pnpm 2>/dev/null || corepack enable pnpm 2>/dev/null || true
+    npm install -g "pnpm@${PNPM_VERSION}" 2>/dev/null || corepack enable pnpm 2>/dev/null || true
   fi
-fi
+  current=$(pnpm --version 2>/dev/null || true)
+  [[ "$current" == "$PNPM_VERSION" ]] || warn "pnpm 版本校验未通过（当前 ${current}），请人工确认 pnpm --version"
+}
+ensure_pnpm
 
 # PostgreSQL client
 if ! command -v psql >/dev/null 2>&1; then
@@ -491,6 +505,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo ""
       echo "# 部署配置（由 deploy.sh 首次生成）"
       echo "GO_VERSION=${GO_VERSION:-1.23.7}"
+      echo "PNPM_VERSION=${PNPM_VERSION:-9.15.9}"
       echo "NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}"
       echo "NGINX_DEFAULT_SERVER=${NGINX_DEFAULT_SERVER:-default_server}"
       echo "NGINX_PORT=${NGINX_PORT:-80}"
