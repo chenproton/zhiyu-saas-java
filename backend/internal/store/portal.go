@@ -372,6 +372,52 @@ type StudentCourseRow struct {
 	Teacher      string
 }
 
+// ScenePositionRow 场景关联岗位行。
+type ScenePositionRow struct {
+	PositionID string
+	Name       string
+}
+
+// ListScenePositions 已发布场景关联的岗位（去重，与"我的实践场景"同一批场景口径）。
+func (s *PortalStore) ListScenePositions(ctx context.Context, tenantID string) ([]ScenePositionRow, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT DISTINCT s.career_position_id, COALESCE(cp.name, '')
+		FROM scenarios s
+		JOIN users u ON u.id = s.creator_id
+		LEFT JOIN career_positions cp ON cp.id = s.career_position_id
+		WHERE s.status = 'published' AND s.career_position_id IS NOT NULL AND u.tenant_id = $1
+		ORDER BY COALESCE(cp.name, '')
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ScenePositionRow
+	for rows.Next() {
+		var r ScenePositionRow
+		if err := rows.Scan(&r.PositionID, &r.Name); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// CountStudentScenes 学生有已评评分记录的去重场景数。
+func (s *PortalStore) CountStudentScenes(ctx context.Context, tenantID, userID string) (int, error) {
+	var n int
+	err := s.q.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT t.scenario_id)
+		FROM scene_evaluation_results r
+		JOIN scenario_tasks t ON t.id = r.task_id
+		WHERE r.tenant_id = $1 AND r.evaluatee_id = $2 AND r.status = 'evaluated' AND r.total_score IS NOT NULL
+	`, tenantID, userID).Scan(&n)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 // ListStudentCourses 学生课程。
 func (s *PortalStore) ListStudentCourses(ctx context.Context, tenantID *string) ([]StudentCourseRow, error) {
 	query := `

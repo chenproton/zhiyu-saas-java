@@ -26,6 +26,21 @@ func (s *EvaluationService) ListStudentCourseScores(ctx context.Context, tenantI
 	return s.st.JobAbilityResults().ListStudentCourseScores(ctx, tenantID, userID)
 }
 
+// CountStudentScenes 学生有已评评分记录的去重场景数。
+func (s *EvaluationService) CountStudentScenes(ctx context.Context, tenantID, userID string) (int, error) {
+	return s.st.Portal().CountStudentScenes(ctx, tenantID, userID)
+}
+
+// ListScenePositions 已发布场景关联的岗位（去重）。
+func (s *EvaluationService) ListScenePositions(ctx context.Context, tenantID string) ([]store.ScenePositionRow, error) {
+	return s.st.Portal().ListScenePositions(ctx, tenantID)
+}
+
+// ListStudentCourses 租户已发布课程（与"我的学习"tab 同源）。
+func (s *EvaluationService) ListStudentCourses(ctx context.Context, tenantID string) ([]store.StudentCourseRow, error) {
+	return s.st.Portal().ListStudentCourses(ctx, &tenantID)
+}
+
 // GetAggregateLog 查询汇聚日志（租户限定）。
 func (s *EvaluationService) GetAggregateLog(ctx context.Context, logID, tenantID string) (*store.JobAbilityAggregateLog, error) {
 	return s.st.JobAbilityResults().GetAggregateLogByID(ctx, logID, tenantID)

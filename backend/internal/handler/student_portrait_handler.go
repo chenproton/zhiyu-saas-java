@@ -26,6 +26,98 @@ type GeneratePortraitRequest struct {
 	UserID           string `json:"userId"`
 	CareerPositionID string `json:"careerPositionId"`
 }
+
+// PortraitCourseItem 画像课程成绩项（无成绩课程 score/rank 为 null）。
+type PortraitCourseItem struct {
+	CourseID   string   `json:"courseId"`
+	CourseName string   `json:"courseName"`
+	Score      *float64 `json:"score"`
+	Rank       *int     `json:"rank"`
+	Total      *int     `json:"total"`
+}
+
+// PortraitPositionItem 画像推荐岗位项（来自已发布场景关联岗位）。
+type PortraitPositionItem struct {
+	PositionID string `json:"positionId"`
+	Name       string `json:"positionName"`
+}
+
+// StudentDashboardResponse 画像页辅助数据：实践场景数/推荐岗位/课程成绩表。
+type StudentDashboardResponse struct {
+	SceneCount int                    `json:"sceneCount"`
+	Positions  []PortraitPositionItem `json:"positions"`
+	Courses    []PortraitCourseItem   `json:"courses"`
+}
+
+// StudentDashboard 画像页聚合数据：学生有评分场景数、场景关联岗位（推荐就业方向）、
+// 租户课程+学生成绩合并（课程成绩表）。
+func (h *StudentPortraitHandler) StudentDashboard(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	userID := r.URL.Query().Get("userId")
+	// 学生仅可查看本人数据
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		userID = claims.UserID
+	}
+	if userID == "" {
+		respondError(w, http.StatusBadRequest, "缺少用户ID")
+		return
+	}
+
+	resp := StudentDashboardResponse{Positions: []PortraitPositionItem{}, Courses: []PortraitCourseItem{}}
+
+	sceneCount, err := h.Service.CountStudentScenes(r.Context(), tenantID, userID)
+	if err != nil {
+		respondServerError(w, r, err, "查询实践场景数失败")
+		return
+	}
+	resp.SceneCount = sceneCount
+
+	positions, err := h.Service.ListScenePositions(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询推荐岗位失败")
+		return
+	}
+	for _, p := range positions {
+		resp.Positions = append(resp.Positions, PortraitPositionItem{PositionID: p.PositionID, Name: p.Name})
+	}
+
+	courses, err := h.Service.ListStudentCourses(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询课程失败")
+		return
+	}
+	scores, err := h.Service.ListStudentCourseScores(r.Context(), tenantID, userID)
+	if err != nil {
+		respondServerError(w, r, err, "查询课程成绩失败")
+		return
+	}
+	scoreMap := make(map[string]store.CourseScoreRow, len(scores))
+	for _, sc := range scores {
+		scoreMap[sc.CourseID] = sc
+	}
+	for _, c := range courses {
+		item := PortraitCourseItem{CourseID: c.ID, CourseName: c.Name}
+		if sc, ok := scoreMap[c.ID]; ok {
+			s := sc.Score
+			r2, t := sc.Rank, sc.Total
+			item.Score = &s
+			item.Rank = &r2
+			item.Total = &t
+		}
+		resp.Courses = append(resp.Courses, item)
+	}
+
+	respondJSON(w, http.StatusOK, resp)
+}
+
 type CreateStudentArchiveRequest struct {
 	UserID       string  `json:"userId"`
 	MaterialType string  `json:"materialType"`

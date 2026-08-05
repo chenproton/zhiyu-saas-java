@@ -432,6 +432,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 			studentPortraitHandler := handler.NewStudentPortraitHandler(st2)
 			r.Get("/evaluation/portraits", studentPortraitHandler.List)
+			r.Get("/evaluation/portraits/student-dashboard", studentPortraitHandler.StudentDashboard)
 			r.Get("/evaluation/portraits/{id}", studentPortraitHandler.Get)
 			r.Post("/evaluation/portraits/generate", studentPortraitHandler.Generate)
 			r.Get("/evaluation/portraits/archives", studentPortraitHandler.ListArchives)

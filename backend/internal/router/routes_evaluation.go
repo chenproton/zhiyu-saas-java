@@ -82,6 +82,7 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Get("/evaluation/graduation/query", h.graduationHandler.QueryResults)
 
 	r.Post("/evaluation/portraits/generate", h.studentPortraitHandler.Generate)
+	r.Get("/evaluation/portraits/student-dashboard", h.studentPortraitHandler.StudentDashboard)
 	r.Get("/evaluation/portraits/archives", h.studentPortraitHandler.ListArchives)
 	r.Post("/evaluation/portraits/archives", h.studentPortraitHandler.CreateArchive)
 	r.Delete("/evaluation/portraits/archives/{id}", h.studentPortraitHandler.DeleteArchive)
