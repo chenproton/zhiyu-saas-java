@@ -21,7 +21,7 @@ type CourseScoreRow struct {
 	Total      int
 }
 
-// ListStudentCourseScores 查询学生在体系课中的成绩与排名。
+// ListStudentCourseScores 查询学生在体系课中的成绩与排名（仅班级已发布排课的课程）。
 // 课程成绩 = 该课程下全部节点已评分结果归一化得分（total_score/max_score*100）的简单平均；
 // 排名基于同口径在该课程全部学生中按分数降序。
 func (s *JobAbilityResultStore) ListStudentCourseScores(ctx context.Context, tenantID, userID string) ([]CourseScoreRow, error) {
@@ -39,7 +39,13 @@ func (s *JobAbilityResultStore) ListStudentCourseScores(ctx context.Context, ten
 			COUNT(*) OVER (PARTITION BY ca.course_id) AS total
 		FROM course_avg ca
 		LEFT JOIN courses c ON c.id = ca.course_id
+		JOIN users st ON st.id = $2
 		WHERE ca.evaluatee_id = $2
+			AND EXISTS (
+				SELECT 1 FROM schedule_entries se
+				WHERE se.course_id = ca.course_id AND se.status = 'published' AND se.type = 'traditional'
+					AND (se.class_node_id = st.org_node_id OR st.org_node_id = ANY(se.class_node_ids))
+			)
 		ORDER BY ca.score DESC
 	`, tenantID, userID)
 	if err != nil {

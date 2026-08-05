@@ -31,9 +31,9 @@ func (s *EvaluationService) CountStudentScenes(ctx context.Context, tenantID, us
 	return s.st.Portal().CountStudentScenes(ctx, tenantID, userID)
 }
 
-// ListScenePositions 已发布场景关联的岗位（去重）。
-func (s *EvaluationService) ListScenePositions(ctx context.Context, tenantID string) ([]store.ScenePositionRow, error) {
-	return s.st.Portal().ListScenePositions(ctx, tenantID)
+// ListScenePositions 学生班级已排课场景关联的岗位（去重）。
+func (s *EvaluationService) ListScenePositions(ctx context.Context, tenantID, userID string) ([]store.ScenePositionRow, error) {
+	return s.st.Portal().ListScenePositions(ctx, tenantID, userID)
 }
 
 // ListStudentCourses 学生班级已排课的已发布课程（与"我的学习"tab 同源）。

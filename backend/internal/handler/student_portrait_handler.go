@@ -80,7 +80,7 @@ func (h *StudentPortraitHandler) StudentDashboard(w http.ResponseWriter, r *http
 	}
 	resp.SceneCount = sceneCount
 
-	positions, err := h.Service.ListScenePositions(r.Context(), tenantID)
+	positions, err := h.Service.ListScenePositions(r.Context(), tenantID, userID)
 	if err != nil {
 		respondServerError(w, r, err, "查询推荐岗位失败")
 		return

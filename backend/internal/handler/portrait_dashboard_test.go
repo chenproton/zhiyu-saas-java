@@ -27,8 +27,11 @@ func TestStudentDashboard(t *testing.T) {
 	taskB := "11111111-2222-4333-8444-999999999992"
 	courseA := "11111111-2222-4333-8444-aaaaaaaaaaa1"
 	courseB := "11111111-2222-4333-8444-aaaaaaaaaaa2"
+	classNode := "11111111-2222-4333-8444-ccccccccccc1"
+	termID := "11111111-2222-4333-8444-ddddddddddd1"
 
 	cleanup := func() {
+		env.DB.Exec(ctx, "DELETE FROM schedule_entries WHERE class_node_id = $1", classNode)
 		for _, t := range []string{taskA, taskB} {
 			env.DB.Exec(ctx, "DELETE FROM scene_evaluation_results WHERE task_id = $1", t)
 			env.DB.Exec(ctx, "DELETE FROM scenario_tasks WHERE id = $1", t)
@@ -56,9 +59,9 @@ func TestStudentDashboard(t *testing.T) {
 		`, p, testhelper.TestOperatorID, testhelper.TestTenantID)
 	}
 	env.DB.Exec(ctx, `
-		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', 'dash-stu', 'dash-stu', 'x', '测试学生', 'active', '{}')
-	`, userID, testhelper.TestTenantID)
+		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, org_node_id)
+		VALUES ($1, $2, 'school', 'portal', 'dash-stu', 'dash-stu', 'x', '测试学生', 'active', '{}', $3)
+	`, userID, testhelper.TestTenantID, classNode)
 	env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
 		VALUES ($1, $2, 'teacher', 'portal', 'dash-creator', 'dash-creator', 'x', '创建者', 'active', '{}')
@@ -98,6 +101,16 @@ func TestStudentDashboard(t *testing.T) {
 		VALUES ($1, $2, 'evaluated', 88, 100, $3, 'course')
 	`, courseA, userID, testhelper.TestTenantID)
 
+	// 排课：课程A（traditional）+ 场景A（scene）排给学生班级并发布；课程B/场景B 不排
+	env.DB.Exec(ctx, `
+		INSERT INTO schedule_entries (tenant_id, term_id, course_name, type, class_node_id, course_id, day_of_week, periods, start_week, end_week, week_pattern, source, status)
+		VALUES ($1, $2, '课程A', 'traditional', $3, $4, 1, '[1]'::jsonb, 1, 16, 'all', 'manual', 'published')
+	`, testhelper.TestTenantID, termID, classNode, courseA)
+	env.DB.Exec(ctx, `
+		INSERT INTO schedule_entries (tenant_id, term_id, course_name, type, class_node_id, scenario_id, day_of_week, periods, start_week, end_week, week_pattern, source, status)
+		VALUES ($1, $2, '场景A', 'scene', $3, $4, 2, '[1]'::jsonb, 1, 16, 'all', 'manual', 'published')
+	`, testhelper.TestTenantID, termID, classNode, sceneA)
+
 	w := env.Do("GET", "/api/v1/evaluation/portraits/student-dashboard?userId="+userID, nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("student-dashboard: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
@@ -109,11 +122,11 @@ func TestStudentDashboard(t *testing.T) {
 	if resp.SceneCount != 1 {
 		t.Errorf("sceneCount = %d, want 1", resp.SceneCount)
 	}
-	if len(resp.Positions) != 2 {
-		t.Fatalf("positions len = %d, want 2", len(resp.Positions))
+	if len(resp.Positions) != 1 {
+		t.Fatalf("positions len = %d, want 1（仅排课场景A关联岗位）", len(resp.Positions))
 	}
-	if len(resp.Courses) != 2 {
-		t.Fatalf("courses len = %d, want 2", len(resp.Courses))
+	if len(resp.Courses) != 1 {
+		t.Fatalf("courses len = %d, want 1（仅排课课程A）", len(resp.Courses))
 	}
 	byCourse := map[string]handler.PortraitCourseItem{}
 	for _, c := range resp.Courses {
@@ -122,9 +135,5 @@ func TestStudentDashboard(t *testing.T) {
 	scored := byCourse[courseA]
 	if scored.Score == nil || *scored.Score != 88 {
 		t.Errorf("课程A应有成绩 88，实际 %v", scored.Score)
-	}
-	empty := byCourse[courseB]
-	if empty.Score != nil || empty.Rank != nil {
-		t.Errorf("课程B应无成绩（null），实际 %v/%v", empty.Score, empty.Rank)
 	}
 }

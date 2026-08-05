@@ -378,16 +378,22 @@ type ScenePositionRow struct {
 	Name       string
 }
 
-// ListScenePositions 已发布场景关联的岗位（去重，与"我的实践场景"同一批场景口径）。
-func (s *PortalStore) ListScenePositions(ctx context.Context, tenantID string) ([]ScenePositionRow, error) {
+// ListScenePositions 学生班级已排课场景关联的岗位（去重，与"我的实践场景"同一批排课场景口径）。
+func (s *PortalStore) ListScenePositions(ctx context.Context, tenantID, userID string) ([]ScenePositionRow, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT DISTINCT s.career_position_id, COALESCE(cp.name, '')
 		FROM scenarios s
 		JOIN users u ON u.id = s.creator_id
+		JOIN users st ON st.id = $2
 		LEFT JOIN career_positions cp ON cp.id = s.career_position_id
 		WHERE s.status = 'published' AND s.career_position_id IS NOT NULL AND u.tenant_id = $1
+			AND EXISTS (
+				SELECT 1 FROM schedule_entries se
+				WHERE se.scenario_id = s.id AND se.status = 'published' AND se.type = 'scene'
+					AND (se.class_node_id = st.org_node_id OR st.org_node_id = ANY(se.class_node_ids))
+			)
 		ORDER BY COALESCE(cp.name, '')
-	`, tenantID)
+	`, tenantID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -403,14 +409,20 @@ func (s *PortalStore) ListScenePositions(ctx context.Context, tenantID string) (
 	return items, rows.Err()
 }
 
-// CountStudentScenes 学生有已评评分记录的去重场景数。
+// CountStudentScenes 学生有已评评分记录且班级已排课（published）的去重场景数。
 func (s *PortalStore) CountStudentScenes(ctx context.Context, tenantID, userID string) (int, error) {
 	var n int
 	err := s.q.QueryRow(ctx, `
 		SELECT COUNT(DISTINCT t.scenario_id)
 		FROM scene_evaluation_results r
 		JOIN scenario_tasks t ON t.id = r.task_id
+		JOIN users st ON st.id = $2
 		WHERE r.tenant_id = $1 AND r.evaluatee_id = $2 AND r.status = 'evaluated' AND r.total_score IS NOT NULL
+			AND EXISTS (
+				SELECT 1 FROM schedule_entries se
+				WHERE se.scenario_id = t.scenario_id AND se.status = 'published' AND se.type = 'scene'
+					AND (se.class_node_id = st.org_node_id OR st.org_node_id = ANY(se.class_node_ids))
+			)
 	`, tenantID, userID).Scan(&n)
 	if err != nil {
 		return 0, err
