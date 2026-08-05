@@ -322,7 +322,9 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		competency := 0.0
 		if cognitionWeight > 0 {
 			cognition = math.Round(cognitionSum/cognitionWeight*100) / 100
-			competency = math.Round(competencySum/cognitionWeight*100) / 100
+			// competencySum 为比值加权和（c=(score-need)/need），转百分比需 ×100；
+			// round(×10000)/100 即四舍五入到两位百分数（与认知得分/v2 的 round(×100)/100 同构）
+			competency = math.Round(competencySum/cognitionWeight*10000) / 100
 		}
 
 		// 岗位胜任度（新，%）：有效能力点胜任度（新）加权平均
