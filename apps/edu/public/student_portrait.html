@@ -441,14 +441,21 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
         var domainScore=domainScoreMap[domain.name];
         var ds=domainScore?domainScore.score:0;
         var dCls=levelCls(ds);
-        var rows='';
-        pts.forEach(function(point){
+        var domCell='<td rowspan="'+(pts.length||1)+'" class="dn">'
+          +'<div>'+(domain.name||'')+'</div>'
+          +'<div class="ds '+dCls+'" style="margin-top:6px">'+ds.toFixed(0)+'</div>'
+          +'</td>';
+        if(!pts.length){
+          html+='<tr>'+domCell+'<td colspan="5" style="color:var(--ink3);font-size:11px;">暂无能力点</td></tr>';
+          return;
+        }
+        pts.forEach(function(point,idx){
           var ap=apMap[point.abilityPointId];
           var s=ap?ap.score||0:0;
           var cls=levelCls(s);
-          var achieved=ap?ap.achieved:false;
           var source=calcSourceRatio(point);
-          rows+='<tr>'
+          html+='<tr>'
+            +(idx===0?domCell:'')
             +'<td style="font-weight:600">'+(point.name||'')+'</td>'
             +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
             +'<td><div class="ev-bar"><div class="ev-fill '+cls+'" style="width:'+Math.min(s,100)+'%">'+s.toFixed(0)+'</div></div></td>'
@@ -456,10 +463,6 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
             +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap&&ap.achieved?'达成':'未达成')+'</span></td>'
             +'</tr>';
         });
-        html+='<tr class="dom-row"><td rowspan="'+(pts.length||1)+'" class="dn">'
-          +'<div>'+(domain.name||'')+'</div>'
-          +'<div class="ds '+dCls+'" style="margin-top:6px">'+ds.toFixed(0)+'</div>'
-          +'</td>'+rows+'</tr>';
       });
     } else if(abilityPoints&&abilityPoints.length){
       // 无岗位模型时按能力点平铺
