@@ -495,10 +495,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     return groups
   }, [filtered, viewMode])
 
-  const uncategorized = useMemo(
-    () => filtered.filter((i) => !i.batchId && i.status === 'draft'),
-    [filtered],
-  )
+  // 未分类：收纳所有未绑定批次的资源（不限于草稿，否则已发布/审批中等无批次资源会在分组视图丢失）
+  const uncategorized = useMemo(() => filtered.filter((i) => !i.batchId), [filtered])
 
   const batchMap = useMemo(() => {
     const map = new Map<string, string>()
