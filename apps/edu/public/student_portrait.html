@@ -79,7 +79,7 @@ body{
 .radar-center .sub{font-size:10.5px;color:var(--ink3);margin-top:3px;font-weight:600;letter-spacing:.5px;}
 
 .right-stack{display:flex;flex-direction:column;gap:12px;}
-.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
 .stat{position:relative;border-radius:13px;padding:15px 12px;overflow:hidden;border:1px solid;}
 .stat .v{font-size:25px;font-weight:900;line-height:1;}
 .stat .l{font-size:10.5px;color:var(--ink2);margin-top:7px;font-weight:500;}
@@ -204,8 +204,8 @@ body{
           <div class="right-stack">
             <div class="stat-row">
               <div class="stat s1"><span class="glow"></span><div class="v" id="statRate">--%</div><div class="l">岗位能力达成率</div></div>
-              <div class="stat s2"><span class="glow"></span><div class="v" id="statPoints">--</div><div class="l">已达成 / 总能力点</div></div>
-              <div class="stat s4"><span class="glow"></span><div class="v" id="statDomainCount">--</div><div class="l">能力域覆盖</div></div>
+              <div class="stat s2"><span class="glow"></span><div class="v" id="statCompetency">--%</div><div class="l">岗位胜任度</div></div>
+              <div class="stat s3"><span class="glow"></span><div class="v" id="statCognition">--</div><div class="l">能力认知得分</div></div>
             </div>
             <div class="note" id="infoNote" style="border-radius:13px;padding:14px 15px;background:linear-gradient(120deg,#f6f8ff,#f9f7ff);border:1px solid var(--line);">
               <div class="nt" style="font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;">
@@ -216,7 +216,7 @@ body{
           </div>
         </div>
 
-        <!-- EVAL MATRIX -->
+        <!-- EVAL MATRIX: 能力域 + 能力点合并表格 -->
         <div class="eval" id="evalMatrix">
           <div class="eval-top">
             <span class="mk"></span><h3>能力域达成分析</h3>
@@ -229,35 +229,16 @@ body{
           <table class="ev-table">
             <thead>
               <tr>
-                <th>能力域</th>
-                <th class="c" style="width:80px">得分</th>
+                <th style="width:130px">能力域</th>
+                <th>能力点</th>
+                <th class="c" style="width:70px">得分</th>
                 <th>能力掌握度</th>
-                <th class="c" style="width:90px">等级</th>
+                <th class="c" style="width:120px">测评来源</th>
+                <th class="c" style="width:80px">认定结果</th>
               </tr>
             </thead>
             <tbody id="evalTableBody">
-              <tr><td colspan="4" class="empty-state">暂无能力域认定数据</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Ability point details -->
-        <div class="eval" id="pointMatrix" style="margin-top:0;border-top:none;border-radius:0 0 14px 14px;">
-          <div class="eval-top">
-            <span class="mk"></span><h3>能力点明细</h3>
-          </div>
-          <table class="ev-table">
-            <thead>
-              <tr>
-                <th>能力点</th>
-                <th class="c" style="width:80px">得分</th>
-                <th class="c" style="width:90px">档位</th>
-                <th>权重</th>
-                <th class="c" style="width:80px">达成</th>
-              </tr>
-            </thead>
-            <tbody id="pointTableBody">
-              <tr><td colspan="5" class="empty-state">暂无能力点详情数据</td></tr>
+              <tr><td colspan="6" class="empty-state">暂无能力域认定数据</td></tr>
             </tbody>
           </table>
         </div>
@@ -271,6 +252,13 @@ body{
         <div class="cbd">
           <div class="rsub">推荐岗位</div>
           <div id="recommendJobs"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>课程成绩</span></div>
+        <div class="cbd">
+          <div id="courseScores"><div class="empty-state">暂无课程成绩数据</div></div>
         </div>
       </div>
     </div>
@@ -294,21 +282,24 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
   if(!token)return;
   var headers={'Authorization':'Bearer '+token};
 
-  var portraits=[], jobResults=[], activeIdx=0, allPositionIds=[];
+  var portraits=[], jobResults=[], courseScores=[], activeIdx=0, allPositionIds=[];
+  var posModelMap={}; // positionId -> {domains:[{name,points:[{abilityPointId,name,weight,tasks:[{taskId,scenarioName,weight}]}]}]}
   var posMap={};
 
   Promise.all([
     fetch('/api/v1/evaluation/portraits?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null}),
-    fetch('/api/v1/evaluation/job-ability/results?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null})
+    fetch('/api/v1/evaluation/job-ability/results?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null}),
+    fetch('/api/v1/evaluation/job-ability/course-scores?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null})
   ]).then(function(results){
-    var pData=results[0], jData=results[1];
+    var pData=results[0], jData=results[1], cData=results[2];
     portraits=(pData&&pData.items)||[];
     jobResults=(jData&&jData.items)||[];
+    courseScores=(cData&&cData.items)||[];
 
     if(!portraits.length&&!jobResults.length){
       document.getElementById('positionTabs').innerHTML='<span class="empty-state">暂无岗位能力测评数据，请先完成场景任务测评。</span>';
-      document.getElementById('evalTableBody').innerHTML='<tr><td colspan="4" class="empty-state">暂无能力域认定数据</td></tr>';
-      document.getElementById('pointTableBody').innerHTML='<tr><td colspan="4" class="empty-state">暂无能力点详情数据</td></tr>';
+      document.getElementById('evalTableBody').innerHTML='<tr><td colspan="6" class="empty-state">暂无能力域认定数据</td></tr>';
+      renderCourseScores();
       return;
     }
 
@@ -397,10 +388,111 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
     updateLeftFromPortrait(portrait,jobResult);
     renderRadar(domainScores,jobResult);
     renderHeroStats(jobResult,portrait);
-    renderEvalMatrix(domainScores);
-    renderPointTable(abilityPoints);
     renderInfoNote(jobResult,domainScores);
     updateRecommendations(portrait);
+    renderCourseScores();
+
+    // 能力域+能力点合并表格：岗位模型（含任务来源权重）按需加载后渲染
+    if(posModelMap[positionId]){
+      renderCombinedTable(domainScores,abilityPoints,posModelMap[positionId]);
+      return;
+    }
+    document.getElementById('evalTableBody').innerHTML='<tr><td colspan="6" class="empty-state">正在加载能力模型...</td></tr>';
+    fetch('/api/v1/evaluation/certifications/positions/'+encodeURIComponent(positionId)+'/model',{headers:headers})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(model){
+        posModelMap[positionId]=model;
+        renderCombinedTable(domainScores,abilityPoints,model);
+      })
+      .catch(function(){renderCombinedTable(domainScores,abilityPoints,null);});
+  }
+
+  // 能力点来源比例：任务权重中场景任务（scenarioName 非空）vs 课程任务占比
+  function calcSourceRatio(point){
+    if(!point||!point.tasks||!point.tasks.length) return '';
+    var sceneW=0, courseW=0;
+    point.tasks.forEach(function(t){
+      if(t.scenarioName) sceneW+=t.weight||0; else courseW+=t.weight||0;
+    });
+    var total=sceneW+courseW;
+    if(total<=0) return '';
+    var parts=[];
+    if(sceneW>0) parts.push('场景 '+Math.round(sceneW/total*100)+'%');
+    if(courseW>0) parts.push('课程 '+Math.round(courseW/total*100)+'%');
+    return parts.join(' · ');
+  }
+
+  // 能力域 + 能力点合并表格：能力域合并单元格（得分直接数字），能力点行（得分进度条 + 来源比例）
+  function renderCombinedTable(domainScores,abilityPoints,model){
+    var tbody=document.getElementById('evalTableBody');
+    if((!domainScores||!domainScores.length)&&(!abilityPoints||!abilityPoints.length)){
+      tbody.innerHTML='<tr><td colspan="6" class="empty-state">暂无能力域认定数据</td></tr>';
+      return;
+    }
+    var apMap={};
+    (abilityPoints||[]).forEach(function(ap){apMap[ap.abilityPointId||ap.id]=ap;});
+    var domainScoreMap={};
+    (domainScores||[]).forEach(function(d){domainScoreMap[d.domainLabel||d.domain]=d;});
+
+    var html='';
+    if(model&&model.domains&&model.domains.length){
+      model.domains.forEach(function(domain){
+        var pts=domain.points||[];
+        var domainScore=domainScoreMap[domain.name];
+        var ds=domainScore?domainScore.score:0;
+        var dCls=levelCls(ds);
+        var rows='';
+        pts.forEach(function(point){
+          var ap=apMap[point.abilityPointId];
+          var s=ap?ap.score||0:0;
+          var cls=levelCls(s);
+          var achieved=ap?ap.achieved:false;
+          var source=calcSourceRatio(point);
+          rows+='<tr>'
+            +'<td style="font-weight:600">'+(point.name||'')+'</td>'
+            +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
+            +'<td><div class="ev-bar"><div class="ev-fill '+cls+'" style="width:'+Math.min(s,100)+'%">'+s.toFixed(0)+'</div></div></td>'
+            +'<td class="c" style="color:var(--ink2);font-size:10.5px;">'+(source||'-')+'</td>'
+            +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap&&ap.achieved?'达成':'未达成')+'</span></td>'
+            +'</tr>';
+        });
+        html+='<tr class="dom-row"><td rowspan="'+(pts.length||1)+'" class="dn">'
+          +'<div>'+(domain.name||'')+'</div>'
+          +'<div class="ds '+dCls+'" style="margin-top:6px">'+ds.toFixed(0)+'</div>'
+          +'</td>'+rows+'</tr>';
+      });
+    } else if(abilityPoints&&abilityPoints.length){
+      // 无岗位模型时按能力点平铺
+      html=abilityPoints.map(function(ap){
+        var s=ap.score||0, cls=levelCls(s);
+        return '<tr><td class="dn">'+(ap.abilityPointName||ap.name||'')+'</td>'
+          +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
+          +'<td><div class="ev-bar"><div class="ev-fill '+cls+'" style="width:'+Math.min(s,100)+'%">'+s.toFixed(0)+'</div></div></td>'
+          +'<td class="c">-</td>'
+          +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap.achieved?'达成':'未达成')+'</span></td>'
+          +'</tr>';
+      }).join('');
+    } else {
+      html='<tr><td colspan="6" class="empty-state">暂无能力域认定数据</td></tr>';
+    }
+    tbody.innerHTML=html;
+  }
+
+  // 课程成绩卡片：体系课成绩（分数、排名）
+  function renderCourseScores(){
+    var el=document.getElementById('courseScores');
+    if(!courseScores||!courseScores.length){
+      el.innerHTML='<div class="empty-state">暂无课程成绩数据</div>';
+      return;
+    }
+    el.innerHTML=courseScores.map(function(c){
+      var cls=levelCls(c.score||0);
+      return '<div class="jc" style="padding:11px 13px;margin-bottom:8px;">'
+        +'<div class="jtp"><span class="jn">'+(c.courseName||'')+'</span>'
+        +'<span class="ds '+cls+'" style="font-size:15px">'+(c.score||0).toFixed(1)+'</span></div>'
+        +'<div class="jdsc" style="margin-top:5px">排名 <b>'+(c.rank||'-')+'</b> / '+(c.total||'-')+'</div>'
+        +'</div>';
+    }).join('');
   }
 
   function renderRadar(domainScores,jobResult){
@@ -450,55 +542,21 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
       svg.appendChild(tx);
     });
 
-    var rate=jobResult?jobResult.achievementRate:0;
+    var rate=jobResult&&jobResult.totalAbilityPoints>0?(jobResult.achievedAbilityPoints/jobResult.totalAbilityPoints*100):0;
     document.getElementById('radarCenter').textContent=(rate||0).toFixed(0)+'%';
   }
 
   function renderHeroStats(jr,p){
-    document.getElementById('statRate').textContent=(jr?jr.achievementRate.toFixed(0):'--')+'%';
-    document.getElementById('statPoints').textContent=(jr?jr.achievedAbilityPoints:'--')+' / '+(jr?jr.totalAbilityPoints:'--');
-    var ds=p&&p.domainScores||[];
-    document.getElementById('statDomainCount').textContent=ds.length;
-  }
-
-  function renderEvalMatrix(domainScores){
-    var tbody=document.getElementById('evalTableBody');
-    if(!domainScores.length){
-      tbody.innerHTML='<tr><td colspan="4" class="empty-state">暂无能力域认定数据</td></tr>';
-      return;
-    }
-    tbody.innerHTML=domainScores.map(function(d){
-      var s=d.score||0, cls=levelCls(s);
-      return '<tr>'
-        +'<td class="dn">'+(d.domainLabel||d.domain||'')+'</td>'
-        +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
-        +'<td><div class="ev-bar"><div class="ev-fill '+cls+'" style="width:'+Math.min(s,100)+'%">'+s.toFixed(0)+'</div></div></td>'
-        +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(d.level||'')+'</span></td>'
-        +'</tr>';
-    }).join('');
-  }
-
-  function renderPointTable(abilityPoints){
-    var tbody=document.getElementById('pointTableBody');
-    if(!abilityPoints||!abilityPoints.length){
-      tbody.innerHTML='<tr><td colspan="5" class="empty-state">暂无能力点详情数据</td></tr>';
-      return;
-    }
-    tbody.innerHTML=abilityPoints.map(function(ap){
-      var s=ap.score||0, cls=levelCls(s);
-      return '<tr>'
-        +'<td style="font-weight:600">'+(ap.abilityPointName||ap.name||'')+'</td>'
-        +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
-        +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap.levelLabel||'-')+'</span></td>'
-        +'<td class="c" style="color:var(--ink2)">'+(ap.weight!=null?ap.weight.toFixed(1):'-')+'</td>'
-        +'<td class="c"><span class="lv gray"><span class="dot"></span>'+(ap.achieved?'达成':'未达成')+'</span></td>'
-        +'</tr>';
-    }).join('');
+    // 岗位能力达成率 = 达标能力点数量 / 岗位所有能力点数量（百分比）
+    var rate=jr&&jr.totalAbilityPoints>0?(jr.achievedAbilityPoints/jr.totalAbilityPoints*100):0;
+    document.getElementById('statRate').textContent=(jr?rate.toFixed(0):'--')+'%';
+    document.getElementById('statCompetency').textContent=(jr&&jr.positionCompetency!=null?jr.positionCompetency.toFixed(1):'--')+'%';
+    document.getElementById('statCognition').textContent=jr&&jr.abilityCognitionScore!=null?jr.abilityCognitionScore.toFixed(1):'--';
   }
 
   function renderInfoNote(jr,domainScores){
     var posName=jr?jr.positionName:'';
-    var rate=jr?jr.achievementRate.toFixed(0):'--';
+    var rate=jr&&jr.totalAbilityPoints>0?(jr.achievedAbilityPoints/jr.totalAbilityPoints*100):0;
     var achieved=jr?jr.achievedAbilityPoints:0, total=jr?jr.totalAbilityPoints:0;
     var exceedNames=[], belowNames=[];
     domainScores.forEach(function(d){
@@ -506,8 +564,7 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
       if(s>=80) exceedNames.push(d.domainLabel||d.domain||'');
       else if(s<60) belowNames.push(d.domainLabel||d.domain||'');
     });
-    var desc='<b style="color:var(--pri)">'+posName+'</b> 岗位综合达成率 <b style="color:var(--exceed)">'+rate+'%</b>，';
-    desc+='已完成 <b>'+achieved+'/'+total+'</b> 个能力点。';
+    var desc='<b style="color:var(--pri)">'+posName+'</b> 岗位能力达成率 <b style="color:var(--exceed)">'+rate.toFixed(0)+'%</b>（'+achieved+'/'+total+' 个能力点达标），';
     if(exceedNames.length) desc+='<b style="color:var(--exceed)">'+exceedNames.join('、')+'</b> 表现突出；';
     if(belowNames.length) desc+='<b style="color:var(--below)">'+belowNames.join('、')+'</b> 尚未达标。';
     document.getElementById('infoDesc').innerHTML=desc;

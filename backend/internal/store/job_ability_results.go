@@ -12,6 +12,51 @@ type JobAbilityResultStore struct {
 	q Queryer
 }
 
+// CourseScoreRow 学生课程成绩行（体系课）。
+type CourseScoreRow struct {
+	CourseID   string
+	CourseName string
+	Score      float64
+	Rank       int
+	Total      int
+}
+
+// ListStudentCourseScores 查询学生在体系课中的成绩与排名。
+// 课程成绩 = 该课程下全部节点已评分结果归一化得分（total_score/max_score*100）的简单平均；
+// 排名基于同口径在该课程全部学生中按分数降序。
+func (s *JobAbilityResultStore) ListStudentCourseScores(ctx context.Context, tenantID, userID string) ([]CourseScoreRow, error) {
+	rows, err := s.q.Query(ctx, `
+		WITH course_avg AS (
+			SELECT n.course_id, ner.evaluatee_id,
+				AVG(ner.total_score / NULLIF(ner.max_score, 0) * 100) AS score
+			FROM node_evaluation_results ner
+			JOIN system_course_nodes n ON n.id = ner.node_id
+			WHERE ner.tenant_id = $1 AND ner.status = 'evaluated' AND ner.total_score IS NOT NULL
+			GROUP BY n.course_id, ner.evaluatee_id
+		)
+		SELECT ca.course_id, COALESCE(c.name, ''), ca.score,
+			RANK() OVER (PARTITION BY ca.course_id ORDER BY ca.score DESC) AS rank,
+			COUNT(*) OVER (PARTITION BY ca.course_id) AS total
+		FROM course_avg ca
+		LEFT JOIN courses c ON c.id = ca.course_id
+		WHERE ca.evaluatee_id = $2
+		ORDER BY ca.score DESC
+	`, tenantID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CourseScoreRow
+	for rows.Next() {
+		var r CourseScoreRow
+		if err := rows.Scan(&r.CourseID, &r.CourseName, &r.Score, &r.Rank, &r.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
 // NewJobAbilityResultStore 创建岗位能力结果 store。
 func NewJobAbilityResultStore(q Queryer) *JobAbilityResultStore {
 	return &JobAbilityResultStore{q: q}

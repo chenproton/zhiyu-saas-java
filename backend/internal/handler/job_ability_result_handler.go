@@ -49,6 +49,51 @@ type JobAbilityResultItem struct {
 	AbilityPointDetails   domain.JSONSlice `json:"abilityPointDetails,omitempty"`
 	GradeHistory          domain.JSONSlice `json:"gradeHistory,omitempty"`
 	EvaluatedAt           time.Time        `json:"evaluationTime"`
+	// 岗位胜任度（%）：能力点胜任度加权平均，胜任度=(得分-岗位所需得分)/岗位所需得分，负值归零
+	PositionCompetency float64 `json:"positionCompetency"`
+	// 能力认知得分（0-100）：能力点得分加权平均
+	AbilityCognitionScore float64 `json:"abilityCognitionScore"`
+}
+
+// needScoreByLevel 系统五档掌握程度代码→对应分数阈值（level_mapping 为空时的岗位所需得分）。
+var needScoreByLevel = map[string]float64{
+	"understand": 0,
+	"comprehend": 60,
+	"master":     70,
+	"proficient": 80,
+	"expert":     90,
+}
+
+// computeAbilityIndicators 由能力点明细计算岗位胜任度（%）与能力认知得分（0-100）。
+func computeAbilityIndicators(details domain.JSONSlice) (competency, cognition float64) {
+	var weightSum float64
+	for _, raw := range details {
+		m, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		score, _ := m["score"].(float64)
+		weight, _ := m["weight"].(float64)
+		requiredLevel, _ := m["requiredLevel"].(string)
+		if weight <= 0 {
+			continue
+		}
+		weightSum += weight
+		need := needScoreByLevel[requiredLevel]
+		competencyI := 0.0
+		if need > 0 {
+			competencyI = (score - need) / need
+			if competencyI < 0 {
+				competencyI = 0
+			}
+		}
+		competency += competencyI * weight
+		cognition += score * weight
+	}
+	if weightSum <= 0 {
+		return 0, 0
+	}
+	return competency / weightSum * 100, cognition / weightSum
 }
 
 type JobAbilitySummaryItem struct {
@@ -115,6 +160,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]JobAbilityResultItem, 0, len(rows))
 	for _, r2 := range rows {
+		competency, cognition := computeAbilityIndicators(r2.AbilityPointDetails)
 		items = append(items, JobAbilityResultItem{
 			ID: r2.ID, CareerPositionID: r2.CareerPositionID, PositionName: r2.PositionName,
 			UserID: r2.UserID, UserName: r2.UserName, StudentNo: r2.StudentNo,
@@ -122,6 +168,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 			TotalAbilityPoints: r2.TotalAbilityPoints, AchievedAbilityPoints: r2.AchievedAbilityPoints,
 			AchievementRate: r2.AchievementRate, Grade: r2.Grade, EvaluatedAt: r2.EvaluatedAt,
 			AbilityPointDetails: r2.AbilityPointDetails, GradeHistory: r2.GradeHistory,
+			PositionCompetency: competency, AbilityCognitionScore: cognition,
 		})
 	}
 	respondJSON(w, http.StatusOK, ListResponse[JobAbilityResultItem]{Items: items, Total: total})
@@ -156,6 +203,7 @@ func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	if details != nil {
 		item.AbilityPointDetails = *details
+		item.PositionCompetency, item.AbilityCognitionScore = computeAbilityIndicators(*details)
 	}
 	if history != nil {
 		item.GradeHistory = *history
@@ -185,6 +233,50 @@ func (h *JobAbilityResultHandler) Summary(w http.ResponseWriter, r *http.Request
 		})
 	}
 	respondJSON(w, http.StatusOK, items)
+}
+
+// CourseScoreItem 学生课程成绩项。
+type CourseScoreItem struct {
+	CourseID   string  `json:"courseId"`
+	CourseName string  `json:"courseName"`
+	Score      float64 `json:"score"`
+	Rank       int     `json:"rank"`
+	Total      int     `json:"total"`
+}
+
+// CourseScores 查询学生在体系课中的成绩与排名（学生强制查本人）。
+func (h *JobAbilityResultHandler) CourseScores(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	userID := r.URL.Query().Get("userId")
+	// 学生仅可查看本人的课程成绩
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		userID = claims.UserID
+	}
+	if userID == "" {
+		respondError(w, http.StatusBadRequest, "缺少用户ID")
+		return
+	}
+	rows, err := h.Service.ListStudentCourseScores(r.Context(), tenantID, userID)
+	if err != nil {
+		respondServerError(w, r, err, "查询课程成绩失败")
+		return
+	}
+	items := make([]CourseScoreItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, CourseScoreItem{
+			CourseID: row.CourseID, CourseName: row.CourseName,
+			Score: row.Score, Rank: row.Rank, Total: row.Total,
+		})
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items, "total": len(items)})
 }
 
 func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Request) {

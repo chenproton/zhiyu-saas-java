@@ -21,6 +21,11 @@ func (s *EvaluationService) SummaryJobAbilityResults(ctx context.Context, tenant
 	return s.st.JobAbilityResults().Summary(ctx, tenantID)
 }
 
+// ListStudentCourseScores 查询学生在体系课中的成绩与排名。
+func (s *EvaluationService) ListStudentCourseScores(ctx context.Context, tenantID, userID string) ([]store.CourseScoreRow, error) {
+	return s.st.JobAbilityResults().ListStudentCourseScores(ctx, tenantID, userID)
+}
+
 // GetAggregateLog 查询汇聚日志（租户限定）。
 func (s *EvaluationService) GetAggregateLog(ctx context.Context, logID, tenantID string) (*store.JobAbilityAggregateLog, error) {
 	return s.st.JobAbilityResults().GetAggregateLogByID(ctx, logID, tenantID)

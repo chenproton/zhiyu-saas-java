@@ -109,6 +109,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 				// 学生查看本人的岗位能力汇聚结果
 				r.Get("/evaluation/job-ability/results", h.jobAbilityResultHandler.List)
+				r.Get("/evaluation/job-ability/course-scores", h.jobAbilityResultHandler.CourseScores)
 
 				// 学生场景任务中查看/作答试卷（仅读）；写操作仍在 businessUser
 				registerContentReadRoutes(r, "/evaluation/exams", h.examHandler)
