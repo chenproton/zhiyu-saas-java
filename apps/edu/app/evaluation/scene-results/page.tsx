@@ -147,8 +147,7 @@ function GradingPageContent() {
     const map = new Map<string, ScenarioGroup>()
     for (const scenario of scenarios) {
       // results 只包含当前选中场景的数据，非选中场景无法获得统计，置空避免串数据
-      const subs =
-        scenario.id === selectedScenarioId ? results.filter((s) => s.taskId) : []
+      const subs = scenario.id === selectedScenarioId ? results.filter((s) => s.taskId) : []
       const pending = subs.filter((s) => s.status === 'pending').length
       const graded = subs.filter((s) => s.status === 'evaluated').length
 

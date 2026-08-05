@@ -30,4 +30,3 @@ export function reportError(err: unknown, context: string | ErrorContext): void 
     console.error(`[app-error] ${ctx.source}:`, message, err, ctx.extras ?? '')
   }
 }
-

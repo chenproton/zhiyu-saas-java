@@ -20,7 +20,8 @@ export default function AllianceBrandDetailPage() {
 
   useEffect(() => {
     if (!tenantId || !id) return
-    allianceBrandApi.get(id)
+    allianceBrandApi
+      .get(id)
       .then((b) => setBrand(b))
       .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))

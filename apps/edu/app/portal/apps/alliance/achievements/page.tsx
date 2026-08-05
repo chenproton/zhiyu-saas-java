@@ -1,6 +1,5 @@
 'use client'
 
-
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -98,7 +97,9 @@ export default function AllianceAchievementsPage() {
             </TableCell>
             <TableCell className="max-w-[160px]">
               {entIds.length > 0
-                ? entIds.map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid).join('、')
+                ? entIds
+                    .map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid)
+                    .join('、')
                 : '-'}
             </TableCell>
             <TableCell>{project?.name || '-'}</TableCell>

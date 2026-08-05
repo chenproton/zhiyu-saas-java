@@ -5,10 +5,7 @@ import { courseApi, lessonBatchApi, importExportApi, approvalApi } from '@/lib/a
 import { CourseList } from './course-list'
 import type { Course, CourseType } from '@/lib/types/lesson-source'
 import type { Course as BackendCourse, LessonBatch } from '@/lib/types/lesson'
-import {
-  ContentListPage,
-  type ContentBatch,
-} from '@/components/shared/content-list-page'
+import { ContentListPage, type ContentBatch } from '@/components/shared/content-list-page'
 import { draftSuffix } from '@/lib/format-utils'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
 

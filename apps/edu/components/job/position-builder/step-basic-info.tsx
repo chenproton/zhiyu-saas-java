@@ -486,7 +486,11 @@ export function StepBasicInfo({
             ))}
             <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
               {!isCreate && <span />}
-              <Button variant="outline" className="h-8 border-dashed" onClick={() => addResponsibility()}>
+              <Button
+                variant="outline"
+                className="h-8 border-dashed"
+                onClick={() => addResponsibility()}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 添加工作职责
               </Button>
@@ -540,7 +544,11 @@ export function StepBasicInfo({
             ))}
             <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
               {!isCreate && <span />}
-              <Button variant="outline" className="h-8 border-dashed" onClick={() => addRequirement()}>
+              <Button
+                variant="outline"
+                className="h-8 border-dashed"
+                onClick={() => addRequirement()}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 添加任职要求
               </Button>

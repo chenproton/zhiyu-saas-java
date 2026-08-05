@@ -17,14 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard } from '@/lib/types'
-import {
-  Line,
-  LineChart,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-} from 'recharts'
+import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
 const iconMap: Record<string, LucideIcon> = {

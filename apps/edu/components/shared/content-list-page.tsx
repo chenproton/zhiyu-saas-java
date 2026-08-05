@@ -149,7 +149,11 @@ export interface ContentImportExportApi {
   exportExamsExcel?: (ids: string[]) => Promise<Response>
 }
 
-export interface ContentListPageConfig<T extends ContentListItem, B extends { id: string } = T, Batch = B> {
+export interface ContentListPageConfig<
+  T extends ContentListItem,
+  B extends { id: string } = T,
+  Batch = B,
+> {
   title: string
   subtitle: string
   entityLabel: string
@@ -212,11 +216,9 @@ type ViewMode = 'list' | 'group'
 
 // ─── Component ──────────────────────────────────────────────────────────
 
-export function ContentListPage<
-  T extends ContentListItem,
-  B extends { id: string } = T,
-  Batch = B,
->(config: ContentListPageConfig<T, B, Batch>) {
+export function ContentListPage<T extends ContentListItem, B extends { id: string } = T, Batch = B>(
+  config: ContentListPageConfig<T, B, Batch>,
+) {
   const {
     title,
     subtitle,

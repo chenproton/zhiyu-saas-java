@@ -113,7 +113,9 @@ export function useApprovals({
         await refresh()
       } catch (err: any) {
         toast({
-          title: isApprovalPermissionDenied(err) ? PERMISSION_DENIED_HINT : err.message || '审批失败',
+          title: isApprovalPermissionDenied(err)
+            ? PERMISSION_DENIED_HINT
+            : err.message || '审批失败',
           variant: 'destructive',
         })
       }
@@ -133,7 +135,9 @@ export function useApprovals({
         await refresh()
       } catch (err: any) {
         toast({
-          title: isApprovalPermissionDenied(err) ? PERMISSION_DENIED_HINT : err.message || '驳回失败',
+          title: isApprovalPermissionDenied(err)
+            ? PERMISSION_DENIED_HINT
+            : err.message || '驳回失败',
           variant: 'destructive',
         })
       }
@@ -153,7 +157,10 @@ export function useApprovals({
         const failed = results.length - success
         if (failed === 0) {
           toast({ title: `批量${label}成功，共 ${success} 条` })
-        } else if (failed === results.length && results.every((r) => isApprovalPermissionDenied((r as any).reason))) {
+        } else if (
+          failed === results.length &&
+          results.every((r) => isApprovalPermissionDenied((r as any).reason))
+        ) {
           toast({ title: PERMISSION_DENIED_HINT, variant: 'destructive' })
         } else {
           toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })

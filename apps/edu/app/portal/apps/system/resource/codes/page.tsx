@@ -27,7 +27,6 @@ export default function ResourceCodesPage() {
 
   const codes = useMemo(() => data ?? [], [data])
 
-
   const filteredCodes = useMemo(
     () => codes.filter((code) => code.name.includes(searchTerm) || code.code.includes(searchTerm)),
     [codes, searchTerm],

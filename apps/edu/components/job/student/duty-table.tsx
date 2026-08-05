@@ -68,44 +68,45 @@ export function DutyTable({
         {responsibilities.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse min-w-[560px]">
-            <thead>
-              <tr className="bg-[#fafafa]">
-                <th className="text-left p-4 text-sm font-medium text-[#64748b] w-24">编号</th>
-                <th className="text-left p-4 text-sm font-medium text-[#64748b]">职责描述</th>
-                <th className="text-left p-4 text-sm font-medium text-[#64748b] w-40">
-                  关联能力点
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {responsibilities.map((resp, i) => {
-                const items = grouped.find((g) => g.responsibility.id === resp.id)?.abilities || []
-                return (
-                  <tr key={resp.id} className="border-b border-[#f5f5f4] hover:bg-[#fafafa]">
-                    <td className="p-4">
-                      <span className="text-xs text-[#94a3b8] font-medium">
-                        T-{String(i + 1).padStart(3, '0')}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm text-[#475569]">{resp.name}</td>
-                    <td className="p-4">
-                      <span className="text-sm font-medium text-blue-500">{items.length} 个</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="ml-2 h-7 px-2 text-xs rounded"
-                        onClick={() => {
-                          setModalDuty(resp)
-                          setPage(0)
-                        }}
-                      >
-                        查看详情
-                      </Button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
+              <thead>
+                <tr className="bg-[#fafafa]">
+                  <th className="text-left p-4 text-sm font-medium text-[#64748b] w-24">编号</th>
+                  <th className="text-left p-4 text-sm font-medium text-[#64748b]">职责描述</th>
+                  <th className="text-left p-4 text-sm font-medium text-[#64748b] w-40">
+                    关联能力点
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {responsibilities.map((resp, i) => {
+                  const items =
+                    grouped.find((g) => g.responsibility.id === resp.id)?.abilities || []
+                  return (
+                    <tr key={resp.id} className="border-b border-[#f5f5f4] hover:bg-[#fafafa]">
+                      <td className="p-4">
+                        <span className="text-xs text-[#94a3b8] font-medium">
+                          T-{String(i + 1).padStart(3, '0')}
+                        </span>
+                      </td>
+                      <td className="p-4 text-sm text-[#475569]">{resp.name}</td>
+                      <td className="p-4">
+                        <span className="text-sm font-medium text-blue-500">{items.length} 个</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="ml-2 h-7 px-2 text-xs rounded"
+                          onClick={() => {
+                            setModalDuty(resp)
+                            setPage(0)
+                          }}
+                        >
+                          查看详情
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
             </table>
           </div>
         ) : (

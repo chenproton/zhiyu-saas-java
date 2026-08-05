@@ -77,10 +77,7 @@ export default function OperationLogsPage() {
     ? searchFiltered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : searchFiltered
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil((searching ? searchFiltered.length : total) / PAGE_SIZE),
-  )
+  const totalPages = Math.max(1, Math.ceil((searching ? searchFiltered.length : total) / PAGE_SIZE))
 
   const formatTarget = (log: OperationLog) => {
     if (log.detail) return log.detail

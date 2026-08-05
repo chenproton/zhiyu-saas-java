@@ -75,7 +75,9 @@ function AddGranularPageInner() {
   const [coverUploading, setCoverUploading] = useState(false)
   const [batchId, setBatchId] = useState('')
 
-  /* module 2: knowledge points */  const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
+  /* module 2: knowledge points */ const [knowledgePool, setKnowledgePool] = useState<
+    KnowledgePointItem[]
+  >([])
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
 
   /* module 3: resources */
@@ -238,7 +240,10 @@ function AddGranularPageInner() {
           size: r.size != null ? Number(r.size) : undefined,
         })
         idMap[rid] = created.id
-        setCourseResourcePool((prev) => [...prev.filter((x) => x.id !== rid), { ...r, id: created.id }])
+        setCourseResourcePool((prev) => [
+          ...prev.filter((x) => x.id !== rid),
+          { ...r, id: created.id },
+        ])
       } catch (err: any) {
         toast({ title: `资源「${r.name}」保存失败: ${err.message}`, variant: 'destructive' })
         throw err
@@ -352,10 +357,12 @@ function AddGranularPageInner() {
           )
         }
       } else {
-        const c = await courseApi.create(payload as Omit<
-          Course,
-          'id' | 'nodeCount' | 'resourceCount' | 'studyCount' | 'createdAt' | 'updatedAt'
-        >)
+        const c = await courseApi.create(
+          payload as Omit<
+            Course,
+            'id' | 'nodeCount' | 'resourceCount' | 'studyCount' | 'createdAt' | 'updatedAt'
+          >,
+        )
         if (tempResourceIds.length > 0) {
           const realIds = await persistNewResources(c.id)
           await courseApi.update(c.id, { resourceIds: realIds })

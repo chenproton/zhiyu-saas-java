@@ -15,7 +15,11 @@ const task11Methods = (): TaskEvaluationMethod[] => [
     weight: 0,
     evalObject: 'individual',
     evalSubjects: [],
-    resourceConfig: { paperId: 'c4a216c7-9e80-4823-bf98-1e3e579b10d0', usageId: 'x', paperWeight: 100 },
+    resourceConfig: {
+      paperId: 'c4a216c7-9e80-4823-bf98-1e3e579b10d0',
+      usageId: 'x',
+      paperWeight: 100,
+    },
     version: 14,
     isEnabled: true,
     evalPoints: [],
@@ -46,7 +50,12 @@ const task11Methods = (): TaskEvaluationMethod[] => [
     weight: 0,
     evalObject: 'individual',
     evalSubjects: [],
-    resourceConfig: { examId: '8ffaff65', questionIds: ['q4', 'q5'], questionScores: {}, examQuestionIds: ['q4', 'q5'] },
+    resourceConfig: {
+      examId: '8ffaff65',
+      questionIds: ['q4', 'q5'],
+      questionScores: {},
+      examQuestionIds: ['q4', 'q5'],
+    },
     version: 14,
     isEnabled: true,
     evalPoints: [],
@@ -64,9 +73,7 @@ describe('round trip: load -> save', () => {
       'payload:',
       JSON.stringify(payload.map((m) => ({ k: m.methodKey, en: m.isEnabled }))),
     )
-    expect(ts.evaluationMethods).toEqual(
-      expect.arrayContaining(['paper', 'question_bank', 'quiz']),
-    )
+    expect(ts.evaluationMethods).toEqual(expect.arrayContaining(['paper', 'question_bank', 'quiz']))
   })
 
   it('editor open (config conversion) then save preserves methods', () => {
@@ -92,8 +99,24 @@ describe('round trip: load -> save', () => {
     homework.standardMode = 'score_rule'
     homework.standardName = '我的评分规则'
     homework.scoreRules = [
-      { id: 'sr1', configId: 'm1', name: '规则一', description: 'd1', rule: 'r1', weight: 60, sortOrder: 0 },
-      { id: 'sr2', configId: 'm1', name: '规则二', description: 'd2', rule: 'r2', weight: 40, sortOrder: 1 },
+      {
+        id: 'sr1',
+        configId: 'm1',
+        name: '规则一',
+        description: 'd1',
+        rule: 'r1',
+        weight: 60,
+        sortOrder: 0,
+      },
+      {
+        id: 'sr2',
+        configId: 'm1',
+        name: '规则二',
+        description: 'd2',
+        rule: 'r2',
+        weight: 40,
+        sortOrder: 1,
+      },
     ]
     const ts = taskStateFromMethods(methods)
     expect(ts.homeworkStandardMode).toBe('score_rule')

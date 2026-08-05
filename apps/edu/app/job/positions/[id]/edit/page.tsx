@@ -379,10 +379,7 @@ function PositionEditPageContent({ params }: PageProps) {
             <StepAbilityModeling position={position} onUpdate={updatePositionData} />
           )}
           {activeStep === 'competency' && (
-            <Step3ResultTable
-              position={position}
-              onUpdate={updatePositionData}
-            />
+            <Step3ResultTable position={position} onUpdate={updatePositionData} />
           )}
         </div>
       )}

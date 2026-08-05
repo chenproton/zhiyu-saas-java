@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronDown, ChevronRight, ListChecks, ListOrdered, Save, SlidersHorizontal } from 'lucide-react'
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  ListChecks,
+  ListOrdered,
+  Save,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -390,12 +398,7 @@ function PointRows({
           </span>
         </TableCell>
         <TableCell className="text-right">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={onOpenLevels}
-          >
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onOpenLevels}>
             <ListOrdered className="mr-1 size-3" />
             分档配置
           </Button>

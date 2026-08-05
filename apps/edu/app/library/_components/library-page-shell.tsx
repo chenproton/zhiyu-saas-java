@@ -5,13 +5,7 @@ import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 
 interface LibraryPageShellProps<T> {

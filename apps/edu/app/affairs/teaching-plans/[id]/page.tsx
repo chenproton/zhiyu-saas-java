@@ -123,7 +123,11 @@ export default function TeachingPlanDetailPage() {
       return true
     } catch (err) {
       reportError(err, '更新计划教师')
-      toast({ variant: 'destructive', title: '教师更新失败', description: '请通过「保存修改」重新提交' })
+      toast({
+        variant: 'destructive',
+        title: '教师更新失败',
+        description: '请通过「保存修改」重新提交',
+      })
       return false
     }
   }

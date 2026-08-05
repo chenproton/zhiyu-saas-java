@@ -371,97 +371,97 @@ export function KnowledgeSelector({
           {filtered.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[560px]">
-              <thead className="bg-gray-50 sticky top-0 z-10">
-                <tr>
-                  <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">
-                    知识点名称
-                  </th>
-                  <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">
-                    知识点编码
-                  </th>
-                  <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">
-                    知识点描述
-                  </th>
-                  <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((kp) => {
-                  const isSelected = selected.some((s) => s.id === kp.id)
-                  return (
-                    <tr
-                      key={kp.id}
-                      className={cn(
-                        'hover:bg-gray-50 transition-colors',
-                        isSelected ? 'bg-primary/[0.03]' : '',
-                      )}
-                    >
-                      <td className="px-3 py-2">
-                        <span className="text-sm font-medium text-gray-800">{kp.name}</span>
-                      </td>
-                      <td className="px-3 py-2">
-                        {kp.code ? (
-                          <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                            {kp.code}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-gray-400">-</span>
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">
+                      知识点名称
+                    </th>
+                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">
+                      知识点编码
+                    </th>
+                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">
+                      知识点描述
+                    </th>
+                    <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.map((kp) => {
+                    const isSelected = selected.some((s) => s.id === kp.id)
+                    return (
+                      <tr
+                        key={kp.id}
+                        className={cn(
+                          'hover:bg-gray-50 transition-colors',
+                          isSelected ? 'bg-primary/[0.03]' : '',
                         )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <p className="text-xs text-gray-500 line-clamp-1" title={kp.description}>
-                          {kp.description}
-                        </p>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
-                            onClick={() => {
-                              setSelectedKpForDetail(kp.id)
-                              setKpDetailOpen(true)
-                            }}
-                          >
-                            详情
-                          </Button>
-                          {isSelected ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 text-[11px] px-2"
-                              onClick={() => handleRemoveKp(kp.id)}
-                            >
-                              取消
-                            </Button>
+                      >
+                        <td className="px-3 py-2">
+                          <span className="text-sm font-medium text-gray-800">{kp.name}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          {kp.code ? (
+                            <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                              {kp.code}
+                            </Badge>
                           ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                className="h-6 text-[11px] px-2"
-                                onClick={() => handleReferenceKp(kp)}
-                              >
-                                引用
-                              </Button>
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <p className="text-xs text-gray-500 line-clamp-1" title={kp.description}>
+                            {kp.description}
+                          </p>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
+                              onClick={() => {
+                                setSelectedKpForDetail(kp.id)
+                                setKpDetailOpen(true)
+                              }}
+                            >
+                              详情
+                            </Button>
+                            {isSelected ? (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="h-6 text-[11px] px-2"
-                                onClick={() => openCloneKp(kp)}
+                                onClick={() => handleRemoveKp(kp.id)}
                               >
-                                克隆
+                                取消
                               </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="h-6 text-[11px] px-2"
+                                  onClick={() => handleReferenceKp(kp)}
+                                >
+                                  引用
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-[11px] px-2"
+                                  onClick={() => openCloneKp(kp)}
+                                >
+                                  克隆
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
               </table>
             </div>
           )}

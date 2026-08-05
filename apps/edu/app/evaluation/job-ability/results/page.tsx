@@ -75,11 +75,7 @@ function JobAbilityResultsContent() {
   }, [search])
 
   // 筛选条件变化时重置分页并进入加载态（在事件回调中同步执行）
-  const applyFilters = (updates: {
-    positionId?: string
-    search?: string
-    page?: number
-  }) => {
+  const applyFilters = (updates: { positionId?: string; search?: string; page?: number }) => {
     setLoading(true)
     if (updates.page !== undefined) setPage(updates.page)
     else setPage(1)

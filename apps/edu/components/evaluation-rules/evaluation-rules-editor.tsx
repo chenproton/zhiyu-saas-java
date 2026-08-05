@@ -57,12 +57,7 @@ import type { EvalRuleConfig } from '@/lib/types/evaluation'
 import { useEvalRuleStore } from '@/lib/evaluation-rule-store'
 import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
 import { BankQuestionSelectorPanel } from '@/components/evaluation-rules/bank-question-selector-panel'
-import {
-  examApi,
-  randomDrawQuestionApi,
-  majorApi,
-  taskEvaluationApi,
-} from '@/lib/api'
+import { examApi, randomDrawQuestionApi, majorApi, taskEvaluationApi } from '@/lib/api'
 import {
   getLoadedExams,
   setLoadedExams,
@@ -987,100 +982,100 @@ export function EvaluationRulesEditor({
                             <tr>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">
                                 题目名称
-                            </th>
-                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                              题目描述
-                            </th>
-                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[14%]">
-                              适用专业
-                            </th>
-                            <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                              操作
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {filteredRdq.map((q) => {
-                            const isSelected = config.randomDrawSelectedIds.includes(q.id)
-                            return (
-                              <tr
-                                key={q.id}
-                                className={cn(
-                                  'hover:bg-gray-50 transition-colors',
-                                  isSelected ? 'bg-primary/[0.03]' : '',
-                                )}
-                              >
-                                <td className="px-3 py-2">
-                                  <span className="text-sm font-medium text-gray-800">
-                                    {q.name}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2">
-                                  <p
-                                    className="text-xs text-gray-500 line-clamp-1"
-                                    title={q.description}
-                                  >
-                                    {q.description || '-'}
-                                  </p>
-                                </td>
-                                <td className="px-3 py-2">
-                                  <Badge variant="secondary" className="text-[10px]">
-                                    {q.majorName || '-'}
-                                  </Badge>
-                                </td>
-                                <td className="px-3 py-2">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
-                                      onClick={() => {
-                                        setSelectedRdqForDetail(q.id)
-                                        setRdqDetailOpen(true)
-                                      }}
+                              </th>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
+                                题目描述
+                              </th>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[14%]">
+                                适用专业
+                              </th>
+                              <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
+                                操作
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {filteredRdq.map((q) => {
+                              const isSelected = config.randomDrawSelectedIds.includes(q.id)
+                              return (
+                                <tr
+                                  key={q.id}
+                                  className={cn(
+                                    'hover:bg-gray-50 transition-colors',
+                                    isSelected ? 'bg-primary/[0.03]' : '',
+                                  )}
+                                >
+                                  <td className="px-3 py-2">
+                                    <span className="text-sm font-medium text-gray-800">
+                                      {q.name}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <p
+                                      className="text-xs text-gray-500 line-clamp-1"
+                                      title={q.description}
                                     >
-                                      详情
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
-                                      onClick={() => handleEditRdqLocal(q)}
-                                    >
-                                      编辑
-                                    </Button>
-                                    {isSelected ? (
+                                      {q.description || '-'}
+                                    </p>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <Badge variant="secondary" className="text-[10px]">
+                                      {q.majorName || '-'}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center justify-end gap-1">
                                       <Button
+                                        variant="ghost"
                                         size="sm"
-                                        variant="outline"
-                                        className="h-6 text-[11px] px-2"
-                                        onClick={() => handleToggleSelect(q.id)}
+                                        className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
+                                        onClick={() => {
+                                          setSelectedRdqForDetail(q.id)
+                                          setRdqDetailOpen(true)
+                                        }}
                                       >
-                                        取消
+                                        详情
                                       </Button>
-                                    ) : (
                                       <Button
+                                        variant="ghost"
                                         size="sm"
-                                        className="h-6 text-[11px] px-2"
-                                        onClick={() => handleToggleSelect(q.id)}
+                                        className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
+                                        onClick={() => handleEditRdqLocal(q)}
                                       >
-                                        选择
+                                        编辑
                                       </Button>
-                                    )}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 text-[11px] px-1.5 text-red-400 hover:text-red-600"
-                                      onClick={() => handleDeleteRdq(q.id)}
-                                    >
-                                      删除
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
+                                      {isSelected ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-6 text-[11px] px-2"
+                                          onClick={() => handleToggleSelect(q.id)}
+                                        >
+                                          取消
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          className="h-6 text-[11px] px-2"
+                                          onClick={() => handleToggleSelect(q.id)}
+                                        >
+                                          选择
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-[11px] px-1.5 text-red-400 hover:text-red-600"
+                                        onClick={() => handleDeleteRdq(q.id)}
+                                      >
+                                        删除
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
                         </table>
                       </div>
                     )}
@@ -2465,9 +2460,7 @@ export function EvaluationRulesEditor({
             setTaskScoreRules([])
           } else {
             setEvalPoints(info.field, [])
-            setTaskScoreRules(
-              (scheme.scoreRuleItems || []).map((it) => ({ ...it, id: uid('sr') })),
-            )
+            setTaskScoreRules((scheme.scoreRuleItems || []).map((it) => ({ ...it, id: uid('sr') })))
           }
         }
 
@@ -2600,10 +2593,7 @@ export function EvaluationRulesEditor({
               <div className="border rounded-xl p-4 bg-gray-50/50">
                 <p className="text-sm font-medium mb-3">评价标准信息</p>
                 <div className="space-y-3">
-                  <FormFieldRow
-                    label="评价标准名称"
-                    labelClassName="text-xs text-gray-500"
-                  >
+                  <FormFieldRow label="评价标准名称" labelClassName="text-xs text-gray-500">
                     <Input
                       value={stdDraft.name}
                       onChange={(e) => setStdDraft((prev) => ({ ...prev, name: e.target.value }))}
@@ -2663,7 +2653,6 @@ export function EvaluationRulesEditor({
                         评分规则
                       </button>
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -2953,7 +2942,9 @@ export function EvaluationRulesEditor({
                               <button
                                 className="text-red-500 hover:text-red-600 text-xs"
                                 onClick={() =>
-                                  setTaskScoreRules(taskScoreRules.filter((it) => it.id !== item.id))
+                                  setTaskScoreRules(
+                                    taskScoreRules.filter((it) => it.id !== item.id),
+                                  )
                                 }
                               >
                                 删除
@@ -2992,8 +2983,7 @@ export function EvaluationRulesEditor({
                               : 'text-red-500',
                           )}
                         >
-                          {taskScoreRules.reduce((sum, it) => sum + (it.weight || 0), 0)}
-                          %
+                          {taskScoreRules.reduce((sum, it) => sum + (it.weight || 0), 0)}%
                         </span>
                         {taskScoreRules.reduce((sum, it) => sum + (it.weight || 0), 0) !== 100 && (
                           <span className="text-red-500">⚠️（需等于100%）</span>
@@ -3063,10 +3053,7 @@ export function EvaluationRulesEditor({
                       </button>
                     </div>
                     {saveTemplateMode === 'new' ? (
-                      <FormFieldRow
-                        label="模板名称"
-                        labelClassName="text-xs text-gray-500"
-                      >
+                      <FormFieldRow label="模板名称" labelClassName="text-xs text-gray-500">
                         <Input
                           value={stdDraft.name}
                           onChange={(e) =>
@@ -3663,9 +3650,7 @@ export function EvaluationRulesEditor({
                           updateMethodEvalSubject(methodKey, originalIdx, { enabled: v })
                         }
                       />
-                      <span className="text-xs font-medium">
-                        {subjectLabels[subject.type]}
-                      </span>
+                      <span className="text-xs font-medium">{subjectLabels[subject.type]}</span>
                     </div>
                     {subject.enabled && subject.params?.weightPercent !== undefined && (
                       <Badge variant="outline" className="text-[10px]">
@@ -3737,7 +3722,10 @@ export function EvaluationRulesEditor({
                               </FormFieldRow>
                             )}
                           </FormFieldRow>
-                          <FormFieldRow label="评分权重 (%)" labelClassName="text-[11px] text-gray-500">
+                          <FormFieldRow
+                            label="评分权重 (%)"
+                            labelClassName="text-[11px] text-gray-500"
+                          >
                             <Input
                               type="number"
                               value={subject.params?.weightPercent || 0}
@@ -3757,7 +3745,10 @@ export function EvaluationRulesEditor({
                               max={100}
                             />
                           </FormFieldRow>
-                          <FormFieldRow label="最低教龄 (年)" labelClassName="text-[11px] text-gray-500">
+                          <FormFieldRow
+                            label="最低教龄 (年)"
+                            labelClassName="text-[11px] text-gray-500"
+                          >
                             <Input
                               type="number"
                               value={subject.params?.minTeachingYears || 0}
@@ -3778,7 +3769,10 @@ export function EvaluationRulesEditor({
                       {subject.type === 'enterprise_mentor' && (
                         <>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <FormFieldRow label="专业领域" labelClassName="text-[11px] text-gray-500">
+                            <FormFieldRow
+                              label="专业领域"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Input
                                 value={subject.params?.expertise || ''}
                                 onChange={(e) =>
@@ -3809,7 +3803,10 @@ export function EvaluationRulesEditor({
                                 min={0}
                               />
                             </FormFieldRow>
-                            <FormFieldRow label="评分人数" labelClassName="text-[11px] text-gray-500">
+                            <FormFieldRow
+                              label="评分人数"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Input
                                 type="number"
                                 value={subject.params?.scorerCount || 1}
@@ -3899,7 +3896,10 @@ export function EvaluationRulesEditor({
                       {subject.type === 'peer' && (
                         <>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <FormFieldRow label="互评人数" labelClassName="text-[11px] text-gray-500">
+                            <FormFieldRow
+                              label="互评人数"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Input
                                 type="number"
                                 value={subject.params?.peerCount || 3}
@@ -3970,7 +3970,10 @@ export function EvaluationRulesEditor({
                             </FormFieldRow>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <FormFieldRow label="互评规则" labelClassName="text-[11px] text-gray-500">
+                            <FormFieldRow
+                              label="互评规则"
+                              labelClassName="text-[11px] text-gray-500"
+                            >
                               <Select
                                 value={subject.params?.peerRule || ''}
                                 onValueChange={(v) =>
@@ -4454,89 +4457,91 @@ export function EvaluationRulesEditor({
                           <tr>
                             <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
                               知识点名称
-                          </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
-                            编码
-                          </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
-                            描述
-                          </th>
-                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
-                            操作
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredKp.map((kp) => {
-                          const isSelected = selectedIds.includes(kp.id)
-                          return (
-                            <tr
-                              key={kp.id}
-                              className={cn(
-                                'hover:bg-gray-50 cursor-pointer',
-                                isSelected ? 'bg-primary/[0.03]' : '',
-                              )}
-                              onClick={() => toggleKp(kp.id)}
-                            >
-                              <td className="px-3 py-2">
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className={cn(
-                                      'w-4 h-4 rounded border flex items-center justify-center shrink-0',
-                                      isSelected ? 'bg-primary border-primary' : 'border-gray-300',
-                                    )}
-                                  >
-                                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                            </th>
+                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
+                              编码
+                            </th>
+                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
+                              描述
+                            </th>
+                            <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
+                              操作
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {filteredKp.map((kp) => {
+                            const isSelected = selectedIds.includes(kp.id)
+                            return (
+                              <tr
+                                key={kp.id}
+                                className={cn(
+                                  'hover:bg-gray-50 cursor-pointer',
+                                  isSelected ? 'bg-primary/[0.03]' : '',
+                                )}
+                                onClick={() => toggleKp(kp.id)}
+                              >
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={cn(
+                                        'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                                        isSelected
+                                          ? 'bg-primary border-primary'
+                                          : 'border-gray-300',
+                                      )}
+                                    >
+                                      {isSelected && <Check className="h-3 w-3 text-white" />}
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-800">
+                                      {kp.name}
+                                    </span>
                                   </div>
-                                  <span className="text-sm font-medium text-gray-800">
-                                    {kp.name}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-3 py-2">
-                                {kp.code ? (
-                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                                    {kp.code}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-xs text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2">
-                                <p className="text-xs text-gray-500 line-clamp-1">
-                                  {kp.description}
-                                </p>
-                              </td>
-                              <td className="px-3 py-2 text-right">
-                                {isSelected ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-6 text-[11px] px-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleKp(kp.id)
-                                    }}
-                                  >
-                                    取消
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    className="h-6 text-[11px] px-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleKp(kp.id)
-                                    }}
-                                  >
-                                    选择
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
+                                </td>
+                                <td className="px-3 py-2">
+                                  {kp.code ? (
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                                      {kp.code}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">-</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <p className="text-xs text-gray-500 line-clamp-1">
+                                    {kp.description}
+                                  </p>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  {isSelected ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[11px] px-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        toggleKp(kp.id)
+                                      }}
+                                    >
+                                      取消
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      className="h-6 text-[11px] px-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        toggleKp(kp.id)
+                                      }}
+                                    >
+                                      选择
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
                       </table>
                     </div>
                   </div>
@@ -4637,89 +4642,91 @@ export function EvaluationRulesEditor({
                           <tr>
                             <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
                               能力点名称
-                          </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
-                            编码
-                          </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
-                            描述
-                          </th>
-                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
-                            操作
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredAb.map((ab) => {
-                          const isSelected = selectedIds.includes(ab.id)
-                          return (
-                            <tr
-                              key={ab.id}
-                              className={cn(
-                                'hover:bg-gray-50 cursor-pointer',
-                                isSelected ? 'bg-primary/[0.03]' : '',
-                              )}
-                              onClick={() => toggleAb(ab.id)}
-                            >
-                              <td className="px-3 py-2">
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className={cn(
-                                      'w-4 h-4 rounded border flex items-center justify-center shrink-0',
-                                      isSelected ? 'bg-primary border-primary' : 'border-gray-300',
-                                    )}
-                                  >
-                                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                            </th>
+                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
+                              编码
+                            </th>
+                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
+                              描述
+                            </th>
+                            <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
+                              操作
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {filteredAb.map((ab) => {
+                            const isSelected = selectedIds.includes(ab.id)
+                            return (
+                              <tr
+                                key={ab.id}
+                                className={cn(
+                                  'hover:bg-gray-50 cursor-pointer',
+                                  isSelected ? 'bg-primary/[0.03]' : '',
+                                )}
+                                onClick={() => toggleAb(ab.id)}
+                              >
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={cn(
+                                        'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                                        isSelected
+                                          ? 'bg-primary border-primary'
+                                          : 'border-gray-300',
+                                      )}
+                                    >
+                                      {isSelected && <Check className="h-3 w-3 text-white" />}
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-800">
+                                      {ab.name}
+                                    </span>
                                   </div>
-                                  <span className="text-sm font-medium text-gray-800">
-                                    {ab.name}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-3 py-2">
-                                {ab.code ? (
-                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                                    {ab.code}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-xs text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2">
-                                <p className="text-xs text-gray-500 line-clamp-1">
-                                  {ab.description}
-                                </p>
-                              </td>
-                              <td className="px-3 py-2 text-right">
-                                {isSelected ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-6 text-[11px] px-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleAb(ab.id)
-                                    }}
-                                  >
-                                    取消
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    className="h-6 text-[11px] px-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleAb(ab.id)
-                                    }}
-                                  >
-                                    选择
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
+                                </td>
+                                <td className="px-3 py-2">
+                                  {ab.code ? (
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                                      {ab.code}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">-</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <p className="text-xs text-gray-500 line-clamp-1">
+                                    {ab.description}
+                                  </p>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  {isSelected ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[11px] px-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        toggleAb(ab.id)
+                                      }}
+                                    >
+                                      取消
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      className="h-6 text-[11px] px-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        toggleAb(ab.id)
+                                      }}
+                                    >
+                                      选择
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
                       </table>
                     </div>
                   </div>

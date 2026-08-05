@@ -44,8 +44,7 @@ export function ImageEditorDialog({
   const [loaded, setLoaded] = useState(false)
 
   const handleSave = ({ blob }: { blob: Blob }) => {
-    const type =
-      blob.type && blob.type.startsWith('image/') ? blob.type : mimeType || 'image/png'
+    const type = blob.type && blob.type.startsWith('image/') ? blob.type : mimeType || 'image/png'
     const ext = EXT_BY_MIME[type] || 'png'
     const baseName = fileName.replace(/\.[^.]+$/, '') || 'image'
     onConfirm(new File([blob], `${baseName}.${ext}`, { type }))

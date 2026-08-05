@@ -106,7 +106,15 @@ export function buildNodeSavePayload(options: {
   resolvedKnowledgePointIds?: string[]
   existingResourceIds?: string[]
 }): NodeSavePayload {
-  const { node, draft, effectiveCourseId, parentId, contentCode, resolvedKnowledgePointIds = [], existingResourceIds = [] } = options
+  const {
+    node,
+    draft,
+    effectiveCourseId,
+    parentId,
+    contentCode,
+    resolvedKnowledgePointIds = [],
+    existingResourceIds = [],
+  } = options
 
   const refType: NodeRefType = node.type === 'original' ? 'original' : 'normal'
   const isQuoteNode = refType === 'original'

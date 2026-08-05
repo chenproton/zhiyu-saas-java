@@ -39,10 +39,7 @@ import { PrepAssociateDialog } from './prep-associate-dialog'
 import { HybridGradingDialog } from './hybrid-grading-dialog'
 import { portalApi, courseApi } from '@/lib/api'
 import { SCENE_PLATFORM_URL } from '@/lib/external-links'
-import type {
-  WorkspaceDashboard,
-  WorkspaceClassPlan,
-} from '@/lib/types'
+import type { WorkspaceDashboard, WorkspaceClassPlan } from '@/lib/types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { type PrepAssociationRecord } from '../_data/workspace-teacher-types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
@@ -1013,7 +1010,8 @@ export function TeacherCoursesTab({
                                           className={`flex-1 justify-center text-[10px] h-7 px-1.5 ${isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
                                           disabled={!accentColors.learnUrl}
                                           onClick={() => {
-                                            if (accentColors.learnUrl) router.push(accentColors.learnUrl)
+                                            if (accentColors.learnUrl)
+                                              router.push(accentColors.learnUrl)
                                           }}
                                         >
                                           <PlayCircle className="h-3 w-3 mr-0.5" />

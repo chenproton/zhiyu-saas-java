@@ -618,9 +618,7 @@ export default function LearnRoadsPage() {
         } else {
           // 无已有路径时不立即写库，进入本地编辑态，保存时才创建
           setLearnRoadId(null)
-          loadedScenes = scenarios.length
-            ? scenarios.map((s) => scenarioToScene(s, tasks))
-            : []
+          loadedScenes = scenarios.length ? scenarios.map((s) => scenarioToScene(s, tasks)) : []
         }
         setScenes(loadedScenes)
         setSelectedSceneId(loadedScenes[0]?.id || null)

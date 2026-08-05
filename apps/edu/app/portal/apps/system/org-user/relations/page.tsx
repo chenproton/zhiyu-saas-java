@@ -48,7 +48,12 @@ export default function RelationsPage() {
   const { tenantId } = usePortalAuth()
   const [searchText, setSearchText] = useState('')
 
-  const { data: relations, loading, error, refresh } = useAsync(
+  const {
+    data: relations,
+    loading,
+    error,
+    refresh,
+  } = useAsync(
     async () => {
       const res = await portalUserRelationApi.list({ search: searchText || undefined })
       return res.items as RelationItem[]
@@ -128,7 +133,10 @@ export default function RelationsPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">关系类型</label>
-            <Select value={item.relationType} onValueChange={(v) => setItem({ ...item, relationType: v })}>
+            <Select
+              value={item.relationType}
+              onValueChange={(v) => setItem({ ...item, relationType: v })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="请选择关系类型" />
               </SelectTrigger>

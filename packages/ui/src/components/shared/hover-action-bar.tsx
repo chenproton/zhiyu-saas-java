@@ -3,11 +3,7 @@
 import { Children, type ReactNode, useState } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { Button } from '../ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '../ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dropdown-menu'
 
 export function HoverActionBar({
   children,

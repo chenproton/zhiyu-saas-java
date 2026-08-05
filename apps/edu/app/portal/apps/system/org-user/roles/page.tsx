@@ -24,15 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import {
-  Pencil,
-  Trash2,
-  Upload,
-  Download,
-  Settings,
-  Users,
-  LayoutDashboard,
-} from 'lucide-react'
+import { Pencil, Trash2, Upload, Download, Settings, Users, LayoutDashboard } from 'lucide-react'
 import { roleApi, portalUserManagementApi, type User } from '@/lib/api'
 import type { Role } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -408,10 +400,7 @@ export default function RolesPage() {
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
       filterItems={(items, search) =>
-        items.filter(
-          (role) =>
-            !search || role.name.includes(search) || role.code.includes(search),
-        )
+        items.filter((role) => !search || role.name.includes(search) || role.code.includes(search))
       }
       hideImport
       headerActions={
@@ -438,7 +427,11 @@ export default function RolesPage() {
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">角色编码</label>
-            <Input value={item.code || generateRoleCode()} disabled className="bg-muted font-mono" />
+            <Input
+              value={item.code || generateRoleCode()}
+              disabled
+              className="bg-muted font-mono"
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">

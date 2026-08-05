@@ -176,9 +176,7 @@ export default function CertificatesPage() {
           <TableCell className="p-3 text-sm text-slate-400 hidden lg:table-cell max-w-[300px] truncate">
             {item.description || '-'}
           </TableCell>
-          <TableCell className="p-3 text-sm text-slate-400">
-            {formatDate(item.createdAt)}
-          </TableCell>
+          <TableCell className="p-3 text-sm text-slate-400">{formatDate(item.createdAt)}</TableCell>
           <TableCell className="p-3 text-right whitespace-nowrap">
             <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}>
               <Pencil className="size-4" />

@@ -313,8 +313,7 @@ export default function SceneLearnPage() {
   const getExamHref = (m: TaskEvaluationMethod) => {
     const isExamMethod = ['paper', 'question_bank', 'quiz'].includes(m.methodKey)
     if (!isExamMethod) return undefined
-    const examId =
-      m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
+    const examId = m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
     const usageId = m.resourceConfig?.usageId
     if (!examId) return undefined
     return `/evaluation/landing/exams/${examId}?task=${activeTaskId}&scene=${id}&method=${m.methodKey}&usage=${usageId || ''}`
@@ -438,7 +437,8 @@ export default function SceneLearnPage() {
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
                     <BarChart3 className="w-3.5 h-3.5 text-blue-500" />{' '}
-                    {SCENE_DIFFICULTY[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`}
+                    {SCENE_DIFFICULTY[activeTask.difficulty]?.label ||
+                      `Lv.${activeTask.difficulty}`}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
                     <Clock className="w-3.5 h-3.5 text-blue-500" /> {activeTask.estimatedHours || 0}{' '}
@@ -878,9 +878,7 @@ export default function SceneLearnPage() {
                 {activeKnowledgePoint.name}
               </DialogTitle>
               {activeKnowledgePoint.code && (
-                <DialogDescription>
-                  编码：{activeKnowledgePoint.code}
-                </DialogDescription>
+                <DialogDescription>编码：{activeKnowledgePoint.code}</DialogDescription>
               )}
             </DialogHeader>
             <div className="space-y-4">
@@ -942,4 +940,3 @@ export default function SceneLearnPage() {
     </div>
   )
 }
-

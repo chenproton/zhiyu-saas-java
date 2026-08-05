@@ -18,12 +18,7 @@ export { ImportWizardDialog } from './components/shared/import-wizard-dialog'
 export type { ImportWizardDialogProps } from './components/shared/import-wizard-dialog'
 export { ImportConfirmDialog } from './components/shared/import-confirm-dialog'
 export type { ImportConfirmDialogProps } from './components/shared/import-confirm-dialog'
-export {
-  Empty,
-  EmptyHeader,
-  EmptyTitle,
-  EmptyDescription,
-} from './components/ui/empty'
+export { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from './components/ui/empty'
 
 export { PlatformSideNav } from './components/platform-shell'
 export type {

@@ -16,16 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
-import {
-  Plus,
-  Search,
-  Trash2,
-  Brain,
-  AlertCircle,
-  Check,
-  Pencil,
-  Library,
-} from 'lucide-react'
+import { Plus, Search, Trash2, Brain, AlertCircle, Check, Pencil, Library } from 'lucide-react'
 import { abilityApi, positionApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { convertApiAbilityToLocal } from '@/lib/converters/job-converters'
@@ -758,11 +749,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
           ) : (
             <>
               <div className="space-y-4 py-4">
-                <FormFieldRow
-                  label="能力点名称"
-                  required
-                  labelClassName="text-sm text-gray-600"
-                >
+                <FormFieldRow label="能力点名称" required labelClassName="text-sm text-gray-600">
                   <Input
                     value={newAbilityName}
                     onChange={(e) => setNewAbilityName(e.target.value)}
@@ -923,163 +910,164 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px]">
-                <thead>
-                  <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
-                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
-                      能力点名称
-                    </th>
-                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[15%]">
-                      能力点编码
-                    </th>
-                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[25%]">
-                      能力属性
-                    </th>
-                    <th className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
-                      操作
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {abilityPoolResults.map((ability) => {
-                    const isEditing = editingAbilityId === ability.id
-                    const alreadyAdded =
-                      selectedRespId &&
-                      position.abilityBindings.some(
-                        (b) =>
-                          b.responsibilityId === selectedRespId && b.publicAbilityId === ability.id,
-                      )
-                    if (isEditing) {
-                      return (
-                        <tr key={ability.id} className="bg-indigo-50/40">
-                          <td colSpan={4} className="px-4 py-3">
-                            <div className="flex items-start gap-4">
-                              <div className="flex-1 space-y-2">
-                                <Input
-                                  value={editAbilityName}
-                                  onChange={(e) => setEditAbilityName(e.target.value)}
-                                  onKeyDown={(e) => handleSaveEditAbilityKeyDown(e, ability.id)}
-                                  placeholder="能力点名称"
-                                  className="h-8 text-sm bg-white"
-                                  autoFocus
-                                />
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[11px] text-gray-400 shrink-0">属性</span>
-                                  {ABILITY_ATTRIBUTES.map((attr) => {
-                                    const isSel = editAbilityAttributes.includes(attr)
-                                    return (
-                                      <button
-                                        key={attr}
-                                        type="button"
-                                        onClick={() =>
-                                          setEditAbilityAttributes((prev) =>
-                                            prev.includes(attr)
-                                              ? prev.filter((a) => a !== attr)
-                                              : [...prev, attr],
-                                          )
-                                        }
-                                        className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${
-                                          isSel
-                                            ? 'bg-gray-800 text-white border-gray-800'
-                                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                                        }`}
-                                      >
-                                        {attr}
-                                      </button>
-                                    )
-                                  })}
+                  <thead>
+                    <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
+                      <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
+                        能力点名称
+                      </th>
+                      <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[15%]">
+                        能力点编码
+                      </th>
+                      <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[25%]">
+                        能力属性
+                      </th>
+                      <th className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {abilityPoolResults.map((ability) => {
+                      const isEditing = editingAbilityId === ability.id
+                      const alreadyAdded =
+                        selectedRespId &&
+                        position.abilityBindings.some(
+                          (b) =>
+                            b.responsibilityId === selectedRespId &&
+                            b.publicAbilityId === ability.id,
+                        )
+                      if (isEditing) {
+                        return (
+                          <tr key={ability.id} className="bg-indigo-50/40">
+                            <td colSpan={4} className="px-4 py-3">
+                              <div className="flex items-start gap-4">
+                                <div className="flex-1 space-y-2">
+                                  <Input
+                                    value={editAbilityName}
+                                    onChange={(e) => setEditAbilityName(e.target.value)}
+                                    onKeyDown={(e) => handleSaveEditAbilityKeyDown(e, ability.id)}
+                                    placeholder="能力点名称"
+                                    className="h-8 text-sm bg-white"
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] text-gray-400 shrink-0">属性</span>
+                                    {ABILITY_ATTRIBUTES.map((attr) => {
+                                      const isSel = editAbilityAttributes.includes(attr)
+                                      return (
+                                        <button
+                                          key={attr}
+                                          type="button"
+                                          onClick={() =>
+                                            setEditAbilityAttributes((prev) =>
+                                              prev.includes(attr)
+                                                ? prev.filter((a) => a !== attr)
+                                                : [...prev, attr],
+                                            )
+                                          }
+                                          className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${
+                                            isSel
+                                              ? 'bg-gray-800 text-white border-gray-800'
+                                              : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                                          }`}
+                                        >
+                                          {attr}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => handleSaveEditAbility(ability.id)}
+                                  >
+                                    <Check className="mr-1 h-3 w-3" />
+                                    保存
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-xs text-gray-500"
+                                    onClick={() => {
+                                      setEditingAbilityId(null)
+                                      setEditAbilityName('')
+                                      setEditAbilityAttributes([])
+                                    }}
+                                  >
+                                    取消
+                                  </Button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-xs"
-                                  onClick={() => handleSaveEditAbility(ability.id)}
+                            </td>
+                          </tr>
+                        )
+                      }
+                      return (
+                        <tr key={ability.id} className="hover:bg-gray-50/80 transition-colors">
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-gray-800">{ability.name}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-gray-400">{ability.code || '-'}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              {(ability.attributes || []).map((attr, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200"
                                 >
-                                  <Check className="mr-1 h-3 w-3" />
-                                  保存
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 text-xs text-gray-500"
-                                  onClick={() => {
-                                    setEditingAbilityId(null)
-                                    setEditAbilityName('')
-                                    setEditAbilityAttributes([])
-                                  }}
+                                  {attr}
+                                </span>
+                              ))}
+                              {(ability.attributes || []).length === 0 && (
+                                <span className="text-[11px] text-gray-300">-</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {selectedRespId &&
+                                (alreadyAdded ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
+                                    <Check className="h-3 w-3" />
+                                    已添加
+                                  </span>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[11px] rounded-full px-3"
+                                    onClick={() => handleAddFromPool(ability)}
+                                  >
+                                    <Plus className="mr-1 h-3 w-3" />
+                                    添加
+                                  </Button>
+                                ))}
+                              <div className="flex items-center gap-0.5 border border-gray-200 rounded-full overflow-hidden">
+                                <button
+                                  onClick={() => handleStartEditAbility(ability)}
+                                  className="px-2.5 py-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                                  title="编辑"
                                 >
-                                  取消
-                                </Button>
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteAbility(ability.id)}
+                                  className="px-2.5 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors border-l border-gray-200"
+                                  title="删除"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
                               </div>
                             </div>
                           </td>
                         </tr>
                       )
-                    }
-                    return (
-                      <tr key={ability.id} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="px-4 py-3">
-                          <span className="text-sm text-gray-800">{ability.name}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-sm text-gray-400">{ability.code || '-'}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
-                            {(ability.attributes || []).map((attr, i) => (
-                              <span
-                                key={i}
-                                className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200"
-                              >
-                                {attr}
-                              </span>
-                            ))}
-                            {(ability.attributes || []).length === 0 && (
-                              <span className="text-[11px] text-gray-300">-</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {selectedRespId &&
-                              (alreadyAdded ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
-                                  <Check className="h-3 w-3" />
-                                  已添加
-                                </span>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-[11px] rounded-full px-3"
-                                  onClick={() => handleAddFromPool(ability)}
-                                >
-                                  <Plus className="mr-1 h-3 w-3" />
-                                  添加
-                                </Button>
-                              ))}
-                            <div className="flex items-center gap-0.5 border border-gray-200 rounded-full overflow-hidden">
-                              <button
-                                onClick={() => handleStartEditAbility(ability)}
-                                className="px-2.5 py-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                                title="编辑"
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteAbility(ability.id)}
-                                className="px-2.5 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors border-l border-gray-200"
-                                title="删除"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
+                    })}
+                  </tbody>
                 </table>
               </div>
             )}

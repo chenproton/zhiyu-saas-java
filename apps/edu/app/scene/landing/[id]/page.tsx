@@ -41,7 +41,12 @@ import type {
   AbilityPoint,
   Course,
 } from '@/lib/types'
-import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS, EVAL_METHOD_LABELS, EVAL_METHOD_COLORS } from '@/lib/types'
+import {
+  SCENE_DIFFICULTY,
+  RESOURCE_TYPE_SHORT_LABELS,
+  EVAL_METHOD_LABELS,
+  EVAL_METHOD_COLORS,
+} from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { SceneKnowledgeGraph } from '@/components/scene/student/knowledge-graph'
 import {

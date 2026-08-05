@@ -639,9 +639,7 @@ function ScoreRuleGradingCard({
           <div className="flex-1 min-w-0">
             <h4 className="font-medium text-gray-800 text-sm">{scoreRule.name}</h4>
             {scoreRule.description && (
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                {scoreRule.description}
-              </p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">{scoreRule.description}</p>
             )}
             {scoreRule.rule && (
               <p className="text-xs text-blue-600 mt-1 leading-relaxed bg-blue-50 border border-blue-100 rounded px-2 py-1">
@@ -990,8 +988,7 @@ export default function GradingDetailPage() {
 
   const evalPoints = useMemo(() => methodConfig?.evalPoints || [], [methodConfig])
   const scoreRules = useMemo(() => methodConfig?.scoreRules || [], [methodConfig])
-  const isScoreRuleMode =
-    methodConfig?.standardMode === 'score_rule' || scoreRules.length > 0
+  const isScoreRuleMode = methodConfig?.standardMode === 'score_rule' || scoreRules.length > 0
   const reviewSteps = useMemo(() => methodConfig?.reviewSteps || [], [methodConfig])
   const subjectiveContent = useMemo(
     () => (result?.subjectiveContent || {}) as Record<string, any>,
@@ -1055,8 +1052,7 @@ export default function GradingDetailPage() {
         .filter((q: any) => !isAutoQuestion(q))
         .every((q: any) => gradedIds.has(q.id) || q.score === 0)
     : isScoreRuleMode
-      ? scoreRules.length === 0 ||
-        scoreRules.every((sr) => gradedIds.has(sr.id) || sr.weight === 0)
+      ? scoreRules.length === 0 || scoreRules.every((sr) => gradedIds.has(sr.id) || sr.weight === 0)
       : isReview
         ? (evalPoints.length === 0 ||
             evalPoints.every((ep) => gradedIds.has(ep.id) || ep.weight === 0)) &&
@@ -1169,7 +1165,7 @@ export default function GradingDetailPage() {
               <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                 {rdQuestions.length} 题
               </Badge>
-            {!saved && (
+              {!saved && (
                 <Button
                   size="sm"
                   variant="outline"

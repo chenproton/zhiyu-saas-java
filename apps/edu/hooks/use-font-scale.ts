@@ -50,10 +50,7 @@ export function useFontScale(): UseFontScaleResult {
     }
   }, [level])
 
-  const increase = useCallback(
-    () => setLevel((l) => Math.min(MAX_FONT_SCALE_LEVEL, l + 1)),
-    [],
-  )
+  const increase = useCallback(() => setLevel((l) => Math.min(MAX_FONT_SCALE_LEVEL, l + 1)), [])
   const decrease = useCallback(() => setLevel((l) => Math.max(0, l - 1)), [])
   const reset = useCallback(() => setLevel(0), [])
 

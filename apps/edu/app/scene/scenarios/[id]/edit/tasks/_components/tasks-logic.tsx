@@ -1,15 +1,6 @@
 'use client'
 
-import {
-  Award,
-  Book,
-  CheckCircle2,
-  FileText,
-  Gavel,
-  Lightbulb,
-  Link2,
-  Scale,
-} from 'lucide-react'
+import { Award, Book, CheckCircle2, FileText, Gavel, Lightbulb, Link2, Scale } from 'lucide-react'
 import {
   type EvalRuleConfig,
   type EvalRuleReviewStepInput,

@@ -161,7 +161,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                       onEdit={() => router.push(`${basePath}/${scenario.id}/edit`)}
                       onClone={onClone ? () => onClone(scenario) : undefined}
                       onSubmit={onSubmitApproval ? () => onSubmitApproval(scenario) : undefined}
-                      onWithdraw={onWithdrawApproval ? () => onWithdrawApproval(scenario) : undefined}
+                      onWithdraw={
+                        onWithdrawApproval ? () => onWithdrawApproval(scenario) : undefined
+                      }
                       onPublish={onPublish ? () => onPublish(scenario) : undefined}
                       onUnpublish={onUnpublish ? () => onUnpublish(scenario) : undefined}
                       onArchive={onArchive ? () => onArchive(scenario) : undefined}

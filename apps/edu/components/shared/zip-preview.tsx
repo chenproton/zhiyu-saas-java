@@ -15,9 +15,35 @@ interface ZipEntry {
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'jfif', 'svg'])
 const TEXT_EXTS = new Set([
-  'txt', 'md', 'json', 'yaml', 'yml', 'log', 'csv', 'tsv', 'properties', 'xml',
-  'java', 'py', 'c', 'cpp', 'h', 'php', 'go', 'js', 'ts', 'css', 'lua', 'sh',
-  'rb', 'sql', 'bat', 'cmd', 'cs', 'html', 'htm',
+  'txt',
+  'md',
+  'json',
+  'yaml',
+  'yml',
+  'log',
+  'csv',
+  'tsv',
+  'properties',
+  'xml',
+  'java',
+  'py',
+  'c',
+  'cpp',
+  'h',
+  'php',
+  'go',
+  'js',
+  'ts',
+  'css',
+  'lua',
+  'sh',
+  'rb',
+  'sql',
+  'bat',
+  'cmd',
+  'cs',
+  'html',
+  'htm',
 ])
 
 function extOf(name: string): string {
@@ -131,9 +157,7 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
       <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b bg-white">
         <FileArchive className="size-4 text-gray-500" />
         <span className="font-medium truncate">{name || '压缩包预览'}</span>
-        <span className="text-xs text-gray-400">
-          {entries ? `${entries.length} 个文件` : ''}
-        </span>
+        <span className="text-xs text-gray-400">{entries ? `${entries.length} 个文件` : ''}</span>
       </div>
       <div className="flex-1 min-h-0 flex">
         <div className="w-64 shrink-0 border-r bg-white overflow-auto">
@@ -148,7 +172,12 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
               <AlertTriangle className="size-4 shrink-0 mt-0.5" />
               <div>
                 {error}
-                <a href={url} target="_blank" rel="noreferrer" className="block mt-1 text-blue-600 underline">
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block mt-1 text-blue-600 underline"
+                >
                   下载原文件
                 </a>
               </div>
@@ -172,7 +201,11 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
                         isSelected && 'bg-blue-50 text-blue-700',
                       )}
                     >
-                      {dir ? <Folder className="size-3.5 shrink-0 text-gray-400" /> : <FileText className="size-3.5 shrink-0 text-gray-400" />}
+                      {dir ? (
+                        <Folder className="size-3.5 shrink-0 text-gray-400" />
+                      ) : (
+                        <FileText className="size-3.5 shrink-0 text-gray-400" />
+                      )}
                       <span className="truncate">{e.name}</span>
                     </button>
                   </li>
@@ -190,14 +223,24 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
           )}
           {selected && selectedType === 'image' && (
             <div className="flex-1 min-h-0 flex items-center justify-center p-2 overflow-auto bg-gray-100">
-              <img src={selectedBlobUrl} alt={selected.name} className="max-w-full max-h-full object-contain" />
+              <img
+                src={selectedBlobUrl}
+                alt={selected.name}
+                className="max-w-full max-h-full object-contain"
+              />
             </div>
           )}
           {selected && selectedType === 'text' && (
-            <pre className="flex-1 min-h-0 overflow-auto p-4 whitespace-pre-wrap break-all">{strFromU8(selected.data)}</pre>
+            <pre className="flex-1 min-h-0 overflow-auto p-4 whitespace-pre-wrap break-all">
+              {strFromU8(selected.data)}
+            </pre>
           )}
           {selected && selectedType === 'pdf' && (
-            <iframe src={selectedBlobUrl} title={selected.name} className="flex-1 min-h-0 w-full border-0" />
+            <iframe
+              src={selectedBlobUrl}
+              title={selected.name}
+              className="flex-1 min-h-0 w-full border-0"
+            />
           )}
           {selected && selectedType === 'unknown' && (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-500">
@@ -216,7 +259,11 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
           {selected && (
             <div className="shrink-0 flex items-center justify-between px-3 py-1.5 border-t bg-gray-50 text-xs text-gray-500">
               <span className="truncate">{selected.name}</span>
-              <button type="button" onClick={() => downloadEntry(selected)} className="text-blue-600 hover:underline shrink-0 ml-2">
+              <button
+                type="button"
+                onClick={() => downloadEntry(selected)}
+                className="text-blue-600 hover:underline shrink-0 ml-2"
+              >
                 下载
               </button>
             </div>

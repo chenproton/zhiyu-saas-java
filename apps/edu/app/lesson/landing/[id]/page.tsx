@@ -21,7 +21,12 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { courseApi, courseNodeApi, courseResourceApi, knowledgeApi } from '@/lib/api'
 import type { Course, NodeResource, KnowledgePoint, TaskResource } from '@/lib/types'
-import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS, EVAL_METHOD_LABELS, EVAL_METHOD_COLORS } from '@/lib/types'
+import {
+  SCENE_DIFFICULTY,
+  RESOURCE_TYPE_SHORT_LABELS,
+  EVAL_METHOD_LABELS,
+  EVAL_METHOD_COLORS,
+} from '@/lib/types'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { formatDate } from '@/lib/format-utils'
@@ -353,9 +358,7 @@ export default function CourseDetailPage() {
               <div className="space-y-3">
                 {renderTreeNodes(
                   tree,
-                  new Map([...nodes]
-                    .sort((a, b) => a.order - b.order)
-                    .map((n, i) => [n.id, i])),
+                  new Map([...nodes].sort((a, b) => a.order - b.order).map((n, i) => [n.id, i])),
                 )}
               </div>
             )}
@@ -436,7 +439,9 @@ export default function CourseDetailPage() {
                                   </div>
                                   {r.url && (
                                     <button
-                                      onClick={() => addPreviewResource(r as unknown as TaskResource)}
+                                      onClick={() =>
+                                        addPreviewResource(r as unknown as TaskResource)
+                                      }
                                       className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 flex items-center justify-center transition-colors"
                                       title="预览资源"
                                     >
@@ -474,7 +479,8 @@ export default function CourseDetailPage() {
           return (
             <div>
               <div className="text-sm text-slate-500 mb-4">
-                共 <strong className="text-emerald-600">{evalNodes.length}</strong> 个节点配置了评价标准
+                共 <strong className="text-emerald-600">{evalNodes.length}</strong>{' '}
+                个节点配置了评价标准
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {evalNodes.map((node) => {

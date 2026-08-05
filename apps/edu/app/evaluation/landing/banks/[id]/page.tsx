@@ -389,7 +389,10 @@ export default function BankDetailPage() {
             ) : (
               <div className="space-y-3">
                 {filteredQuestions.map((q, idx) => {
-                  const diff = { label: DIFFICULTY_LABELS[q.difficulty || 'medium'], color: DIFFICULTY_COLORS[q.difficulty || 'medium'] }
+                  const diff = {
+                    label: DIFFICULTY_LABELS[q.difficulty || 'medium'],
+                    color: DIFFICULTY_COLORS[q.difficulty || 'medium'],
+                  }
                   const IconComp = questionTypeIcons[q.type] || HelpCircle
                   return (
                     <div

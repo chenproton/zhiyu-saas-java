@@ -95,10 +95,8 @@ export const importExportApi = {
     }
     return res.json()
   },
-  importExcelPreview: (
-    entity: string,
-    files: File | File[],
-  ): Promise<ImportPreviewResult> => importExportApi.importPreview(entity, files),
+  importExcelPreview: (entity: string, files: File | File[]): Promise<ImportPreviewResult> =>
+    importExportApi.importPreview(entity, files),
   downloadTemplate: (
     entity:
       | 'positions'

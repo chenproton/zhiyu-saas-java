@@ -21,10 +21,7 @@ export default function AllianceExpertDetailPage() {
 
   useEffect(() => {
     if (!tenantId || !id) return
-    Promise.all([
-      allianceExpertApi.get(id),
-      allianceEnterpriseApi.list({ limit: 200 }),
-    ])
+    Promise.all([allianceExpertApi.get(id), allianceEnterpriseApi.list({ limit: 200 })])
       .then(([e, ents]) => {
         setExpert(e)
         setEnterprise((ents.items || []).find((x) => x.id === e.enterpriseId) || null)

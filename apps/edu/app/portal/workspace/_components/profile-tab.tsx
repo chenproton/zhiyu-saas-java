@@ -1,7 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Mail, Phone, Shield, Smartphone, User, Award, Pencil, Trash2, Loader2 } from 'lucide-react'
+import {
+  Bell,
+  Mail,
+  Phone,
+  Shield,
+  Smartphone,
+  User,
+  Award,
+  Pencil,
+  Trash2,
+  Loader2,
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -316,7 +327,9 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
                       </div>
                     ))}
                     {honors.length === 0 && (
-                      <div className="py-8 text-center text-xs text-gray-400">暂无荣誉记录，点击上方按钮配置</div>
+                      <div className="py-8 text-center text-xs text-gray-400">
+                        暂无荣誉记录，点击上方按钮配置
+                      </div>
                     )}
                   </div>
                 )}

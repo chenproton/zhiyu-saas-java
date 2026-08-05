@@ -89,7 +89,8 @@ function LevelConfigForm({
     () =>
       LEVEL_ORDER.map((l, i) => {
         const min = mins[i] ?? l.defaultMin
-        const max = i === LEVEL_ORDER.length - 1 ? 100 : (mins[i + 1] ?? LEVEL_ORDER[i + 1].defaultMin) - 1
+        const max =
+          i === LEVEL_ORDER.length - 1 ? 100 : (mins[i + 1] ?? LEVEL_ORDER[i + 1].defaultMin) - 1
         return { ...l, min, max }
       }),
     [mins],

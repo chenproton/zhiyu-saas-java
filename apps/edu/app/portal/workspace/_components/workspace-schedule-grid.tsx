@@ -405,9 +405,7 @@ function WeekView({
             {period}
           </div>
           {[1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => {
-            const event = weekEvents.find(
-              (e) => e.dayOfWeek === dayOfWeek && e.period === period,
-            )
+            const event = weekEvents.find((e) => e.dayOfWeek === dayOfWeek && e.period === period)
             const card = event ? (
               <div
                 className={cn(

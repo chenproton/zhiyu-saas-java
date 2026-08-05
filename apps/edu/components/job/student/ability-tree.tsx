@@ -2,11 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Layers, Sparkles, Target, X } from 'lucide-react'
-import type {
-  PositionAbilityBinding,
-  AbilityPoint,
-  AbilityDomain,
-} from '@/lib/types/job'
+import type { PositionAbilityBinding, AbilityPoint, AbilityDomain } from '@/lib/types/job'
 import { AbilityPointCard } from './ability-point-card'
 
 const ATTRIBUTE_COLORS: Record<string, [string, string]> = {

@@ -82,10 +82,7 @@ function CourseCoverCard({
 }) {
   return (
     <div className="relative group">
-      <Link
-        href={`/lesson/landing/${course.id}`}
-        className="group block no-underline text-inherit"
-      >
+      <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
         <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-emerald-200 hover:-translate-y-0.5 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
           <div
             className="h-[110px] flex items-center justify-center shrink-0 relative bg-cover bg-center"
@@ -242,10 +239,7 @@ function ExamCard({
               <span className="flex items-center gap-1">
                 <ClipboardList className="w-3 h-3" /> {exam.totalScore} 分
               </span>
-              <StatusBadge
-                status={exam.status}
-                className="text-[10px] px-1.5 py-0.5 rounded"
-              />
+              <StatusBadge status={exam.status} className="text-[10px] px-1.5 py-0.5 rounded" />
             </div>
           </div>
         </div>
@@ -324,7 +318,12 @@ export function CareerTab() {
   const cats = Object.entries(categoryConfig).map(([k, v]) => ({ id: k, ...v }))
   const visibleKeys = categoryKeys[activeCategory]
 
-  const totalCount = favorites.jobs.length + favorites.scenes.length + favorites.courses.length + favorites.banks.length + favorites.exams.length
+  const totalCount =
+    favorites.jobs.length +
+    favorites.scenes.length +
+    favorites.courses.length +
+    favorites.banks.length +
+    favorites.exams.length
 
   return (
     <div className="space-y-5">
@@ -380,7 +379,10 @@ export function CareerTab() {
               <Link href="/lesson/landing" className="hover:underline flex items-center gap-0.5">
                 去收藏课程 <ChevronRight className="w-3 h-3" />
               </Link>
-              <Link href="/evaluation/landing" className="hover:underline flex items-center gap-0.5">
+              <Link
+                href="/evaluation/landing"
+                className="hover:underline flex items-center gap-0.5"
+              >
                 去收藏测评 <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
@@ -487,9 +489,7 @@ export function CareerTab() {
                           key={bank.id}
                           bank={bank}
                           index={i}
-                          onUnfavorite={() =>
-                            handleUnfavorite('banks', bank.id, 'question_bank')
-                          }
+                          onUnfavorite={() => handleUnfavorite('banks', bank.id, 'question_bank')}
                         />
                       ))}
                     </div>

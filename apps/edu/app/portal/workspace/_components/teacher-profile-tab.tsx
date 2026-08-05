@@ -80,12 +80,12 @@ export function TeacherProfileTab() {
                 <p className="text-sm font-medium text-gray-900 mb-3">其它信息（不可修改）</p>
                 <FormFieldGrid cols={3}>
                   {readOnlyFields.map((field) => (
-                    <FormFieldRow key={field.label} label={field.label} labelClassName="text-gray-700">
-                      <Input
-                        value={field.value}
-                        disabled
-                        className="bg-gray-50 border-gray-100"
-                      />
+                    <FormFieldRow
+                      key={field.label}
+                      label={field.label}
+                      labelClassName="text-gray-700"
+                    >
+                      <Input value={field.value} disabled className="bg-gray-50 border-gray-100" />
                     </FormFieldRow>
                   ))}
                 </FormFieldGrid>

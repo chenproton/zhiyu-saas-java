@@ -1,6 +1,5 @@
 'use client'
 
-
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -125,7 +124,10 @@ export default function AllianceEnterprisesPage() {
               href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=agreements`}
               className="text-primary hover:underline"
             >
-              {(agreements ?? []).filter((a) => (a.enterpriseIds || []).includes?.(enterprise.id)).length}
+              {
+                (agreements ?? []).filter((a) => (a.enterpriseIds || []).includes?.(enterprise.id))
+                  .length
+              }
             </Link>
           </TableCell>
           <TableCell>

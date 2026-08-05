@@ -173,7 +173,9 @@ export function PositionList({
                       onEdit={() => router.push(`${basePath}/${position.id}/edit`)}
                       onClone={onClone ? () => onClone(position) : undefined}
                       onSubmit={onSubmitApproval ? () => onSubmitApproval(position) : undefined}
-                      onWithdraw={onWithdrawApproval ? () => onWithdrawApproval(position) : undefined}
+                      onWithdraw={
+                        onWithdrawApproval ? () => onWithdrawApproval(position) : undefined
+                      }
                       onPublish={onPublish ? () => onPublish(position) : undefined}
                       onUnpublish={onUnpublish ? () => onUnpublish(position) : undefined}
                       onArchive={onArchive ? () => onArchive(position) : undefined}

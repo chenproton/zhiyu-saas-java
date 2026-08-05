@@ -3,11 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Pencil, Trash2, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table'
+import { TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { knowledgeApi, courseApi } from '@/lib/api'
 import type { KnowledgePoint } from '@/lib/types/lesson'
 import { useToast } from '@zhiyu/ui'

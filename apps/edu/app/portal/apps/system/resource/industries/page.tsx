@@ -37,7 +37,6 @@ export default function IndustriesPage() {
 
   const industries = useMemo(() => data ?? [], [data])
 
-
   const parentMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const ind of industries) {

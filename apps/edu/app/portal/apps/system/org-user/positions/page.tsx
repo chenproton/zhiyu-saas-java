@@ -19,15 +19,7 @@ import { portalStaffTitleApi, portalUserManagementApi, type User } from '@/lib/a
 import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
-import {
-  Pencil,
-  Power,
-  Trash2,
-  Upload,
-  Download,
-  Loader2,
-  Users,
-} from 'lucide-react'
+import { Pencil, Power, Trash2, Upload, Download, Loader2, Users } from 'lucide-react'
 import type { StaffTitle } from '@/lib/types/backend'
 
 export default function PositionsPage() {
@@ -39,7 +31,12 @@ export default function PositionsPage() {
   const [titleUsers, setTitleUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
 
-  const { data: positions, loading, error, refresh } = useAsync(
+  const {
+    data: positions,
+    loading,
+    error,
+    refresh,
+  } = useAsync(
     async () => {
       if (!tenantId) return []
       const res = await portalStaffTitleApi.list({ tenantId, limit: 200 })
@@ -47,7 +44,6 @@ export default function PositionsPage() {
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )
-
 
   const handleSave = async (item: StaffTitle, isEdit: boolean) => {
     if (!tenantId) return
@@ -208,12 +204,7 @@ export default function PositionsPage() {
               <Users className="mr-1 h-3 w-3" />
               查看用户
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={actions.toggle}
-            >
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.toggle}>
               <Power className="mr-1 h-3 w-3" />
               {position.status === 'active' ? '停用' : '启用'}
             </Button>

@@ -217,5 +217,3 @@ export const learnRoadApi = createCrudApi<
   Omit<LearnRoad, 'id' | 'createdAt' | 'updatedAt'>,
   Partial<Omit<LearnRoad, 'id' | 'createdAt' | 'updatedAt'>>
 >('/job/learn-roads')
-
-

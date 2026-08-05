@@ -119,10 +119,7 @@ function WeightConfigForm({
           <>
             <div className="flex items-center justify-between">
               <span
-                className={cn(
-                  'text-sm font-semibold',
-                  isValid ? 'text-green-600' : 'text-red-600',
-                )}
+                className={cn('text-sm font-semibold', isValid ? 'text-green-600' : 'text-red-600')}
               >
                 当前合计：{total}% {isValid ? '✓' : '（必须为 100%）'}
               </span>
@@ -156,7 +153,11 @@ function WeightConfigForm({
                     onClick={() => toggleLock(item.id)}
                     className={cn('h-8 w-8', locked[item.id] ? 'text-amber-500' : 'text-gray-400')}
                   >
-                    {locked[item.id] ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                    {locked[item.id] ? (
+                      <Lock className="h-4 w-4" />
+                    ) : (
+                      <Unlock className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>

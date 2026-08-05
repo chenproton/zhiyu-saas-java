@@ -23,7 +23,12 @@ import {
 } from '@/components/ui/dialog'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest, allianceAchievementApi, allianceAgreementApi, allianceProjectApi } from '@/lib/api'
+import {
+  portalRequest,
+  allianceAchievementApi,
+  allianceAgreementApi,
+  allianceProjectApi,
+} from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'

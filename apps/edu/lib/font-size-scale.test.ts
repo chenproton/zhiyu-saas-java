@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  clampFontScaleLevel,
-  fontScaleForLevel,
-  MAX_FONT_SCALE_LEVEL,
-} from './font-size-scale'
+import { clampFontScaleLevel, fontScaleForLevel, MAX_FONT_SCALE_LEVEL } from './font-size-scale'
 
 describe('clampFontScaleLevel', () => {
   it('默认字号为 0', () => {

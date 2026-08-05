@@ -165,8 +165,9 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     executeImport,
     handleDownloadTemplate,
   } = useImportFlow({
-    importType: (importConfig?.importType ||
-      'positions') as Parameters<typeof importExportApi.downloadTemplate>[0],
+    importType: (importConfig?.importType || 'positions') as Parameters<
+      typeof importExportApi.downloadTemplate
+    >[0],
     entityLabel: importConfig?.entityLabel || entityLabel,
     templateFileName: importConfig?.templateFileName || `${entityLabel}批量导入模板.xlsx`,
     onSuccess: onRetry,
@@ -300,7 +301,10 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
       {stats && stats.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
           {stats.map((stat) => (
-            <div key={stat.label} className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+            <div
+              key={stat.label}
+              className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm"
+            >
               <div className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">{stat.label}</div>
                 {stat.icon && (
@@ -343,9 +347,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
         </div>
       )}
 
-      {error && !loading && (
-        <ErrorState description={error} onRetry={onRetry} />
-      )}
+      {error && !loading && <ErrorState description={error} onRetry={onRetry} />}
 
       {!loading && !body && (
         <>
@@ -357,9 +359,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
                     <TableHead className="w-12">
                       <Checkbox
                         checked={someSelected ? 'indeterminate' : allSelected}
-                        onCheckedChange={(checked) =>
-                          rowSelection.onToggleAll(checked === true)
-                        }
+                        onCheckedChange={(checked) => rowSelection.onToggleAll(checked === true)}
                       />
                     </TableHead>
                   )}
@@ -373,7 +373,9 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
                       <TableCell>
                         <Checkbox
                           checked={rowSelection.selectedIds.includes(item.id)}
-                          onCheckedChange={(checked) => rowSelection.onToggle(item.id, checked === true)}
+                          onCheckedChange={(checked) =>
+                            rowSelection.onToggle(item.id, checked === true)
+                          }
                         />
                       </TableCell>
                     )}
@@ -462,7 +464,9 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{formItem?.id ? `编辑${entityLabel}` : `新增${entityLabel}`}</DialogTitle>
+              <DialogTitle>
+                {formItem?.id ? `编辑${entityLabel}` : `新增${entityLabel}`}
+              </DialogTitle>
               <DialogDescription>
                 {formItem?.id ? `修改${entityLabel}信息` : `添加新${entityLabel}`}
               </DialogDescription>

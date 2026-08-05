@@ -15,7 +15,15 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import { Search, GraduationCap, Eye, RotateCcw, Trash2, FolderTree, ChevronDown } from 'lucide-react'
+import {
+  Search,
+  GraduationCap,
+  Eye,
+  RotateCcw,
+  Trash2,
+  FolderTree,
+  ChevronDown,
+} from 'lucide-react'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'

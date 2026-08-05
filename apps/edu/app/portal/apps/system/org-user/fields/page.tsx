@@ -148,7 +148,9 @@ export default function UserFieldsPage() {
                   <button
                     key={r.id}
                     type="button"
-                    onClick={() => setItem({ ...item, roleCodes: toggleRoleCode(r.code, item.roleCodes) })}
+                    onClick={() =>
+                      setItem({ ...item, roleCodes: toggleRoleCode(r.code, item.roleCodes) })
+                    }
                     className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm border transition-colors ${
                       selected
                         ? 'bg-primary text-primary-foreground border-primary'
@@ -195,12 +197,7 @@ export default function UserFieldsPage() {
             <Switch checked={field.enabled} onCheckedChange={actions.toggle} />
           </TableCell>
           <TableRowActions>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={actions.edit}
-            >
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
               <Pencil className="mr-1 h-3 w-3" />
               编辑
             </Button>

@@ -1096,7 +1096,11 @@ export default function LibraryLandingPage() {
           )}
           {previewResource?.url && isZipUrl(previewResource.url) && (
             <div style={{ width: '100%', height: 'calc(100% - 64px)', border: 'none' }}>
-              <ZipPreview key={previewResource.url} url={previewResource.url} name={previewResource.name} />
+              <ZipPreview
+                key={previewResource.url}
+                url={previewResource.url}
+                name={previewResource.name}
+              />
             </div>
           )}
         </DialogContent>

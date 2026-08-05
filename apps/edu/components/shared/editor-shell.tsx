@@ -1,7 +1,17 @@
 'use client'
 
 import React from 'react'
-import { X, ArrowLeft, ArrowRight, Save, Eye, Check, Send, Loader2, MoreVertical } from 'lucide-react'
+import {
+  X,
+  ArrowLeft,
+  ArrowRight,
+  Save,
+  Eye,
+  Check,
+  Send,
+  Loader2,
+  MoreVertical,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -87,7 +97,9 @@ export function EditorShell({
     <div
       className={`bg-white border-b border-gray-100 ${stickyClass} ${mode === 'fullscreen' ? 'mt-14' : ''}`}
     >
-      <div className={`${mxWidth} mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-3`}>
+      <div
+        className={`${mxWidth} mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-3`}
+      >
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0">
             {backIcon}

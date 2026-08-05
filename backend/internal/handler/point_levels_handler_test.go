@@ -84,7 +84,7 @@ func TestPutPointLevels(t *testing.T) {
 	var model struct {
 		Domains []struct {
 			Points []struct {
-				AbilityPointID string             `json:"abilityPointId"`
+				AbilityPointID string                `json:"abilityPointId"`
 				LevelMapping   []domain.LevelMapping `json:"levelMapping"`
 			} `json:"points"`
 		} `json:"domains"`

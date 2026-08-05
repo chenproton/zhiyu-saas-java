@@ -115,9 +115,7 @@ export default function LessonArchivePage() {
     {
       header: '归档时间',
       cell: (course) => (
-        <span className="text-sm text-muted-foreground">
-          {formatDate(course.updatedAt)}
-        </span>
+        <span className="text-sm text-muted-foreground">{formatDate(course.updatedAt)}</span>
       ),
     },
   ]

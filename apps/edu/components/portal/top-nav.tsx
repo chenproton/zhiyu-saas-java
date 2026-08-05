@@ -255,11 +255,7 @@ export function TopNav() {
                     <AArrowUp className="w-4 h-4" />
                   </Button>
                 </div>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  disabled={level === 0}
-                  onClick={reset}
-                >
+                <DropdownMenuItem className="cursor-pointer" disabled={level === 0} onClick={reset}>
                   <RotateCcw className="w-4 h-4 mr-2" />
                   恢复默认字号
                 </DropdownMenuItem>

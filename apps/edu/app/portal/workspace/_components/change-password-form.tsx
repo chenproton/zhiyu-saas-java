@@ -56,7 +56,11 @@ export function ChangePasswordForm() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </FormFieldRow>
-        <FormFieldRow label="确认新密码" htmlFor="confirm-new-password" labelClassName="text-gray-700">
+        <FormFieldRow
+          label="确认新密码"
+          htmlFor="confirm-new-password"
+          labelClassName="text-gray-700"
+        >
           <Input
             id="confirm-new-password"
             type="password"

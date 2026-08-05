@@ -121,14 +121,8 @@ export default function LessonLearnPage() {
       .catch(() => setNodes([]))
   }, [id, course, targetNodeId])
 
-  const activeNode = useMemo(
-    () => nodes.find((n) => n.id === activeNodeId),
-    [nodes, activeNodeId],
-  )
-  const totalHours = useMemo(
-    () => nodes.reduce((s, n) => s + (n.estimatedHours || 0), 0),
-    [nodes],
-  )
+  const activeNode = useMemo(() => nodes.find((n) => n.id === activeNodeId), [nodes, activeNodeId])
+  const totalHours = useMemo(() => nodes.reduce((s, n) => s + (n.estimatedHours || 0), 0), [nodes])
 
   const evalMethods = useMemo(() => {
     const config = activeNode?.evalData?.evalRuleConfig
@@ -229,8 +223,7 @@ export default function LessonLearnPage() {
   const getExamHref = (m: any, nodeId: string, courseId: string) => {
     const isExamMethod = ['paper', 'question_bank', 'quiz'].includes(m.methodKey)
     if (!isExamMethod) return undefined
-    const examId =
-      m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
+    const examId = m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
     const usageId = m.resourceConfig?.usageId
     if (!examId) return undefined
     return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${m.methodKey}&usage=${usageId || ''}&course=${courseId}`

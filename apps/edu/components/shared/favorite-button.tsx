@@ -88,9 +88,7 @@ export function FavoriteButton({
       >
         <Heart className={`w-4 h-4 mr-1.5 ${isFavorite ? 'fill-current' : ''}`} />
         {isFavorite ? displayActive : label}
-        {favoriteCount > 0 && (
-          <span className="ml-1 text-xs opacity-80">({favoriteCount})</span>
-        )}
+        {favoriteCount > 0 && <span className="ml-1 text-xs opacity-80">({favoriteCount})</span>}
       </Button>
     )
   }

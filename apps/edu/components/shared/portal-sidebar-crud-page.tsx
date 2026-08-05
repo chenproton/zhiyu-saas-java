@@ -44,14 +44,7 @@ import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 import { useToast } from '@zhiyu/ui'
 import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
 import type { Organization, OrgType } from '@/lib/types/backend'
-import {
-  Search,
-  Upload,
-  Download,
-  FolderTree,
-  Loader2,
-  ChevronDown,
-} from 'lucide-react'
+import { Search, Upload, Download, FolderTree, Loader2, ChevronDown } from 'lucide-react'
 
 export interface PortalSidebarCrudPageConfig<T extends { id: string; orgNodeId?: string }> {
   title: string
@@ -322,9 +315,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         </div>
       </div>
 
-      {error && (
-        <ErrorState description={error} onRetry={refetch} />
-      )}
+      {error && <ErrorState description={error} onRetry={refetch} />}
 
       <div className="flex flex-col md:flex-row gap-4 items-start">
         {/* 移动端组织架构开关 */}

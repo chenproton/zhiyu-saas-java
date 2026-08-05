@@ -33,7 +33,12 @@ export default function OrgTypesPage() {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
 
-  const { data: orgTypes, loading: isLoading, error, refresh } = useAsync(
+  const {
+    data: orgTypes,
+    loading: isLoading,
+    error,
+    refresh,
+  } = useAsync(
     async () => {
       if (!tenantId) return []
       const res = await orgTypeApi.list({ tenantId, limit: 1000 })
@@ -41,7 +46,6 @@ export default function OrgTypesPage() {
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )
-
 
   const handleSave = async (item: OrgType, isEdit: boolean) => {
     if (!tenantId) return
@@ -79,9 +83,7 @@ export default function OrgTypesPage() {
       searchPlaceholder="搜索类型名称..."
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
-      filterItems={(items, search) =>
-        items.filter((t) => !search || t.name.includes(search))
-      }
+      filterItems={(items, search) => items.filter((t) => !search || t.name.includes(search))}
       hideImport
       headerActions={
         <>
@@ -117,7 +119,10 @@ export default function OrgTypesPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">类型分类</label>
-            <Select value={item.category} onValueChange={(v) => setItem({ ...item, category: v as OrgType['category'] })}>
+            <Select
+              value={item.category}
+              onValueChange={(v) => setItem({ ...item, category: v as OrgType['category'] })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -152,18 +157,11 @@ export default function OrgTypesPage() {
             </div>
           </TableCell>
           <TableCell>
-            <Badge className={categoryColors[type.category]}>
-              {categoryLabels[type.category]}
-            </Badge>
+            <Badge className={categoryColors[type.category]}>{categoryLabels[type.category]}</Badge>
           </TableCell>
           <TableCell className="text-muted-foreground">{type.createdAt}</TableCell>
           <TableRowActions>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={actions.edit}
-            >
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
               <Pencil className="mr-1 h-3 w-3" />
               编辑
             </Button>

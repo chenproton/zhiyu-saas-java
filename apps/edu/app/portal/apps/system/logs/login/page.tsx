@@ -76,10 +76,7 @@ export default function LoginLogsPage() {
     ? searchFiltered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : searchFiltered
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil((searching ? searchFiltered.length : total) / PAGE_SIZE),
-  )
+  const totalPages = Math.max(1, Math.ceil((searching ? searchFiltered.length : total) / PAGE_SIZE))
 
   const columns: LogColumn<LoginLog>[] = [
     {

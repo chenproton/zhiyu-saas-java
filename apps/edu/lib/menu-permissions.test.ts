@@ -52,9 +52,7 @@ describe('checkMenuPermission 无订阅信息时', () => {
 describe('checkMenuPermission 订阅模块开关', () => {
   it('模块未订阅时拒绝', () => {
     const menus = { '/job': true }
-    expect(
-      checkMenuPermission(menus, '/job/positions', { career: false }),
-    ).toBe(false)
+    expect(checkMenuPermission(menus, '/job/positions', { career: false })).toBe(false)
   })
 
   it('模块已订阅时按菜单授权判断', () => {

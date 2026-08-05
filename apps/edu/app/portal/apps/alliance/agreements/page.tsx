@@ -1,6 +1,5 @@
 'use client'
 
-
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -99,7 +98,9 @@ export default function AllianceAgreementsPage() {
             </TableCell>
             <TableCell className="max-w-[160px]">
               {entIds.length > 0
-                ? entIds.map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid).join('、')
+                ? entIds
+                    .map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid)
+                    .join('、')
                 : '-'}
             </TableCell>
             <TableCell>
@@ -108,9 +109,7 @@ export default function AllianceAgreementsPage() {
                 : '-'}
             </TableCell>
             <TableCell>{item.type || '-'}</TableCell>
-            <TableCell>
-              {formatDate(item.startDate)}
-            </TableCell>
+            <TableCell>{formatDate(item.startDate)}</TableCell>
             <TableCell className={expiring ? 'text-amber-600 font-medium' : ''}>
               {formatDate(item.endDate)}
               {expiring && <span className="ml-1 text-xs">（即将到期）</span>}

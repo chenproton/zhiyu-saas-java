@@ -219,7 +219,9 @@ export function EvalMethodCard({ method, result, examHref, onAction }: EvalMetho
               {isExamMethod ? (
                 <Link href={examHref || '#'}>
                   <Play className="w-3.5 h-3.5 fill-current" />
-                  {examHref && examHref !== '#' ? methodActionText[method.methodKey] || '开始测评' : '未配置'}
+                  {examHref && examHref !== '#'
+                    ? methodActionText[method.methodKey] || '开始测评'
+                    : '未配置'}
                 </Link>
               ) : (
                 <>
@@ -496,7 +498,9 @@ export function EvalMethodSubmitDialog({
                           className="hidden"
                         />
                       </label>
-                      {effectiveUploading && <span className="text-xs text-gray-400">上传中...</span>}
+                      {effectiveUploading && (
+                        <span className="text-xs text-gray-400">上传中...</span>
+                      )}
                     </div>
                   </div>
                 </div>

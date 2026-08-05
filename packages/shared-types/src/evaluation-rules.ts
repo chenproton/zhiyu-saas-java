@@ -375,7 +375,12 @@ export function methodsToEvalRuleConfig(
       weight: sr.weight,
     })
     const standardName = m.standardName || undefined
-    const standardMode = (m.standardMode === 'score_rule' ? 'score_rule' : m.standardMode === 'rubric' ? 'rubric' : undefined)
+    const standardMode =
+      m.standardMode === 'score_rule'
+        ? 'score_rule'
+        : m.standardMode === 'rubric'
+          ? 'rubric'
+          : undefined
     const scoreRules = (m.scoreRules || []).map(toLocalScoreRule)
     switch (mk) {
       case 'random_draw':
@@ -513,17 +518,17 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
     const standardMode = standardModeFieldMap[mk]
       ? ((config as any)[standardModeFieldMap[mk]] as EvalStandardMode | undefined)
       : undefined
-    const scoreRules = (scoreRulesFieldMap[mk]
-      ? ((config as any)[scoreRulesFieldMap[mk]] as EvalRuleScoreRule[] | undefined)
-      : []
-    )
-      ?.map((sr, i) => ({
-        name: sr.name,
-        description: sr.desc || null,
-        rule: sr.rule || null,
-        weight: sr.weight || 0,
-        sortOrder: i,
-      }))
+    const scoreRules = (
+      scoreRulesFieldMap[mk]
+        ? ((config as any)[scoreRulesFieldMap[mk]] as EvalRuleScoreRule[] | undefined)
+        : []
+    )?.map((sr, i) => ({
+      name: sr.name,
+      description: sr.desc || null,
+      rule: sr.rule || null,
+      weight: sr.weight || 0,
+      sortOrder: i,
+    }))
 
     const resourceConfig: Record<string, any> = { ...(config.methodResourceConfigs?.[mk] || {}) }
     if (mk === 'paper') {

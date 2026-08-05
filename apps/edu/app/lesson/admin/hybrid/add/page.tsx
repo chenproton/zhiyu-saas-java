@@ -216,8 +216,7 @@ function HybridCourseAddForm() {
         }
         // 回填持久化的评价规则（按节点名匹配，根节点优先）
         const evalRules = existing.evalData?.hybridEvalRules as
-          | Record<string, { preQuiz?: any; inClassQuiz?: any; homework?: any }>
-          | undefined
+          Record<string, { preQuiz?: any; inClassQuiz?: any; homework?: any }> | undefined
         const rules =
           evalRules?.[existing.name] ||
           evalRules?.['root'] ||
@@ -504,7 +503,11 @@ function HybridCourseAddForm() {
         },
         homework: { methods: d.homeworkEvalMethods || [], evalRuleConfig: d.homeworkEvalRules },
       }
-      if (rules.preQuiz.evalRuleConfig || rules.inClassQuiz.evalRuleConfig || rules.homework.evalRuleConfig) {
+      if (
+        rules.preQuiz.evalRuleConfig ||
+        rules.inClassQuiz.evalRuleConfig ||
+        rules.homework.evalRuleConfig
+      ) {
         const nodeName = nodes.find((n) => n.id === nodeId)?.name || 'root'
         result[nodeName] = rules
       }

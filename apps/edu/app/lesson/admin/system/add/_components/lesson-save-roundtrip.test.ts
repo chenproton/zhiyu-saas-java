@@ -125,9 +125,7 @@ describe('lesson admin system add save round-trip', () => {
     const draft = nodeToDraft(node)
     // draft.evalData 仍保留原 methods，但 evalRuleConfig 与原 node 相同
     // 用户只修改了知识点
-    draft.knowledgePoints = [
-      { id: 'kp-1', name: '知识点一', code: 'KP001', linked: true },
-    ]
+    draft.knowledgePoints = [{ id: 'kp-1', name: '知识点一', code: 'KP001', linked: true }]
 
     const payload = buildNodeSavePayload({
       node,

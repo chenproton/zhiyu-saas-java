@@ -74,7 +74,9 @@ function LessonResultsPageContent() {
     const load = async () => {
       try {
         const [courseRes, userRes] = await Promise.all([
-          courseApi.list({ status: 'published', limit: 1000 } as any).catch(() => ({ items: [] as any[] })),
+          courseApi
+            .list({ status: 'published', limit: 1000 } as any)
+            .catch(() => ({ items: [] as any[] })),
           userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
         ])
         const loadedCourses = (courseRes.items || []).filter(
@@ -84,9 +86,7 @@ function LessonResultsPageContent() {
         setSelectedCourseId((prev) => {
           if (prev) return prev
           const fromUrl =
-            urlCourseId && loadedCourses.some((c: any) => c.id === urlCourseId)
-              ? urlCourseId
-              : null
+            urlCourseId && loadedCourses.some((c: any) => c.id === urlCourseId) ? urlCourseId : null
           return fromUrl ?? loadedCourses[0]?.id ?? null
         })
         const uMap = new Map<string, any>()
@@ -167,7 +167,9 @@ function LessonResultsPageContent() {
       g.nodeName = nodeNameMap.get(g.nodeId) || g.nodeId
       g.methods.sort((a, b) => a.methodKey.localeCompare(b.methodKey))
     })
-    return Array.from(nodeMap.values()).sort((a, b) => a.nodeName.localeCompare(b.nodeName, 'zh-CN'))
+    return Array.from(nodeMap.values()).sort((a, b) =>
+      a.nodeName.localeCompare(b.nodeName, 'zh-CN'),
+    )
   }, [results, userMap, nodes])
 
   const toggleNode = (nodeId: string) => {
@@ -393,10 +395,7 @@ function LessonResultsPageContent() {
                                       )}
                                     </div>
                                     {groupStudents(method.students).map((yearGroup) => (
-                                      <div
-                                        key={yearGroup.year}
-                                        className="mb-3 last:mb-0"
-                                      >
+                                      <div key={yearGroup.year} className="mb-3 last:mb-0">
                                         <div className="flex items-center gap-2 mb-2">
                                           <GraduationCap className="h-3.5 w-3.5 text-gray-500" />
                                           <span className="text-xs font-semibold text-gray-700">

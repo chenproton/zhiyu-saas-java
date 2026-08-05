@@ -1,5 +1,10 @@
 import type { UserExtensionField, StaffTitle, LoginLog, OperationLog } from '../types/backend'
-import type { WorkspaceDashboard, CommunityTopic, CommunityReply, CommunityTopicSort } from '../types/portal'
+import type {
+  WorkspaceDashboard,
+  CommunityTopic,
+  CommunityReply,
+  CommunityTopicSort,
+} from '../types/portal'
 import {
   request,
   portalRequest,
@@ -173,7 +178,10 @@ export const portalCommunityApi = {
   listTopics: (params?: { sort?: CommunityTopicSort; limit?: number; offset?: number }) =>
     request<ListResponse<CommunityTopic>>(`/portal/community/topics${buildQuery(params || {})}`),
   createTopic: (req: { title: string; content: string; tag?: string }) =>
-    request<{ id: string }>('/portal/community/topics', { method: 'POST', body: JSON.stringify(req) }),
+    request<{ id: string }>('/portal/community/topics', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
   getTopic: (id: string) => request<CommunityTopic>(`/portal/community/topics/${id}`),
   listReplies: (id: string) =>
     request<ListResponse<CommunityReply>>(`/portal/community/topics/${id}/replies`),

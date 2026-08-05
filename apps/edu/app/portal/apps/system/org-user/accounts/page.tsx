@@ -144,11 +144,8 @@ export default function AccountsPage() {
       rowSelection={{
         selectedIds: selectedAccounts,
         onToggle: (id, checked) =>
-          setSelectedAccounts((prev) =>
-            checked ? [...prev, id] : prev.filter((i) => i !== id),
-          ),
-        onToggleAll: (checked) =>
-          setSelectedAccounts(checked ? accounts.map((a) => a.id) : []),
+          setSelectedAccounts((prev) => (checked ? [...prev, id] : prev.filter((i) => i !== id))),
+        onToggleAll: (checked) => setSelectedAccounts(checked ? accounts.map((a) => a.id) : []),
       }}
       headerActions={
         selectedAccounts.length > 0 && (
@@ -261,9 +258,7 @@ export default function AccountsPage() {
           </TableRowActions>
         </>
       )}
-      getDeleteDescription={(account) => (
-        <>确定要删除账户「{account.name}」吗？此操作不可撤销。</>
-      )}
+      getDeleteDescription={(account) => <>确定要删除账户「{account.name}」吗？此操作不可撤销。</>}
       onDelete={async (account) => {
         await portalUserManagementApi.delete(account.id)
       }}

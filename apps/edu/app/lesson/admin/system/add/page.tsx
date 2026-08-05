@@ -99,8 +99,8 @@ function AddSystemPageInner() {
   const [courseId, setCourseId] = useState(editId || '')
   const [courseName, setCourseName] = useState('')
   // 内容（课程）编码：新建自动生成，编辑回填真实编码
-  const [contentCode, setContentCode] = useState(() =>
-    `CNT-${Date.now().toString(36).toUpperCase()}`,
+  const [contentCode, setContentCode] = useState(
+    () => `CNT-${Date.now().toString(36).toUpperCase()}`,
   )
   const [major, setMajor] = useState('')
   const [majors, setMajors] = useState<Major[]>([])
@@ -947,7 +947,11 @@ function AddSystemPageInner() {
                         className="h-9 text-sm"
                       />
                     </div>
-                    <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
+                    <BatchSelector
+                      value={batchId}
+                      onChange={setBatchId}
+                      batchApi={lessonBatchApi}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">关联能力点（用于岗位能力汇聚）</Label>

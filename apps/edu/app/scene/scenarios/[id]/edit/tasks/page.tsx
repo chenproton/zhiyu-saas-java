@@ -461,12 +461,10 @@ export default function TasksEditPage() {
               state.randomDrawEvalPoints.length > 0 ||
               !!state.randomDrawRubricId
             )
-          if (m === 'review')
-            return state.reviewEvalPoints.length > 0 || !!state.reviewRubricId
+          if (m === 'review') return state.reviewEvalPoints.length > 0 || !!state.reviewRubricId
           if (m === 'paper') return state.paperIds.length > 0
           if (m === 'question_bank') return state.questionBankQuestions.length > 0
-          if (m === 'outcome')
-            return state.outcomeEvalPoints.length > 0 || !!state.outcomeRubricId
+          if (m === 'outcome') return state.outcomeEvalPoints.length > 0 || !!state.outcomeRubricId
           if (m === 'homework')
             return state.homeworkEvalPoints.length > 0 || !!state.homeworkRubricId
           if (m === 'quiz') return state.quizQuestions.length > 0
@@ -662,8 +660,7 @@ export default function TasksEditPage() {
       try {
         const res = await abilityApi.list({ search: name, limit: 10 })
         return (res.items || []).find((a) => (a as { name: string }).name === name) as
-          | { id: string; name: string }
-          | undefined
+          { id: string; name: string } | undefined
       } catch {
         return undefined
       }
@@ -671,9 +668,7 @@ export default function TasksEditPage() {
     const findExistingResourceByName = async (name: string) => {
       try {
         const res = await resourceLibraryApi.list({ search: name, limit: 10 })
-        return (res.items || []).find((r) => r.name === name) as
-          | TaskResourceItem
-          | undefined
+        return (res.items || []).find((r) => r.name === name) as TaskResourceItem | undefined
       } catch {
         return undefined
       }
@@ -708,9 +703,7 @@ export default function TasksEditPage() {
         } else {
           // 租户内知识点名称唯一：同名已存在时直接复用，避免创建 409 导致任务丢失知识点
           let targetId = ''
-          const nameCollision = nextKnowledgePoints.find(
-            (k) => k.id !== kpId && k.name === kp.name,
-          )
+          const nameCollision = nextKnowledgePoints.find((k) => k.id !== kpId && k.name === kp.name)
           if (nameCollision) {
             targetId = nameCollision.id
           } else {
@@ -727,9 +720,7 @@ export default function TasksEditPage() {
               targetId = created.id
             } catch (err: any) {
               // 兜底：并发等场景下仍可能撞名，按后端提示合并到已有知识点
-              let existing = nextKnowledgePoints.find(
-                (k) => k.id !== kpId && k.name === kp.name,
-              )
+              let existing = nextKnowledgePoints.find((k) => k.id !== kpId && k.name === kp.name)
               if (!existing && String(err?.message || '').includes('已存在')) {
                 existing = await findExistingKnowledgePointByName(kp.name)
                 if (existing) {
@@ -782,7 +773,9 @@ export default function TasksEditPage() {
       // 租户内能力点名称唯一：同名已存在时直接复用，避免创建 409 导致任务丢失能力点
       let targetId = ''
       const nameCollision = nextAbilityPoints.find(
-        (a) => (a as { id: string }).id !== abId && (a as { name: string }).name === (ap as { name: string }).name,
+        (a) =>
+          (a as { id: string }).id !== abId &&
+          (a as { name: string }).name === (ap as { name: string }).name,
       )
       if (nameCollision) {
         targetId = (nameCollision as { id: string }).id
@@ -798,7 +791,9 @@ export default function TasksEditPage() {
           targetId = created.id
         } catch (err: any) {
           let existing = nextAbilityPoints.find(
-            (a) => (a as { id: string }).id !== abId && (a as { name: string }).name === (ap as { name: string }).name,
+            (a) =>
+              (a as { id: string }).id !== abId &&
+              (a as { name: string }).name === (ap as { name: string }).name,
           )
           if (!existing && String(err?.message || '').includes('已存在')) {
             existing = await findExistingAbilityByName((ap as { name: string }).name)
@@ -1548,11 +1543,7 @@ const DEFAULT_HOMEWORK_RESOURCE_CONFIG = {
 // ============ Edit Card Dialog ============
 
 // 保存任务测评方式：遇 409（评价规则已被其他会话修改）时拉取最新版本重试一次，避免并发保存整体失败
-async function saveMethodsWithRetry(
-  tid: string,
-  version: number,
-  methods: any[],
-): Promise<number> {
+async function saveMethodsWithRetry(tid: string, version: number, methods: any[]): Promise<number> {
   if (methods.length === 0) return version
   const doSave = async (v: number) => {
     const savedRes = await taskEvaluationApi.saveMethods(tid, { version: v, methods })
@@ -1644,82 +1635,83 @@ function EditCardDialog({
     if (isSavingCard) return
     setIsSavingCard(true)
     try {
-    if (cardType === 'info') {
-      updateTask({
-        name: localTask.name,
-        taskType: localTask.type as 'assessment' | 'training',
-        difficulty: localTask.difficulty as 1 | 2 | 3 | 4 | 5,
-        estimatedHours: localTask.hours,
-        background: localTask.background,
-      })
-    } else if (cardType === 'evaluationRules') {
-      const toTaskEvalPoint = (ep: EvalPoint): import('@/lib/types/scene-mock').TaskEvalPoint => {
-        const gmMax =
-          ep.gradeMapping && ep.gradeMapping.length > 0
-            ? Math.max(...ep.gradeMapping.map((g) => g.maxScore))
-            : 100
-        return {
-          id: ep.id,
-          name: ep.name,
-          desc: ep.desc,
-          weight: ep.weight || 0,
-          maxScore: ep.weight || gmMax,
-          scoringMethod: ep.scoringMethod,
-          gradeMapping: ep.gradeMapping,
-          subType: ep.subType,
-          types: ep.types,
-          knowledgePointIds: ep.knowledgePointIds,
-          abilityPointIds: ep.abilityPointIds,
+      if (cardType === 'info') {
+        updateTask({
+          name: localTask.name,
+          taskType: localTask.type as 'assessment' | 'training',
+          difficulty: localTask.difficulty as 1 | 2 | 3 | 4 | 5,
+          estimatedHours: localTask.hours,
+          background: localTask.background,
+        })
+      } else if (cardType === 'evaluationRules') {
+        const toTaskEvalPoint = (ep: EvalPoint): import('@/lib/types/scene-mock').TaskEvalPoint => {
+          const gmMax =
+            ep.gradeMapping && ep.gradeMapping.length > 0
+              ? Math.max(...ep.gradeMapping.map((g) => g.maxScore))
+              : 100
+          return {
+            id: ep.id,
+            name: ep.name,
+            desc: ep.desc,
+            weight: ep.weight || 0,
+            maxScore: ep.weight || gmMax,
+            scoringMethod: ep.scoringMethod,
+            gradeMapping: ep.gradeMapping,
+            subType: ep.subType,
+            types: ep.types,
+            knowledgePointIds: ep.knowledgePointIds,
+            abilityPointIds: ep.abilityPointIds,
+          }
+        }
+        const enabledReviewSteps = (state.reviewSteps || [])
+          .filter((s: any) => s.enabled)
+          .map((s: any) => ({
+            id: s.id,
+            label: s.label,
+            desc: s.desc,
+            enabled: s.enabled,
+            subjectType: s.subjectType,
+            weight: s.weight,
+          }))
+        updateTask({
+          evalPoints: {
+            randomDraw: state.randomDrawEvalPoints.map(toTaskEvalPoint),
+            review: state.reviewEvalPoints.map(toTaskEvalPoint),
+            paper: state.paperEvalPoints.map(toTaskEvalPoint),
+            questionBank: state.questionBankEvalPoints.map(toTaskEvalPoint),
+          },
+          reviewSteps: enabledReviewSteps,
+        })
+        // Ensure newly-enabled methods have default resource configs and sync review steps to task state
+        const updatedRC = { ...state.methodResourceConfigs }
+        state.evaluationMethods.forEach((mk) => {
+          if (mk === 'random_draw')
+            updatedRC[mk] = { ...DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG, ...updatedRC[mk] }
+          if (mk === 'review')
+            updatedRC[mk] = { ...DEFAULT_REVIEW_RESOURCE_CONFIG, ...updatedRC[mk] }
+          if (mk === 'outcome')
+            updatedRC[mk] = { ...DEFAULT_OUTCOME_RESOURCE_CONFIG, ...updatedRC[mk] }
+          if (mk === 'homework')
+            updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] }
+        })
+        updateState({ methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps })
+        // 临时考试/考试安排由后端 EnsureExamUsageForMethod 在保存测评方式时统一幂等创建
+        const methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
+        // Persist evaluation methods (including resource config) to backend
+        if (methodsInput.length > 0) {
+          try {
+            const newVersion = await saveMethodsWithRetry(
+              taskId,
+              state.evalMethodVersion,
+              methodsInput,
+            )
+            updateState({ evalMethodVersion: newVersion })
+          } catch (err: any) {
+            toast({ variant: 'destructive', title: '评价规则保存失败', description: err.message })
+            return
+          }
         }
       }
-      const enabledReviewSteps = (state.reviewSteps || [])
-        .filter((s: any) => s.enabled)
-        .map((s: any) => ({
-          id: s.id,
-          label: s.label,
-          desc: s.desc,
-          enabled: s.enabled,
-          subjectType: s.subjectType,
-          weight: s.weight,
-        }))
-      updateTask({
-        evalPoints: {
-          randomDraw: state.randomDrawEvalPoints.map(toTaskEvalPoint),
-          review: state.reviewEvalPoints.map(toTaskEvalPoint),
-          paper: state.paperEvalPoints.map(toTaskEvalPoint),
-          questionBank: state.questionBankEvalPoints.map(toTaskEvalPoint),
-        },
-        reviewSteps: enabledReviewSteps,
-      })
-      // Ensure newly-enabled methods have default resource configs and sync review steps to task state
-      const updatedRC = { ...state.methodResourceConfigs }
-      state.evaluationMethods.forEach((mk) => {
-        if (mk === 'random_draw')
-          updatedRC[mk] = { ...DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG, ...updatedRC[mk] }
-        if (mk === 'review') updatedRC[mk] = { ...DEFAULT_REVIEW_RESOURCE_CONFIG, ...updatedRC[mk] }
-        if (mk === 'outcome')
-          updatedRC[mk] = { ...DEFAULT_OUTCOME_RESOURCE_CONFIG, ...updatedRC[mk] }
-        if (mk === 'homework')
-          updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] }
-      })
-      updateState({ methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps })
-      // 临时考试/考试安排由后端 EnsureExamUsageForMethod 在保存测评方式时统一幂等创建
-      const methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
-      // Persist evaluation methods (including resource config) to backend
-      if (methodsInput.length > 0) {
-        try {
-          const newVersion = await saveMethodsWithRetry(
-            taskId,
-            state.evalMethodVersion,
-            methodsInput,
-          )
-          updateState({ evalMethodVersion: newVersion })
-        } catch (err: any) {
-          toast({ variant: 'destructive', title: '评价规则保存失败', description: err.message })
-          return
-        }
-      }
-    }
     } finally {
       setIsSavingCard(false)
     }

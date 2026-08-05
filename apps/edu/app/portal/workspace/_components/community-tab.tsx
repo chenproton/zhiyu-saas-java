@@ -341,7 +341,9 @@ export function CommunityTab() {
                             )}
                             <span>{formatDateTime(reply.createdAt)}</span>
                           </div>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.content}</p>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {reply.content}
+                          </p>
                           <button
                             className="flex items-center gap-1 mt-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
                             onClick={() => setReplyingTo(reply)}
@@ -359,7 +361,10 @@ export function CommunityTab() {
                     {replyingTo && (
                       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                         <span>
-                          回复 <span className="font-medium text-gray-700">@{replyingTo.authorName}</span>
+                          回复{' '}
+                          <span className="font-medium text-gray-700">
+                            @{replyingTo.authorName}
+                          </span>
                           的评论
                         </span>
                         <button

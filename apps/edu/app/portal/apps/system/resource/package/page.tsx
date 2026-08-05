@@ -155,9 +155,7 @@ export default function PackagePage() {
               </CardHeader>
               <CardContent>
                 {packageModules.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    暂无模块配置
-                  </div>
+                  <div className="text-center py-8 text-sm text-muted-foreground">暂无模块配置</div>
                 ) : (
                   <div className="space-y-2">
                     {packageModules.map((module) => {

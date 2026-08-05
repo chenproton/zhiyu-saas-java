@@ -79,7 +79,9 @@ export default function PostRecommendPage() {
   )
 
   const availablePositions = useMemo(() => {
-    return (positions ?? []).filter((p) => p.status === 'published' && !recommendedPositionIds.has(p.id))
+    return (positions ?? []).filter(
+      (p) => p.status === 'published' && !recommendedPositionIds.has(p.id),
+    )
   }, [positions, recommendedPositionIds])
 
   const handleMove = async (index: number, direction: -1 | 1) => {

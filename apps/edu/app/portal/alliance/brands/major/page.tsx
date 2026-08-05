@@ -8,7 +8,7 @@ import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceBrand } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView , Empty, EmptyHeader, EmptyTitle } from '@zhiyu/ui'
+import { LoadingView, Empty, EmptyHeader, EmptyTitle } from '@zhiyu/ui'
 
 export default function AlliancePublicMajorBrandPage() {
   const [items, setItems] = useState<AllianceBrand[]>([])
@@ -30,7 +30,11 @@ export default function AlliancePublicMajorBrandPage() {
       <h1 className="text-2xl font-bold">专业品牌</h1>
       <p className="text-muted-foreground">展示专业建设水平与培养特色</p>
       {items.length === 0 ? (
-        <Empty className="py-6"><EmptyHeader><EmptyTitle>暂无内容</EmptyTitle></EmptyHeader></Empty>
+        <Empty className="py-6">
+          <EmptyHeader>
+            <EmptyTitle>暂无内容</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((item) => (

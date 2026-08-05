@@ -258,8 +258,9 @@ export const nodeEvaluationResultApi = {
     subjectiveContent?: Record<string, any>
     drawnQuestions?: Record<string, any>
     evalPointScores?: Record<string, any>
-  }) => request<NodeEvaluationResult>('/lesson/node-evaluation-results', {
-    method: 'POST',
-    body: JSON.stringify(req),
-  }),
+  }) =>
+    request<NodeEvaluationResult>('/lesson/node-evaluation-results', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
 }
