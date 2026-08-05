@@ -50,6 +50,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 
 	type courseRow struct {
 		id, name, major, description, batch string
+		abilityPointNames                   string
 	}
 	var courseRows []courseRow
 	courseNameMap := make(map[string]string)
@@ -76,7 +77,9 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 			h.DB.QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName)
 		}
 
-		courseRows = append(courseRows, courseRow{cid, name, majorName, desc, batchName})
+		abilityPointNames := h.lookupCourseAbilityPointNames(ctx, cid)
+
+		courseRows = append(courseRows, courseRow{cid, name, majorName, desc, batchName, abilityPointNames})
 		courseNameMap[cid] = name
 	}
 
@@ -86,6 +89,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 		setCell("课程基本信息", fmt.Sprintf("B%d", r), row.major)
 		setCell("课程基本信息", fmt.Sprintf("C%d", r), row.description)
 		setCell("课程基本信息", fmt.Sprintf("D%d", r), row.batch)
+		setCell("课程基本信息", fmt.Sprintf("E%d", r), row.abilityPointNames)
 		f.SetRowHeight("课程基本信息", r, 24)
 	}
 
@@ -162,6 +166,26 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 	}
 
 	return nil
+}
+
+func (h *CourseExportHandler) lookupCourseAbilityPointNames(ctx context.Context, courseID string) string {
+	var abilityPointIDs []string
+	err := h.DB.QueryRow(ctx, `
+		SELECT ARRAY(SELECT unnest(ability_point_ids)::text)
+		FROM courses WHERE id=$1
+	`, courseID).Scan(&abilityPointIDs)
+	if err != nil || len(abilityPointIDs) == 0 {
+		return ""
+	}
+	var names []string
+	for _, id := range abilityPointIDs {
+		var n string
+		h.DB.QueryRow(ctx, `SELECT name FROM ability_points WHERE id=$1`, id).Scan(&n)
+		if n != "" {
+			names = append(names, n)
+		}
+	}
+	return strings.Join(names, ",")
 }
 
 func (h *CourseExportHandler) lookupNodeKnowledgePointNames(ctx context.Context, nodeID string) []string {

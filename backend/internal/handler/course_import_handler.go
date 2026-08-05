@@ -147,9 +147,11 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 		majorName := col(row, 1)
 		courseIntro := col(row, 2)
 		batchName := col(row, 3)
+		abilityPointNames := splitTrim(col(row, 4), ",")
 
 		majorID := lookupMajorID(ctx, h.DB, tenantID, majorName)
 		batchID := lookupBatchID(ctx, h.DB, "lesson_batches", tenantID, batchName)
+		abilityPointIDs := h.lookupAbilityPoints(ctx, tenantID, abilityPointNames)
 
 		var descPtr *string
 		if courseIntro != "" {
@@ -178,9 +180,9 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 			}
 			_, err := h.DB.Exec(ctx, `
 				UPDATE courses
-				SET major_id=$3, batch_id=$4, description=$5, updated_at=NOW()
+				SET major_id=$3, batch_id=$4, description=$5, ability_point_ids=$6, updated_at=NOW()
 				WHERE id=$1 AND tenant_id=$2
-			`, existingID, tenantID, majorID, batchID, descPtr)
+			`, existingID, tenantID, majorID, batchID, descPtr, abilityPointIDs)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
@@ -202,10 +204,10 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 				status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
-				node_count, resource_count, study_count)
+				ability_point_ids, node_count, resource_count, study_count)
 			VALUES ($1,$2,$3,$4,'system','system',$5,NULL,NULL,'V1.0',0,0,0,0,NULL,NULL,
-				'draft',NULL,NULL,NULL,NULL,$8,$6,'{}',$7,0,0,0)
-		`, courseID, tenantID, code, name, majorID, userID, batchID, descPtr)
+				'draft',NULL,NULL,NULL,NULL,$8,$6,'{}',$7,$9,0,0,0)
+		`, courseID, tenantID, code, name, majorID, userID, batchID, descPtr, abilityPointIDs)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]创建失败: %v", name, err))
@@ -452,6 +454,25 @@ func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, courseID str
 	_, _ = h.DB.Exec(ctx, `DELETE FROM node_quizzes WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID)
 	_, _ = h.DB.Exec(ctx, `DELETE FROM node_homeworks WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID)
 	_, _ = h.DB.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID)
+}
+
+func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, tenantID string, names []string) []string {
+	if len(names) == 0 {
+		return []string{}
+	}
+	ids := []string{}
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		var id string
+		err := h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		if err != nil {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return ids
 }
 
 func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID, name string) *domain.Course {

@@ -501,7 +501,7 @@ func (h *TemplateHandler) ServeSystemCourseTemplate(w http.ResponseWriter, r *ht
 func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
 
-	_, majors, _, _, knowledgePoints, _, _ := h.queryDicts(ctx, tenantID)
+	_, majors, _, _, knowledgePoints, abilityPoints, _ := h.queryDicts(ctx, tenantID)
 	lessonBatches := h.queryLessonBatches(ctx, tenantID)
 
 	hdrStyle := makeHeaderStyle(f)
@@ -533,12 +533,12 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 	f.DeleteSheet("Sheet1")
 	f.SetActiveSheet(s1)
 	f.DeleteSheet("Sheet1")
-	headers1 := []string{"课程名称 *", "适用专业", "课程简介", "所属批次"}
-	widths1 := []float64{28, 24, 48, 20}
-	setA1("课程基本信息", 4, "填写说明：\n* 必填列。\n适用专业：从「专业字典」Sheet 选取，匹配则关联，不匹配则忽略\n所属批次：从「批次字典」Sheet 选取，匹配则关联，不匹配则忽略\n导入后默认状态为 draft")
+	headers1 := []string{"课程名称 *", "适用专业", "课程简介", "所属批次", "关联能力点"}
+	widths1 := []float64{28, 24, 48, 20, 30}
+	setA1("课程基本信息", 5, "填写说明：\n* 必填列。\n适用专业：从「专业字典」Sheet 选取，匹配则关联，不匹配则忽略\n所属批次：从「批次字典」Sheet 选取，匹配则关联，不匹配则忽略\n关联能力点：从「能力点库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则忽略（不新建能力点）\n导入后默认状态为 draft")
 	setHdr("课程基本信息", 2, headers1, widths1)
 	f.SetPanes("课程基本信息", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("课程基本信息", "A2:D2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("课程基本信息", "A2:E2", []excelize.AutoFilterOptions{})
 
 	// Sheet 2: 节点配置
 	_, _ = f.NewSheet("节点配置")
@@ -576,6 +576,17 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 			var data [][]string
 			for _, v := range knowledgePoints {
 				data = append(data, []string{v})
+			}
+			return data
+		}())
+
+	h.addRefSheet(f, "【参考】能力点库", []string{"能力点名称", "能力属性"}, []float64{36, 16},
+		"仅作参考，无需编辑修改。\n课程基本信息 Sheet「关联能力点」与本表名称一致则关联已有，不一致则忽略（不新建能力点）。",
+		func() [][]string {
+			var data [][]string
+			for _, v := range abilityPoints {
+				cat := catToChinese(v[1])
+				data = append(data, []string{v[0], cat})
 			}
 			return data
 		}())
