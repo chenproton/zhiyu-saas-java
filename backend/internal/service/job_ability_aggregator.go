@@ -238,7 +238,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		}
 		details := make([]pointDetail, 0, len(points))
 		pointValid := make([]bool, 0, len(points))
-		var posWeightedSum, posWeightSum float64
+		var posWeightedSum, posWeightSum, cognitionSum, cognitionWeight, competencySum float64
 		achieved := 0
 		for _, p := range points {
 			var weightedSum, weightSum float64
@@ -254,6 +254,17 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				pointScore = weightedSum / weightSum
 				posWeightedSum += pointScore * p.weight
 				posWeightSum += p.weight
+			}
+			// 认知得分/胜任度：与读取时回退口径一致，全部权重>0 的点参与（无效点按 0 分计入）
+			if p.weight > 0 {
+				cognitionSum += pointScore * p.weight
+				cognitionWeight += p.weight
+				need := pointCompetencyNeed(p.levels, p.requiredLevel)
+				if need > 0 {
+					if c := (pointScore - need) / need; c > 0 {
+						competencySum += c * p.weight
+					}
+				}
 			}
 			pointValid = append(pointValid, valid)
 			// 达成判定：有自定义分档时用配置档位（分数档位 >= 要求档位），无配置时回退系统固定五档；
@@ -292,6 +303,14 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 
 		positionScore := posWeightedSum / posWeightSum
 		rate := math.Round(positionScore*100) / 100
+
+		// 认知得分（0-100）与岗位胜任度（%，负值归零），落库供读取直接返回
+		cognition := 0.0
+		competency := 0.0
+		if cognitionWeight > 0 {
+			cognition = math.Round(cognitionSum/cognitionWeight*100) / 100
+			competency = math.Round(competencySum/cognitionWeight*100) / 100
+		}
 
 		// 按能力域（position_ability_bindings.domain）汇总域内能力点加权平均分
 		domainScores := make([]portraitDomainScore, 0)
@@ -347,6 +366,8 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				TotalAbilityPoints:    len(points),
 				AchievedAbilityPoints: achieved,
 				AchievementRate:       rate,
+				AbilityCognitionScore: cognition,
+				PositionCompetency:    competency,
 				Grade:                 nil, // 岗位总评已停用，列保留置空
 				AbilityPointDetails:   detailsJSON,
 			}); err != nil {
@@ -414,6 +435,28 @@ func masteryScoreRank(score float64) int {
 // masteryGrade 分数→掌握程度中文标签（0-59 了解/60-69 理解/70-79 掌握/80-89 熟练/90-100 精通）。
 func masteryGrade(score float64) string {
 	return masteryLevels[masteryScoreRank(score)].label
+}
+
+// needScoreByLevel 系统五档掌握程度代码→岗位所需得分（无自定义分档时的需求分数线）。
+var needScoreByLevel = map[string]float64{
+	"understand": 0,
+	"comprehend": 60,
+	"master":     70,
+	"proficient": 80,
+	"expert":     90,
+}
+
+// pointCompetencyNeed 能力点岗位所需得分：有自定义分档时取要求档位下限，否则回退系统五档分数线；
+// 要求档位无法解析返回 0（该点胜任度按 0 计，权重仍计入分母）。
+func pointCompetencyNeed(levels []levelMapping, requiredLevel string) float64 {
+	if len(levels) > 0 {
+		for _, l := range levels {
+			if l.Level == requiredLevel {
+				return l.Min
+			}
+		}
+	}
+	return needScoreByLevel[requiredLevel]
 }
 
 // masteryCodeRank 掌握程度代码→档位，无法解析返回 -1。

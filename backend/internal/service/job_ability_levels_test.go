@@ -83,15 +83,15 @@ func TestCustomLevelRank(t *testing.T) {
 		score float64
 		want  int
 	}{
-		{55, -1},   // 未达标
-		{56, 0},    // 了解L1
-		{68, 0},    // 了解L1
-		{69, 1},    // 理解L2
-		{88, 2},    // 掌握L3
-		{89, 3},    // 熟练L4
-		{95, 3},    // 熟练L4
-		{96, 4},    // 精通L5
-		{100, 4},   // 精通L5
+		{55, -1}, // 未达标
+		{56, 0},  // 了解L1
+		{68, 0},  // 了解L1
+		{69, 1},  // 理解L2
+		{88, 2},  // 掌握L3
+		{89, 3},  // 熟练L4
+		{95, 3},  // 熟练L4
+		{96, 4},  // 精通L5
+		{100, 4}, // 精通L5
 	}
 	for _, c := range cases {
 		if got := customLevelRank(levels, c.score); got != c.want {
@@ -113,6 +113,34 @@ func TestCustomLevelRankByCode(t *testing.T) {
 	}
 	if got := customLevelRankByCode(levels, "unknown"); got != -1 {
 		t.Errorf("unknown rank = %d, want -1", got)
+	}
+}
+
+func TestPointCompetencyNeed(t *testing.T) {
+	levels := []levelMapping{
+		{Level: "understand", Min: 56},
+		{Level: "comprehend", Min: 69},
+		{Level: "master", Min: 79},
+		{Level: "proficient", Min: 89},
+		{Level: "expert", Min: 96},
+	}
+	cases := []struct {
+		name     string
+		levels   []levelMapping
+		required string
+		want     float64
+	}{
+		{"自定义分档取要求档位下限", levels, "master", 79},
+		{"自定义分档精通档", levels, "expert", 96},
+		{"自定义分档未命中回退系统档位", levels, "unknown", 0},
+		{"无自定义档位用系统分数线", nil, "master", 70},
+		{"无自定义档位理解档", nil, "comprehend", 60},
+		{"无自定义档位未知代码", nil, "unknown", 0},
+	}
+	for _, c := range cases {
+		if got := pointCompetencyNeed(c.levels, c.required); got != c.want {
+			t.Errorf("%s: pointCompetencyNeed(%v, %s) = %v, want %v", c.name, c.levels, c.required, got, c.want)
+		}
 	}
 }
 

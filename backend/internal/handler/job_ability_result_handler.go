@@ -65,6 +65,22 @@ var needScoreByLevel = map[string]float64{
 	"expert":     90,
 }
 
+// storedIndicators 返回岗位胜任度与能力认知得分：优先用落库值；
+// 存量行未落库（NULL）时对空列回退 computeAbilityIndicators 实时计算。
+func storedIndicators(storedCompetency, storedCognition *float64, details domain.JSONSlice) (competency, cognition float64) {
+	if storedCompetency != nil {
+		competency = *storedCompetency
+	} else {
+		competency, _ = computeAbilityIndicators(details)
+	}
+	if storedCognition != nil {
+		cognition = *storedCognition
+	} else {
+		_, cognition = computeAbilityIndicators(details)
+	}
+	return competency, cognition
+}
+
 // computeAbilityIndicators 由能力点明细计算岗位胜任度（%）与能力认知得分（0-100）。
 func computeAbilityIndicators(details domain.JSONSlice) (competency, cognition float64) {
 	var weightSum float64
@@ -161,7 +177,7 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]JobAbilityResultItem, 0, len(rows))
 	for _, r2 := range rows {
-		competency, cognition := computeAbilityIndicators(r2.AbilityPointDetails)
+		competency, cognition := storedIndicators(r2.PositionCompetency, r2.AbilityCognitionScore, r2.AbilityPointDetails)
 		items = append(items, JobAbilityResultItem{
 			ID: r2.ID, CareerPositionID: r2.CareerPositionID, PositionName: r2.PositionName,
 			UserID: r2.UserID, UserName: r2.UserName, StudentNo: r2.StudentNo,
@@ -206,7 +222,7 @@ func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	if details != nil {
 		item.AbilityPointDetails = *details
-		item.PositionCompetency, item.AbilityCognitionScore = computeAbilityIndicators(*details)
+		item.PositionCompetency, item.AbilityCognitionScore = storedIndicators(row.PositionCompetency, row.AbilityCognitionScore, *details)
 	}
 	if history != nil {
 		item.GradeHistory = *history
