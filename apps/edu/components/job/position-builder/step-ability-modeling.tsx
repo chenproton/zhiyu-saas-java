@@ -485,6 +485,11 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                       >
                         {bindingCount}
                       </span>
+                      {bindingCount === 0 && (
+                        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-600 border border-amber-200">
+                          未配置
+                        </span>
+                      )}
                       <HoverActionBar>
                         <button
                           onClick={(e) => {
