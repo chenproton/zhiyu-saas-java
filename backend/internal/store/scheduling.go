@@ -59,10 +59,10 @@ func (s *SchedulingStore) GetVenue(ctx context.Context, id, tenantID string) (*d
 func (s *SchedulingStore) CreateVenue(ctx context.Context, p *VenueParams) (*domain.Venue, error) {
 	var id string
 	err := s.q.QueryRow(ctx, `
-		INSERT INTO venues (id, tenant_id, name, type, capacity, description, status)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'active')
+		INSERT INTO venues (id, tenant_id, name, type, capacity)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4)
 		RETURNING id
-	`, p.TenantID, p.Name, p.Type, p.Capacity, p.Description).Scan(&id)
+	`, p.TenantID, p.Name, p.Type, p.Capacity).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
@@ -75,9 +75,9 @@ func (s *SchedulingStore) UpdateVenue(ctx context.Context, id, tenantID string, 
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE venues SET name = $1, type = $2, capacity = $3, description = $4, updated_at = NOW()
-		WHERE id = $5 AND tenant_id = $6
-	`, p.Name, p.Type, p.Capacity, p.Description, id, tenantID); err != nil {
+		UPDATE venues SET name = $1, type = $2, capacity = $3, updated_at = NOW()
+		WHERE id = $4 AND tenant_id = $5
+	`, p.Name, p.Type, p.Capacity, id, tenantID); err != nil {
 		return nil, err
 	}
 	return s.GetVenue(ctx, id, tenantID)
@@ -91,11 +91,10 @@ func (s *SchedulingStore) DeleteVenue(ctx context.Context, id, tenantID string) 
 
 // VenueParams 场地参数。
 type VenueParams struct {
-	TenantID    string
-	Name        string
-	Type        string
-	Capacity    *int
-	Description *string
+	TenantID string
+	Name     string
+	Type     string
+	Capacity *int
 }
 
 // ===== 节次 =====
