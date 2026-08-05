@@ -31,23 +31,22 @@ func main() {
 	platformAdminRoleID := uuid.MustParse("00000000-0000-0000-0000-000000000002")
 	platformAdminUserID := uuid.MustParse("00000000-0000-0000-0000-000000000003")
 
-	var count int
-	_ = database.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM tenants`).Scan(&count)
-	seeded := count > 0
-
 	adminPassword := os.Getenv("SEED_ADMIN_PASSWORD")
 	if adminPassword == "" {
 		fmt.Println("SEED_ADMIN_PASSWORD 未设置，跳过种子数据")
 		return
 	}
 
-	// 已有种子数据时，仅重置 admin 密码（支持密码变更后重跑 deploy.sh）
-	if seeded {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
-		if err != nil {
-			fmt.Println("bcrypt error:", err)
-			os.Exit(1)
-		}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
+	if err != nil {
+		fmt.Println("bcrypt error:", err)
+		os.Exit(1)
+	}
+
+	// 已存在 admin 用户时，仅重置密码（支持密码变更后重跑 deploy.sh）
+	var adminExists bool
+	_ = database.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE login_name = 'admin' AND platform = 'saas')`).Scan(&adminExists)
+	if adminExists {
 		_, err = database.Pool.Exec(ctx, `
 			UPDATE users SET password_hash = $1 WHERE login_name = 'admin' AND platform = 'saas'
 		`, string(hashedPassword))
@@ -55,9 +54,13 @@ func main() {
 			fmt.Println("update admin password error:", err)
 			os.Exit(1)
 		}
-		fmt.Println("数据库已有数据，已重置 admin 密码（密码通过 SEED_ADMIN_PASSWORD 提供）")
+		fmt.Println("数据库已有 admin 用户，已重置密码（密码通过 SEED_ADMIN_PASSWORD 提供）")
 		return
 	}
+
+	// admin 缺失时重建平台租户/角色/管理员（此前可能被误删，仅按库中是否存在判断）
+	var tenantExists bool
+	_ = database.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenants WHERE id = $1)`, operatorTenantID).Scan(&tenantExists)
 
 	tx, err := database.Pool.Begin(ctx)
 	if err != nil {
@@ -66,14 +69,16 @@ func main() {
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Exec(ctx, `
-		INSERT INTO tenants (id, name, code, status, created_at, updated_at)
-		VALUES ($1, '运营管理平台', 'platform', 'active', NOW(), NOW())
-		ON CONFLICT (id) DO NOTHING
-	`, operatorTenantID)
-	if err != nil {
-		fmt.Println("insert tenant error:", err)
-		os.Exit(1)
+	if !tenantExists {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO tenants (id, name, code, status, created_at, updated_at)
+			VALUES ($1, '运营管理平台', 'platform', 'active', NOW(), NOW())
+			ON CONFLICT (id) DO NOTHING
+		`, operatorTenantID)
+		if err != nil {
+			fmt.Println("insert tenant error:", err)
+			os.Exit(1)
+		}
 	}
 
 	_, err = tx.Exec(ctx, `
@@ -83,12 +88,6 @@ func main() {
 	`, platformAdminRoleID, operatorTenantID)
 	if err != nil {
 		fmt.Println("insert role error:", err)
-		os.Exit(1)
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
-	if err != nil {
-		fmt.Println("bcrypt error:", err)
 		os.Exit(1)
 	}
 
@@ -112,7 +111,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = tx.Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, platformAdminRoleID)
+	_, err = tx.Exec(ctx, `
+		UPDATE roles SET user_count = (SELECT COUNT(*) FROM user_roles WHERE role_id = $1) WHERE id = $1
+	`, platformAdminRoleID)
 	if err != nil {
 		fmt.Println("update role count error:", err)
 		os.Exit(1)
