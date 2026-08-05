@@ -6,6 +6,9 @@ import type {
   AbilityDomain,
   AbilityPoint,
   PositionAbilityBinding,
+  ScenarioTask,
+  KnowledgePoint,
+  Course,
 } from '@zhiyu/shared-types'
 
 export interface GraphDataContext {
@@ -13,6 +16,9 @@ export interface GraphDataContext {
   domains?: AbilityDomain[]
   units?: AbilityPoint[]
   bindings?: PositionAbilityBinding[]
+  tasks?: ScenarioTask[]
+  knowledgePoints?: Map<string, KnowledgePoint>
+  courses?: Map<string, Course>
 }
 
 const GraphDataContext = createContext<GraphDataContext>({})

@@ -9,7 +9,7 @@ const NODE_LABELS = {
   position: '场景',
   domain: '任务',
   knowledge: '知识点',
-  course: '教材课件',
+  course: '颗粒课',
 } as const
 
 interface SceneKnowledgeGraphProps {

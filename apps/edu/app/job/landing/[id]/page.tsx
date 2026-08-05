@@ -235,6 +235,7 @@ export default function JobStudentDetailPage() {
             abilityPoints={abilityPoints}
             abilityDomains={abilityDomains}
             relatedPositions={allPositions}
+            tasks={scenarioTasks}
           />
         ) : (
           <LoginPrompt text="知识图谱需登录后查看" desc="登录账号后可查看岗位知识图谱" />

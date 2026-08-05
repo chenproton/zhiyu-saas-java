@@ -11,7 +11,7 @@ import type { PositionAbilityBinding, AbilityDomain } from '@zhiyu/shared-types'
 export type NodeLite = { id: string; type: GraphNode['type']; label: string }
 
 const COURSE_TYPE_LABEL: Record<string, string> = {
-  course: '视频课程',
+  course: '颗粒课',
   material: '课件',
   quiz: '测验',
 }
@@ -22,9 +22,9 @@ const GRAPH_TYPE_META: Record<
 > = {
   position: { label: '岗位', color: '#6366f1', icon: <Briefcase className="size-4" /> },
   domain: { label: '能力领域', color: '#f43f5e', icon: <FileWarning className="size-4" /> },
-  unit: { label: '能力单元', color: '#10b981', icon: <Target className="size-4" /> },
+  unit: { label: '能力点', color: '#10b981', icon: <Target className="size-4" /> },
   knowledge: { label: '知识点', color: '#f59e0b', icon: <Lightbulb className="size-4" /> },
-  course: { label: '教材课件', color: '#06b6d4', icon: <BookOpen className="size-4" /> },
+  course: { label: '颗粒课', color: '#06b6d4', icon: <BookOpen className="size-4" /> },
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -107,7 +107,7 @@ export function GraphNodeDetail({
   node: Pick<GraphNode, 'id' | 'type' | 'label'>
   onNavigate?: (node: NodeLite) => void
 }) {
-  const { position, domains, units, bindings } = useGraphData()
+  const { position, domains, units, bindings, tasks, knowledgePoints, courses } = useGraphData()
 
   if (node.type === 'position') {
     const relatedDomainItems: NodeLite[] = (domains ?? []).map((d) => ({
@@ -137,8 +137,8 @@ export function GraphNodeDetail({
         <Section title="关联能力领域" count={relatedDomainItems.length}>
           <Chips items={relatedDomainItems} empty="暂无关联能力领域" onNavigate={onNavigate} />
         </Section>
-        <Section title="关联能力单元" count={relatedUnitItems.length}>
-          <Chips items={relatedUnitItems} empty="暂无关联能力单元" onNavigate={onNavigate} />
+        <Section title="关联能力点" count={relatedUnitItems.length}>
+          <Chips items={relatedUnitItems} empty="暂无关联能力点" onNavigate={onNavigate} />
         </Section>
       </div>
     )
@@ -170,8 +170,8 @@ export function GraphNodeDetail({
             </Section>
           )}
         </div>
-        <Section title="关联能力单元" count={relatedUnitItems.length}>
-          <Chips items={relatedUnitItems} empty="暂无关联能力单元" onNavigate={onNavigate} />
+        <Section title="关联能力点" count={relatedUnitItems.length}>
+          <Chips items={relatedUnitItems} empty="暂无关联能力点" onNavigate={onNavigate} />
         </Section>
       </div>
     )
@@ -190,10 +190,38 @@ export function GraphNodeDetail({
         relatedDomainItems.push({ id: d.id, type: 'domain', label: d.name })
       }
     })
+
+    // 关联知识点：出现该能力点的任务所绑定的知识点
+    const knowledgeIdSet = new Set<string>()
+    const relatedKnowledgeItems: NodeLite[] = []
+    tasks?.forEach((t) => {
+      if (!(t.abilityPointIds || []).includes(node.id)) return
+      ;(t.knowledgePointIds || []).forEach((kid) => {
+        if (knowledgeIdSet.has(kid)) return
+        const kp = knowledgePoints?.get(kid)
+        if (!kp) return
+        knowledgeIdSet.add(kid)
+        relatedKnowledgeItems.push({ id: kid, type: 'knowledge', label: kp.name })
+      })
+    })
+
+    // 推荐颗粒课：关联知识点绑定的颗粒课
+    const courseIdSet = new Set<string>()
+    const relatedCourseItems: NodeLite[] = []
+    relatedKnowledgeItems.forEach((k) => {
+      ;(knowledgePoints?.get(k.id)?.granularLessonIds || []).forEach((cid) => {
+        if (courseIdSet.has(cid)) return
+        const course = courses?.get(cid)
+        if (!course) return
+        courseIdSet.add(cid)
+        relatedCourseItems.push({ id: cid, type: 'course', label: course.name })
+      })
+    })
+
     return (
       <div className="space-y-4">
         <div className="divide-y">
-          <Field label="单元编码" value={unit?.code} />
+          <Field label="能力点编码" value={unit?.code} />
           <Field label="能力类别" value={unit?.category} />
         </div>
         {unit?.description && (
@@ -204,37 +232,65 @@ export function GraphNodeDetail({
         <Section title="关联能力领域" count={relatedDomainItems.length}>
           <Chips items={relatedDomainItems} empty="暂无关联能力领域" onNavigate={onNavigate} />
         </Section>
-        <Section title="关联知识点" count={0}>
-          <span className="text-xs text-muted-foreground">暂无关联知识点</span>
+        <Section title="关联知识点" count={relatedKnowledgeItems.length}>
+          <Chips items={relatedKnowledgeItems} empty="暂无关联知识点" onNavigate={onNavigate} />
         </Section>
-        <Section title="推荐教材课件" count={0}>
-          <span className="text-xs text-muted-foreground">暂无关联教材</span>
+        <Section title="推荐颗粒课" count={relatedCourseItems.length}>
+          <Chips items={relatedCourseItems} empty="暂无关联颗粒课" onNavigate={onNavigate} />
         </Section>
       </div>
     )
   }
 
   if (node.type === 'knowledge') {
+    // 关联能力点：出现该知识点的任务所关联的能力点
+    const unitIdSet = new Set<string>()
+    const relatedUnitItems: NodeLite[] = []
+    tasks?.forEach((t) => {
+      if (!(t.knowledgePointIds || []).includes(node.id)) return
+      ;(t.abilityPointIds || []).forEach((aid) => {
+        if (unitIdSet.has(aid)) return
+        const unit = units?.find((u) => u.id === aid)
+        if (!unit) return
+        unitIdSet.add(aid)
+        relatedUnitItems.push({ id: aid, type: 'unit', label: unit.name })
+      })
+    })
+
+    // 关联颗粒课：知识点绑定的颗粒课
+    const relatedCourseItems: NodeLite[] = []
+    ;(knowledgePoints?.get(node.id)?.granularLessonIds || []).forEach((cid) => {
+      const course = courses?.get(cid)
+      if (!course) return
+      relatedCourseItems.push({ id: cid, type: 'course', label: course.name })
+    })
+
     return (
       <div className="space-y-4">
-        <Section title="关联能力单元" count={0}>
-          <span className="text-xs text-muted-foreground">暂无关联能力单元</span>
+        <Section title="关联能力点" count={relatedUnitItems.length}>
+          <Chips items={relatedUnitItems} empty="暂无关联能力点" onNavigate={onNavigate} />
         </Section>
-        <Section title="关联教材课件" count={0}>
-          <span className="text-xs text-muted-foreground">暂无关联教材课件</span>
+        <Section title="关联颗粒课" count={relatedCourseItems.length}>
+          <Chips items={relatedCourseItems} empty="暂无关联颗粒课" onNavigate={onNavigate} />
         </Section>
       </div>
     )
   }
 
   if (node.type === 'course') {
+    // 关联知识点：绑定了该颗粒课的知识点
+    const relatedKnowledgeItems: NodeLite[] = []
+    knowledgePoints?.forEach((kp) => {
+      if (!(kp.granularLessonIds || []).includes(node.id)) return
+      relatedKnowledgeItems.push({ id: kp.id, type: 'knowledge', label: kp.name })
+    })
     return (
       <div className="space-y-4">
         <div className="divide-y">
           <Field label="资源类型" value={COURSE_TYPE_LABEL[node.type]} />
         </div>
-        <Section title="关联知识点" count={0}>
-          <span className="text-xs text-muted-foreground">暂无关联知识点</span>
+        <Section title="关联知识点" count={relatedKnowledgeItems.length}>
+          <Chips items={relatedKnowledgeItems} empty="暂无关联知识点" onNavigate={onNavigate} />
         </Section>
       </div>
     )

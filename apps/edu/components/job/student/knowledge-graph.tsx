@@ -1,12 +1,16 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type {
   CareerPosition,
   PositionAbilityBinding,
   AbilityPoint,
   AbilityDomain,
+  ScenarioTask,
+  KnowledgePoint,
+  Course,
 } from '@zhiyu/shared-types'
+import { knowledgeApi, courseApi } from '@/lib/api'
 import { GraphDataProvider } from '@/components/knowledge-graph/graph-data-context'
 import type { GraphNode, GraphEdge } from '@/components/knowledge-graph/types'
 import { KnowledgeGraphShell } from '@/components/knowledge-graph/knowledge-graph-shell'
@@ -17,6 +21,7 @@ interface KnowledgeGraphProps {
   abilityPoints: AbilityPoint[]
   abilityDomains: AbilityDomain[]
   relatedPositions: CareerPosition[]
+  tasks: ScenarioTask[]
 }
 
 export function KnowledgeGraph({
@@ -24,7 +29,30 @@ export function KnowledgeGraph({
   bindings,
   abilityPoints,
   abilityDomains,
+  tasks,
 }: KnowledgeGraphProps) {
+  const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
+  const [courseMap, setCourseMap] = useState<Map<string, Course>>(new Map())
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([
+      knowledgeApi.list({ limit: 1000 }).catch(() => ({ items: [], total: 0 })),
+      courseApi.list({ type: 'granular', limit: 1000 }).catch(() => ({ items: [], total: 0 })),
+    ]).then(([kRes, cRes]) => {
+      if (cancelled) return
+      const kMap = new Map<string, KnowledgePoint>()
+      ;(kRes.items || []).forEach((k) => kMap.set(k.id, k))
+      setKnowledgeMap(kMap)
+      const cMap = new Map<string, Course>()
+      ;(cRes.items || []).forEach((c) => cMap.set(c.id, c))
+      setCourseMap(cMap)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const abilityPointMap = useMemo(() => {
     const map = new Map<string, AbilityPoint>()
     abilityPoints.forEach((ap) => map.set(ap.id, ap))
@@ -34,6 +62,13 @@ export function KnowledgeGraph({
   const { nodes, edges, allDomains } = useMemo(() => {
     const graphNodes: GraphNode[] = []
     const graphEdges: GraphEdge[] = []
+    const edgeKeys = new Set<string>()
+    const pushEdge = (source: string, target: string) => {
+      const key = `${source}->${target}`
+      if (edgeKeys.has(key)) return
+      edgeKeys.add(key)
+      graphEdges.push({ source, target })
+    }
 
     // 岗位
     graphNodes.push({
@@ -72,10 +107,10 @@ export function KnowledgeGraph({
     // 能力领域节点
     allDomains.forEach((domain) => {
       graphNodes.push({ id: domain.id, label: domain.name, type: 'domain' })
-      graphEdges.push({ source: position.id, target: domain.id })
+      pushEdge(position.id, domain.id)
     })
 
-    // 能力单元：通过 binding 关联到领域
+    // 能力点：通过 binding 关联到领域
     const unitNodeIds = new Set<string>()
     allDomains.forEach((domain) => {
       const domainBindingIds = new Set(domain.bindingIds || [])
@@ -93,14 +128,55 @@ export function KnowledgeGraph({
             unitNodeIds.add(unitId)
             graphNodes.push({ id: unitId, label: unitLabel, type: 'unit' })
           }
-          graphEdges.push({ source: domain.id, target: unitId })
+          pushEdge(domain.id, unitId)
         })
     })
 
-    // 知识点与教材课件保留结构，暂不生成节点和边
+    // 能力点 → 知识点：同一任务同时关联能力点与知识点即视为关联
+    const unitKnowledgeIds = new Map<string, Set<string>>()
+    tasks.forEach((t) => {
+      ;(t.abilityPointIds || []).forEach((aid) => {
+        ;(t.knowledgePointIds || []).forEach((kid) => {
+          let set = unitKnowledgeIds.get(aid)
+          if (!set) {
+            set = new Set()
+            unitKnowledgeIds.set(aid, set)
+          }
+          set.add(kid)
+        })
+      })
+    })
+
+    const knowledgeNodeIds = new Set<string>()
+    unitNodeIds.forEach((unitId) => {
+      ;(unitKnowledgeIds.get(unitId) || []).forEach((kid) => {
+        const kp = knowledgeMap.get(kid)
+        if (!kp) return
+        if (!knowledgeNodeIds.has(kid)) {
+          knowledgeNodeIds.add(kid)
+          graphNodes.push({ id: kid, label: kp.name, type: 'knowledge' })
+        }
+        pushEdge(unitId, kid)
+      })
+    })
+
+    // 知识点 → 颗粒课：知识点绑定的颗粒课
+    const courseNodeIds = new Set<string>()
+    knowledgeNodeIds.forEach((kid) => {
+      const kp = knowledgeMap.get(kid)
+      ;(kp?.granularLessonIds || []).forEach((cid) => {
+        const course = courseMap.get(cid)
+        if (!course) return
+        if (!courseNodeIds.has(cid)) {
+          courseNodeIds.add(cid)
+          graphNodes.push({ id: cid, label: course.name, type: 'course' })
+        }
+        pushEdge(kid, cid)
+      })
+    })
 
     return { nodes: graphNodes, edges: graphEdges, allDomains }
-  }, [position, abilityDomains, bindings, abilityPointMap])
+  }, [position, abilityDomains, bindings, abilityPointMap, tasks, knowledgeMap, courseMap])
 
   const graphData = useMemo(
     () => ({
@@ -108,8 +184,11 @@ export function KnowledgeGraph({
       domains: allDomains,
       units: abilityPoints,
       bindings,
+      tasks,
+      knowledgePoints: knowledgeMap,
+      courses: courseMap,
     }),
-    [position, allDomains, abilityPoints, bindings],
+    [position, allDomains, abilityPoints, bindings, tasks, knowledgeMap, courseMap],
   )
 
   return (
@@ -118,7 +197,7 @@ export function KnowledgeGraph({
         nodes={nodes}
         edges={edges}
         title="知识图谱"
-        description="岗位→能力领域→能力单元→知识点→教材课件的完整关联网络（当前仅展示前三级）"
+        description="岗位→能力领域→能力点→知识点→颗粒课的完整关联网络（知识点经任务绑定关联能力点，颗粒课经知识点绑定关联）"
       />
     </GraphDataProvider>
   )

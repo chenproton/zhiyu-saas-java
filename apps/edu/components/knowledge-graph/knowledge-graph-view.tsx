@@ -52,7 +52,7 @@ const TYPE_META: Record<
     icon: <FileWarning className="size-5" />,
   },
   unit: {
-    label: '能力单元',
+    label: '能力点',
     color: '#0e7490',
     bg: '#cffafe',
     icon: <Target className="size-5" />,
@@ -64,7 +64,7 @@ const TYPE_META: Record<
     icon: <Lightbulb className="size-5" />,
   },
   course: {
-    label: '教材课件',
+    label: '颗粒课',
     color: '#b45309',
     bg: '#fef3c7',
     icon: <BookOpen className="size-5" />,

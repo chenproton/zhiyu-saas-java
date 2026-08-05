@@ -83,7 +83,7 @@ const TYPE_META_D3: Record<
     icon: <FileWarning className="size-4" />,
   },
   unit: {
-    label: '能力单元',
+    label: '能力点',
     color: '#10b981',
     bg: '#ecfdf5',
     radius: 20,
@@ -99,7 +99,7 @@ const TYPE_META_D3: Record<
     icon: <Lightbulb className="size-4" />,
   },
   course: {
-    label: '教材课件',
+    label: '颗粒课',
     color: '#06b6d4',
     bg: '#ecfeff',
     radius: 12,
