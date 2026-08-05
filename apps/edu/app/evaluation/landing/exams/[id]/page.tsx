@@ -35,6 +35,7 @@ import { examApi, examUsageApi, examResultApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { formatDateTime } from '@/lib/format-utils'
 import { useToast, StatusBadge } from '@zhiyu/ui'
+import { FavoriteButton } from '@/components/shared/favorite-button'
 /* ─── 题型标签映射 ─── */
 const typeLabelMap: Record<string, string> = {
   single: '单选题',
@@ -605,6 +606,13 @@ export default function ExamDetailPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <StatusBadge status={exam.status} />
+            <FavoriteButton
+              targetType="exam"
+              targetId={exam.id}
+              label="收藏试卷"
+              activeLabel="已收藏试卷"
+              light
+            />
           </div>
         </div>
         <div

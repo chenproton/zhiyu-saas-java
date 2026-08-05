@@ -20,6 +20,8 @@ export interface Scenario {
   createdAt: string
   updatedAt: string
   publishTime?: string
+  /** 任务数量（服务端列表/收藏接口返回） */
+  taskCount?: number
 }
 
 export interface ScenarioTask {

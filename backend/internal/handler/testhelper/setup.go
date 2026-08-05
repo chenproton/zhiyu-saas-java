@@ -203,6 +203,11 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/job/positions/{id}/favorite", positionHandler.GetFavorite)
 			r.Post("/job/positions/{id}/favorite", positionHandler.ToggleFavorite)
 
+			favoritesHandler := &handler.FavoritesHandler{Service: service.NewFavoritesService(svc2)}
+			r.Get("/favorites", favoritesHandler.List)
+			r.Get("/favorites/{targetType}/{id}", favoritesHandler.GetFavorite)
+			r.Post("/favorites/{targetType}/{id}", favoritesHandler.ToggleFavorite)
+
 			abilityHandler := &handler.AbilityHandler{Service: positionSvc}
 			r.Get("/job/abilities", abilityHandler.List)
 			r.Get("/job/abilities/{id}", abilityHandler.Get)

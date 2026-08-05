@@ -555,13 +555,13 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                   </div>
                 )}
               </div>
-              {/* 心仪岗位配套场景 */}
+              {/* 收藏岗位配套场景 */}
               <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
                 <div className="flex items-center gap-2.5 mb-3">
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-400/30 to-pink-500/30 border border-white/15 flex items-center justify-center shadow-sm">
                     <Heart className="w-4 h-4 text-rose-300" />
                   </div>
-                  <span className="text-[15px] font-bold">心仪岗位配套场景</span>
+                  <span className="text-[15px] font-bold">收藏岗位配套场景</span>
                 </div>
                 {favoritePositions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-white/50 text-center py-4">
@@ -686,7 +686,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                   <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
                     <Heart className="w-4 h-4 text-rose-500" />
                   </div>
-                  我的心仪岗位
+                  我的收藏岗位
                 </div>
                 <Link
                   href="/job/landing"

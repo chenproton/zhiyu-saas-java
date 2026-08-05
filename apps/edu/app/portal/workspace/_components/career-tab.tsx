@@ -1,69 +1,51 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import {
   Briefcase,
-  Building2,
-  MapPin,
   Heart,
   BookOpen,
   Layers,
   FileText,
-  Bookmark,
-  Clock,
-  Play,
-  ExternalLink,
+  Library,
+  ClipboardList,
+  Loader2,
+  MapPin,
+  ChevronRight,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@zhiyu/ui'
+import { StatusBadge, useToast } from '@zhiyu/ui'
 import { SectionCard } from './section-card'
-import { DIFFICULTY_LABELS } from '@/lib/types'
+import { favoriteApi, positionApi } from '@/lib/api'
+import type { CareerPosition, Scenario, Course, QuestionBank, Exam } from '@/lib/types'
+import type { FavoriteTargetType } from '@/lib/api'
+import { JobCard } from '@/components/job/student/job-card'
+import { SceneCard } from '@/components/scene/student/scene-card'
 
-// 收藏数据暂由后端提供，当前无收藏 API，默认空状态
+const coverGradients = [
+  'linear-gradient(135deg,#1e3a8a,#3b7cff)',
+  'linear-gradient(135deg,#7c2d12,#dc2626)',
+  'linear-gradient(135deg,#064e3b,#0891b2)',
+  'linear-gradient(135deg,#334155,#64748b)',
+  'linear-gradient(135deg,#581c87,#a855f7)',
+  'linear-gradient(135deg,#1e40af,#3b82f6)',
+]
 
-interface FavoriteJob {
-  id: string
-  name: string
-  company: string
-  location: string
-  salary: string
-  tags: string[]
-  matchScore: number
+interface FavoritesState {
+  jobs: CareerPosition[]
+  scenes: Scenario[]
+  courses: Course[]
+  banks: QuestionBank[]
+  exams: Exam[]
 }
 
-interface FavoriteCourse {
-  id: string
-  name: string
-  provider: string
-  duration: string
-  level: string
-  score: number
+const emptyFavorites: FavoritesState = {
+  jobs: [],
+  scenes: [],
+  courses: [],
+  banks: [],
+  exams: [],
 }
-
-interface FavoriteScene {
-  id: string
-  name: string
-  tasks: number
-  company: string
-  status: string
-}
-
-interface FavoriteExam {
-  id: string
-  name: string
-  type: string
-  questions: number
-  difficulty: string
-}
-
-const emptyFavoriteJobs: FavoriteJob[] = []
-
-const emptyFavoriteCourses: FavoriteCourse[] = []
-
-const emptyFavoriteScenes: FavoriteScene[] = []
-
-const emptyFavoriteExams: FavoriteExam[] = []
 
 const categoryConfig = {
   jobs: { label: '职业岗位', icon: Briefcase, color: 'blue' as const },
@@ -72,23 +54,277 @@ const categoryConfig = {
   exams: { label: '测评资源', icon: FileText, color: 'purple' as const },
 }
 
-export function CareerTab() {
-  const [activeCategory, setActiveCategory] = useState('all')
-  const [favorites, setFavorites] = useState({
-    jobs: emptyFavoriteJobs,
-    courses: emptyFavoriteCourses,
-    scenes: emptyFavoriteScenes,
-    exams: emptyFavoriteExams,
-  })
+// 分类 -> 收藏实体集合的键名映射（测评资源含题库与试卷）
+const categoryKeys: Record<string, (keyof FavoritesState)[]> = {
+  all: ['jobs', 'scenes', 'courses', 'banks', 'exams'],
+  jobs: ['jobs'],
+  scenes: ['scenes'],
+  courses: ['courses'],
+  exams: ['banks', 'exams'],
+}
 
-  const handleUnfavorite = (category: keyof typeof categoryConfig, id: string) => {
+function CoverBadge({ label }: { label: string }) {
+  return (
+    <span className="absolute top-3 right-3 bg-white/25 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
+      {label}
+    </span>
+  )
+}
+
+function CourseCoverCard({
+  course,
+  index,
+  onUnfavorite,
+}: {
+  course: Course
+  index: number
+  onUnfavorite: () => void
+}) {
+  return (
+    <div className="relative group">
+      <Link
+        href={`/lesson/landing/${course.id}`}
+        className="group block no-underline text-inherit"
+      >
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-emerald-200 hover:-translate-y-0.5 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+          <div
+            className="h-[110px] flex items-center justify-center shrink-0 relative bg-cover bg-center"
+            style={
+              course.coverImage
+                ? { backgroundImage: `url('${course.coverImage}')` }
+                : { background: coverGradients[index % coverGradients.length] }
+            }
+          >
+            {!course.coverImage && (
+              <span className="text-white text-lg font-bold drop-shadow-lg">
+                {course.name.slice(0, 8)}
+              </span>
+            )}
+            <CoverBadge label="已发布" />
+            {course.batchName && (
+              <span className="absolute bottom-3 left-3 bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] border border-white/10">
+                {course.batchName}
+              </span>
+            )}
+          </div>
+          <div className="p-4 flex-1 flex flex-col">
+            <h3 className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{course.name}</h3>
+            {course.majorName && (
+              <p className="text-[11px] text-slate-400 mb-1 flex items-center gap-1">
+                <MapPin className="w-3 h-3" /> {course.majorName}
+              </p>
+            )}
+            <div className="mt-auto flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-2">
+              <span className="flex items-center gap-1">
+                <Layers className="w-3 h-3" /> {course.nodeCount} 节点
+              </span>
+              <span className="flex items-center gap-1">
+                <BookOpen className="w-3 h-3" /> {course.resourceCount} 资源
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onUnfavorite()
+        }}
+        className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
+        title="取消收藏"
+      >
+        <Heart className="w-3 h-3 fill-current" />
+        取消收藏
+      </button>
+    </div>
+  )
+}
+
+function BankCard({
+  bank,
+  index,
+  onUnfavorite,
+}: {
+  bank: QuestionBank
+  index: number
+  onUnfavorite: () => void
+}) {
+  return (
+    <div className="relative group">
+      <Link
+        href={`/evaluation/landing/banks/${bank.id}`}
+        className="group block no-underline text-inherit"
+      >
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-purple-200 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+          <div
+            className="h-[110px] flex items-center justify-center shrink-0 relative"
+            style={
+              bank.coverImage
+                ? {
+                    backgroundImage: `url('${bank.coverImage}')`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }
+                : { background: coverGradients[(index + 2) % coverGradients.length] }
+            }
+          >
+            {!bank.coverImage && <Library className="w-12 h-12 text-white/80" />}
+            <CoverBadge label={`v${bank.version}`} />
+          </div>
+          <div className="p-4 flex-1 flex flex-col">
+            <h3 className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{bank.name}</h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
+              {bank.description || '暂无描述'}
+            </p>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-2">
+              <span className="flex items-center gap-1">
+                <FileText className="w-3 h-3" /> {bank.questionCount} 题
+              </span>
+              <span className="text-purple-500 group-hover:text-purple-600 font-medium">
+                查看详情 →
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onUnfavorite()
+        }}
+        className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
+        title="取消收藏"
+      >
+        <Heart className="w-3 h-3 fill-current" />
+        取消收藏
+      </button>
+    </div>
+  )
+}
+
+function ExamCard({
+  exam,
+  index,
+  onUnfavorite,
+}: {
+  exam: Exam
+  index: number
+  onUnfavorite: () => void
+}) {
+  return (
+    <div className="relative group">
+      <Link
+        href={`/evaluation/landing/exams/${exam.id}`}
+        className="group block no-underline text-inherit"
+      >
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-purple-200 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+          <div
+            className="h-[110px] flex items-center justify-center shrink-0 relative"
+            style={
+              exam.coverImage
+                ? {
+                    backgroundImage: `url('${exam.coverImage}')`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }
+                : { background: coverGradients[(index + 4) % coverGradients.length] }
+            }
+          >
+            {!exam.coverImage && <ClipboardList className="w-12 h-12 text-white/80" />}
+            <CoverBadge label={`${exam.duration} 分钟`} />
+          </div>
+          <div className="p-4 flex-1 flex flex-col">
+            <h3 className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{exam.name}</h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
+              {exam.description || '暂无描述'}
+            </p>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-2">
+              <span className="flex items-center gap-1">
+                <ClipboardList className="w-3 h-3" /> {exam.totalScore} 分
+              </span>
+              <StatusBadge
+                status={exam.status}
+                className="text-[10px] px-1.5 py-0.5 rounded"
+              />
+            </div>
+          </div>
+        </div>
+      </Link>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onUnfavorite()
+        }}
+        className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
+        title="取消收藏"
+      >
+        <Heart className="w-3 h-3 fill-current" />
+        取消收藏
+      </button>
+    </div>
+  )
+}
+
+export function CareerTab() {
+  const { toast } = useToast()
+  const [activeCategory, setActiveCategory] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [favorites, setFavorites] = useState<FavoritesState>(emptyFavorites)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const [jobsRes, favRes] = await Promise.all([
+          positionApi.listFavorites().catch(() => null),
+          favoriteApi.list().catch(() => null),
+        ])
+        if (cancelled) return
+        setFavorites({
+          jobs: jobsRes?.items || [],
+          scenes: favRes?.scene || [],
+          courses: favRes?.course || [],
+          banks: favRes?.question_bank || [],
+          exams: favRes?.exam || [],
+        })
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const removeFavorite = (key: keyof FavoritesState, id: string) => {
     setFavorites((prev) => ({
       ...prev,
-      [category]: prev[category].filter((item) => item.id !== id),
+      [key]: prev[key].filter((item) => item.id !== id),
     }))
   }
 
+  const handleUnfavorite = async (
+    key: keyof FavoritesState,
+    id: string,
+    targetType?: FavoriteTargetType,
+  ) => {
+    try {
+      if (targetType) {
+        await favoriteApi.toggle(targetType, id)
+      } else {
+        await positionApi.favorite(id)
+      }
+      removeFavorite(key, id)
+    } catch {
+      toast({ variant: 'destructive', title: '操作失败', description: '取消收藏失败，请稍后再试' })
+    }
+  }
+
   const cats = Object.entries(categoryConfig).map(([k, v]) => ({ id: k, ...v }))
+  const visibleKeys = categoryKeys[activeCategory]
+
+  const totalCount = favorites.jobs.length + favorites.scenes.length + favorites.courses.length + favorites.banks.length + favorites.exams.length
 
   return (
     <div className="space-y-5">
@@ -103,7 +339,7 @@ export function CareerTab() {
                 : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
-            全部收藏
+            全部收藏（{totalCount}）
           </button>
           {cats.map((c) => (
             <button
@@ -121,229 +357,164 @@ export function CareerTab() {
           ))}
         </div>
 
-        {/* 职业岗位 */}
-        {(activeCategory === 'all' || activeCategory === 'jobs') && (
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-blue-500" />
-              职业岗位
-              <span className="text-xs text-gray-400 font-normal">（{favorites.jobs.length}）</span>
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {favorites.jobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="p-3.5 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="text-xs text-gray-500">{job.company}</span>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleUnfavorite('jobs', job.id)
-                      }}
-                      className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-rose-500 transition-colors"
-                      title="取消收藏"
-                    >
-                      <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
-                      取消收藏
-                    </button>
-                  </div>
-                  <h5 className="text-sm font-semibold text-gray-900 truncate mb-1">{job.name}</h5>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                    <MapPin className="w-3 h-3" />
-                    {job.location}
-                    <span className="font-medium text-gray-900 ml-auto">{job.salary}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200">
-                      {job.matchScore}%匹配
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {job.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 border border-gray-100 text-gray-500"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-gray-400">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" /> 加载收藏中...
+          </div>
+        ) : totalCount === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-rose-50 flex items-center justify-center">
+              <Heart className="w-8 h-8 text-rose-200" />
+            </div>
+            <div className="text-[15px] font-medium text-gray-600">暂无收藏内容</div>
+            <div className="text-[13px] mt-1">
+              浏览岗位、场景、课程或测评资源时，点击“收藏”即可在这里查看
+            </div>
+            <div className="flex items-center justify-center gap-4 mt-4 text-xs text-rose-500">
+              <Link href="/job/landing" className="hover:underline flex items-center gap-0.5">
+                去收藏岗位 <ChevronRight className="w-3 h-3" />
+              </Link>
+              <Link href="/scene/landing" className="hover:underline flex items-center gap-0.5">
+                去收藏场景 <ChevronRight className="w-3 h-3" />
+              </Link>
+              <Link href="/lesson/landing" className="hover:underline flex items-center gap-0.5">
+                去收藏课程 <ChevronRight className="w-3 h-3" />
+              </Link>
+              <Link href="/evaluation/landing" className="hover:underline flex items-center gap-0.5">
+                去收藏测评 <ChevronRight className="w-3 h-3" />
+              </Link>
             </div>
           </div>
-        )}
-
-        {/* 数字课程 */}
-        {(activeCategory === 'all' || activeCategory === 'courses') && (
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-emerald-500" />
-              数字课程
-              <span className="text-xs text-gray-400 font-normal">
-                （{favorites.courses.length}）
-              </span>
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {favorites.courses.map((course) => (
-                <div
-                  key={course.id}
-                  className="p-3.5 rounded-xl border border-gray-100 bg-white hover:border-emerald-200 hover:shadow-sm transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] border-emerald-200 text-emerald-600"
-                    >
-                      {course.level}
-                    </Badge>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleUnfavorite('courses', course.id)
-                      }}
-                      className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-rose-500 transition-colors"
-                      title="取消收藏"
-                    >
-                      <Bookmark className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-                      取消收藏
-                    </button>
-                  </div>
-                  <h5 className="text-sm font-semibold text-gray-900 truncate mb-1">
-                    {course.name}
-                  </h5>
-                  <p className="text-xs text-gray-500 mb-2">{course.provider}</p>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {course.duration}
-                    </span>
-                    <span className="text-amber-500 font-medium">★ {course.score}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 实践场景 */}
-        {(activeCategory === 'all' || activeCategory === 'scenes') && (
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-amber-500" />
-              实践场景
-              <span className="text-xs text-gray-400 font-normal">
-                （{favorites.scenes.length}）
-              </span>
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {favorites.scenes.map((scene) => (
-                <div
-                  key={scene.id}
-                  className="p-3.5 rounded-xl border border-gray-100 bg-white hover:border-amber-200 hover:shadow-sm transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-gray-500">{scene.company}</span>
-                    <div className="flex items-center gap-2">
-                      <StatusBadge
-                        status={scene.status}
-                        className="text-[10px] px-1.5 py-0.5 rounded"
-                      />
+        ) : (
+          <>
+            {/* 职业岗位 */}
+            {visibleKeys.includes('jobs') && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-blue-500" />
+                  职业岗位
+                  <span className="text-xs text-gray-400 font-normal">
+                    （{favorites.jobs.length}）
+                  </span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {favorites.jobs.map((job, i) => (
+                    <div key={job.id} className="relative group">
+                      <JobCard position={job} index={i} />
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUnfavorite('scenes', scene.id)
-                        }}
-                        className="text-[10px] text-gray-400 hover:text-rose-500 transition-colors"
+                        onClick={() => handleUnfavorite('jobs', job.id)}
+                        className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
                         title="取消收藏"
                       >
+                        <Heart className="w-3 h-3 fill-current" />
                         取消收藏
                       </button>
                     </div>
-                  </div>
-                  <h5 className="text-sm font-semibold text-gray-900 truncate mb-1">
-                    {scene.name}
-                  </h5>
-                  <p className="text-xs text-gray-500 mb-3">{scene.tasks} 个任务</p>
-                  <Button
-                    size="sm"
-                    className="w-full text-[10px] h-7 bg-amber-500 hover:bg-amber-600"
-                  >
-                    <Play className="w-3 h-3 mr-1" />
-                    进入场景
-                  </Button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
 
-        {/* 测评资源 */}
-        {(activeCategory === 'all' || activeCategory === 'exams') && (
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-purple-500" />
-              测评资源
-              <span className="text-xs text-gray-400 font-normal">
-                （{favorites.exams.length}）
-              </span>
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {favorites.exams.map((exam) => (
-                <div
-                  key={exam.id}
-                  className="p-3.5 rounded-xl border border-gray-100 bg-white hover:border-purple-200 hover:shadow-sm transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] border-purple-200 text-purple-600"
-                    >
-                      {exam.type}
-                    </Badge>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                          exam.difficulty === 'easy'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : exam.difficulty === 'medium'
-                              ? 'bg-amber-50 text-amber-600'
-                              : 'bg-rose-50 text-rose-600'
-                        }`}
-                      >
-                        {DIFFICULTY_LABELS[exam.difficulty] || exam.difficulty}
-                      </span>
+            {/* 实践场景 */}
+            {visibleKeys.includes('scenes') && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-amber-500" />
+                  实践场景
+                  <span className="text-xs text-gray-400 font-normal">
+                    （{favorites.scenes.length}）
+                  </span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {favorites.scenes.map((scene, i) => (
+                    <div key={scene.id} className="relative group">
+                      <SceneCard scenario={scene} index={i} taskCount={scene.taskCount} />
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUnfavorite('exams', exam.id)
-                        }}
-                        className="text-[10px] text-gray-400 hover:text-rose-500 transition-colors"
+                        onClick={() => handleUnfavorite('scenes', scene.id, 'scene')}
+                        className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
                         title="取消收藏"
                       >
+                        <Heart className="w-3 h-3 fill-current" />
                         取消收藏
                       </button>
                     </div>
-                  </div>
-                  <h5 className="text-sm font-semibold text-gray-900 truncate mb-2">{exam.name}</h5>
-                  <p className="text-xs text-gray-500 mb-3">{exam.questions} 道题目</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full text-[10px] h-7 border-purple-200 text-purple-600 hover:bg-purple-50"
-                  >
-                    <ExternalLink className="w-3 h-3 mr-1" />
-                    开始练习
-                  </Button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            )}
+
+            {/* 数字课程 */}
+            {visibleKeys.includes('courses') && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-emerald-500" />
+                  数字课程
+                  <span className="text-xs text-gray-400 font-normal">
+                    （{favorites.courses.length}）
+                  </span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {favorites.courses.map((course, i) => (
+                    <CourseCoverCard
+                      key={course.id}
+                      course={course}
+                      index={i}
+                      onUnfavorite={() => handleUnfavorite('courses', course.id, 'course')}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 测评资源（题库 + 试卷） */}
+            {visibleKeys.includes('exams') && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-purple-500" />
+                  测评资源
+                  <span className="text-xs text-gray-400 font-normal">
+                    （{favorites.banks.length + favorites.exams.length}）
+                  </span>
+                </h4>
+                {favorites.banks.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-xs text-slate-500 mb-2 flex items-center gap-1.5">
+                      <Library className="w-3.5 h-3.5" /> 题库
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {favorites.banks.map((bank, i) => (
+                        <BankCard
+                          key={bank.id}
+                          bank={bank}
+                          index={i}
+                          onUnfavorite={() =>
+                            handleUnfavorite('banks', bank.id, 'question_bank')
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {favorites.exams.length > 0 && (
+                  <div>
+                    <div className="text-xs text-slate-500 mb-2 flex items-center gap-1.5">
+                      <ClipboardList className="w-3.5 h-3.5" /> 试卷
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {favorites.exams.map((exam, i) => (
+                        <ExamCard
+                          key={exam.id}
+                          exam={exam}
+                          index={i}
+                          onUnfavorite={() => handleUnfavorite('exams', exam.id, 'exam')}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </SectionCard>
     </div>

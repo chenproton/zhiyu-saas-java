@@ -109,6 +109,7 @@ type Handlers struct {
 	affairsConfigImportHandler    *handler.AffairsConfigImportHandler
 	affairsBatchHandler           *handler.AffairsBatchHandler
 	communityHandler              *handler.CommunityHandler
+	favoritesHandler              *handler.FavoritesHandler
 }
 
 func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client) *Handlers {
@@ -122,6 +123,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	evaluationSvc := service.NewEvaluationService(svc)
 	scenarioSvc := service.NewScenarioService(svc)
 	lessonContentSvc := service.NewLessonContentService(svc)
+	favoritesSvc := service.NewFavoritesService(svc)
 	return &Handlers{
 		authHandler:                   handler.NewAuthHandler(authSvc, jwtSecret),
 		fileHandler:                   fileHandler,
@@ -223,5 +225,6 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		affairsConfigImportHandler:    &handler.AffairsConfigImportHandler{DB: db},
 		affairsBatchHandler:           handler.NewAffairsBatchHandler(positionSvc),
 		communityHandler:              &handler.CommunityHandler{Service: service.NewCommunityService(svc)},
+		favoritesHandler:              &handler.FavoritesHandler{Service: favoritesSvc},
 	}
 }

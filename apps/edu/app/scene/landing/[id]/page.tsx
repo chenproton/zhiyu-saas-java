@@ -49,6 +49,7 @@ import {
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
 import { formatDate } from '@/lib/format-utils'
+import { FavoriteButton } from '@/components/shared/favorite-button'
 
 const TABS = [
   { value: 'tasks', label: '任务概览', icon: ListChecks },
@@ -863,6 +864,12 @@ export default function SceneDetailPage() {
                           <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
                         </Button>
                       </Link>
+                      <FavoriteButton
+                        targetType="scene"
+                        targetId={id}
+                        label="收藏场景"
+                        className="h-11 rounded-xl"
+                      />
                       <Button
                         variant="ghost"
                         className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-blue-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-all"

@@ -221,6 +221,11 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/job/positions/{id}/favorite", h.positionHandler.GetFavorite)
 				r.Post("/job/positions/{id}/favorite", h.positionHandler.ToggleFavorite)
 				r.Get("/job/positions/favorites", h.positionHandler.ListFavorites)
+
+				// 通用收藏前台接口（场景/课程/题库/试卷）
+				r.Get("/favorites", h.favoritesHandler.List)
+				r.Get("/favorites/{targetType}/{id}", h.favoritesHandler.GetFavorite)
+				r.Post("/favorites/{targetType}/{id}", h.favoritesHandler.ToggleFavorite)
 			})
 		})
 

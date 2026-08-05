@@ -100,6 +100,7 @@ type Store struct {
 	onSiteQuestions  *OnSiteQuestionLibraryStore
 	alliance         *AllianceStore
 	community        *CommunityStore
+	favorites        *FavoritesStore
 }
 
 // newStore 装配全部领域 store（连接池模式与事务模式共用，仅查询器不同）。
@@ -185,6 +186,7 @@ func newStore(q Queryer) *Store {
 		onSiteQuestions:  NewOnSiteQuestionLibraryStore(q),
 		alliance:         NewAllianceStore(q),
 		community:        NewCommunityStore(q),
+		favorites:        NewFavoritesStore(q),
 	}
 }
 
@@ -601,4 +603,9 @@ func (s *Store) Alliance() *AllianceStore {
 // Community 返回学习社区 store。
 func (s *Store) Community() *CommunityStore {
 	return s.community
+}
+
+// Favorites 返回通用收藏 store。
+func (s *Store) Favorites() *FavoritesStore {
+	return s.favorites
 }

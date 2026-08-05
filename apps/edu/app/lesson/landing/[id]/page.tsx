@@ -26,6 +26,7 @@ import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { formatDate } from '@/lib/format-utils'
 import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-graph'
+import { FavoriteButton } from '@/components/shared/favorite-button'
 import {
   ResourcePreviewModal,
   usePreviewResources,
@@ -658,6 +659,12 @@ export default function CourseDetailPage() {
                           </Button>
                         </Link>
                       )}
+                      <FavoriteButton
+                        targetType="course"
+                        targetId={id}
+                        label="收藏课程"
+                        className="h-11 rounded-xl"
+                      />
                     </div>
                   </div>
                 </div>

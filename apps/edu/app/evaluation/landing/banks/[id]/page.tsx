@@ -23,6 +23,7 @@ import { reportError } from '@/lib/error-handling'
 import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { FavoriteButton } from '@/components/shared/favorite-button'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
 
@@ -272,6 +273,7 @@ export default function BankDetailPage() {
                     )}
 
                     <div className="flex flex-wrap items-center gap-3 text-xs mt-auto pt-5">
+                      <FavoriteButton targetType="question_bank" targetId={id} label="收藏题库" />
                       {Object.entries(typeCounts).length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {Object.entries(typeCounts).map(([t, count]) => (

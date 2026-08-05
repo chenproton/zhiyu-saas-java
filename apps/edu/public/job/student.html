@@ -635,7 +635,7 @@
                         <button class="btn primary lg" onclick="window.location.href='/learning-route'">
                             <i class="fas fa-play-circle"></i> 开始学习
                         </button>
-                        <button class="btn" id="btnLike"><i class="far fa-heart"></i> 设为心仪岗位</button>
+                        <button class="btn" id="btnLike"><i class="far fa-heart"></i> 收藏岗位</button>
                         <button class="btn" onclick="openModal('relatedJobsModal')"><i class="fas fa-project-diagram"></i> 相关岗位 (3)</button>
                     </div>
                 </div>
@@ -1283,7 +1283,7 @@
         }
         setInterval(updateTime, 1000); updateTime();
 
-        // 心仪岗位交互
+        // 收藏岗位交互
         const HEART_JOBS_KEY = 'zhiyu_heart_jobs';
 
         function loadHeartJobs() {
@@ -1330,12 +1330,12 @@
                 icon.className = 'fas fa-heart';
                 btn.style.color = 'var(--primary-color)';
                 btn.style.borderColor = 'var(--primary-color)';
-                btn.innerHTML = '<i class="fas fa-heart"></i> 已设为心仪岗位';
+                btn.innerHTML = '<i class="fas fa-heart"></i> 已收藏岗位';
             } else {
                 icon.className = 'far fa-heart';
                 btn.style.color = '';
                 btn.style.borderColor = '';
-                btn.innerHTML = '<i class="far fa-heart"></i> 设为心仪岗位';
+                btn.innerHTML = '<i class="far fa-heart"></i> 收藏岗位';
             }
         }
 

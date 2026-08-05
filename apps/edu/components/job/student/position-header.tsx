@@ -189,7 +189,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
                   onClick={toggleHeart}
                 >
                   <Heart className={`w-4 h-4 mr-1.5 ${isHeart ? 'fill-current' : ''}`} />
-                  {isHeart ? '已设为心仪岗位' : '设为心仪岗位'}
+                  {isHeart ? '已收藏岗位' : '收藏岗位'}
                   {favoriteCount > 0 && (
                     <span className="ml-1.5 text-xs opacity-80">({favoriteCount})</span>
                   )}

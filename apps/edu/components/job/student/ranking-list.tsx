@@ -119,7 +119,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
         <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800 mb-3">
           <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
           <Trophy className="w-4 h-4 text-amber-500" />
-          心仪岗位排行榜
+          收藏岗位排行榜
         </div>
         <div className="text-center py-6 text-slate-400 text-sm">暂无岗位数据</div>
       </div>
@@ -132,7 +132,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
         <div className="flex items-center gap-2.5 text-[15px] font-bold text-slate-800">
           <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
           <Trophy className="w-4 h-4 text-amber-500" />
-          心仪岗位排行榜
+          收藏岗位排行榜
         </div>
         <div className="flex items-center gap-2">
           <Button
