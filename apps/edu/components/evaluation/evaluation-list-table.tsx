@@ -31,6 +31,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
   props: EvaluationListTableProps<T>,
 ) {
   const {
+    activeTab,
     items,
     selectedIds,
     onSelectId,
@@ -161,6 +162,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                 ) : (
                   <StatusActionBar
                     status={item.status as Status}
+                    isPublicPool={activeTab === 'public'}
                     onView={() => router.push(detailHref(item.id))}
                     onEdit={() => router.push(detailHref(item.id))}
                     onClone={() => onClone(item)}

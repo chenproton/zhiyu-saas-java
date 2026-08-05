@@ -194,6 +194,7 @@ export interface ContentListPageConfig<
 }
 
 export interface ListRenderProps<T extends ContentListItem> {
+  activeTab: TabType
   items: T[]
   selectedIds: string[]
   onSelectId: (id: string, checked: boolean) => void
@@ -1070,6 +1071,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   }
 
   const listProps: ListRenderProps<T> = {
+    activeTab,
     items: filtered,
     selectedIds,
     onSelectId: handleSelectId,
@@ -1299,7 +1301,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             >
               {hasSelected ? `已选择 ${selectedIds.length} 项：` : `请选择${entityLabel}：`}
             </span>
-            {hasPermission(permissionModule, permissionResource, 'submit_approval') && (
+            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'submit_approval') && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1311,7 +1313,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 提交审批
               </Button>
             )}
-            {hasPermission(permissionModule, permissionResource, 'withdraw_approval') && (
+            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'withdraw_approval') && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1323,7 +1325,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 撤回审批
               </Button>
             )}
-            {hasPermission(permissionModule, permissionResource, 'publish') && (
+            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'publish') && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1335,7 +1337,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 发布
               </Button>
             )}
-            {hasPermission(permissionModule, permissionResource, 'unpublish') && (
+            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'unpublish') && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1347,17 +1349,19 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 取消发布
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs text-purple-600 hover:text-purple-700"
-              disabled={!hasSelected || !canBatchArchive}
-              onClick={handleBatchArchive}
-            >
-              <Archive className="mr-1 h-3 w-3" />
-              归档
-            </Button>
-            {hasPermission(permissionModule, permissionResource, 'delete') && (
+            {activeTab !== 'public' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs text-purple-600 hover:text-purple-700"
+                disabled={!hasSelected || !canBatchArchive}
+                onClick={handleBatchArchive}
+              >
+                <Archive className="mr-1 h-3 w-3" />
+                归档
+              </Button>
+            )}
+            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'delete') && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1379,16 +1383,18 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               <Copy className="mr-1 h-3 w-3" />
               克隆
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              disabled={!hasSelected}
-              onClick={handleBatchMove}
-            >
-              <FolderKanban className="mr-1 h-3 w-3" />
-              调整批次分组
-            </Button>
+            {activeTab !== 'public' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!hasSelected}
+                onClick={handleBatchMove}
+              >
+                <FolderKanban className="mr-1 h-3 w-3" />
+                调整批次分组
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"

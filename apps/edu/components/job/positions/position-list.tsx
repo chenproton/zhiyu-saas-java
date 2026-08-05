@@ -19,6 +19,7 @@ import { StatusActionBar } from '@/components/shared/status-action-bar'
 import type { Position } from '@/lib/types/job-source'
 
 interface PositionListProps {
+  activeTab?: 'my' | 'collab' | 'public'
   positions: Position[]
   selectedIds?: string[]
   onSelectId?: (id: string, checked: boolean) => void
@@ -41,6 +42,7 @@ interface PositionListProps {
 }
 
 export function PositionList({
+  activeTab,
   positions,
   selectedIds = [],
   onSelectId,
@@ -169,6 +171,7 @@ export function PositionList({
                   <TableCell className="text-right relative">
                     <StatusActionBar
                       status={position.status}
+                      isPublicPool={activeTab === 'public'}
                       onView={() => router.push(`/job/landing/${position.id}`)}
                       onEdit={() => router.push(`${basePath}/${position.id}/edit`)}
                       onClone={onClone ? () => onClone(position) : undefined}

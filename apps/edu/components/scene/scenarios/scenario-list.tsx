@@ -33,6 +33,7 @@ export interface ScenarioListItem {
 }
 
 interface ScenarioListProps<T extends ScenarioListItem = ScenarioListItem> {
+  activeTab?: 'my' | 'collab' | 'public'
   scenarios: T[]
   selectedIds?: string[]
   onSelectId?: (id: string, checked: boolean) => void
@@ -51,6 +52,7 @@ interface ScenarioListProps<T extends ScenarioListItem = ScenarioListItem> {
 }
 
 export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
+  activeTab,
   scenarios,
   selectedIds = [],
   onSelectId,
@@ -157,6 +159,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                   <TableCell className="text-right relative">
                     <StatusActionBar
                       status={scenario.status}
+                      isPublicPool={activeTab === 'public'}
                       onView={() => router.push(`/scene/landing/${scenario.id}`)}
                       onEdit={() => router.push(`${basePath}/${scenario.id}/edit`)}
                       onClone={onClone ? () => onClone(scenario) : undefined}
