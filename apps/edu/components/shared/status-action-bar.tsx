@@ -4,7 +4,6 @@ import { type ReactNode } from 'react'
 import {
   Archive,
   ArrowDownFromLine,
-  CheckCircle,
   Copy,
   Eye,
   MessageSquare,
@@ -14,14 +13,14 @@ import {
   Trash2,
   Undo2,
   UserPlus,
-  XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { HoverActionBar } from '@/components/shared/hover-action-bar'
 import type { Status } from '@/lib/types'
 import { canPerformAction } from '@/lib/types'
 
-const EDITABLE_STATUSES: Status[] = ['draft', 'rejected', 'approved', 'published']
+// 可编辑状态：draft/rejected/approved（pending 审批中、published 已发布不可再编辑）
+const EDITABLE_STATUSES: Status[] = ['draft', 'rejected', 'approved']
 
 interface StatusActionBarProps {
   status: Status
@@ -33,7 +32,9 @@ interface StatusActionBarProps {
   onClone?: () => void
   onSubmit?: () => void
   onWithdraw?: () => void
+  /** 已不再渲染（审批统一走审批中心），仅保留接口兼容既有调用处 */
   onApprove?: () => void
+  /** 已不再渲染（审批统一走审批中心），仅保留接口兼容既有调用处 */
   onReject?: () => void
   onPublish?: () => void
   onUnpublish?: () => void
@@ -53,8 +54,6 @@ export function StatusActionBar({
   onClone,
   onSubmit,
   onWithdraw,
-  onApprove,
-  onReject,
   onPublish,
   onUnpublish,
   onArchive,
@@ -135,7 +134,7 @@ export function StatusActionBar({
           查看详情
         </Button>
       )}
-      {extraActions}
+      {EDITABLE_STATUSES.includes(status) && extraActions}
       {onEdit && EDITABLE_STATUSES.includes(status) && (
         <Button
           variant="ghost"
@@ -190,34 +189,6 @@ export function StatusActionBar({
         >
           <Undo2 className="mr-1 h-3 w-3" />
           撤回审批
-        </Button>
-      )}
-      {onApprove && canPerformAction(status, 'approve') && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-          onClick={(e) => {
-            e.stopPropagation()
-            onApprove()
-          }}
-        >
-          <CheckCircle className="mr-1 h-3 w-3" />
-          通过
-        </Button>
-      )}
-      {onReject && canPerformAction(status, 'reject') && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-          onClick={(e) => {
-            e.stopPropagation()
-            onReject()
-          }}
-        >
-          <XCircle className="mr-1 h-3 w-3" />
-          驳回
         </Button>
       )}
       {onViewRejectReason && status === 'rejected' && (
