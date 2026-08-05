@@ -143,6 +143,13 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/portal/workspace/me", userManagementHandler.UpdateMe)
 			r.Post("/portal/workspace/me/password", userManagementHandler.ChangeMyPassword)
 
+			communityHandler := &handler.CommunityHandler{Service: service.NewCommunityService(svc2)}
+			r.Get("/portal/community/topics", communityHandler.ListTopics)
+			r.Post("/portal/community/topics", communityHandler.CreateTopic)
+			r.Get("/portal/community/topics/{id}", communityHandler.GetTopic)
+			r.Get("/portal/community/topics/{id}/replies", communityHandler.ListReplies)
+			r.Post("/portal/community/topics/{id}/replies", communityHandler.CreateReply)
+
 			roleHandler := &handler.RoleHandler{Store: st2.Roles()}
 			r.Get("/roles", roleHandler.List)
 			r.Get("/roles/{id}", roleHandler.Get)

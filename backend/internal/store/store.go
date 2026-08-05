@@ -99,6 +99,7 @@ type Store struct {
 	microCerts       *MicroCertStore
 	onSiteQuestions  *OnSiteQuestionLibraryStore
 	alliance         *AllianceStore
+	community        *CommunityStore
 }
 
 // newStore 装配全部领域 store（连接池模式与事务模式共用，仅查询器不同）。
@@ -183,6 +184,7 @@ func newStore(q Queryer) *Store {
 		microCerts:       NewMicroCertStore(q, beginner),
 		onSiteQuestions:  NewOnSiteQuestionLibraryStore(q),
 		alliance:         NewAllianceStore(q),
+		community:        NewCommunityStore(q),
 	}
 }
 
@@ -594,4 +596,9 @@ func (s *Store) OnSiteQuestions() *OnSiteQuestionLibraryStore {
 // Alliance 返回联盟 store。
 func (s *Store) Alliance() *AllianceStore {
 	return s.alliance
+}
+
+// Community 返回学习社区 store。
+func (s *Store) Community() *CommunityStore {
+	return s.community
 }

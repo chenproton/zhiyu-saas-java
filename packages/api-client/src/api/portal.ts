@@ -1,5 +1,5 @@
 import type { UserExtensionField, StaffTitle, LoginLog, OperationLog } from '../types/backend'
-import type { WorkspaceDashboard } from '../types/portal'
+import type { WorkspaceDashboard, CommunityTopic, CommunityReply, CommunityTopicSort } from '../types/portal'
 import {
   request,
   portalRequest,
@@ -167,6 +167,21 @@ export const portalLogApi = {
 export const portalApi = {
   workspaceDashboard: (params?: { role?: string }) =>
     request<WorkspaceDashboard>(`/portal/workspace/dashboard${buildQuery(params || {})}`),
+}
+
+export const portalCommunityApi = {
+  listTopics: (params?: { sort?: CommunityTopicSort; limit?: number; offset?: number }) =>
+    request<ListResponse<CommunityTopic>>(`/portal/community/topics${buildQuery(params || {})}`),
+  createTopic: (req: { title: string; content: string; tag?: string }) =>
+    request<{ id: string }>('/portal/community/topics', { method: 'POST', body: JSON.stringify(req) }),
+  getTopic: (id: string) => request<CommunityTopic>(`/portal/community/topics/${id}`),
+  listReplies: (id: string) =>
+    request<ListResponse<CommunityReply>>(`/portal/community/topics/${id}/replies`),
+  createReply: (id: string, req: { content: string; parentId?: string }) =>
+    request<{ id: string }>(`/portal/community/topics/${id}/replies`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
 }
 
 export const portalMeApi = {
