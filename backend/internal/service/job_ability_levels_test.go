@@ -235,6 +235,29 @@ func TestCompetencyV2Examples(t *testing.T) {
 	}
 }
 
+// TestLegacyCompetencyFormula 回归：旧岗位胜任度为比值加权平均转百分比，
+// 必须 round(Σ(c×w)/Σw×10000)/100；错误写法 round(×100)/100 会把 9.14 存成 0.09。
+func TestLegacyCompetencyFormula(t *testing.T) {
+	points := []struct{ score, weight, need float64 }{
+		{80, 20, 70}, {75.58, 20, 70}, {56.81, 20, 70}, {56.81, 20, 80}, {86.4, 20, 70},
+	}
+	var competencySum, cognitionWeight float64
+	for _, p := range points {
+		cognitionWeight += p.weight
+		if c := (p.score - p.need) / p.need; c > 0 {
+			competencySum += c * p.weight
+		}
+	}
+	got := math.Round(competencySum/cognitionWeight*10000) / 100
+	if math.Abs(got-9.14) > 1e-6 {
+		t.Errorf("competency = %v, want 9.14（旧 bug 会输出 0.09）", got)
+	}
+	buggy := math.Round(competencySum/cognitionWeight*100) / 100
+	if math.Abs(buggy-got) < 1e-6 {
+		t.Errorf("公式未与旧 bug 写法（round(×100)/100 → 0.09）区分开")
+	}
+}
+
 func TestPointLevelLabel(t *testing.T) {
 	levels := []levelMapping{
 		{Level: "understand", Min: 56},
