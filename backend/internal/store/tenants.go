@@ -315,7 +315,8 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 	teacherMenus := domain.JSONMap{
 		// 产业岗位学习平台
 		"/job/positions": true, "/job/batches": true, "/job/workflows": true,
-		"/job/approvals": true, "/job/learn-roads": true, "/job/landing": true,
+		"/job/approvals": true, "/job/learn-roads": true, "/job/recommend": true,
+		"/job/landing": true,
 		// 数字课程服务平台
 		"/lesson/admin/system": true, "/lesson/admin/granular": true, "/lesson/admin/hybrid": true,
 		"/lesson/admin/batches": true, "/lesson/admin/workflows": true,
@@ -326,8 +327,8 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 		// 能力评价与测评资源管理平台
 		"/evaluation/question-banks": true, "/evaluation/exams": true, "/evaluation/exam-usage": true,
 		"/evaluation/batches": true, "/evaluation/workflows": true, "/evaluation/approvals": true,
-		"/evaluation/scene-results": true, "/evaluation/job-ability/results": true,
-		"/evaluation/landing": true,
+		"/evaluation/scene-results": true, "/evaluation/lesson-results": true,
+		"/evaluation/job-ability/results": true, "/evaluation/landing": true,
 		// 教学资源共享服务平台
 		"/library/knowledge": true, "/library/ability": true, "/library/certificates": true,
 		"/library/resources/document": true, "/library/resources/spreadsheet": true,
@@ -338,6 +339,7 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 		"/library/resources/other": true, "/library/questions": true,
 		"/library/my-resources": true, "/library/landing": true,
 		// 产教融合与就业服务平台
+		"/portal/apps/alliance/school": true, "/portal/alliance/landing": true,
 		"/portal/apps/alliance/enterprises": true, "/portal/apps/alliance/projects": true,
 		"/portal/apps/alliance/achievements": true, "/portal/apps/alliance/experts": true,
 		"/portal/apps/alliance/agreements": true, "/portal/apps/alliance/permissions": true,
