@@ -276,7 +276,7 @@ func (h *PortalHandler) schoolAdminTodos(ctx context.Context, tenantID *string) 
 
 func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceCourse {
 	ratio := h.Service.CreditHoursRatio(ctx)
-	rows, _ := h.Service.ListStudentCourses(ctx, tenantID)
+	rows, _ := h.Service.ListStudentCourses(ctx, userID, tenantID)
 
 	var items []domain.WorkspaceCourse
 	courseIDs := make([]string, 0, 50)
@@ -298,7 +298,7 @@ func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, t
 }
 
 func (h *PortalHandler) listStudentSceneTasks(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceSceneTask {
-	rows, _ := h.Service.ListSceneTasks(ctx, tenantID)
+	rows, _ := h.Service.ListSceneTasks(ctx, userID, tenantID)
 
 	var items []domain.WorkspaceSceneTask
 	taskIDs := make([]string, 0, 50)

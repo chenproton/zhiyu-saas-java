@@ -73,14 +73,14 @@ func (s *PositionService) SchoolAdminTodos(ctx context.Context, tenantID *string
 	return s.st.Portal().SchoolAdminTodos(ctx, tenantID)
 }
 
-// ListStudentCourses 学生课程。
-func (s *PositionService) ListStudentCourses(ctx context.Context, tenantID *string) ([]store.StudentCourseRow, error) {
-	return s.st.Portal().ListStudentCourses(ctx, tenantID)
+// ListStudentCourses 学生课程（按学生班级已发布排课过滤）。
+func (s *PositionService) ListStudentCourses(ctx context.Context, userID string, tenantID *string) ([]store.StudentCourseRow, error) {
+	return s.st.Portal().ListStudentCourses(ctx, userID, tenantID)
 }
 
-// ListSceneTasks 场景任务。
-func (s *PositionService) ListSceneTasks(ctx context.Context, tenantID *string) ([]store.SceneTaskRow, error) {
-	return s.st.Portal().ListSceneTasks(ctx, tenantID)
+// ListSceneTasks 场景任务（按学生班级已发布排课过滤）。
+func (s *PositionService) ListSceneTasks(ctx context.Context, userID string, tenantID *string) ([]store.SceneTaskRow, error) {
+	return s.st.Portal().ListSceneTasks(ctx, userID, tenantID)
 }
 
 // ListStudentExams 学生考试。

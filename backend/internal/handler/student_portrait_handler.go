@@ -89,7 +89,7 @@ func (h *StudentPortraitHandler) StudentDashboard(w http.ResponseWriter, r *http
 		resp.Positions = append(resp.Positions, PortraitPositionItem{PositionID: p.PositionID, Name: p.Name})
 	}
 
-	courses, err := h.Service.ListStudentCourses(r.Context(), tenantID)
+	courses, err := h.Service.ListStudentCourses(r.Context(), userID, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询课程失败")
 		return
