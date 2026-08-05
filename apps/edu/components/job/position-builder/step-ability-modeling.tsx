@@ -927,16 +927,19 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px]">
+                <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
-                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[34%]">
+                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
                       能力点名称
                     </th>
-                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[26%]">
+                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[15%]">
+                      能力点编码
+                    </th>
+                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[25%]">
                       能力属性
                     </th>
-                    <th className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[40%]">
+                    <th className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
                       操作
                     </th>
                   </tr>
@@ -953,7 +956,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                     if (isEditing) {
                       return (
                         <tr key={ability.id} className="bg-indigo-50/40">
-                          <td colSpan={3} className="px-4 py-3">
+                          <td colSpan={4} className="px-4 py-3">
                             <div className="flex items-start gap-4">
                               <div className="flex-1 space-y-2">
                                 <Input
@@ -1022,6 +1025,9 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                       <tr key={ability.id} className="hover:bg-gray-50/80 transition-colors">
                         <td className="px-4 py-3">
                           <span className="text-sm text-gray-800">{ability.name}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-gray-400">{ability.code || '-'}</span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">

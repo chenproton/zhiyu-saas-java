@@ -72,6 +72,7 @@ export interface Ability {
   id: string
   name: string
   category: string
+  code?: string
   description: string
   attributes: string[]
   isPublic: boolean

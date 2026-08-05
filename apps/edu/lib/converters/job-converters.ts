@@ -91,6 +91,7 @@ export function convertApiAbilityToLocal(a: AbilityPoint): Ability {
     id: a.id,
     name: a.name,
     category: a.category,
+    code: a.code,
     description: a.description ?? '',
     attributes: a.attributes || [],
     isPublic: a.isPublic ?? false,
