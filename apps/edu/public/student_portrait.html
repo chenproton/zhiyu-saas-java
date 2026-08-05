@@ -573,7 +573,7 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
     }).join('');
   }
 
-  // 课程成绩表格：租户课程 + 学生成绩（无成绩的课程分数/排名显示 --），最多 5 条滚动
+  // 课程成绩表格：租户课程 + 学生成绩（有成绩的课程优先展示，无成绩的分数/排名显示 --），最多 5 条滚动
   function renderCourseScores(){
     var el=document.getElementById('courseScores');
     var courses=(dashData&&dashData.courses)||[];
@@ -581,9 +581,14 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
       el.innerHTML='<div class="empty-state">暂无课程成绩数据</div>';
       return;
     }
+    var sorted=courses.slice().sort(function(a,b){
+      var as=a.score!=null?1:0, bs=b.score!=null?1:0;
+      if(as!==bs) return bs-as;
+      return 0;
+    });
     el.innerHTML='<table>'
       +'<thead><tr><th>课程名称</th><th class="c">排名</th><th class="c">分数</th></tr></thead><tbody>'
-      +courses.slice(0,5).map(function(c){
+      +sorted.slice(0,5).map(function(c){
         var has=c.score!=null;
         return '<tr><td class="gn">'+(c.courseName||'')+'</td>'
           +'<td class="rk c">'+(has&&c.rank!=null?(c.rank+'/'+c.total):'--')+'</td>'
@@ -668,7 +673,8 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
     document.getElementById('infoDesc').innerHTML=desc;
   }
 
-  // 推荐就业方向：已发布场景关联岗位（最多 5 个滚动）；无测评数据的岗位进度条/匹配度显示 --
+  // 推荐就业方向：已发布场景关联岗位（最多 5 个滚动）；
+  // 学生在该岗位有测评结果（job-ability/results）时按达成率显示匹配度与进度条，否则显示 --
   function renderRecommendations(){
     var el=document.getElementById('recommendJobs');
     var positions=(dashData&&dashData.positions)||[];
@@ -676,8 +682,22 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
       el.innerHTML='<div class="empty-state">暂无推荐数据</div>';
       return;
     }
+    var jrMap={};
+    jobResults.forEach(function(jr){ if(jr.positionId) jrMap[jr.positionId]=jr; });
     el.innerHTML=positions.slice(0,5).map(function(p,i){
+      var jr=jrMap[p.positionId];
       var bgCls=i%2===0?'acc':'acc2';
+      if(jr){
+        var rate=jr.achievementRate||0;
+        var cls=rate>=80?'g':rate>=60?'b':'a';
+        var label=rate>=80?'优秀':rate>=60?'良好':'待提升';
+        var levelColor=rate>=80?'var(--exceed)':rate>=60?'var(--pri2)':'var(--below)';
+        return '<div class="jc '+bgCls+'">'
+          +'<div class="jtp"><span class="jn">'+(p.positionName||'')+'</span><span class="mt2 '+cls+'">匹配 '+Number(rate).toFixed(0)+'%</span></div>'
+          +'<div class="jbar"><i class="'+cls+'" style="width:'+Math.min(rate,100)+'%"></i></div>'
+          +'<div class="jdsc"><b style="color:'+levelColor+'">'+label+'</b></div>'
+          +'</div>';
+      }
       return '<div class="jc '+bgCls+'">'
         +'<div class="jtp"><span class="jn">'+(p.positionName||'')+'</span><span class="mt2 a">匹配 --</span></div>'
         +'<div class="jbar"><i class="a" style="width:0%"></i></div>'
