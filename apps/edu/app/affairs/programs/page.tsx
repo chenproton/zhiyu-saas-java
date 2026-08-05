@@ -57,6 +57,7 @@ export default function ProgramsPage() {
       })}
       renderList={(props: any) => {
         const {
+          activeTab,
           items,
           selectedIds,
           onSelectId,
@@ -139,6 +140,7 @@ export default function ProgramsPage() {
                         <td className="sticky right-0 bg-white px-2 py-2">
                           <StatusActionBar
                             status={item.status}
+                            isPublicPool={activeTab === 'public'}
                             onEdit={() => router.push(`/affairs/programs/${item.id}`)}
                             onSubmit={onSubmitApproval ? () => onSubmitApproval(item) : undefined}
                             onWithdraw={

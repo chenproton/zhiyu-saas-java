@@ -17,6 +17,7 @@ import { StatusActionBar } from '@/components/shared/status-action-bar'
 import type { Course, CourseType } from '@/lib/types/lesson-source'
 
 interface CourseListProps {
+  activeTab?: 'my' | 'collab' | 'public'
   courses: Course[]
   courseType: CourseType
   selectedIds?: string[]
@@ -36,6 +37,7 @@ interface CourseListProps {
 }
 
 export function CourseList({
+  activeTab,
   courses,
   courseType,
   selectedIds = [],
@@ -147,6 +149,7 @@ export function CourseList({
                   <TableCell className="text-right relative">
                     <StatusActionBar
                       status={course.status}
+                      isPublicPool={activeTab === 'public'}
                       onView={() => router.push(viewHref?.(course) || editPath(course.id))}
                       onEdit={() => router.push(editPath(course.id))}
                       onClone={onClone ? () => onClone(course) : undefined}
