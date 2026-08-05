@@ -44,3 +44,6 @@ offline/pnpm
 offline/pnpm-*.tgz
 offline/docker-images/*.tar
 offline/debs/*.deb
+
+# Release packages (USB delivery, built by scripts/package-release.sh)
+/release/

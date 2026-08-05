@@ -24,6 +24,11 @@ offline/
         ├── editor.js           # 编辑器核心（~1MB）
         └── assets/             # 字体(21) + 贴纸/相框图片(664)，共 ~17MB
                                 # 更新: 从 https://cdn.unlayer.com/image-editor/{VERSION}/assets/ 镜像
+└── debs/                       # 系统依赖离线包（Ubuntu 24.04 amd64，完整依赖闭包）
+    ├── docker-ce / containerd.io / docker-ce-cli / docker-buildx-plugin / docker-compose-plugin
+    ├── nginx / nginx-common
+    ├── postgresql-client-16 / postgresql-client / libpq5
+    └── iptables / nftables / gettext-base 等依赖（可全离线安装）
 ```
 
 ## 使用方式
@@ -31,6 +36,18 @@ offline/
 1. 在能联网的机器上按上方命令导出资源。
 2. 把 `offline/` 整个目录连同代码一起拷贝到目标服务器。
 3. 在目标服务器执行 `./deploy.sh` 即可；`deploy.sh` 会自动检测并使用本地资源。
+
+## 生成无源码交付包（实施部署）
+
+```bash
+./scripts/package-release.sh v1.0.0
+```
+
+产物位于 `release/zhiyu-saas-v1.0.0/`（及同名 tar.gz，约 1.1GB，可复制到 U 盘）。
+交付包内**不含源代码**：包含预构建的 zhiyu-backend/zhiyu-edu 镜像、第三方镜像、
+`debs/` 全部离线依赖、数据库迁移 SQL 与静态迁移/种子工具。客户服务器（全新
+Ubuntu 24.04 x86_64）复制目录后执行 `./install.sh` 即可全离线启动；
+升级执行 `./install.sh --update`。详见 `deploy/release/README.md`。
 
 ## 图片编辑器（unlayer）离线说明
 
@@ -43,7 +60,10 @@ offline/
 
 ## 注意事项
 
-- 系统基础包（curl、git、python3、nginx、postgresql-client 等）仍依赖服务器的 `apt`/`yum` 源。离线环境请提前配置好本地源，或手动安装这些包。
+- `debs/` 已包含 docker/nginx/postgresql-client 及其依赖的完整闭包（Ubuntu 24.04 amd64），
+  全新空机可完全离线安装；curl/git/python3 等基础命令缺失时只影响个别辅助功能，不影响核心服务。
+  补充/更新 deb 包可在联网机器执行：`apt-get download <包名>`（依赖闭包需逐层解析）。
 - Go 版本可在 `.env` 中通过 `GO_VERSION` 调整；`offline/` 中文件名需与 `GO_VERSION` 对应。
 - Node.js 当前使用 `v22.12.0`；如需其他版本，请同步修改 `deploy.sh` 中的 `NODE_VERSION` 与离线包文件名。
 - Docker 镜像 tar 包加载时会按文件名匹配镜像名，文件不存在时自动 `docker pull`。
+- 无源码离线交付包由 `scripts/package-release.sh` 生成，见其脚本头注释与 `deploy/release/README.md`。
