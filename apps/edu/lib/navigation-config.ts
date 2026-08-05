@@ -417,6 +417,12 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
           matchers: ['/evaluation/scene-results'],
         },
         {
+          id: 'lesson-results',
+          label: '课程节点评价',
+          href: '/evaluation/lesson-results',
+          matchers: ['/evaluation/lesson-results'],
+        },
+        {
           id: 'job-ability',
           label: '岗位能力认定规则',
           href: '/evaluation/job-ability',
