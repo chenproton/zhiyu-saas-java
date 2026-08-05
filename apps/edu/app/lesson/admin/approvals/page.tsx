@@ -27,6 +27,7 @@ interface ApprovalView {
   version: string
   courseType: Course['type']
   major?: string
+  batchId?: string
   batchName?: string
   submitterId: string
   status: string
@@ -119,6 +120,7 @@ export default function CourseApprovalsPage() {
         version: course?.version || '-',
         courseType: course?.type || 'system',
         major: course?.majorName,
+        batchId: course?.batchId,
         batchName: batch?.name,
         submitterId: a.submitterId,
         status: a.status,
@@ -144,6 +146,8 @@ export default function CourseApprovalsPage() {
       mapRecord={mapRecord}
       detailHref={(item) => `/lesson/landing/${item.courseId}`}
       columns={columns}
+      groupOf={(item) => item.batchId}
+      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
     />
   )
 }

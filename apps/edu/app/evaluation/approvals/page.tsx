@@ -24,6 +24,7 @@ interface ApprovalView {
   targetId: string
   targetName: string
   version: string
+  batchId?: string
   batchName?: string
   submitterId: string
   status: string
@@ -142,16 +143,19 @@ export default function EvaluationApprovalsPage() {
       const targetType = isBank ? ('question_bank' as const) : ('exam' as const)
       let targetName = a.targetId
       let version = '-'
+      let batchId: string | undefined
       let batchName: string | undefined
 
       if (isBank) {
         const bank = bankMap.get(a.targetId)
         targetName = bank?.name || a.targetId
         version = bank?.version || '-'
+        batchId = bank?.batchId
         batchName = bank?.batchId ? batchMap.get(bank.batchId)?.name : undefined
       } else {
         const exam = examMap.get(a.targetId)
         targetName = exam?.name || a.targetId
+        batchId = exam?.batchId
         batchName = exam?.batchId ? batchMap.get(exam.batchId)?.name : undefined
       }
 
@@ -161,6 +165,7 @@ export default function EvaluationApprovalsPage() {
         targetId: a.targetId,
         targetName,
         version,
+        batchId,
         batchName,
         submitterId: a.submitterId,
         status: a.status,
@@ -228,6 +233,8 @@ export default function EvaluationApprovalsPage() {
           : `/evaluation/landing/exams/${item.targetId}`
       }
       columns={columns}
+      groupOf={(item) => item.batchId}
+      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
     />
   )
 }

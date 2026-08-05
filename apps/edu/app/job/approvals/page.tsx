@@ -19,6 +19,7 @@ interface ApprovalView {
   positionName: string
   shortName: string
   version: string
+  batchId?: string
   batchName?: string
   submitterId: string
   status: string
@@ -107,6 +108,7 @@ export default function JobApprovalsPage() {
         positionName: position?.name || a.targetId,
         shortName: position?.shortName || '-',
         version: position?.version || '-',
+        batchId: position?.batchId,
         batchName: batch?.name,
         submitterId: a.submitterId,
         status: a.status,
@@ -132,6 +134,8 @@ export default function JobApprovalsPage() {
       mapRecord={mapRecord}
       detailHref={(item) => `/job/landing/${item.positionId}`}
       columns={columns}
+      groupOf={(item) => item.batchId}
+      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
     />
   )
 }

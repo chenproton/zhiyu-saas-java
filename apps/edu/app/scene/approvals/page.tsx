@@ -20,6 +20,7 @@ interface ApprovalView {
   scenarioCode: string
   version: string
   positionName?: string
+  batchId?: string
   batchName?: string
   submitterId: string
   status: string
@@ -111,6 +112,7 @@ export default function SceneApprovalsPage() {
         version: scenario?.version || '-',
         positionName:
           scenario?.professionNames?.join('、') || scenario?.careerPositionId || undefined,
+        batchId: scenario?.batchId,
         batchName: batch?.name,
         submitterId: a.submitterId,
         status: a.status,
@@ -136,6 +138,8 @@ export default function SceneApprovalsPage() {
       mapRecord={mapRecord}
       detailHref={(item) => `/scene/landing/${item.scenarioId}`}
       columns={columns}
+      groupOf={(item) => item.batchId}
+      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
     />
   )
 }

@@ -15,7 +15,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CheckSquare, Eye } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { CheckSquare, ChevronDown, Eye } from 'lucide-react'
 import { useApprovalDialogs } from '@/components/shared/_components/approval-dialogs'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
@@ -44,6 +45,9 @@ export interface ApprovalListPageProps<
   mapRecord: (record: any) => T
   detailHref?: (item: T) => string
   columns: ApprovalColumn<T>[]
+  /** 可选：待审批按分组展示（返回批次 id，undefined 归入「未关联批次」组） */
+  groupOf?: (item: T) => string | undefined
+  groupLabelOf?: (key: string | undefined) => string
 }
 
 export function ApprovalListPage<
@@ -62,6 +66,8 @@ export function ApprovalListPage<
   mapRecord,
   detailHref,
   columns,
+  groupOf,
+  groupLabelOf,
 }: ApprovalListPageProps<T>) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentItem, setCurrentItem] = useState<T | null>(null)
@@ -82,6 +88,28 @@ export function ApprovalListPage<
 
   const pendingItems = useMemo(() => items.filter((a) => a.status === 'pending'), [items])
   const processedItems = useMemo(() => items.filter((a) => a.status !== 'pending'), [items])
+
+  const pendingGroups = useMemo(() => {
+    if (!groupOf) return null
+    const groupMap = new Map<string | undefined, T[]>()
+    pendingItems.forEach((item) => {
+      const key = groupOf(item)
+      if (!groupMap.has(key)) groupMap.set(key, [])
+      groupMap.get(key)!.push(item)
+    })
+    const keys = [...groupMap.keys()].sort((a, b) => {
+      if (a === undefined) return 1
+      if (b === undefined) return -1
+      const la = groupLabelOf?.(a) || a
+      const lb = groupLabelOf?.(b) || b
+      return la.localeCompare(lb)
+    })
+    return keys.map((key) => ({
+      key,
+      label: key === undefined ? '未关联批次' : groupLabelOf?.(key) || key,
+      items: groupMap.get(key)!,
+    }))
+  }, [pendingItems, groupOf, groupLabelOf])
 
   const selectedPendingIds = useMemo(
     () => pendingItems.filter((i) => selectedIds.has(i.id)).map((i) => i.id),
@@ -130,10 +158,89 @@ export function ApprovalListPage<
 
   const colSpan = columns.length + 2
 
-  const renderTable = (data: T[]) => {
+  const renderTableBody = (data: T[]) => {
     const selectableIds = data.filter((i) => i.status === 'pending').map((i) => i.id)
     const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id))
 
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-slate-50">
+              <TableHead className="w-12 text-center">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={() => toggleAll(data)}
+                  aria-label="全选"
+                />
+              </TableHead>
+              {columns.map((col, i) => (
+                <TableHead
+                  key={i}
+                  className={`text-xs font-medium text-slate-500 whitespace-nowrap ${col.className || ''}`}
+                >
+                  {col.header}
+                </TableHead>
+              ))}
+              <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                操作
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={colSpan} className="text-center py-8 text-gray-500">
+                  加载中...
+                </TableCell>
+              </TableRow>
+            ) : data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={colSpan} className="text-center py-12 text-gray-500">
+                  暂无数据
+                </TableCell>
+              </TableRow>
+            ) : (
+              data.map((item) => (
+                <TableRow key={item.id} className="group">
+                  <TableCell className="text-center">
+                    <Checkbox
+                      checked={selectedIds.has(item.id)}
+                      disabled={item.status !== 'pending'}
+                      onCheckedChange={() => toggleSelection(item.id)}
+                      aria-label={`选择审批`}
+                    />
+                  </TableCell>
+                  {columns.map((col, i) => (
+                    <TableCell key={i} className={col.className || ''}>
+                      {col.cell(item)}
+                    </TableCell>
+                  ))}
+                  <TableRowActions className="sticky right-0 bg-white shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                    {detailHref ? (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={detailHref(item)}>
+                          <Eye className="mr-1 h-3 w-3" />
+                          查看
+                        </Link>
+                      </Button>
+                    ) : null}
+                    {approveAction ? (
+                      <div className="inline-flex" onClick={() => setCurrentItem(item)}>
+                        {approveAction(item.status)}
+                      </div>
+                    ) : null}
+                  </TableRowActions>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    )
+  }
+
+  const renderTable = (data: T[]) => {
     return (
       <Card>
         <CardHeader>
@@ -143,83 +250,41 @@ export function ApprovalListPage<
           </CardTitle>
           <CardDescription>共 {data.length} 条审批记录</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="w-12 text-center">
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={() => toggleAll(data)}
-                      aria-label="全选"
-                    />
-                  </TableHead>
-                  {columns.map((col, i) => (
-                    <TableHead
-                      key={i}
-                      className={`text-xs font-medium text-slate-500 whitespace-nowrap ${col.className || ''}`}
-                    >
-                      {col.header}
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
-                    操作
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={colSpan} className="text-center py-8 text-gray-500">
-                      加载中...
-                    </TableCell>
-                  </TableRow>
-                ) : data.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={colSpan} className="text-center py-12 text-gray-500">
-                      暂无数据
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data.map((item) => (
-                    <TableRow key={item.id} className="group">
-                      <TableCell className="text-center">
-                        <Checkbox
-                          checked={selectedIds.has(item.id)}
-                          disabled={item.status !== 'pending'}
-                          onCheckedChange={() => toggleSelection(item.id)}
-                          aria-label={`选择审批`}
-                        />
-                      </TableCell>
-                      {columns.map((col, i) => (
-                        <TableCell key={i} className={col.className || ''}>
-                          {col.cell(item)}
-                        </TableCell>
-                      ))}
-                      <TableRowActions className="sticky right-0 bg-white shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
-                        {detailHref ? (
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={detailHref(item)}>
-                              <Eye className="mr-1 h-3 w-3" />
-                              查看
-                            </Link>
-                          </Button>
-                        ) : null}
-                        {approveAction ? (
-                          <div className="inline-flex" onClick={() => setCurrentItem(item)}>
-                            {approveAction(item.status)}
-                          </div>
-                        ) : null}
-                      </TableRowActions>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
+        <CardContent className="p-0">{renderTableBody(data)}</CardContent>
       </Card>
+    )
+  }
+
+  const renderPendingGroups = () => {
+    if (!pendingGroups || pendingGroups.length === 0) return renderTable(pendingItems)
+    return (
+      <div className="space-y-4">
+        {pendingGroups.map((group) => (
+          <Collapsible key={group.key ?? '__unbound__'} defaultOpen>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <CollapsibleTrigger asChild>
+                <div className="flex cursor-pointer items-center justify-between px-4 py-3 bg-slate-50/80 transition-colors hover:bg-slate-50">
+                  <div className="flex items-center gap-3">
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                    <span className="font-medium text-gray-800">{group.label}</span>
+                    {group.key === undefined && (
+                      <Badge variant="outline" className="text-xs text-gray-500">
+                        未绑定批次
+                      </Badge>
+                    )}
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {group.items.length} 条待审批
+                  </Badge>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="p-4 pt-0">{renderTableBody(group.items)}</div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        ))}
+      </div>
     )
   }
 
@@ -259,7 +324,7 @@ export function ApprovalListPage<
           </TabsList>
           <TabsContent value="pending" className="mt-6">
             {pendingItems.length > 0 ? (
-              renderTable(pendingItems)
+              renderPendingGroups()
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">

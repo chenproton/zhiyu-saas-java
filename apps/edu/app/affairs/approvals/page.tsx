@@ -16,6 +16,7 @@ interface ApprovalView {
   id: string
   programId: string
   programName: string
+  batchId?: string
   batchName?: string
   submitterId: string
   status: string
@@ -71,6 +72,7 @@ export default function AffairsApprovalsPage() {
         id: a.id,
         programId: a.targetId,
         programName: program?.name || a.targetId,
+        batchId: program?.batchId,
         batchName: batch?.name,
         submitterId: a.submitterId,
         status: a.status,
@@ -95,6 +97,8 @@ export default function AffairsApprovalsPage() {
       onBatchReject={batchReject}
       mapRecord={mapRecord}
       columns={columns}
+      groupOf={(item) => item.batchId}
+      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
     />
   )
 }
