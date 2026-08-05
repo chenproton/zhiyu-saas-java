@@ -102,6 +102,73 @@ func (s *ExamUsageStore) SetStatus(ctx context.Context, id, status string) error
 	return err
 }
 
+// ExamCenterItemRow 考试中心查询行。
+type ExamCenterItemRow struct {
+	ID            string
+	ExamID        string
+	UsageName     string
+	ExamName      string
+	Description   string
+	StartTime     *string
+	EndTime       *string
+	Duration      *int
+	Status        string
+	QuestionCount int
+	TotalScore    float64
+	ClassMatch    bool
+	Submitted     bool
+	Score         *float64
+}
+
+// ListExamCenter 考试中心列表：租户内所有手动考试安排（published/in_progress/finished），
+// 附带当前用户的班级命中（target_type=class 且班级在 target_ids）、交卷状态与得分。
+func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID string, classNodeID string) ([]ExamCenterItemRow, error) {
+	query := `
+		SELECT eu.id::text, eu.exam_id::text, eu.name, COALESCE(e.name, ''), COALESCE(e.description, ''),
+			eu.start_time, eu.end_time, eu.duration, eu.status,
+			(SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = eu.exam_id),
+			COALESCE(e.total_score, 0),
+			COALESCE(eu.target_type <> 'class' OR $2::uuid = ANY(eu.target_ids), false),
+			(er.id IS NOT NULL), er.score
+		FROM exam_usages eu
+		JOIN exams e ON e.id = eu.exam_id
+		LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = $1::uuid
+		WHERE eu.status IN ('published', 'in_progress', 'finished')
+		  AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)
+		  AND eu.tenant_id = $3::uuid
+		ORDER BY eu.start_time ASC NULLS LAST
+		LIMIT 100`
+	args := []any{userID, nil, tenantID}
+	if classNodeID != "" {
+		args[1] = classNodeID
+	}
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamCenterItemRow
+	for rows.Next() {
+		var r ExamCenterItemRow
+		var startTime, endTime *time.Time
+		if err := rows.Scan(&r.ID, &r.ExamID, &r.UsageName, &r.ExamName, &r.Description,
+			&startTime, &endTime, &r.Duration, &r.Status, &r.QuestionCount, &r.TotalScore,
+			&r.ClassMatch, &r.Submitted, &r.Score); err != nil {
+			continue
+		}
+		if startTime != nil {
+			ts := startTime.Format(time.RFC3339)
+			r.StartTime = &ts
+		}
+		if endTime != nil {
+			te := endTime.Format(time.RFC3339)
+			r.EndTime = &te
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
 // ExamUsageCreateParams 创建/更新考试安排参数。
 type ExamUsageCreateParams struct {
 	TenantID    string

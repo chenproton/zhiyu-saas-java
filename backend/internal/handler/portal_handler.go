@@ -129,7 +129,7 @@ func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *
 			})
 		}
 	} else {
-		if upcomingExams := h.Service.UpcomingExamCount(ctx, tenantID, time.Now()); upcomingExams > 0 {
+		if upcomingExams := h.Service.UpcomingExamCount(ctx, tenantID, time.Now(), h.Service.UserClassNodeID(ctx, userID, tenantID)); upcomingExams > 0 {
 			todos = append(todos, domain.WorkspaceTodo{
 				ID: "upcoming-exams", Title: "待参加考试", Type: "exam", Count: upcomingExams, Urgent: false,
 			})
@@ -140,6 +140,10 @@ func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *
 
 func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantID *string, role string) []domain.WorkspaceScheduleEvent {
 	var events []domain.WorkspaceScheduleEvent
+	classNodeID := ""
+	if role == domain.RoleStudent {
+		classNodeID = h.Service.UserClassNodeID(ctx, userID, tenantID)
+	}
 	if role == domain.RoleTeacher || role == domain.RoleSchoolAdmin || role == "school" {
 		periodLabel := h.Service.PeriodLabelMap(ctx, tenantID)
 		rows, _ := h.Service.ListTeacherSchedules(ctx, userID, tenantID)
@@ -164,7 +168,6 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 			})
 		}
 	} else if role == domain.RoleStudent {
-		classNodeID := h.Service.UserClassNodeID(ctx, userID, tenantID)
 		if classNodeID != "" {
 			periodLabel := h.Service.PeriodLabelMap(ctx, tenantID)
 			rows, _ := h.Service.ListStudentSchedules(ctx, classNodeID, tenantID)
@@ -189,7 +192,7 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 			}
 		}
 	}
-	examEvents, _ := h.Service.ListExamEvents(ctx, tenantID)
+	examEvents, _ := h.Service.ListExamEvents(ctx, tenantID, classNodeID)
 	for _, e := range examEvents {
 		dayOfWeek := 1
 		if e.Start != nil {
@@ -321,7 +324,7 @@ func (h *PortalHandler) listStudentSceneTasks(ctx context.Context, userID string
 }
 
 func (h *PortalHandler) listStudentExams(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceExam {
-	rows, _ := h.Service.ListStudentExams(ctx, userID, tenantID)
+	rows, _ := h.Service.ListStudentExams(ctx, userID, tenantID, h.Service.UserClassNodeID(ctx, userID, tenantID))
 	var items []domain.WorkspaceExam
 	for _, e := range rows {
 		duration := 0
@@ -329,7 +332,7 @@ func (h *PortalHandler) listStudentExams(ctx context.Context, userID string, ten
 			duration = *e.Duration
 		}
 		exam := domain.WorkspaceExam{
-			ID: e.ID, Name: e.Name, Type: "在线测评", Duration: duration,
+			ID: e.ID, ExamID: e.ExamID, Name: e.Name, Type: "在线测评", Duration: duration,
 			TotalScore: int(e.TotalScore), Status: examStatusLabel(e.Status),
 		}
 		if e.Score != nil {

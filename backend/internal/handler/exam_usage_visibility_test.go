@@ -39,19 +39,22 @@ func TestExamUsage_Visibility(t *testing.T) {
 	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = ANY($1::uuid[])", []string{manualExamID, tempExamID})
 
 	// 2. 考试安排：手动(class) + 临时(task/node/course)
-	insertUsage := func(examID, name, status, targetType string) string {
+	classID := insertTestClass(t, env, ctx, "可见性一班")
+	otherClassID := insertTestClass(t, env, ctx, "可见性二班")
+	insertUsage := func(examID, name, status, targetType string, targetID string) string {
 		id := uuid.NewString()
 		execOrFail(t, env, ctx, `
 			INSERT INTO exam_usages (id, tenant_id, exam_id, name, status, target_type, target_ids, creator_id)
 			VALUES ($1, $2, $3, $4, $5, $6, ARRAY[$7]::uuid[], $8)
-		`, id, tenantID, examID, name, status, targetType, uuid.NewString(), testhelper.TestOperatorID)
+		`, id, tenantID, examID, name, status, targetType, targetID, testhelper.TestOperatorID)
 		return id
 	}
-	manualUsageID := insertUsage(manualExamID, "手动-班级考试", "published", "class")
-	taskUsageID := insertUsage(tempExamID, "场景任务-临时考试", "published", "task")
-	nodeUsageID := insertUsage(tempExamID, "课程节点-临时考试", "published", "node")
-	courseUsageID := insertUsage(tempExamID, "课程级-历史考试", "finished", "course")
-	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = ANY($1::uuid[])", []string{manualUsageID, taskUsageID, nodeUsageID, courseUsageID})
+	manualUsageID := insertUsage(manualExamID, "手动-班级考试", "published", "class", classID)
+	otherClassUsageID := insertUsage(manualExamID, "手动-他班考试", "published", "class", otherClassID)
+	taskUsageID := insertUsage(tempExamID, "场景任务-临时考试", "published", "task", uuid.NewString())
+	nodeUsageID := insertUsage(tempExamID, "课程节点-临时考试", "published", "node", uuid.NewString())
+	courseUsageID := insertUsage(tempExamID, "课程级-历史考试", "finished", "course", uuid.NewString())
+	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = ANY($1::uuid[])", []string{manualUsageID, otherClassUsageID, taskUsageID, nodeUsageID, courseUsageID})
 
 	// 3. 考试管理列表：只展示手动创建的考试安排
 	w := env.Do("GET", "/api/v1/evaluation/exam-usages", nil)
@@ -75,13 +78,13 @@ func TestExamUsage_Visibility(t *testing.T) {
 		}
 	}
 
-	// 4. 学生（无排课，仅验证考试相关展示）
+	// 4. 学生（班级命中 manualUsage 的目标班级，验证考试相关展示与班级过滤）
 	studentID := uuid.NewString()
 	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
 	execOrFail(t, env, ctx, `
-		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '考试可见性测试学生', 'active', '{}')
-	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw))
+		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, org_node_id)
+		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '考试可见性测试学生', 'active', '{}', $5)
+	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw), classID)
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
 
 	st2 := store.New(env.DB)
@@ -99,13 +102,16 @@ func TestExamUsage_Visibility(t *testing.T) {
 		t.Fatalf("unmarshal dashboard: %v", err)
 	}
 
-	// 测评认证 tab：exams 只含手动考试安排
+	// 测评认证 tab：exams 只含手动考试安排，且班级类考试仅含本人班级命中的
 	examIDs := map[string]bool{}
 	for _, e := range dash.Exams {
 		examIDs[e.ID] = true
 	}
 	if !examIDs[manualUsageID] {
-		t.Fatalf("学生考试列表应包含手动考试安排 %s，实际 %v", manualUsageID, examIDs)
+		t.Fatalf("学生考试列表应包含本人班级手动考试安排 %s，实际 %v", manualUsageID, examIDs)
+	}
+	if examIDs[otherClassUsageID] {
+		t.Fatalf("学生考试列表不应包含其他班级考试安排 %s", otherClassUsageID)
 	}
 	for _, id := range []string{taskUsageID, nodeUsageID, courseUsageID} {
 		if examIDs[id] {
@@ -113,23 +119,23 @@ func TestExamUsage_Visibility(t *testing.T) {
 		}
 	}
 
-	// 工作台首页-课程表：考试事件只含手动考试安排
+	// 工作台首页-课程表：考试事件只含手动考试安排（本人班级）
 	eventIDs := map[string]bool{}
 	for _, ev := range dash.Schedule {
 		if ev.Type == "exam" {
 			eventIDs[ev.ID] = true
 		}
 	}
-	for _, id := range []string{taskUsageID, nodeUsageID, courseUsageID} {
+	for _, id := range []string{otherClassUsageID, taskUsageID, nodeUsageID, courseUsageID} {
 		if eventIDs[id] {
-			t.Fatalf("工作台首页课程表不应包含临时考试安排 %s", id)
+			t.Fatalf("工作台首页课程表不应包含考试安排 %s", id)
 		}
 	}
 	if len(eventIDs) != 1 || !eventIDs[manualUsageID] {
-		t.Fatalf("工作台首页课程表应只含手动考试安排 %s，实际 %v", manualUsageID, eventIDs)
+		t.Fatalf("工作台首页课程表应只含本人班级手动考试安排 %s，实际 %v", manualUsageID, eventIDs)
 	}
 
-	// 工作台首页-今日待办：待参加考试数只统计手动考试安排
+	// 工作台首页-今日待办：待参加考试数只统计手动考试安排（本人班级）
 	upcomingCount := 0
 	for _, todo := range dash.Todos {
 		if todo.ID == "upcoming-exams" {
@@ -137,6 +143,6 @@ func TestExamUsage_Visibility(t *testing.T) {
 		}
 	}
 	if upcomingCount != 1 {
-		t.Fatalf("待参加考试数应为 1（仅手动考试安排），实际 %d", upcomingCount)
+		t.Fatalf("待参加考试数应为 1（仅本人班级手动考试安排），实际 %d", upcomingCount)
 	}
 }

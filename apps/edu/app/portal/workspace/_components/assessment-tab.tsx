@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Award, Eye, FileCheck, GraduationCap } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -259,8 +260,21 @@ export function AssessmentTab() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="ghost" className="text-[10px] h-7 px-2">
-                          {exam.status === '已完成' ? '查看' : '进入'}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-[10px] h-7 px-2"
+                          asChild
+                        >
+                          <Link
+                            href={
+                              exam.examId
+                                ? `/evaluation/landing/exams/${exam.examId}?usage=${exam.id}`
+                                : '#'
+                            }
+                          >
+                            {exam.status === '已完成' ? '查看' : '进入'}
+                          </Link>
                         </Button>
                       </TableCell>
                     </TableRow>

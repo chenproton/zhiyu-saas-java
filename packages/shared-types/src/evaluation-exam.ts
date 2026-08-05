@@ -223,7 +223,7 @@ export interface ExamUsage {
   duration?: number
   targetType?: 'class' | 'major' | 'department' | 'public'
   targetIds: string[]
-  status: 'draft' | 'pending' | 'in_progress' | 'finished'
+  status: 'draft' | 'pending' | 'published' | 'scheduled' | 'in_progress' | 'finished'
   creatorId?: string
   createdAt: string
   updatedAt: string
@@ -241,8 +241,33 @@ export interface ExamResult {
   score: number
   totalScore: number
   isPass: boolean
+  answers?: Record<string, unknown>
+  gradingStatus?: 'pending' | 'evaluated'
+  gradingScores?: Record<string, unknown>
+  gradingComment?: string
+  graderId?: string
+  gradedAt?: string
   submitTime: string
   createdAt: string
+}
+
+// 测评中心条目（landing 考试中心）
+export interface ExamCenterItem {
+  id: string
+  examId: string
+  usageName: string
+  examName: string
+  description: string
+  startTime?: string
+  endTime?: string
+  duration?: number
+  status: 'published' | 'in_progress' | 'finished'
+  questionCount: number
+  totalScore: number
+  participatable: boolean
+  submitted: boolean
+  score?: number
+  studentView: boolean
 }
 
 export interface EvaluationBatch {

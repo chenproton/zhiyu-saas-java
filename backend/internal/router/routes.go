@@ -117,6 +117,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/evaluation/exam-usages", h.examUsageHandler.List)
 				r.Get("/evaluation/exam-usages/{id}", h.examUsageHandler.Get)
 				r.Post("/evaluation/exam-usages/{id}/start", h.examUsageHandler.Start)
+				// 测评中心：学生/教师查看考试中心
+				r.Get("/evaluation/exam-center", h.examUsageHandler.ExamCenter)
 				// 学生提交考试结果
 				r.Post("/evaluation/exam-results", h.examResultHandler.Create)
 

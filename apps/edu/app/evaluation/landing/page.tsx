@@ -362,6 +362,32 @@ export default function LandingHomePage() {
       </div>
 
       <main ref={listRef} className="max-w-[1400px] mx-auto px-8 py-8 w-full flex-1">
+        {/* 考试中心入口 */}
+        <div className="bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-2xl p-6 mb-6 shadow-[0_8px_24px_rgba(124,58,237,0.25)] relative overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.1] pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)`, backgroundSize: '36px 36px' }} />
+          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0">
+                <ClipboardList className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">考试中心</h2>
+                <p className="text-sm text-white/80 mt-1 max-w-xl">
+                  查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试
+                </p>
+              </div>
+            </div>
+            <Button
+              asChild
+              className="bg-white text-purple-600 hover:bg-purple-50 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg transition-all shrink-0"
+            >
+              <Link href="/evaluation/landing/exam-center">
+                进入考试中心 <ChevronRight className="w-4 h-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+
         {/* Filter */}
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-6">
           <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">

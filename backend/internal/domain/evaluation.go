@@ -117,20 +117,45 @@ type ExamUsage struct {
 
 // ExamResult represents a student's submission result for an exam usage.
 type ExamResult struct {
-	ID          string    `json:"id"`
-	ExamUsageID string    `json:"examUsageId"`
-	UserID      string    `json:"userId"`
-	StudentName string    `json:"studentName"`
-	ClassName   string    `json:"className"`
-	Grade       string    `json:"grade"`
-	MajorID     *string   `json:"majorId,omitempty"`
-	MajorName   *string   `json:"majorName,omitempty"`
-	Score       float64   `json:"score"`
-	TotalScore  float64   `json:"totalScore"`
-	IsPass      bool      `json:"isPass"`
-	Answers     JSONMap   `json:"answers,omitempty"`
-	SubmitTime  time.Time `json:"submitTime"`
-	CreatedAt   time.Time `json:"createdAt"`
+	ID             string     `json:"id"`
+	TenantID       *string    `json:"-"`
+	ExamUsageID    string     `json:"examUsageId"`
+	UserID         string     `json:"userId"`
+	StudentName    string     `json:"studentName"`
+	ClassName      string     `json:"className"`
+	Grade          string     `json:"grade"`
+	MajorID        *string    `json:"majorId,omitempty"`
+	MajorName      *string    `json:"majorName,omitempty"`
+	Score          float64    `json:"score"`
+	TotalScore     float64    `json:"totalScore"`
+	IsPass         bool       `json:"isPass"`
+	Answers        JSONMap    `json:"answers,omitempty"`
+	GradingStatus  string     `json:"gradingStatus"`
+	GradingScores  JSONMap    `json:"gradingScores,omitempty"`
+	GradingComment *string    `json:"gradingComment,omitempty"`
+	GraderID       *string    `json:"graderId,omitempty"`
+	GradedAt       *time.Time `json:"gradedAt,omitempty"`
+	SubmitTime     time.Time  `json:"submitTime"`
+	CreatedAt      time.Time  `json:"createdAt"`
+}
+
+// ExamCenterItem represents an exam usage entry shown in the landing exam center.
+type ExamCenterItem struct {
+	ID             string   `json:"id"`
+	ExamID         string   `json:"examId"`
+	UsageName      string   `json:"usageName"`
+	ExamName       string   `json:"examName"`
+	Description    string   `json:"description"`
+	StartTime      *string  `json:"startTime,omitempty"`
+	EndTime        *string  `json:"endTime,omitempty"`
+	Duration       *int     `json:"duration,omitempty"`
+	Status         string   `json:"status"`
+	QuestionCount  int      `json:"questionCount"`
+	TotalScore     float64  `json:"totalScore"`
+	Participatable bool     `json:"participatable"`
+	Submitted      bool     `json:"submitted"`
+	Score          *float64 `json:"score,omitempty"`
+	StudentView    bool     `json:"studentView"`
 }
 
 // EvaluationMethodCategory represents a top-level evaluation category.

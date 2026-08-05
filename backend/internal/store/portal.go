@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -81,7 +82,7 @@ func (s *PortalStore) DraftCourseCount(ctx context.Context, userID string, tenan
 }
 
 // UpcomingExamCount 待参加考试数。
-func (s *PortalStore) UpcomingExamCount(ctx context.Context, tenantID *string, now time.Time) int {
+func (s *PortalStore) UpcomingExamCount(ctx context.Context, tenantID *string, now time.Time, classNodeID string) int {
 	var count int
 	query := `
 		SELECT COUNT(*) FROM exam_usages eu
@@ -89,8 +90,14 @@ func (s *PortalStore) UpcomingExamCount(ctx context.Context, tenantID *string, n
 		WHERE eu.status = 'published' AND (eu.start_time IS NULL OR eu.start_time >= $1)
 		  AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)`
 	args := []any{now}
+	if classNodeID != "" {
+		query += ` AND (eu.target_type <> 'class' OR $2::uuid = ANY(eu.target_ids))`
+		args = append(args, classNodeID)
+	} else {
+		query += ` AND eu.target_type <> 'class'`
+	}
 	if tenantID != nil {
-		query += ` AND u.tenant_id = $2`
+		query += ` AND u.tenant_id = $` + strconv.Itoa(len(args)+1)
 		args = append(args, *tenantID)
 	}
 	_ = s.q.QueryRow(ctx, query, args...).Scan(&count)
@@ -207,18 +214,27 @@ type ExamEventRow struct {
 	Status string
 }
 
-// ListExamEvents 全局考试事件。
-func (s *PortalStore) ListExamEvents(ctx context.Context, tenantID *string) ([]ExamEventRow, error) {
-	rows, err := s.q.Query(ctx, `
+// ListExamEvents 全局考试事件。classNodeID 非空时（学生），班级类考试仅返回本人班级命中的安排。
+func (s *PortalStore) ListExamEvents(ctx context.Context, tenantID *string, classNodeID string) ([]ExamEventRow, error) {
+	query := `
 		SELECT eu.id, eu.name, eu.start_time, eu.status
 		FROM exam_usages eu
 		JOIN users u ON u.id = eu.creator_id
 		WHERE eu.status IN ('published', 'in_progress')
-			AND eu.target_type IN (`+manualExamUsageTargetTypesSQL+`)
-			AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid)
-		ORDER BY eu.start_time ASC NULLS LAST
-		LIMIT 20
-	`, tenantID)
+			AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)`
+	args := []any{}
+	if classNodeID != "" {
+		query += ` AND (eu.target_type <> 'class' OR $1::uuid = ANY(eu.target_ids))`
+		args = append(args, classNodeID)
+	} else {
+		query += ` AND eu.target_type <> 'class'`
+	}
+	if tenantID != nil {
+		query += ` AND u.tenant_id = $` + strconv.Itoa(len(args)+1)
+		args = append(args, *tenantID)
+	}
+	query += ` ORDER BY eu.start_time ASC NULLS LAST LIMIT 20`
+	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -518,6 +534,7 @@ func (s *PortalStore) ListSceneTasks(ctx context.Context, userID string, tenantI
 // ExamRow 考试行。
 type ExamRow struct {
 	ID         string
+	ExamID     string
 	Name       string
 	Start      *time.Time
 	End        *time.Time
@@ -527,10 +544,10 @@ type ExamRow struct {
 	Score      *float64
 }
 
-// ListStudentExams 学生考试。
-func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenantID *string) ([]ExamRow, error) {
+// ListStudentExams 学生考试。classNodeID 非空时（学生有班级），班级类考试仅返回本人班级命中的安排。
+func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenantID *string, classNodeID string) ([]ExamRow, error) {
 	query := `
-		SELECT eu.id, eu.name, eu.start_time, eu.end_time, eu.duration, eu.status, e.total_score,
+		SELECT eu.id, eu.exam_id, eu.name, eu.start_time, eu.end_time, eu.duration, eu.status, e.total_score,
 			er.score
 		FROM exam_usages eu
 		JOIN exams e ON e.id = eu.exam_id
@@ -539,8 +556,14 @@ func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenan
 		WHERE eu.status IN ('published', 'in_progress', 'finished')
 		  AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)`
 	args := []any{userID}
+	if classNodeID != "" {
+		query += ` AND (eu.target_type <> 'class' OR $2::uuid = ANY(eu.target_ids))`
+		args = append(args, classNodeID)
+	} else {
+		query += ` AND eu.target_type <> 'class'`
+	}
 	if tenantID != nil {
-		query += ` AND u.tenant_id = $2`
+		query += ` AND u.tenant_id = $` + strconv.Itoa(len(args)+1)
 		args = append(args, *tenantID)
 	}
 	query += ` ORDER BY eu.start_time ASC NULLS LAST LIMIT 50`
@@ -552,7 +575,7 @@ func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenan
 	var items []ExamRow
 	for rows.Next() {
 		var r ExamRow
-		if err := rows.Scan(&r.ID, &r.Name, &r.Start, &r.End, &r.Duration, &r.Status, &r.TotalScore, &r.Score); err != nil {
+		if err := rows.Scan(&r.ID, &r.ExamID, &r.Name, &r.Start, &r.End, &r.Duration, &r.Status, &r.TotalScore, &r.Score); err != nil {
 			continue
 		}
 		items = append(items, r)

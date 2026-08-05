@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -87,6 +88,10 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "该测评已完成评分，无法重新提交")
 			return
 		}
+		if errors.Is(err, store.ErrForbidden) {
+			respondError(w, http.StatusForbidden, "该考试仅限指定班级参加")
+			return
+		}
 		if err == pgx.ErrNoRows {
 			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return
@@ -95,4 +100,64 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusCreated, result)
+}
+
+// Get 查询单个考试结果（评分详情页）。
+func (h *ExamResultHandler) Get(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	result, err := h.Service.Store().ExamResults().Get(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试结果不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询考试结果失败")
+		return
+	}
+	if result.TenantID != nil && claims.TenantID != nil && *result.TenantID != *claims.TenantID {
+		respondError(w, http.StatusNotFound, "考试结果不存在")
+		return
+	}
+	respondJSON(w, http.StatusOK, result)
+}
+
+// Grade 教师评分日常考试结果。
+func (h *ExamResultHandler) Grade(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	var req GradeExamResultRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	result, err := h.Service.GradeExamResult(r.Context(), chi.URLParam(r, "id"), claims.UserID, req.Scores, req.Comment)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试结果不存在")
+			return
+		}
+		if errors.Is(err, store.ErrForbidden) {
+			respondError(w, http.StatusForbidden, "该考试安排不支持评分")
+			return
+		}
+		respondServerError(w, r, err, "保存评分失败")
+		return
+	}
+	if result.TenantID != nil && claims.TenantID != nil && *result.TenantID != *claims.TenantID {
+		respondError(w, http.StatusNotFound, "考试结果不存在")
+		return
+	}
+	respondJSON(w, http.StatusOK, result)
+}
+
+// GradeExamResultRequest 评分请求体。
+type GradeExamResultRequest struct {
+	Scores  map[string]interface{} `json:"scores"`
+	Comment *string                `json:"comment"`
 }
