@@ -79,6 +79,7 @@ export default function SceneHallPage() {
       })}
       renderList={(props) => (
         <ScenarioList
+          activeTab={props.activeTab}
           scenarios={props.items}
           selectedIds={props.selectedIds}
           onSelectId={props.onSelectId}

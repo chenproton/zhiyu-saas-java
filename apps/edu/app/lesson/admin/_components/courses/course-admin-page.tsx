@@ -104,6 +104,7 @@ export function CourseAdminPage({
       listExtraProps={{ courseType }}
       renderList={(props) => (
         <CourseList
+          activeTab={props.activeTab}
           courses={props.items}
           courseType={courseType}
           selectedIds={props.selectedIds}

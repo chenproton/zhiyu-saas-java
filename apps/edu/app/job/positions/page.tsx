@@ -76,6 +76,7 @@ export default function PositionsPage() {
       listExtraProps={{ configureStepParam: '2', industryMap, majorMap }}
       renderList={(props) => (
         <PositionList
+          activeTab={props.activeTab}
           positions={props.items}
           selectedIds={props.selectedIds}
           onSelectId={props.onSelectId}
