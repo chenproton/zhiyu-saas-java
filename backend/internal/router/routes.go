@@ -185,6 +185,11 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/organizations/{id}", h.orgHandler.Get)
 				r.Get("/org-types", h.orgTypeHandler.List)
 				r.Get("/org-types/{id}", h.orgTypeHandler.Get)
+
+				// 产教融合（alliance）模块面向业务角色开放（教师/学校管理员/企业导师/
+				// 平台管理员，教师菜单含 alliance 全部页面）；原挂 systemAdmin 组，
+				// 移入本组后教师可正常执行全部读写与导入操作
+				registerAllianceRoutes(r, h)
 			})
 
 			// 学生/企业导师等业务角色共用只读接口：在 businessUser 组之后注册，
@@ -505,6 +510,4 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 
 	r.Get("/logs/login", h.logHandler.LoginLogs)
 	r.Get("/logs/operation", h.logHandler.OperationLogs)
-
-	registerAllianceRoutes(r, h)
 }

@@ -15,7 +15,7 @@ import (
 // allianceList 统一 "claims 检查 → executeListQuery → {items,total}" 的列表流程。
 func allianceList[T any](w http.ResponseWriter, r *http.Request, db store.ListQueryDB, cfg store.ListQueryConfig[T], errMsg string) {
 	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManageAlliance(claims) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -52,10 +52,10 @@ func alliancePublicGet[T any](w http.ResponseWriter, r *http.Request, getFn func
 	respondJSON(w, http.StatusOK, item)
 }
 
-// allianceCRUD 组装联盟实体 CRUD 公共差异：门户管理权限 + requireTenant 租户过滤。
+// allianceCRUD 组装联盟实体 CRUD 公共差异：业务角色权限 + requireTenant 租户过滤。
 func allianceCRUD[T any, V any]() crudConfig[T, V] {
 	return crudConfig[T, V]{
-		Permit: func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		Permit: func(r *http.Request) bool { return canManageAlliance(middleware.CurrentUser(r)) },
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *T) (string, bool) {
 			return requireTenant(w, r)
 		},

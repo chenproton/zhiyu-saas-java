@@ -77,7 +77,13 @@ type importFunc func(ctx context.Context, xlsx *excelize.File, tenantID, userID 
 
 func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Request, entity string, fn importFunc, preview bool) {
 	claims := middleware.CurrentUser(r)
-	if claims == nil || !canManagePortal(claims) {
+	// alliance-* 导入面向业务角色（教师等，与 alliance 模块权限一致），
+	// 组织架构/师生/专业行业等基础数据导入仍限门户系统管理员
+	permit := canManageAlliance(claims)
+	if !strings.HasPrefix(entity, "alliance-") {
+		permit = canManagePortal(claims)
+	}
+	if claims == nil || !permit {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

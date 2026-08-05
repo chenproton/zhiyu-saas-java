@@ -197,7 +197,7 @@ func (s *AllianceStore) CreateEnterprise(ctx context.Context, p *AllianceEnterpr
 			contact_phone, contact_email, address, unified_social_credit_code, established_year,
 			employee_count, business_license_photos, qualification_photos, intellectual_property_photos,
 			cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW(),NOW())
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,NOW(),NOW())
 	`, id, p.TenantID, p.Name, p.EnterpriseType, p.Industry, p.Region, p.Description, p.LogoURL,
 		p.CoverImage, p.Status, p.Rating, emptyJSON(p.CooperationTypes), p.ContactPerson,
 		p.ContactPhone, p.ContactEmail, p.Address, p.UnifiedSocialCreditCode, p.EstablishedYear,

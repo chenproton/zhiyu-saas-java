@@ -168,6 +168,23 @@ func canManageUsers(r *http.Request) bool {
 	return canManagePortal(middleware.CurrentUser(r))
 }
 
+// canManageAlliance reports whether the caller may manage the alliance
+// (产教融合) module. 产教融合平台面向业务角色开放（教师/学校管理员/企业导师/平台
+// 管理员），与教师菜单中可见的 alliance 页面保持一致；有系统设置菜单权限的角色亦放行。
+func canManageAlliance(claims *middleware.Claims) bool {
+	if claims == nil {
+		return false
+	}
+	for _, code := range []string{
+		domain.RoleTeacher, domain.RoleSchoolAdmin, domain.RoleEnterpriseMentor, domain.RolePlatformAdmin,
+	} {
+		if middleware.HasRole(claims, code) {
+			return true
+		}
+	}
+	return middleware.HasSystemPermission(claims)
+}
+
 // canReadTenantScoped returns true if the caller has a tenant to scope reads to.
 // 教育域数据一律租户内可见，不再为 platform_admin 提供跨租户特权
 // tenantFilter returns the tenant_id value to filter by. ok=false when the
