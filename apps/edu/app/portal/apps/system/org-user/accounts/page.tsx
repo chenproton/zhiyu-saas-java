@@ -23,14 +23,17 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { ResetPasswordDialog } from '@/components/shared/reset-password-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Trash2, Loader2, Check, X, Users, KeyRound, Power } from 'lucide-react'
 
 export default function AccountsPage() {
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
   const [searchText, setSearchText] = useState('')
+  const [roleCode, setRoleCode] = useState('')
   const { users, roles, total, page, pageSize, setPage, loading, error, refetch } = usePortalUsers({
     search: searchText || undefined,
+    roleCode: roleCode || undefined,
   })
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const { orgMap, orgTypeMap } = useOrgTree(tenantId)
@@ -71,6 +74,12 @@ export default function AccountsPage() {
 
   const handleResetPassword = (id: string, name: string) => {
     setResetTarget({ id, name })
+  }
+
+  const handleRoleTabChange = (value: string) => {
+    setRoleCode(value === 'all' ? '' : value)
+    setPage(1)
+    setSelectedAccounts([])
   }
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
@@ -140,6 +149,20 @@ export default function AccountsPage() {
       hideImport
       hideCreate
       emptyContent={searchText ? '未找到匹配的账户' : '暂无账户数据'}
+      toolbar={
+        <div className="mb-4">
+          <Tabs value={roleCode || 'all'} onValueChange={handleRoleTabChange}>
+            <TabsList className="h-auto flex-wrap justify-start">
+              <TabsTrigger value="all">全部</TabsTrigger>
+              {roles.map((r) => (
+                <TabsTrigger key={r.id} value={r.code}>
+                  {r.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+      }
       pagination={{ page, total, totalPages, onPageChange: setPage }}
       rowSelection={{
         selectedIds: selectedAccounts,

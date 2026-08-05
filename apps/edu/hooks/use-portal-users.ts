@@ -6,7 +6,7 @@ import { portalUserManagementApi, roleApi, type User } from '@/lib/api'
 import type { Role } from '@/lib/types/backend'
 
 export interface UsePortalUsersOptions {
-  roleCode?: 'teacher' | 'student'
+  roleCode?: string
   search?: string
   status?: string
   page?: number

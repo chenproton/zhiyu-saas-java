@@ -92,6 +92,7 @@ export interface PortalCrudPageConfig<T extends { id: string; enabled?: boolean 
   searchRight?: ReactNode
   searchValue?: string
   onSearchChange?: (value: string) => void
+  toolbar?: ReactNode
   stats?: PortalStatItem[]
   beforeTable?: ReactNode
   body?: ReactNode
@@ -131,6 +132,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   searchRight,
   searchValue,
   onSearchChange,
+  toolbar,
   stats,
   beforeTable,
   body,
@@ -323,6 +325,8 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           ))}
         </div>
       )}
+
+      {toolbar}
 
       {search && searchPlaceholder && (
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
