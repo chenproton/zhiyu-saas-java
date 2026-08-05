@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
-import { Plus, Search, Trash2, Brain, AlertCircle, Check, Pencil, Library } from 'lucide-react'
+import { Plus, Search, Trash2, Brain, AlertCircle, Check, Pencil, Library, X } from 'lucide-react'
 import { abilityApi, positionApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { convertApiAbilityToLocal } from '@/lib/converters/job-converters'
@@ -94,9 +94,12 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
     [],
   )
   const [hoveredRespId, setHoveredRespId] = useState<string | null>(null)
+  const [showAddRespDialog, setShowAddRespDialog] = useState(false)
+  const [newRespNames, setNewRespNames] = useState<string[]>([''])
 
   const contentRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const pendingFocusRespRef = useRef<string | null>(null)
 
   useEffect(() => {
     abilityApi
@@ -117,6 +120,16 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       }
     })()
   }, [position.responsibilities, isInitialized])
+
+  useEffect(() => {
+    const id = pendingFocusRespRef.current
+    if (!id) return
+    const el = document.querySelector<HTMLTextAreaElement>(`[data-focus-id="${id}"]`)
+    if (el) {
+      pendingFocusRespRef.current = null
+      el.focus()
+    }
+  }, [newRespNames])
 
   useEffect(() => {
     ;(async () => {
@@ -260,16 +273,35 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
     })
   }
 
-  const handleAddResponsibility = () => {
-    const newResp: Position['responsibilities'][0] = {
-      id: `resp-${Date.now()}`,
-      name: '',
+  const openAddResponsibilityDialog = () => {
+    setNewRespNames([''])
+    setShowAddRespDialog(true)
+  }
+
+  const handleAddRespRow = () => {
+    const next = [...newRespNames, '']
+    setNewRespNames(next)
+    pendingFocusRespRef.current = `new-resp-${next.length - 1}`
+  }
+
+  const handleRemoveRespRow = (index: number) => {
+    setNewRespNames((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleConfirmAddResponsibilities = () => {
+    const names = newRespNames.map((n) => n.trim()).filter(Boolean)
+    if (names.length === 0) return
+    const now = Date.now()
+    const newResps: Position['responsibilities'] = names.map((name) => ({
+      id: `resp-${now}-${Math.random().toString(36).slice(2, 7)}`,
+      name,
       description: '',
-    }
-    onUpdate({ responsibilities: [...position.responsibilities, newResp] })
-    setSelectedRespId(newResp.id)
-    setEditingRespId(newResp.id)
-    setEditRespName('')
+    }))
+    onUpdate({ responsibilities: [...position.responsibilities, ...newResps] })
+    setSelectedRespId(newResps[newResps.length - 1].id)
+    setShowAddRespDialog(false)
+    setNewRespNames([''])
+    toast({ title: `已添加 ${newResps.length} 条工作职责` })
   }
 
   const handleRemoveResponsibility = (respId: string) => {
@@ -384,7 +416,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
             <Button
               size="sm"
               className="h-7 text-xs rounded-full"
-              onClick={handleAddResponsibility}
+              onClick={openAddResponsibilityDialog}
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
               添加
@@ -686,6 +718,70 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
           <div className="h-6" />
         </div>
       </div>
+
+      {/* Batch Add Responsibilities Dialog */}
+      <Dialog
+        open={showAddRespDialog}
+        onOpenChange={(open) => {
+          setShowAddRespDialog(open)
+          if (!open) setNewRespNames([''])
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-gray-800">添加工作职责</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              输入职责名称，回车可继续添加，保存后批量插入
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2 max-h-[50vh] overflow-y-auto pr-1">
+            {newRespNames.map((name, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <Textarea
+                  value={name}
+                  onChange={(e) => {
+                    setNewRespNames((prev) => prev.map((n, i) => (i === index ? e.target.value : n)))
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault()
+                      handleAddRespRow()
+                    }
+                  }}
+                  data-focus-id={`new-resp-${index}`}
+                  placeholder={`工作职责 ${index + 1}`}
+                  className="text-sm min-h-8 py-1"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => handleRemoveRespRow(index)}
+                  disabled={newRespNames.length === 1}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              className="border-gray-200 hover:bg-gray-50"
+              onClick={() => setShowAddRespDialog(false)}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleConfirmAddResponsibilities}
+              disabled={!newRespNames.some((n) => n.trim())}
+              className="bg-gray-900 hover:bg-gray-800 text-white"
+            >
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Custom Ability Dialog */}
       <Dialog
