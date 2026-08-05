@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronDown, ChevronRight, ListOrdered, Save, SlidersHorizontal } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, ListChecks, ListOrdered, Save, SlidersHorizontal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -220,7 +220,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
                     <TableHead className="w-[100px]">能力点权重</TableHead>
                     <TableHead className="w-[100px]">胜任标准</TableHead>
                     <TableHead>胜任标准描述</TableHead>
-                    <TableHead className="w-[190px] text-right">操作</TableHead>
+                    <TableHead className="w-[210px] text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -396,7 +396,7 @@ function PointRows({
             className="h-7 px-2 text-xs"
             onClick={onOpenLevels}
           >
-            <ListOrdered className="mr-1 h-3 w-3" />
+            <ListOrdered className="mr-1 size-3" />
             分档配置
           </Button>
           <Button
@@ -406,6 +406,7 @@ function PointRows({
             onClick={onOpenTaskWeights}
             disabled={point.tasks.length === 0}
           >
+            <ListChecks className="mr-1 size-3" />
             任务权重
           </Button>
         </TableCell>
