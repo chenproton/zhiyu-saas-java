@@ -14,8 +14,8 @@ type TeachingPlanHandler struct {
 	Service *service.AffairsPlanService
 }
 type TeachingPlanDetailResponse struct {
-	TeachingPlan domain.TeachingPlan        `json:"plan"`
-	Entries      []domain.TeachingPlanEntry `json:"entries"`
+	domain.TeachingPlan
+	Entries []domain.TeachingPlanEntry `json:"entries"`
 }
 
 type GenerateTeachingPlanRequest struct {
