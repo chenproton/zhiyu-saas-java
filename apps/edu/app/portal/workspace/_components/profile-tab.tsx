@@ -1,7 +1,18 @@
 'use client'
 
-import { Bell, Mail, Phone, Shield, Smartphone, User, Award } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Bell, Mail, Phone, Shield, Smartphone, User, Award, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -10,41 +21,129 @@ import { SectionCard } from './section-card'
 import { AccountInfoForm } from './account-info-form'
 import { ChangePasswordForm } from './change-password-form'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { studentHonorApi, fileApi } from '@/lib/api'
+import type { StudentHonor } from '@/lib/types'
 
 interface ProfileTabProps {
   /** student：学生个人中心（含荣誉奖励）；staff：学校管理员（无荣誉奖励，展示机构/工号） */
   variant?: 'student' | 'staff'
 }
 
+interface HonorForm {
+  name: string
+  issuer: string
+  honorDate: string
+  fileName: string
+  fileUrl: string
+}
+
+const emptyForm: HonorForm = { name: '', issuer: '', honorDate: '', fileName: '', fileUrl: '' }
+
 export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
   const { user, major, orgNode, institution } = usePortalAuth()
   const isStaff = variant === 'staff'
 
-  const honors = [
-    { id: '1', name: '国家励志奖学金', issuer: '教育部', date: '2025-11', fileName: '' },
-    { id: '2', name: '三好学生', issuer: '学校教务处', date: '2025-09', fileName: '' },
-    {
-      id: '3',
-      name: '全国职业技能大赛省赛二等奖',
-      issuer: '省教育厅',
-      date: '2026-03',
-      fileName: 'award_cert.pdf',
-    },
-    {
-      id: '4',
-      name: '华为HCIA-Datacom认证',
-      issuer: '华为技术有限公司',
-      date: '2025-12',
-      fileName: 'hcia_cert.pdf',
-    },
-    {
-      id: '5',
-      name: '大学英语四级证书',
-      issuer: '教育部考试中心',
-      date: '2025-06',
-      fileName: 'cet4.pdf',
-    },
-  ]
+  const [honors, setHonors] = useState<StudentHonor[]>([])
+  const [honorsLoading, setHonorsLoading] = useState(true)
+  const [honorDialogOpen, setHonorDialogOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<HonorForm>(emptyForm)
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const loadHonors = async () => {
+    setHonorsLoading(true)
+    try {
+      const res = await studentHonorApi.list()
+      setHonors(res.items || [])
+    } catch {
+      setHonors([])
+    } finally {
+      setHonorsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isStaff) return
+    let cancelled = false
+    studentHonorApi
+      .list()
+      .then((res) => {
+        if (!cancelled) setHonors(res.items || [])
+      })
+      .catch(() => {
+        if (!cancelled) setHonors([])
+      })
+      .finally(() => {
+        if (!cancelled) setHonorsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isStaff])
+
+  const openCreate = () => {
+    setEditingId(null)
+    setForm(emptyForm)
+    setHonorDialogOpen(true)
+  }
+
+  const openEdit = (item: StudentHonor) => {
+    setEditingId(item.id)
+    setForm({
+      name: item.name,
+      issuer: item.issuer || '',
+      honorDate: item.honorDate || '',
+      fileName: item.fileName || '',
+      fileUrl: item.fileUrl || '',
+    })
+    setHonorDialogOpen(true)
+  }
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      setForm((f) => ({ ...f, fileName: res.name, fileUrl: res.url }))
+    } catch {
+      // 上传失败保持原状
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return
+    setSaving(true)
+    try {
+      if (editingId) {
+        await studentHonorApi.update(editingId, form)
+      } else {
+        await studentHonorApi.create(form)
+      }
+      setHonorDialogOpen(false)
+      await loadHonors()
+    } catch {
+      // 保存失败保持弹窗
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id)
+    try {
+      await studentHonorApi.remove(id)
+      setHonors((list) => list.filter((h) => h.id !== id))
+    } catch {
+      // 删除失败忽略
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const notifications = {
     course: true,
@@ -163,31 +262,64 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
 
         {!isStaff && (
           <TabsContent value="archive" className="mt-0">
-            <SectionCard title="我的荣誉奖励" icon={Award} iconColor="purple">
+            <SectionCard
+              title="我的荣誉奖励"
+              icon={Award}
+              iconColor="purple"
+              action={{ label: '添加荣誉', onClick: openCreate }}
+            >
               <div className="space-y-4">
                 <p className="text-xs text-gray-500">共 {honors.length} 项荣誉与证书</p>
-                <div className="space-y-2">
-                  {honors.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
-                    >
-                      <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                        <Award className="w-4 h-4 text-amber-500" />
+                {honorsLoading ? (
+                  <div className="py-8 text-center text-xs text-gray-400">加载中...</div>
+                ) : (
+                  <div className="space-y-2">
+                    {honors.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                          <Award className="w-4 h-4 text-amber-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {item.issuer}
+                            {item.honorDate ? ` · ${item.honorDate}` : ''}
+                            {item.fileName ? ` · 附件：${item.fileName}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => openEdit(item)}
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-gray-400" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            disabled={deletingId === item.id}
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            {deletingId === item.id ? (
+                              <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {item.issuer} · {item.date}
-                          {item.fileName ? ` · 附件：${item.fileName}` : ''}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {honors.length === 0 && (
-                    <div className="py-8 text-center text-xs text-gray-400">暂无荣誉记录</div>
-                  )}
-                </div>
+                    ))}
+                    {honors.length === 0 && (
+                      <div className="py-8 text-center text-xs text-gray-400">暂无荣誉记录，点击上方按钮配置</div>
+                    )}
+                  </div>
+                )}
               </div>
             </SectionCard>
           </TabsContent>
@@ -316,6 +448,65 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
           </SectionCard>
         </TabsContent>
       </Tabs>
+
+      {/* 荣誉添加/编辑弹窗 */}
+      <Dialog open={honorDialogOpen} onOpenChange={setHonorDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingId ? '编辑荣誉' : '添加荣誉'}</DialogTitle>
+            <DialogDescription>荣誉名称与颁发机构为必填项，可上传证书附件。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm">荣誉名称 *</Label>
+              <Input
+                value={form.name}
+                placeholder="如：国家励志奖学金"
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">颁发机构</Label>
+              <Input
+                value={form.issuer}
+                placeholder="如：教育部"
+                onChange={(e) => setForm((f) => ({ ...f, issuer: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">获得日期</Label>
+              <Input
+                value={form.honorDate}
+                placeholder="如：2025-11"
+                onChange={(e) => setForm((f) => ({ ...f, honorDate: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">证书附件</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  className="text-xs text-gray-500 file:mr-2 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-blue-600 hover:file:bg-blue-100"
+                  onChange={handleUpload}
+                  disabled={uploading}
+                />
+                {uploading && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+              </div>
+              {form.fileName && (
+                <p className="text-xs text-gray-400 truncate">已上传：{form.fileName}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setHonorDialogOpen(false)}>
+              取消
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving || !form.name.trim()}>
+              {saving ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

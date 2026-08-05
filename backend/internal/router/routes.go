@@ -130,6 +130,11 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				// dashboard 内容按 userID 查询，缓存键含 userID（30s TTL），跨用户不串数据
 				r.With(cachedDashboard).Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
 				r.Get("/portal/workspace/my-schedule", h.schedulingHandler.MySchedule)
+				// 学生荣誉（个人中心配置/画像页展示）：学生本人 CRUD，业务用户可读
+				r.Get("/portal/workspace/honors", h.studentHonorHandler.List)
+				r.Post("/portal/workspace/honors", h.studentHonorHandler.Create)
+				r.Put("/portal/workspace/honors/{id}", h.studentHonorHandler.Update)
+				r.Delete("/portal/workspace/honors/{id}", h.studentHonorHandler.Delete)
 				// 个人中心自助接口：修改本人姓名/密码（学生/教师/学校管理员）
 				r.Put("/portal/workspace/me", h.userManagementHandler.UpdateMe)
 				r.Post("/portal/workspace/me/password", h.userManagementHandler.ChangeMyPassword)

@@ -173,6 +173,15 @@ body{
 .gt .gs{font-weight:800;color:var(--pri);}
 .gt .gs.muted{color:var(--ink4);font-weight:600;}
 .gt .rk{color:var(--ink3);}
+
+/* 获得荣誉 */
+.hg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;}
+.hn .ic{width:46px;height:46px;border-radius:50%;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 8px 15px -6px rgba(0,0,0,.25);}
+.hn .nm{font-size:10.5px;color:var(--ink2);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.h1{background:linear-gradient(135deg,#27b08a,#5fd3a8);}
+.h2{background:linear-gradient(135deg,#e89b3a,#f3c069);}
+.h3{background:linear-gradient(135deg,#8c6ff0,#aa93f3);}
+.h4{background:linear-gradient(135deg,#e8748a,#f29aaa);}
 </style>
 </head>
 <body>
@@ -210,6 +219,13 @@ body{
           <div class="sc o"><div class="n" id="asPoints">--</div><div class="l">总能力点</div></div>
           <div class="sc o"><div class="n" id="asAchieved">--</div><div class="l">已达成</div></div>
         </div></div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>获得荣誉</span><span class="ex" id="honorCount">--</span></div>
+        <div class="cbd">
+          <div class="hg" id="honorList"><div class="empty-state" style="grid-column:1/-1;padding:18px 8px;">暂无荣誉</div></div>
+        </div>
       </div>
     </div>
 
@@ -317,7 +333,7 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
   if(!token)return;
   var headers={'Authorization':'Bearer '+token};
 
-  var portraits=[], jobResults=[], courseScores=[], dashData=null, activeIdx=0, allPositionIds=[];
+  var portraits=[], jobResults=[], courseScores=[], dashData=null, honors=[], activeIdx=0, allPositionIds=[];
   var posModelMap={}; // positionId -> {domains:[{name,points:[{abilityPointId,name,weight,tasks:[{taskId,scenarioName,weight}]}]}]}
   var posMap={};
 
@@ -325,13 +341,16 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
     fetch('/api/v1/evaluation/portraits?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null}),
     fetch('/api/v1/evaluation/job-ability/results?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null}),
     fetch('/api/v1/evaluation/job-ability/course-scores?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null}),
-    fetch('/api/v1/evaluation/portraits/student-dashboard?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null})
+    fetch('/api/v1/evaluation/portraits/student-dashboard?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null}),
+    fetch('/api/v1/portal/workspace/honors?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null})
   ]).then(function(results){
-    var pData=results[0], jData=results[1], cData=results[2], dData=results[3];
+    var pData=results[0], jData=results[1], cData=results[2], dData=results[3], hData=results[4];
     portraits=(pData&&pData.items)||[];
     jobResults=(jData&&jData.items)||[];
     courseScores=(cData&&cData.items)||[];
     dashData=dData;
+    honors=(hData&&hData.items)||[];
+    renderHonors();
     updateSummaryStats();
     renderCourseScores();
     renderRecommendations();
@@ -379,6 +398,20 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
     document.getElementById('biClass').textContent=u.className||'--';
     document.getElementById('asPoints').textContent=u.totalAbilityPoints||0;
     document.getElementById('asAchieved').textContent=u.achievedAbilityPoints||0;
+  }
+
+  // 获得荣誉：名称首字符为图标，颜色轮换
+  function renderHonors(){
+    var el=document.getElementById('honorList');
+    document.getElementById('honorCount').textContent=(honors.length||0)+' 项';
+    if(!honors.length){
+      el.innerHTML='<div class="empty-state" style="grid-column:1/-1;padding:18px 8px;">暂无荣誉</div>';
+      return;
+    }
+    el.innerHTML=honors.map(function(h,i){
+      var ch=(h.name||'?').charAt(0);
+      return '<div class="hn"><div class="ic h'+(i%4+1)+'">'+ch+'</div><div class="nm" title="'+(h.name||'')+'">'+(h.name||'')+'</div></div>';
+    }).join('');
   }
 
   // 学业概况：学习课程=有成绩课程数、实践场景=有评分场景数、岗位档案=认定结果数

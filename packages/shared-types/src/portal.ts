@@ -197,3 +197,21 @@ export interface CommunityReply {
 }
 
 export type CommunityTopicSort = 'hot' | 'latest' | 'mine'
+
+// 学生荣誉（个人中心-我的荣誉奖励配置，画像页展示）
+export interface StudentHonor {
+  id: string
+  name: string
+  issuer: string
+  honorDate: string
+  fileName?: string
+  fileUrl?: string
+}
+
+export interface StudentHonorPayload {
+  name: string
+  issuer?: string
+  honorDate?: string
+  fileName?: string
+  fileUrl?: string
+}
