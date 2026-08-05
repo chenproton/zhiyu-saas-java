@@ -146,6 +146,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Use(jobViewer)
 				r.Get("/evaluation/portraits", h.studentPortraitHandler.List)
 				r.Get("/evaluation/portraits/{id}", h.studentPortraitHandler.Get)
+				// 画像页聚合数据（实践场景/推荐岗位/课程成绩）对学生本人开放，handler 内强制本人
+				r.Get("/evaluation/portraits/student-dashboard", h.studentPortraitHandler.StudentDashboard)
 			})
 
 			r.Group(func(r chi.Router) {
