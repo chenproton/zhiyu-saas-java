@@ -60,6 +60,9 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
   const [positions, setPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [taskCountMap, setTaskCountMap] = useState<Map<string, number>>(new Map())
+  const [knowledgePointCountMap, setKnowledgePointCountMap] = useState<Map<string, number>>(
+    new Map(),
+  )
   const [favoritePositions, setFavoritePositions] = useState<CareerPosition[]>([])
   const [hotPositions, setHotPositions] = useState<Array<{ positionId: string; order: number }>>([])
   const [loading, setLoading] = useState(true)
@@ -93,14 +96,23 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                 ),
               )
               const map = new Map<string, number>()
+              const kpMap = new Map<string, number>()
               scens.forEach((s, idx) => {
-                map.set(s.id, results[idx]?.items?.length ?? 0)
+                const taskList = results[idx]?.items || []
+                map.set(s.id, taskList.length)
+                const kpIds = new Set<string>()
+                taskList.forEach((t: any) =>
+                  (t.knowledgePointIds || []).forEach((kid: string) => kpIds.add(kid)),
+                )
+                kpMap.set(s.id, kpIds.size)
               })
               setTaskCountMap(map)
+              setKnowledgePointCountMap(kpMap)
             })
             .catch(() => {
               setScenarios([])
               setTaskCountMap(new Map())
+              setKnowledgePointCountMap(new Map())
             }),
         )
         fetches.push(
@@ -139,31 +151,11 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     if (isScene) return
     scenarioApi
       .list({ status: 'published', limit: 1000 })
-      .then(async (res) => {
-        const scens = res.items || []
-        setScenarios(scens)
-        const related = scens.filter((s) => s.careerPositionId)
-        if (related.length === 0) {
-          setTaskCountMap(new Map())
-          return
-        }
-        const results = await Promise.all(
-          related.map((s) =>
-            taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })),
-          ),
-        )
-        const map = new Map<string, number>()
-        related.forEach((s, idx) => {
-          const count = results[idx]?.items?.length ?? 0
-          if (count > 0 && s.careerPositionId) {
-            map.set(s.careerPositionId, (map.get(s.careerPositionId) || 0) + count)
-          }
-        })
-        setTaskCountMap(map)
+      .then((res) => {
+        setScenarios(res.items || [])
       })
       .catch(() => {
         setScenarios([])
-        setTaskCountMap(new Map())
       })
   }, [isScene])
 
@@ -968,6 +960,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                         scenario={scenario}
                         index={i}
                         taskCount={taskCountMap.get(scenario.id) ?? 0}
+                        knowledgePointCount={knowledgePointCountMap.get(scenario.id) ?? 0}
                       />
                     ))
                   : (pageItems as CareerPosition[]).map((pos, i) => (
@@ -977,7 +970,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                         index={i}
                         isHot={hotPositionIds.has(pos.id)}
                         scenarioCount={scenarioCountMap.get(pos.id) ?? 0}
-                        taskCount={taskCountMap.get(pos.id) ?? 0}
+                        abilityCount={pos.abilityCount ?? 0}
                         industryName={pos.industryId ? industryMap.get(pos.industryId) : undefined}
                       />
                     ))}

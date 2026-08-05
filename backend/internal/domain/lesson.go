@@ -32,6 +32,7 @@ type Course struct {
 	AbilityPointIds   JSONSlice    `json:"abilityPointIds,omitempty"`
 	ResourceIds       JSONSlice    `json:"resourceIds,omitempty"`
 	CreatorID         string       `json:"creatorId"`
+	CreatorName       string       `json:"creatorName,omitempty"`
 	CoCreatorIds      JSONSlice    `json:"coCreatorIds,omitempty"`
 	BatchID           *string      `json:"batchId,omitempty"`
 	BatchName         *string      `json:"batchName,omitempty"`

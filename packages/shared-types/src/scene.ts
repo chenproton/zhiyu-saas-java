@@ -16,6 +16,7 @@ export interface Scenario {
   background?: string
   deliveryGoal?: string
   creatorId: string
+  creatorName?: string
   coBuilderIds: string[]
   createdAt: string
   updatedAt: string

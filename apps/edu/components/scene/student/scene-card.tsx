@@ -3,13 +3,13 @@
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
 import type { Scenario } from '@/lib/types'
-import { SCENE_DIFFICULTY } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
 
 interface SceneCardProps {
   scenario: Scenario
   index?: number
   taskCount?: number
+  knowledgePointCount?: number
 }
 
 const coverGradients = [
@@ -31,13 +31,17 @@ const professionTagMap: Record<string, { bg: string; text: string; border: strin
   default: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
 }
 
-export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps) {
+export function SceneCard({
+  scenario,
+  index = 0,
+  taskCount = 0,
+  knowledgePointCount = 0,
+}: SceneCardProps) {
   const displayTitle = scenario.name
   const coverStyle = scenario.coverImage
     ? { backgroundImage: `url('${scenario.coverImage}')` }
     : { background: coverGradients[index % coverGradients.length] }
 
-  const diff = SCENE_DIFFICULTY[scenario.difficulty] || SCENE_DIFFICULTY[3]
   const industryName =
     scenario.industryNames?.[0] || (scenario.industryIds?.length ? '已关联' : '未分类')
   const industryTag = industryTagMap.default
@@ -45,6 +49,7 @@ export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps
     scenario.professionNames?.[0] || (scenario.professionIds?.length ? '已关联' : '未分类')
   const professionTag = professionTagMap.default
   const viewCount = scenario.viewCount ?? 0
+  const creatorName = scenario.creatorName || scenario.creatorId?.slice(0, 8) || '-'
 
   return (
     <Link href={`/scene/landing/${scenario.id}`}>
@@ -60,7 +65,7 @@ export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps
                 {scenario.version || 'v1.0'}
               </span>
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
-                {formatDate(scenario.updatedAt)} 收录
+                创建人：{creatorName}
               </span>
             </div>
           </div>
@@ -76,16 +81,16 @@ export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps
         <div className="p-5 flex-1 flex flex-col">
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{taskCount || '-'}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">任务数量</div>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{diff.label}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">难度等级</div>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
               <div className="text-lg font-bold text-slate-800">{viewCount}</div>
               <div className="text-[11px] text-slate-400 mt-0.5">浏览次数</div>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+              <div className="text-lg font-bold text-slate-800">{taskCount || '-'}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">关联任务</div>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+              <div className="text-lg font-bold text-slate-800">{knowledgePointCount || '-'}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">关联知识点</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
@@ -97,7 +102,7 @@ export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps
                 borderColor: industryTag.border,
               }}
             >
-              <MapPin className="w-3 h-3" /> {industryName}
+              <MapPin className="w-3 h-3" /> 面向行业：{industryName}
             </span>
             <span
               className="text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1 font-medium border"
@@ -111,8 +116,12 @@ export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps
             </span>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500">收录：{formatDate(scenario.createdAt)}</span>
-            <span className="text-xs text-slate-500">更新：{formatDate(scenario.updatedAt)}</span>
+            <span className="text-xs text-slate-500">
+              收录时间：{formatDate(scenario.createdAt)}
+            </span>
+            <span className="text-xs text-slate-500">
+              更新时间：{formatDate(scenario.updatedAt)}
+            </span>
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ type Scenario struct {
 	Background       *string        `json:"background,omitempty"`
 	DeliveryGoal     *string        `json:"deliveryGoal,omitempty"`
 	CreatorID        string         `json:"creatorId"`
+	CreatorName      string         `json:"creatorName,omitempty"`
 	CoBuilderIDs     []string       `json:"coBuilderIds,omitempty"`
 	TenantID         *string        `json:"tenantId,omitempty"`
 	CreatedAt        time.Time      `json:"createdAt"`

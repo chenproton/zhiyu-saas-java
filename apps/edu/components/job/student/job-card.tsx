@@ -10,7 +10,7 @@ interface JobCardProps {
   index?: number
   isHot?: boolean
   scenarioCount?: number
-  taskCount?: number
+  abilityCount?: number
   industryName?: string
 }
 
@@ -30,7 +30,7 @@ export function JobCard({
   index = 0,
   isHot,
   scenarioCount = 0,
-  taskCount = 0,
+  abilityCount = 0,
   industryName,
 }: JobCardProps) {
   const displayTitle = position.name
@@ -41,6 +41,7 @@ export function JobCard({
   const majorName = position.majorNames?.[0] || '未分类'
   const viewCount = position.viewCount ?? 0
   const relatedScenes = scenarioCount
+  const creatorName = position.createdByName || position.createdBy?.slice(0, 8) || '-'
 
   return (
     <Link href={`/job/landing/${position.id}`}>
@@ -61,7 +62,7 @@ export function JobCard({
                 {position.version || 'v1.0'}
               </span>
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
-                {formatDate(position.updatedAt)} 收录
+                创建人：{creatorName}
               </span>
             </div>
           </div>
@@ -85,8 +86,8 @@ export function JobCard({
               <div className="text-[11px] text-slate-400 mt-0.5">关联场景</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{taskCount || '-'}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">场景任务</div>
+              <div className="text-lg font-bold text-slate-800">{abilityCount || '-'}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">关联能力点</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
@@ -98,8 +99,12 @@ export function JobCard({
             </span>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500">收录：{formatDate(position.createdAt)}</span>
-            <span className="text-xs text-slate-500">更新：{formatDate(position.updatedAt)}</span>
+            <span className="text-xs text-slate-500">
+              收录时间：{formatDate(position.createdAt)}
+            </span>
+            <span className="text-xs text-slate-500">
+              更新时间：{formatDate(position.updatedAt)}
+            </span>
           </div>
         </div>
       </div>
