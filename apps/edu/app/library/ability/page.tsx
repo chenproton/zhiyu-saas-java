@@ -24,12 +24,19 @@ import { LibraryPageShell } from '../_components/library-page-shell'
 
 export default function AbilityPointsPage() {
   const { toast } = useToast()
-  const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
-    abilityApi.list,
-    {
-      autoLoad: false,
-    },
-  )
+  const {
+    items,
+    loading,
+    searchQuery,
+    setSearchQuery,
+    loadItems,
+    total,
+    page,
+    setPage,
+    totalPages,
+  } = useLibraryCrud(abilityApi.list, {
+    autoLoad: false,
+  })
   useEffect(() => {
     void loadItems()
   }, [loadItems])
@@ -115,7 +122,7 @@ export default function AbilityPointsPage() {
         </div>
       }
       statGradient="from-purple-50 to-purple-100"
-      statCount={items.length}
+      statCount={total}
       searchPlaceholder="搜索能力点..."
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
@@ -230,6 +237,7 @@ export default function AbilityPointsPage() {
           </DialogContent>
         </Dialog>
       }
+      pagination={{ page, totalPages, onPageChange: setPage }}
     >
       <div className="flex gap-3">
         {searchQuery && (

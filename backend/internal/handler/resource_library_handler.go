@@ -66,6 +66,20 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.ResourceLibraryItem]{Items: items, Total: total})
 }
 
+// Stats 返回资源按类型统计（列表总览统计卡片用）。
+func (h *ResourceLibraryHandler) Stats(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	counts, err := h.Service.CountByType(r.Context(), tenantID, r.URL.Query().Get("search"))
+	if err != nil {
+		respondServerError(w, r, err, "查询资源统计失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"items": counts})
+}
+
 func (h *ResourceLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")

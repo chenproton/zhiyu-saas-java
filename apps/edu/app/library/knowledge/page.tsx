@@ -18,9 +18,17 @@ import { useLibraryCrud } from '../_components/use-library-crud'
 
 export default function KnowledgePointsPage() {
   const { toast } = useToast()
-  const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
-    knowledgeApi.list,
-  )
+  const {
+    items,
+    loading,
+    searchQuery,
+    setSearchQuery,
+    loadItems,
+    total,
+    page,
+    setPage,
+    totalPages,
+  } = useLibraryCrud(knowledgeApi.list)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<KnowledgePoint | null>(null)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add')
@@ -151,7 +159,7 @@ export default function KnowledgePointsPage() {
           </div>
         }
         statGradient="from-blue-50 to-blue-100"
-        statCount={items.length}
+        statCount={total}
         searchPlaceholder="搜索知识点..."
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -208,6 +216,7 @@ export default function KnowledgePointsPage() {
           </TableRow>
         )}
         dialog={<></>}
+        pagination={{ page, totalPages, onPageChange: setPage }}
       />
       <ConfirmDialog
         open={navigateCourseId !== null}

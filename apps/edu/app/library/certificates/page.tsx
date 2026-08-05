@@ -23,9 +23,17 @@ import { useLibraryCrud } from '../_components/use-library-crud'
 
 export default function CertificatesPage() {
   const { toast } = useToast()
-  const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
-    certificateLibraryApi.list,
-  )
+  const {
+    items,
+    loading,
+    searchQuery,
+    setSearchQuery,
+    loadItems,
+    total,
+    page,
+    setPage,
+    totalPages,
+  } = useLibraryCrud(certificateLibraryApi.list)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<CertificateLibraryItem | null>(null)
   const [name, setName] = useState('')
@@ -119,7 +127,7 @@ export default function CertificatesPage() {
         </div>
       }
       statGradient="from-rose-50 to-rose-100"
-      statCount={items.length}
+      statCount={total}
       searchPlaceholder="搜索证书..."
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
@@ -235,6 +243,7 @@ export default function CertificatesPage() {
           </DialogContent>
         </Dialog>
       }
+      pagination={{ page, totalPages, onPageChange: setPage }}
     />
   )
 }

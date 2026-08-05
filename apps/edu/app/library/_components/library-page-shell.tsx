@@ -7,6 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { PaginationBar } from '@/components/shared/pagination-bar'
+
+interface LibraryPagination {
+  page: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}
 
 interface LibraryPageShellProps<T> {
   title: string
@@ -30,6 +37,8 @@ interface LibraryPageShellProps<T> {
   deleteLabel?: string
   dialog: ReactNode
   children?: ReactNode
+  /** 服务端分页信息；提供时在表格下方渲染分页条（totalPages<=1 不展示） */
+  pagination?: LibraryPagination
 }
 
 export function LibraryPageShell<T>({
@@ -54,6 +63,7 @@ export function LibraryPageShell<T>({
   deleteLabel = '此资源',
   dialog,
   children,
+  pagination,
 }: LibraryPageShellProps<T>) {
   return (
     <div className="p-6 space-y-5">
@@ -117,6 +127,16 @@ export function LibraryPageShell<T>({
               </TableBody>
             </Table>
           </div>
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex justify-end mt-4">
+              <PaginationBar
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                onPageChange={pagination.onPageChange}
+                disabled={loading}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

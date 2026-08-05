@@ -209,6 +209,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 				// 资源库前台落地页只读接口
 				r.Get("/library/resources", h.resourceLibraryHandler.List)
+				r.Get("/library/resources/stats", h.resourceLibraryHandler.Stats)
 				r.Get("/library/resources/{id}", h.resourceLibraryHandler.Get)
 				r.Get("/library/on-site-questions", h.onSiteQuestionLibraryHandler.List)
 				r.Get("/library/on-site-questions/{id}", h.onSiteQuestionLibraryHandler.Get)

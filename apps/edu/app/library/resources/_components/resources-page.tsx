@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Pencil,
   Plus,
@@ -62,6 +62,8 @@ import {
 import { useResourceCrud } from './use-resource-crud'
 import { ResourceUploadZone } from './resource-upload-zone'
 import { ResourceBatchImportDialog } from './resource-batch-import-dialog'
+import { PaginationBar } from '@/components/shared/pagination-bar'
+import { resourceLibraryApi } from '@/lib/api'
 
 const TYPE_LABEL_MAP: Record<string, string> = RESOURCE_TYPE_LABELS
 // 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
@@ -80,15 +82,21 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
   const typeIcon = resourceType ? TYPE_ICONS[resourceType] || TYPE_ICONS.other : undefined
 
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
-  const [typeFilters, setTypeFilters] = useState<string[]>([])
   const [dialogType, setDialogType] = useState('document')
   const [batchOpen, setBatchOpen] = useState(false)
+  const [typeCounts, setTypeCounts] = useState<Record<string, number>>({})
 
   const {
-    items: allItems,
+    items,
     loading,
     searchQuery,
     setSearchQuery,
+    filterType,
+    setFilterType,
+    total,
+    page,
+    setPage,
+    totalPages,
     isDialogOpen,
     setIsDialogOpen,
     editingItem,
@@ -115,32 +123,30 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
   // 单类型视图提交类型固定；总览视图跟随弹窗内选择
   const submitType = resourceType || dialogType
 
-  const searched = useMemo(() => {
-    if (!searchQuery) return allItems
-    const q = searchQuery.toLowerCase()
-    return allItems.filter(
-      (r) => r.name.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q),
-    )
-  }, [allItems, searchQuery])
-
-  const items = useMemo(() => {
-    if (typeFilters.length === 0) return searched
-    return searched.filter((r) => typeFilters.includes(r.resourceType))
-  }, [searched, typeFilters])
-
-  // 总览视图统计卡片基于筛选后数据；单类型视图统计该类型全部数据
-  const statCount = isTypeView ? allItems.length : items.length
-
-  const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const item of items) {
-      counts[item.resourceType] = (counts[item.resourceType] || 0) + 1
+  // 总览视图统计卡片：按类型数量来自服务端统计接口（随搜索联动）
+  useEffect(() => {
+    if (isTypeView) return
+    let cancelled = false
+    resourceLibraryApi
+      .stats({ ...(searchQuery ? { search: searchQuery } : {}) })
+      .then((res) => {
+        if (cancelled) return
+        const counts: Record<string, number> = {}
+        for (const c of res.items || []) counts[c.resourceType] = c.count
+        setTypeCounts(counts)
+      })
+      .catch(() => {
+        if (!cancelled) setTypeCounts({})
+      })
+    return () => {
+      cancelled = true
     }
-    return counts
-  }, [items])
+  }, [isTypeView, searchQuery])
+
+  const statCount = total
 
   const toggleTypeFilter = (t: string) => {
-    setTypeFilters((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
+    setFilterType(filterType === t ? null : t)
   }
 
   const handleOpenAddWithType = () => {
@@ -208,7 +214,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
         <div className="bg-white rounded-xl p-3 flex gap-2 flex-wrap items-center border border-slate-100 shadow-sm">
           <span className="text-sm text-slate-400 mr-1 shrink-0">类型筛选：</span>
           {ALL_TYPES.map((type) => {
-            const active = typeFilters.includes(type)
+            const active = filterType === type
             return (
               <button
                 key={type}
@@ -230,10 +236,10 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
               </button>
             )
           })}
-          {(typeFilters.length > 0 || searchQuery) && (
+          {(filterType || searchQuery) && (
             <button
               onClick={() => {
-                setTypeFilters([])
+                setFilterType(null)
                 setSearchQuery('')
               }}
               className="ml-auto px-3 py-1.5 text-xs text-red-400 hover:text-red-600 font-medium border border-red-200 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
@@ -403,6 +409,16 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
               </TableBody>
             </Table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex justify-end mt-4">
+              <PaginationBar
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                disabled={loading}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -235,6 +235,14 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/job/position-certificates/{id}", positionCertificateHandler.Update)
 			r.Delete("/job/position-certificates/{id}", positionCertificateHandler.Delete)
 
+			resourceLibraryHandler := &handler.ResourceLibraryHandler{Service: service.NewResourceService(svc2)}
+			r.Get("/library/resources", resourceLibraryHandler.List)
+			r.Get("/library/resources/stats", resourceLibraryHandler.Stats)
+			r.Get("/library/resources/{id}", resourceLibraryHandler.Get)
+			r.Post("/library/resources", resourceLibraryHandler.Create)
+			r.Put("/library/resources/{id}", resourceLibraryHandler.Update)
+			r.Delete("/library/resources/{id}", resourceLibraryHandler.Delete)
+
 			abilityDomainHandler := &handler.AbilityDomainHandler{Service: positionSvc}
 			r.Get("/job/ability-domains", abilityDomainHandler.List)
 			r.Post("/job/ability-domains", abilityDomainHandler.Create)

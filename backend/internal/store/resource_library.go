@@ -117,6 +117,42 @@ func (s *ResourceLibraryStore) List(ctx context.Context, tenantID string, f Reso
 	return items, total, err
 }
 
+// ResourceTypeCount 某资源类型的数量（列表总览统计卡片用）。
+type ResourceTypeCount struct {
+	ResourceType string `json:"resourceType"`
+	Count        int    `json:"count"`
+}
+
+// CountByType 按类型统计资源数量（租户隔离，可选 search 过滤）。
+func (s *ResourceLibraryStore) CountByType(ctx context.Context, tenantID, search string) ([]ResourceTypeCount, error) {
+	where := []string{"rl.tenant_id = $1"}
+	args := []any{tenantID}
+	if search != "" {
+		where = append(where, "(rl.name ILIKE $2 OR rl.description ILIKE $2)")
+		args = append(args, "%"+search+"%")
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT rl.resource_type, COUNT(*) AS cnt
+		FROM resource_library rl
+		WHERE `+joinSQL(where, " AND ")+`
+		GROUP BY rl.resource_type
+		ORDER BY cnt DESC
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]ResourceTypeCount, 0)
+	for rows.Next() {
+		var c ResourceTypeCount
+		if err := rows.Scan(&c.ResourceType, &c.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // Get 按 ID 查询资源（跨租户校验由 handler 层负责）。
 func (s *ResourceLibraryStore) Get(ctx context.Context, id string) (*domain.ResourceLibraryItem, error) {
 	item, err := s.fetchItem(ctx, id)

@@ -4,6 +4,8 @@ import { type ResourceLibraryItem } from '@/lib/types/library'
 import { useToast } from '@zhiyu/ui'
 import { fileTypesWithUpload, validateResourceFile } from '@/lib/resource-type-constants'
 
+const PAGE_SIZE = 200
+
 export function useResourceCrud(resourceType?: string) {
   const { toast } = useToast()
   const resFileInputRef = useRef<HTMLInputElement>(null)
@@ -11,6 +13,9 @@ export function useResourceCrud(resourceType?: string) {
   const [items, setItems] = useState<ResourceLibraryItem[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterType, setFilterType] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ResourceLibraryItem | null>(null)
@@ -30,9 +35,18 @@ export function useResourceCrud(resourceType?: string) {
     try {
       const res = await resourceLibraryApi.list({
         ...(resourceType ? { resourceType: resourceType as any } : {}),
-        limit: 500,
+        ...(filterType && !resourceType ? { resourceType: filterType } : {}),
+        ...(searchQuery ? { search: searchQuery } : {}),
+        limit: PAGE_SIZE,
+        offset: (page - 1) * PAGE_SIZE,
       })
+      const totalPages = Math.max(1, Math.ceil((res.total ?? 0) / PAGE_SIZE))
+      if (page > totalPages) {
+        setPage(totalPages)
+        return
+      }
       setItems(res.items)
+      setTotal(res.total ?? 0)
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -42,13 +56,23 @@ export function useResourceCrud(resourceType?: string) {
     } finally {
       setLoading(false)
     }
-  }, [resourceType, toast])
+  }, [resourceType, filterType, searchQuery, page, toast])
 
   useEffect(() => {
     ;(async () => {
       await loadItems()
     })()
   }, [loadItems])
+
+  const handleSearchChange = (q: string) => {
+    setSearchQuery(q)
+    setPage(1)
+  }
+
+  const handleTypeFilterChange = (t: string | null) => {
+    setFilterType(t)
+    setPage(1)
+  }
 
   const resetDialog = () => {
     setName('')
@@ -165,7 +189,13 @@ export function useResourceCrud(resourceType?: string) {
     items,
     loading,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: handleSearchChange,
+    filterType,
+    setFilterType: handleTypeFilterChange,
+    total,
+    page,
+    setPage,
+    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
     isDialogOpen,
     setIsDialogOpen,
     editingItem,

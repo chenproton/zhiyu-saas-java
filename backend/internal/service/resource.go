@@ -24,6 +24,11 @@ func (s *ResourceService) List(ctx context.Context, tenantID string, f store.Res
 	return s.st.ResourceLibrary().List(ctx, tenantID, f)
 }
 
+// CountByType 按类型统计资源数量（列表总览统计卡片用）。
+func (s *ResourceService) CountByType(ctx context.Context, tenantID, search string) ([]store.ResourceTypeCount, error) {
+	return s.st.ResourceLibrary().CountByType(ctx, tenantID, search)
+}
+
 // Get 查询单个资源。
 func (s *ResourceService) Get(ctx context.Context, id string) (*domain.ResourceLibraryItem, error) {
 	return s.st.ResourceLibrary().Get(ctx, id)

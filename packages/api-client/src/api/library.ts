@@ -9,6 +9,10 @@ export const resourceLibraryApi = {
     limit?: number
     offset?: number
   }) => request<ListResponse<ResourceLibraryItem>>(`/library/resources${buildQuery(params || {})}`),
+  stats: (params?: { search?: string }) =>
+    request<{ items: { resourceType: string; count: number }[] }>(
+      `/library/resources/stats${buildQuery(params || {})}`,
+    ),
   get: (id: string) => request<ResourceLibraryItem>(`/library/resources/${id}`),
   create: (req: Omit<ResourceLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>) =>
     request<ResourceLibraryItem>('/library/resources', {
