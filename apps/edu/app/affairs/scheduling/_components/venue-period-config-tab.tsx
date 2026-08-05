@@ -31,9 +31,31 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { DateRangePicker } from '@/components/shared/date-range-picker'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { termApi, venueApi, periodSlotApi } from '@/lib/api'
+import type { DateRange } from 'react-day-picker'
 import type { AffairsTerm, Venue, PeriodSlot } from '@/lib/types'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function parseYMD(s: string): Date | undefined {
+  const [y, m, d] = s.split('-').map(Number)
+  if (!y || !m || !d) return undefined
+  return new Date(y, m - 1, d)
+}
+
+function formatYMD(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function calcWeeks(from: Date, to: Date): number {
+  const days = Math.round((to.getTime() - from.getTime()) / DAY_MS) + 1
+  return Math.max(1, Math.ceil(days / 7))
+}
 
 const VENUE_TYPES = ['教室', '机房', '实训室', '实验室', '校外基地']
 
@@ -50,10 +72,11 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
 
   // 表单
   const [name, setName] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [weeksCount, setWeeksCount] = useState('16')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [isCurrent, setIsCurrent] = useState(false)
+
+  const weeksCount =
+    dateRange?.from && dateRange?.to ? calcWeeks(dateRange.from, dateRange.to) : 0
 
   const loadItems = useCallback(async () => {
     try {
@@ -80,9 +103,7 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
   const openCreate = () => {
     setEditing(null)
     setName('')
-    setStartDate('')
-    setEndDate('')
-    setWeeksCount('16')
+    setDateRange(undefined)
     setIsCurrent(false)
     setDialogOpen(true)
   }
@@ -90,18 +111,18 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
   const openEdit = (t: AffairsTerm) => {
     setEditing(t)
     setName(t.name)
-    setStartDate(t.startDate)
-    setEndDate(t.endDate)
-    setWeeksCount(String(t.weeksCount))
+    setDateRange({ from: parseYMD(t.startDate), to: parseYMD(t.endDate) })
     setIsCurrent(t.isCurrent)
     setDialogOpen(true)
   }
 
   const handleSave = async () => {
-    if (!name || !startDate || !endDate) return
+    if (!name || !dateRange?.from || !dateRange?.to) return
     setSaving(true)
     try {
-      const payload = { name, startDate, endDate, weeksCount: Number(weeksCount) || 16, isCurrent }
+      const startDate = formatYMD(dateRange.from)
+      const endDate = formatYMD(dateRange.to)
+      const payload = { name, startDate, endDate, weeksCount: weeksCount || 16, isCurrent }
       if (editing) {
         await termApi.update(editing.id, payload)
       } else {
@@ -242,28 +263,14 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
                 onChange={(e) => setName(e.target.value)}
               />
             </Field>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel>开始日期 *</FieldLabel>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel>结束日期 *</FieldLabel>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </Field>
-            </div>
+            <Field>
+              <FieldLabel>起止日期 *</FieldLabel>
+              <DateRangePicker value={dateRange} onChange={setDateRange} />
+            </Field>
             <Field>
               <FieldLabel>周数</FieldLabel>
-              <Input
-                type="number"
-                min={1}
-                value={weeksCount}
-                onChange={(e) => setWeeksCount(e.target.value)}
-              />
+              <Input value={weeksCount ? String(weeksCount) : ''} disabled placeholder="选择起止日期后自动计算" />
+              <p className="text-xs text-muted-foreground">根据起止日期自动计算，不可修改</p>
             </Field>
             <Field>
               <div className="flex items-center justify-between">
@@ -276,7 +283,10 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
               取消
             </Button>
-            <Button onClick={handleSave} disabled={!name || !startDate || !endDate || saving}>
+            <Button
+              onClick={handleSave}
+              disabled={!name || !dateRange?.from || !dateRange?.to || saving}
+            >
               {saving ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
