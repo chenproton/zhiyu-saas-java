@@ -133,6 +133,12 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				// 个人中心自助接口：修改本人姓名/密码（学生/教师/学校管理员）
 				r.Put("/portal/workspace/me", h.userManagementHandler.UpdateMe)
 				r.Post("/portal/workspace/me/password", h.userManagementHandler.ChangeMyPassword)
+				// 学习社区：发帖/回复/阅读数（学生/教师/学校管理员）
+				r.Get("/portal/community/topics", h.communityHandler.ListTopics)
+				r.Post("/portal/community/topics", h.communityHandler.CreateTopic)
+				r.Get("/portal/community/topics/{id}", h.communityHandler.GetTopic)
+				r.Get("/portal/community/topics/{id}/replies", h.communityHandler.ListReplies)
+				r.Post("/portal/community/topics/{id}/replies", h.communityHandler.CreateReply)
 			})
 
 			// 学生画像查询对全部业务角色开放（含学生本人），generate/archives 仍限业务用户
