@@ -71,6 +71,7 @@ export interface PositionAbilityBinding {
   careerPositionId: string
   responsibilityId: string
   abilityPointId: string
+  abilityName?: string
   source: 'public' | 'custom'
   domain?: string
   requiredLevel: string

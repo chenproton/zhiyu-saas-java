@@ -1834,19 +1834,21 @@ function EditCardDialog({
         const bindings = positionAbilityBindings.filter(
           (b: any) => b.careerPositionId === positionId,
         )
-        const bindingMap = new Map(bindings.map((b: any) => [b.abilityPointId, b]))
-        const relatedAbilities = datasets.abilityPoints
-          .filter((ab: any) => bindingMap.has(ab.id))
-          .map((ab: any) => {
-            const binding = bindingMap.get(ab.id)
-            return {
-              ...ab,
-              positionIds: [positionId],
-              domain: binding?.domain || ab.domain || '其他',
-              requiredLevel: binding?.requiredLevel || ab.requiredLevel,
-              proficiencyDesc: binding?.rubricDescription || ab.proficiencyDesc,
-            }
-          })
+        const abilityById = new Map(
+          datasets.abilityPoints.map((ab: any) => [ab.id, ab]),
+        )
+        const relatedAbilities = bindings.map((b: any) => {
+          const ab = abilityById.get(b.abilityPointId) || {}
+          return {
+            ...ab,
+            id: b.abilityPointId,
+            name: b.abilityName || ab.name || '未命名能力',
+            positionIds: [positionId],
+            domain: b?.domain || ab.domain || '其他',
+            requiredLevel: b?.requiredLevel || ab.requiredLevel,
+            proficiencyDesc: b?.rubricDescription || ab.proficiencyDesc,
+          }
+        })
 
         if (relatedAbilities.length === 0) {
           return (

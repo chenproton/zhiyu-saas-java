@@ -151,7 +151,7 @@ export function convertApiAbilityBindingToLocal(
     source: b.source as PositionAbilityBinding['source'],
     publicAbilityId: b.source === 'public' ? b.abilityPointId : undefined,
     abilityPointId: b.abilityPointId,
-    name: '', // filled by caller from ability point map if needed
+    name: b.abilityName || '', // 后端 JOIN 直接返回名称，无需再拉全量能力点列表
     level: b.requiredLevel as PositionAbilityBinding['level'],
     rubricDescription: b.rubricDescription ?? '',
     description: b.rubricDescription ?? '',

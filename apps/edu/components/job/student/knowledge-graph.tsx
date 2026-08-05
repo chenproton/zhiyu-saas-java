@@ -123,7 +123,7 @@ export function KnowledgeGraph({
         .forEach((b) => {
           const abilityPoint = abilityPointMap.get(b.abilityPointId)
           const unitId = abilityPoint?.id || b.abilityPointId
-          const unitLabel = abilityPoint?.name || b.domain || '未命名能力'
+          const unitLabel = abilityPoint?.name || b.abilityName || b.domain || '未命名能力'
           if (!unitNodeIds.has(unitId)) {
             unitNodeIds.add(unitId)
             graphNodes.push({ id: unitId, label: unitLabel, type: 'unit' })

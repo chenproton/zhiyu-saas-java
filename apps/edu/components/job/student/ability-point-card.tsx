@@ -57,7 +57,7 @@ export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointC
         )}
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-[#1f2937] leading-snug">
-            {abilityPoint?.name || binding.domain || '未命名能力'}
+            {abilityPoint?.name || binding.abilityName || binding.domain || '未命名能力'}
           </div>
         </div>
       </div>

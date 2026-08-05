@@ -98,7 +98,18 @@ func TestPositionAbility_CreateBindingAndList(t *testing.T) {
 		if total < 1 {
 			t.Errorf("total = %d, want >= 1", total)
 		}
-		_ = items
+		var found bool
+		for _, it := range items {
+			if it.ID == bindingID {
+				found = true
+				if it.AbilityName == nil || *it.AbilityName != "Binding Ability Point" {
+					t.Errorf("abilityName = %v, want %q", it.AbilityName, "Binding Ability Point")
+				}
+			}
+		}
+		if !found {
+			t.Errorf("binding %s not found in list", bindingID)
+		}
 	})
 }
 

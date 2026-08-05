@@ -160,6 +160,7 @@ var (
 		"operation_logs",
 		"period_slots",
 		"position_ability_bindings",
+		"position_ability_bindings b LEFT JOIN ability_points ap ON ap.id = b.ability_point_id",
 		"position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
 		"position_recommendations pr LEFT JOIN majors m ON m.id = pr.major_id",
 		"question_banks qb LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM questions q WHERE q.bank_id = qb.id) qcnt ON true LEFT JOIN users cr_u ON cr_u.id = qb.creator_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') AS ids FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) kparr ON true",
@@ -205,6 +206,7 @@ var (
 		"id, tenant_id, career_position_id, name, description, binding_ids, sort_order",
 		"id, career_position_id, name, description, sort_order",
 		"id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
+		"b.id, b.career_position_id, b.responsibility_id, b.ability_point_id, ap.name AS ability_name, b.source, b.domain, b.required_level, b.rubric_description, b.attributes, b.weight",
 		"id, career_position_id, status, rule_source, level_mapping, created_at, updated_at",
 		"id, category_id, name, enabled, sub_category_name, description, doc_link",
 		"id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
@@ -267,6 +269,7 @@ var (
 	}
 
 	allowedListQueryOrderBy = []string{
+		"b.id DESC",
 		"c.created_at DESC",
 		"cp.created_at DESC",
 		"e.created_at DESC",

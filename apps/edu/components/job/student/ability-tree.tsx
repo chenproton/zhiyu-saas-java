@@ -110,7 +110,7 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
                     <div className="flex flex-col min-w-0 gap-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm text-[#1f2937] truncate">
-                          {info?.name || ab.domain || '未命名能力'}
+                          {info?.name || ab.abilityName || ab.domain || '未命名能力'}
                         </span>
                         {(info?.attributes?.length ?? 0) > 0 && (
                           <div className="flex flex-wrap gap-1 shrink-0">

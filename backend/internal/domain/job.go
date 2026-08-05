@@ -94,6 +94,7 @@ type PositionAbilityBinding struct {
 	CareerPositionID  string             `json:"careerPositionId"`
 	ResponsibilityID  string             `json:"responsibilityId"`
 	AbilityPointID    string             `json:"abilityPointId"`
+	AbilityName       *string            `json:"abilityName,omitempty"`
 	Source            AbilityPointSource `json:"source"`
 	Domain            *string            `json:"domain,omitempty"`
 	RequiredLevel     string             `json:"requiredLevel"`

@@ -79,16 +79,17 @@ func (s *PositionAbilityStore) Delete(ctx context.Context, id string) error {
 // ListConfig 返回能力绑定列表查询配置，SQL 片段沉淀在 store 层。
 func (s *PositionAbilityStore) ListConfig() ListQueryConfig[domain.PositionAbilityBinding] {
 	return ListQueryConfig[domain.PositionAbilityBinding]{
-		Table:         "position_ability_bindings",
-		SelectColumns: "id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
+		Table:         "position_ability_bindings b LEFT JOIN ability_points ap ON ap.id = b.ability_point_id",
+		SelectColumns: "b.id, b.career_position_id, b.responsibility_id, b.ability_point_id, ap.name AS ability_name, b.source, b.domain, b.required_level, b.rubric_description, b.attributes, b.weight",
 		TenantScoped:  true,
-		OrderBy:       "id DESC",
+		TenantColumn:  "b.tenant_id",
+		OrderBy:       "b.id DESC",
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if careerPositionID := p.Values["careerPositionId"]; careerPositionID != "" {
-				qb.AddCondition("career_position_id = " + qb.NextArg(careerPositionID))
+				qb.AddCondition("b.career_position_id = " + qb.NextArg(careerPositionID))
 			}
 			if responsibilityID := p.Values["responsibilityId"]; responsibilityID != "" {
-				qb.AddCondition("responsibility_id = " + qb.NextArg(responsibilityID))
+				qb.AddCondition("b.responsibility_id = " + qb.NextArg(responsibilityID))
 			}
 		},
 	}
@@ -109,22 +110,26 @@ type PositionAbilityParams struct {
 
 func (s *PositionAbilityStore) fetchBinding(ctx context.Context, id string) (*domain.PositionAbilityBinding, error) {
 	var b domain.PositionAbilityBinding
-	var domainField, rubricDescription *string
+	var domainField, rubricDescription, abilityName *string
 	var attributes []string
 
 	err := s.q.QueryRow(ctx, `
-		SELECT id, career_position_id, responsibility_id, ability_point_id, source,
-			domain, required_level, rubric_description, attributes, weight
-		FROM position_ability_bindings WHERE id = $1
+		SELECT b.id, b.career_position_id, b.responsibility_id, b.ability_point_id,
+			ap.name AS ability_name, b.source,
+			b.domain, b.required_level, b.rubric_description, b.attributes, b.weight
+		FROM position_ability_bindings b
+		LEFT JOIN ability_points ap ON ap.id = b.ability_point_id
+		WHERE b.id = $1
 	`, id).Scan(
-		&b.ID, &b.CareerPositionID, &b.ResponsibilityID, &b.AbilityPointID, &b.Source,
-		&domainField, &b.RequiredLevel, &rubricDescription, &attributes, &b.Weight,
+		&b.ID, &b.CareerPositionID, &b.ResponsibilityID, &b.AbilityPointID, &abilityName,
+		&b.Source, &domainField, &b.RequiredLevel, &rubricDescription, &attributes, &b.Weight,
 	)
 	if err != nil {
 		return nil, err
 	}
 	b.Domain = domainField
 	b.RubricDescription = rubricDescription
+	b.AbilityName = abilityName
 	b.Attributes = attributes
 	return &b, nil
 }
@@ -133,16 +138,17 @@ func scanPositionAbilityRows(rows pgx.Rows) ([]domain.PositionAbilityBinding, er
 	items := make([]domain.PositionAbilityBinding, 0)
 	for rows.Next() {
 		var b domain.PositionAbilityBinding
-		var domainField, rubricDescription *string
+		var domainField, rubricDescription, abilityName *string
 		var attributes []string
 		if err := rows.Scan(
-			&b.ID, &b.CareerPositionID, &b.ResponsibilityID, &b.AbilityPointID, &b.Source,
-			&domainField, &b.RequiredLevel, &rubricDescription, &attributes, &b.Weight,
+			&b.ID, &b.CareerPositionID, &b.ResponsibilityID, &b.AbilityPointID, &abilityName,
+			&b.Source, &domainField, &b.RequiredLevel, &rubricDescription, &attributes, &b.Weight,
 		); err != nil {
 			return nil, err
 		}
 		b.Domain = domainField
 		b.RubricDescription = rubricDescription
+		b.AbilityName = abilityName
 		b.Attributes = attributes
 		items = append(items, b)
 	}

@@ -48,7 +48,7 @@ export function CompetencyStandards({
       const resp = responsibilities.find((r) => r.id === b.responsibilityId)
       const key = resp?.name || b.domain || '其他'
       const list = map.get(key) || []
-      list.push({ ...b, name: abilityNameMap[b.abilityPointId] || '未命名能力' })
+      list.push({ ...b, name: abilityNameMap[b.abilityPointId] || b.abilityName || '未命名能力' })
       map.set(key, list)
     })
     return Array.from(map.entries())

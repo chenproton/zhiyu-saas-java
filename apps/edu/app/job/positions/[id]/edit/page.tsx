@@ -124,12 +124,11 @@ function PositionEditPageContent({ params }: PageProps) {
         const certificates = certRes.items.map(convertApiCertificateToLocal)
         const abilityBindings = bindingRes.items.map((b) => {
           const local = convertApiAbilityBindingToLocal(b)
+          // 绑定接口已 JOIN 返回能力点名称；列表未命中时补充描述等详情
           const ability = abilityMap.get(b.abilityPointId)
           if (ability) {
-            local.name = ability.name
-            local.description = ability.description
-          } else if (b.source === 'custom') {
-            // Try to fetch custom ability details if not in public list
+            if (!local.name) local.name = ability.name
+            if (!local.description) local.description = ability.description
           }
           return local
         })
