@@ -56,7 +56,7 @@ export default function IndustriesPage() {
       description="管理行业分类，可为行业设置上级行业并启用/关闭"
       entityLabel="行业"
       searchPlaceholder="搜索行业代码、名称或上级行业..."
-      createButtonLabel="新增行业"
+      hideCreate
       items={industries}
       loading={loading}
       error={error?.message ?? null}
