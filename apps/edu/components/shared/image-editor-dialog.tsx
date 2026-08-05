@@ -1,9 +1,11 @@
 'use client'
 
-import dynamic from 'next/dynamic'
+import { useState } from 'react'
+import ImageEditor from '@unlayer/react-image-editor'
 import { Loader2 } from 'lucide-react'
+import { toast } from '@zhiyu/ui'
 
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface ImageEditorDialogProps {
   open: boolean
@@ -12,14 +14,6 @@ interface ImageEditorDialogProps {
   mimeType: string
   onConfirm: (file: File) => void
   onCancel: () => void
-}
-
-interface SavedImageData {
-  name?: string
-  extension?: string
-  mimeType?: string
-  imageBase64?: string
-  imageCanvas?: HTMLCanvasElement
 }
 
 const EXT_BY_MIME: Record<string, string> = {
@@ -32,19 +26,10 @@ const EXT_BY_MIME: Record<string, string> = {
   'image/svg+xml': 'svg',
 }
 
-/** dataURL → File（imageBase64 为同步路径，避免 canvas 卸载后 toBlob 失效） */
-function dataURLToFile(dataUrl: string, fileName: string, type: string): File {
-  const arr = dataUrl.split(',')
-  const mime = arr[0]?.match(/:(.*?);/)?.[1] || type
-  const bstr = atob(arr[1])
-  const u8arr = new Uint8Array(bstr.length)
-  for (let i = 0; i < bstr.length; i += 1) u8arr[i] = bstr.charCodeAt(i)
-  return new File([u8arr], fileName, { type: mime })
-}
-
 /**
- * 通用图片编辑弹窗：裁切/旋转/滤镜/文字/图形/画笔/贴纸/水印，
- * 基于 react-filerobot-image-editor（原生 React 19 组件，完全离线可用）。
+ * 通用图片编辑弹窗：裁切/旋转/滤镜/文字/贴纸/相框等。
+ * 基于 @unlayer/react-image-editor，按官方 README 标准方式集成
+ * （image + options + onSave({dataUrl, blob})，编辑器核心由 unlayer CDN 加载）。
  */
 export function ImageEditorDialog({
   open,
@@ -54,25 +39,19 @@ export function ImageEditorDialog({
   onConfirm,
   onCancel,
 }: ImageEditorDialogProps) {
-  const handleSave = (data: SavedImageData) => {
+  const [loaded, setLoaded] = useState(false)
+
+  const handleSave = ({ blob }: { blob: Blob }) => {
     const type =
-      data.mimeType && data.mimeType.startsWith('image/') ? data.mimeType : mimeType || 'image/png'
+      blob.type && blob.type.startsWith('image/') ? blob.type : mimeType || 'image/png'
     const ext = EXT_BY_MIME[type] || 'png'
     const baseName = fileName.replace(/\.[^.]+$/, '') || 'image'
-    const fullName = `${baseName}.${ext}`
-    if (data.imageBase64) {
-      onConfirm(dataURLToFile(data.imageBase64, fullName, type))
-      return
-    }
-    if (data.imageCanvas) {
-      data.imageCanvas.toBlob(
-        (blob) => {
-          if (blob) onConfirm(new File([blob], fullName, { type }))
-        },
-        type,
-        0.92,
-      )
-    }
+    onConfirm(new File([blob], `${baseName}.${ext}`, { type }))
+  }
+
+  const handleFail = (msg: string) => () => {
+    toast({ title: msg, variant: 'destructive' })
+    onCancel()
   }
 
   return (
@@ -82,21 +61,30 @@ export function ImageEditorDialog({
         if (!v) onCancel()
       }}
     >
-      <DialogContent className="sm:max-w-[1100px] p-0 gap-0 overflow-hidden">
-        <DialogTitle className="sr-only">图片编辑</DialogTitle>
-        <div className="h-[92vh] w-full">
+      <DialogContent className="sm:max-w-[960px] max-h-[92vh] p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-5 pb-0">
+          <DialogTitle>图片编辑</DialogTitle>
+        </DialogHeader>
+        <div className="relative px-6 py-4 min-h-0 overflow-hidden">
+          {!loaded && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-background">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">编辑器加载中...</span>
+            </div>
+          )}
           {open && (
-            <FilerobotImageEditor
-              source={src}
+            <ImageEditor
+              image={src}
+              minHeight={540}
+              options={{
+                theme: 'light',
+                locale: 'zh',
+              }}
+              onLoad={() => setLoaded(true)}
               onSave={handleSave}
-              onClose={onCancel}
-              useBackendTranslations={false}
-              closeAfterSave={false}
-              avoidChangesNotSavedAlertOnLeave
-              showBackButton={false}
-              defaultSavedImageType="png"
-              savingPixelRatio={4}
-              previewPixelRatio={typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1}
+              onCancel={onCancel}
+              onLoadError={handleFail('图片加载失败，请更换图片后重试')}
+              onError={handleFail('图片编辑器加载失败，请刷新页面后重试')}
             />
           )}
         </div>
@@ -104,16 +92,3 @@ export function ImageEditorDialog({
     </Dialog>
   )
 }
-
-const FilerobotImageEditor = dynamic(
-  () => import('react-filerobot-image-editor').then((m) => m.default),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin" />
-        编辑器加载中...
-      </div>
-    ),
-  },
-)
