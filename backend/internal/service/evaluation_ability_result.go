@@ -36,9 +36,9 @@ func (s *EvaluationService) ListScenePositions(ctx context.Context, tenantID str
 	return s.st.Portal().ListScenePositions(ctx, tenantID)
 }
 
-// ListStudentCourses 租户已发布课程（与"我的学习"tab 同源）。
-func (s *EvaluationService) ListStudentCourses(ctx context.Context, tenantID string) ([]store.StudentCourseRow, error) {
-	return s.st.Portal().ListStudentCourses(ctx, &tenantID)
+// ListStudentCourses 学生班级已排课的已发布课程（与"我的学习"tab 同源）。
+func (s *EvaluationService) ListStudentCourses(ctx context.Context, userID, tenantID string) ([]store.StudentCourseRow, error) {
+	return s.st.Portal().ListStudentCourses(ctx, userID, &tenantID)
 }
 
 // GetAggregateLog 查询汇聚日志（租户限定）。

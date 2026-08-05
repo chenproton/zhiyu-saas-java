@@ -418,21 +418,27 @@ func (s *PortalStore) CountStudentScenes(ctx context.Context, tenantID, userID s
 	return n, nil
 }
 
-// ListStudentCourses 学生课程。
-func (s *PortalStore) ListStudentCourses(ctx context.Context, tenantID *string) ([]StudentCourseRow, error) {
+// ListStudentCourses 学生课程（仅返回排课表中已发布且属于学生班级的课程）。
+func (s *PortalStore) ListStudentCourses(ctx context.Context, userID string, tenantID *string) ([]StudentCourseRow, error) {
 	query := `
 		SELECT c.id, c.code, c.name, c.type, COALESCE(c.category, ''), c.online_hours, c.offline_hours,
 			COALESCE(c.semester, ''), COALESCE(c.class_name, ''), c.status,
-			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, ''), COALESCE(u.name, '')
+			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, ''), COALESCE(t.name, '')
 		FROM courses c
-		LEFT JOIN users u ON u.id = c.teacher_id
+		JOIN users st ON st.id = $1
+		LEFT JOIN users t ON t.id = c.teacher_id
 		WHERE c.status = 'published'`
-	args := []any{}
+	args := []any{userID}
 	if tenantID != nil {
-		query += ` AND (u.tenant_id = $1 OR c.creator_id IN (SELECT id FROM users WHERE tenant_id = $1))`
+		query += ` AND (t.tenant_id = $2 OR c.creator_id IN (SELECT id FROM users WHERE tenant_id = $2))`
 		args = append(args, *tenantID)
 	}
-	query += ` ORDER BY c.updated_at DESC LIMIT 50`
+	query += ` AND EXISTS (
+		SELECT 1 FROM schedule_entries se
+		WHERE se.course_id = c.id AND se.status = 'published'
+			AND (se.class_node_id = st.org_node_id OR st.org_node_id = ANY(se.class_node_ids))
+	)
+	ORDER BY c.updated_at DESC LIMIT 50`
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -459,20 +465,26 @@ type SceneTaskRow struct {
 	Difficulty int
 }
 
-// ListSceneTasks 场景任务。
-func (s *PortalStore) ListSceneTasks(ctx context.Context, tenantID *string) ([]SceneTaskRow, error) {
+// ListSceneTasks 场景任务（仅返回排课表中已发布且属于学生班级的场景）。
+func (s *PortalStore) ListSceneTasks(ctx context.Context, userID string, tenantID *string) ([]SceneTaskRow, error) {
 	query := `
 		SELECT t.id, t.scenario_id, s.name, t.name, t.difficulty
 		FROM scenario_tasks t
 		JOIN scenarios s ON s.id = t.scenario_id
+		JOIN users st ON st.id = $1
 		JOIN users u ON u.id = s.creator_id
 		WHERE s.status = 'published'`
-	args := []any{}
+	args := []any{userID}
 	if tenantID != nil {
-		query += ` AND u.tenant_id = $1`
+		query += ` AND u.tenant_id = $2`
 		args = append(args, *tenantID)
 	}
-	query += ` ORDER BY s.updated_at DESC LIMIT 50`
+	query += ` AND EXISTS (
+		SELECT 1 FROM schedule_entries se
+		WHERE se.scenario_id = s.id AND se.status = 'published' AND se.type = 'scene'
+			AND (se.class_node_id = st.org_node_id OR st.org_node_id = ANY(se.class_node_ids))
+	)
+	ORDER BY s.updated_at DESC LIMIT 50`
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
