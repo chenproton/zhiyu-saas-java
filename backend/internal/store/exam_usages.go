@@ -9,6 +9,11 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
+// manualExamUsageTargetTypesSQL 手动创建（"创建考试使用"按钮）的考试安排目标类型。
+// 场景任务测评(task)/课程节点测评(node)/历史课程级(course) 自动生成的临时考试不在此列，
+// 不会出现在考试管理与学生工作台（工作台首页、测评认证）等公开列表中。
+const manualExamUsageTargetTypesSQL = "'class', 'major', 'department', 'public'"
+
 // ExamUsageStore 考试安排持久化。
 type ExamUsageStore struct {
 	q Queryer
@@ -33,6 +38,7 @@ func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
 		SearchColumns: []string{"name"},
 		ScanRows:      ScanExamUsageRows,
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			qb.AddCondition("target_type IN (" + manualExamUsageTargetTypesSQL + ")")
 			if examID := p.Values["examId"]; examID != "" {
 				qb.AddCondition("exam_id = " + qb.NextArg(examID))
 			}

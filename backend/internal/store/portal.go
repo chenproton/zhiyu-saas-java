@@ -86,7 +86,8 @@ func (s *PortalStore) UpcomingExamCount(ctx context.Context, tenantID *string, n
 	query := `
 		SELECT COUNT(*) FROM exam_usages eu
 		JOIN users u ON u.id = eu.creator_id
-		WHERE eu.status = 'published' AND (eu.start_time IS NULL OR eu.start_time >= $1)`
+		WHERE eu.status = 'published' AND (eu.start_time IS NULL OR eu.start_time >= $1)
+		  AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)`
 	args := []any{now}
 	if tenantID != nil {
 		query += ` AND u.tenant_id = $2`
@@ -213,6 +214,7 @@ func (s *PortalStore) ListExamEvents(ctx context.Context, tenantID *string) ([]E
 		FROM exam_usages eu
 		JOIN users u ON u.id = eu.creator_id
 		WHERE eu.status IN ('published', 'in_progress')
+			AND eu.target_type IN (`+manualExamUsageTargetTypesSQL+`)
 			AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid)
 		ORDER BY eu.start_time ASC NULLS LAST
 		LIMIT 20
@@ -534,7 +536,8 @@ func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenan
 		JOIN exams e ON e.id = eu.exam_id
 		JOIN users u ON u.id = eu.creator_id
 		LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = $1::uuid
-		WHERE eu.status IN ('published', 'in_progress', 'finished')`
+		WHERE eu.status IN ('published', 'in_progress', 'finished')
+		  AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)`
 	args := []any{userID}
 	if tenantID != nil {
 		query += ` AND u.tenant_id = $2`

@@ -1,0 +1,142 @@
+package handler_test
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/handler"
+	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
+	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// TestExamUsage_Visibility 验证场景任务测评(task)/课程节点测评(node)/历史课程级(course)
+// 自动生成的临时考试，不出现在考试管理列表与学生工作台（工作台首页、测评认证）中；
+// 只有"创建考试使用"按钮创建的手动考试安排（class/major/department/public）才展示。
+func TestExamUsage_Visibility(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+	tenantID := testhelper.TestTenantID
+
+	// 1. 试卷：手动试卷 + 临时试卷
+	insertExam := func(name string, isTemp bool) string {
+		id := uuid.NewString()
+		execOrFail(t, env, ctx, `
+			INSERT INTO exams (id, tenant_id, name, status, duration, creator_id, code, is_temp)
+			VALUES ($1, $2, $3, 'published', 60, $4, $5, $6)
+		`, id, tenantID, name, testhelper.TestOperatorID, "SJ-"+uuid.NewString()[:8], isTemp)
+		return id
+	}
+	manualExamID := insertExam("手动考试试卷", false)
+	tempExamID := insertExam("临时考试试卷", true)
+	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = ANY($1::uuid[])", []string{manualExamID, tempExamID})
+
+	// 2. 考试安排：手动(class) + 临时(task/node/course)
+	insertUsage := func(examID, name, status, targetType string) string {
+		id := uuid.NewString()
+		execOrFail(t, env, ctx, `
+			INSERT INTO exam_usages (id, tenant_id, exam_id, name, status, target_type, target_ids, creator_id)
+			VALUES ($1, $2, $3, $4, $5, $6, ARRAY[$7]::uuid[], $8)
+		`, id, tenantID, examID, name, status, targetType, uuid.NewString(), testhelper.TestOperatorID)
+		return id
+	}
+	manualUsageID := insertUsage(manualExamID, "手动-班级考试", "published", "class")
+	taskUsageID := insertUsage(tempExamID, "场景任务-临时考试", "published", "task")
+	nodeUsageID := insertUsage(tempExamID, "课程节点-临时考试", "published", "node")
+	courseUsageID := insertUsage(tempExamID, "课程级-历史考试", "finished", "course")
+	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = ANY($1::uuid[])", []string{manualUsageID, taskUsageID, nodeUsageID, courseUsageID})
+
+	// 3. 考试管理列表：只展示手动创建的考试安排
+	w := env.Do("GET", "/api/v1/evaluation/exam-usages", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list exam usages: expected 200, got %d", w.Code)
+	}
+	items, _, err := testhelper.UnmarshalList[domain.ExamUsage](w)
+	if err != nil {
+		t.Fatalf("unmarshal exam usages: %v", err)
+	}
+	gotIDs := map[string]bool{}
+	for _, u := range items {
+		gotIDs[u.ID] = true
+	}
+	if !gotIDs[manualUsageID] {
+		t.Fatalf("考试管理列表应包含手动考试安排 %s，实际 %v", manualUsageID, gotIDs)
+	}
+	for _, id := range []string{taskUsageID, nodeUsageID, courseUsageID} {
+		if gotIDs[id] {
+			t.Fatalf("考试管理列表不应包含临时考试安排 %s", id)
+		}
+	}
+
+	// 4. 学生（无排课，仅验证考试相关展示）
+	studentID := uuid.NewString()
+	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
+	execOrFail(t, env, ctx, `
+		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
+		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '考试可见性测试学生', 'active', '{}')
+	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw))
+	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
+
+	st2 := store.New(env.DB)
+	svc2 := service.New(st2)
+	portalHandler := &handler.PortalHandler{Service: service.NewPositionService(svc2)}
+	rr := chi.NewRouter()
+	rr.Use(middleware.JWT(testhelper.TestJWTSecret))
+	rr.Get("/portal/workspace/dashboard", portalHandler.WorkspaceDashboard)
+
+	token := env.NewTokenWithIdentity(studentID, tenantID, domain.RoleStudent, nil, "student")
+	w = execWithRouter(t, rr, token)
+
+	dash, err := testhelper.Unmarshal[domain.WorkspaceDashboard](w)
+	if err != nil {
+		t.Fatalf("unmarshal dashboard: %v", err)
+	}
+
+	// 测评认证 tab：exams 只含手动考试安排
+	examIDs := map[string]bool{}
+	for _, e := range dash.Exams {
+		examIDs[e.ID] = true
+	}
+	if !examIDs[manualUsageID] {
+		t.Fatalf("学生考试列表应包含手动考试安排 %s，实际 %v", manualUsageID, examIDs)
+	}
+	for _, id := range []string{taskUsageID, nodeUsageID, courseUsageID} {
+		if examIDs[id] {
+			t.Fatalf("学生考试列表不应包含临时考试安排 %s", id)
+		}
+	}
+
+	// 工作台首页-课程表：考试事件只含手动考试安排
+	eventIDs := map[string]bool{}
+	for _, ev := range dash.Schedule {
+		if ev.Type == "exam" {
+			eventIDs[ev.ID] = true
+		}
+	}
+	for _, id := range []string{taskUsageID, nodeUsageID, courseUsageID} {
+		if eventIDs[id] {
+			t.Fatalf("工作台首页课程表不应包含临时考试安排 %s", id)
+		}
+	}
+	if len(eventIDs) != 1 || !eventIDs[manualUsageID] {
+		t.Fatalf("工作台首页课程表应只含手动考试安排 %s，实际 %v", manualUsageID, eventIDs)
+	}
+
+	// 工作台首页-今日待办：待参加考试数只统计手动考试安排
+	upcomingCount := 0
+	for _, todo := range dash.Todos {
+		if todo.ID == "upcoming-exams" {
+			upcomingCount = todo.Count
+		}
+	}
+	if upcomingCount != 1 {
+		t.Fatalf("待参加考试数应为 1（仅手动考试安排），实际 %d", upcomingCount)
+	}
+}
