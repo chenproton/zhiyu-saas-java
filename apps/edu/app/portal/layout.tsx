@@ -50,7 +50,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       {isLoginPage ? (
         <main>{children}</main>
       ) : (
-        <div className="min-h-screen pt-14">
+        // overflow-x-clip：裁剪横向视觉溢出而不产生滚动容器，不影响子页面 sticky 定位，
+        // 兜底防止个别页面装饰/内容横向撑开导致整页左右滑动
+        <div className="min-h-screen pt-14 overflow-x-clip">
           <TopNav />
           <main>{children}</main>
           <YiKnowAssistant />

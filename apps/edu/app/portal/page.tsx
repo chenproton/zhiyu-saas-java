@@ -539,7 +539,7 @@ export default function PortalHomePage() {
       </main>
 
       {/* Geometric decorations at page bottom */}
-      <div className="relative h-40 pointer-events-none" aria-hidden="true">
+      <div className="relative h-40 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -right-16 -bottom-24 w-64 h-64 rounded-full border border-primary/10" />
         <div className="absolute -right-4 -bottom-12 w-36 h-36 rounded-full border border-primary/10" />
         <div
