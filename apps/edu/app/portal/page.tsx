@@ -472,23 +472,7 @@ export default function PortalHomePage() {
 
       {/* Hero banner */}
       <section className="relative pt-3 px-4 sm:px-10">
-        <div
-          className="relative max-w-[1312px] mx-auto rounded-2xl overflow-hidden px-6 py-12 sm:px-16 sm:py-14 text-center"
-          style={{
-            background: 'linear-gradient(120deg,#eef5ff 0%,#f8fbff 55%,#f2f8ff 100%)',
-            boxShadow: '0 0 30px color-mix(in srgb, var(--primary) 6%, transparent)',
-          }}
-        >
-          {/* geometric decorations */}
-          <div className="absolute -right-16 -top-20 w-64 h-64 rounded-full border border-primary/10 pointer-events-none" />
-          <div className="absolute -right-4 -top-8 w-36 h-36 rounded-full border border-primary/10 pointer-events-none" />
-          <div
-            className="absolute -left-24 -bottom-28 w-80 h-80 border border-primary/[0.07] rounded-2xl pointer-events-none"
-            style={{ transform: 'rotate(45deg)' }}
-          />
-          <div className="absolute left-16 top-8 w-3 h-3 rounded-full bg-primary/10 pointer-events-none" />
-          <div className="absolute right-24 bottom-10 w-2 h-2 rounded-full bg-primary/10 pointer-events-none" />
-
+        <div className="relative max-w-[1312px] mx-auto px-6 py-12 sm:px-16 sm:py-14 text-center">
           <div className="relative" style={{ zIndex: 2 }}>
             <h1 className="text-[28px] sm:text-4xl lg:text-[40px] font-extrabold text-[#333] tracking-[1px] leading-tight mb-5">
               <span className="text-primary">场景化数智</span>
@@ -532,6 +516,18 @@ export default function PortalHomePage() {
           </div>
         ))}
       </main>
+
+      {/* Geometric decorations at page bottom */}
+      <div className="relative h-40 pointer-events-none" aria-hidden="true">
+        <div className="absolute -right-16 -bottom-24 w-64 h-64 rounded-full border border-primary/10" />
+        <div className="absolute -right-4 -bottom-12 w-36 h-36 rounded-full border border-primary/10" />
+        <div
+          className="absolute -left-24 -bottom-32 w-80 h-80 border border-primary/[0.07] rounded-2xl"
+          style={{ transform: 'rotate(45deg)' }}
+        />
+        <div className="absolute left-16 bottom-14 w-3 h-3 rounded-full bg-primary/10" />
+        <div className="absolute right-24 bottom-8 w-2 h-2 rounded-full bg-primary/10" />
+      </div>
 
       <Footer />
     </div>
