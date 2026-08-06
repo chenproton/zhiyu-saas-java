@@ -28,7 +28,7 @@ import {
   EVAL_METHOD_COLORS,
 } from '@/lib/types'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 import { formatDate } from '@/lib/format-utils'
 import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-graph'
 import { FavoriteButton } from '@/components/shared/favorite-button'
@@ -210,7 +210,7 @@ export default function CourseDetailPage() {
         <div className="max-w-[1400px] mx-auto px-6 py-6 w-full flex-1">
           <Skeleton className="h-[500px] w-full rounded-xl" />
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -230,7 +230,7 @@ export default function CourseDetailPage() {
             返回课程列表
           </Link>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -777,7 +777,7 @@ export default function CourseDetailPage() {
         />
       ))}
 
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

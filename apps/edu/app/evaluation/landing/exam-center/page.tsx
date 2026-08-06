@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { examUsageApi, examApi } from '@/lib/api'
 import type { ExamCenterItem, Exam } from '@/lib/types'
 import { ExamCenterCard } from '@/components/evaluation/exam-center-card'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 
 export default function ExamCenterPage() {
   const [items, setItems] = useState<ExamCenterItem[]>([])
@@ -135,7 +135,7 @@ export default function ExamCenterPage() {
           </div>
         )}
       </main>
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

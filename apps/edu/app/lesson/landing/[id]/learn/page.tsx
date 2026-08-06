@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 import {
   ResourcePreviewModal,
   usePreviewResources,
@@ -271,7 +271,7 @@ export default function LessonLearnPage() {
             <Skeleton className="h-[400px] w-full rounded-2xl" />
           </div>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -299,7 +299,7 @@ export default function LessonLearnPage() {
             返回课程列表
           </Link>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -736,7 +736,7 @@ export default function LessonLearnPage() {
         />
       ))}
 
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

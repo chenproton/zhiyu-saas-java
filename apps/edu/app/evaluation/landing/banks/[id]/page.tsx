@@ -22,7 +22,7 @@ import { questionBankApi, questionApi, knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
@@ -163,7 +163,7 @@ export default function BankDetailPage() {
         <div className="max-w-[1400px] mx-auto px-6 py-6 w-full flex-1">
           <Skeleton className="h-[500px] w-full rounded-xl" />
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -183,7 +183,7 @@ export default function BankDetailPage() {
             返回测评首页
           </Link>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -471,7 +471,7 @@ export default function BankDetailPage() {
         </div>
       </main>
 
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

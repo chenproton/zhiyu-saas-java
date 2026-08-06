@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 import {
   ResourcePreviewModal,
   usePreviewResources,
@@ -362,7 +362,7 @@ export default function SceneLearnPage() {
             <Skeleton className="h-[400px] w-full rounded-2xl" />
           </div>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -390,7 +390,7 @@ export default function SceneLearnPage() {
             返回场景列表
           </Link>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -936,7 +936,7 @@ export default function SceneLearnPage() {
         />
       ))}
 
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

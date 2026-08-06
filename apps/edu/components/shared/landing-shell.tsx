@@ -5,7 +5,7 @@ import { ChevronRight, Filter, Search, Sparkles, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 
 export interface LandingStat {
   icon: LucideIcon
@@ -251,7 +251,7 @@ export function LandingShell({
         </div>
       </main>
 
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }
