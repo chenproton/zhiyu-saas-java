@@ -598,7 +598,9 @@ if [[ -z "${NEXT_PUBLIC_SITE_URL:-}" ]]; then
     site_host="$NGINX_SSL_DOMAIN"
   else
     # 从现有 https 配置（含手动维护的 ssl conf）中提取域名
-    site_host=$(grep -h "server_name" /etc/nginx/conf.d/zhiyu-saas-ssl.conf /etc/nginx/conf.d/ai-zhiyu-https.conf 2>/dev/null | sed 's/.*server_name[[:space:]]*//; s/[[:space:]]*;.*//' | grep -v "^_" | awk '{print $1}' | head -1)
+    # 部分服务器可能只有其中一份 conf，grep 遇到缺失文件退出码为 2，
+    # 在 set -euo pipefail 下会导致整个部署中断，这里用 || true 容错
+    site_host=$(grep -h "server_name" /etc/nginx/conf.d/zhiyu-saas-ssl.conf /etc/nginx/conf.d/ai-zhiyu-https.conf 2>/dev/null | sed 's/.*server_name[[:space:]]*//; s/[[:space:]]*;.*//' | grep -v "^_" | awk '{print $1}' | head -1) || true
     if [[ -n "$site_host" ]]; then
       site_scheme="https"
     elif [[ -n "${NGINX_SERVER_NAME:-}" && "${NGINX_SERVER_NAME:-_}" != "_" ]]; then
