@@ -24,7 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useData } from '@/components/providers/data-provider'
 import type { Question, QuestionType, EvalKnowledgePoint } from '@/lib/types'
-import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
+import { QUESTION_TYPES, QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { cn } from '@/lib/utils'
@@ -204,7 +204,7 @@ export function ManualQuestionDialog({
                   <SelectContent>
                     <SelectGroup>
                       <SelectItem value="all">全部类型</SelectItem>
-                      {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+                      {QUESTION_TYPES.map((type) => (
                         <SelectItem key={type} value={type}>
                           {QUESTION_TYPE_LABELS[type]}
                         </SelectItem>

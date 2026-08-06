@@ -60,7 +60,7 @@ import { useData } from '@/components/providers/data-provider'
 import { importExportApi, downloadBlob } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from '@/lib/types'
-import { QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, DIFFICULTY_LABELS } from '@/lib/types'
+import { QUESTION_TYPES, QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, DIFFICULTY_LABELS } from '@/lib/types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { formatDate } from '@/lib/format-utils'
 
@@ -483,7 +483,7 @@ export default function QuestionBankDetailPage() {
               <TabsTrigger value="all" className="text-xs">
                 全部
               </TabsTrigger>
-              {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+              {QUESTION_TYPES.map((type) => (
                 <TabsTrigger key={type} value={type} className="text-xs">
                   {QUESTION_TYPE_LABELS[type]}
                 </TabsTrigger>
@@ -505,7 +505,7 @@ export default function QuestionBankDetailPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+              {QUESTION_TYPES.map((type) => (
                 <DropdownMenuItem
                   key={type}
                   onClick={() => {
