@@ -579,6 +579,10 @@ interface PeriodSettings {
   morningClassCount: number
   afternoonClassCount: number
   eveningClassCount: number
+  morningSelfStart: string
+  morningStart: string
+  afternoonStart: string
+  eveningStart: string
   morningSelfDuration: number
   morningSelfBreak: number
   morningClassDuration: number
@@ -594,6 +598,10 @@ const defaultSettings: PeriodSettings = {
   morningClassCount: 4,
   afternoonClassCount: 4,
   eveningClassCount: 1,
+  morningSelfStart: '07:30',
+  morningStart: '08:00',
+  afternoonStart: '14:00',
+  eveningStart: '18:30',
   morningSelfDuration: 20,
   morningSelfBreak: 10,
   morningClassDuration: 45,
@@ -604,14 +612,6 @@ const defaultSettings: PeriodSettings = {
   eveningBreak: 10,
 }
 
-// 各时段起始时刻（与排课页课表网格的时段约定一致）
-const GROUP_START: Record<string, string> = {
-  morning_self: '07:30',
-  morning: '08:00',
-  afternoon: '14:00',
-  evening: '18:30',
-}
-
 // 参数化生成全部节次：按时段顺序排列，sortOrder 即数组下标
 function generateRows(settings: PeriodSettings): PeriodRow[] {
   const rows: PeriodRow[] = []
@@ -620,13 +620,14 @@ function generateRows(settings: PeriodSettings): PeriodRow[] {
   }
   const group = (
     type: string,
+    start: string,
     count: number,
     duration: number,
     breakMins: number,
     label: (i: number) => string,
   ) => {
     if (count <= 0) return
-    let current = parseTime(GROUP_START[type] || '08:00')
+    let current = parseTime(start || '08:00')
     for (let i = 0; i < count; i++) {
       add(type, label(i + 1), current, current + duration)
       current += duration
@@ -634,10 +635,10 @@ function generateRows(settings: PeriodSettings): PeriodRow[] {
     }
   }
 
-  group('morning_self', settings.morningSelfCount, settings.morningSelfDuration, settings.morningSelfBreak, (i) => `早自习 ${i}`)
-  group('morning', settings.morningClassCount, settings.morningClassDuration, settings.morningBreakDuration, (i) => `上午 ${i}`)
-  group('afternoon', settings.afternoonClassCount, settings.afternoonClassDuration, settings.afternoonBreakDuration, (i) => `下午 ${i}`)
-  group('evening', settings.eveningClassCount, settings.eveningDuration, settings.eveningBreak, (i) => `晚自习 ${i}`)
+  group('morning_self', settings.morningSelfStart, settings.morningSelfCount, settings.morningSelfDuration, settings.morningSelfBreak, (i) => `早自习 ${i}`)
+  group('morning', settings.morningStart, settings.morningClassCount, settings.morningClassDuration, settings.morningBreakDuration, (i) => `上午 ${i}`)
+  group('afternoon', settings.afternoonStart, settings.afternoonClassCount, settings.afternoonClassDuration, settings.afternoonBreakDuration, (i) => `下午 ${i}`)
+  group('evening', settings.eveningStart, settings.eveningClassCount, settings.eveningDuration, settings.eveningBreak, (i) => `晚自习 ${i}`)
   return rows
 }
 
@@ -655,7 +656,7 @@ function durationOf(row: PeriodRow): number | null {
   return parseTime(row.endTime) - parseTime(row.startTime)
 }
 
-// 从已有节次反推设置参数（时长取各组首条，课间无法反推用默认值）
+// 从已有节次反推设置参数（开始时间/时长取各组首条，课间无法反推用默认值）
 function deriveSettings(items: PeriodSlot[]): PeriodSettings {
   const s = { ...defaultSettings }
   const counts: Record<string, number> = { morning_self: 0, morning: 0, afternoon: 0, evening: 0 }
@@ -669,18 +670,27 @@ function deriveSettings(items: PeriodSlot[]): PeriodSettings {
   s.morningClassCount = counts.morning
   s.afternoonClassCount = counts.afternoon
   s.eveningClassCount = counts.evening
-  const groups: [keyof PeriodSettings, string][] = [
-    ['morningSelfDuration', 'morning_self'],
-    ['morningClassDuration', 'morning'],
-    ['afternoonClassDuration', 'afternoon'],
-    ['eveningDuration', 'evening'],
-  ]
-  for (const [durKey, type] of groups) {
-    if (counts[type] > 0) {
-      const dur = first[type] ? durationOf(first[type]) : null
-      if (dur && dur > 0) s[durKey] = dur
-    }
+  const startOf = (t: string): string | undefined => first[t]?.startTime
+  const durationOfGroup = (t: string): number | undefined => {
+    const r = first[t]
+    if (!r) return undefined
+    const d = durationOf(r)
+    return d && d > 0 ? d : undefined
   }
+  // 开始时间取各组首条节次的开始时间
+  s.morningSelfStart = startOf('morning_self') || s.morningSelfStart
+  s.morningStart = startOf('morning') || s.morningStart
+  s.afternoonStart = startOf('afternoon') || s.afternoonStart
+  s.eveningStart = startOf('evening') || s.eveningStart
+  // 时长取各组首条节次推算
+  const d1 = durationOfGroup('morning_self')
+  const d2 = durationOfGroup('morning')
+  const d3 = durationOfGroup('afternoon')
+  const d4 = durationOfGroup('evening')
+  if (d1) s.morningSelfDuration = d1
+  if (d2) s.morningClassDuration = d2
+  if (d3) s.afternoonClassDuration = d3
+  if (d4) s.eveningDuration = d4
   return s
 }
 
@@ -692,10 +702,6 @@ function PeriodSlotsSection() {
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
-
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [form, setForm] = useState<PeriodRow>({ name: '', type: 'morning', startTime: '', endTime: '' })
 
   const loadItems = useCallback(async () => {
     try {
@@ -730,34 +736,6 @@ function PeriodSlotsSection() {
   const handleReset = () => {
     setSettings(defaultSettings)
     setRows(generateRows(defaultSettings))
-    setDirty(true)
-  }
-
-  const openAdd = () => {
-    setEditingIndex(null)
-    setForm({ name: '', type: 'morning', startTime: '', endTime: '' })
-    setDialogOpen(true)
-  }
-
-  const openEdit = (idx: number) => {
-    setEditingIndex(idx)
-    setForm({ ...rows[idx] })
-    setDialogOpen(true)
-  }
-
-  const handleFormSave = () => {
-    if (!form.name.trim()) return
-    if (editingIndex != null) {
-      setRows((prev) => prev.map((r, i) => (i === editingIndex ? { ...form, name: form.name.trim() } : r)))
-    } else {
-      setRows((prev) => [...prev, { ...form, name: form.name.trim() }])
-    }
-    setDialogOpen(false)
-    setDirty(true)
-  }
-
-  const handleDeleteRow = (idx: number) => {
-    setRows((prev) => prev.filter((_, i) => i !== idx))
     setDirty(true)
   }
 
@@ -827,10 +805,6 @@ function PeriodSlotsSection() {
                 </div>
               ))}
             </div>
-            <Button size="sm" onClick={openAdd}>
-              <Plus className="mr-1 size-4" />
-              添加节次
-            </Button>
           </div>
 
           <div className="overflow-x-auto rounded-lg border">
@@ -860,39 +834,16 @@ function PeriodSlotsSection() {
                 ) : rows.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="h-24 border text-center text-sm text-muted-foreground">
-                      暂无节次，在右侧配置各时段参数自动生成，或点击「添加节次」手动创建
+                      暂无节次，在右侧配置各时段参数自动生成
                     </td>
                   </tr>
                 ) : (
-                  rows.map((row, idx) => {
+                  rows.map((row) => {
                     const meta = PERIOD_TYPE_META[row.type] || PERIOD_TYPE_META.morning
                     return (
-                      <tr key={idx}>
+                      <tr key={row.name}>
                         <td className="border px-2 py-1.5 align-top">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-medium">{row.name}</span>
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                type="button"
-                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                onClick={() => openEdit(idx)}
-                                title="编辑"
-                              >
-                                <FileEdit className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-                                onClick={() => handleDeleteRow(idx)}
-                                title="删除"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          <span className="mt-1 inline-block rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                            第 {idx + 1} 行
-                          </span>
+                          <span className="text-xs font-medium">{row.name}</span>
                         </td>
                         {DAY_LABELS.map((d) => (
                           <td key={d} className="border p-1.5">
@@ -956,6 +907,10 @@ function PeriodSlotsSection() {
             <div className="space-y-3">
               <div>
                 <p className="mb-1 text-xs text-muted-foreground">早自习</p>
+                <StartTimeRow
+                  value={settings.morningSelfStart}
+                  onChange={(v) => updateSetting('morningSelfStart', v)}
+                />
                 <DurationRow
                   label="节次时长"
                   value={settings.morningSelfDuration}
@@ -969,6 +924,10 @@ function PeriodSlotsSection() {
               </div>
               <div>
                 <p className="mb-1 text-xs text-muted-foreground">上午</p>
+                <StartTimeRow
+                  value={settings.morningStart}
+                  onChange={(v) => updateSetting('morningStart', v)}
+                />
                 <DurationRow
                   label="节次时长"
                   value={settings.morningClassDuration}
@@ -982,6 +941,10 @@ function PeriodSlotsSection() {
               </div>
               <div>
                 <p className="mb-1 text-xs text-muted-foreground">下午</p>
+                <StartTimeRow
+                  value={settings.afternoonStart}
+                  onChange={(v) => updateSetting('afternoonStart', v)}
+                />
                 <DurationRow
                   label="节次时长"
                   value={settings.afternoonClassDuration}
@@ -995,6 +958,10 @@ function PeriodSlotsSection() {
               </div>
               <div>
                 <p className="mb-1 text-xs text-muted-foreground">晚自习</p>
+                <StartTimeRow
+                  value={settings.eveningStart}
+                  onChange={(v) => updateSetting('eveningStart', v)}
+                />
                 <DurationRow
                   label="节次时长"
                   value={settings.eveningDuration}
@@ -1013,7 +980,7 @@ function PeriodSlotsSection() {
 
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              修改参数将重新生成全部节次；可对单行编辑/删除微调，点「保存配置」一次性落库
+              修改参数将重新生成全部节次，点「保存配置」一次性落库
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={handleReset}>
@@ -1032,69 +999,6 @@ function PeriodSlotsSection() {
         </div>
       </div>
 
-      {/* 编辑 / 添加节次弹窗 */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingIndex != null ? '编辑节次' : '添加节次'}</DialogTitle>
-            <DialogDescription>
-              节次名称需与排课/导入时填写的名称一致（如 上午1-2）
-            </DialogDescription>
-          </DialogHeader>
-          <FieldGroup className="py-4">
-            <Field>
-              <FieldLabel>节次名称 *</FieldLabel>
-              <Input
-                placeholder="如 上午1-2"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>时段类型</FieldLabel>
-              <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PERIOD_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {PERIOD_TYPE_META[t].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Field>
-                <FieldLabel>开始时间</FieldLabel>
-                <Input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
-                />
-              </Field>
-              <Field>
-                <FieldLabel>结束时间</FieldLabel>
-                <Input
-                  type="time"
-                  value={form.endTime}
-                  onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
-                />
-              </Field>
-            </div>
-          </FieldGroup>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={handleFormSave} disabled={!form.name.trim()}>
-              确定
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* 使用说明 */}
       <Dialog open={showHelp} onOpenChange={setShowHelp}>
         <DialogContent>
@@ -1103,9 +1007,8 @@ function PeriodSlotsSection() {
           </DialogHeader>
           <div className="space-y-3 py-2 text-sm text-muted-foreground">
             <p>1. 在右侧面板配置各时段的节次数量，左侧课表网格会自动生成并预览。</p>
-            <p>2. 可设置各时段节次时长、课间时长，系统自动推算每个节次的起止时间。</p>
-            <p>3. 生成后可对单个节次编辑名称/时间/类型或删除微调。</p>
-            <p>4. 点击「保存配置」一次性落库；节次按名称被排课与 Excel 导入引用，改名需同步调整排课数据。</p>
+            <p>2. 可设置各时段开始时间、节次时长、课间时长，系统自动推算每个节次的起止时间。</p>
+            <p>3. 点击「保存配置」一次性落库；节次按名称被排课与 Excel 导入引用，改名需同步调整排课数据。</p>
           </div>
           <DialogFooter>
             <Button onClick={() => setShowHelp(false)}>知道了</Button>
@@ -1135,6 +1038,26 @@ function NumberField({
         value={value}
         onChange={(e) => onChange(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
         className="h-8 w-16 text-center text-sm"
+      />
+    </div>
+  )
+}
+
+function StartTimeRow({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-muted-foreground">开始时间</span>
+      <Input
+        type="time"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-8 w-[110px] text-center text-sm"
       />
     </div>
   )
