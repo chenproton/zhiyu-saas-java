@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { getPlatformCardModules, platformModuleDefs } from '@/lib/navigation-config'
+import { getServiceClickCounts, recordServiceClick } from '@/lib/frequent-services'
 
 const menuItems = [
   { id: 'system', label: '系统管理', icon: Settings },
@@ -72,6 +73,12 @@ interface ModuleItem {
   href: string
 }
 
+interface FrequentService {
+  href: string
+  label: string
+  icon: typeof Settings
+}
+
 interface ModuleSection {
   id: string
   label: string
@@ -111,6 +118,7 @@ function ModuleCard({ module }: { module: ModuleItem }) {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={() => recordServiceClick(module.href)}
         className={className}
       >
         {cardContent}
@@ -127,7 +135,7 @@ function ModuleCard({ module }: { module: ModuleItem }) {
   }
 
   return (
-    <Link key={module.id} href={href} className={className}>
+    <Link key={module.id} href={href} onClick={() => recordServiceClick(module.href)} className={className}>
       {cardContent}
     </Link>
   )
@@ -139,8 +147,6 @@ export default function AppsPage() {
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const contentRef = useRef<HTMLDivElement>(null)
   const subscriptionLoading = subscriptionModules === null
-
-  const visibleQuickAccess = quickAccess.filter((item) => hasMenuPermission(item.href))
 
   const allModules: ModuleSection[] = useMemo(() => {
     return menuItems
@@ -158,6 +164,31 @@ export default function AppsPage() {
       })
       .filter((section) => section.modules.length > 0)
   }, [hasMenuPermission, subscriptionModules])
+
+  const servicePool: FrequentService[] = useMemo(() => {
+    const pool: FrequentService[] = quickAccess.map((item) => ({ ...item }))
+    for (const section of allModules) {
+      for (const m of section.modules) {
+        if (!pool.some((p) => p.href === m.href)) {
+          pool.push({ href: m.href, label: m.title, icon: section.icon })
+        }
+      }
+    }
+    return pool
+  }, [allModules])
+
+  const serviceClickCounts = useMemo(() => getServiceClickCounts(), [])
+
+  const visibleQuickAccess = useMemo(() => {
+    const visible = servicePool.filter((item) => hasMenuPermission(item.href))
+    const hasClicks = visible.some((item) => (serviceClickCounts[item.href] || 0) > 0)
+    if (!hasClicks) {
+      return visible.filter((item) => quickAccess.some((q) => q.href === item.href)).slice(0, 6)
+    }
+    return [...visible]
+      .sort((a, b) => (serviceClickCounts[b.href] || 0) - (serviceClickCounts[a.href] || 0))
+      .slice(0, 6)
+  }, [servicePool, serviceClickCounts, hasMenuPermission])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -206,10 +237,11 @@ export default function AppsPage() {
               <span className="font-medium">常用服务</span>
             </div>
             <div className="flex items-center gap-2 overflow-x-auto">
-              {visibleQuickAccess.map((item, index) => (
+              {visibleQuickAccess.map((item) => (
                 <Link
-                  key={index}
+                  key={item.href}
                   href={item.href}
+                  onClick={() => recordServiceClick(item.href)}
                   className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg hover:bg-primary/5 hover:text-primary transition-all shrink-0 group border border-border"
                 >
                   <item.icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
