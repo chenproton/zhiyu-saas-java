@@ -9,7 +9,6 @@ import { coverGradientFor } from '@/lib/cover-gradients'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
-import { HeroStatsCard } from '@/components/shared/hero-stats-card'
 import { formatDate } from '@/lib/format-utils'
 
 const CARDS_PER_PAGE = 12
@@ -219,16 +218,6 @@ export default function LessonLandingPage() {
         ),
         description: '体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效',
         ctaLabel: '浏览课程',
-        right: (
-          <HeroStatsCard
-            title="课程统计"
-            stats={[
-              { icon: BookOpen, label: '课程总数', value: courses.length },
-              { icon: Layers, label: '课程节点', value: totalNodes },
-              { icon: FileText, label: '教学资源', value: totalResources },
-            ]}
-          />
-        ),
       }}
       stats={[
         {

@@ -11,7 +11,6 @@ import type { QuestionBank, Exam, ExamCenterItem } from '@/lib/types'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
-import { HeroStatsCard } from '@/components/shared/hero-stats-card'
 import { ExamCenterCard } from '@/components/evaluation/exam-center-card'
 import { coverGradientFor } from '@/lib/cover-gradients'
 
@@ -304,16 +303,6 @@ export default function LandingHomePage() {
         ),
         description: '丰富题库资源与智能组卷工具，支持在线考试与自动评分，让教学测评更高效',
         ctaLabel: '浏览资源',
-        right: (
-          <HeroStatsCard
-            title="平台统计"
-            stats={[
-              { icon: Library, label: '题库总数', value: banks.length },
-              { icon: ClipboardList, label: '试卷总数', value: exams.length },
-              { icon: FileText, label: '题目总数', value: totalQuestions },
-            ]}
-          />
-        ),
       }}
       stats={[
         {

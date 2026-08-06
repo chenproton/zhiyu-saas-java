@@ -17,9 +17,6 @@ import {
   Wrench,
   Cpu,
   Package,
-  Boxes,
-  Brain,
-  BadgeCheck,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -28,10 +25,6 @@ import {
 } from '@/components/shared/resource-preview-modal'
 import {
   resourceLibraryApi,
-  knowledgeApi,
-  abilityApi,
-  certificateLibraryApi,
-  onSiteQuestionLibraryApi,
 } from '@/lib/api'
 import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceLibraryItem } from '@/lib/types/library'
@@ -40,7 +33,6 @@ import { reportError } from '@/lib/error-handling'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
-import { HeroStatsCard } from '@/components/shared/hero-stats-card'
 
 // 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
 const ALL_TYPES = Object.keys(RESOURCE_TYPE_LABELS) as (keyof typeof RESOURCE_TYPE_LABELS)[]
@@ -235,10 +227,6 @@ function ResourceCard({
 export default function LibraryLandingPage() {
   const listRef = useRef<HTMLDivElement>(null)
   const [resources, setResources] = useState<ResourceLibraryItem[]>([])
-  const [knowledgeCount, setKnowledgeCount] = useState(0)
-  const [abilityCount, setAbilityCount] = useState(0)
-  const [certCount, setCertCount] = useState(0)
-  const [questionCount, setQuestionCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const [search, setSearch] = useState('')
@@ -254,18 +242,8 @@ export default function LibraryLandingPage() {
     const load = async () => {
       setLoading(true)
       try {
-        const [resRes, kRes, aRes, cRes, qRes] = await Promise.allSettled([
-          resourceLibraryApi.list({ limit: 500 }),
-          knowledgeApi.list({ limit: 1 }),
-          abilityApi.list({ limit: 1 }),
-          certificateLibraryApi.list({ limit: 1 }),
-          onSiteQuestionLibraryApi.list({ limit: 1 }),
-        ])
-        if (resRes.status === 'fulfilled') setResources(resRes.value.items)
-        if (kRes.status === 'fulfilled') setKnowledgeCount(kRes.value.total)
-        if (aRes.status === 'fulfilled') setAbilityCount(aRes.value.total)
-        if (cRes.status === 'fulfilled') setCertCount(cRes.value.total)
-        if (qRes.status === 'fulfilled') setQuestionCount(qRes.value.total)
+        const resRes = await resourceLibraryApi.list({ limit: 500 })
+        setResources(resRes.items)
       } catch (err) {
         reportError(err, '加载 landing 资源统计')
       } finally {
@@ -355,8 +333,6 @@ export default function LibraryLandingPage() {
     })()
   }, [typeFilter, search, timeFilter, orgFilter, majorFilter, sortBy])
 
-  const totalCount = resources.length + knowledgeCount + abilityCount + certCount + questionCount
-
   const totalPages = Math.max(1, Math.ceil(filteredResources.length / CARDS_PER_PAGE))
   const pageResources = useMemo(() => {
     const start = (currentPage - 1) * CARDS_PER_PAGE
@@ -394,13 +370,6 @@ export default function LibraryLandingPage() {
     setTimeout(() => listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
-  const heroStats = [
-    { icon: Boxes, label: '资源总量', value: totalCount },
-    { icon: FileText, label: '教学资源', value: resources.length },
-    { icon: Brain, label: '知识/能力点', value: knowledgeCount + abilityCount },
-    { icon: BadgeCheck, label: '证书/题库', value: certCount + questionCount },
-  ]
-
   return (
     <>
       <LandingShell
@@ -415,7 +384,6 @@ export default function LibraryLandingPage() {
           ),
           description: '汇聚视频、文档、软件、场地等教学资源，为教师提供一站式资源共享服务',
           ctaLabel: '浏览资源',
-          right: <HeroStatsCard title="资源统计" stats={heroStats} />,
         }}
         stats={topTypes.map((s, i) => ({
           icon: TYPE_ICONS[s.type] || Package,
