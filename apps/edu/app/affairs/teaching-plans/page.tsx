@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarPlus, Search, ClipboardList, FileEdit, CheckCircle2, Eye } from 'lucide-react'
+import { CalendarPlus, Search, ClipboardList, FileEdit, CheckCircle2, Eye, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -38,6 +38,7 @@ export default function TeachingPlansPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [generateOpen, setGenerateOpen] = useState(false)
+  const [exportingId, setExportingId] = useState<string | null>(null)
 
   const { data, loading, refresh } = useAsync(async () => {
     const res = await teachingPlanApi.list({ limit: 500 })
@@ -76,6 +77,22 @@ export default function TeachingPlansPage() {
         title: '确认失败',
         description: err.message || '确认教学计划失败',
       })
+    }
+  }
+
+  const handleExport = async (p: TeachingPlan) => {
+    setExportingId(p.id)
+    try {
+      await teachingPlanApi.exportExcel(p.id)
+      toast({ title: '导出成功', description: `${p.programName || '教学计划'}已导出` })
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: '导出失败',
+        description: err.message || '导出教学计划失败',
+      })
+    } finally {
+      setExportingId(null)
     }
   }
 
@@ -148,7 +165,7 @@ export default function TeachingPlansPage() {
                 <TableHead className="w-[80px]">条目数</TableHead>
                 <TableHead className="w-[100px]">状态</TableHead>
                 <TableHead className="w-[160px]">生成时间</TableHead>
-                <TableHead className="sticky right-0 w-[160px] bg-white text-right">操作</TableHead>
+                <TableHead className="sticky right-0 w-[220px] bg-white text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -197,6 +214,16 @@ export default function TeachingPlansPage() {
                       >
                         <Eye className="mr-1 h-3 w-3" />
                         详情
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleExport(p)}
+                        disabled={exportingId === p.id}
+                      >
+                        <Download className="mr-1 h-3 w-3" />
+                        {exportingId === p.id ? '导出中...' : '导出教学计划'}
                       </Button>
                       {p.status === 'draft' && (
                         <Button

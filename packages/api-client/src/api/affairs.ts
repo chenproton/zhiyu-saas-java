@@ -120,6 +120,15 @@ export const teachingPlanApi = {
     }),
   deleteEntry: (id: string) =>
     request<{ id: string }>(`/affairs/teaching-plans/entries/${id}`, { method: 'DELETE' }),
+  /** 导出教学计划全部内容（计划信息 + 教学计划条目）为 Excel */
+  exportExcel: async (id: string) => {
+    const res = await authedFetch(`/affairs/teaching-plans/${encodeURIComponent(id)}/export`)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || `HTTP ${res.status}`)
+    }
+    downloadBlob(await res.blob(), '教学计划导出.xlsx')
+  },
 }
 
 // ==================== 场地 ====================

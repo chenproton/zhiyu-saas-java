@@ -32,6 +32,7 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	r.Put("/affairs/teaching-plans/entries/{id}", h.teachingPlanHandler.UpdateEntry)
 	r.Delete("/affairs/teaching-plans/entries/{id}", h.teachingPlanHandler.DeleteEntry)
 	r.Post("/affairs/teaching-plans/{id}/confirm", h.teachingPlanHandler.Confirm)
+	r.Get("/affairs/teaching-plans/{id}/export", h.teachingPlanHandler.ExportExcel)
 
 	// 场地 / 节次
 	r.Get("/affairs/venues", h.schedulingHandler.ListVenues)
