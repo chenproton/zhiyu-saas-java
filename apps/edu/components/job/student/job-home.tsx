@@ -67,7 +67,7 @@ function SceneSideLists({
     : 'bg-gradient-to-br from-rose-400/30 to-pink-500/30 text-rose-200 border border-white/15'
 
   return (
-    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
+    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)] h-[320px] lg:h-full flex flex-col">
       <div className="flex items-center gap-2.5 mb-3">
         <div className="flex gap-1 p-1 rounded-xl bg-white/10 border border-white/15">
           <button
@@ -95,12 +95,12 @@ function SceneSideLists({
       </div>
 
       {positions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-white/50 text-center py-4">
+        <div className="flex-1 flex flex-col items-center justify-center text-white/50 text-center py-4">
           <EmptyIcon className="w-9 h-9 mb-3 opacity-40" />
           <div className="text-sm font-semibold text-white/80">{emptyText}</div>
         </div>
       ) : (
-        <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar-thin flex flex-col gap-1">
           {positions.map((pos) => (
             <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
               <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
