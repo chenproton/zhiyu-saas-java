@@ -2,14 +2,16 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, Library, ClipboardList, FileText, Clock, PlayCircle } from 'lucide-react'
+import { ChevronRight, Library, ClipboardList, FileText, Clock, PlayCircle, BarChart3 } from 'lucide-react'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Button } from '@/components/ui/button'
-import { questionBankApi, examApi, evaluationBatchApi } from '@/lib/api'
+import { questionBankApi, examApi, evaluationBatchApi, examUsageApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
-import type { QuestionBank, Exam } from '@/lib/types'
+import type { QuestionBank, Exam, ExamCenterItem } from '@/lib/types'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
+import { ExamCenterCard } from '@/components/evaluation/exam-center-card'
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
@@ -105,6 +107,7 @@ export default function LandingHomePage() {
   const listRef = useRef<HTMLDivElement>(null)
   const [banks, setBanks] = useState<QuestionBank[]>([])
   const [exams, setExams] = useState<Exam[]>([])
+  const [centerItems, setCenterItems] = useState<ExamCenterItem[]>([])
   const [batchNames, setBatchNames] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -116,13 +119,15 @@ export default function LandingHomePage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const [banksRes, examsRes, batchesRes] = await Promise.all([
+        const [banksRes, examsRes, batchesRes, centerRes] = await Promise.all([
           questionBankApi.list({ status: 'published', limit: 1000 } as any),
           examApi.list({ status: 'published', limit: 1000 } as any),
           evaluationBatchApi.list({ limit: 1000 }),
+          examUsageApi.center().catch(() => []),
         ])
         setBanks(banksRes.items || [])
         setExams(examsRes.items || [])
+        setCenterItems(centerRes || [])
         const map = new Map<string, string>()
         ;(batchesRes.items || []).forEach((b: any) => {
           if (b.id && b.name) map.set(b.id, b.name)
@@ -136,6 +141,33 @@ export default function LandingHomePage() {
     }
     fetchData()
   }, [])
+
+  const centerStats = useMemo(() => {
+    const total = centerItems.length
+    const pending = centerItems.filter((i) => i.status === 'published').length
+    const inProgress = centerItems.filter((i) => i.status === 'in_progress' && !i.submitted).length
+    const finished = centerItems.filter((i) => i.status === 'finished' && !i.submitted).length
+    const submitted = centerItems.filter((i) => i.submitted).length
+    return {
+      total,
+      pending,
+      inProgress,
+      finished,
+      submitted,
+      participatable: centerItems.filter((i) => i.participatable).length,
+    }
+  }, [centerItems])
+
+  const statusPieData = useMemo(
+    () =>
+      [
+        { name: '待考', value: centerStats.pending, color: '#d97706' },
+        { name: '进行中', value: centerStats.inProgress, color: '#16a34a' },
+        { name: '已交卷', value: centerStats.submitted, color: '#2563eb' },
+        { name: '已结束', value: centerStats.finished, color: '#94a3b8' },
+      ].filter((d) => d.value > 0),
+    [centerStats],
+  )
 
   const batches = useMemo(() => {
     const set = new Set<string>()
@@ -310,36 +342,143 @@ export default function LandingHomePage() {
         },
       ]}
       beforeList={
-        <div className="bg-gradient-to-r from-primary via-primary to-primary/80 rounded-2xl p-6 mb-6 shadow-[0_8px_24px_rgba(22,119,255,0.25)] relative overflow-hidden">
-          <div
-            className="absolute inset-0 opacity-[0.1] pointer-events-none"
-            style={{
-              backgroundImage: `linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)`,
-              backgroundSize: '36px 36px',
-            }}
-          />
-          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0">
-                <ClipboardList className="w-7 h-7 text-white" />
+        loading ? (
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse shadow-[0_4px_20px_rgba(0,0,0,0.04)] mb-6" />
+        ) : centerItems.length > 0 ? (
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] mb-6 overflow-hidden">
+            <div className="px-6 pt-6 pb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#0f172a]">考试中心</h2>
+                  <p className="text-sm text-slate-500 mt-1 max-w-xl">
+                    查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">考试中心</h2>
-                <p className="text-sm text-white/80 mt-1 max-w-xl">
-                  查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试
-                </p>
+              <Button
+                asChild
+                className="bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-primary/20 transition-all shrink-0"
+              >
+                <Link href="/evaluation/landing/exam-center">
+                  进入考试中心 <ChevronRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {[
+                  { label: '全部考试', value: centerStats.total },
+                  { label: '待考', value: centerStats.pending },
+                  { label: '进行中', value: centerStats.inProgress },
+                  { label: '我可参加', value: centerStats.participatable },
+                ].map((s) => (
+                  <div
+                    key={s.label}
+                    className="flex items-center gap-4 p-4 rounded-xl bg-[#f8fafc] border border-[#eef2f7]"
+                  >
+                    <div className="flex-1">
+                      <div className="text-[26px] font-bold text-[#0f172a] leading-none">
+                        {s.value}
+                      </div>
+                      <div className="text-[13px] text-[#64748b] mt-1.5 font-medium">{s.label}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="lg:w-[250px] shrink-0">
+                  <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-5 h-full">
+                    <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2 mb-4">
+                      <BarChart3 className="w-4 h-4 text-primary" /> 状态分布
+                    </div>
+                    <div className="relative">
+                      <ResponsiveContainer width="100%" height={170}>
+                        <PieChart>
+                          <Pie
+                            data={statusPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={48}
+                            outerRadius={68}
+                            paddingAngle={3}
+                            dataKey="value"
+                            strokeWidth={0}
+                          >
+                            {statusPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number, name: string) => [`${value} 场`, name]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <div className="text-[22px] font-bold text-[#0f172a] leading-none">
+                          {centerStats.total}
+                        </div>
+                        <div className="text-[11px] text-[#64748b] mt-1">全部考试</div>
+                      </div>
+                    </div>
+                    <div className="space-y-2.5 mt-5">
+                      {statusPieData.map((d) => (
+                        <div key={d.name} className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-2 text-[#475569]">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ background: d.color }}
+                            />
+                            {d.name}
+                          </span>
+                          <span className="font-semibold text-[#0f172a]">{d.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {centerItems.slice(0, 3).map((item) => (
+                    <ExamCenterCard key={item.id} item={item} />
+                  ))}
+                </div>
               </div>
             </div>
-            <Button
-              asChild
-              className="bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg transition-all shrink-0"
-            >
-              <Link href="/evaluation/landing/exam-center">
-                进入考试中心 <ChevronRight className="w-4 h-4" />
-              </Link>
-            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="bg-gradient-to-r from-primary via-primary to-primary/80 rounded-2xl p-6 mb-6 shadow-[0_8px_24px_rgba(22,119,255,0.25)] relative overflow-hidden">
+            <div
+              className="absolute inset-0 opacity-[0.1] pointer-events-none"
+              style={{
+                backgroundImage: `linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)`,
+                backgroundSize: '36px 36px',
+              }}
+            />
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">考试中心</h2>
+                  <p className="text-sm text-white/80 mt-1 max-w-xl">
+                    查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试
+                  </p>
+                </div>
+              </div>
+              <Button
+                asChild
+                className="bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg transition-all shrink-0"
+              >
+                <Link href="/evaluation/landing/exam-center">
+                  进入考试中心 <ChevronRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )
       }
       filterTitle="资源筛选"
       filterRows={
