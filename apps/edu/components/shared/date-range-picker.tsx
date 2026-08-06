@@ -10,6 +10,7 @@ import 'react-day-picker/style.css'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface DateRangePickerProps {
   value: DateRange | undefined
@@ -33,19 +34,20 @@ const rdpThemeVars = {
  * 日期范围选择：点击弹出日历，先选开始日期、再选结束日期，点「确定」生效。
  * 使用 min=2 保证第一次点击只选中开始日期（否则 v10 会把 from/to 同时设为同一天）。
  */
-export function DateRangePicker({
-  value,
-  onChange,
-  placeholder = '选择日期范围',
-  className,
-}: DateRangePickerProps) {
+export function DateRangePicker({ value, onChange, placeholder, className }: DateRangePickerProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
 
   const hint = !value?.from
-    ? '请先选择开始日期'
+    ? t('请先选择开始日期')
     : value.to
-      ? `已选 ${format(value.from, 'yyyy-MM-dd')} ~ ${format(value.to, 'yyyy-MM-dd')}`
-      : `已选开始日期 ${format(value.from, 'yyyy-MM-dd')}，请选择结束日期`
+      ? t('已选 {from} ~ {to}', {
+          from: format(value.from, 'yyyy-MM-dd'),
+          to: format(value.to, 'yyyy-MM-dd'),
+        })
+      : t('已选开始日期 {from}，请选择结束日期', {
+          from: format(value.from, 'yyyy-MM-dd'),
+        })
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -67,11 +69,12 @@ export function DateRangePicker({
               </>
             ) : (
               <>
-                {format(value.from, 'yyyy-MM-dd')} ~ <span className="text-muted-foreground">请选择结束日期</span>
+                {format(value.from, 'yyyy-MM-dd')} ~{' '}
+                <span className="text-muted-foreground">{t('请选择结束日期')}</span>
               </>
             )
           ) : (
-            <span>{placeholder}</span>
+            <span>{placeholder ?? t('选择日期范围')}</span>
           )}
         </Button>
       </PopoverTrigger>
@@ -96,7 +99,7 @@ export function DateRangePicker({
             disabled={!value?.from}
             onClick={() => onChange(undefined)}
           >
-            清除
+            {t('清除')}
           </Button>
           <Button
             type="button"
@@ -104,7 +107,7 @@ export function DateRangePicker({
             disabled={!value?.from || !value?.to}
             onClick={() => setOpen(false)}
           >
-            确定
+            {t('确定')}
           </Button>
         </div>
       </PopoverContent>

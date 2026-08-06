@@ -31,6 +31,7 @@ import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { ErrorState } from '@/components/shared/error-state'
 import { PaginationBar } from '@/components/shared/pagination-bar'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface PortalStatItem {
   label: string
@@ -144,6 +145,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   rowSelection,
 }: PortalCrudPageConfig<T>) {
   const { toast } = useToast()
+  const t = useT()
   const [internalSearch, setInternalSearch] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formItem, setFormItem] = useState<T | null>(null)
@@ -212,8 +214,8 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setSaving(false)
@@ -228,8 +230,8 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '操作失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('操作失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
@@ -239,14 +241,14 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     setDeleting(true)
     try {
       await onDelete(deleteTarget)
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       setDeleteTarget(null)
       await onRetry()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setDeleting(false)
@@ -279,7 +281,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           {!hideImport && importConfig && (
             <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-1" />
-              批量导入
+              {t('批量导入')}
             </Button>
           )}
           {afterImportActions}
@@ -399,7 +401,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
                       colSpan={colSpan + (rowSelection ? 1 : 0)}
                       className="text-center text-sm text-muted-foreground py-8"
                     >
-                      {emptyContent ?? `暂无${entityLabel}数据`}
+                      {emptyContent ?? t('暂无{entityLabel}数据', { entityLabel })}
                     </TableCell>
                   </TableRow>
                 )}
@@ -410,8 +412,8 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             {footer ?? (
               <span className="text-sm text-muted-foreground">
-                共 {totalCount} 条记录
-                {selectionCount > 0 ? `，已选择 ${selectionCount} 条` : ''}
+                {t('共 {totalCount} 条记录', { totalCount })}
+                {selectionCount > 0 ? t('，已选择 {selectionCount} 条', { selectionCount }) : ''}
               </span>
             )}
             {pagination && (
@@ -434,16 +436,16 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
             setIsImportDialogOpen(open)
             if (!open) setImportFiles([])
           }}
-          title={`导入${entityLabel}`}
+          title={t('导入{entityLabel}', { entityLabel })}
           guideItems={[
-            <>点击下方按钮下载最新的导入模板（含系统字典数据）</>,
-            <>参照模板中各 Sheet 的填写说明，填入{entityLabel}数据</>,
-            <>完成后点击&quot;下一步&quot;上传文件</>,
+            <>{t('点击下方按钮下载最新的导入模板（含系统字典数据）')}</>,
+            <>{t('参照模板中各 Sheet 的填写说明，填入{entityLabel}数据', { entityLabel })}</>,
+            <>{t('完成后点击"下一步"上传文件')}</>,
           ]}
-          downloadLabel={`下载${entityLabel}批量导入模板`}
+          downloadLabel={t('下载{entityLabel}批量导入模板', { entityLabel })}
           onDownload={handleDownloadTemplate}
-          uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-          importLabel={() => '开始导入'}
+          uploadHint={t('点击选择已填写的 Excel (.xlsx) 文件')}
+          importLabel={() => t('开始导入')}
           onImport={handleImport}
           files={importFiles}
           onAddFiles={handleAddFiles}
@@ -472,20 +474,24 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {formItem?.id ? `编辑${entityLabel}` : `新增${entityLabel}`}
+                {formItem?.id
+                  ? t('编辑{entityLabel}', { entityLabel })
+                  : t('新增{entityLabel}', { entityLabel })}
               </DialogTitle>
               <DialogDescription>
-                {formItem?.id ? `修改${entityLabel}信息` : `添加新${entityLabel}`}
+                {formItem?.id
+                  ? t('修改{entityLabel}信息', { entityLabel })
+                  : t('添加新{entityLabel}', { entityLabel })}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">{formItem && renderForm(formItem, setFormItem)}</div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
-                取消
+                {t('取消')}
               </Button>
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                保存
+                {t('保存')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -498,11 +504,11 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           onOpenChange={(open) => {
             if (!open) setDeleteTarget(null)
           }}
-          title="确认删除"
+          title={t('确认删除')}
           description={deleteTarget ? getDeleteDescription?.(deleteTarget) : ''}
           pending={deleting}
           variant="destructive"
-          confirmText={deleting ? '删除中...' : '删除'}
+          confirmText={deleting ? t('删除中...') : t('删除')}
           onConfirm={confirmDelete}
         />
       )}

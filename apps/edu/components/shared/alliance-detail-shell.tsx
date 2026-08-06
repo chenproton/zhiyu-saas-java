@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { LoadingView } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface AllianceDetailShellTab<T extends string = string> {
   key: T
@@ -38,8 +39,9 @@ export function AllianceDetailShell<T extends string = string>({
   defaultTab,
   loading,
   notFound,
-  notFoundMessage = '数据不存在',
+  notFoundMessage,
 }: AllianceDetailShellProps<T>) {
+  const t = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab')
@@ -60,11 +62,11 @@ export function AllianceDetailShell<T extends string = string>({
   if (notFound) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground mb-4">{notFoundMessage}</p>
+        <p className="text-muted-foreground mb-4">{notFoundMessage ?? t('数据不存在')}</p>
         {backHref && (
           <Button variant="outline" size="sm" onClick={() => router.push(backHref)}>
             <ArrowLeft className="h-4 w-4 mr-1" />
-            返回列表
+            {t('返回列表')}
           </Button>
         )}
       </div>
@@ -80,12 +82,12 @@ export function AllianceDetailShell<T extends string = string>({
         {backHref ? (
           <Button variant="ghost" size="sm" onClick={() => router.push(backHref)}>
             <ArrowLeft className="h-4 w-4 mr-1" />
-            返回
+            {t('返回')}
           </Button>
         ) : (
           <Button variant="ghost" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-1" />
-            返回
+            {t('返回')}
           </Button>
         )}
         <div>
@@ -97,7 +99,7 @@ export function AllianceDetailShell<T extends string = string>({
         {editHref && (
           <Button variant="outline" size="sm" onClick={() => router.push(editHref)}>
             <Pencil className="h-4 w-4 mr-1" />
-            编辑
+            {t('编辑')}
           </Button>
         )}
         {actions}

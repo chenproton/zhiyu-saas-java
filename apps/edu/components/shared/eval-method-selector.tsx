@@ -13,6 +13,7 @@ import {
   Shield,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { useT } from '@/lib/i18n/locale-provider'
 import { cn } from '@/lib/utils'
 
 type EvalMethodKey =
@@ -152,24 +153,32 @@ export const EVALUATION_METHOD_OPTIONS: EvaluationMethodOption[] = [
   },
 ]
 
-const PRIMARY_TABS = [
-  { key: 'platform' as const, label: '平台通用' },
-  { key: 'industry' as const, label: '行业专属' },
-]
-
-const SECONDARY_TABS: Record<string, string[]> = {
-  platform: ['全部', '知识评价', '过程评价', '成果评价'],
-  industry: ['全部', '智慧物流', '网络安全'],
-}
-
 interface EvalMethodSelectorProps {
   value?: string[]
   onChange?: (methods: string[]) => void
 }
 
 export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorProps) {
+  const t = useT()
   const [primaryTab, setPrimaryTab] = useState<'platform' | 'industry'>('platform')
   const [secondaryTab, setSecondaryTab] = useState('全部')
+
+  const primaryTabs = [
+    { key: 'platform' as const, label: t('平台通用') },
+    { key: 'industry' as const, label: t('行业专属') },
+  ]
+
+  const secondaryTabsMap: Record<string, string[]> = {
+    platform: ['全部', '知识评价', '过程评价', '成果评价'],
+    industry: ['全部', '智慧物流', '网络安全'],
+  }
+
+  const methodOptions = EVALUATION_METHOD_OPTIONS.map((m) => ({
+    ...m,
+    label: t(m.label),
+    desc: t(m.desc),
+    secondaryCategory: t(m.secondaryCategory),
+  }))
 
   const toggleMethod = (key: string) => {
     const opt = EVALUATION_METHOD_OPTIONS.find((o) => o.key === key)
@@ -179,18 +188,18 @@ export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorP
     onChange?.(newMethods)
   }
 
-  const secondaryTabs = SECONDARY_TABS[primaryTab]
-  const filteredMethods = EVALUATION_METHOD_OPTIONS.filter((m) => {
+  const secondaryTabs = secondaryTabsMap[primaryTab]
+  const filteredMethods = methodOptions.filter((m) => {
     if (m.primaryCategory !== primaryTab) return false
     if (secondaryTab === '全部') return true
-    return m.secondaryCategory === secondaryTab
+    return m.secondaryCategory === t(secondaryTab)
   })
 
   return (
     <div className="space-y-4">
       {/* 分类 tabs */}
       <div className="flex items-center gap-2 border-b pb-2">
-        {PRIMARY_TABS.map((tab) => (
+        {primaryTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => {
@@ -220,7 +229,7 @@ export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorP
                 : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50',
             )}
           >
-            {tab}
+            {t(tab)}
           </button>
         ))}
       </div>
@@ -246,7 +255,7 @@ export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorP
               {!method.available && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
                   <span className="text-xl font-bold text-gray-300/60 rotate-[-12deg] select-none border-2 border-gray-300/40 px-3 py-1 rounded">
-                    未开通
+                    {t('未开通')}
                   </span>
                 </div>
               )}
@@ -273,7 +282,7 @@ export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorP
                   {enabled && (
                     <div className="flex items-center gap-1.5 text-primary text-xs font-medium bg-primary/5 px-2 py-1 rounded-full">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      已开通
+                      {t('已开通')}
                     </div>
                   )}
                   {!method.available && (
@@ -281,7 +290,7 @@ export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorP
                       variant="outline"
                       className="text-[10px] text-gray-400 border-gray-300 bg-white"
                     >
-                      未开通
+                      {t('未开通')}
                     </Badge>
                   )}
                 </div>

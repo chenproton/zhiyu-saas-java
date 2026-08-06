@@ -60,6 +60,7 @@ import { majorApi, workflowApi, downloadBlob } from '@/lib/api'
 import type { Major, Workflow } from '@/lib/types/backend'
 import type { ImportPreviewResult, ListResponse } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -253,6 +254,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   const { hasPermission, user, tenantId } = useAuth()
   const currentUserId = user?.id ?? ''
   const { toast } = useToast()
+  const t = useT()
 
   const [frontItems, setFrontItems] = useState<T[]>([])
   const [batches, setBatches] = useState<ContentBatch[]>([])
@@ -425,11 +427,13 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       setFrontItems(front)
     } catch (err) {
       reportError(err, '加载列表数据')
-      setLoadError(err instanceof Error ? err.message : `加载${entityLabel}列表失败`)
+      setLoadError(
+        err instanceof Error ? err.message : t('加载{entityLabel}列表失败', { entityLabel }),
+      )
     } finally {
       setIsLoading(false)
     }
-  }, [tenantId, currentUserId, approvalTargetType, approvalApi, batchApi, itemApi, entityLabel])
+  }, [tenantId, currentUserId, approvalTargetType, approvalApi, batchApi, itemApi, entityLabel, t])
 
   useEffect(() => {
     ;(async () => {
@@ -574,8 +578,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         } catch (err: any) {
           toast({
             variant: 'destructive',
-            title: '提交审批失败',
-            description: err.message || '请稍后重试',
+            title: t('提交审批失败'),
+            description: err.message || t('请稍后重试'),
           })
         }
       }
@@ -616,8 +620,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         } catch (err: any) {
           toast({
             variant: 'destructive',
-            title: '撤回审批失败',
-            description: err.message || '请稍后重试',
+            title: t('撤回审批失败'),
+            description: err.message || t('请稍后重试'),
           })
         }
       }
@@ -635,8 +639,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         } catch (err: any) {
           toast({
             variant: 'destructive',
-            title: '取消发布失败',
-            description: err.message || '请稍后重试',
+            title: t('取消发布失败'),
+            description: err.message || t('请稍后重试'),
           })
         }
       }
@@ -654,8 +658,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         } catch (err: any) {
           toast({
             variant: 'destructive',
-            title: '发布失败',
-            description: err.message || '请稍后重试',
+            title: t('发布失败'),
+            description: err.message || t('请稍后重试'),
           })
         }
       }
@@ -671,8 +675,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       } catch (err: any) {
         toast({
           variant: 'destructive',
-          title: '删除失败',
-          description: err.message || '请稍后重试',
+          title: t('删除失败'),
+          description: err.message || t('请稍后重试'),
         })
       }
     }
@@ -698,8 +702,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: type === 'archive' ? '归档失败' : '删除失败',
-        description: err.message || '请稍后重试',
+        title: type === 'archive' ? t('归档失败') : t('删除失败'),
+        description: err.message || t('请稍后重试'),
       })
     } finally {
       setConfirmAction(null)
@@ -716,8 +720,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         } catch (err: any) {
           toast({
             variant: 'destructive',
-            title: '归档失败',
-            description: err.message || '请稍后重试',
+            title: t('归档失败'),
+            description: err.message || t('请稍后重试'),
           })
         }
       }
@@ -749,8 +753,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     if (failed > 0) {
       toast({
         variant: 'destructive',
-        title: '批量克隆失败',
-        description: `${failed} 项克隆失败，请稍后重试`,
+        title: t('批量克隆失败'),
+        description: t('{failed} 项克隆失败，请稍后重试', { failed }),
       })
     }
     setSelectedIds([])
@@ -767,7 +771,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         disposition?.match(/filename="?([^";]+)"?/)?.[1] || `${exportEntityName}-export.csv`,
       )
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '导出失败', description: err.message || '导出失败' })
+      toast({
+        variant: 'destructive',
+        title: t('导出失败'),
+        description: err.message || t('导出失败'),
+      })
     }
     setIsExportDialogOpen(false)
     setSelectedIds([])
@@ -798,8 +806,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             } catch (err: any) {
               toast({
                 variant: 'destructive',
-                title: '提交审批失败',
-                description: err.message || '请稍后重试',
+                title: t('提交审批失败'),
+                description: err.message || t('请稍后重试'),
               })
             }
           }
@@ -833,8 +841,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         } catch (err: any) {
           toast({
             variant: 'destructive',
-            title: '绑定批次失败',
-            description: err.message || '请稍后重试',
+            title: t('绑定批次失败'),
+            description: err.message || t('请稍后重试'),
           })
         }
       }
@@ -854,8 +862,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       } catch (err: any) {
         toast({
           variant: 'destructive',
-          title: '调整批次失败',
-          description: err.message || '请稍后重试',
+          title: t('调整批次失败'),
+          description: err.message || t('请稍后重试'),
         })
       }
     }
@@ -879,7 +887,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     if (!target) return
     const name = cloneRenameValueRef.current?.trim()
     if (!name) {
-      toast({ variant: 'destructive', title: '克隆失败', description: '请输入克隆名称' })
+      toast({ variant: 'destructive', title: t('克隆失败'), description: t('请输入克隆名称') })
       return
     }
     try {
@@ -899,7 +907,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       setCloneRenameValue('')
       await refresh()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '克隆失败', description: err.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: t('克隆失败'),
+        description: err.message || t('请稍后重试'),
+      })
     }
   }
 
@@ -921,8 +933,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     if (!batch) {
       toast({
         variant: 'destructive',
-        title: '提示',
-        description: `该${entityLabel}未关联批次，无法提交审批`,
+        title: t('提示'),
+        description: t('该{entityLabel}未关联批次，无法提交审批', { entityLabel }),
       })
       return
     }
@@ -937,8 +949,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '提交失败',
-        description: err.message || '提交审批失败，请稍后重试',
+        title: t('提交失败'),
+        description: err.message || t('提交审批失败，请稍后重试'),
       })
     }
   }
@@ -963,8 +975,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '提交失败',
-        description: err.message || '提交审批失败，请稍后重试',
+        title: t('提交失败'),
+        description: err.message || t('提交审批失败，请稍后重试'),
       })
     }
   }
@@ -985,8 +997,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '提交失败',
-        description: err.message || '提交审批失败，请稍后重试',
+        title: t('提交失败'),
+        description: err.message || t('提交审批失败，请稍后重试'),
       })
     }
   }
@@ -998,8 +1010,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '撤回审批失败',
-        description: err.message || '请稍后重试',
+        title: t('撤回审批失败'),
+        description: err.message || t('请稍后重试'),
       })
     }
   }
@@ -1009,7 +1021,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       await itemApi.publish(item.id)
       await refresh()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '发布失败', description: err.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: t('发布失败'),
+        description: err.message || t('请稍后重试'),
+      })
     }
   }
 
@@ -1020,8 +1036,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '取消发布失败',
-        description: err.message || '请稍后重试',
+        title: t('取消发布失败'),
+        description: err.message || t('请稍后重试'),
       })
     }
   }
@@ -1042,8 +1058,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err.message || '调整共建人失败，请稍后重试',
+        title: t('保存失败'),
+        description: err.message || t('调整共建人失败，请稍后重试'),
       })
     }
   }
@@ -1078,7 +1094,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       }
       await doCsvImport(false)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
+      toast({
+        variant: 'destructive',
+        title: t('导入失败'),
+        description: err.message || t('导入失败'),
+      })
       setCsvImporting(false)
     }
   }
@@ -1088,10 +1108,15 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     setCsvImporting(true)
     try {
       const result = await importExportApi.import(importEntityName, importFiles[0], overwrite)
-      const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ''
+      const skippedMsg =
+        result.skipped != null ? t('，跳过 {skipped} 条', { skipped: result.skipped }) : ''
       toast({
-        title: '导入完成',
-        description: `成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}`,
+        title: t('导入完成'),
+        description: t('成功 {created} 条，失败 {failed} 条{skippedMsg}', {
+          created: result.created,
+          failed: result.failed,
+          skippedMsg,
+        }),
       })
       setImportFiles([])
       setImportPreview(null)
@@ -1099,7 +1124,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       setIsImportConfirmOpen(false)
       await refresh()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
+      toast({
+        variant: 'destructive',
+        title: t('导入失败'),
+        description: err.message || t('导入失败'),
+      })
     } finally {
       setCsvImporting(false)
     }
@@ -1126,7 +1155,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         : `${addHref}?id=${newItem.id}&new=true`
       router.push(url)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '创建失败', description: err.message || '创建失败' })
+      toast({
+        variant: 'destructive',
+        title: t('创建失败'),
+        description: err.message || t('创建失败'),
+      })
     }
   }
 
@@ -1160,10 +1193,10 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       {majors.length > 0 && (
         <Select value={selectedMajorId} onValueChange={onMajorChange}>
           <SelectTrigger className="h-9 w-full text-sm">
-            <SelectValue placeholder="全部专业" />
+            <SelectValue placeholder={t('全部专业')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部专业</SelectItem>
+            <SelectItem value="all">{t('全部专业')}</SelectItem>
             {majors.map((m) => (
               <SelectItem key={m.id} value={m.id}>
                 {m.name}
@@ -1174,7 +1207,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       )}
       <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
         {filteredBatches.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-gray-500 text-center">暂无批次分组</div>
+          <div className="px-4 py-6 text-sm text-gray-500 text-center">{t('暂无批次分组')}</div>
         ) : (
           filteredBatches.map((batch) => {
             const selected = selectedBatchId === batch.id
@@ -1208,12 +1241,12 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       <div className="space-y-4">
         {activeWorkflows.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 px-4 py-8 text-sm text-gray-500 text-center">
-            暂无启用的审批流程，请先在审批流程管理中启用
+            {t('暂无启用的审批流程，请先在审批流程管理中启用')}
           </div>
         ) : (
           <Select value={value} onValueChange={onChange}>
             <SelectTrigger className="h-9 w-full text-sm">
-              <SelectValue placeholder="选择审批流程" />
+              <SelectValue placeholder={t('选择审批流程')} />
             </SelectTrigger>
             <SelectContent>
               {activeWorkflows.map((w) => (
@@ -1225,7 +1258,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           </Select>
         )}
         <p className="text-xs text-gray-400">
-          选择审批流程后直接提交，无需绑定批次分组；提交后资源仍可在批次分组视图中随时绑定
+          {t('选择审批流程后直接提交，无需绑定批次分组；提交后资源仍可在批次分组视图中随时绑定')}
         </p>
       </div>
     )
@@ -1243,8 +1276,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       className="mt-2"
     >
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="batch">按批次分组提交</TabsTrigger>
-        <TabsTrigger value="workflow">按审批流程提交</TabsTrigger>
+        <TabsTrigger value="batch">{t('按批次分组提交')}</TabsTrigger>
+        <TabsTrigger value="workflow">{t('按审批流程提交')}</TabsTrigger>
       </TabsList>
       <TabsContent value="batch" className="mt-4">
         {batchNode}
@@ -1267,11 +1300,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             {extraHeaderActions}
             <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="mr-2 h-4 w-4" />
-              批量导入{entityLabel}
+              {t('批量导入{entityLabel}', { entityLabel })}
             </Button>
             <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={handleCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              新建{entityLabel}
+              {t('新建{entityLabel}', { entityLabel })}
             </Button>
           </>
         }
@@ -1279,31 +1312,31 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           activeTab !== 'public'
             ? [
                 {
-                  label: `${entityLabel}总数`,
+                  label: t('{entityLabel}总数', { entityLabel }),
                   value: stats.total,
                   icon: <SlidersHorizontal className="h-3 w-3 text-primary" />,
                   iconClassName: 'bg-primary/5',
                 },
                 {
-                  label: '未提交',
+                  label: t('未提交'),
                   value: stats.draft,
                   icon: <RotateCcw className="h-3 w-3 text-gray-500" />,
                   iconClassName: 'bg-gray-50',
                 },
                 {
-                  label: '审批中',
+                  label: t('审批中'),
                   value: stats.pending,
                   icon: <GitBranch className="h-3 w-3 text-yellow-500" />,
                   iconClassName: 'bg-yellow-50',
                 },
                 {
-                  label: '已驳回',
+                  label: t('已驳回'),
                   value: stats.rejected,
                   icon: <X className="h-3 w-3 text-red-500" />,
                   iconClassName: 'bg-red-50',
                 },
                 {
-                  label: '已发布',
+                  label: t('已发布'),
                   value: stats.published,
                   icon: <ArrowUpFromLine className="h-3 w-3 text-green-500" />,
                   iconClassName: 'bg-green-50',
@@ -1324,13 +1357,13 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         >
           <TabsList className="grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="my" className="w-full">
-              我的{entityLabel}
+              {t('我的{entityLabel}', { entityLabel })}
             </TabsTrigger>
             <TabsTrigger value="collab" className="w-full">
-              共建{entityLabel}
+              {t('共建{entityLabel}', { entityLabel })}
             </TabsTrigger>
             <TabsTrigger value="public" className="w-full">
-              公共{entityLabel}
+              {t('公共{entityLabel}', { entityLabel })}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -1340,13 +1373,13 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           value={viewMode}
           onValueChange={(v) => v && setViewMode(v as ViewMode)}
         >
-          <ToggleGroupItem value="list" aria-label="资源列表">
+          <ToggleGroupItem value="list" aria-label={t('资源列表')}>
             <List className="h-4 w-4" />
-            <span className="ml-1.5">资源列表</span>
+            <span className="ml-1.5">{t('资源列表')}</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="group" aria-label="批次分组">
+          <ToggleGroupItem value="group" aria-label={t('批次分组')}>
             <LayoutGrid className="h-4 w-4" />
-            <span className="ml-1.5">批次分组</span>
+            <span className="ml-1.5">{t('批次分组')}</span>
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
@@ -1358,7 +1391,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               <div className="flex items-center gap-2 w-full">
                 <Search className="h-4 w-4 text-slate-400" />
                 <Input
-                  placeholder={`搜索${entityLabel}名称`}
+                  placeholder={t('搜索{entityLabel}名称', { entityLabel })}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-9 text-sm flex-1"
@@ -1371,10 +1404,10 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 onValueChange={(v) => setSelectedBatchId(v === '__all__' ? null : v)}
               >
                 <SelectTrigger className="h-9 text-sm w-44">
-                  <SelectValue placeholder="按批次筛选" />
+                  <SelectValue placeholder={t('按批次筛选')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">全部批次</SelectItem>
+                  <SelectItem value="__all__">{t('全部批次')}</SelectItem>
                   {batches.map((batch) => (
                     <SelectItem key={batch.id} value={batch.id}>
                       <span className="flex items-center gap-2">
@@ -1390,10 +1423,10 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 onValueChange={(v) => setSelectedStatus(v === '__all__' ? null : v)}
               >
                 <SelectTrigger className="h-9 text-sm w-36">
-                  <SelectValue placeholder="按状态筛选" />
+                  <SelectValue placeholder={t('按状态筛选')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">全部状态</SelectItem>
+                  <SelectItem value="__all__">{t('全部状态')}</SelectItem>
                   {statusFilterOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
@@ -1404,7 +1437,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             </div>
             <Button variant="outline" size="sm" className="h-9" onClick={handleResetFilters}>
               <RotateCcw className="mr-1 h-3.5 w-3.5" />
-              重置
+              {t('重置')}
             </Button>
           </div>
 
@@ -1415,56 +1448,62 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 hasSelected ? 'text-slate-700 font-medium' : 'text-slate-400',
               )}
             >
-              {hasSelected ? `已选择 ${selectedIds.length} 项：` : `请选择${entityLabel}：`}
+              {hasSelected
+                ? t('已选择 {n} 项：', { n: selectedIds.length })
+                : t('请选择{entityLabel}：', { entityLabel })}
             </span>
-            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'submit_approval') && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                disabled={!hasSelected || !canBatchSubmit}
-                onClick={handleBatchSubmitApproval}
-              >
-                <Send className="mr-1 h-3 w-3" />
-                提交审批
-              </Button>
-            )}
-            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'withdraw_approval') && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                disabled={!hasSelected || !canBatchWithdraw}
-                onClick={handleBatchWithdrawApproval}
-              >
-                <Undo2 className="mr-1 h-3 w-3" />
-                撤回审批
-              </Button>
-            )}
-            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'publish') && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                disabled={!hasSelected || !canBatchPublish}
-                onClick={handleBatchPublish}
-              >
-                <ArrowUpFromLine className="mr-1 h-3 w-3" />
-                发布
-              </Button>
-            )}
-            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'unpublish') && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                disabled={!hasSelected || !canBatchUnpublish}
-                onClick={handleBatchUnpublish}
-              >
-                <ArrowDownFromLine className="mr-1 h-3 w-3" />
-                取消发布
-              </Button>
-            )}
+            {activeTab !== 'public' &&
+              hasPermission(permissionModule, permissionResource, 'submit_approval') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!hasSelected || !canBatchSubmit}
+                  onClick={handleBatchSubmitApproval}
+                >
+                  <Send className="mr-1 h-3 w-3" />
+                  {t('提交审批')}
+                </Button>
+              )}
+            {activeTab !== 'public' &&
+              hasPermission(permissionModule, permissionResource, 'withdraw_approval') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!hasSelected || !canBatchWithdraw}
+                  onClick={handleBatchWithdrawApproval}
+                >
+                  <Undo2 className="mr-1 h-3 w-3" />
+                  {t('撤回审批')}
+                </Button>
+              )}
+            {activeTab !== 'public' &&
+              hasPermission(permissionModule, permissionResource, 'publish') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!hasSelected || !canBatchPublish}
+                  onClick={handleBatchPublish}
+                >
+                  <ArrowUpFromLine className="mr-1 h-3 w-3" />
+                  {t('发布')}
+                </Button>
+              )}
+            {activeTab !== 'public' &&
+              hasPermission(permissionModule, permissionResource, 'unpublish') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!hasSelected || !canBatchUnpublish}
+                  onClick={handleBatchUnpublish}
+                >
+                  <ArrowDownFromLine className="mr-1 h-3 w-3" />
+                  {t('取消发布')}
+                </Button>
+              )}
             {activeTab !== 'public' && (
               <Button
                 variant="outline"
@@ -1474,21 +1513,22 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 onClick={handleBatchArchive}
               >
                 <Archive className="mr-1 h-3 w-3" />
-                归档
+                {t('归档')}
               </Button>
             )}
-            {activeTab !== 'public' && hasPermission(permissionModule, permissionResource, 'delete') && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                disabled={!hasSelected || !canBatchDelete}
-                onClick={handleBatchDelete}
-              >
-                <Trash2 className="mr-1 h-3 w-3" />
-                删除
-              </Button>
-            )}
+            {activeTab !== 'public' &&
+              hasPermission(permissionModule, permissionResource, 'delete') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!hasSelected || !canBatchDelete}
+                  onClick={handleBatchDelete}
+                >
+                  <Trash2 className="mr-1 h-3 w-3" />
+                  {t('删除')}
+                </Button>
+              )}
             <Button
               variant="outline"
               size="sm"
@@ -1497,7 +1537,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               onClick={handleBatchClone}
             >
               <Copy className="mr-1 h-3 w-3" />
-              克隆
+              {t('克隆')}
             </Button>
             {activeTab !== 'public' && (
               <Button
@@ -1508,7 +1548,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 onClick={handleBatchMove}
               >
                 <FolderKanban className="mr-1 h-3 w-3" />
-                调整批次分组
+                {t('调整批次分组')}
               </Button>
             )}
             <Button
@@ -1538,8 +1578,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   } catch (err: any) {
                     toast({
                       variant: 'destructive',
-                      title: '导出失败',
-                      description: err.message || '导出失败',
+                      title: t('导出失败'),
+                      description: err.message || t('导出失败'),
                     })
                   }
                 } else {
@@ -1548,7 +1588,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               }}
             >
               <Download className="mr-1 h-3 w-3" />
-              导出
+              {t('导出')}
             </Button>
           </div>
         </CardContent>
@@ -1587,7 +1627,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                         <span className="font-medium text-gray-800">{batch.name}</span>
                       </div>
                       <Badge variant="secondary" className="text-xs">
-                        {batchItems.length} 个{entityLabel}
+                        {t('{n} 个{entityLabel}', { n: batchItems.length, entityLabel })}
                       </Badge>
                     </div>
                   </CollapsibleTrigger>
@@ -1604,9 +1644,9 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             <div className="overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white">
               <div className="flex items-center justify-between px-4 py-3 bg-slate-50/80">
                 <div className="flex items-center gap-3">
-                  <span className="font-medium text-gray-800">未分类</span>
+                  <span className="font-medium text-gray-800">{t('未分类')}</span>
                   <Badge variant="secondary" className="text-xs">
-                    {uncategorized.length} 个{entityLabel}
+                    {t('{n} 个{entityLabel}', { n: uncategorized.length, entityLabel })}
                   </Badge>
                 </div>
               </div>
@@ -1622,10 +1662,12 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
             <X className="h-8 w-8 text-red-400" />
           </div>
-          <h3 className="mb-2 text-lg font-medium text-slate-700">{entityLabel}加载失败</h3>
+          <h3 className="mb-2 text-lg font-medium text-slate-700">
+            {t('{entityLabel}加载失败', { entityLabel })}
+          </h3>
           <p className="mb-4 text-sm text-slate-500">{loadError}</p>
           <Button size="sm" variant="outline" onClick={() => refresh()}>
-            重试
+            {t('重试')}
           </Button>
         </div>
       )}
@@ -1635,18 +1677,22 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
             <Search className="h-8 w-8 text-slate-400" />
           </div>
-          <h3 className="mb-2 text-lg font-medium text-slate-700">暂无{entityLabel}</h3>
-          <p className="mb-4 text-sm text-slate-500">当前筛选条件下没有{entityLabel}数据</p>
+          <h3 className="mb-2 text-lg font-medium text-slate-700">
+            {t('暂无{entityLabel}', { entityLabel })}
+          </h3>
+          <p className="mb-4 text-sm text-slate-500">
+            {t('当前筛选条件下没有{entityLabel}数据', { entityLabel })}
+          </p>
           <Button size="sm" onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            新建{entityLabel}
+            {t('新建{entityLabel}', { entityLabel })}
           </Button>
         </div>
       )}
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white py-20 shadow-sm">
-          <p className="text-sm text-slate-500">加载中...</p>
+          <p className="text-sm text-slate-500">{t('加载中...')}</p>
         </div>
       )}
 
@@ -1658,16 +1704,16 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             setIsImportDialogOpen(open)
             if (!open) setImportFiles([])
           }}
-          title={`导入${entityLabel}`}
+          title={t('导入{entityLabel}', { entityLabel })}
           guideItems={[
-            <>点击下方按钮下载最新的导入模板（含系统字典数据）</>,
-            <>参照模板中各 Sheet 的填写说明，填入{entityLabel}数据</>,
-            <>完成后点击&quot;下一步&quot;上传文件</>,
+            <>{t('点击下方按钮下载最新的导入模板（含系统字典数据）')}</>,
+            <>{t('参照模板中各 Sheet 的填写说明，填入{entityLabel}数据', { entityLabel })}</>,
+            <>{t('完成后点击"下一步"上传文件')}</>,
           ]}
-          downloadLabel={`下载${entityLabel}批量导入模板`}
+          downloadLabel={t('下载{entityLabel}批量导入模板', { entityLabel })}
           onDownload={handleDownloadTemplate}
-          uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-          importLabel={(count) => `开始导入（${count} 个文件）`}
+          uploadHint={t('点击选择已填写的 Excel (.xlsx) 文件')}
+          importLabel={(count) => t('开始导入（{count} 个文件）', { count })}
           onImport={handleImport}
           files={importFiles}
           onAddFiles={handleAddFiles}
@@ -1685,8 +1731,10 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>导入{entityLabel}</DialogTitle>
-              <DialogDescription>上传 CSV 文件批量导入{entityLabel}数据</DialogDescription>
+              <DialogTitle>{t('导入{entityLabel}', { entityLabel })}</DialogTitle>
+              <DialogDescription>
+                {t('上传 CSV 文件批量导入{entityLabel}数据', { entityLabel })}
+              </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
               <div
@@ -1695,7 +1743,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  {importFiles.length > 0 ? importFiles[0].name : '点击选择 CSV 文件'}
+                  {importFiles.length > 0 ? importFiles[0].name : t('点击选择 CSV 文件')}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -1714,13 +1762,13 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   setImportFiles([])
                 }}
               >
-                取消
+                {t('取消')}
               </Button>
               <Button
                 onClick={handleCsvImportClick}
                 disabled={importFiles.length === 0 || csvImporting}
               >
-                {csvImporting ? '导入中...' : '开始导入'}
+                {csvImporting ? t('导入中...') : t('开始导入')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1747,11 +1795,17 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         <ConfirmDialog
           open={!!confirmAction}
           onOpenChange={(open) => !open && setConfirmAction(null)}
-          title={confirmAction.type === 'archive' ? '确认归档' : '确认删除'}
+          title={confirmAction.type === 'archive' ? t('确认归档') : t('确认删除')}
           description={
             confirmAction.type === 'archive'
-              ? `确定要归档${entityLabel}「${confirmAction.item.name}」吗？`
-              : `确定要删除${entityLabel}「${confirmAction.item.name}」吗？`
+              ? t('确定要归档{entityLabel}「{name}」吗？', {
+                  entityLabel,
+                  name: confirmAction.item.name,
+                })
+              : t('确定要删除{entityLabel}「{name}」吗？', {
+                  entityLabel,
+                  name: confirmAction.item.name,
+                })
           }
           variant={confirmAction.type === 'delete' ? 'destructive' : 'default'}
           pending={confirmPending}
@@ -1764,46 +1818,52 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>
-              {batchMoveMode === 'bindThenSubmit' ? '提交审批' : '调整批次分组'}
+              {batchMoveMode === 'bindThenSubmit' ? t('提交审批') : t('调整批次分组')}
             </DialogTitle>
             <DialogDescription>
               {batchMoveMode === 'bindThenSubmit'
-                ? `已选中 ${batchSubmitEligibleIds.length} 个可提交的${entityLabel}，其中 ${
-                    batchSubmitEligibleIds.filter((id) => {
-                      const item = frontItems.find((i) => i.id === id)
-                      return item && !item.batchId
-                    }).length
-                  } 个未关联批次，请选择批次分组或审批流程后提交审批`
-                : `将选中的 ${selectedIds.length} 个${entityLabel}移动到指定批次`}
+                ? t(
+                    '已选中 {count} 个可提交的{entityLabel}，其中 {unbound} 个未关联批次，请选择批次分组或审批流程后提交审批',
+                    {
+                      count: batchSubmitEligibleIds.length,
+                      entityLabel,
+                      unbound: batchSubmitEligibleIds.filter((id) => {
+                        const item = frontItems.find((i) => i.id === id)
+                        return item && !item.batchId
+                      }).length,
+                    },
+                  )
+                : t('将选中的 {count} 个{entityLabel}移动到指定批次', {
+                    count: selectedIds.length,
+                    entityLabel,
+                  })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {batchMoveMode === 'bindThenSubmit' ? (
-              renderSubmitModeTabs(
-                batchSubmitTab,
-                setBatchSubmitTab,
-                renderBatchSelector(
+            {batchMoveMode === 'bindThenSubmit'
+              ? renderSubmitModeTabs(
+                  batchSubmitTab,
+                  setBatchSubmitTab,
+                  renderBatchSelector(
+                    moveSelectedMajorId,
+                    setMoveSelectedMajorId,
+                    moveTargetBatchId,
+                    setMoveTargetBatchId,
+                    moveFilteredBatches,
+                  ),
+                  renderWorkflowSelector(batchSubmitWorkflowId, setBatchSubmitWorkflowId),
+                )
+              : renderBatchSelector(
                   moveSelectedMajorId,
                   setMoveSelectedMajorId,
                   moveTargetBatchId,
                   setMoveTargetBatchId,
                   moveFilteredBatches,
-                ),
-                renderWorkflowSelector(batchSubmitWorkflowId, setBatchSubmitWorkflowId),
-              )
-            ) : (
-              renderBatchSelector(
-                moveSelectedMajorId,
-                setMoveSelectedMajorId,
-                moveTargetBatchId,
-                setMoveTargetBatchId,
-                moveFilteredBatches,
-              )
-            )}
+                )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={handleConfirmMove}
@@ -1815,7 +1875,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   : !moveTargetBatchId
               }
             >
-              {batchMoveMode === 'bindThenSubmit' ? '确认并提交审批' : '确认移动'}
+              {batchMoveMode === 'bindThenSubmit' ? t('确认并提交审批') : t('确认移动')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1825,9 +1885,12 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       <Dialog open={isSubmitBatchDialogOpen} onOpenChange={setIsSubmitBatchDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>提交审批</DialogTitle>
+            <DialogTitle>{t('提交审批')}</DialogTitle>
             <DialogDescription>
-              {entityLabel}「{submitBatchTarget?.name}」未关联批次分组，请选择批次分组或审批流程后提交审批
+              {t('{entityLabel}「{name}」未关联批次分组，请选择批次分组或审批流程后提交审批', {
+                entityLabel,
+                name: submitBatchTarget?.name ?? '',
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -1846,7 +1909,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsSubmitBatchDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={
@@ -1854,7 +1917,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               }
               disabled={submitTab === 'batch' ? !submitSelectedBatchId : !submitWorkflowId}
             >
-              确认并提交审批
+              {t('确认并提交审批')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1864,8 +1927,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       <Dialog open={isCloneRenameDialogOpen} onOpenChange={setIsCloneRenameDialogOpen}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>克隆{entityLabel}</DialogTitle>
-            <DialogDescription>为克隆的{entityLabel}命名</DialogDescription>
+            <DialogTitle>{t('克隆{entityLabel}', { entityLabel })}</DialogTitle>
+            <DialogDescription>{t('为克隆的{entityLabel}命名', { entityLabel })}</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Input
@@ -1874,14 +1937,14 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 setCloneRenameValue(e.target.value)
                 cloneRenameValueRef.current = e.target.value
               }}
-              placeholder="输入新名称"
+              placeholder={t('输入新名称')}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
-            <Button onClick={handleConfirmClone}>确认克隆</Button>
+            <Button onClick={handleConfirmClone}>{t('确认克隆')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1890,20 +1953,25 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       <Dialog open={isRejectReasonDialogOpen} onOpenChange={setIsRejectReasonDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>驳回原因</DialogTitle>
+            <DialogTitle>{t('驳回原因')}</DialogTitle>
             <DialogDescription>
-              {entityLabel}「{rejectReasonItem?.name}」的审批被驳回，驳回原因如下：
+              {t('{entityLabel}「{name}」的审批被驳回，驳回原因如下：', {
+                entityLabel,
+                name: rejectReasonItem?.name ?? '',
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 whitespace-pre-wrap">
               {rejectReasonItem?.rejectReason ||
-                `审批人已驳回此${entityLabel}的提交申请，请根据审批意见修改后重新提交。`}
+                t('审批人已驳回此{entityLabel}的提交申请，请根据审批意见修改后重新提交。', {
+                  entityLabel,
+                })}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRejectReasonDialogOpen(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1913,24 +1981,26 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>调整共建人</DialogTitle>
-            <DialogDescription>选择参与共建「{inviteTarget?.name}」的用户</DialogDescription>
+            <DialogTitle>{t('调整共建人')}</DialogTitle>
+            <DialogDescription>
+              {t('选择参与共建「{name}」的用户', { name: inviteTarget?.name ?? '' })}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <UserSelector
               value={inviteSelectedIds}
               onChange={setInviteSelectedIds}
               multiple
-              placeholder="点击选择共建人"
+              placeholder={t('点击选择共建人')}
               tenantId={tenantId}
               excludeUserIds={inviteTarget?.creatorId ? [inviteTarget.creatorId] : undefined}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
-            <Button onClick={handleInviteConfirm}>保存</Button>
+            <Button onClick={handleInviteConfirm}>{t('保存')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

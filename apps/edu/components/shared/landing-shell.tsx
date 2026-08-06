@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Footer } from '@/components/portal/footer'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface LandingStat {
   icon: LucideIcon
@@ -56,7 +57,7 @@ export function LandingShell({
   hero,
   stats,
   beforeList,
-  filterTitle = '筛选',
+  filterTitle,
   filterRows,
   activeFilters,
   onRemoveFilter,
@@ -73,6 +74,7 @@ export function LandingShell({
   listRef,
   children,
 }: LandingShellProps) {
+  const t = useT()
   const innerRef = useRef<HTMLDivElement>(null)
   const targetRef = listRef ?? innerRef
 
@@ -165,12 +167,12 @@ export function LandingShell({
               <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
                 <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
                 <Filter className="w-4 h-4 text-primary" />
-                {filterTitle}
+                {filterTitle ?? t('筛选')}
               </div>
               <div className="space-y-0">{filterRows}</div>
               {activeFilters && activeFilters.length > 0 && (
                 <div className="flex flex-wrap items-center gap-3 pt-4 mt-3 border-t border-dashed border-[#cbd5e1]">
-                  <span className="text-[13px] text-[#64748b]">已选条件：</span>
+                  <span className="text-[13px] text-[#64748b]">{t('已选条件：')}</span>
                   {activeFilters.map((f) => (
                     <span
                       key={f.type}
@@ -187,7 +189,7 @@ export function LandingShell({
                     onClick={onClearFilters}
                     className="text-[13px] text-primary hover:text-primary font-medium"
                   >
-                    清空筛选
+                    {t('清空筛选')}
                   </button>
                 </div>
               )}
@@ -230,7 +232,7 @@ export function LandingShell({
                     className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
                     onClick={onSearch}
                   >
-                    搜索
+                    {t('搜索')}
                   </Button>
                 </div>
               )}
@@ -242,7 +244,7 @@ export function LandingShell({
             <div className="text-[13px] text-[#64748b] mb-5">
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                当前共展示 <b className="text-primary">{totalCount}</b> {countLabel}
+                {t('当前共展示')} <b className="text-primary">{totalCount}</b> {countLabel}
               </span>
             </div>
           )}

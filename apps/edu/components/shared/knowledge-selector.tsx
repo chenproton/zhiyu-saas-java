@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { courseApi } from '@/lib/api'
 import type { Course, KnowledgePointItem } from '@/lib/types/lesson'
+import { useT } from '@/lib/i18n/locale-provider'
 
 function generateKpCode() {
   return `KP-${Date.now().toString().slice(-6)}`
@@ -39,40 +40,12 @@ interface KnowledgeSelectorProps {
   standalone?: boolean
 }
 
-const SCENES = [
-  { id: 'all', name: '全部场景' },
-  { id: 'web-security', name: 'Web安全实战' },
-  { id: 'data-analysis', name: '数据分析项目' },
-  { id: 'network-attack', name: '网络攻防演练' },
-  { id: 'dev-standard', name: '软件开发规范' },
-]
-
 const SCENE_KNOWLEDGE_MAP: Record<string, string[]> = {
   'web-security': ['kp-1', 'kp-2', 'kp-3', 'kp-4', 'kp-5'],
   'data-analysis': ['kp-6', 'kp-7', 'kp-8'],
   'network-attack': ['kp-1', 'kp-5', 'kp-6', 'kp-10'],
   'dev-standard': ['kp-9', 'kp-10'],
 }
-
-const POSITIONS = [
-  { id: 'all', name: '全部岗位' },
-  { id: 'frontend', name: '前端开发工程师' },
-  { id: 'backend', name: '后端开发工程师' },
-  { id: 'security', name: '安全测试工程师' },
-  { id: 'data', name: '数据分析师' },
-]
-
-const TASKS = [
-  { id: 'all', name: '全部任务' },
-  { id: 'task-sql-inject', name: 'SQL注入漏洞挖掘' },
-  { id: 'task-xss', name: 'XSS攻击与防御' },
-  { id: 'task-data-clean', name: '数据清洗与预处理' },
-  { id: 'task-model-train', name: '回归模型训练' },
-  { id: 'task-penetration', name: '渗透测试演练' },
-  { id: 'task-code-review', name: '安全代码审查' },
-  { id: 'task-visualize', name: '数据可视化报告' },
-  { id: 'task-component', name: '业务组件封装' },
-]
 
 const TASK_SCENE_MAP: Record<string, string[]> = {
   'task-sql-inject': ['web-security', 'network-attack'],
@@ -115,6 +88,36 @@ export function KnowledgeSelector({
   const [glSelectTargetKp, setGlSelectTargetKp] = useState<string | null>(null)
   const [glSearch, setGlSearch] = useState('')
   const [granularCourses, setGranularCourses] = useState<Course[]>([])
+
+  const t = useT()
+
+  const SCENES = [
+    { id: 'all', name: t('全部场景') },
+    { id: 'web-security', name: t('Web安全实战') },
+    { id: 'data-analysis', name: t('数据分析项目') },
+    { id: 'network-attack', name: t('网络攻防演练') },
+    { id: 'dev-standard', name: t('软件开发规范') },
+  ]
+
+  const POSITIONS = [
+    { id: 'all', name: t('全部岗位') },
+    { id: 'frontend', name: t('前端开发工程师') },
+    { id: 'backend', name: t('后端开发工程师') },
+    { id: 'security', name: t('安全测试工程师') },
+    { id: 'data', name: t('数据分析师') },
+  ]
+
+  const TASKS = [
+    { id: 'all', name: t('全部任务') },
+    { id: 'task-sql-inject', name: t('SQL注入漏洞挖掘') },
+    { id: 'task-xss', name: t('XSS攻击与防御') },
+    { id: 'task-data-clean', name: t('数据清洗与预处理') },
+    { id: 'task-model-train', name: t('回归模型训练') },
+    { id: 'task-penetration', name: t('渗透测试演练') },
+    { id: 'task-code-review', name: t('安全代码审查') },
+    { id: 'task-visualize', name: t('数据可视化报告') },
+    { id: 'task-component', name: t('业务组件封装') },
+  ]
 
   useEffect(() => {
     courseApi
@@ -193,7 +196,9 @@ export function KnowledgeSelector({
     const excludeId = kpActionMode === 'edit' ? kpActionTarget?.id : undefined
     const collision = findNameCollision(name, excludeId)
     if (collision) {
-      setKpNameError(`已存在同名知识点「${collision.name}」，请选择已有知识点或使用其他名称`)
+      setKpNameError(
+        t('已存在同名知识点「{name}」，请选择已有知识点或使用其他名称', { name: collision.name }),
+      )
       return
     }
     setKpNameError('')
@@ -274,17 +279,17 @@ export function KnowledgeSelector({
             <Input
               value={kpSearch}
               onChange={(e) => setKpSearch(e.target.value)}
-              placeholder="搜索知识点名称、描述或编码..."
+              placeholder={t('搜索知识点名称、描述或编码...')}
               className="pl-9"
             />
           </div>
           <Button onClick={openAddKp}>
             <Plus className="h-4 w-4 mr-1" />
-            新增知识点
+            {t('新增知识点')}
           </Button>
         </div>
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs text-gray-500 shrink-0">场景/任务筛选</span>
+          <span className="text-xs text-gray-500 shrink-0">{t('场景/任务筛选')}</span>
           <Select
             value={sceneFilter}
             onValueChange={(v) => {
@@ -300,7 +305,7 @@ export function KnowledgeSelector({
             }}
           >
             <SelectTrigger className="h-8 text-xs w-[120px]">
-              <SelectValue placeholder="选择场景" />
+              <SelectValue placeholder={t('选择场景')} />
             </SelectTrigger>
             <SelectContent>
               {SCENES.map((scene) => (
@@ -321,7 +326,7 @@ export function KnowledgeSelector({
             }}
           >
             <SelectTrigger className="h-8 text-xs w-[120px]">
-              <SelectValue placeholder="选择任务" />
+              <SelectValue placeholder={t('选择任务')} />
             </SelectTrigger>
             <SelectContent>
               {TASKS.filter(
@@ -338,10 +343,10 @@ export function KnowledgeSelector({
           </Select>
         </div>
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs text-gray-500 shrink-0">岗位筛选</span>
+          <span className="text-xs text-gray-500 shrink-0">{t('岗位筛选')}</span>
           <Select value={positionFilter} onValueChange={setPositionFilter}>
             <SelectTrigger className="h-8 text-xs flex-1">
-              <SelectValue placeholder="选择岗位" />
+              <SelectValue placeholder={t('选择岗位')} />
             </SelectTrigger>
             <SelectContent>
               {POSITIONS.map((pos) => (
@@ -356,15 +361,15 @@ export function KnowledgeSelector({
           {!kpSearch && filtered.length === 0 && (
             <div className="text-center text-gray-400 py-8">
               <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">请输入关键词搜索知识点</p>
+              <p className="text-sm">{t('请输入关键词搜索知识点')}</p>
             </div>
           )}
           {kpSearch && !hasResults && (
             <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
-              <p className="mb-2">未找到 &quot;{kpSearch}&quot; 相关的知识点</p>
+              <p className="mb-2">{t('未找到 "{kpSearch}" 相关的知识点')}</p>
               <Button variant="outline" size="sm" onClick={openAddKp}>
                 <Plus className="h-3 w-3 mr-1" />
-                新增此知识点
+                {t('新增此知识点')}
               </Button>
             </div>
           )}
@@ -374,16 +379,16 @@ export function KnowledgeSelector({
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">
-                      知识点名称
+                      {t('知识点名称')}
                     </th>
                     <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">
-                      知识点编码
+                      {t('知识点编码')}
                     </th>
                     <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">
-                      知识点描述
+                      {t('知识点描述')}
                     </th>
                     <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
-                      操作
+                      {t('操作')}
                     </th>
                   </tr>
                 </thead>
@@ -426,7 +431,7 @@ export function KnowledgeSelector({
                                 setKpDetailOpen(true)
                               }}
                             >
-                              详情
+                              {t('详情')}
                             </Button>
                             {isSelected ? (
                               <Button
@@ -435,7 +440,7 @@ export function KnowledgeSelector({
                                 className="h-6 text-[11px] px-2"
                                 onClick={() => handleRemoveKp(kp.id)}
                               >
-                                取消
+                                {t('取消')}
                               </Button>
                             ) : (
                               <>
@@ -444,7 +449,7 @@ export function KnowledgeSelector({
                                   className="h-6 text-[11px] px-2"
                                   onClick={() => handleReferenceKp(kp)}
                                 >
-                                  引用
+                                  {t('引用')}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -452,7 +457,7 @@ export function KnowledgeSelector({
                                   className="h-6 text-[11px] px-2"
                                   onClick={() => openCloneKp(kp)}
                                 >
-                                  克隆
+                                  {t('克隆')}
                                 </Button>
                               </>
                             )}
@@ -470,12 +475,14 @@ export function KnowledgeSelector({
 
       {/* Right: Selected Knowledge Points */}
       <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-        <p className="text-sm font-medium mb-3 text-gray-700">已选择知识点 ({selected.length})</p>
+        <p className="text-sm font-medium mb-3 text-gray-700">
+          {t('已选择知识点 ({count})', { count: selected.length })}
+        </p>
         <div className="flex-1 overflow-y-auto">
           {selected.length === 0 ? (
             <div className="text-center text-gray-400 py-8">
               <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">从左侧搜索并选择知识点</p>
+              <p className="text-xs">{t('从左侧搜索并选择知识点')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
@@ -537,7 +544,7 @@ export function KnowledgeSelector({
                     {isReference && (
                       <div className="absolute bottom-0 right-0">
                         <div className="bg-gray-200 text-gray-600 text-[9px] px-1.5 py-0.5 rounded-tl-md border-t border-l border-white/80">
-                          引用
+                          {t('引用')}
                         </div>
                       </div>
                     )}
@@ -559,45 +566,45 @@ export function KnowledgeSelector({
           <DialogHeader>
             <DialogTitle>
               {kpActionMode === 'add'
-                ? '新增知识点'
+                ? t('新增知识点')
                 : kpActionMode === 'clone'
-                  ? '克隆知识点'
-                  : '编辑知识点'}
+                  ? t('克隆知识点')
+                  : t('编辑知识点')}
             </DialogTitle>
             <DialogDescription>
               {kpActionMode === 'add'
-                ? '创建一个新的知识点'
+                ? t('创建一个新的知识点')
                 : kpActionMode === 'clone'
-                  ? `基于「${kpActionTarget?.name}」创建副本`
-                  : '修改知识点信息'}
+                  ? t('基于「{name}」创建副本', { name: kpActionTarget?.name ?? '' })
+                  : t('修改知识点信息')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>知识点名称</Label>
+              <Label>{t('知识点名称')}</Label>
               <Input
                 value={newKpForm.name}
                 onChange={(e) => {
                   setNewKpForm({ ...newKpForm, name: e.target.value })
                   if (kpNameError) setKpNameError('')
                 }}
-                placeholder="输入知识点名称"
+                placeholder={t('输入知识点名称')}
                 className="mt-1.5"
               />
               {kpNameError && <p className="text-xs text-red-500 mt-1">{kpNameError}</p>}
             </div>
             <div>
-              <Label>描述</Label>
+              <Label>{t('描述')}</Label>
               <Textarea
                 value={newKpForm.description}
                 onChange={(e) => setNewKpForm({ ...newKpForm, description: e.target.value })}
-                placeholder="输入知识点描述"
+                placeholder={t('输入知识点描述')}
                 className="mt-1.5"
                 rows={3}
               />
             </div>
             <div>
-              <Label>编码</Label>
+              <Label>{t('编码')}</Label>
               <Input
                 value={newKpForm.code}
                 disabled={kpActionMode !== 'edit'}
@@ -605,11 +612,11 @@ export function KnowledgeSelector({
                 className={cn('mt-1.5', kpActionMode !== 'edit' && 'bg-gray-50')}
               />
               <p className="text-xs text-gray-400 mt-1">
-                {kpActionMode === 'edit' ? '可修改编码' : '系统自动生成，不可修改'}
+                {kpActionMode === 'edit' ? t('可修改编码') : t('系统自动生成，不可修改')}
               </p>
             </div>
             <div>
-              <Label>关联颗粒课</Label>
+              <Label>{t('关联颗粒课')}</Label>
               <div className="mt-1.5">
                 {newKpForm.granularLessons.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 mb-2">
@@ -644,7 +651,7 @@ export function KnowledgeSelector({
                     }}
                   >
                     <Plus className="h-3 w-3 mr-1" />
-                    选择颗粒课
+                    {t('选择颗粒课')}
                   </Button>
                 </div>
               </div>
@@ -652,14 +659,14 @@ export function KnowledgeSelector({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setKpActionOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleSaveKp} disabled={!newKpForm.name.trim() || !!kpNameError}>
               {kpActionMode === 'add'
-                ? '新增并选中'
+                ? t('新增并选中')
                 : kpActionMode === 'clone'
-                  ? '克隆并选中'
-                  : '保存修改'}
+                  ? t('克隆并选中')
+                  : t('保存修改')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -670,7 +677,9 @@ export function KnowledgeSelector({
         <DialogContent className="sm:max-w-[800px] max-h-[80vh] h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
-              {glTargetKp ? `为「${glTargetKp.name}」选择颗粒课` : '选择颗粒课'}
+              {glTargetKp
+                ? t('为「{name}」选择颗粒课', { name: glTargetKp.name })
+                : t('选择颗粒课')}
             </DialogTitle>
           </DialogHeader>
           <div className="flex gap-4 flex-1 min-h-0 py-4">
@@ -680,7 +689,7 @@ export function KnowledgeSelector({
                 <Input
                   value={glSearch}
                   onChange={(e) => setGlSearch(e.target.value)}
-                  placeholder="搜索颗粒课名称或编码..."
+                  placeholder={t('搜索颗粒课名称或编码...')}
                   className="pl-9"
                 />
               </div>
@@ -732,19 +741,19 @@ export function KnowledgeSelector({
                 })}
                 {glFiltered.length === 0 && (
                   <div className="text-center text-gray-400 py-8">
-                    <p className="text-sm">未找到匹配的颗粒课</p>
+                    <p className="text-sm">{t('未找到匹配的颗粒课')}</p>
                   </div>
                 )}
               </div>
             </div>
             <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
               <p className="text-sm font-medium mb-3 text-gray-700">
-                已选择 ({glSelectedIds.length})
+                {t('已选择 ({count})', { count: glSelectedIds.length })}
               </p>
               <div className="flex-1 overflow-y-auto space-y-2">
                 {glSelectedIds.length === 0 ? (
                   <div className="text-center text-gray-400 py-8">
-                    <p className="text-xs">从左侧选择颗粒课</p>
+                    <p className="text-xs">{t('从左侧选择颗粒课')}</p>
                   </div>
                 ) : (
                   glSelectedIds.map((gid) => {
@@ -781,7 +790,7 @@ export function KnowledgeSelector({
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setGlSelectOpen(false)}>确定</Button>
+            <Button onClick={() => setGlSelectOpen(false)}>{t('确定')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -790,39 +799,39 @@ export function KnowledgeSelector({
       <Dialog open={kpDetailOpen} onOpenChange={setKpDetailOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>知识点详情</DialogTitle>
+            <DialogTitle>{t('知识点详情')}</DialogTitle>
           </DialogHeader>
           {detailKp && (
             <div className="space-y-4 py-2">
               <div className="flex items-center gap-2">
-                <Label className="text-xs text-gray-500">知识点名称</Label>
+                <Label className="text-xs text-gray-500">{t('知识点名称')}</Label>
                 {isReferenceKp(detailKp) ? (
                   <Badge variant="secondary" className="text-[10px] h-5">
-                    引用（不可编辑）
+                    {t('引用（不可编辑）')}
                   </Badge>
                 ) : (
                   <Badge
                     variant="outline"
                     className="text-[10px] h-5 border-primary/30 text-primary"
                   >
-                    自定义（可编辑）
+                    {t('自定义（可编辑）')}
                   </Badge>
                 )}
               </div>
               <p className="text-sm font-medium">{detailKp.name}</p>
               <div>
-                <Label className="text-xs text-gray-500">知识点描述</Label>
+                <Label className="text-xs text-gray-500">{t('知识点描述')}</Label>
                 <p className="text-sm text-gray-700 mt-1">{detailKp.description}</p>
               </div>
               {detailKp.code && (
                 <div>
-                  <Label className="text-xs text-gray-500">编码</Label>
+                  <Label className="text-xs text-gray-500">{t('编码')}</Label>
                   <p className="text-sm text-gray-700 mt-1">{detailKp.code}</p>
                 </div>
               )}
               <div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-gray-500">关联颗粒课</Label>
+                  <Label className="text-xs text-gray-500">{t('关联颗粒课')}</Label>
                   {!isReferenceKp(detailKp) && (
                     <div className="flex items-center gap-1">
                       <Button
@@ -834,7 +843,7 @@ export function KnowledgeSelector({
                           openGlSelect(detailKp.id)
                         }}
                       >
-                        引用颗粒课
+                        {t('引用颗粒课')}
                       </Button>
                     </div>
                   )}
@@ -847,7 +856,7 @@ export function KnowledgeSelector({
                       </Badge>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-400">暂无关联颗粒课</p>
+                    <p className="text-sm text-gray-400">{t('暂无关联颗粒课')}</p>
                   )}
                 </div>
               </div>
@@ -855,7 +864,7 @@ export function KnowledgeSelector({
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setKpDetailOpen(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -905,20 +914,20 @@ export function KnowledgeSelector({
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="w-full border-dashed">
             <Plus className="mr-2 h-4 w-4" />
-            添加知识点
+            {t('添加知识点')}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[1075px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>添加知识点</DialogTitle>
-            <DialogDescription>从知识库中选择或新建知识点</DialogDescription>
+            <DialogTitle>{t('添加知识点')}</DialogTitle>
+            <DialogDescription>{t('从知识库中选择或新建知识点')}</DialogDescription>
           </DialogHeader>
 
           {selectionPanels}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { workflowApi, majorApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 import { formatDate } from '@/lib/format-utils'
 import type { Workflow } from '@/lib/types/backend'
 import { useToast } from '@zhiyu/ui'
@@ -44,6 +45,7 @@ interface WorkflowConfigPageProps {
 }
 
 export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
+  const t = useT()
   const { toast } = useToast()
   const { tenantId } = useAuth()
   const [workflows, setWorkflows] = useState<Workflow[]>([])
@@ -77,13 +79,13 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '无法获取审批流程',
+        title: t('加载失败'),
+        description: err.message || t('无法获取审批流程'),
       })
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, t])
 
   const loadMajors = useCallback(async () => {
     try {
@@ -135,11 +137,11 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
   const handleSave = async () => {
     const built = buildWorkflowSteps(steps)
     if (!name.trim()) {
-      setError('请输入流程名称')
+      setError(t('请输入流程名称'))
       return
     }
     if (built.length === 0) {
-      setError('请至少配置一个审批步骤')
+      setError(t('请至少配置一个审批步骤'))
       return
     }
     setError(null)
@@ -153,17 +155,17 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
       }
       if (editId) {
         await workflowApi.update(editId, body)
-        toast({ title: '保存成功' })
+        toast({ title: t('保存成功') })
       } else {
         await workflowApi.create(body)
-        toast({ title: '创建成功' })
+        toast({ title: t('创建成功') })
       }
       setIsCreateOpen(false)
       setIsEditOpen(false)
       reset()
       await loadWorkflows()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message })
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     }
   }
 
@@ -175,9 +177,9 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
     try {
       await workflowApi.delete(deleteTargetId)
       await loadWorkflows()
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err.message })
+      toast({ variant: 'destructive', title: t('删除失败'), description: err.message })
     } finally {
       setDeleteTargetId(null)
     }
@@ -186,9 +188,9 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
   const renderDialog = (isEdit: boolean) => (
     <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto overflow-x-hidden">
       <DialogHeader>
-        <DialogTitle>{isEdit ? '编辑审批流程' : '新增审批流程'}</DialogTitle>
+        <DialogTitle>{isEdit ? t('编辑审批流程') : t('新增审批流程')}</DialogTitle>
         <DialogDescription>
-          {isEdit ? '修改审批流程配置' : '创建新的审批流程模板'}
+          {isEdit ? t('修改审批流程配置') : t('创建新的审批流程模板')}
         </DialogDescription>
       </DialogHeader>
       <WorkflowEditor
@@ -213,9 +215,9 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
             reset()
           }}
         >
-          取消
+          {t('取消')}
         </Button>
-        <Button onClick={handleSave}>{isEdit ? '保存修改' : '创建流程'}</Button>
+        <Button onClick={handleSave}>{isEdit ? t('保存修改') : t('创建流程')}</Button>
       </DialogFooter>
     </DialogContent>
   )
@@ -224,7 +226,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">审批流程配置</h1>
+          <h1 className="text-xl font-semibold text-foreground">{t('审批流程配置')}</h1>
           <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
         </div>
         <Dialog
@@ -237,7 +239,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              新建审批流程
+              {t('新建审批流程')}
             </Button>
           </DialogTrigger>
           {renderDialog(false)}
@@ -249,7 +251,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
       {majors.length > 0 && (
         <Tabs value={filterMajorId} onValueChange={setFilterMajorId}>
           <TabsList className="h-auto flex-wrap justify-start">
-            <TabsTrigger value="all">全部专业</TabsTrigger>
+            <TabsTrigger value="all">{t('全部专业')}</TabsTrigger>
             {majors.map((m) => (
               <TabsTrigger key={m.id} value={m.id}>
                 {m.name}
@@ -262,20 +264,22 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <GitBranch className="h-4 w-4" />
-            审批流程列表
+            {t('审批流程列表')}
           </CardTitle>
-          <CardDescription>共 {filteredWorkflows.length} 个审批流程</CardDescription>
+          <CardDescription>
+            {t('共 {count} 个审批流程', { count: filteredWorkflows.length })}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50">
-                  <TableHead className="text-xs">流程名称</TableHead>
-                  <TableHead className="text-xs">流程描述</TableHead>
-                  <TableHead className="text-xs">审批步骤</TableHead>
-                  <TableHead className="text-xs">适用专业</TableHead>
-                  <TableHead className="text-xs">创建时间</TableHead>
+                  <TableHead className="text-xs">{t('流程名称')}</TableHead>
+                  <TableHead className="text-xs">{t('流程描述')}</TableHead>
+                  <TableHead className="text-xs">{t('审批步骤')}</TableHead>
+                  <TableHead className="text-xs">{t('适用专业')}</TableHead>
+                  <TableHead className="text-xs">{t('创建时间')}</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -283,13 +287,13 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
-                      加载中...
+                      {t('加载中...')}
                     </TableCell>
                   </TableRow>
                 ) : filteredWorkflows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
-                      暂无审批流程
+                      {t('暂无审批流程')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -303,7 +307,11 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
                         <div className="flex flex-wrap gap-1">
                           {(wf.steps || []).map((s, idx) => (
                             <Badge key={idx} variant="outline" className="text-xs">
-                              {idx + 1}.{s.name}({s.approvalMode === 'all' ? '全' : '任一'})
+                              {t('{order}.{name}({mode})', {
+                                order: idx + 1,
+                                name: s.name,
+                                mode: s.approvalMode === 'all' ? t('全') : t('任一'),
+                              })}
                             </Badge>
                           ))}
                         </div>
@@ -327,7 +335,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
                           onClick={() => openEdit(wf)}
                         >
                           <Pencil className="mr-1 h-3 w-3" />
-                          编辑
+                          {t('编辑')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -336,7 +344,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
                           onClick={() => handleDelete(wf.id)}
                         >
                           <Trash2 className="mr-1 h-3 w-3" />
-                          删除
+                          {t('删除')}
                         </Button>
                       </TableRowActions>
                     </TableRow>
@@ -352,8 +360,8 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
         onOpenChange={(open) => {
           if (!open) setDeleteTargetId(null)
         }}
-        title="确认删除"
-        description="确定删除该审批流程吗？"
+        title={t('确认删除')}
+        description={t('确定删除该审批流程吗？')}
         variant="destructive"
         onConfirm={confirmDelete}
       />

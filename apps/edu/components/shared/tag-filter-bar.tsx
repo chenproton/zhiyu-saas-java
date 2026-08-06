@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react'
 import { useTags } from './use-tags'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface TagFilterBarProps {
   value: string[]
@@ -14,6 +15,7 @@ interface TagFilterBarProps {
  * 与搜索条件叠加生效；无标签数据时展示引导文案。
  */
 export function TagFilterBar({ value, onChange, className }: TagFilterBarProps) {
+  const t = useT()
   const { tags, loading } = useTags()
   const selected = new Set(value)
 
@@ -27,9 +29,11 @@ export function TagFilterBar({ value, onChange, className }: TagFilterBarProps) 
   if (loading) return null
   if (tags.length === 0) {
     return (
-      <div className={`bg-white rounded-xl p-3 border border-slate-100 shadow-sm ${className ?? ''}`}>
+      <div
+        className={`bg-white rounded-xl p-3 border border-slate-100 shadow-sm ${className ?? ''}`}
+      >
         <span className="text-sm text-slate-400">
-          暂无标签，请先在「标签管理」中创建后再进行标签筛选
+          {t('暂无标签，请先在「标签管理」中创建后再进行标签筛选')}
         </span>
       </div>
     )
@@ -39,7 +43,7 @@ export function TagFilterBar({ value, onChange, className }: TagFilterBarProps) 
     <div
       className={`bg-white rounded-xl p-3 flex gap-2 flex-wrap items-center border border-slate-100 shadow-sm ${className ?? ''}`}
     >
-      <span className="text-sm text-slate-400 mr-1 shrink-0">标签筛选：</span>
+      <span className="text-sm text-slate-400 mr-1 shrink-0">{t('标签筛选：')}</span>
       {tags.map((tag) => {
         const active = selected.has(tag.id)
         return (
@@ -68,7 +72,7 @@ export function TagFilterBar({ value, onChange, className }: TagFilterBarProps) 
           onClick={() => onChange([])}
           className="ml-auto px-3 py-1.5 text-xs text-red-400 hover:text-red-600 font-medium border border-red-200 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
         >
-          清除筛选
+          {t('清除筛选')}
         </button>
       )}
     </div>

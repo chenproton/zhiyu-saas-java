@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { unzipSync, strFromU8 } from 'fflate'
 import { FileText, Folder, Download, Loader2, AlertTriangle, FileArchive } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const MAX_ZIP_SIZE = 50 * 1024 * 1024
 
@@ -74,6 +75,7 @@ export function fixName(name: string): string {
 
 // 由调用方以 key={url} 挂载，保证换包时组件整体重建
 export default function ZipPreview({ url, name }: { url: string; name?: string }) {
+  const t = useT()
   const [entries, setEntries] = useState<ZipEntry[] | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -85,15 +87,19 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
     const run = async () => {
       try {
         const resp = await fetch(url)
-        if (!resp.ok) throw new Error(`下载失败（${resp.status}）`)
+        if (!resp.ok) throw new Error(t('下载失败（{status}）', { status: resp.status }))
         const size = Number(resp.headers.get('content-length') || 0)
         if (size > MAX_ZIP_SIZE) {
-          setError(`压缩包过大（${(size / 1024 / 1024).toFixed(1)}MB），请下载后本地解压查看`)
+          setError(
+            t('压缩包过大（{size}MB），请下载后本地解压查看', {
+              size: (size / 1024 / 1024).toFixed(1),
+            }),
+          )
           return
         }
         const buf = new Uint8Array(await resp.arrayBuffer())
         if (buf.byteLength > MAX_ZIP_SIZE) {
-          setError('压缩包过大（超过 50MB），请下载后本地解压查看')
+          setError(t('压缩包过大（超过 50MB），请下载后本地解压查看'))
           return
         }
         const unzipped = unzipSync(buf)
@@ -110,15 +116,15 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
       } catch (e: any) {
         setError(
           e?.message?.includes('encrypted')
-            ? '压缩包已加密，无法在线预览'
-            : '解压失败，文件可能损坏或不是标准 zip',
+            ? t('压缩包已加密，无法在线预览')
+            : t('解压失败，文件可能损坏或不是标准 zip'),
         )
       } finally {
         setLoading(false)
       }
     }
     run()
-  }, [url])
+  }, [url, t])
 
   useEffect(() => {
     return () => {
@@ -156,15 +162,17 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
     <div className="flex flex-col h-full bg-gray-50 text-sm">
       <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b bg-white">
         <FileArchive className="size-4 text-gray-500" />
-        <span className="font-medium truncate">{name || '压缩包预览'}</span>
-        <span className="text-xs text-gray-400">{entries ? `${entries.length} 个文件` : ''}</span>
+        <span className="font-medium truncate">{name || t('压缩包预览')}</span>
+        <span className="text-xs text-gray-400">
+          {entries ? t('{count} 个文件', { count: entries.length }) : ''}
+        </span>
       </div>
       <div className="flex-1 min-h-0 flex">
         <div className="w-64 shrink-0 border-r bg-white overflow-auto">
           {loading && (
             <div className="flex items-center gap-2 p-4 text-gray-400">
               <Loader2 className="size-4 animate-spin" />
-              正在解压...
+              {t('正在解压...')}
             </div>
           )}
           {error && (
@@ -178,13 +186,13 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
                   rel="noreferrer"
                   className="block mt-1 text-primary underline"
                 >
-                  下载原文件
+                  {t('下载原文件')}
                 </a>
               </div>
             </div>
           )}
           {!loading && !error && entries?.length === 0 && (
-            <div className="p-4 text-gray-400">压缩包为空</div>
+            <div className="p-4 text-gray-400">{t('压缩包为空')}</div>
           )}
           {!loading && !error && entries && entries.length > 0 && (
             <ul>
@@ -218,7 +226,7 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
           {!selected && (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-gray-400">
               <FileText className="size-8 opacity-40" />
-              <span>点击左侧文件查看内容</span>
+              <span>{t('点击左侧文件查看内容')}</span>
             </div>
           )}
           {selected && selectedType === 'image' && (
@@ -245,14 +253,14 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
           {selected && selectedType === 'unknown' && (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-500">
               <FileText className="size-8 opacity-40" />
-              <span>{selected.name} 暂不支持在线预览</span>
+              <span>{t('{name} 暂不支持在线预览', { name: selected.name })}</span>
               <button
                 type="button"
                 onClick={() => downloadEntry(selected)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90"
               >
                 <Download className="size-4" />
-                下载该文件
+                {t('下载该文件')}
               </button>
             </div>
           )}
@@ -264,7 +272,7 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
                 onClick={() => downloadEntry(selected)}
                 className="text-primary hover:underline shrink-0 ml-2"
               >
-                下载
+                {t('下载')}
               </button>
             </div>
           )}

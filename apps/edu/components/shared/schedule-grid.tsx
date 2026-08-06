@@ -4,15 +4,8 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { MapPin, User, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { PeriodSlot, ScheduleEntry } from '@/lib/types'
-
-const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-
-const WEEK_PATTERN_SUFFIX: Record<string, string> = {
-  all: '',
-  odd: '（单周）',
-  even: '（双周）',
-}
 
 /** 按周次过滤：startWeek <= week <= endWeek 且周次模式匹配 */
 function filterEntriesByWeek(entries: ScheduleEntry[], week?: number): ScheduleEntry[] {
@@ -65,6 +58,13 @@ export function ScheduleGrid({
   onEntryMoveStart,
   movingEntry,
 }: ScheduleGridProps) {
+  const t = useT()
+  const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((d) => t(d))
+  const weekPatternSuffix: Record<string, string> = {
+    all: '',
+    odd: t('（单周）'),
+    even: t('（双周）'),
+  }
   const visibleEntries = useMemo(() => filterEntriesByWeek(entries, week), [entries, week])
 
   const rows = useMemo<GridRow[]>(() => {
@@ -135,13 +135,13 @@ export function ScheduleGrid({
           <span className="truncate font-medium text-gray-900">{entry.courseName}</span>
           {isScene && (
             <span className="shrink-0 rounded-full bg-orange-100 px-1.5 py-px text-[10px] font-medium text-orange-600">
-              场景
+              {t('场景')}
             </span>
           )}
           {canEdit && canMoveStart && (
             <button
               type="button"
-              title="编辑排课"
+              title={t('编辑排课')}
               onClick={(e) => {
                 e.stopPropagation()
                 onEntryClick?.(entry)
@@ -165,7 +165,11 @@ export function ScheduleGrid({
           </div>
         )}
         <div className="mt-0.5 text-muted-foreground">
-          第{entry.startWeek}-{entry.endWeek}周{WEEK_PATTERN_SUFFIX[entry.weekPattern] || ''}
+          {t('第{startWeek}-{endWeek}周{suffix}', {
+            startWeek: entry.startWeek,
+            endWeek: entry.endWeek,
+            suffix: weekPatternSuffix[entry.weekPattern] || '',
+          })}
         </div>
       </div>
     )
@@ -192,12 +196,12 @@ export function ScheduleGrid({
   }
 
   if (loading) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">加载中...</div>
+    return <div className="py-16 text-center text-sm text-muted-foreground">{t('加载中...')}</div>
   }
 
   const hasData = rows.length > 0
   if (!hasData && !alwaysShow) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">{emptyText}</div>
+    return <div className="py-16 text-center text-sm text-muted-foreground">{t(emptyText)}</div>
   }
 
   // 始终渲染时用节次数据兜底，fallback 为空数组
@@ -207,7 +211,7 @@ export function ScheduleGrid({
       ? [...periodSlots]
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((s) => ({ key: s.name, label: s.name }) as GridRow)
-      : [{ key: '__empty', label: '暂无节次' } as GridRow]
+      : [{ key: '__empty', label: t('暂无节次') } as GridRow]
 
   return (
     <div className="overflow-x-auto">
@@ -215,9 +219,9 @@ export function ScheduleGrid({
         <thead>
           <tr>
             <th className="w-[80px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
-              节次
+              {t('节次')}
             </th>
-            {DAY_LABELS.map((d) => (
+            {dayLabels.map((d) => (
               <th
                 key={d}
                 className="w-[130px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground"
@@ -234,7 +238,7 @@ export function ScheduleGrid({
                 <div className="text-xs font-medium text-gray-700">{row.label}</div>
                 {row.time && <div className="text-[10px] text-muted-foreground">{row.time}</div>}
               </td>
-              {DAY_LABELS.map((_, dayIdx) => {
+              {dayLabels.map((_, dayIdx) => {
                 const dayEntries = cellMap.get(`${dayIdx + 1}:${row.key}`) || []
                 const canDrop = !!onEntryMove && dayEntries.length === 0
                 return (

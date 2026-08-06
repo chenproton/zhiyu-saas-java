@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { CheckSquare, ChevronDown, Eye } from 'lucide-react'
 import { useApprovalDialogs } from '@/components/shared/_components/approval-dialogs'
+import { useT } from '@/lib/i18n/locale-provider'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 
@@ -69,6 +70,7 @@ export function ApprovalListPage<
   groupOf,
   groupLabelOf,
 }: ApprovalListPageProps<T>) {
+  const t = useT()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentItem, setCurrentItem] = useState<T | null>(null)
 
@@ -106,10 +108,10 @@ export function ApprovalListPage<
     })
     return keys.map((key) => ({
       key,
-      label: key === undefined ? '未关联批次' : groupLabelOf?.(key) || key,
+      label: key === undefined ? t('未关联批次') : t(groupLabelOf?.(key) || key),
       items: groupMap.get(key)!,
     }))
-  }, [pendingItems, groupOf, groupLabelOf])
+  }, [pendingItems, groupOf, groupLabelOf, t])
 
   const selectedPendingIds = useMemo(
     () => pendingItems.filter((i) => selectedIds.has(i.id)).map((i) => i.id),
@@ -171,7 +173,7 @@ export function ApprovalListPage<
                 <Checkbox
                   checked={allSelected}
                   onCheckedChange={() => toggleAll(data)}
-                  aria-label="全选"
+                  aria-label={t('全选')}
                 />
               </TableHead>
               {columns.map((col, i) => (
@@ -179,11 +181,11 @@ export function ApprovalListPage<
                   key={i}
                   className={`text-xs font-medium text-slate-500 whitespace-nowrap ${col.className || ''}`}
                 >
-                  {col.header}
+                  {t(col.header)}
                 </TableHead>
               ))}
               <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
-                操作
+                {t('操作')}
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -191,13 +193,13 @@ export function ApprovalListPage<
             {loading ? (
               <TableRow>
                 <TableCell colSpan={colSpan} className="text-center py-8 text-gray-500">
-                  加载中...
+                  {t('加载中...')}
                 </TableCell>
               </TableRow>
             ) : data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={colSpan} className="text-center py-12 text-gray-500">
-                  暂无数据
+                  {t('暂无数据')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -208,7 +210,7 @@ export function ApprovalListPage<
                       checked={selectedIds.has(item.id)}
                       disabled={item.status !== 'pending'}
                       onCheckedChange={() => toggleSelection(item.id)}
-                      aria-label={`选择审批`}
+                      aria-label={t('选择审批')}
                     />
                   </TableCell>
                   {columns.map((col, i) => (
@@ -221,7 +223,7 @@ export function ApprovalListPage<
                       <Button variant="outline" size="sm" asChild>
                         <Link href={detailHref(item)}>
                           <Eye className="mr-1 h-3 w-3" />
-                          查看
+                          {t('查看')}
                         </Link>
                       </Button>
                     ) : null}
@@ -246,9 +248,9 @@ export function ApprovalListPage<
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <CheckSquare className="h-4 w-4" />
-            审批记录列表
+            {t('审批记录列表')}
           </CardTitle>
-          <CardDescription>共 {data.length} 条审批记录</CardDescription>
+          <CardDescription>{t('共 {count} 条审批记录', { count: data.length })}</CardDescription>
         </CardHeader>
         <CardContent className="p-0">{renderTableBody(data)}</CardContent>
       </Card>
@@ -269,12 +271,12 @@ export function ApprovalListPage<
                     <span className="font-medium text-gray-800">{group.label}</span>
                     {group.key === undefined && (
                       <Badge variant="outline" className="text-xs text-gray-500">
-                        未绑定批次
+                        {t('未绑定批次')}
                       </Badge>
                     )}
                   </div>
                   <Badge variant="secondary" className="text-xs">
-                    {group.items.length} 条待审批
+                    {t('{count} 条待审批', { count: group.items.length })}
                   </Badge>
                 </div>
               </CollapsibleTrigger>
@@ -292,14 +294,14 @@ export function ApprovalListPage<
     <>
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">审批中心</h1>
-          <p className="text-sm text-muted-foreground mt-1">{pageDescription}</p>
+          <h1 className="text-xl font-semibold text-foreground">{t('审批中心')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t(pageDescription)}</p>
         </div>
 
         {selectedPendingIds.length > 0 && (
           <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <span className="text-sm text-gray-700">
-              已选 {selectedPendingIds.length} 条待审批记录
+              {t('已选 {count} 条待审批记录', { count: selectedPendingIds.length })}
             </span>
             <div className="flex items-center gap-3">{batchActionButtons()}</div>
           </div>
@@ -308,7 +310,7 @@ export function ApprovalListPage<
         <Tabs defaultValue="pending" onValueChange={() => setSelectedIds(new Set())}>
           <TabsList>
             <TabsTrigger value="pending" className="gap-2 w-full">
-              待审批
+              {t('待审批')}
               {pendingItems.length > 0 && (
                 <Badge
                   variant="secondary"
@@ -319,7 +321,7 @@ export function ApprovalListPage<
               )}
             </TabsTrigger>
             <TabsTrigger value="processed" className="w-full">
-              已审批
+              {t('已审批')}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="pending" className="mt-6">
@@ -329,8 +331,8 @@ export function ApprovalListPage<
               <Card>
                 <CardContent className="py-12 text-center">
                   <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-700">暂无待审批项</h3>
-                  <p className="text-sm text-gray-500 mt-1">{emptyPendingText}</p>
+                  <h3 className="text-lg font-medium text-gray-700">{t('暂无待审批项')}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{t(emptyPendingText)}</p>
                 </CardContent>
               </Card>
             )}
@@ -342,7 +344,7 @@ export function ApprovalListPage<
               <Card>
                 <CardContent className="py-12 text-center">
                   <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-700">{emptyProcessedText}</h3>
+                  <h3 className="text-lg font-medium text-gray-700">{t(emptyProcessedText)}</h3>
                 </CardContent>
               </Card>
             )}

@@ -41,6 +41,7 @@ import { useToast } from '@zhiyu/ui'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface BatchGroupItem {
   id: string
@@ -81,6 +82,7 @@ export function BatchGroupPage({
 }: BatchGroupPageProps) {
   const { toast } = useToast()
   const { tenantId } = useAuth()
+  const t = useT()
   const [batches, setBatches] = useState<BatchView[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [majors, setMajors] = useState<Major[]>([])
@@ -109,8 +111,8 @@ export function BatchGroupPage({
         if (!cancelled) {
           toast({
             variant: 'destructive',
-            title: '加载专业失败',
-            description: err.message || '请稍后重试',
+            title: t('加载专业失败'),
+            description: err.message || t('请稍后重试'),
           })
         }
       }
@@ -118,7 +120,7 @@ export function BatchGroupPage({
     return () => {
       cancelled = true
     }
-  }, [tenantId, toast])
+  }, [tenantId, toast, t])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -138,13 +140,13 @@ export function BatchGroupPage({
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '无法获取批次数据',
+        title: t('加载失败'),
+        description: err.message || t('无法获取批次数据'),
       })
     } finally {
       setLoading(false)
     }
-  }, [api, toast])
+  }, [api, toast, t])
 
   useEffect(() => {
     let cancelled = false
@@ -194,9 +196,13 @@ export function BatchGroupPage({
       await loadData()
       setIsCreateDialogOpen(false)
       resetForm()
-      toast({ title: '创建成功' })
+      toast({ title: t('创建成功') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '创建失败', description: err.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: t('创建失败'),
+        description: err.message || t('请稍后重试'),
+      })
     }
   }
 
@@ -220,9 +226,13 @@ export function BatchGroupPage({
       await loadData()
       setIsEditDialogOpen(false)
       resetForm()
-      toast({ title: '保存成功' })
+      toast({ title: t('保存成功') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: t('保存失败'),
+        description: err.message || t('请稍后重试'),
+      })
     }
   }
 
@@ -231,9 +241,13 @@ export function BatchGroupPage({
       const newStatus = batch.status === 'open' ? 'closed' : 'open'
       await api.updateStatus(batch.id, newStatus)
       await loadData()
-      toast({ title: newStatus === 'open' ? '批次已重新开放' : '批次已截止' })
+      toast({ title: newStatus === 'open' ? t('批次已重新开放') : t('批次已截止') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '操作失败', description: err.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: t('操作失败'),
+        description: err.message || t('请稍后重试'),
+      })
     }
   }
 
@@ -245,9 +259,13 @@ export function BatchGroupPage({
     try {
       await api.delete(deleteTargetId)
       await loadData()
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: t('删除失败'),
+        description: err.message || t('请稍后重试'),
+      })
     } finally {
       setDeleteTargetId(null)
     }
@@ -256,7 +274,7 @@ export function BatchGroupPage({
   const renderForm = () => (
     <div className="grid gap-4 py-4">
       <div className="grid gap-2">
-        <Label htmlFor="batchName">分组名称</Label>
+        <Label htmlFor="batchName">{t('分组名称')}</Label>
         <Input
           id="batchName"
           value={newBatchName}
@@ -266,12 +284,12 @@ export function BatchGroupPage({
       </div>
       <div className="grid gap-2">
         <Label htmlFor="workflow">
-          关联审批流 <span className="text-red-500">*</span>
+          {t('关联审批流')} <span className="text-red-500">*</span>
         </Label>
         {majors.length > 0 && (
           <Tabs value={selectedMajorId} onValueChange={setSelectedMajorId}>
             <TabsList className="h-auto flex-wrap justify-start">
-              <TabsTrigger value="all">全部专业</TabsTrigger>
+              <TabsTrigger value="all">{t('全部专业')}</TabsTrigger>
               {majors.map((m) => (
                 <TabsTrigger key={m.id} value={m.id}>
                   {m.name}
@@ -282,7 +300,7 @@ export function BatchGroupPage({
         )}
         <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
           {filteredWorkflows.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-gray-500 text-center">暂无审批流程</div>
+            <div className="px-4 py-6 text-sm text-gray-500 text-center">{t('暂无审批流程')}</div>
           ) : (
             filteredWorkflows.map((wf) => {
               const selected = newBatchWorkflow === wf.id
@@ -303,7 +321,7 @@ export function BatchGroupPage({
                       <div className="text-xs text-gray-500 mt-0.5 truncate">{wf.description}</div>
                     ) : null}
                     <div className="text-xs text-gray-400 mt-1">
-                      {(wf.steps || []).length} 个审批步骤
+                      {t('{n} 个审批步骤', { n: (wf.steps || []).length })}
                     </div>
                   </div>
                   {selected && <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />}
@@ -321,28 +339,28 @@ export function BatchGroupPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">批次分组管理</h1>
+          <h1 className="text-xl font-semibold text-foreground">{t('批次分组管理')}</h1>
           <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              新建批次
+              {t('新建批次')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>新增批次</DialogTitle>
-              <DialogDescription>创建新的批次分组，并关联审批流程。</DialogDescription>
+              <DialogTitle>{t('新增批次')}</DialogTitle>
+              <DialogDescription>{t('创建新的批次分组，并关联审批流程。')}</DialogDescription>
             </DialogHeader>
             {renderForm()}
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                取消
+                {t('取消')}
               </Button>
               <Button onClick={handleAddBatch} disabled={!newBatchName || !newBatchWorkflow}>
-                创建批次
+                {t('创建批次')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -352,16 +370,16 @@ export function BatchGroupPage({
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>编辑批次</DialogTitle>
-            <DialogDescription>修改批次名称与关联审批流程。</DialogDescription>
+            <DialogTitle>{t('编辑批次')}</DialogTitle>
+            <DialogDescription>{t('修改批次名称与关联审批流程。')}</DialogDescription>
           </DialogHeader>
           {renderForm()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleUpdateBatch} disabled={!newBatchName || !newBatchWorkflow}>
-              保存修改
+              {t('保存修改')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -373,7 +391,7 @@ export function BatchGroupPage({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索批次名称、编号..."
+                placeholder={t('搜索批次名称、编号...')}
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -387,9 +405,9 @@ export function BatchGroupPage({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部状态</SelectItem>
-                <SelectItem value="open">开放中</SelectItem>
-                <SelectItem value="closed">已截止</SelectItem>
+                <SelectItem value="all">{t('全部状态')}</SelectItem>
+                <SelectItem value="open">{t('开放中')}</SelectItem>
+                <SelectItem value="closed">{t('已截止')}</SelectItem>
               </SelectContent>
             </Select>
             {(searchQuery || filterStatus !== 'all') && (
@@ -402,7 +420,7 @@ export function BatchGroupPage({
                 }}
               >
                 <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                重置
+                {t('重置')}
               </Button>
             )}
           </div>
@@ -413,19 +431,25 @@ export function BatchGroupPage({
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <FolderKanban className="h-4 w-4" />
-            批次列表
+            {t('批次列表')}
           </CardTitle>
-          <CardDescription>共 {filteredBatches.length} 个批次分组</CardDescription>
+          <CardDescription>{t('共 {n} 个批次分组', { n: filteredBatches.length })}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50">
-                  <TableHead className="text-xs font-medium text-slate-500">分组名称</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">批次编号</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">审批流程</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">状态</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500">
+                    {t('分组名称')}
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500">
+                    {t('批次编号')}
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500">
+                    {t('审批流程')}
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500">{t('状态')}</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -433,13 +457,13 @@ export function BatchGroupPage({
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                      加载中...
+                      {t('加载中...')}
                     </TableCell>
                   </TableRow>
                 ) : filteredBatches.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                      暂无批次数据
+                      {t('暂无批次数据')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -467,7 +491,7 @@ export function BatchGroupPage({
                       <TableCell className="text-sm text-gray-600">
                         <StatusBadge
                           status={batch.status}
-                          label={batch.status === 'open' ? '开放中' : '已截止'}
+                          label={batch.status === 'open' ? t('开放中') : t('已截止')}
                         />
                       </TableCell>
                       <TableRowActions>
@@ -478,7 +502,7 @@ export function BatchGroupPage({
                           onClick={() => openEdit(batch)}
                         >
                           <Pencil className="mr-1 h-3 w-3" />
-                          编辑
+                          {t('编辑')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -487,7 +511,7 @@ export function BatchGroupPage({
                           onClick={() => handleToggleStatus(batch)}
                         >
                           <Power className="mr-1 h-3 w-3" />
-                          {batch.status === 'open' ? '截止批次' : '重新开放'}
+                          {batch.status === 'open' ? t('截止批次') : t('重新开放')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -496,7 +520,7 @@ export function BatchGroupPage({
                           onClick={() => handleDeleteBatch(batch.id)}
                         >
                           <Trash2 className="mr-1 h-3 w-3" />
-                          删除
+                          {t('删除')}
                         </Button>
                       </TableRowActions>
                     </TableRow>
@@ -512,8 +536,8 @@ export function BatchGroupPage({
         onOpenChange={(open) => {
           if (!open) setDeleteTargetId(null)
         }}
-        title="确认删除"
-        description="确定删除该批次吗？"
+        title={t('确认删除')}
+        description={t('确定删除该批次吗？')}
         variant="destructive"
         onConfirm={confirmDeleteBatch}
       />

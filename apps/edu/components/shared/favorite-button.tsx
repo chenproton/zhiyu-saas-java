@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { favoriteApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { FavoriteTargetType } from '@/lib/api'
 
 interface FavoriteButtonProps {
@@ -32,6 +33,7 @@ export function FavoriteButton({
 }: FavoriteButtonProps) {
   const { user } = useAuth()
   const { toast } = useToast()
+  const t = useT()
   const [isFavorite, setIsFavorite] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -56,7 +58,7 @@ export function FavoriteButton({
 
   const handleToggle = async () => {
     if (!user) {
-      toast({ title: '提示', description: `请先登录后再${label}` })
+      toast({ title: t('提示'), description: t('请先登录后再{label}', { label }) })
       return
     }
     if (loading) return
@@ -66,13 +68,17 @@ export function FavoriteButton({
       setIsFavorite(res.isFavorite)
       setFavoriteCount(res.favoriteCount)
     } catch {
-      toast({ variant: 'destructive', title: '操作失败', description: '操作失败，请稍后再试' })
+      toast({
+        variant: 'destructive',
+        title: t('操作失败'),
+        description: t('操作失败，请稍后再试'),
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const displayActive = activeLabel || `已${label}`
+  const displayActive = activeLabel || t('已{label}', { label })
 
   if (light) {
     return (

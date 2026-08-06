@@ -16,6 +16,7 @@ import {
 import { MultiSelectSearch } from '@/components/ui/multi-select-search'
 import { UserSelector } from '@/components/shared/user-selector'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface WorkflowStepEditor {
   name: string
@@ -61,6 +62,7 @@ export function WorkflowEditor({
   majors,
   tenantId,
 }: WorkflowEditorProps) {
+  const t = useT()
   const handleAddStep = () => {
     onStepsChange([...steps, { name: '', approverIds: [], approvalMode: 'any' }])
   }
@@ -79,39 +81,39 @@ export function WorkflowEditor({
 
   return (
     <div className="grid gap-4 py-4">
-      <FormFieldRow label="流程名称" htmlFor="workflowName">
+      <FormFieldRow label={t('流程名称')} htmlFor="workflowName">
         <Input
           id="workflowName"
-          placeholder="例如：校级审批流程"
+          placeholder={t('例如：校级审批流程')}
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
         />
       </FormFieldRow>
-      <FormFieldRow label="流程说明" htmlFor="description">
+      <FormFieldRow label={t('流程说明')} htmlFor="description">
         <Textarea
           id="description"
-          placeholder="描述该流程的适用场景和审批规则..."
+          placeholder={t('描述该流程的适用场景和审批规则...')}
           rows={2}
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
         />
       </FormFieldRow>
       {majors.length > 0 && (
-        <FormFieldRow label="适用专业">
+        <FormFieldRow label={t('适用专业')}>
           <MultiSelectSearch
             options={majors.map((m) => ({ label: m.name, value: m.id }))}
             selected={majorIds}
             onChange={onMajorIdsChange}
-            placeholder="选择适用专业"
-            searchPlaceholder="搜索专业名称..."
-            emptyText="暂无专业"
+            placeholder={t('选择适用专业')}
+            searchPlaceholder={t('搜索专业名称...')}
+            emptyText={t('暂无专业')}
           />
         </FormFieldRow>
       )}
       <div className="grid gap-2">
         <Label className="flex items-center gap-2">
           <Users className="h-4 w-4" />
-          审批步骤
+          {t('审批步骤')}
         </Label>
         <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
           {steps.map((step, index) => (
@@ -124,7 +126,7 @@ export function WorkflowEditor({
                   {index + 1}
                 </Badge>
                 <Input
-                  placeholder="步骤名称（如：教研组长审批）"
+                  placeholder={t('步骤名称（如：教研组长审批）')}
                   className="flex-1"
                   value={step.name}
                   onChange={(e) => handleStepChange(index, 'name', e.target.value)}
@@ -146,7 +148,7 @@ export function WorkflowEditor({
                     value={step.approverIds}
                     onChange={(ids) => handleStepChange(index, 'approverIds', ids as any)}
                     multiple
-                    placeholder="选择审批人"
+                    placeholder={t('选择审批人')}
                     excludeStudent
                     usePortalApi={true}
                     tenantId={tenantId}
@@ -160,8 +162,8 @@ export function WorkflowEditor({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="any">任一通过</SelectItem>
-                    <SelectItem value="all">全员通过</SelectItem>
+                    <SelectItem value="any">{t('任一通过')}</SelectItem>
+                    <SelectItem value="all">{t('全员通过')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -169,11 +171,11 @@ export function WorkflowEditor({
           ))}
           <Button variant="outline" size="sm" className="w-full" onClick={handleAddStep}>
             <Plus className="mr-2 h-4 w-4" />
-            添加步骤
+            {t('添加步骤')}
           </Button>
         </div>
       </div>
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-red-500">{t(error)}</p>}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { Loader2, Upload } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { useT } from '@/lib/i18n/locale-provider'
 
 import { ImageEditorDialog } from './image-editor-dialog'
 import { isPassthroughImage, isUndecodableImage } from './image-upload-utils'
@@ -26,6 +27,7 @@ export function CoverImageUpload({
   onUpload,
   onRemove,
 }: CoverImageUploadProps) {
+  const t = useT()
   const inputRef = useRef<HTMLInputElement>(null)
   const [editTarget, setEditTarget] = useState<{ src: string; file: File } | null>(null)
 
@@ -38,7 +40,7 @@ export function CoverImageUpload({
     e.target.value = ''
     if (!file) return
     if (isUndecodableImage(file)) {
-      toast({ title: '暂不支持 HEIC/HEIF 格式，请先转换后再上传', variant: 'destructive' })
+      toast({ title: t('暂不支持 HEIC/HEIF 格式，请先转换后再上传'), variant: 'destructive' })
       return
     }
     if (isPassthroughImage(file)) {
@@ -92,7 +94,7 @@ export function CoverImageUpload({
                 }}
                 disabled={uploading}
               >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : '更换封面'}
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('更换封面')}
               </Button>
               <Button
                 variant="outline"
@@ -104,7 +106,7 @@ export function CoverImageUpload({
                 }}
                 disabled={uploading}
               >
-                移除封面
+                {t('移除封面')}
               </Button>
             </div>
           </>
@@ -116,7 +118,9 @@ export function CoverImageUpload({
               <Upload className="h-8 w-8 text-gray-400 mb-2" />
             )}
             <span className="text-sm text-gray-500">
-              {uploading ? '上传中...' : `点击上传${label.replace('封面', '')}封面`}
+              {uploading
+                ? t('上传中...')
+                : t('点击上传{name}封面', { name: label.replace('封面', '') })}
             </span>
           </div>
         )}

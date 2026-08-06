@@ -8,6 +8,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { cn } from '@/lib/utils'
 import type { TaskResource } from '@/lib/types'
 import { isSafeExternalUrl } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import ZipPreview, { isZipUrl } from '@/components/shared/zip-preview'
 
 const MIN_WIDTH = 320
@@ -50,6 +51,7 @@ function ResourcePreviewModalInner({
   index = 0,
   backdrop = true,
 }: ResourcePreviewModalProps) {
+  const t = useT()
   const initialPosition = useMemo(() => ({ x: index * OFFSET, y: index * OFFSET }), [index])
   const [position, setPosition] = useState(initialPosition)
   const [size, setSize] = useState<{ width?: number; height?: number }>({})
@@ -226,7 +228,7 @@ function ResourcePreviewModalInner({
           onMouseDown={handleMouseDown}
         >
           <div className="flex items-center gap-2 text-base truncate font-semibold">
-            {resource?.name || '资源预览'}
+            {resource?.name || t('资源预览')}
           </div>
           <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
@@ -236,13 +238,13 @@ function ResourcePreviewModalInner({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <X className="h-4 w-4 mr-1" />
-              关闭
+              {t('关闭')}
             </Button>
             {isSafeExternalUrl(resource?.url) && (
               <Button variant="outline" size="sm" asChild onMouseDown={(e) => e.stopPropagation()}>
                 <a href={resource.url} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-1" />
-                  新窗口打开
+                  {t('新窗口打开')}
                 </a>
               </Button>
             )}
@@ -267,7 +269,7 @@ function ResourcePreviewModalInner({
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 h-full text-gray-400">
               <FileText className="h-10 w-10 opacity-40" />
-              <span className="text-sm">暂无预览内容</span>
+              <span className="text-sm">{t('暂无预览内容')}</span>
             </div>
           )}
         </div>

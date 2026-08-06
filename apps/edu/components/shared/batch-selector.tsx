@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 import {
   Select,
   SelectContent,
@@ -26,10 +27,14 @@ export function BatchSelector({
   value,
   onChange,
   batchApi,
-  label = '所属批次',
-  placeholder = '请选择批次',
-  emptyLabel = '不关联批次',
+  label,
+  placeholder,
+  emptyLabel,
 }: BatchSelectorProps) {
+  const t = useT()
+  const labelText = label ?? t('所属批次')
+  const placeholderText = placeholder ?? t('请选择批次')
+  const emptyLabelText = emptyLabel ?? t('不关联批次')
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
@@ -41,16 +46,16 @@ export function BatchSelector({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
+      <Label className="text-xs">{labelText}</Label>
       <Select
         value={value || '__none__'}
         onValueChange={(v) => onChange(v === '__none__' ? '' : v)}
       >
         <SelectTrigger className="h-9 text-sm">
-          <SelectValue placeholder={placeholder} />
+          <SelectValue placeholder={placeholderText} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__none__">{emptyLabel}</SelectItem>
+          <SelectItem value="__none__">{emptyLabelText}</SelectItem>
           {batches.map((b) => (
             <SelectItem key={b.id} value={b.id}>
               {b.name}

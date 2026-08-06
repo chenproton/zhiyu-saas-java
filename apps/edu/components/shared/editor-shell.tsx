@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { TopNav } from '@/components/portal/top-nav'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface EditorShellProps {
   mode: 'fullscreen' | 'inline'
@@ -75,10 +76,10 @@ export function EditorShell({
   onPreview,
   onPrev,
   onNext,
-  nextText = '下一步',
+  nextText,
   nextDisabled,
   onSubmit,
-  submitText = '提交审批',
+  submitText,
   submitDisabled,
   loadingText,
   headerTitle,
@@ -87,11 +88,14 @@ export function EditorShell({
   contentMaxWidth,
   children,
 }: EditorShellProps) {
+  const t = useT()
+  const nextButtonText = nextText ?? t('下一步')
+  const submitButtonText = submitText ?? t('提交审批')
   const backIcon =
     mode === 'fullscreen' ? <X className="h-4 w-4 mr-2" /> : <ArrowLeft className="h-4 w-4 mr-1" />
   const stickyClass = mode === 'fullscreen' ? 'sticky top-14 z-10' : 'sticky top-0 z-30'
   const mxWidth = contentMaxWidth || (mode === 'fullscreen' ? 'max-w-full' : 'max-w-[1400px]')
-  const defaultSaveText = isSaving ? '保存中...' : '保存草稿'
+  const defaultSaveText = isSaving ? t('保存中...') : t('保存草稿')
 
   const headerBar = (
     <div
@@ -114,7 +118,9 @@ export function EditorShell({
             <>
               <div className="h-5 w-px bg-gray-200 hidden md:block" />
               <div className="flex items-center gap-2">
-                <Badge className="bg-primary text-primary-foreground">步骤 {step}</Badge>
+                <Badge className="bg-primary text-primary-foreground">
+                  {t('步骤 {step}', { step })}
+                </Badge>
                 {stepLabel && (
                   <span className="text-sm font-medium text-gray-800 hidden md:inline">
                     {stepLabel}
@@ -146,18 +152,18 @@ export function EditorShell({
             {onPreview && (
               <Button variant="outline" size="sm" onClick={onPreview}>
                 <Eye className="mr-2 h-4 w-4" />
-                预览
+                {t('预览')}
               </Button>
             )}
             {onPrev && (
               <Button variant="outline" size="sm" onClick={onPrev}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                上一步
+                {t('上一步')}
               </Button>
             )}
             {onNext && (
               <Button size="sm" onClick={onNext} disabled={nextDisabled}>
-                {nextText}
+                {nextButtonText}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             )}
@@ -165,14 +171,14 @@ export function EditorShell({
               <Button size="sm" onClick={onSubmit} disabled={submitDisabled}>
                 {mode === 'inline' && <Send className="mr-2 h-4 w-4" />}
                 {mode === 'fullscreen' && <Check className="mr-2 h-4 w-4" />}
-                {submitText}
+                {submitButtonText}
               </Button>
             )}
           </div>
           <div className="md:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" aria-label="更多操作">
+                <Button variant="outline" size="sm" aria-label={t('更多操作')}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -195,24 +201,24 @@ export function EditorShell({
                 {onPreview && (
                   <DropdownMenuItem onClick={onPreview}>
                     <Eye className="mr-2 h-4 w-4" />
-                    预览
+                    {t('预览')}
                   </DropdownMenuItem>
                 )}
                 {onPrev && (
                   <DropdownMenuItem onClick={onPrev}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    上一步
+                    {t('上一步')}
                   </DropdownMenuItem>
                 )}
                 {onNext && (
                   <DropdownMenuItem onClick={onNext} disabled={nextDisabled}>
-                    {nextText}
+                    {nextButtonText}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </DropdownMenuItem>
                 )}
                 {!onNext && onSubmit && (
                   <DropdownMenuItem onClick={onSubmit} disabled={submitDisabled}>
-                    {submitText}
+                    {submitButtonText}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

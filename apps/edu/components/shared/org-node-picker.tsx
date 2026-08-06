@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChevronDown, ChevronRight, ChevronsUpDown, Search, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import { useOrgTree } from '@/hooks/use-org-tree'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import { typeMetaFor } from '@/lib/org-type-icons'
@@ -142,10 +143,11 @@ export function OrgNodePicker({
   value,
   onChange,
   selectableTypes,
-  placeholder = '选择组织节点',
+  placeholder,
   disabled,
-  title = '选择组织节点',
+  title,
 }: OrgNodePickerProps) {
+  const t = useT()
   const { orgs, orgMap, orgTypeMap, loading } = useOrgTree(tenantId)
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -212,7 +214,7 @@ export function OrgNodePicker({
         className="w-full justify-between font-normal"
       >
         <span className={cn('truncate', !selectedNode && 'text-muted-foreground')}>
-          {selectedNode ? selectedNode.name : placeholder}
+          {selectedNode ? selectedNode.name : (placeholder ?? t('选择组织节点'))}
         </span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
       </Button>
@@ -220,17 +222,19 @@ export function OrgNodePicker({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent size="lg">
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
+            <DialogTitle>{title ?? t('选择组织节点')}</DialogTitle>
             <DialogDescription>
               {selectableTypes && selectableTypes.length > 0
-                ? `在组织架构树中选择${selectableTypes.join('/')}类型节点，支持按名称搜索`
-                : '在组织架构树中选择节点，支持按名称搜索'}
+                ? t('在组织架构树中选择{types}类型节点，支持按名称搜索', {
+                    types: selectableTypes.join('/'),
+                  })
+                : t('在组织架构树中选择节点，支持按名称搜索')}
             </DialogDescription>
           </DialogHeader>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="搜索节点名称..."
+              placeholder={t('搜索节点名称...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-8"
@@ -247,15 +251,15 @@ export function OrgNodePicker({
           <ScrollArea className="h-[400px] rounded-md border p-2">
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
+                <Loader2 className="h-4 w-4 animate-spin" /> {t('加载中...')}
               </div>
             ) : orgs.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
-                暂无组织架构数据
+                {t('暂无组织架构数据')}
               </div>
             ) : visibleIds && visibleIds.size === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
-                未找到匹配的节点
+                {t('未找到匹配的节点')}
               </div>
             ) : (
               orgs.map((node) => (
@@ -277,14 +281,14 @@ export function OrgNodePicker({
           </ScrollArea>
           <DialogFooter className="items-center gap-2 sm:justify-between">
             <div className="text-sm text-muted-foreground truncate">
-              {pendingNode ? `已选择：${pendingNode.name}` : '未选择节点'}
+              {pendingNode ? t('已选择：{name}', { name: pendingNode.name }) : t('未选择节点')}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setOpen(false)}>
-                取消
+                {t('取消')}
               </Button>
               <Button onClick={confirm} disabled={!pendingId}>
-                确定
+                {t('确定')}
               </Button>
             </div>
           </DialogFooter>

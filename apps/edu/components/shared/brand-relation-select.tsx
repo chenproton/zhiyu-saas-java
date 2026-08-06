@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select'
 import { portalRequest } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceListResponse } from '@/lib/types'
 
 interface Option {
@@ -32,10 +33,11 @@ export function BrandRelationSelect({
   label,
   value,
   onChange,
-  placeholder = '选择关联对象',
+  placeholder,
   fetchUrl,
   optional = true,
 }: BrandRelationFieldProps) {
+  const t = useT()
   const [options, setOptions] = useState<Option[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -65,10 +67,12 @@ export function BrandRelationSelect({
         disabled={loading}
       >
         <SelectTrigger>
-          <SelectValue placeholder={loading ? '加载中...' : placeholder} />
+          <SelectValue
+            placeholder={loading ? t('加载中...') : (placeholder ?? t('选择关联对象'))}
+          />
         </SelectTrigger>
         <SelectContent>
-          {optional && <SelectItem value="__none">不关联</SelectItem>}
+          {optional && <SelectItem value="__none">{t('不关联')}</SelectItem>}
           {options.map((o) => (
             <SelectItem key={o.value} value={o.value}>
               {o.label}
@@ -76,7 +80,7 @@ export function BrandRelationSelect({
           ))}
           {options.length === 0 && !loading && (
             <SelectItem value="__none" disabled>
-              暂无选项
+              {t('暂无选项')}
             </SelectItem>
           )}
         </SelectContent>
