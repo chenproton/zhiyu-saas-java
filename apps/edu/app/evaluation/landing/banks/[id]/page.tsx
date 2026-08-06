@@ -26,14 +26,7 @@ import { Footer } from '@/components/portal/footer'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
-
-const coverGradients = [
-  'linear-gradient(135deg,#2563eb,#3b82f6)',
-  'linear-gradient(135deg,#7c3aed,#8b5cf6)',
-  'linear-gradient(135deg,#059669,#10b981)',
-  'linear-gradient(135deg,#db2777,#ec4899)',
-  'linear-gradient(135deg,#ea580c,#f97316)',
-]
+import { COVER_GRADIENTS } from '@/lib/cover-gradients'
 
 const questionTypeLabels = QUESTION_TYPE_LABELS
 
@@ -190,7 +183,7 @@ export default function BankDetailPage() {
 
   const coverStyle = bank.coverImage
     ? { backgroundImage: `url('${bank.coverImage}')` }
-    : { background: coverGradients[0] }
+    : { background: COVER_GRADIENTS[0] }
 
   return (
     <div

@@ -30,6 +30,7 @@ import {
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import { Footer } from '@/components/portal/footer'
 import { formatDate } from '@/lib/format-utils'
+import { COVER_GRADIENTS } from '@/lib/cover-gradients'
 import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-graph'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import {
@@ -47,14 +48,6 @@ const SYSTEM_TABS = [
 const GRANULAR_TABS = [
   { value: 'resources', label: '资源中心', icon: FolderOpen },
   { value: 'knowledge', label: '知识图谱', icon: GitBranch },
-]
-
-const coverGradients = [
-  'linear-gradient(135deg,#059669,#10b981)',
-  'linear-gradient(135deg,#0891b2,#06b6d4)',
-  'linear-gradient(135deg,#7c3aed,#8b5cf6)',
-  'linear-gradient(135deg,#db2777,#ec4899)',
-  'linear-gradient(135deg,#ea580c,#f97316)',
 ]
 
 const courseTypeLabels: Record<string, string> = {
@@ -251,7 +244,7 @@ export default function CourseDetailPage() {
 
   const coverStyle = course.coverImage
     ? { backgroundImage: `url('${course.coverImage}')` }
-    : { background: coverGradients[0] }
+    : { background: COVER_GRADIENTS[0] }
 
   const renderTreeNodes = (items: TreeItem[], flatIndexes: Map<string, number>): ReactNode =>
     items.map((item) => {
