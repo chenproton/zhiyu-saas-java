@@ -15,20 +15,12 @@ import { Button } from '@/components/ui/button'
 import type { ExamCenterItem } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
 import { cn } from '@/lib/utils'
-
-const coverGradients = [
-  'linear-gradient(135deg,#7c3aed,#8b5cf6)',
-  'linear-gradient(135deg,#a855f7,#c084fc)',
-  'linear-gradient(135deg,#6366f1,#818cf8)',
-  'linear-gradient(135deg,#ec4899,#f472b6)',
-  'linear-gradient(135deg,#f43f5e,#fb7185)',
-  'linear-gradient(135deg,#8b5cf6,#a78bfa)',
-]
+import { COVER_GRADIENTS } from '@/lib/cover-gradients'
 
 function gradientFor(id: string) {
   let h = 0
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
-  return coverGradients[h % coverGradients.length]
+  return COVER_GRADIENTS[h % COVER_GRADIENTS.length]
 }
 
 const STATUS_META: Record<string, { label: string; text: string; dot: string }> = {

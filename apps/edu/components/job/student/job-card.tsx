@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Flame } from 'lucide-react'
+import { Briefcase, MapPin, Flame } from 'lucide-react'
 import type { CareerPosition } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
+import { COVER_GRADIENTS } from '@/lib/cover-gradients'
 
 interface JobCardProps {
   position: CareerPosition
@@ -13,17 +14,6 @@ interface JobCardProps {
   abilityCount?: number
   industryName?: string
 }
-
-const coverGradients = [
-  'linear-gradient(135deg,#1e3a8a,#3b7cff)',
-  'linear-gradient(135deg,#7c2d12,#dc2626)',
-  'linear-gradient(135deg,#064e3b,#0891b2)',
-  'linear-gradient(135deg,#334155,#64748b)',
-  'linear-gradient(135deg,#581c87,#a855f7)',
-  'linear-gradient(135deg,#1e40af,#3b82f6)',
-  'linear-gradient(135deg,#be123c,#f43f5e)',
-  'linear-gradient(135deg,#0f766e,#14b8a6)',
-]
 
 export function JobCard({
   position,
@@ -36,7 +26,7 @@ export function JobCard({
   const displayTitle = position.name
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
-    : { background: coverGradients[index % coverGradients.length] }
+    : { background: COVER_GRADIENTS[index % COVER_GRADIENTS.length] }
 
   const majorName = position.majorNames?.[0] || '未分类'
   const viewCount = position.viewCount ?? 0
@@ -51,6 +41,11 @@ export function JobCard({
           style={coverStyle}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.88)] via-[rgba(15,23,42,0.35)] to-transparent" />
+          {!position.coverImage && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <Briefcase className="w-12 h-12 text-white/60" strokeWidth={1.5} />
+            </div>
+          )}
           {isHot && (
             <div className="absolute top-3 right-3 z-10 bg-gradient-to-br from-red-500 to-rose-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg shadow-red-500/25">
               <Flame className="w-3 h-3 fill-current" /> 热门

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Layers, FileText, GraduationCap } from 'lucide-react'
 import { courseApi } from '@/lib/api'
 import type { Course } from '@/lib/types'
+import { COVER_GRADIENTS } from '@/lib/cover-gradients'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
@@ -17,20 +18,11 @@ const SORT_OPTIONS = [
   { value: 'update', label: '最近更新' },
 ]
 
-const coverGradients = [
-  'linear-gradient(135deg,#059669,#10b981)',
-  'linear-gradient(135deg,#0891b2,#06b6d4)',
-  'linear-gradient(135deg,#7c3aed,#8b5cf6)',
-  'linear-gradient(135deg,#db2777,#ec4899)',
-  'linear-gradient(135deg,#ea580c,#f97316)',
-  'linear-gradient(135deg,#2563eb,#3b82f6)',
-]
-
 function CourseCard({ course, index }: { course: Course; index: number }) {
   const creatorName = course.creatorName || course.creatorId?.slice(0, 8) || '-'
   const coverStyle = course.coverImage
     ? { backgroundImage: `url('${course.coverImage}')` }
-    : { background: coverGradients[index % coverGradients.length] }
+    : { background: COVER_GRADIENTS[index % COVER_GRADIENTS.length] }
 
   return (
     <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
@@ -40,6 +32,11 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
           style={coverStyle}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.88)] via-[rgba(15,23,42,0.35)] to-transparent" />
+          {!course.coverImage && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <BookOpen className="w-12 h-12 text-white/60" strokeWidth={1.5} />
+            </div>
+          )}
           <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
             <div className="flex gap-1.5">
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">

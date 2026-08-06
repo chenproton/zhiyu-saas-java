@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin } from 'lucide-react'
+import { Layers, MapPin } from 'lucide-react'
 import type { Scenario } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
+import { COVER_GRADIENTS } from '@/lib/cover-gradients'
 
 interface SceneCardProps {
   scenario: Scenario
@@ -11,17 +12,6 @@ interface SceneCardProps {
   taskCount?: number
   knowledgePointCount?: number
 }
-
-const coverGradients = [
-  'linear-gradient(135deg,#1e3a8a,#3b7cff)',
-  'linear-gradient(135deg,#7c2d12,#dc2626)',
-  'linear-gradient(135deg,#064e3b,#0891b2)',
-  'linear-gradient(135deg,#334155,#64748b)',
-  'linear-gradient(135deg,#581c87,#a855f7)',
-  'linear-gradient(135deg,#1e40af,#3b82f6)',
-  'linear-gradient(135deg,#be123c,#f43f5e)',
-  'linear-gradient(135deg,#0f766e,#14b8a6)',
-]
 
 const industryTagMap: Record<string, { bg: string; text: string; border: string }> = {
   default: { bg: '#fff7ed', text: '#c2410c', border: '#ffedd5' },
@@ -44,7 +34,7 @@ export function SceneCard({
   const displayTitle = scenario.name
   const coverStyle = scenario.coverImage
     ? { backgroundImage: `url('${scenario.coverImage}')` }
-    : { background: coverGradients[index % coverGradients.length] }
+    : { background: COVER_GRADIENTS[index % COVER_GRADIENTS.length] }
 
   const industryName =
     scenario.industryNames?.[0] || (scenario.industryIds?.length ? '已关联' : '未分类')
@@ -63,6 +53,11 @@ export function SceneCard({
           style={coverStyle}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.88)] via-[rgba(15,23,42,0.35)] to-transparent" />
+          {!scenario.coverImage && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <Layers className="w-12 h-12 text-white/60" strokeWidth={1.5} />
+            </div>
+          )}
           <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
             <div className="flex gap-1.5">
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
