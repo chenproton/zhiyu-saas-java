@@ -51,20 +51,6 @@ const TYPE_EMOJI: Record<string, string> = {
   other: '📦',
 }
 
-const TYPE_GRADIENTS: Record<string, string> = {
-  video: 'linear-gradient(135deg, #dbeafe, #93c5fd)',
-  document: 'linear-gradient(135deg, #ffedd5, #fdba74)',
-  spreadsheet: 'linear-gradient(135deg, #dcfce7, #86efac)',
-  image: 'linear-gradient(135deg, #f3e8ff, #d8b4fe)',
-  link: 'linear-gradient(135deg, #ecfeff, #67e8f9)',
-  audio: 'linear-gradient(135deg, #fce7f3, #f9a8d4)',
-  venue: 'linear-gradient(135deg, #fee2e2, #fca5a5)',
-  facility: 'linear-gradient(135deg, #e2e8f0, #94a3b8)',
-  software: 'linear-gradient(135deg, #e0e7ff, #a5b4fc)',
-  archive: 'linear-gradient(135deg, #ccfbf1, #99f6e4)',
-  other: 'linear-gradient(135deg, #e7e5e4, #a8a29e)',
-}
-
 const TYPE_COLORS: Record<string, string> = {
   video: '#3b82f6',
   document: '#f97316',
@@ -146,40 +132,39 @@ function ResourceCard({
 }) {
   const color = TYPE_COLORS[resource.resourceType] || TYPE_COLORS.other
   const hasPreview = !!resource.url
+  const TypeIcon = TYPE_ICONS[resource.resourceType] || Package
+  const coverStyle = resource.thumbnail
+    ? {
+        backgroundImage: `url('${resource.thumbnail}')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {
+        background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 55%, #0f172a))`,
+      }
   return (
     <button
       onClick={() => onPreview(resource)}
       disabled={!hasPreview}
-      className={`group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col w-full text-left ${
+      className={`group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col w-full text-left shadow-[0_2px_6px_rgba(0,0,0,0.04)] ${
         hasPreview ? '' : 'opacity-85 cursor-default'
       }`}
     >
       <div
-        className="h-1.5 shrink-0"
-        style={{ background: `linear-gradient(90deg, ${color}, ${color}88)` }}
-      />
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex gap-3 items-start mb-3">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
-            style={{
-              background: TYPE_GRADIENTS[resource.resourceType] || '#f1f5f9',
-              boxShadow: `0 4px 12px ${color}20`,
-            }}
-          >
-            {TYPE_EMOJI[resource.resourceType] || '📦'}
-          </div>
-          <h3 className="flex-1 min-w-0 text-[15px] font-semibold text-slate-800 leading-snug line-clamp-2">
-            {resource.name}
-          </h3>
-        </div>
-
-        <span
-          className="self-start text-[11px] font-semibold px-2.5 py-1 rounded-md mb-3"
-          style={{ color, background: `${color}12` }}
-        >
+        className="h-[110px] relative shrink-0 flex items-center justify-center"
+        style={coverStyle}
+      >
+        {!resource.thumbnail && (
+          <TypeIcon className="w-12 h-12 text-white/80" strokeWidth={1.5} />
+        )}
+        <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
           {RESOURCE_TYPE_LABELS[resource.resourceType] || resource.resourceType}
         </span>
+      </div>
+      <div className="p-5 flex-1 flex flex-col">
+        <h3 className="text-[15px] font-semibold text-slate-800 leading-snug line-clamp-2 mb-2">
+          {resource.name}
+        </h3>
 
         {(resource.uploaderOrgName || resource.uploaderMajorName) && (
           <div className="flex items-center gap-3 mb-2 text-[11px] text-[#94a3b8]">
