@@ -23,6 +23,7 @@ func NewCertificateLibraryStore(q Queryer) *CertificateLibraryStore {
 			if creatorID := p.Values["creatorId"]; creatorID != "" {
 				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
 			}
+			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeCertificate, "id", SplitTagIDs(p.Values["tagIds"]))
 		},
 	})}
 }
@@ -81,6 +82,9 @@ func (s *CertificateLibraryStore) Update(ctx context.Context, id, tenantID strin
 
 // Delete 带租户隔离删除。
 func (s *CertificateLibraryStore) Delete(ctx context.Context, id, tenantID string) error {
+	if err := DeleteResourceTags(ctx, s.Q(), domain.TagResourceTypeCertificate, id); err != nil {
+		return err
+	}
 	_, err := s.Q().Exec(ctx, `DELETE FROM certificate_library WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }

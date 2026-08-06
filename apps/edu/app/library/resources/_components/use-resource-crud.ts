@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
-import { resourceLibraryApi, fileApi } from '@/lib/api'
+import { resourceLibraryApi, fileApi, tagApi } from '@/lib/api'
 import { type ResourceLibraryItem } from '@/lib/types/library'
+import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { useToast } from '@zhiyu/ui'
 import { fileTypesWithUpload, validateResourceFile } from '@/lib/resource-type-constants'
 
@@ -14,6 +15,7 @@ export function useResourceCrud(resourceType?: string) {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<string | null>(null)
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
 
@@ -22,6 +24,7 @@ export function useResourceCrud(resourceType?: string) {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [description, setDescription] = useState('')
+  const [tagIds, setTagIds] = useState<string[]>([])
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -37,6 +40,7 @@ export function useResourceCrud(resourceType?: string) {
         ...(resourceType ? { resourceType: resourceType as any } : {}),
         ...(filterType && !resourceType ? { resourceType: filterType } : {}),
         ...(searchQuery ? { search: searchQuery } : {}),
+        ...(selectedTagIds.length ? { tagIds: selectedTagIds.join(',') } : {}),
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       })
@@ -56,7 +60,7 @@ export function useResourceCrud(resourceType?: string) {
     } finally {
       setLoading(false)
     }
-  }, [resourceType, filterType, searchQuery, page, toast])
+  }, [resourceType, filterType, searchQuery, selectedTagIds, page, toast])
 
   useEffect(() => {
     ;(async () => {
@@ -74,10 +78,16 @@ export function useResourceCrud(resourceType?: string) {
     setPage(1)
   }
 
+  const handleTagFilterChange = (ids: string[]) => {
+    setSelectedTagIds(ids)
+    setPage(1)
+  }
+
   const resetDialog = () => {
     setName('')
     setUrl('')
     setDescription('')
+    setTagIds([])
     setUploadFile(null)
     setUploading(false)
   }
@@ -88,11 +98,12 @@ export function useResourceCrud(resourceType?: string) {
     setIsDialogOpen(true)
   }
 
-  const handleOpenEdit = (item: ResourceLibraryItem) => {
+  const handleOpenEdit = (item: ResourceLibraryItem, tags: string[] = []) => {
     setEditingItem(item)
     setName(item.name)
     setUrl(item.url || '')
     setDescription(item.description || '')
+    setTagIds(tags)
     setUploadFile(null)
     setUploading(false)
     setIsDialogOpen(true)
@@ -175,8 +186,22 @@ export function useResourceCrud(resourceType?: string) {
         await resourceLibraryApi.update(editingItem.id, payload as any)
         toast({ title: '更新成功' })
       } else {
-        await resourceLibraryApi.create(payload as any)
+        const created = await resourceLibraryApi.create(payload as any)
         toast({ title: '创建成功' })
+        if (created?.id) {
+          await tagApi.setBindings({
+            resourceType: TAG_RESOURCE_TYPES.resource_library,
+            resourceId: created.id,
+            tagIds,
+          })
+        }
+      }
+      if (editingItem) {
+        await tagApi.setBindings({
+          resourceType: TAG_RESOURCE_TYPES.resource_library,
+          resourceId: editingItem.id,
+          tagIds,
+        })
       }
       setIsDialogOpen(false)
       loadItems()
@@ -192,6 +217,10 @@ export function useResourceCrud(resourceType?: string) {
     setSearchQuery: handleSearchChange,
     filterType,
     setFilterType: handleTypeFilterChange,
+    selectedTagIds,
+    handleTagFilterChange,
+    tagIds,
+    setTagIds,
     total,
     page,
     setPage,

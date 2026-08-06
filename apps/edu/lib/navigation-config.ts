@@ -732,8 +732,21 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
         },
       ],
     },
+    {
+      id: 'tag-center',
+      label: '标签管理',
+      icon: 'tags',
+      children: [
+        {
+          id: 'tags',
+          label: '标签管理',
+          href: '/library/tags',
+          matchers: ['/library/tags'],
+        },
+      ],
+    },
   ],
-  defaultExpandedSideNavIds: ['resource-center', 'my-resource-center'],
+  defaultExpandedSideNavIds: ['resource-center', 'my-resource-center', 'tag-center'],
   platformSwitchItems: [],
   shellClassName: 'bg-background',
   mainClassName: 'min-w-0 flex-1',

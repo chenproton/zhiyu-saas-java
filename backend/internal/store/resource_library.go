@@ -57,6 +57,7 @@ type ResourceFilter struct {
 	OrgName      string
 	MajorName    string
 	UploadedBy   string
+	TagIDs       []string
 	Limit        int
 	Offset       int
 }
@@ -91,6 +92,11 @@ func (s *ResourceLibraryStore) List(ctx context.Context, tenantID string, f Reso
 		where = append(where, "rl.uploaded_by = $"+Itoa(argIdx))
 		args = append(args, f.UploadedBy)
 		argIdx++
+	}
+	if len(f.TagIDs) > 0 {
+		where = append(where, `EXISTS (SELECT 1 FROM resource_tag_relations rtr WHERE rtr.tenant_id = rl.tenant_id AND rtr.resource_type = $`+Itoa(argIdx)+` AND rtr.resource_id = rl.id AND rtr.tag_id = ANY($`+Itoa(argIdx+1)+`))`)
+		args = append(args, domain.TagResourceTypeResourceLibrary, f.TagIDs)
+		argIdx += 2
 	}
 
 	cond := joinSQL(where, " AND ")
@@ -216,6 +222,9 @@ func (s *ResourceLibraryStore) Update(ctx context.Context, id string, p *Resourc
 
 // Delete 删除资源。
 func (s *ResourceLibraryStore) Delete(ctx context.Context, id string) error {
+	if err := DeleteResourceTags(ctx, s.q, domain.TagResourceTypeResourceLibrary, id); err != nil {
+		return err
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM resource_library WHERE id = $1`, id)
 	return err
 }

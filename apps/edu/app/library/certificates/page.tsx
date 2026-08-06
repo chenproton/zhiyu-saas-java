@@ -17,12 +17,22 @@ import { certificateLibraryApi, fileApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
 import type { CertificateLibraryItem } from '@/lib/types/job'
 import { useToast } from '@zhiyu/ui'
+import { TagBadge } from '@/components/shared/tag-badge'
+import { TagFilterBar } from '@/components/shared/tag-filter-bar'
+import { TagPicker } from '@/components/shared/tag-picker'
+import { useTagBindings } from '@/components/shared/use-tag-bindings'
+import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { LibraryPageShell } from '../_components/library-page-shell'
 import { useLibraryCrud } from '../_components/use-library-crud'
+import { useEffect } from 'react'
 
 export default function CertificatesPage() {
   const { toast } = useToast()
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const { tagsByResource, loadBindings, saveTags } = useTagBindings(
+    TAG_RESOURCE_TYPES.certificate_library,
+  )
   const {
     items,
     loading,
@@ -33,7 +43,17 @@ export default function CertificatesPage() {
     page,
     setPage,
     totalPages,
-  } = useLibraryCrud(certificateLibraryApi.list)
+  } = useLibraryCrud(certificateLibraryApi.list, {
+    autoLoad: false,
+    getParams: () =>
+      selectedTagIds.length ? { tagIds: selectedTagIds.join(',') } : {},
+  })
+  useEffect(() => {
+    void loadItems()
+  }, [loadItems])
+  useEffect(() => {
+    if (items.length) void loadBindings(items)
+  }, [items, loadBindings])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<CertificateLibraryItem | null>(null)
   const [name, setName] = useState('')
@@ -41,6 +61,7 @@ export default function CertificatesPage() {
   const [description, setDescription] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
+  const [tagIds, setTagIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const resetForm = () => {
@@ -69,6 +90,7 @@ export default function CertificatesPage() {
   const handleOpenAdd = () => {
     setEditingItem(null)
     resetForm()
+    setTagIds([])
     setIsDialogOpen(true)
   }
   const handleOpenEdit = (item: CertificateLibraryItem) => {
@@ -77,7 +99,13 @@ export default function CertificatesPage() {
     setUrl(item.url || '')
     setDescription(item.description || '')
     setImageUrl(item.imageUrl || '')
+    setTagIds((tagsByResource[item.id] || []).map((t) => t.id))
     setIsDialogOpen(true)
+  }
+  const handleTagFilterChange = (ids: string[]) => {
+    setSelectedTagIds(ids)
+    setPage(1)
+    void loadItems()
   }
   const confirmDelete = async () => {
     if (!deleteTarget) return
@@ -106,9 +134,11 @@ export default function CertificatesPage() {
       if (editingItem) {
         await certificateLibraryApi.update(editingItem.id, payload as any)
         toast({ title: '更新成功' })
+        await saveTags(editingItem.id, tagIds)
       } else {
-        await certificateLibraryApi.create(payload as any)
+        const created = await certificateLibraryApi.create(payload as any)
         toast({ title: '创建成功' })
+        await saveTags(created.id, tagIds)
       }
       setIsDialogOpen(false)
       loadItems()
@@ -150,6 +180,9 @@ export default function CertificatesPage() {
           <TableHead className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
             描述
           </TableHead>
+          <TableHead className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
+            标签
+          </TableHead>
           <TableHead className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             创建时间
           </TableHead>
@@ -183,6 +216,16 @@ export default function CertificatesPage() {
           </TableCell>
           <TableCell className="p-3 text-sm text-slate-400 hidden lg:table-cell max-w-[300px] truncate">
             {item.description || '-'}
+          </TableCell>
+          <TableCell className="p-3 hidden lg:table-cell">
+            <div className="flex flex-wrap gap-1.5">
+              {(tagsByResource[item.id] || []).map((tag) => (
+                <TagBadge key={tag.id} tag={tag} />
+              ))}
+              {(tagsByResource[item.id] || []).length === 0 && (
+                <span className="text-xs text-slate-300">-</span>
+              )}
+            </div>
           </TableCell>
           <TableCell className="p-3 text-sm text-slate-400">{formatDate(item.createdAt)}</TableCell>
           <TableCell className="p-3 text-right whitespace-nowrap">
@@ -233,6 +276,9 @@ export default function CertificatesPage() {
                   placeholder="简要描述"
                 />
               </FormFieldRow>
+              <FormFieldRow label="标签">
+                <TagPicker value={tagIds} onChange={setTagIds} />
+              </FormFieldRow>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -244,6 +290,8 @@ export default function CertificatesPage() {
         </Dialog>
       }
       pagination={{ page, totalPages, onPageChange: setPage }}
-    />
+    >
+      <TagFilterBar value={selectedTagIds} onChange={handleTagFilterChange} className="mb-4" />
+    </LibraryPageShell>
   )
 }

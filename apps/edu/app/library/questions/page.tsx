@@ -24,22 +24,43 @@ import { Textarea } from '@/components/ui/textarea'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { randomDrawQuestionApi, majorApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
+import { TagBadge } from '@/components/shared/tag-badge'
+import { TagFilterBar } from '@/components/shared/tag-filter-bar'
+import { TagPicker } from '@/components/shared/tag-picker'
+import { useTagBindings } from '@/components/shared/use-tag-bindings'
+import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { useLibraryCrud } from '../_components/use-library-crud'
 import { LibraryPageShell } from '../_components/library-page-shell'
 
 export default function QuestionsPage() {
   const { toast } = useToast()
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const { tagsByResource, loadBindings, saveTags } = useTagBindings(
+    TAG_RESOURCE_TYPES.random_draw_question,
+  )
 
   const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
     randomDrawQuestionApi.list,
-    { limit: 9999 },
+    {
+      limit: 9999,
+      autoLoad: false,
+      getParams: () =>
+        selectedTagIds.length ? { tagIds: selectedTagIds.join(',') } : {},
+    },
   )
+  useEffect(() => {
+    void loadItems()
+  }, [loadItems])
+  useEffect(() => {
+    if (items.length) void loadBindings(items)
+  }, [items, loadBindings])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<any | null>(null)
   const [name, setName] = useState('')
   const [desc, setDesc] = useState('')
   const [answer, setAnswer] = useState('')
   const [majorId, setMajorId] = useState('')
+  const [tagIds, setTagIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [majors, setMajors] = useState<any[]>([])
   const majorNameMap: Record<string, string> = {}
@@ -67,6 +88,7 @@ export default function QuestionsPage() {
     setDesc('')
     setAnswer('')
     setMajorId('')
+    setTagIds([])
     setDialogOpen(true)
   }
   const handleEdit = (item: any) => {
@@ -75,7 +97,12 @@ export default function QuestionsPage() {
     setDesc(item.description || '')
     setAnswer(item.answer || '')
     setMajorId(item.majorId || '')
+    setTagIds((tagsByResource[item.id] || []).map((t) => t.id))
     setDialogOpen(true)
+  }
+  const handleTagFilterChange = (ids: string[]) => {
+    setSelectedTagIds(ids)
+    void loadItems()
   }
   const confirmDelete = async () => {
     if (!deleteTarget) return
@@ -104,9 +131,11 @@ export default function QuestionsPage() {
       if (editing) {
         await randomDrawQuestionApi.update(editing.id, payload as any)
         toast({ title: '更新成功' })
+        await saveTags(editing.id, tagIds)
       } else {
-        await randomDrawQuestionApi.create(payload as any)
+        const created = await randomDrawQuestionApi.create(payload as any)
         toast({ title: '创建成功' })
+        await saveTags(created.id, tagIds)
       }
       setDialogOpen(false)
       loadItems()
@@ -149,6 +178,9 @@ export default function QuestionsPage() {
             适用专业
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
+            标签
+          </TableHead>
+          <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
             答案
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
@@ -168,6 +200,16 @@ export default function QuestionsPage() {
             <Badge variant="secondary" className="text-xs">
               {item.majorName || majorNameMap[item.majorId] || '-'}
             </Badge>
+          </TableCell>
+          <TableCell className="p-3 hidden md:table-cell">
+            <div className="flex flex-wrap gap-1.5">
+              {(tagsByResource[item.id] || []).map((tag) => (
+                <TagBadge key={tag.id} tag={tag} />
+              ))}
+              {(tagsByResource[item.id] || []).length === 0 && (
+                <span className="text-xs text-slate-300">-</span>
+              )}
+            </div>
           </TableCell>
           <TableCell className="p-3 text-xs text-slate-400 hidden md:table-cell line-clamp-2">
             {item.answer || '-'}
@@ -226,6 +268,9 @@ export default function QuestionsPage() {
                   rows={3}
                 />
               </FormFieldRow>
+              <FormFieldRow label="标签">
+                <TagPicker value={tagIds} onChange={setTagIds} />
+              </FormFieldRow>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -238,6 +283,8 @@ export default function QuestionsPage() {
           </DialogContent>
         </Dialog>
       }
-    />
+    >
+      <TagFilterBar value={selectedTagIds} onChange={handleTagFilterChange} className="mb-4" />
+    </LibraryPageShell>
   )
 }

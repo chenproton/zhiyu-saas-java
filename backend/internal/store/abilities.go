@@ -71,6 +71,9 @@ func (s *AbilityStore) Update(ctx context.Context, id, tenantID string, p *Abili
 
 // Delete 删除能力点。
 func (s *AbilityStore) Delete(ctx context.Context, id, tenantID string) error {
+	if err := DeleteResourceTags(ctx, s.q, domain.TagResourceTypeAbilityPoint, id); err != nil {
+		return err
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM ability_points WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
@@ -115,6 +118,7 @@ func (s *AbilityStore) ListConfig() ListQueryConfig[domain.AbilityPoint] {
 			if creatorID := p.Values["creatorId"]; creatorID != "" {
 				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
 			}
+			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeAbilityPoint, "id", SplitTagIDs(p.Values["tagIds"]))
 		},
 	}
 }

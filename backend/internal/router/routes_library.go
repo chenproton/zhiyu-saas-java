@@ -15,4 +15,11 @@ func registerLibraryRoutes(r chi.Router, h *Handlers) {
 	r.Post("/library/on-site-questions", h.onSiteQuestionLibraryHandler.Create)
 	r.Put("/library/on-site-questions/{id}", h.onSiteQuestionLibraryHandler.Update)
 	r.Delete("/library/on-site-questions/{id}", h.onSiteQuestionLibraryHandler.Delete)
+
+	r.Get("/library/tags", h.tagHandler.List)
+	r.Post("/library/tags", h.tagHandler.Create)
+	r.Put("/library/tags/{id}", h.tagHandler.Update)
+	r.Delete("/library/tags/{id}", h.tagHandler.Delete)
+	r.Post("/library/resource-tags", h.tagHandler.SetBindings)
+	r.Post("/library/resource-tags/query", h.tagHandler.QueryBindings)
 }

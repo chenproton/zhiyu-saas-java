@@ -54,6 +54,7 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 		OrgName:      r.URL.Query().Get("orgName"),
 		MajorName:    r.URL.Query().Get("majorName"),
 		UploadedBy:   r.URL.Query().Get("uploadedBy"),
+		TagIDs:       store.SplitTagIDs(r.URL.Query().Get("tagIds")),
 		Limit:        limit,
 		Offset:       offset,
 	}

@@ -112,6 +112,7 @@ type Handlers struct {
 	communityHandler              *handler.CommunityHandler
 	settingsHandler               *handler.SettingsHandler
 	favoritesHandler              *handler.FavoritesHandler
+	tagHandler                    *handler.TagHandler
 }
 
 func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client) *Handlers {
@@ -230,5 +231,6 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		communityHandler:              &handler.CommunityHandler{Service: service.NewCommunityService(svc)},
 		settingsHandler:               &handler.SettingsHandler{Store: st.PlatformSettings()},
 		favoritesHandler:              &handler.FavoritesHandler{Service: favoritesSvc},
+		tagHandler:                    &handler.TagHandler{Service: service.NewTagService(svc)},
 	}
 }

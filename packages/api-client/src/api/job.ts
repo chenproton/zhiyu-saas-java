@@ -87,6 +87,7 @@ export const abilityApi = {
     isPublic?: boolean
     search?: string
     creatorId?: string
+    tagIds?: string
     limit?: number
     offset?: number
   }) => request<ListResponse<AbilityPoint>>(`/job/abilities${buildQuery(params || {})}`),
@@ -168,7 +169,13 @@ export const positionCertificateApi = {
 }
 
 export const certificateLibraryApi = {
-  list: (params?: { search?: string; creatorId?: string; limit?: number; offset?: number }) =>
+  list: (params?: {
+    search?: string
+    creatorId?: string
+    tagIds?: string
+    limit?: number
+    offset?: number
+  }) =>
     request<ListResponse<CertificateLibraryItem>>(
       `/job/certificate-library${buildQuery(params || {})}`,
     ),

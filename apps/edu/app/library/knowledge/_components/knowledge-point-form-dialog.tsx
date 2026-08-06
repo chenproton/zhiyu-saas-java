@@ -20,12 +20,14 @@ import {
   GranularLessonSelectDialog,
   type GranularLessonOption,
 } from './granular-lesson-select-dialog'
+import { TagPicker } from '@/components/shared/tag-picker'
 
 export interface KnowledgePointFormValues {
   name: string
   description: string
   code: string
   granularLessonIds: string[]
+  tagIds: string[]
 }
 
 interface KnowledgePointFormDialogProps {
@@ -55,6 +57,7 @@ export function KnowledgePointFormDialog({
   const [description, setDescription] = useState('')
   const [code, setCode] = useState('')
   const [granularLessonIds, setGranularLessonIds] = useState<string[]>([])
+  const [tagIds, setTagIds] = useState<string[]>([])
   const [glSelectOpen, setGlSelectOpen] = useState(false)
 
   useEffect(() => {
@@ -64,6 +67,7 @@ export function KnowledgePointFormDialog({
         setDescription(initialValues?.description ?? '')
         setCode(initialValues?.code ?? (mode === 'edit' ? '' : generateKpCode()))
         setGranularLessonIds(initialValues?.granularLessonIds ?? [])
+        setTagIds(initialValues?.tagIds ?? [])
       }
     })()
   }, [open, initialValues, mode])
@@ -83,6 +87,7 @@ export function KnowledgePointFormDialog({
       description: description.trim(),
       code: code.trim(),
       granularLessonIds,
+      tagIds,
     })
   }
 
@@ -127,6 +132,12 @@ export function KnowledgePointFormDialog({
               <p className="text-xs text-gray-400 mt-1">
                 {mode === 'edit' ? '可修改编码' : '系统自动生成，不可修改'}
               </p>
+            </div>
+            <div>
+              <Label>标签</Label>
+              <div className="mt-1.5">
+                <TagPicker value={tagIds} onChange={setTagIds} className="w-full" />
+              </div>
             </div>
             <div>
               <Label>关联颗粒课</Label>

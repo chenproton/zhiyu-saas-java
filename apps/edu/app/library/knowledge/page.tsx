@@ -8,6 +8,10 @@ import { knowledgeApi, courseApi } from '@/lib/api'
 import type { KnowledgePoint } from '@/lib/types/lesson'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { TagBadge } from '@/components/shared/tag-badge'
+import { TagFilterBar } from '@/components/shared/tag-filter-bar'
+import { useTagBindings } from '@/components/shared/use-tag-bindings'
+import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { LibraryPageShell } from '../_components/library-page-shell'
 import {
   KnowledgePointFormDialog,
@@ -18,6 +22,10 @@ import { useLibraryCrud } from '../_components/use-library-crud'
 
 export default function KnowledgePointsPage() {
   const { toast } = useToast()
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const { tagsByResource, loadBindings, saveTags } = useTagBindings(
+    TAG_RESOURCE_TYPES.knowledge_point,
+  )
   const {
     items,
     loading,
@@ -28,7 +36,17 @@ export default function KnowledgePointsPage() {
     page,
     setPage,
     totalPages,
-  } = useLibraryCrud(knowledgeApi.list)
+  } = useLibraryCrud(knowledgeApi.list, {
+    autoLoad: false,
+    getParams: () =>
+      selectedTagIds.length ? { tagIds: selectedTagIds.join(',') } : {},
+  })
+  useEffect(() => {
+    void loadItems()
+  }, [loadItems])
+  useEffect(() => {
+    if (items.length) void loadBindings(items)
+  }, [items, loadBindings])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<KnowledgePoint | null>(null)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add')
@@ -71,6 +89,11 @@ export default function KnowledgePointsPage() {
     setLinked(item.linked)
     setIsDialogOpen(true)
   }
+  const handleTagFilterChange = (tagIds: string[]) => {
+    setSelectedTagIds(tagIds)
+    setPage(1)
+    void loadItems()
+  }
   const confirmDelete = async () => {
     if (!deleteTarget) return
     try {
@@ -86,7 +109,9 @@ export default function KnowledgePointsPage() {
 
   const handleSave = async (values: KnowledgePointFormValues) => {
     try {
+      let savedId: string
       if (editingItem) {
+        savedId = editingItem.id
         await knowledgeApi.update(editingItem.id, {
           name: values.name,
           code: values.code || undefined,
@@ -96,15 +121,17 @@ export default function KnowledgePointsPage() {
         } as any)
         toast({ title: '更新成功' })
       } else {
-        await knowledgeApi.create({
+        const created = await knowledgeApi.create({
           name: values.name,
           code: values.code || undefined,
           description: values.description || undefined,
           linked,
           granularLessonIds: values.granularLessonIds,
         } as any)
+        savedId = created.id
         toast({ title: '创建成功' })
       }
+      await saveTags(savedId, values.tagIds)
       setIsDialogOpen(false)
       loadItems()
       loadGranularCourses()
@@ -185,6 +212,9 @@ export default function KnowledgePointsPage() {
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
               关联课程
             </TableHead>
+            <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
+              标签
+            </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
               操作
             </TableHead>
@@ -205,6 +235,16 @@ export default function KnowledgePointsPage() {
             <TableCell className="p-3 text-sm text-slate-400 hidden md:table-cell">
               {item.granularLessonIds?.length || 0} 门
             </TableCell>
+            <TableCell className="p-3 hidden lg:table-cell">
+              <div className="flex flex-wrap gap-1.5">
+                {(tagsByResource[item.id] || []).map((tag) => (
+                  <TagBadge key={tag.id} tag={tag} />
+                ))}
+                {(tagsByResource[item.id] || []).length === 0 && (
+                  <span className="text-xs text-slate-300">-</span>
+                )}
+              </div>
+            </TableCell>
             <TableCell className="p-3 text-right whitespace-nowrap">
               <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}>
                 <Pencil className="size-4" />
@@ -217,7 +257,9 @@ export default function KnowledgePointsPage() {
         )}
         dialog={<></>}
         pagination={{ page, totalPages, onPageChange: setPage }}
-      />
+      >
+        <TagFilterBar value={selectedTagIds} onChange={handleTagFilterChange} className="mb-4" />
+      </LibraryPageShell>
       <ConfirmDialog
         open={navigateCourseId !== null}
         onOpenChange={(open) => {
@@ -244,6 +286,7 @@ export default function KnowledgePointsPage() {
                 description: editingItem.description || '',
                 code: editingItem.code || '',
                 granularLessonIds: editingItem.granularLessonIds || [],
+                tagIds: (tagsByResource[editingItem.id] || []).map((t) => t.id),
               }
             : undefined
         }

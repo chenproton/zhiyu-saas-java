@@ -61,6 +61,9 @@ func (s *RandomDrawQuestionStore) Update(ctx context.Context, id, tenantID strin
 
 // Delete 删除随机抽题。
 func (s *RandomDrawQuestionStore) Delete(ctx context.Context, id, tenantID string) error {
+	if err := DeleteResourceTags(ctx, s.q, domain.TagResourceTypeRandomDrawQ, id); err != nil {
+		return err
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM random_draw_questions WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
@@ -108,6 +111,7 @@ func (s *RandomDrawQuestionStore) ListConfig() ListQueryConfig[domain.RandomDraw
 			if majorID := p.Values["majorId"]; majorID != "" {
 				qb.AddCondition("rdq.major_id = " + qb.NextArg(majorID))
 			}
+			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeRandomDrawQ, "rdq.id", SplitTagIDs(p.Values["tagIds"]))
 		},
 	}
 }

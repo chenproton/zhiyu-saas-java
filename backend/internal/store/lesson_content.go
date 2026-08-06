@@ -40,6 +40,7 @@ func (s *KnowledgePointStore) ListConfig() ListQueryConfig[domain.KnowledgePoint
 			if creatorID := p.Values["creatorId"]; creatorID != "" {
 				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
 			}
+			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeKnowledgePoint, "id", SplitTagIDs(p.Values["tagIds"]))
 		},
 	}
 }
@@ -96,6 +97,9 @@ func (s *KnowledgePointStore) Update(ctx context.Context, tx Queryer, tenantID, 
 
 // Delete 删除知识点。
 func (s *KnowledgePointStore) Delete(ctx context.Context, id, tenantID string) error {
+	if err := DeleteResourceTags(ctx, s.q, domain.TagResourceTypeKnowledgePoint, id); err != nil {
+		return err
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM knowledge_points WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }

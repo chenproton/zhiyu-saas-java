@@ -46,12 +46,17 @@ import {
   RESOURCE_TYPE_LABELS,
   type ResourceKind,
   type ResourceLibraryItem,
+  TAG_RESOURCE_TYPES,
 } from '@/lib/types/library'
 import {
   ResourcePreviewModal,
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { TagBadge } from '@/components/shared/tag-badge'
+import { TagFilterBar } from '@/components/shared/tag-filter-bar'
+import { TagPicker } from '@/components/shared/tag-picker'
+import { useTagBindings } from '@/components/shared/use-tag-bindings'
 import {
   TYPE_ICONS,
   TYPE_COLORS,
@@ -85,6 +90,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
   const [dialogType, setDialogType] = useState('document')
   const [batchOpen, setBatchOpen] = useState(false)
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({})
+  const { tagsByResource, loadBindings } = useTagBindings(TAG_RESOURCE_TYPES.resource_library)
 
   const {
     items,
@@ -93,6 +99,10 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
     setSearchQuery,
     filterType,
     setFilterType,
+    selectedTagIds,
+    handleTagFilterChange,
+    tagIds,
+    setTagIds,
     total,
     page,
     setPage,
@@ -149,17 +159,21 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
     setFilterType(filterType === t ? null : t)
   }
 
+  useEffect(() => {
+    if (items.length) void loadBindings(items)
+  }, [items, loadBindings])
+
   const handleOpenAddWithType = () => {
     handleOpenAdd()
     setDialogType('document')
   }
 
   const handleOpenEditWithType = (item: ResourceLibraryItem) => {
-    handleOpenEdit(item)
+    handleOpenEdit(item, (tagsByResource[item.id] || []).map((t) => t.id))
     setDialogType(item.resourceType)
   }
 
-  const tableColSpan = isTypeView ? 5 : 6
+  const tableColSpan = isTypeView ? 6 : 7
 
   return (
     <div className="p-6 space-y-5">
@@ -267,6 +281,11 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
           </div>
         </CardHeader>
         <CardContent>
+          <TagFilterBar
+            value={selectedTagIds}
+            onChange={handleTagFilterChange}
+            className="mb-4"
+          />
           <div className="mb-4">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -299,6 +318,9 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
                     描述
+                  </TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
+                    标签
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
                     操作
@@ -381,6 +403,16 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                       </TableCell>
                       <TableCell className="p-3 text-xs text-slate-400 hidden lg:table-cell max-w-[200px] truncate">
                         {item.description || '-'}
+                      </TableCell>
+                      <TableCell className="p-3 hidden lg:table-cell">
+                        <div className="flex flex-wrap gap-1.5">
+                          {(tagsByResource[item.id] || []).map((tag) => (
+                            <TagBadge key={tag.id} tag={tag} />
+                          ))}
+                          {(tagsByResource[item.id] || []).length === 0 && (
+                            <span className="text-xs text-slate-300">-</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="p-3 text-right whitespace-nowrap">
                         {item.url && fileTypesWithUpload.includes(item.resourceType) && (
@@ -518,6 +550,13 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                 className="mt-1.5"
                 rows={2}
               />
+            </div>
+
+            <div>
+              <Label>标签</Label>
+              <div className="mt-1.5">
+                <TagPicker value={tagIds} onChange={setTagIds} className="w-full" />
+              </div>
             </div>
 
             {fileTypesWithUpload.includes(submitType) && (

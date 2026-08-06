@@ -103,6 +103,7 @@ type Store struct {
 	community        *CommunityStore
 	favorites        *FavoritesStore
 	platformSettings *PlatformSettingsStore
+	tags             *TagStore
 }
 
 // newStore 装配全部领域 store（连接池模式与事务模式共用，仅查询器不同）。
@@ -191,6 +192,7 @@ func newStore(q Queryer) *Store {
 		community:        NewCommunityStore(q),
 		favorites:        NewFavoritesStore(q),
 		platformSettings: NewPlatformSettingsStore(q),
+		tags:             NewTagStore(q, beginner),
 	}
 }
 
@@ -622,4 +624,9 @@ func (s *Store) Favorites() *FavoritesStore {
 // PlatformSettings 返回平台级配置 store。
 func (s *Store) PlatformSettings() *PlatformSettingsStore {
 	return s.platformSettings
+}
+
+// Tags 返回标签 store。
+func (s *Store) Tags() *TagStore {
+	return s.tags
 }

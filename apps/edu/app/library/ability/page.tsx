@@ -19,11 +19,20 @@ import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { abilityApi } from '@/lib/api'
 import type { AbilityPoint } from '@/lib/types/job'
 import { useToast } from '@zhiyu/ui'
+import { TagBadge } from '@/components/shared/tag-badge'
+import { TagFilterBar } from '@/components/shared/tag-filter-bar'
+import { TagPicker } from '@/components/shared/tag-picker'
+import { useTagBindings } from '@/components/shared/use-tag-bindings'
+import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { useLibraryCrud } from '../_components/use-library-crud'
 import { LibraryPageShell } from '../_components/library-page-shell'
 
 export default function AbilityPointsPage() {
   const { toast } = useToast()
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const { tagsByResource, loadBindings, saveTags } = useTagBindings(
+    TAG_RESOURCE_TYPES.ability_point,
+  )
   const {
     items,
     loading,
@@ -36,16 +45,22 @@ export default function AbilityPointsPage() {
     totalPages,
   } = useLibraryCrud(abilityApi.list, {
     autoLoad: false,
+    getParams: () =>
+      selectedTagIds.length ? { tagIds: selectedTagIds.join(',') } : {},
   })
   useEffect(() => {
     void loadItems()
   }, [loadItems])
+  useEffect(() => {
+    if (items.length) void loadBindings(items)
+  }, [items, loadBindings])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<AbilityPoint | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isPublic, setIsPublic] = useState(false)
   const [attributes, setAttributes] = useState('')
+  const [tagIds, setTagIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const handleOpenAdd = () => {
@@ -54,6 +69,7 @@ export default function AbilityPointsPage() {
     setDescription('')
     setIsPublic(false)
     setAttributes('')
+    setTagIds([])
     setIsDialogOpen(true)
   }
   const handleOpenEdit = (item: AbilityPoint) => {
@@ -62,7 +78,13 @@ export default function AbilityPointsPage() {
     setDescription(item.description || '')
     setIsPublic(item.isPublic)
     setAttributes(item.attributes?.join(', ') || '')
+    setTagIds((tagsByResource[item.id] || []).map((t) => t.id))
     setIsDialogOpen(true)
+  }
+  const handleTagFilterChange = (ids: string[]) => {
+    setSelectedTagIds(ids)
+    setPage(1)
+    void loadItems()
   }
   const confirmDelete = async () => {
     if (!deleteTarget) return
@@ -88,7 +110,9 @@ export default function AbilityPointsPage() {
           .filter(Boolean)
       : []
     try {
+      let savedId: string
       if (editingItem) {
+        savedId = editingItem.id
         await abilityApi.update(editingItem.id, {
           name: name.trim(),
           description: description.trim() || undefined,
@@ -97,14 +121,16 @@ export default function AbilityPointsPage() {
         } as any)
         toast({ title: '更新成功' })
       } else {
-        await abilityApi.create({
+        const created = await abilityApi.create({
           name: name.trim(),
           description: description.trim() || undefined,
           isPublic,
           attributes: attrList,
         } as any)
+        savedId = created.id
         toast({ title: '创建成功' })
       }
+      await saveTags(savedId, tagIds)
       setIsDialogOpen(false)
       loadItems()
     } catch (err: any) {
@@ -148,6 +174,9 @@ export default function AbilityPointsPage() {
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
             属性标签
           </TableHead>
+          <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
+            标签
+          </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             公开
           </TableHead>
@@ -174,6 +203,16 @@ export default function AbilityPointsPage() {
                 {a}
               </Badge>
             ))}
+          </TableCell>
+          <TableCell className="p-3 hidden lg:table-cell">
+            <div className="flex flex-wrap gap-1.5">
+              {(tagsByResource[item.id] || []).map((tag) => (
+                <TagBadge key={tag.id} tag={tag} />
+              ))}
+              {(tagsByResource[item.id] || []).length === 0 && (
+                <span className="text-xs text-slate-300">-</span>
+              )}
+            </div>
           </TableCell>
           <TableCell className="p-3">
             <Badge variant={item.isPublic ? 'default' : 'secondary'} className="text-xs">
@@ -223,6 +262,9 @@ export default function AbilityPointsPage() {
                   placeholder="沟通, 协作, 领导力"
                 />
               </FormFieldRow>
+              <FormFieldRow label="标签">
+                <TagPicker value={tagIds} onChange={setTagIds} />
+              </FormFieldRow>
               <div className="flex items-center space-x-2">
                 <Switch checked={isPublic} onCheckedChange={setIsPublic} />
                 <Label>公开</Label>
@@ -239,6 +281,7 @@ export default function AbilityPointsPage() {
       }
       pagination={{ page, totalPages, onPageChange: setPage }}
     >
+      <TagFilterBar value={selectedTagIds} onChange={handleTagFilterChange} className="mb-4" />
       <div className="flex gap-3">
         {searchQuery && (
           <Button

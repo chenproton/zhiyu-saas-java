@@ -22,6 +22,7 @@ import {
   Share2,
   Sparkles,
   Star,
+  Tags,
   User,
   Users,
 } from 'lucide-react'
@@ -50,6 +51,7 @@ export const platformIconMap = {
   share2: Share2,
   sparkles: Sparkles,
   star: Star,
+  tags: Tags,
   user: User,
   users: Users,
 } satisfies Record<string, LucideIcon>

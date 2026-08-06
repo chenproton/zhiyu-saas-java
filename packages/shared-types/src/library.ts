@@ -77,3 +77,30 @@ export interface OnSiteQuestionLibraryItem {
   createdAt: string
   updatedAt: string
 }
+
+// 资源标签（标签管理功能）
+export interface TagItem {
+  id: string
+  tenantId: string
+  name: string
+  color: string
+  resourceCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ResourceTagRelation {
+  resourceId: string
+  tags: TagItem[]
+}
+
+// 可绑定标签的资源类型（与后端 domain.TagResourceType* 常量一一对应）
+export const TAG_RESOURCE_TYPES = {
+  knowledge_point: 'knowledge_point',
+  resource_library: 'resource_library',
+  ability_point: 'ability_point',
+  certificate_library: 'certificate_library',
+  random_draw_question: 'random_draw_question',
+} as const
+
+export type TagResourceType = (typeof TAG_RESOURCE_TYPES)[keyof typeof TAG_RESOURCE_TYPES]
