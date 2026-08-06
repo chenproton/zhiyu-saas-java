@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 
 export interface PublicListTab {
   value: string
@@ -109,7 +109,7 @@ export function PublicListShell({
           children
         )}
       </main>
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

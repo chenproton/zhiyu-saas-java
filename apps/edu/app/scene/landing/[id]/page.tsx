@@ -47,7 +47,7 @@ import {
   EVAL_METHOD_LABELS,
   EVAL_METHOD_COLORS,
 } from '@/lib/types'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 import { SceneKnowledgeGraph } from '@/components/scene/student/knowledge-graph'
 import {
   ResourcePreviewModal,
@@ -501,7 +501,7 @@ export default function SceneDetailPage() {
         <div className="max-w-[1400px] mx-auto px-6 py-6 w-full flex-1">
           <Skeleton className="h-[500px] w-full rounded-xl" />
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -521,7 +521,7 @@ export default function SceneDetailPage() {
             返回场景列表
           </Link>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -1028,7 +1028,7 @@ export default function SceneDetailPage() {
         />
       ))}
 
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

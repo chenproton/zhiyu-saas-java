@@ -9,7 +9,7 @@ import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
 import type { CareerPosition, LearnRoad, Scenario, ScenarioTask } from '@/lib/types'
 import { LearningPath } from '@/components/job/student/learning-path'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, Briefcase } from 'lucide-react'
 
@@ -88,7 +88,7 @@ export default function JobStudentLearnPage() {
         <div className="max-w-[1400px] mx-auto px-8 py-8 w-full flex-1">
           <Skeleton className="h-[400px] w-full rounded-2xl" />
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -103,7 +103,7 @@ export default function JobStudentLearnPage() {
             返回岗位列表
           </Link>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -128,7 +128,7 @@ export default function JobStudentLearnPage() {
         </div>
       </main>
 
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

@@ -34,7 +34,7 @@ import { AbilityTree } from '@/components/job/student/ability-tree'
 import { CompetencyStandards } from '@/components/job/student/competency-standards'
 import { KnowledgeGraph } from '@/components/job/student/knowledge-graph'
 import { SceneList } from '@/components/job/student/scene-list'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
+import { Footer } from '@/components/portal/footer'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Briefcase,
@@ -172,7 +172,7 @@ export default function JobStudentDetailPage() {
         <div className="max-w-[1400px] mx-auto px-8 py-8 w-full flex-1">
           <Skeleton className="h-[400px] w-full rounded-2xl" />
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -187,7 +187,7 @@ export default function JobStudentDetailPage() {
             返回岗位列表
           </Link>
         </div>
-        <PlatformFooter />
+        <Footer className="mt-auto" />
       </div>
     )
   }
@@ -292,7 +292,7 @@ export default function JobStudentDetailPage() {
         </div>
       </main>
 
-      <PlatformFooter />
+      <Footer className="mt-auto" />
     </div>
   )
 }

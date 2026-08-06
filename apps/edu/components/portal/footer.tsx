@@ -1,10 +1,11 @@
 'use client'
 
 import { MALL_URL } from '@/lib/external-links'
+import { cn } from '@/lib/utils'
 
-export function Footer() {
+export function Footer({ className }: { className?: string }) {
   return (
-    <footer className="relative mt-20 bg-[#141a2e]">
+    <footer className={cn('relative mt-20 bg-[#141a2e]', className)}>
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-primary" />
 
       <div className="max-w-6xl mx-auto px-10 pt-12 pb-8">
