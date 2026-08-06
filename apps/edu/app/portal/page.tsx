@@ -475,7 +475,12 @@ export default function PortalHomePage() {
         <div
           className="relative max-w-[1312px] mx-auto rounded-2xl overflow-hidden px-6 py-12 sm:px-16 sm:py-14 text-center"
           style={{
-            background: 'linear-gradient(120deg,#eef5ff 0%,#f8fbff 55%,#f2f8ff 100%)',
+            background: `
+              linear-gradient(120deg,
+                color-mix(in srgb, var(--primary) 6%, white) 0%,
+                color-mix(in srgb, var(--primary) 2%, white) 55%,
+                color-mix(in srgb, var(--primary) 5%, white) 100%)
+            `,
             boxShadow: '0 0 30px color-mix(in srgb, var(--primary) 6%, transparent)',
           }}
         >
