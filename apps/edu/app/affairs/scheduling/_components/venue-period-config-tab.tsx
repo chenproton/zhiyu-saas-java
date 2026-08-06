@@ -876,23 +876,23 @@ function PeriodSlotsSection() {
         <div className="w-full shrink-0 space-y-4 rounded-lg border bg-muted/20 p-4 lg:w-[260px]">
           <div>
             <h4 className="mb-3 text-sm font-semibold text-gray-900">排课节次设置</h4>
-            <div className="space-y-2">
-              <NumberField
+            <div className="space-y-3">
+              <CountRow
                 label="早自习"
                 value={settings.morningSelfCount}
                 onChange={(v) => updateSetting('morningSelfCount', v)}
               />
-              <NumberField
+              <CountRow
                 label="上午"
                 value={settings.morningClassCount}
                 onChange={(v) => updateSetting('morningClassCount', v)}
               />
-              <NumberField
+              <CountRow
                 label="下午"
                 value={settings.afternoonClassCount}
                 onChange={(v) => updateSetting('afternoonClassCount', v)}
               />
-              <NumberField
+              <CountRow
                 label="晚自习"
                 value={settings.eveningClassCount}
                 onChange={(v) => updateSetting('eveningClassCount', v)}
@@ -903,75 +903,83 @@ function PeriodSlotsSection() {
           <div className="h-px bg-border" />
 
           <div>
-            <h4 className="mb-2 text-sm font-semibold text-gray-900">课程时间设置</h4>
-            <div className="space-y-3">
+            <h4 className="mb-3 text-sm font-semibold text-gray-900">课程时间设置</h4>
+            <div className="space-y-5">
               <div>
-                <p className="mb-1 text-xs text-muted-foreground">早自习</p>
-                <StartTimeRow
-                  value={settings.morningSelfStart}
-                  onChange={(v) => updateSetting('morningSelfStart', v)}
-                />
-                <DurationRow
-                  label="节次时长"
-                  value={settings.morningSelfDuration}
-                  onChange={(v) => updateSetting('morningSelfDuration', v)}
-                />
-                <DurationRow
-                  label="课间时长"
-                  value={settings.morningSelfBreak}
-                  onChange={(v) => updateSetting('morningSelfBreak', v)}
-                />
+                <p className="mb-2 text-xs text-muted-foreground">早自习</p>
+                <div className="space-y-2.5">
+                  <StartTimeRow
+                    value={settings.morningSelfStart}
+                    onChange={(v) => updateSetting('morningSelfStart', v)}
+                  />
+                  <DurationRow
+                    label="节次时长"
+                    value={settings.morningSelfDuration}
+                    onChange={(v) => updateSetting('morningSelfDuration', v)}
+                  />
+                  <DurationRow
+                    label="课间时长"
+                    value={settings.morningSelfBreak}
+                    onChange={(v) => updateSetting('morningSelfBreak', v)}
+                  />
+                </div>
               </div>
               <div>
-                <p className="mb-1 text-xs text-muted-foreground">上午</p>
-                <StartTimeRow
-                  value={settings.morningStart}
-                  onChange={(v) => updateSetting('morningStart', v)}
-                />
-                <DurationRow
-                  label="节次时长"
-                  value={settings.morningClassDuration}
-                  onChange={(v) => updateSetting('morningClassDuration', v)}
-                />
-                <DurationRow
-                  label="课间时长"
-                  value={settings.morningBreakDuration}
-                  onChange={(v) => updateSetting('morningBreakDuration', v)}
-                />
+                <p className="mb-2 text-xs text-muted-foreground">上午</p>
+                <div className="space-y-2.5">
+                  <StartTimeRow
+                    value={settings.morningStart}
+                    onChange={(v) => updateSetting('morningStart', v)}
+                  />
+                  <DurationRow
+                    label="节次时长"
+                    value={settings.morningClassDuration}
+                    onChange={(v) => updateSetting('morningClassDuration', v)}
+                  />
+                  <DurationRow
+                    label="课间时长"
+                    value={settings.morningBreakDuration}
+                    onChange={(v) => updateSetting('morningBreakDuration', v)}
+                  />
+                </div>
               </div>
               <div>
-                <p className="mb-1 text-xs text-muted-foreground">下午</p>
-                <StartTimeRow
-                  value={settings.afternoonStart}
-                  onChange={(v) => updateSetting('afternoonStart', v)}
-                />
-                <DurationRow
-                  label="节次时长"
-                  value={settings.afternoonClassDuration}
-                  onChange={(v) => updateSetting('afternoonClassDuration', v)}
-                />
-                <DurationRow
-                  label="课间时长"
-                  value={settings.afternoonBreakDuration}
-                  onChange={(v) => updateSetting('afternoonBreakDuration', v)}
-                />
+                <p className="mb-2 text-xs text-muted-foreground">下午</p>
+                <div className="space-y-2.5">
+                  <StartTimeRow
+                    value={settings.afternoonStart}
+                    onChange={(v) => updateSetting('afternoonStart', v)}
+                  />
+                  <DurationRow
+                    label="节次时长"
+                    value={settings.afternoonClassDuration}
+                    onChange={(v) => updateSetting('afternoonClassDuration', v)}
+                  />
+                  <DurationRow
+                    label="课间时长"
+                    value={settings.afternoonBreakDuration}
+                    onChange={(v) => updateSetting('afternoonBreakDuration', v)}
+                  />
+                </div>
               </div>
               <div>
-                <p className="mb-1 text-xs text-muted-foreground">晚自习</p>
-                <StartTimeRow
-                  value={settings.eveningStart}
-                  onChange={(v) => updateSetting('eveningStart', v)}
-                />
-                <DurationRow
-                  label="节次时长"
-                  value={settings.eveningDuration}
-                  onChange={(v) => updateSetting('eveningDuration', v)}
-                />
-                <DurationRow
-                  label="课间时长"
-                  value={settings.eveningBreak}
-                  onChange={(v) => updateSetting('eveningBreak', v)}
-                />
+                <p className="mb-2 text-xs text-muted-foreground">晚自习</p>
+                <div className="space-y-2.5">
+                  <StartTimeRow
+                    value={settings.eveningStart}
+                    onChange={(v) => updateSetting('eveningStart', v)}
+                  />
+                  <DurationRow
+                    label="节次时长"
+                    value={settings.eveningDuration}
+                    onChange={(v) => updateSetting('eveningDuration', v)}
+                  />
+                  <DurationRow
+                    label="课间时长"
+                    value={settings.eveningBreak}
+                    onChange={(v) => updateSetting('eveningBreak', v)}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1006,7 +1014,7 @@ function PeriodSlotsSection() {
             <DialogTitle>使用说明</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2 text-sm text-muted-foreground">
-            <p>1. 在右侧面板配置各时段的节次数量，左侧课表网格会自动生成并预览。</p>
+            <p>1. 在右侧面板点击节点条设置各时段节次数量（最多 5 个），左侧课表网格会自动生成并预览。</p>
             <p>2. 可设置各时段开始时间、节次时长、课间时长，系统自动推算每个节次的起止时间。</p>
             <p>3. 点击「保存配置」一次性落库；节次按名称被排课与 Excel 导入引用，改名需同步调整排课数据。</p>
           </div>
@@ -1019,7 +1027,8 @@ function PeriodSlotsSection() {
   )
 }
 
-function NumberField({
+/** 节次数选择行：左侧标签 + 右侧 5 节点进度条（点击第 N 个节点设为 N，再点已选节点归零） */
+function CountRow({
   label,
   value,
   onChange,
@@ -1029,16 +1038,36 @@ function NumberField({
   onChange: (v: number) => void
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-14 text-xs text-muted-foreground">{label}</span>
-      <Input
-        type="number"
-        min={0}
-        max={10}
-        value={value}
-        onChange={(e) => onChange(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
-        className="h-8 w-16 text-center text-sm"
-      />
+    <div className="flex items-center justify-between gap-2">
+      <span className="w-14 shrink-0 text-xs text-muted-foreground">{label}</span>
+      <CountStepper value={value} onChange={onChange} />
+    </div>
+  )
+}
+
+function CountStepper({
+  value,
+  onChange,
+}: {
+  value: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {Array.from({ length: 5 }, (_, i) => i + 1).map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(value === n ? 0 : n)}
+          title={`${n} 个节次`}
+          className={cn(
+            'h-5 w-5 rounded-full border-2 transition-colors',
+            value >= n
+              ? 'border-primary bg-primary'
+              : 'border-muted-foreground/40 hover:border-primary hover:bg-primary/10'
+          )}
+        />
+      ))}
     </div>
   )
 }
