@@ -8,6 +8,7 @@ import { useAuth } from '@/components/auth-provider'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import type { CareerPosition, Scenario } from '@/lib/types'
 import { SCENE_DIFFICULTY } from '@/lib/types'
+import { formatDate } from '@/lib/format-utils'
 import { JobCard } from './job-card'
 import { SceneCard } from '@/components/scene/student/scene-card'
 import { LandingPagination } from '@/components/shared/landing-pagination'
@@ -100,15 +101,20 @@ function PositionSideLists({
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar-thin flex flex-col gap-1">
           {positions.map((pos) => (
             <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
-              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
-                <span
-                  className={`flex-1 text-[13px] truncate transition-colors ${
-                    isRec ? 'group-hover:text-yellow-200' : 'group-hover:text-rose-200'
-                  }`}
-                >
-                  {pos.shortName || pos.name}
-                </span>
-                <span className="text-[11px] text-white/40 shrink-0">{pos.version || '1.0'}</span>
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span
+                    className={`text-[13px] truncate transition-colors ${
+                      isRec ? 'group-hover:text-yellow-200' : 'group-hover:text-rose-200'
+                    }`}
+                  >
+                    {pos.shortName || pos.name}
+                  </span>
+                  <span className="text-[11px] text-white/50 truncate">
+                    适用专业：{pos.majorNames?.filter(Boolean)[0] || '未分类'} · 更新：
+                    {formatDate(pos.updatedAt)}
+                  </span>
+                </div>
               </div>
             </Link>
           ))}
