@@ -221,9 +221,10 @@ export interface ExamUsage {
   startTime?: string
   endTime?: string
   duration?: number
-  targetType?: 'class' | 'major' | 'department' | 'public'
+  targetType?: 'class' | 'major' | 'department' | 'public' | 'task' | 'node' | 'course'
   targetIds: string[]
   status: 'draft' | 'pending' | 'published' | 'scheduled' | 'in_progress' | 'finished'
+  activationMode?: 'manual' | 'scheduled' | 'always'
   creatorId?: string
   createdAt: string
   updatedAt: string

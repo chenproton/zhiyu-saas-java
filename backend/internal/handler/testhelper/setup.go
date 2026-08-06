@@ -409,7 +409,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/exam-usages", examUsageHandler.Create)
 			r.Put("/evaluation/exam-usages/{id}", examUsageHandler.Update)
 			r.Delete("/evaluation/exam-usages/{id}", examUsageHandler.Delete)
-			r.Post("/evaluation/exam-usages/{id}/start", examUsageHandler.Start)
+			r.Post("/evaluation/exam-usages/{id}/publish", examUsageHandler.Publish)
 			r.Post("/evaluation/exam-usages/{id}/finish", examUsageHandler.Finish)
 
 			evaluationResultHandler := &handler.EvaluationResultHandler{Service: evaluationSvc}

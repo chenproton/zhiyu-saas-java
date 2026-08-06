@@ -98,17 +98,22 @@ func (s *CourseAssessmentStore) FindNodeUsage(ctx context.Context, q Queryer, ex
 	return usageID, err
 }
 
-// CreateNodeUsage 创建节点考试安排（published），startTime/endTime/duration 为空时表示不限时。
-func (s *CourseAssessmentStore) CreateNodeUsage(ctx context.Context, q Queryer, tenantID, examID, nodeID, name, creatorID string, startTime, endTime *string, duration *int) (string, error) {
+// CreateNodeUsage 创建节点考试安排，startTime/endTime/duration 为空时表示不限时。
+// activationMode 决定初始状态：always → published，manual/scheduled → draft。
+func (s *CourseAssessmentStore) CreateNodeUsage(ctx context.Context, q Queryer, tenantID, examID, nodeID, name, creatorID string, startTime, endTime *string, duration *int, activationMode string) (string, error) {
 	usageID := uuid.NewString()
 	var creator any
 	if creatorID != "" {
 		creator = creatorID
 	}
+	status := "draft"
+	if activationMode == "always" {
+		status = "published"
+	}
 	_, err := q.Exec(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'node', $8, 'published', $9)
-	`, usageID, tenantID, examID, name, startTime, endTime, duration, []string{nodeID}, creator)
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'node', $8, $9, $10, $11)
+	`, usageID, tenantID, examID, name, startTime, endTime, duration, []string{nodeID}, status, activationMode, creator)
 	if err != nil {
 		return "", err
 	}
@@ -133,29 +138,37 @@ func (s *CourseAssessmentStore) CreateTempExam(ctx context.Context, q Queryer, t
 	return id, nil
 }
 
-// CreateExamUsage 创建通用考试安排（published），startTime/endTime/duration 为空时表示不限时。
-func (s *CourseAssessmentStore) CreateExamUsage(ctx context.Context, q Queryer, tenantID, examID, targetType, targetID, name, creatorID string, startTime, endTime *string, duration *int) (string, error) {
+// CreateExamUsage 创建通用考试安排，startTime/endTime/duration 为空时表示不限时。
+// activationMode 决定初始状态：always → published，manual/scheduled → draft。
+func (s *CourseAssessmentStore) CreateExamUsage(ctx context.Context, q Queryer, tenantID, examID, targetType, targetID, name, creatorID string, startTime, endTime *string, duration *int, activationMode string) (string, error) {
 	id := uuid.NewString()
 	var creator any
 	if creatorID != "" {
 		creator = creatorID
 	}
+	status := "draft"
+	if activationMode == "always" {
+		status = "published"
+	}
 	_, err := q.Exec(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, $8, $9, 'published', $10)
-	`, id, tenantID, examID, name, startTime, endTime, duration, targetType, []string{targetID}, creator)
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, $8, $9, $10, $11, $12)
+	`, id, tenantID, examID, name, startTime, endTime, duration, targetType, []string{targetID}, status, activationMode, creator)
 	if err != nil {
 		return "", fmt.Errorf("创建考试安排失败: %w", err)
 	}
 	return id, nil
 }
 
-// UpdateUsageWindow 更新考试安排开放时间窗与时长（测评方式配置变更后同步）。
-func (s *CourseAssessmentStore) UpdateUsageWindow(ctx context.Context, q Queryer, usageID string, startTime, endTime *string, duration *int) error {
+// UpdateUsageWindow 更新考试安排开放时间窗、时长与启用条件（测评方式配置变更后同步）。
+// 启用条件改为 always 时自动置为已发布。
+func (s *CourseAssessmentStore) UpdateUsageWindow(ctx context.Context, q Queryer, usageID string, startTime, endTime *string, duration *int, activationMode string) error {
 	_, err := q.Exec(ctx, `
-		UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, updated_at = NOW()
-		WHERE id = $4
-	`, startTime, endTime, duration, usageID)
+		UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, activation_mode = $4,
+			status = CASE WHEN $4::varchar = 'always' THEN 'published' ELSE status END,
+			updated_at = NOW()
+		WHERE id = $5
+	`, startTime, endTime, duration, activationMode, usageID)
 	return err
 }
 

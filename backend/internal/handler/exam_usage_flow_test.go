@@ -31,7 +31,6 @@ func buildExamFlowRouter(env *testhelper.TestEnv) chi.Router {
 	resultH := &handler.ExamResultHandler{Service: evalSvc}
 	rr.Get("/evaluation/exam-usages/{id}", usageH.Get)
 	rr.Post("/evaluation/exam-usages/{id}/publish", usageH.Publish)
-	rr.Post("/evaluation/exam-usages/{id}/start", usageH.Start)
 	rr.Post("/evaluation/exam-usages/{id}/finish", usageH.Finish)
 	rr.Get("/evaluation/exam-center", usageH.ExamCenter)
 	rr.Get("/evaluation/exam-results/{id}", resultH.Get)
@@ -192,14 +191,10 @@ func TestExamUsage_Flow(t *testing.T) {
 		t.Fatalf("教师应看到考试但不可参加，实际 %+v", teacherCenterItems)
 	}
 
-	// 4. 开始考试：published -> in_progress
-	w = execJSONWithRouter(t, rr, "POST", "/evaluation/exam-usages/"+usageID+"/start", nil, teacherToken)
-	if w.Code != http.StatusOK {
-		t.Fatalf("开始考试应成功，实际 %d %s", w.Code, w.Body.String())
-	}
+	// 4. 已发布考试可直接作答（状态保持 published）
 	usage, _ = evalSvc.GetExamUsage(ctx, usageID)
-	if usage.Status != "in_progress" {
-		t.Fatalf("开始后状态应为 in_progress，实际 %s", usage.Status)
+	if usage.Status != "published" {
+		t.Fatalf("发布后状态应为 published，实际 %s", usage.Status)
 	}
 
 	// 5. 提交：本班学生成功；他班学生 403

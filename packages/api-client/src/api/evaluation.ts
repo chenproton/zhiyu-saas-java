@@ -102,8 +102,6 @@ export const examUsageApi = {
     }),
   delete: (id: string) =>
     request<{ id: string }>(`/evaluation/exam-usages/${id}`, { method: 'DELETE' }),
-  start: (id: string) =>
-    request<ExamUsage>(`/evaluation/exam-usages/${id}/start`, { method: 'POST' }),
   publish: (id: string) =>
     request<ExamUsage>(`/evaluation/exam-usages/${id}/publish`, { method: 'POST' }),
   finish: (id: string) =>

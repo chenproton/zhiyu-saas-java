@@ -99,20 +99,21 @@ type Exam struct {
 
 // ExamUsage represents a usage record of an exam.
 type ExamUsage struct {
-	ID          string    `json:"id"`
-	TenantID    string    `json:"-"`
-	ExamID      string    `json:"examId"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description,omitempty"`
-	StartTime   *string   `json:"startTime,omitempty"`
-	EndTime     *string   `json:"endTime,omitempty"`
-	Duration    *int      `json:"duration,omitempty"`
-	TargetType  *string   `json:"targetType,omitempty"`
-	TargetIDs   []string  `json:"targetIds"`
-	Status      string    `json:"status"`
-	CreatorID   *string   `json:"creatorId,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID             string    `json:"id"`
+	TenantID       string    `json:"-"`
+	ExamID         string    `json:"examId"`
+	Name           string    `json:"name"`
+	Description    *string   `json:"description,omitempty"`
+	StartTime      *string   `json:"startTime,omitempty"`
+	EndTime        *string   `json:"endTime,omitempty"`
+	Duration       *int      `json:"duration,omitempty"`
+	TargetType     *string   `json:"targetType,omitempty"`
+	TargetIDs      []string  `json:"targetIds"`
+	Status         string    `json:"status"`
+	ActivationMode string    `json:"activationMode"`
+	CreatorID      *string   `json:"creatorId,omitempty"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 // ExamResult represents a student's submission result for an exam usage.

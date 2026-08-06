@@ -216,11 +216,16 @@ type ExamEventRow struct {
 
 // ListExamEvents 全局考试事件。classNodeID 非空时（学生），班级类考试仅返回本人班级命中的安排。
 func (s *PortalStore) ListExamEvents(ctx context.Context, tenantID *string, classNodeID string) ([]ExamEventRow, error) {
+	tenant := ""
+	if tenantID != nil {
+		tenant = *tenantID
+	}
+	SyncScheduledExamUsageStatus(ctx, s.q, tenant, time.Now())
 	query := `
 		SELECT eu.id, eu.name, eu.start_time, eu.status
 		FROM exam_usages eu
 		JOIN users u ON u.id = eu.creator_id
-		WHERE eu.status IN ('published', 'in_progress')
+		WHERE eu.status IN ('published')
 			AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)`
 	args := []any{}
 	if classNodeID != "" {
@@ -546,6 +551,11 @@ type ExamRow struct {
 
 // ListStudentExams 学生考试。classNodeID 非空时（学生有班级），班级类考试仅返回本人班级命中的安排。
 func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenantID *string, classNodeID string) ([]ExamRow, error) {
+	tenant := ""
+	if tenantID != nil {
+		tenant = *tenantID
+	}
+	SyncScheduledExamUsageStatus(ctx, s.q, tenant, time.Now())
 	query := `
 		SELECT eu.id, eu.exam_id, eu.name, eu.start_time, eu.end_time, eu.duration, eu.status, e.total_score,
 			er.score
@@ -553,7 +563,7 @@ func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenan
 		JOIN exams e ON e.id = eu.exam_id
 		JOIN users u ON u.id = eu.creator_id
 		LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = $1::uuid
-		WHERE eu.status IN ('published', 'in_progress', 'finished')
+		WHERE eu.status IN ('published', 'finished')
 		  AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)`
 	args := []any{userID}
 	if classNodeID != "" {

@@ -38,25 +38,26 @@ func TestExamUsage_Visibility(t *testing.T) {
 	tempExamID := insertExam("临时考试试卷", true)
 	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = ANY($1::uuid[])", []string{manualExamID, tempExamID})
 
-	// 2. 考试安排：手动(class) + 临时(task/node/course)
+	// 2. 考试安排：手动(class) + 临时(task/node/course，随时作答 always 不展示，手动启停 manual 展示)
 	classID := insertTestClass(t, env, ctx, "可见性一班")
 	otherClassID := insertTestClass(t, env, ctx, "可见性二班")
-	insertUsage := func(examID, name, status, targetType string, targetID string) string {
+	insertUsage := func(examID, name, status, targetType, activationMode string, targetID string) string {
 		id := uuid.NewString()
 		execOrFail(t, env, ctx, `
-			INSERT INTO exam_usages (id, tenant_id, exam_id, name, status, target_type, target_ids, creator_id)
-			VALUES ($1, $2, $3, $4, $5, $6, ARRAY[$7]::uuid[], $8)
-		`, id, tenantID, examID, name, status, targetType, targetID, testhelper.TestOperatorID)
+			INSERT INTO exam_usages (id, tenant_id, exam_id, name, status, target_type, activation_mode, target_ids, creator_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, ARRAY[$8]::uuid[], $9)
+		`, id, tenantID, examID, name, status, targetType, activationMode, targetID, testhelper.TestOperatorID)
 		return id
 	}
-	manualUsageID := insertUsage(manualExamID, "手动-班级考试", "published", "class", classID)
-	otherClassUsageID := insertUsage(manualExamID, "手动-他班考试", "published", "class", otherClassID)
-	taskUsageID := insertUsage(tempExamID, "场景任务-临时考试", "published", "task", uuid.NewString())
-	nodeUsageID := insertUsage(tempExamID, "课程节点-临时考试", "published", "node", uuid.NewString())
-	courseUsageID := insertUsage(tempExamID, "课程级-历史考试", "finished", "course", uuid.NewString())
-	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = ANY($1::uuid[])", []string{manualUsageID, otherClassUsageID, taskUsageID, nodeUsageID, courseUsageID})
+	manualUsageID := insertUsage(manualExamID, "手动-班级考试", "published", "class", "manual", classID)
+	otherClassUsageID := insertUsage(manualExamID, "手动-他班考试", "published", "class", "manual", otherClassID)
+	taskUsageID := insertUsage(tempExamID, "场景任务-临时考试", "published", "task", "always", uuid.NewString())
+	taskManualUsageID := insertUsage(tempExamID, "场景任务-手动启停", "published", "task", "manual", uuid.NewString())
+	nodeUsageID := insertUsage(tempExamID, "课程节点-临时考试", "published", "node", "always", uuid.NewString())
+	courseUsageID := insertUsage(tempExamID, "课程级-历史考试", "finished", "course", "manual", uuid.NewString())
+	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = ANY($1::uuid[])", []string{manualUsageID, otherClassUsageID, taskUsageID, taskManualUsageID, nodeUsageID, courseUsageID})
 
-	// 3. 考试管理列表：只展示手动创建的考试安排
+	// 3. 考试管理列表：手动创建的 + 自动创建且手动/定时启停的展示；随时作答/历史课程级不展示
 	w := env.Do("GET", "/api/v1/evaluation/exam-usages", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("list exam usages: expected 200, got %d", w.Code)
@@ -72,9 +73,12 @@ func TestExamUsage_Visibility(t *testing.T) {
 	if !gotIDs[manualUsageID] {
 		t.Fatalf("考试管理列表应包含手动考试安排 %s，实际 %v", manualUsageID, gotIDs)
 	}
+	if !gotIDs[taskManualUsageID] {
+		t.Fatalf("考试管理列表应包含手动启停的自动考试 %s，实际 %v", taskManualUsageID, gotIDs)
+	}
 	for _, id := range []string{taskUsageID, nodeUsageID, courseUsageID} {
 		if gotIDs[id] {
-			t.Fatalf("考试管理列表不应包含临时考试安排 %s", id)
+			t.Fatalf("考试管理列表不应包含随时作答/历史课程级安排 %s", id)
 		}
 	}
 
@@ -113,7 +117,7 @@ func TestExamUsage_Visibility(t *testing.T) {
 	if examIDs[otherClassUsageID] {
 		t.Fatalf("学生考试列表不应包含其他班级考试安排 %s", otherClassUsageID)
 	}
-	for _, id := range []string{taskUsageID, nodeUsageID, courseUsageID} {
+	for _, id := range []string{taskUsageID, taskManualUsageID, nodeUsageID, courseUsageID} {
 		if examIDs[id] {
 			t.Fatalf("学生考试列表不应包含临时考试安排 %s", id)
 		}
@@ -126,7 +130,7 @@ func TestExamUsage_Visibility(t *testing.T) {
 			eventIDs[ev.ID] = true
 		}
 	}
-	for _, id := range []string{otherClassUsageID, taskUsageID, nodeUsageID, courseUsageID} {
+	for _, id := range []string{otherClassUsageID, taskUsageID, taskManualUsageID, nodeUsageID, courseUsageID} {
 		if eventIDs[id] {
 			t.Fatalf("工作台首页课程表不应包含考试安排 %s", id)
 		}

@@ -395,8 +395,9 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 	}
 	startTime, endTime := ExtractExamUsageWindow(resourceConfig)
 	duration := ExtractExamUsageDuration(resourceConfig, methodKey)
+	activationMode := ResolveActivationMode(resourceConfig, methodKey)
 	if usageID == "" {
-		id, err := s.createTempExamUsage(ctx, tx, tenantID, examID, taskID, creatorID, startTime, endTime, duration)
+		id, err := s.createTempExamUsage(ctx, tx, tenantID, examID, taskID, creatorID, startTime, endTime, duration, activationMode)
 		if err != nil {
 			return resourceConfig, err
 		}
@@ -404,13 +405,27 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 		resourceConfig["usageId"] = usageID
 	} else {
 		if _, err := tx.Exec(ctx, `
-			UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, updated_at = NOW()
-			WHERE id = $4
-		`, startTime, endTime, duration, usageID); err != nil {
+			UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, activation_mode = $4,
+				status = CASE WHEN $4::varchar = 'always' THEN 'published' ELSE status END,
+				updated_at = NOW()
+			WHERE id = $5
+		`, startTime, endTime, duration, activationMode, usageID); err != nil {
 			return resourceConfig, fmt.Errorf("update exam usage window: %w", err)
 		}
 	}
 	return resourceConfig, nil
+}
+
+// ResolveActivationMode 解析测评方式启用条件：随时作答/定时启停/手动启停。
+// 未配置时按方法类型默认：题库/随堂测视为随时作答，试卷视为手动启停。
+func ResolveActivationMode(resourceConfig domain.JSONMap, methodKey string) string {
+	if mode, _ := resourceConfig["activationMode"].(string); mode != "" {
+		return mode
+	}
+	if methodKey == "question_bank" || methodKey == "quiz" {
+		return "always"
+	}
+	return "manual"
 }
 
 func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, tenantID, name string, duration int, creatorID string) (string, error) {
@@ -440,7 +455,7 @@ func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, te
 	return id, nil
 }
 
-func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Queryer, tenantID, examID, taskID, creatorID string, startTime, endTime *string, duration *int) (string, error) {
+func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Queryer, tenantID, examID, taskID, creatorID string, startTime, endTime *string, duration *int, activationMode string) (string, error) {
 	var existingID string
 	err := tx.QueryRow(ctx, `
 		SELECT id FROM exam_usages
@@ -449,9 +464,11 @@ func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Querye
 	`, tenantID, examID, taskID).Scan(&existingID)
 	if err == nil && existingID != "" {
 		if _, err := tx.Exec(ctx, `
-			UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, updated_at = NOW()
-			WHERE id = $4
-		`, startTime, endTime, duration, existingID); err != nil {
+			UPDATE exam_usages SET start_time = $1, end_time = $2, duration = $3, activation_mode = $4,
+				status = CASE WHEN $4::varchar = 'always' THEN 'published' ELSE status END,
+				updated_at = NOW()
+			WHERE id = $5
+		`, startTime, endTime, duration, activationMode, existingID); err != nil {
 			return "", fmt.Errorf("update temp exam usage: %w", err)
 		}
 		return existingID, nil
@@ -464,10 +481,15 @@ func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Querye
 	if creatorID != "" {
 		creator = creatorID
 	}
+	// 初始状态：随时作答 → 已发布（一直可作答）；定时/手动启停 → 草稿（开启后发布）
+	status := "draft"
+	if activationMode == "always" {
+		status = "published"
+	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'task', $8, 'draft', $9)
-	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), startTime, endTime, duration, []string{taskID}, creator)
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'task', $8, $9, $10, $11)
+	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), startTime, endTime, duration, []string{taskID}, status, activationMode, creator)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam usage: %w", err)
 	}

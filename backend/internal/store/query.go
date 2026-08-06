@@ -229,7 +229,7 @@ var (
 		"id, tenant_id, code, name, description, type, created_at",
 		"id, tenant_id, code, name, description, user_count, status, created_at",
 		"id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at",
-		"id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at",
+		"id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, created_at, updated_at",
 		"id, tenant_id, name, category, description, is_default, created_at",
 		"id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at",
 		"id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at",

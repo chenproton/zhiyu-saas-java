@@ -24,21 +24,23 @@ func NewExamUsageStore(q Queryer) *ExamUsageStore {
 	return &ExamUsageStore{q: q}
 }
 
-// List 查询考试安排列表。
+// List 查询考试安排列表（查询前同步定时启停状态）。
 func (s *ExamUsageStore) List(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.ExamUsage]) ([]domain.ExamUsage, int, error) {
+	SyncScheduledExamUsageStatus(ctx, s.q, p.TenantID, time.Now())
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanExamUsageRows)
 }
 
 // ListConfig 返回考试安排列表查询配置，SQL 片段沉淀在 store 层。
+// 展示范围：手动创建的（class/major/department/public）+ 自动创建且定时/手动启停的（task/node）。
 func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
 	return ListQueryConfig[domain.ExamUsage]{
 		Table:         "exam_usages",
-		SelectColumns: "id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at",
+		SelectColumns: "id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		ScanRows:      ScanExamUsageRows,
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
-			qb.AddCondition("target_type IN (" + manualExamUsageTargetTypesSQL + ")")
+			qb.AddCondition("(target_type IN (" + manualExamUsageTargetTypesSQL + ") OR (target_type IN ('task', 'node') AND activation_mode IN ('manual', 'scheduled')))")
 			if examID := p.Values["examId"]; examID != "" {
 				qb.AddCondition("exam_id = " + qb.NextArg(examID))
 			}
@@ -49,8 +51,9 @@ func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
 	}
 }
 
-// Get 查询单个考试安排。
+// Get 查询单个考试安排（查询前同步定时启停状态）。
 func (s *ExamUsageStore) Get(ctx context.Context, id string) (*domain.ExamUsage, error) {
+	SyncScheduledExamUsageStatus(ctx, s.q, "", time.Now())
 	u, err := s.fetchExamUsage(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -61,14 +64,33 @@ func (s *ExamUsageStore) Get(ctx context.Context, id string) (*domain.ExamUsage,
 	return u, nil
 }
 
+// SyncScheduledExamUsageStatus 定时启停考试按时间窗懒更新状态：
+// 到开始时间自动 published，过结束时间自动 finished。manual/always 不自动流转。
+func SyncScheduledExamUsageStatus(ctx context.Context, q Queryer, tenantID string, now time.Time) {
+	query := `
+		UPDATE exam_usages SET status = CASE
+			WHEN activation_mode = 'scheduled' AND status IN ('draft', 'published') AND end_time IS NOT NULL AND $1 >= end_time THEN 'finished'
+			WHEN activation_mode = 'scheduled' AND status = 'draft' AND start_time IS NOT NULL AND $1 >= start_time THEN 'published'
+			ELSE status
+		END, updated_at = NOW()
+		WHERE activation_mode = 'scheduled' AND status IN ('draft', 'published')
+			AND (start_time IS NOT NULL AND $1 >= start_time OR end_time IS NOT NULL AND $1 >= end_time)`
+	args := []any{now}
+	if tenantID != "" {
+		query += ` AND tenant_id = $2`
+		args = append(args, tenantID)
+	}
+	_, _ = q.Exec(ctx, query, args...)
+}
+
 // Create 创建考试安排。
 func (s *ExamUsageStore) Create(ctx context.Context, p *ExamUsageCreateParams) (*domain.ExamUsage, error) {
 	var id string
 	err := s.q.QueryRow(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10)
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id
-	`, p.TenantID, p.ExamID, p.Name, p.Description, p.StartTime, p.EndTime, p.Duration, p.TargetType, p.TargetIDs, p.CreatorID).Scan(&id)
+	`, p.TenantID, p.ExamID, p.Name, p.Description, p.StartTime, p.EndTime, p.Duration, p.TargetType, p.TargetIDs, p.Status, p.ActivationMode, p.CreatorID).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
@@ -82,9 +104,9 @@ func (s *ExamUsageStore) Update(ctx context.Context, id string, p *ExamUsageCrea
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE exam_usages SET name = $1, description = $2, start_time = $3, end_time = $4,
-			duration = $5, target_type = $6, target_ids = $7, updated_at = NOW()
-		WHERE id = $8
-	`, p.Name, p.Description, p.StartTime, p.EndTime, p.Duration, p.TargetType, p.TargetIDs, id); err != nil {
+			duration = $5, target_type = $6, target_ids = $7, activation_mode = $8, updated_at = NOW()
+		WHERE id = $9
+	`, p.Name, p.Description, p.StartTime, p.EndTime, p.Duration, p.TargetType, p.TargetIDs, p.ActivationMode, id); err != nil {
 		return nil, err
 	}
 	return s.Get(ctx, id)
@@ -123,6 +145,7 @@ type ExamCenterItemRow struct {
 // ListExamCenter 考试中心列表：租户内所有手动考试安排（published/in_progress/finished），
 // 附带当前用户的班级命中（target_type=class 且班级在 target_ids）、交卷状态与得分。
 func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID string, classNodeID string) ([]ExamCenterItemRow, error) {
+	SyncScheduledExamUsageStatus(ctx, s.q, tenantID, time.Now())
 	query := `
 		SELECT eu.id::text, eu.exam_id::text, eu.name, COALESCE(e.name, ''), COALESCE(e.description, ''),
 			eu.start_time, eu.end_time, eu.duration, eu.status,
@@ -133,7 +156,7 @@ func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID st
 		FROM exam_usages eu
 		JOIN exams e ON e.id = eu.exam_id
 		LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = $1::uuid
-		WHERE eu.status IN ('published', 'in_progress', 'finished')
+		WHERE eu.status IN ('published', 'finished')
 		  AND eu.target_type IN (` + manualExamUsageTargetTypesSQL + `)
 		  AND eu.tenant_id = $3::uuid
 		ORDER BY eu.start_time ASC NULLS LAST
@@ -171,16 +194,18 @@ func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID st
 
 // ExamUsageCreateParams 创建/更新考试安排参数。
 type ExamUsageCreateParams struct {
-	TenantID    string
-	ExamID      string
-	Name        string
-	Description *string
-	StartTime   *string
-	EndTime     *string
-	Duration    *int
-	TargetType  *string
-	TargetIDs   []string
-	CreatorID   string
+	TenantID       string
+	ExamID         string
+	Name           string
+	Description    *string
+	StartTime      *string
+	EndTime        *string
+	Duration       *int
+	TargetType     *string
+	TargetIDs      []string
+	Status         string
+	ActivationMode string
+	CreatorID      string
 }
 
 func (s *ExamUsageStore) fetchExamUsage(ctx context.Context, id string) (*domain.ExamUsage, error) {
@@ -190,10 +215,10 @@ func (s *ExamUsageStore) fetchExamUsage(ctx context.Context, id string) (*domain
 	var duration *int
 	var creatorID *string
 	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at
+		SELECT id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, created_at, updated_at
 		FROM exam_usages WHERE id = $1
 	`, id).Scan(
-		&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &creatorID, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &u.ActivationMode, &creatorID, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -223,7 +248,7 @@ func ScanExamUsageRows(rows pgx.Rows) ([]domain.ExamUsage, error) {
 		var duration *int
 		var creatorID *string
 		if err := rows.Scan(
-			&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &creatorID, &u.CreatedAt, &u.UpdatedAt,
+			&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &u.ActivationMode, &creatorID, &u.CreatedAt, &u.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

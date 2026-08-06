@@ -36,6 +36,7 @@ import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { MultiOrgNodePicker } from '@/components/shared/multi-org-node-picker'
+import { ExamActivationConfig } from '@/components/evaluation-rules/exam-activation-config'
 import { useAuth } from '@/components/auth-provider'
 import { examUsageApi } from '@/lib/api'
 import type { ExamUsage } from '@/lib/types'
@@ -48,15 +49,21 @@ const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage['targetType']>, string> =
   major: '专业',
   department: '部门',
   public: '公开',
+  task: '场景任务',
+  node: '课程节点',
+  course: '课程',
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: '草稿',
-  pending: '待开始',
-  published: '待开始',
-  in_progress: '进行中',
+  draft: '未开启',
+  pending: '未开启',
+  published: '已开启',
+  in_progress: '已开启',
   finished: '已结束',
 }
+
+// 手动创建的考试安排目标类型（自动创建的不允许编辑/删除）
+const MANUAL_TARGET_TYPES = ['class', 'major', 'department', 'public']
 
 type FilterStatus = ExamUsage['status'] | 'all'
 
@@ -83,6 +90,9 @@ export default function ExamUsagePage() {
   const [formStartTime, setFormStartTime] = useState('')
   const [formEndTime, setFormEndTime] = useState('')
   const [formClassIds, setFormClassIds] = useState<string[]>([])
+  const [formActivationMode, setFormActivationMode] = useState<
+    'manual' | 'scheduled' | 'always'
+  >('manual')
 
   const loadUsages = async () => {
     setLoading(true)
@@ -121,9 +131,9 @@ export default function ExamUsagePage() {
       const matchStatus =
         statusFilter === 'all' ||
         usage.status === statusFilter ||
-        // 待开始统一筛选：pending/published 归为同一状态
-        (statusFilter === 'pending' && usage.status === 'published') ||
-        (statusFilter === 'published' && usage.status === 'pending')
+        // 兼容旧数据：pending 归入未开启，in_progress 归入已开启
+        (statusFilter === 'draft' && usage.status === 'pending') ||
+        (statusFilter === 'published' && usage.status === 'in_progress')
       return matchSearch && matchStatus
     })
   }, [search, statusFilter, usages, examMap])
@@ -131,9 +141,10 @@ export default function ExamUsagePage() {
   const stats = useMemo(() => {
     return {
       total: usages.length,
-      draft: usages.filter((u) => u.status === 'draft').length,
-      pending: usages.filter((u) => u.status === 'pending' || u.status === 'published').length,
-      inProgress: usages.filter((u) => u.status === 'in_progress').length,
+      draft: usages.filter((u) => u.status === 'draft' || u.status === 'pending').length,
+      published: usages.filter(
+        (u) => u.status === 'published' || u.status === 'in_progress',
+      ).length,
       finished: usages.filter((u) => u.status === 'finished').length,
     }
   }, [usages])
@@ -146,6 +157,7 @@ export default function ExamUsagePage() {
     setFormStartTime('')
     setFormEndTime('')
     setFormClassIds([])
+    setFormActivationMode('manual')
   }
 
   const openCreateDialog = () => {
@@ -162,11 +174,12 @@ export default function ExamUsagePage() {
         name: formName,
         description: formDescription || undefined,
         duration: formDuration ? Number(formDuration) : undefined,
-        startTime: formStartTime || undefined,
-        endTime: formEndTime || undefined,
+        startTime: formActivationMode === 'scheduled' ? formStartTime || undefined : undefined,
+        endTime: formActivationMode === 'scheduled' ? formEndTime || undefined : undefined,
         targetType: 'class',
         targetIds: formClassIds,
-        status: 'draft',
+        activationMode: formActivationMode,
+        status: formActivationMode === 'always' ? 'published' : 'draft',
       })
       setCreateDialogOpen(false)
       resetForm()
@@ -182,17 +195,7 @@ export default function ExamUsagePage() {
     try {
       await examUsageApi.publish(id)
     } catch (err) {
-      reportError(err, '发布考试')
-      return
-    }
-    await loadUsages()
-  }
-
-  const handleStart = async (id: string) => {
-    try {
-      await examUsageApi.start(id)
-    } catch (err) {
-      reportError(err, '开始考试')
+      reportError(err, '开启考试')
       return
     }
     await loadUsages()
@@ -202,7 +205,7 @@ export default function ExamUsagePage() {
     try {
       await examUsageApi.finish(id)
     } catch (err) {
-      reportError(err, '结束考试')
+      reportError(err, '停止考试')
       return
     }
     await loadUsages()
@@ -226,10 +229,11 @@ export default function ExamUsagePage() {
   }
 
   const canPublish = (status: ExamUsage['status']) => status === 'draft' || status === 'pending'
-  const canStart = (status: ExamUsage['status']) =>
-    status === 'draft' || status === 'pending' || status === 'published'
-  const canFinish = (status: ExamUsage['status']) => status === 'in_progress'
-  const canDelete = (status: ExamUsage['status']) => status === 'draft' || status === 'finished'
+  const canFinish = (status: ExamUsage['status']) =>
+    status === 'published' || status === 'in_progress'
+  const canDelete = (usage: ExamUsage) =>
+    (usage.status === 'draft' || usage.status === 'finished') &&
+    (!usage.targetType || MANUAL_TARGET_TYPES.includes(usage.targetType))
 
   const isFormValid = formExamId && formName && formClassIds.length > 0
 
@@ -252,20 +256,14 @@ export default function ExamUsagePage() {
             iconClassName: 'bg-blue-50',
           },
           {
-            label: '草稿',
+            label: '未开启',
             value: stats.draft,
             icon: <Clock className="size-4 text-gray-500" />,
             iconClassName: 'bg-gray-50',
           },
           {
-            label: '待开始',
-            value: stats.pending,
-            icon: <PlayCircle className="size-4 text-amber-500" />,
-            iconClassName: 'bg-amber-50',
-          },
-          {
-            label: '进行中',
-            value: stats.inProgress,
+            label: '已开启',
+            value: stats.published,
             icon: <PlayCircle className="size-4 text-green-500" />,
             iconClassName: 'bg-green-50',
           },
@@ -295,11 +293,11 @@ export default function ExamUsagePage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="draft">草稿</SelectItem>
-            <SelectItem value="pending">待开始</SelectItem>
-            <SelectItem value="in_progress">进行中</SelectItem>
+            <SelectItem value="draft">未开启</SelectItem>
+            <SelectItem value="published">已开启</SelectItem>
             <SelectItem value="finished">已结束</SelectItem>
-          </SelectContent>        </Select>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* 使用记录列表 */}
@@ -375,18 +373,7 @@ export default function ExamUsagePage() {
                             onClick={() => handlePublish(usage.id)}
                           >
                             <Send className="mr-1 h-3 w-3" />
-                            发布
-                          </Button>
-                        )}
-                        {canStart(usage.status) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-green-600 hover:text-green-700"
-                            onClick={() => handleStart(usage.id)}
-                          >
-                            <PlayCircle className="mr-1 h-3 w-3" />
-                            开始考试
+                            开启
                           </Button>
                         )}
                         {canFinish(usage.status) && (
@@ -397,7 +384,7 @@ export default function ExamUsagePage() {
                             onClick={() => handleFinish(usage.id)}
                           >
                             <CheckCircle2 className="mr-1 h-3 w-3" />
-                            结束考试
+                            停止
                           </Button>
                         )}
                         {usage.status === 'finished' && (
@@ -413,7 +400,7 @@ export default function ExamUsagePage() {
                             查看考试结果
                           </Button>
                         )}
-                        {canDelete(usage.status) && (
+                        {canDelete(usage) && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -490,24 +477,26 @@ export default function ExamUsagePage() {
               />
             </Field>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel>开始时间</FieldLabel>
-                <Input
-                  type="datetime-local"
-                  value={formStartTime}
-                  onChange={(e) => setFormStartTime(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel>结束时间</FieldLabel>
-                <Input
-                  type="datetime-local"
-                  value={formEndTime}
-                  onChange={(e) => setFormEndTime(e.target.value)}
-                />
-              </Field>
-            </div>
+            <Field>
+              <FieldLabel>启用条件</FieldLabel>
+              <ExamActivationConfig
+                value={{
+                  activationMode: formActivationMode,
+                  scheduledTime: formStartTime,
+                  scheduledEndTime: formEndTime,
+                }}
+                onChange={(updates) => {
+                  if (updates.activationMode)
+                    setFormActivationMode(updates.activationMode as 'manual' | 'scheduled' | 'always')
+                  if (updates.scheduledTime !== undefined) setFormStartTime(updates.scheduledTime)
+                  if (updates.scheduledEndTime !== undefined)
+                    setFormEndTime(updates.scheduledEndTime)
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                随时作答创建后立即开放；定时/手动启停创建为未开启，到时间或手动开启后开放
+              </p>
+            </Field>
 
             <Field>
               <FieldLabel>参与班级 *</FieldLabel>

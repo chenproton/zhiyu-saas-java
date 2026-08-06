@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -18,14 +17,15 @@ type ExamUsageHandler struct {
 
 // ExamUsageRequest 考试安排创建/更新请求体（字段一致，更新流程忽略 examId）。
 type ExamUsageRequest struct {
-	ExamID      string   `json:"examId"`
-	Name        string   `json:"name"`
-	Description *string  `json:"description"`
-	StartTime   *string  `json:"startTime"`
-	EndTime     *string  `json:"endTime"`
-	Duration    *int     `json:"duration"`
-	TargetType  *string  `json:"targetType"`
-	TargetIDs   []string `json:"targetIds"`
+	ExamID         string   `json:"examId"`
+	Name           string   `json:"name"`
+	Description    *string  `json:"description"`
+	StartTime      *string  `json:"startTime"`
+	EndTime        *string  `json:"endTime"`
+	Duration       *int     `json:"duration"`
+	TargetType     *string  `json:"targetType"`
+	TargetIDs      []string `json:"targetIds"`
+	ActivationMode string   `json:"activationMode"`
 }
 
 func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -73,17 +73,24 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 			return ""
 		},
 		CreateFn: func(ctx context.Context, t *ExamUsageRequest, tenantID, userID string) (string, error) {
+			// 初始状态按启用条件：随时作答 → 已发布；定时/手动启停 → 草稿
+			status := "draft"
+			if t.ActivationMode == "always" {
+				status = "published"
+			}
 			u, err := h.Service.CreateExamUsage(ctx, &store.ExamUsageCreateParams{
-				TenantID:    tenantID,
-				ExamID:      t.ExamID,
-				Name:        t.Name,
-				Description: t.Description,
-				StartTime:   t.StartTime,
-				EndTime:     t.EndTime,
-				Duration:    t.Duration,
-				TargetType:  t.TargetType,
-				TargetIDs:   coalesceStringSlice(t.TargetIDs),
-				CreatorID:   userID,
+				TenantID:       tenantID,
+				ExamID:         t.ExamID,
+				Name:           t.Name,
+				Description:    t.Description,
+				StartTime:      t.StartTime,
+				EndTime:        t.EndTime,
+				Duration:       t.Duration,
+				TargetType:     t.TargetType,
+				TargetIDs:      coalesceStringSlice(t.TargetIDs),
+				Status:         status,
+				ActivationMode: t.ActivationMode,
+				CreatorID:      userID,
 			})
 			if err != nil {
 				return "", err
@@ -92,13 +99,14 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 		},
 		UpdateFn: func(ctx context.Context, id, _ string, t *ExamUsageRequest) error {
 			_, err := h.Service.UpdateExamUsage(ctx, id, &store.ExamUsageCreateParams{
-				Name:        t.Name,
-				Description: t.Description,
-				StartTime:   t.StartTime,
-				EndTime:     t.EndTime,
-				Duration:    t.Duration,
-				TargetType:  t.TargetType,
-				TargetIDs:   coalesceStringSlice(t.TargetIDs),
+				Name:           t.Name,
+				Description:    t.Description,
+				StartTime:      t.StartTime,
+				EndTime:        t.EndTime,
+				Duration:       t.Duration,
+				TargetType:     t.TargetType,
+				TargetIDs:      coalesceStringSlice(t.TargetIDs),
+				ActivationMode: t.ActivationMode,
 			})
 			return err
 		},
@@ -125,48 +133,46 @@ func (h *ExamUsageHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
+	if !h.manualOnly(w, r) {
+		return
+	}
 	crudUpdate(w, r, h.crud())
 }
 
 func (h *ExamUsageHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	if !h.manualOnly(w, r) {
+		return
+	}
 	crudDelete(w, r, h.crud())
 }
 
-func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	usage, err := h.Service.GetExamUsage(r.Context(), id)
+// manualOnly 仅允许操作手动创建的考试安排；自动创建（task/node/course）不允许编辑/删除。
+func (h *ExamUsageHandler) manualOnly(w http.ResponseWriter, r *http.Request) bool {
+	usage, err := h.Service.GetExamUsage(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试安排不存在")
-		return
+		return false
 	}
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
-		return
+		return false
 	}
-	if usage.Status != "draft" && usage.Status != "pending" && usage.Status != "published" && usage.Status != "scheduled" {
-		respondError(w, http.StatusBadRequest, "考试安排不在待开始状态")
-		return
+	if usage.TargetType != nil && !isManualTargetType(*usage.TargetType) {
+		respondError(w, http.StatusForbidden, "自动创建的考试安排不允许编辑/删除")
+		return false
 	}
-	now := time.Now()
-	if usage.StartTime != nil {
-		if t, err := time.Parse(time.RFC3339, *usage.StartTime); err == nil && now.Before(t) {
-			respondError(w, http.StatusBadRequest, "考试尚未开始")
-			return
-		}
-	}
-	if usage.EndTime != nil {
-		if t, err := time.Parse(time.RFC3339, *usage.EndTime); err == nil && now.After(t) {
-			respondError(w, http.StatusBadRequest, "考试已结束")
-			return
-		}
-	}
-	if err := h.Service.SetExamUsageStatus(r.Context(), id, "in_progress"); err != nil {
-		respondServerError(w, r, err, "开始考试安排失败")
-		return
-	}
-	usage, _ = h.Service.GetExamUsage(r.Context(), id)
-	respondJSON(w, http.StatusOK, usage)
+	return true
 }
 
+// isManualTargetType 手动创建的考试安排目标类型。
+func isManualTargetType(t string) bool {
+	switch t {
+	case "class", "major", "department", "public":
+		return true
+	}
+	return false
+}
+
+// Finish 停止考试：已发布/进行中 -> 已结束（不可作答）。
 func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	usage, err := h.Service.GetExamUsage(r.Context(), id)
@@ -177,19 +183,19 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return
 	}
-	if usage.Status != "in_progress" {
-		respondError(w, http.StatusBadRequest, "考试安排不在进行中状态")
+	if usage.Status != "published" && usage.Status != "in_progress" {
+		respondError(w, http.StatusBadRequest, "考试安排不在已发布状态")
 		return
 	}
 	if err := h.Service.SetExamUsageStatus(r.Context(), id, "finished"); err != nil {
-		respondServerError(w, r, err, "完成考试安排失败")
+		respondServerError(w, r, err, "停止考试安排失败")
 		return
 	}
 	usage, _ = h.Service.GetExamUsage(r.Context(), id)
 	respondJSON(w, http.StatusOK, usage)
 }
 
-// Publish 发布考试安排：草稿/待开始 -> 已发布（学生端可见为待考）。
+// Publish 开启考试安排：草稿 -> 已发布（学生可作答）。
 func (h *ExamUsageHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	usage, err := h.Service.GetExamUsage(r.Context(), id)
@@ -205,7 +211,7 @@ func (h *ExamUsageHandler) Publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.SetExamUsageStatus(r.Context(), id, "published"); err != nil {
-		respondServerError(w, r, err, "发布考试安排失败")
+		respondServerError(w, r, err, "开启考试安排失败")
 		return
 	}
 	usage, _ = h.Service.GetExamUsage(r.Context(), id)

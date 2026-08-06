@@ -103,14 +103,6 @@ export default function ExamDetailPage() {
   const isSceneTask = !!taskId && !!methodKey
   const isCourseTask = !!courseId && !!nodeId
 
-  // 考试安排开放时间窗：定时启用写入 usage.startTime/endTime，其余为不限时。
-  const isUsageOpen = useCallback((u: ExamUsage) => {
-    const now = Date.now()
-    if (u.startTime && now < new Date(u.startTime).getTime()) return false
-    if (u.endTime && now > new Date(u.endTime).getTime()) return false
-    return true
-  }, [])
-
   // 窗口状态：未到开始时间 / 已过结束时间 / 开放中。
   const getUsageWindowState = useCallback(
     (u: ExamUsage | null): 'open' | 'not_started' | 'ended' => {
@@ -150,19 +142,11 @@ export default function ExamDetailPage() {
     if (!examId) return
     examUsageApi
       .list({ examId })
-      .then(async (res) => {
+      .then((res) => {
         const items = res.items || []
         setUsages(items)
-        let usage = items.find((u) => u.id === usageIdFromQuery) || items[0] || null
+        const usage = items.find((u) => u.id === usageIdFromQuery) || items[0] || null
         if (usage && !currentUsage) {
-          // Auto-start draft usages coming from scene tasks, only within the open window.
-          if (usage.status === 'draft' && isSceneTask && isUsageOpen(usage)) {
-            try {
-              usage = await examUsageApi.start(usage.id)
-            } catch {
-              /* fall through */
-            }
-          }
           setCurrentUsage(usage)
         }
       })
@@ -170,7 +154,7 @@ export default function ExamDetailPage() {
         reportError(err, '加载考试记录')
         toast({ title: '考试记录加载失败', variant: 'destructive' })
       })
-  }, [examId, currentUsage, isSceneTask, isUsageOpen, usageIdFromQuery, toast])
+  }, [examId, currentUsage, usageIdFromQuery, toast])
 
   const handleSubmit = useCallback(async () => {
     if (!currentUsage) return
@@ -246,12 +230,13 @@ export default function ExamDetailPage() {
   const totalScore = questions.reduce((s, q) => s + (q.score || 0), 0)
   const answeredCount = Object.keys(answers).length
   const targetAudience = getTargetAudience()
-  // canStart 由服务端真实数据校验：考试已发布（或场景任务）、存在考试安排，
-  // 且在开放时间窗内（已开始的进行中考试不受窗口限制，可继续作答）
+  // canStart 由服务端真实数据校验：考试已开启（published）、存在考试安排且在开放时间窗内。
+  // 定时启停考试懒更新后 published 必在窗口内；随时/手动模式无时间窗（open）。
   const canStart =
     (isSceneTask || exam.status === 'published') &&
     currentUsage &&
-    (currentUsage.status === 'in_progress' || usageWindowState === 'open')
+    (currentUsage.status === 'published' || currentUsage.status === 'in_progress') &&
+    usageWindowState === 'open'
 
   const handleSingle = (qid: string, val: string) => setAnswers((p) => ({ ...p, [qid]: val }))
   const handleMultiple = (qid: string, opt: string, checked: boolean) => {
@@ -847,17 +832,19 @@ export default function ExamDetailPage() {
                 <PlayCircle style={{ width: 20, height: 20 }} />
                 {!currentUsage
                   ? '暂无考试安排'
-                  : usageWindowState === 'not_started'
-                    ? `考试未开始（${formatDateTime(currentUsage.startTime)} 开放）`
-                    : usageWindowState === 'ended'
-                      ? '考试已结束'
-                      : !isSceneTask &&
-                          (exam.status === 'draft' ||
-                            exam.status === 'pending' ||
-                            exam.status === 'rejected' ||
-                            exam.status === 'approved')
-                        ? '考试未发布'
-                        : '考试已结束'}
+                  : currentUsage.status === 'draft' || currentUsage.status === 'pending'
+                    ? '考试未开放'
+                    : usageWindowState === 'not_started'
+                      ? `考试未开始（${formatDateTime(currentUsage.startTime)} 开放）`
+                      : usageWindowState === 'ended'
+                        ? '考试已结束'
+                        : !isSceneTask &&
+                            (exam.status === 'draft' ||
+                              exam.status === 'pending' ||
+                              exam.status === 'rejected' ||
+                              exam.status === 'approved')
+                          ? '考试未发布'
+                          : '考试已结束'}
               </Button>
             )}
           </div>

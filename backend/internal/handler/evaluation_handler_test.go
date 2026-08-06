@@ -480,16 +480,16 @@ func TestExamUsage_CRUD(t *testing.T) {
 		t.Fatalf("expected name 'Updated Usage', got %q", updated.Name)
 	}
 
-	w = env.Do("POST", "/api/v1/evaluation/exam-usages/"+usage.ID+"/start", nil)
+	w = env.Do("POST", "/api/v1/evaluation/exam-usages/"+usage.ID+"/publish", nil)
 	if w.Code != http.StatusOK {
-		t.Fatalf("start: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		t.Fatalf("publish: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
-	started, err := testhelper.Unmarshal[domain.ExamUsage](w)
+	published, err := testhelper.Unmarshal[domain.ExamUsage](w)
 	if err != nil {
-		t.Fatalf("unmarshal start: %v", err)
+		t.Fatalf("unmarshal publish: %v", err)
 	}
-	if started.Status != "in_progress" {
-		t.Fatalf("expected status 'in_progress', got %q", started.Status)
+	if published.Status != "published" {
+		t.Fatalf("expected status 'published', got %q", published.Status)
 	}
 
 	w = env.Do("POST", "/api/v1/evaluation/exam-usages/"+usage.ID+"/finish", nil)
@@ -555,73 +555,83 @@ func TestExamUsage_StartWindow(t *testing.T) {
 	exam, _ := testhelper.Unmarshal[domain.Exam](w)
 	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = $1", exam.ID)
 
-	// 未到开始时间 → 400 考试尚未开始
+	// 1. 定时启停（scheduled）：未到开始时间 → 创建为草稿，懒更新后仍草稿
 	future := time.Now().Add(time.Hour).Format(time.RFC3339)
 	later := time.Now().Add(2 * time.Hour).Format(time.RFC3339)
 	w = env.Do("POST", "/api/v1/evaluation/exam-usages", map[string]interface{}{
-		"examId":     exam.ID,
-		"name":       "Future Usage",
-		"startTime":  future,
-		"endTime":    later,
-		"duration":   60,
-		"targetType": "class",
+		"examId":         exam.ID,
+		"name":           "Future Usage",
+		"startTime":      future,
+		"endTime":        later,
+		"duration":       60,
+		"targetType":     "class",
+		"activationMode": "scheduled",
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create usage: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	futureUsage, _ := testhelper.Unmarshal[domain.ExamUsage](w)
 	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = $1", futureUsage.ID)
-
-	w = env.Do("POST", "/api/v1/evaluation/exam-usages/"+futureUsage.ID+"/start", nil)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("start before window: expected 400, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	if futureUsage.Status != "draft" {
+		t.Fatalf("定时未到开始时间应创建为草稿，实际 %q", futureUsage.Status)
 	}
 
-	// 已过结束时间 → 400 考试已结束
+	// 2. 定时启停：已过结束时间 → 创建即同步为 finished
 	past := time.Now().Add(-2 * time.Hour).Format(time.RFC3339)
 	earlier := time.Now().Add(-time.Hour).Format(time.RFC3339)
 	w = env.Do("POST", "/api/v1/evaluation/exam-usages", map[string]interface{}{
-		"examId":     exam.ID,
-		"name":       "Past Usage",
-		"startTime":  past,
-		"endTime":    earlier,
-		"duration":   60,
-		"targetType": "class",
+		"examId":         exam.ID,
+		"name":           "Past Usage",
+		"startTime":      past,
+		"endTime":        earlier,
+		"duration":       60,
+		"targetType":     "class",
+		"activationMode": "scheduled",
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create usage: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	pastUsage, _ := testhelper.Unmarshal[domain.ExamUsage](w)
 	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = $1", pastUsage.ID)
-
-	w = env.Do("POST", "/api/v1/evaluation/exam-usages/"+pastUsage.ID+"/start", nil)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("start after window: expected 400, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	if pastUsage.Status != "finished" {
+		t.Fatalf("已过结束时间定时考试创建即应 finished，实际 %q", pastUsage.Status)
 	}
 
-	// 窗口内（开始已过、结束未到）→ 200 in_progress
+	// 3. 定时启停：窗口内（开始已过、结束未到）→ 创建即同步为 published
 	now := time.Now().Format(time.RFC3339)
 	w = env.Do("POST", "/api/v1/evaluation/exam-usages", map[string]interface{}{
-		"examId":     exam.ID,
-		"name":       "Open Usage",
-		"startTime":  now,
-		"endTime":    later,
-		"duration":   60,
-		"targetType": "class",
+		"examId":         exam.ID,
+		"name":           "Open Usage",
+		"startTime":      now,
+		"endTime":        later,
+		"duration":       60,
+		"targetType":     "class",
+		"activationMode": "scheduled",
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create usage: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	openUsage, _ := testhelper.Unmarshal[domain.ExamUsage](w)
 	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = $1", openUsage.ID)
-
-	w = env.Do("POST", "/api/v1/evaluation/exam-usages/"+openUsage.ID+"/start", nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("start in window: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	if openUsage.Status != "published" {
+		t.Fatalf("窗口内定时考试创建即应 published，实际 %q", openUsage.Status)
 	}
-	started, _ := testhelper.Unmarshal[domain.ExamUsage](w)
-	if started.Status != "in_progress" {
-		t.Fatalf("expected status 'in_progress', got %q", started.Status)
+
+	// 4. 随时作答（always）→ 创建即已发布
+	w = env.Do("POST", "/api/v1/evaluation/exam-usages", map[string]interface{}{
+		"examId":         exam.ID,
+		"name":           "Always Usage",
+		"duration":       60,
+		"targetType":     "class",
+		"activationMode": "always",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create usage: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	alwaysUsage, _ := testhelper.Unmarshal[domain.ExamUsage](w)
+	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = $1", alwaysUsage.ID)
+	if alwaysUsage.Status != "published" {
+		t.Fatalf("随时作答应创建即已发布，实际 %q", alwaysUsage.Status)
 	}
 }
 
