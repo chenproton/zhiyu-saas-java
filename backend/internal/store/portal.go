@@ -841,25 +841,25 @@ func (s *PortalStore) PeriodLabelMap(ctx context.Context, tenantID *string) map[
 	return m
 }
 
-// SchoolAdminResourceGrowth 学校管理员资源增长趋势（按月）。
-func (s *PortalStore) SchoolAdminResourceGrowth(ctx context.Context, tenantID *string, months int) []domain.WorkspaceResourceGrowth {
-	if months <= 0 {
-		months = 12
+// SchoolAdminResourceGrowth 学校管理员资源增长趋势（按天，最近 days 天）。
+func (s *PortalStore) SchoolAdminResourceGrowth(ctx context.Context, tenantID *string, days int) []domain.WorkspaceResourceGrowth {
+	if days <= 0 {
+		days = 14
 	}
 
 	now := time.Now()
-	monthKeys := make([]string, 0, months)
-	monthIndex := map[string]int{}
-	for i := months - 1; i >= 0; i-- {
-		d := now.AddDate(0, -i, 0)
-		key := d.Format("2006-01")
-		monthKeys = append(monthKeys, key)
-		monthIndex[key] = len(monthKeys) - 1
+	dayKeys := make([]string, 0, days)
+	dayIndex := map[string]int{}
+	for i := days - 1; i >= 0; i-- {
+		d := now.AddDate(0, 0, -i)
+		key := d.Format("2006-01-02")
+		dayKeys = append(dayKeys, key)
+		dayIndex[key] = len(dayKeys) - 1
 	}
 
-	result := make([]domain.WorkspaceResourceGrowth, months)
-	for i, key := range monthKeys {
-		result[i].Month = key
+	result := make([]domain.WorkspaceResourceGrowth, days)
+	for i, key := range dayKeys {
+		result[i].Date = key
 	}
 
 	queries := []struct {
@@ -877,23 +877,23 @@ func (s *PortalStore) SchoolAdminResourceGrowth(ctx context.Context, tenantID *s
 
 	for _, q := range queries {
 		rows, err := s.q.Query(ctx, `
-			SELECT TO_CHAR(DATE_TRUNC('month', `+q.dateCol+`), 'YYYY-MM') AS month, COUNT(*)
+			SELECT TO_CHAR(DATE_TRUNC('day', `+q.dateCol+`), 'YYYY-MM-DD') AS day, COUNT(*)
 			FROM `+q.table+`
 			WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)
 			  AND `+q.dateCol+` >= $2
-			GROUP BY DATE_TRUNC('month', `+q.dateCol+`)
-			ORDER BY month
-		`, tenantID, now.AddDate(0, -months, 0))
+			GROUP BY DATE_TRUNC('day', `+q.dateCol+`)
+			ORDER BY day
+		`, tenantID, now.AddDate(0, 0, -days))
 		if err != nil {
 			continue
 		}
 		for rows.Next() {
-			var month string
+			var day string
 			var count int
-			if err := rows.Scan(&month, &count); err != nil {
+			if err := rows.Scan(&day, &count); err != nil {
 				continue
 			}
-			if idx, ok := monthIndex[month]; ok {
+			if idx, ok := dayIndex[day]; ok {
 				q.setter(idx, count)
 			}
 		}

@@ -58,9 +58,9 @@ func (s *PositionService) SchoolAdminResourceStats(ctx context.Context, tenantID
 	return s.st.Portal().SchoolAdminResourceStats(ctx, tenantID)
 }
 
-// SchoolAdminResourceGrowth 管理员资源增长趋势（最近 months 个月）。
-func (s *PositionService) SchoolAdminResourceGrowth(ctx context.Context, tenantID *string, months int) []domain.WorkspaceResourceGrowth {
-	return s.st.Portal().SchoolAdminResourceGrowth(ctx, tenantID, months)
+// SchoolAdminResourceGrowth 管理员资源增长趋势（最近 days 天，按天）。
+func (s *PositionService) SchoolAdminResourceGrowth(ctx context.Context, tenantID *string, days int) []domain.WorkspaceResourceGrowth {
+	return s.st.Portal().SchoolAdminResourceGrowth(ctx, tenantID, days)
 }
 
 // PersonnelStats 人员统计。

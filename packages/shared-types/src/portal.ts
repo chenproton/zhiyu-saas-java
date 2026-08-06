@@ -51,7 +51,7 @@ export interface WorkspacePersonnelStat {
 }
 
 export interface WorkspaceResourceGrowth {
-  month: string
+  date: string
   courses: number
   scenarios: number
   careerPositions: number

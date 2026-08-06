@@ -76,7 +76,7 @@ type WorkspacePersonnelStat struct {
 }
 
 type WorkspaceResourceGrowth struct {
-	Month           string `json:"month"`
+	Date            string `json:"date"`
 	Courses         int    `json:"courses"`
 	Scenarios       int    `json:"scenarios"`
 	CareerPositions int    `json:"careerPositions"`

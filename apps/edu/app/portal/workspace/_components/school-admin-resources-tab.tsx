@@ -92,7 +92,7 @@ export function SchoolAdminResourcesTab() {
                     key={item.key}
                     item={item}
                     data={growth.map((g) => ({
-                      month: g.month,
+                      date: g.date,
                       value: g[item.key as keyof typeof g] as number,
                     }))}
                   />
@@ -135,7 +135,7 @@ function ResourceTrendCard({
   data,
 }: {
   item: (typeof resourceTrendItems)[number]
-  data: { month: string; value: number }[]
+  data: { date: string; value: number }[]
 }) {
   const Icon = item.icon
   const latest = data[data.length - 1]?.value ?? 0
@@ -156,7 +156,7 @@ function ResourceTrendCard({
             <p className="text-lg font-bold" style={{ color: item.color }}>
               {latest}
             </p>
-            <p className="text-xs text-gray-400">本月新增</p>
+            <p className="text-xs text-gray-400">今日新增</p>
           </div>
         </div>
         <div className="h-20 w-full">
@@ -165,7 +165,7 @@ function ResourceTrendCard({
               <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis
-                  dataKey="month"
+                  dataKey="date"
                   tick={{ fontSize: 10 }}
                   stroke="#94a3b8"
                   tickLine={false}
