@@ -163,7 +163,9 @@ prune_extra_tags() {
   local img
   for img in $(docker images --format '{{.Repository}}:{{.Tag}}' "$repo" 2>/dev/null); do
     [[ "$img" == "$repo:$hash_tag" || "$img" == "$repo:$IMAGE_TAG" ]] && continue
-    docker rmi "$img" >/dev/null 2>&1 || true
+    if ! docker rmi "$img" >/dev/null 2>&1; then
+      warn "移除历史标签 $img 失败（可能仍被容器引用，下次部署会自动重试）"
+    fi
   done
 }
 
@@ -939,6 +941,8 @@ fi
 # buildx 新版参数为 --max-used-space（旧版 --keep-storage 已废弃移除），
 # 探测失败再退化为按时间的 --filter until=72h 兜底。
 # 阈值可用 BUILD_CACHE_LIMIT_GB 配置（默认 10GB）；缓存未超限时 prune 快速返回，不影响部署速度。
+# 先移除已停止容器（compose 重建后旧容器若未及时删除，会拖住其引用的旧镜像/标签清理）
+docker rm -f $(docker ps -aq --filter status=exited) >/dev/null 2>&1 || true
 BUILD_CACHE_LIMIT="${BUILD_CACHE_LIMIT_GB:-10}GB"
 if docker builder prune --help 2>/dev/null | grep -q -- '--max-used-space'; then
   docker builder prune -f --max-used-space "$BUILD_CACHE_LIMIT" >/dev/null 2>&1 || true
