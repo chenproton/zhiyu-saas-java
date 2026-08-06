@@ -226,39 +226,41 @@ export function TopNav() {
                   账号设置
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Type className="w-3.5 h-3.5" />
-                  字号大小
-                </DropdownMenuLabel>
-                <div className="flex items-center gap-1 px-2 py-1">
+                <div className="flex items-center gap-1 px-2 py-1.5">
+                  <Type className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">字号大小</span>
+                  <div className="flex-1" />
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 hover:bg-muted"
+                    className="h-7 w-7 p-0 hover:bg-muted"
                     onClick={decrease}
                     disabled={level === 0}
                     aria-label="减小字号"
                   >
                     <AArrowDown className="w-4 h-4" />
                   </Button>
-                  <div className="flex-1 text-center text-sm text-foreground whitespace-nowrap">
-                    字号 {level}/{maxLevel}
-                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 hover:bg-muted"
+                    className="h-7 w-7 p-0 hover:bg-muted"
                     onClick={increase}
                     disabled={level === maxLevel}
                     aria-label="增大字号"
                   >
                     <AArrowUp className="w-4 h-4" />
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 hover:bg-muted"
+                    onClick={reset}
+                    disabled={level === 0}
+                    aria-label="恢复默认字号"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
-                <DropdownMenuItem className="cursor-pointer" disabled={level === 0} onClick={reset}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  恢复默认字号
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
