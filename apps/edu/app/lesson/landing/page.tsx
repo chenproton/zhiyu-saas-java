@@ -33,24 +33,27 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
         >
           {!course.coverImage && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <BookOpen className="w-12 h-12 text-[#334155]/45" strokeWidth={1.5} />
+              <BookOpen
+                className="w-12 h-12 text-white/85 drop-shadow-md"
+                strokeWidth={1.5}
+              />
             </div>
           )}
           <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
             <div className="flex gap-1.5">
-              <span className="bg-white/70 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-[#334155] font-medium border border-white/50">
+              <span className="bg-[#0f172a]/40 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/20">
                 {course.version || 'v1.0'}
               </span>
-              <span className="bg-white/70 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-[#334155] font-medium border border-white/50">
+              <span className="bg-[#0f172a]/40 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/20">
                 创建人：{creatorName}
               </span>
             </div>
           </div>
           <div className="relative z-10">
-            <div className="text-base font-bold leading-snug mb-1 line-clamp-2 text-[#1e293b] group-hover:text-[#0f172a] transition-colors">
+            <div className="text-base font-bold leading-snug mb-1 line-clamp-2 text-white text-shadow-md group-hover:text-white/90 transition-colors">
               {course.name}
             </div>
-            <div className="text-xs text-[#64748b]">
+            <div className="text-xs text-white/85 text-shadow-sm">
               课程编码：{course.code || course.id.slice(0, 8)}
             </div>
           </div>
