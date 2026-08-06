@@ -28,7 +28,11 @@ const industryTagMap: Record<string, { bg: string; text: string; border: string 
 }
 
 const professionTagMap: Record<string, { bg: string; text: string; border: string }> = {
-  default: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
+  default: {
+    bg: 'color-mix(in srgb, var(--primary) 8%, white)',
+    text: 'var(--primary)',
+    border: 'color-mix(in srgb, var(--primary) 15%, white)',
+  },
 }
 
 export function SceneCard({
