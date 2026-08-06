@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/auth-provider'
+import { MobileAccessDialog } from '@/components/portal/mobile-access-dialog'
 import { useToast } from '@zhiyu/ui'
 import { positionApi } from '@/lib/api'
 import type { CareerPosition } from '@/lib/types'
@@ -43,6 +44,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
   const [isHeart, setIsHeart] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(position.favoriteCount ?? 0)
   const [loading, setLoading] = useState(false)
+  const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -199,6 +201,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
                   size="icon"
                   className="rounded-md h-10 w-10 text-[#475569]"
                   aria-label="分享岗位"
+                  onClick={() => setMobileAccessOpen(true)}
                 >
                   <Share2 className="w-4 h-4" />
                 </Button>
@@ -207,6 +210,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
           </div>
         </div>
       </div>
+      <MobileAccessDialog open={mobileAccessOpen} onOpenChange={setMobileAccessOpen} />
     </div>
   )
 }
