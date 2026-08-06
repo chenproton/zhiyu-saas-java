@@ -491,7 +491,7 @@ export default function SceneDetailPage() {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8fafc]">
         <Skeleton className="h-[320px] w-full" />
-        <div className="max-w-[1400px] mx-auto px-6 py-6 w-full flex-1">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full flex-1">
           <Skeleton className="h-[500px] w-full rounded-xl" />
         </div>
         <Footer className="mt-auto" />
@@ -547,7 +547,7 @@ export default function SceneDetailPage() {
                       key={task.id}
                       className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-primary/30 transition-all"
                     >
-                      <div className="flex items-center gap-4 p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5">
                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/70 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-primary/25">
                           {idx + 1}
                         </div>
@@ -622,11 +622,11 @@ export default function SceneDetailPage() {
                         </div>
                         <Link
                           href={`/scene/landing/${id}/learn?task=${task.id}`}
-                          className="shrink-0"
+                          className="shrink-0 sm:ml-auto"
                         >
                           <Button
                             size="sm"
-                            className="rounded-lg h-9 px-4 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all"
+                            className="rounded-lg h-9 px-4 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all w-full sm:w-auto"
                           >
                             <PlayCircle className="w-3.5 h-3.5 mr-1" /> 开始任务
                           </Button>
@@ -755,26 +755,26 @@ export default function SceneDetailPage() {
     >
       {/* Header */}
       <div className="bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="max-w-[1400px] mx-auto px-6 py-5">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
             <button
               onClick={() => router.back()}
-              className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+              className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer shrink-0"
             >
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary/5 hover:text-primary transition-colors">
                 ←
               </span>{' '}
               返回上一页
             </button>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-800 font-medium truncate">{scenario.name}</span>
+            <span className="text-slate-300 shrink-0">/</span>
+            <span className="text-slate-800 font-medium truncate min-w-0">{scenario.name}</span>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-6 items-stretch">
             {/* Left: Cover + Info */}
             <div className="flex-1 flex">
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] w-full">
-                <div className="flex flex-col sm:flex-row gap-6 p-6">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-6">
                   <div
                     className="w-full sm:w-[280px] h-[190px] rounded-2xl bg-cover bg-center flex items-center justify-center shrink-0 self-stretch shadow-[0_12px_40px_rgba(0,0,0,0.15)] relative overflow-hidden"
                     style={coverStyle}
@@ -931,7 +931,7 @@ export default function SceneDetailPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex justify-center gap-6 text-xs">
+                  <div className="flex flex-wrap justify-center gap-x-6 gap-y-1.5 text-xs">
                     <div className="flex items-center gap-2 text-slate-600">
                       <div className="w-2.5 h-2.5 rounded-full bg-primary/50" />
                       <span>考核 {assessmentHours} 课时</span>
@@ -948,18 +948,18 @@ export default function SceneDetailPage() {
         </div>
       </div>
 
-      <main className="flex-1 max-w-[1400px] mx-auto px-6 py-6 w-full">
+      <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full">
         <div
           ref={tabsRef}
           className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
         >
-          <div className="flex border-b border-slate-100 px-6 overflow-x-auto">
+          <div className="flex flex-wrap border-b border-slate-100 px-4 sm:px-6">
             {TABS.map((t) => (
               <button
                 key={t.value}
                 onClick={() => setActiveTab(t.value)}
                 className={`
-                  py-4 px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
+                  py-3.5 sm:py-4 px-3 sm:px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
                   ${activeTab === t.value ? 'text-primary font-semibold' : 'text-slate-500 hover:text-primary hover:bg-primary/5'}
                 `}
               >
@@ -1002,7 +1002,7 @@ export default function SceneDetailPage() {
             ))}
           </div>
 
-          <div className="p-6 min-h-[500px]">{renderTabContent()}</div>
+          <div className="p-4 sm:p-6 min-h-[500px]">{renderTabContent()}</div>
         </div>
       </main>
 

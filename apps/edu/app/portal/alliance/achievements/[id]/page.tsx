@@ -42,15 +42,15 @@ export default function AlliancePublicAchievementDetailPage() {
         </Link>
       </div>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{achievement.title}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold break-words">{achievement.title}</h1>
           <p className="text-muted-foreground text-sm mt-1">
             {allianceLabel('achievementType', achievement.type)}
             {achievement.achievementDate ? ` · ${achievement.achievementDate}` : ''}
           </p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center shrink-0">
           <Badge variant="outline">{allianceLabel('achievementStatus', achievement.status)}</Badge>
           <span className="text-sm text-muted-foreground">{achievement.viewCount} 次浏览</span>
         </div>

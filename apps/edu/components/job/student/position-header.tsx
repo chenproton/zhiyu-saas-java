@@ -94,7 +94,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
 
   return (
     <div className="bg-white border-b border-[#e7e5e4]">
-      <div className="max-w-[1400px] mx-auto px-8 py-6">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-6">
         <div className="flex items-center gap-2 mb-5">
           <Button
             variant="ghost"
@@ -106,7 +106,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
           </Button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#e7e5e4] p-6 shadow-[0_4px_20px_rgba(69,26,3,0.06)]">
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] p-4 md:p-6 shadow-[0_4px_20px_rgba(69,26,3,0.06)]">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Cover */}
             <div
@@ -130,9 +130,9 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
             <div className="flex-1 flex flex-col">
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-3">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-2xl font-bold text-[#0f172a]">{position.name}</h1>
-                    <span className="text-2xl font-bold text-primary leading-none">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
+                    <h1 className="text-xl md:text-2xl font-bold text-[#0f172a]">{position.name}</h1>
+                    <span className="text-xl md:text-2xl font-bold text-primary leading-none">
                       {formatSalary(position.salaryMin, position.salaryMax)}
                     </span>
                   </div>

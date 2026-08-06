@@ -277,7 +277,7 @@ export default function ExamDetailPage() {
             background: '#fff',
             borderRadius: 12,
             border: '1px solid #e5e6eb',
-            padding: 48,
+            padding: 32,
             textAlign: 'center',
           }}
         >
@@ -286,7 +286,15 @@ export default function ExamDetailPage() {
           />
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>试卷已提交</h2>
           <p style={{ color: '#8f959e' }}>感谢您的参与，考试结果将在阅卷完成后公布。</p>
-          <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <div
+            style={{
+              marginTop: 24,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 12,
+              justifyContent: 'center',
+            }}
+          >
             {isSceneTask && sceneId && (
               <Link href={`/scene/landing/${sceneId}/learn?task=${taskId}`}>
                 <Button variant="outline">返回学习页</Button>
@@ -309,17 +317,19 @@ export default function ExamDetailPage() {
   /* ─── 答题中 ─── */
   if (started) {
     return (
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: 24 }}>
+      <div className="max-w-[1400px] mx-auto p-4 sm:p-6">
         <div
           style={{
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: 12,
             marginBottom: 24,
           }}
         >
-          <h1 style={{ fontSize: 18, fontWeight: 700 }}>{exam.name}</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 14 }}>
+          <h1 style={{ fontSize: 18, fontWeight: 700, minWidth: 0 }}>{exam.name}</h1>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16, fontSize: 14 }}>
             <span
               style={{
                 display: 'flex',
@@ -557,7 +567,7 @@ export default function ExamDetailPage() {
 
   /* ─── 概览页 ─── */
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: 24 }}>
+    <div className="max-w-[1400px] mx-auto p-4 sm:p-6">
       <div style={{ marginBottom: 24 }}>
         <Link href="/evaluation/landing/exam-center">
           <Button variant="ghost" size="sm" style={{ gap: 6 }}>
@@ -578,19 +588,21 @@ export default function ExamDetailPage() {
       >
         <div
           style={{
-            padding: '24px 32px',
+            padding: '20px 16px',
             background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary) 75%, white), var(--primary))',
             color: 'white',
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: 12,
           }}
         >
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>{exam.name}</h1>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>{exam.name}</h1>
             <p style={{ fontSize: 14, opacity: 0.9 }}>{exam.description}</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             <FavoriteButton
               targetType="exam"
               targetId={exam.id}
@@ -600,14 +612,7 @@ export default function ExamDetailPage() {
             />
           </div>
         </div>
-        <div
-          style={{
-            padding: '24px 32px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 24,
-          }}
-        >
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 px-4 sm:px-8 py-5 sm:py-6">
           {[
             {
               icon: <Clock style={{ width: 18, height: 18 }} />,
@@ -821,13 +826,19 @@ export default function ExamDetailPage() {
               </p>
             )}
           </div>
-          <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ marginTop: 24, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
             {canStart ? (
               <Button size="lg" style={{ gap: 8, background: '#3370ff' }} onClick={handleStart}>
                 <PlayCircle style={{ width: 20, height: 20 }} /> 开始考试
               </Button>
             ) : (
-              <Button size="lg" variant="outline" disabled style={{ gap: 8 }}>
+              <Button
+                size="lg"
+                variant="outline"
+                disabled
+                style={{ gap: 8, maxWidth: '100%' }}
+                className="whitespace-normal h-auto py-2.5 px-4 text-sm"
+              >
                 <PlayCircle style={{ width: 20, height: 20 }} />
                 {!currentUsage
                   ? '暂无考试安排'

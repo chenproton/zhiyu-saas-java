@@ -96,18 +96,20 @@ export function LandingFilterRow({
   if (items.length <= 1) return null
 
   return (
-    <div className={`flex items-start gap-3 sm:gap-4 py-3 ${showBorder ? cls.border : ''}`}>
-      <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">{label}</span>
+    <div className={`flex items-start gap-2.5 sm:gap-4 py-3 ${showBorder ? cls.border : ''}`}>
+      <span className="text-[13px] sm:text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">
+        {label}
+      </span>
       <div className="flex-1 min-w-0">
         <div
           ref={containerRef}
-          className={`flex flex-wrap gap-2.5 ${expanded ? '' : 'max-h-[80px] overflow-hidden'}`}
+          className={`flex flex-wrap gap-2 sm:gap-2.5 ${expanded ? '' : 'max-h-[80px] overflow-hidden'}`}
         >
           {items.map((item) => (
             <button
               key={item}
               onClick={() => onSelect(item)}
-              className={`px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap ${
+              className={`px-2.5 sm:px-3.5 py-1.5 rounded-full text-[12px] sm:text-[13px] border transition-all whitespace-nowrap ${
                 selected === item ? cls.selected : cls.unselected
               }`}
             >

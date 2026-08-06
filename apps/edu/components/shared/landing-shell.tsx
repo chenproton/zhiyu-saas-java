@@ -101,20 +101,20 @@ export function LandingShell({
         <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-primary/15 blur-[100px] pointer-events-none" />
         <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-primary/10 blur-[80px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8 lg:min-h-[440px]">
-          <div className="flex-1 pt-4">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-8 pb-12 pt-2 flex flex-col lg:flex-row justify-between items-start gap-6 lg:gap-8 lg:min-h-[440px]">
+          <div className="flex-1 w-full pt-4">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-4 sm:mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               {hero.badge}
             </div>
-            <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
+            <h1 className="text-[30px] sm:text-[42px] lg:text-[52px] font-bold text-white leading-[1.2] mb-4 sm:mb-5 drop-shadow-sm">
               {hero.title}
             </h1>
-            <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
+            <p className="text-[15px] sm:text-[17px] text-white/85 mb-6 sm:mb-7 max-w-2xl leading-relaxed">
               {hero.description}
             </p>
             <Button
-              className="inline-flex items-center gap-2 bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
+              className="inline-flex items-center gap-2 bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 px-6 sm:px-7 h-11 sm:h-12 rounded-full text-sm font-semibold shadow-lg transition-all w-full sm:w-auto justify-center"
               onClick={scrollToList}
             >
               {hero.ctaLabel} <ChevronRight className="w-4 h-4" />
@@ -131,25 +131,27 @@ export function LandingShell({
 
       {/* Stats bar */}
       {stats && stats.length > 0 && (
-        <div className="max-w-[1400px] mx-auto px-8 -mt-10 relative z-20 w-full">
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_12px_40px_rgba(0,0,0,0.08)] p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 -mt-8 sm:-mt-10 relative z-20 w-full">
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_12px_40px_rgba(0,0,0,0.08)] p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             {stats.map((s, i) => (
               <div
                 key={i}
-                className="flex items-center gap-4 p-4 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-[#f8fafc] cursor-default group"
+                className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-4 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-[#f8fafc] cursor-default group"
               >
                 <div
-                  className={`relative w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${
+                  className={`relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${
                     s.gradient || 'from-primary to-primary/80'
                   } shrink-0 overflow-hidden`}
                 >
-                  <s.icon className="w-7 h-7 relative z-10" strokeWidth={1.8} />
+                  <s.icon className="w-5 h-5 sm:w-7 sm:h-7 relative z-10" strokeWidth={1.8} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[28px] font-bold text-[#0f172a] leading-none tracking-tight">
+                  <div className="text-[20px] sm:text-[28px] font-bold text-[#0f172a] leading-none tracking-tight truncate">
                     {s.value.toLocaleString()}
                   </div>
-                  <div className="text-[13px] text-[#64748b] mt-1 font-medium">{s.label}</div>
+                  <div className="text-[11px] sm:text-[13px] text-[#64748b] mt-1 font-medium truncate">
+                    {s.label}
+                  </div>
                 </div>
               </div>
             ))}
@@ -157,13 +159,13 @@ export function LandingShell({
         </div>
       )}
 
-      <main className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 w-full flex-1">
         {beforeList}
 
         <div ref={targetRef}>
           {/* Filter */}
           {hasFilter && (
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-5">
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 sm:p-6 mb-5">
               <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
                 <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
                 <Filter className="w-4 h-4 text-primary" />
@@ -200,12 +202,12 @@ export function LandingShell({
           {hasToolbar && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
               {sortOptions && sortOptions.length > 0 && (
-                <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm">
+                <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm overflow-x-auto max-w-full">
                   {sortOptions.map((s) => (
                     <button
                       key={s.value}
                       onClick={() => onSortChange?.(s.value)}
-                      className={`px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium ${
+                      className={`px-3 sm:px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium whitespace-nowrap ${
                         sort === s.value
                           ? 'bg-primary text-white shadow-md'
                           : 'text-[#475569] hover:text-primary hover:bg-[#f8fafc]'
@@ -260,7 +262,7 @@ export function LandingShell({
 
 export function LandingSkeleton({
   count = 12,
-  height = 'h-[360px]',
+  height = 'h-[320px] sm:h-[360px]',
 }: {
   count?: number
   height?: string

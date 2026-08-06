@@ -171,7 +171,7 @@ export default function BankDetailPage() {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8fafc]">
         <Skeleton className="h-[280px] w-full" />
-        <div className="max-w-[1400px] mx-auto px-6 py-6 w-full flex-1">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full flex-1">
           <Skeleton className="h-[500px] w-full rounded-xl" />
         </div>
         <Footer className="mt-auto" />
@@ -212,29 +212,32 @@ export default function BankDetailPage() {
       }}
     >
       <div className="bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="max-w-[1400px] mx-auto px-6 py-5">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
             <button
               onClick={() => router.back()}
-              className="hover:text-blue-600 transition-colors flex items-center gap-1 cursor-pointer"
+              className="hover:text-blue-600 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
             >
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">
                 ←
               </span>{' '}
               返回上一页
             </button>
-            <span className="text-slate-300">/</span>
-            <Link href="/evaluation/landing" className="hover:text-blue-600 transition-colors">
+            <span className="text-slate-300 shrink-0">/</span>
+            <Link
+              href="/evaluation/landing"
+              className="hover:text-blue-600 transition-colors hidden sm:inline"
+            >
               测评首页
             </Link>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-800 font-medium truncate">{bank.name}</span>
+            <span className="text-slate-300 shrink-0 hidden sm:inline">/</span>
+            <span className="text-slate-800 font-medium truncate min-w-0">{bank.name}</span>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-6 items-stretch">
             <div className="flex-1 flex">
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] w-full">
-                <div className="flex flex-col sm:flex-row gap-6 p-6">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-6">
                   <div
                     className="w-full sm:w-[280px] h-[190px] rounded-2xl bg-cover bg-center flex items-center justify-center shrink-0 self-stretch shadow-[0_12px_40px_rgba(0,0,0,0.15)] relative overflow-hidden"
                     style={coverStyle}
@@ -366,7 +369,7 @@ export default function BankDetailPage() {
         </div>
       </div>
 
-      <main className="flex-1 max-w-[1400px] mx-auto px-6 py-6 w-full">
+      <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full">
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
           <div className="px-6 py-4 border-b border-slate-100">
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -383,7 +386,7 @@ export default function BankDetailPage() {
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     placeholder="搜索题目内容或知识点"
@@ -409,7 +412,7 @@ export default function BankDetailPage() {
             </div>
           </div>
 
-          <div className="p-6 min-h-[400px]">
+          <div className="p-4 sm:p-6 min-h-[400px]">
             {questions.length === 0 ? (
               <div className="text-center py-16 text-slate-400">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">

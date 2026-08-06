@@ -42,15 +42,17 @@ export default function AlliancePublicEnterpriseDetailPage() {
         </Link>
       </div>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{enterprise.name}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold break-words">{enterprise.name}</h1>
           <p className="text-muted-foreground text-sm mt-1">
             {allianceLabel('enterpriseType', enterprise.enterpriseType)}
             {enterprise.industry ? ` · ${enterprise.industry}` : ''}
           </p>
         </div>
-        <Badge variant="outline">{allianceLabel('enterpriseStatus', enterprise.status)}</Badge>
+        <Badge variant="outline" className="shrink-0">
+          {allianceLabel('enterpriseStatus', enterprise.status)}
+        </Badge>
       </div>
 
       {enterprise.logoUrl && (

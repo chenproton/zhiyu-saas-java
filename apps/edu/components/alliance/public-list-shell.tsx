@@ -50,7 +50,7 @@ export function PublicListShell({
     <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* 页头 */}
       <div className="bg-gradient-to-br from-primary via-primary/75 to-primary/40">
-        <div className="max-w-[1400px] mx-auto px-8 py-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 sm:py-8">
           <Link
             href={backHref}
             className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-4 transition-colors"
@@ -62,15 +62,15 @@ export function PublicListShell({
             <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center">
               {icon}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{title}</h1>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{title}</h1>
               <p className="text-sm text-white/80 mt-1">{subtitle}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <main className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 w-full flex-1">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <Tabs value={activeTab} onValueChange={onTabChange}>
             <TabsList className="bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm h-11">
@@ -78,7 +78,7 @@ export function PublicListShell({
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
+                  className="px-3 sm:px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
                 >
                   {tab.label} ({tab.count})
                 </TabsTrigger>

@@ -68,14 +68,14 @@ export function ExamCenterCard({
       <div className="p-4 flex-1 flex flex-col">
         <h3 className="text-[15px] font-semibold text-slate-800 truncate">{item.usageName}</h3>
         <p className="text-xs text-slate-400 mt-1 truncate">试卷：{item.examName}</p>
-        <div className="flex items-center gap-4 text-[11px] text-slate-400 py-2.5 mt-1.5 border-b border-slate-50 whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 py-2.5 mt-1.5 border-b border-slate-50">
           <span className="flex items-center gap-1 shrink-0">
             <FileText className="w-3 h-3" /> {item.questionCount} 题
           </span>
           <span className="flex items-center gap-1 shrink-0">
             <Clock className="w-3 h-3" /> {item.duration ? `${item.duration} 分钟` : '不限时'}
           </span>
-          <span className="flex items-center gap-1 min-w-0 shrink">
+          <span className="flex items-center gap-1 min-w-0">
             <CalendarClock className="w-3 h-3 shrink-0" />
             <span className="truncate">
               {item.startTime

@@ -263,11 +263,11 @@ export default function LessonLearnPage() {
         <header className="relative z-10 bg-white border-b border-gray-200/60 shrink-0 h-16 flex items-center px-6">
           <Skeleton className="h-5 w-48" />
         </header>
-        <div className="relative z-10 flex-1 flex p-4">
-          <div className="w-[300px] shrink-0 rounded-2xl border border-[#e7e5e4] bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
+        <div className="relative z-10 flex-1 flex flex-col lg:flex-row p-4 gap-4">
+          <div className="w-full lg:w-[300px] shrink-0 rounded-2xl border border-[#e7e5e4] bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] h-48 lg:h-auto">
             <Skeleton className="h-[200px] w-full rounded-xl" />
           </div>
-          <div className="flex-1 p-4">
+          <div className="flex-1 min-w-0 p-0 lg:p-4">
             <Skeleton className="h-[400px] w-full rounded-2xl" />
           </div>
         </div>
@@ -322,7 +322,7 @@ export default function LessonLearnPage() {
       {/* ---------- header ---------- */}
       <header className="bg-white border-b border-gray-200/60 shrink-0 sticky top-0 z-30">
         <div className="max-w-[1400px] mx-auto px-6 py-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-4">
               <Link
                 replace
@@ -332,12 +332,12 @@ export default function LessonLearnPage() {
                 <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-primary/5 group-hover:border-primary/30 group-hover:text-primary transition-all duration-200">
                   <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
                 </span>
-                <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-primary transition-colors">
+                <span className="font-semibold truncate max-w-[200px] sm:max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-primary transition-colors">
                   {course.name}
                 </span>
               </Link>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {activeNode && (
                 <>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
@@ -368,14 +368,14 @@ export default function LessonLearnPage() {
       </header>
 
       {/* ---------- body ---------- */}
-      <div className="relative z-10 flex-1 flex max-w-[1400px] mx-auto w-full">
+      <div className="relative z-10 flex-1 flex flex-col lg:flex-row max-w-[1400px] mx-auto w-full">
         {/* ---------- left sidebar: node list ---------- */}
         <aside
           className={cn(
-            'flex flex-shrink-0 flex-col rounded-2xl border border-[#e7e5e4] bg-white shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-all duration-300 sticky self-start mx-4 mt-4 overflow-hidden',
-            sidebarCollapsed ? 'w-[68px]' : 'w-[300px]',
+              'flex flex-col rounded-2xl border border-[#e7e5e4] bg-white shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-all duration-300 overflow-hidden w-[calc(100%-2rem)] mt-4 mx-4 lg:flex-shrink-0 lg:sticky lg:self-start lg:h-[calc(100vh-8rem)] lg:mx-4',
+              sidebarCollapsed ? 'lg:w-[68px]' : 'h-[50vh] lg:w-[300px]',
           )}
-          style={{ top: '7rem', height: 'calc(100vh - 8rem)' }}
+          style={{ top: '7rem' }}
         >
           {/* sidebar header */}
           <div className="relative border-b border-gray-100 overflow-hidden">
@@ -419,7 +419,12 @@ export default function LessonLearnPage() {
 
           {/* node list */}
           <ScrollArea className="flex-1">
-            <div className="py-1">
+            <div
+              className={cn(
+                'py-1',
+                sidebarCollapsed && 'flex flex-row flex-wrap gap-1.5 px-3 py-2 lg:block lg:gap-0 lg:px-0 lg:py-1',
+              )}
+            >
               {nodes.map((node, idx) => {
                 const isActive = activeNodeId === node.id
                 const diff = SCENE_DIFFICULTY[node.difficulty ?? 3] || SCENE_DIFFICULTY[3]
@@ -498,9 +503,9 @@ export default function LessonLearnPage() {
         </aside>
 
         {/* ---------- right main area ---------- */}
-        <main className="flex flex-1 flex-col overflow-y-auto relative">
+        <main className="flex flex-1 flex-col overflow-y-auto relative min-w-0">
           {!activeNode ? (
-            <div className="flex flex-col items-center justify-center flex-1 p-8">
+            <div className="flex flex-col items-center justify-center flex-1 p-4 sm:p-8">
               <div className="relative w-28 h-28 mb-6">
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/15 to-primary/15 opacity-40 blur-xl animate-pulse" />
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/10 opacity-60" />
@@ -543,7 +548,7 @@ export default function LessonLearnPage() {
                         )}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-8 flex-1 bg-white">
+                    <CardContent className="p-4 sm:p-8 flex-1 bg-white">
                       <ScrollArea className="h-full">
                         {activeNode.detailedDescription ? (
                           <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line leading-loose">
@@ -605,7 +610,7 @@ export default function LessonLearnPage() {
                         })}
                       </div>
                     ) : (
-                      <Card className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-8 flex flex-col items-center justify-center text-center gap-3">
+                      <Card className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-4 sm:p-8 flex flex-col items-center justify-center text-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400">
                           <ClipboardList className="h-6 w-6" />
                         </div>
@@ -629,7 +634,7 @@ export default function LessonLearnPage() {
         {/* right panel: sticky tabs - outside main, same level as sidebar */}
         {sidebarCollapsed && activeNode && (
           <div
-            className="flex w-[360px] flex-shrink-0 sticky self-start mx-4 mt-4"
+            className="flex w-[calc(100%-2rem)] lg:w-[360px] flex-shrink-0 lg:sticky lg:self-start mt-4 mx-4 lg:mx-4"
             style={{ top: '7rem', maxHeight: 'calc(100vh - 8rem)' }}
           >
             <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col w-full">

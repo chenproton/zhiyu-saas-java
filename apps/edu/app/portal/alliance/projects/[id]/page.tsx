@@ -42,14 +42,16 @@ export default function AlliancePublicProjectDetailPage() {
         </Link>
       </div>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{project.name}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold break-words">{project.name}</h1>
           <p className="text-muted-foreground text-sm mt-1">
             {project.type ? `${project.type}` : ''}
           </p>
         </div>
-        <Badge variant="outline">{allianceLabel('projectPhase', project.phase)}</Badge>
+        <Badge variant="outline" className="shrink-0">
+          {allianceLabel('projectPhase', project.phase)}
+        </Badge>
       </div>
 
       {project.coverImage && (

@@ -57,7 +57,7 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
         <span className="text-sm text-[#64748b]">
           共关联 <strong className="text-blue-500">{scenarios.length}</strong> 个实践场景，
           <strong className="text-blue-500">{tasks.length}</strong> 个任务， 合计{' '}

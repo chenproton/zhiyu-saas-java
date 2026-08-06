@@ -105,7 +105,7 @@ export function CompetencyStandards({
         </span>
       </div>
 
-      <div className="flex gap-6 md:h-[600px]">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6 md:h-[600px]">
         {/* Sidebar（移动端隐藏，只展示能力点卡片） */}
         <div className="hidden md:block w-60 shrink-0 bg-[#fafafa] rounded-xl p-2 border border-[#f5f5f4] h-full overflow-y-auto">
           {groups.map((g) => (
@@ -121,6 +121,25 @@ export function CompetencyStandards({
               {g.duty}
             </button>
           ))}
+        </div>
+
+        {/* 移动端横向章节导航 */}
+        <div className="md:hidden -mt-2 mb-2">
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+            {groups.map((g) => (
+              <button
+                key={g.duty}
+                onClick={() => scrollTo(g.duty)}
+                className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] border transition-colors whitespace-nowrap ${
+                  activeId === g.duty
+                    ? 'bg-primary/5 text-primary font-medium border-primary/20'
+                    : 'text-[#64748b] border-[#e7e5e4] bg-white hover:text-primary hover:border-primary/30'
+                }`}
+              >
+                {g.duty}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Content */}

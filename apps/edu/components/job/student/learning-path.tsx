@@ -166,18 +166,18 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
         </p>
       </div>
 
-      <div className="relative px-10 pb-6 overflow-hidden">
+      <div className="relative px-8 sm:px-10 pb-6 overflow-hidden">
         <button
           onClick={() => navigate(-1)}
           disabled={activeIndex === 0}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-[#e0e0e0] flex items-center justify-center text-[#64748b] hover:border-primary/40 hover:text-primary disabled:opacity-30 shadow-sm"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-white border border-[#e0e0e0] flex items-center justify-center text-[#64748b] hover:border-primary/40 hover:text-primary disabled:opacity-30 shadow-sm"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
         <button
           onClick={() => navigate(1)}
           disabled={activeIndex === steps.length - 1}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-[#e0e0e0] flex items-center justify-center text-[#64748b] hover:border-primary/40 hover:text-primary disabled:opacity-30 shadow-sm"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-white border border-[#e0e0e0] flex items-center justify-center text-[#64748b] hover:border-primary/40 hover:text-primary disabled:opacity-30 shadow-sm"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -250,7 +250,8 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                     </div>
                   )}
                   <div
-                    className={`text-[15px] font-semibold text-center whitespace-nowrap mb-1 ${isActive ? 'text-primary' : 'text-[#1f2937]'}`}
+                    className={`text-[15px] font-semibold text-center mb-1 truncate w-full ${isActive ? 'text-primary' : 'text-[#1f2937]'}`}
+                    title={scenario.name}
                   >
                     {scenario.name}
                   </div>
@@ -273,7 +274,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
       </div>
 
       <div className="mt-4 p-5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9]">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 mb-3">
           <div className="text-sm font-semibold text-[#1f2937]">
             {orderedScenarios[activeIndex]?.name}{' '}
             {activeIndex === 0
