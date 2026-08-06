@@ -15,6 +15,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useT } from '@/lib/i18n/locale-provider'
 import { HoverActionBar } from '@/components/shared/hover-action-bar'
 import type { Status } from '@/lib/types'
 import { canPerformAction } from '@/lib/types'
@@ -62,6 +63,7 @@ export function StatusActionBar({
   onViewRejectReason,
   extraActions,
 }: StatusActionBarProps) {
+  const t = useT()
   if (isDraftPool) {
     return (
       <HoverActionBar>
@@ -76,7 +78,7 @@ export function StatusActionBar({
             }}
           >
             <Eye className="mr-1 h-3 w-3" />
-            查看
+            {t('查看')}
           </Button>
         )}
       </HoverActionBar>
@@ -97,7 +99,7 @@ export function StatusActionBar({
             }}
           >
             <Eye className="mr-1 h-3 w-3" />
-            查看详情
+            {t('查看详情')}
           </Button>
         )}
         {onClone && (
@@ -111,7 +113,7 @@ export function StatusActionBar({
             }}
           >
             <Copy className="mr-1 h-3 w-3" />
-            克隆
+            {t('克隆')}
           </Button>
         )}
       </HoverActionBar>
@@ -131,7 +133,7 @@ export function StatusActionBar({
           }}
         >
           <Eye className="mr-1 h-3 w-3" />
-          查看详情
+          {t('查看详情')}
         </Button>
       )}
       {EDITABLE_STATUSES.includes(status) && extraActions}
@@ -146,7 +148,7 @@ export function StatusActionBar({
           }}
         >
           <Pencil className="mr-1 h-3 w-3" />
-          编辑
+          {t('编辑')}
         </Button>
       )}
       {onClone && (
@@ -160,7 +162,7 @@ export function StatusActionBar({
           }}
         >
           <Copy className="mr-1 h-3 w-3" />
-          克隆
+          {t('克隆')}
         </Button>
       )}
       {onSubmit && canPerformAction(status, 'submit') && (
@@ -174,7 +176,7 @@ export function StatusActionBar({
           }}
         >
           <Send className="mr-1 h-3 w-3" />
-          提交审批
+          {t('提交审批')}
         </Button>
       )}
       {onWithdraw && canPerformAction(status, 'withdraw') && (
@@ -188,7 +190,7 @@ export function StatusActionBar({
           }}
         >
           <Undo2 className="mr-1 h-3 w-3" />
-          撤回审批
+          {t('撤回审批')}
         </Button>
       )}
       {onViewRejectReason && status === 'rejected' && (
@@ -202,7 +204,7 @@ export function StatusActionBar({
           }}
         >
           <MessageSquare className="mr-1 h-3 w-3" />
-          查看驳回原因
+          {t('查看驳回原因')}
         </Button>
       )}
       {onPublish && canPerformAction(status, 'publish') && (
@@ -216,7 +218,7 @@ export function StatusActionBar({
           }}
         >
           <Rocket className="mr-1 h-3 w-3" />
-          发布
+          {t('发布')}
         </Button>
       )}
       {onUnpublish && canPerformAction(status, 'unpublish') && (
@@ -230,7 +232,7 @@ export function StatusActionBar({
           }}
         >
           <ArrowDownFromLine className="mr-1 h-3 w-3" />
-          取消发布
+          {t('取消发布')}
         </Button>
       )}
       {onArchive && canPerformAction(status, 'archive') && (
@@ -244,7 +246,7 @@ export function StatusActionBar({
           }}
         >
           <Archive className="mr-1 h-3 w-3" />
-          归档
+          {t('归档')}
         </Button>
       )}
       {onInvite && (
@@ -258,7 +260,7 @@ export function StatusActionBar({
           }}
         >
           <UserPlus className="mr-1 h-3 w-3" />
-          邀请共建
+          {t('邀请共建')}
         </Button>
       )}
       {onDelete && status !== 'pending' && status !== 'published' && status !== 'approved' && (
@@ -272,7 +274,7 @@ export function StatusActionBar({
           }}
         >
           <Trash2 className="mr-1 h-3 w-3" />
-          删除
+          {t('删除')}
         </Button>
       )}
     </HoverActionBar>

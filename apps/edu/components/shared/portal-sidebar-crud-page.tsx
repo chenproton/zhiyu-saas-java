@@ -45,6 +45,7 @@ import { useToast } from '@zhiyu/ui'
 import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import { Search, Upload, Download, FolderTree, Loader2, ChevronDown } from 'lucide-react'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface PortalSidebarCrudPageConfig<T extends { id: string; orgNodeId?: string }> {
   title: string
@@ -162,6 +163,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   orgNodePickerProps,
 }: PortalSidebarCrudPageConfig<T>) {
   const { toast } = useToast()
+  const t = useT()
   const [searchTerm, setSearchTerm] = useState('')
 
   const [selectedOrgNodeId, setSelectedOrgNodeId] = useState<string | null>(null)
@@ -235,13 +237,22 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   const handleBatchJoin = async () => {
     if (selectedIds.length === 0) return
     if (!joinTargetNodeId) {
-      toast({ variant: 'destructive', title: `请选择目标${joinEntityLabel}` })
+      toast({
+        variant: 'destructive',
+        title: t('请选择目标{joinEntityLabel}', { joinEntityLabel }),
+      })
       return
     }
     setJoinLoading(true)
     try {
       await onBatchJoin(joinTargetNodeId, selectedIds)
-      toast({ title: `已将 ${selectedIds.length} 名${entityLabel}加入${joinEntityLabel}` })
+      toast({
+        title: t('已将 {count} 名{entityLabel}加入{joinEntityLabel}', {
+          count: selectedIds.length,
+          entityLabel,
+          joinEntityLabel,
+        }),
+      })
       setIsJoinDialogOpen(false)
       setJoinTargetNodeId('')
       setSelectedIds([])
@@ -249,8 +260,8 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: `批量加入${joinEntityLabel}失败`,
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('批量加入{joinEntityLabel}失败', { joinEntityLabel }),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setJoinLoading(false)
@@ -264,8 +275,8 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setDeleteTarget(null)
@@ -286,7 +297,11 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
     try {
       await onExport(selectedIds.length > 0 ? selectedIds : [])
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '导出失败', description: err.message || '导出失败' })
+      toast({
+        variant: 'destructive',
+        title: t('导出失败'),
+        description: err.message || t('导出失败'),
+      })
     }
   }
 
@@ -304,11 +319,12 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           })}
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1" />
-            批量导出{selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+            {t('批量导出')}
+            {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-1" />
-            批量导入
+            {t('批量导入')}
           </Button>
           {afterImportActions?.(selectedIds, () => {
             setJoinTargetNodeId('')
@@ -331,7 +347,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           className="md:hidden w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-gray-100 bg-white shadow-sm text-muted-foreground hover:text-foreground"
         >
           <FolderTree className="h-4 w-4 text-primary" />
-          组织架构筛选
+          {t('组织架构筛选')}
           <ChevronDown
             className={cn('h-4 w-4 ml-auto transition-transform', orgTreeOpen && 'rotate-180')}
           />
@@ -345,7 +361,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         >
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
             <FolderTree className="h-4 w-4 text-primary" />
-            组织架构
+            {t('组织架构')}
           </h3>
           <ScrollArea className="h-[300px] md:h-[500px]">
             <div className="space-y-1">
@@ -362,7 +378,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
               </button>
               {orgLoading ? (
                 <div className="flex items-center gap-2 px-2 py-4 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t('加载中...')}
                 </div>
               ) : (
                 <OrgFilterTree
@@ -423,7 +439,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                   <TableRow>
                     <TableCell colSpan={colSpan + 1} className="text-center py-12">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                      <p className="mt-2 text-sm text-muted-foreground">加载中...</p>
+                      <p className="mt-2 text-sm text-muted-foreground">{t('加载中...')}</p>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -452,7 +468,9 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                           colSpan={colSpan + 1}
                           className="text-center text-muted-foreground py-8"
                         >
-                          {searchTerm ? `未找到匹配的${entityLabel}` : `暂无${entityLabel}数据`}
+                          {searchTerm
+                            ? t('未找到匹配的{entityLabel}', { entityLabel })
+                            : t('暂无{entityLabel}数据', { entityLabel })}
                         </TableCell>
                       </TableRow>
                     )}
@@ -464,7 +482,10 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
             <span>
-              共 {total} 条记录{selectedIds.length > 0 ? `，已选择 ${selectedIds.length} 条` : ''}
+              {t('共 {total} 条记录', { total })}
+              {selectedIds.length > 0
+                ? t('，已选择 {count} 条', { count: selectedIds.length })
+                : ''}
             </span>
             <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
@@ -481,11 +502,11 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           <div className="grid gap-4 py-4">{renderForm()}</div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={saving}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={() => onFormSave()} disabled={saving || !formValid}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              保存
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -498,16 +519,16 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           setIsImportDialogOpen(open)
           if (!open) setImportFiles([])
         }}
-        title={`导入${entityLabel}`}
+        title={t('导入{entityLabel}', { entityLabel })}
         guideItems={[
-          <>点击下方按钮下载最新的导入模板（含系统字典数据）</>,
-          <>参照模板中各 Sheet 的填写说明，填入{entityLabel}数据</>,
-          <>完成后点击&quot;下一步&quot;上传文件</>,
+          <>{t('点击下方按钮下载最新的导入模板（含系统字典数据）')}</>,
+          <>{t('参照模板中各 Sheet 的填写说明，填入{entityLabel}数据', { entityLabel })}</>,
+          <>{t('完成后点击"下一步"上传文件')}</>,
         ]}
-        downloadLabel={`下载${entityLabel}批量导入模板`}
+        downloadLabel={t('下载{entityLabel}批量导入模板', { entityLabel })}
         onDownload={handleDownloadTemplate}
-        uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-        importLabel={() => '开始导入'}
+        uploadHint={t('点击选择已填写的 Excel (.xlsx) 文件')}
+        importLabel={() => t('开始导入')}
         onImport={handleImport}
         files={importFiles}
         onAddFiles={handleAddFiles}
@@ -534,21 +555,28 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
       <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>批量加入{joinEntityLabel}</DialogTitle>
+            <DialogTitle>{t('批量加入{joinEntityLabel}', { joinEntityLabel })}</DialogTitle>
             <DialogDescription>
-              为选中的 {selectedIds.length} 名{entityLabel}统一关联一个{joinEntityLabel}
+              {t('为选中的 {count} 名{entityLabel}统一关联一个{joinEntityLabel}', {
+                count: selectedIds.length,
+                entityLabel,
+                joinEntityLabel,
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>
-                目标{joinEntityLabel} <span className="text-destructive">*</span>
+                {t('目标{joinEntityLabel}', { joinEntityLabel })}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <OrgNodePicker
                 value={joinTargetNodeId}
                 onChange={(value) => setJoinTargetNodeId(value || '')}
-                placeholder={orgNodePickerProps?.placeholder || `选择${joinEntityLabel}`}
-                title={orgNodePickerProps?.title || `选择${joinEntityLabel}`}
+                placeholder={
+                  orgNodePickerProps?.placeholder || t('选择{joinEntityLabel}', { joinEntityLabel })
+                }
+                title={orgNodePickerProps?.title || t('选择{joinEntityLabel}', { joinEntityLabel })}
                 selectableTypes={orgNodePickerProps?.selectableTypes}
               />
             </div>
@@ -559,11 +587,11 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
               onClick={() => setIsJoinDialogOpen(false)}
               disabled={joinLoading}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleBatchJoin} disabled={joinLoading || !joinTargetNodeId}>
               {joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              确认加入
+              {t('确认加入')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -574,9 +602,9 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null)
         }}
-        title="确认删除"
-        description={`确定要删除该${entityLabel}吗？此操作不可恢复。`}
-        confirmText="删除"
+        title={t('确认删除')}
+        description={t('确定要删除该{entityLabel}吗？此操作不可恢复。', { entityLabel })}
+        confirmText={t('删除')}
         variant="destructive"
         onConfirm={confirmDelete}
       />
@@ -589,7 +617,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         userId={resetTarget?.id}
         userName={resetTarget?.name}
         onSuccess={async () => {
-          toast({ title: '密码重置成功' })
+          toast({ title: t('密码重置成功') })
           await refetch()
         }}
       />

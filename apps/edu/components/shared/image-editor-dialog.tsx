@@ -4,6 +4,7 @@ import { useState } from 'react'
 import ImageEditor from '@unlayer/react-image-editor'
 import { Loader2 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
@@ -41,6 +42,7 @@ export function ImageEditorDialog({
   onConfirm,
   onCancel,
 }: ImageEditorDialogProps) {
+  const t = useT()
   const [loaded, setLoaded] = useState(false)
 
   const handleSave = ({ blob }: { blob: Blob }) => {
@@ -64,13 +66,13 @@ export function ImageEditorDialog({
     >
       <DialogContent className="sm:max-w-[960px] max-h-[92vh] p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-5 pb-0">
-          <DialogTitle>图片编辑</DialogTitle>
+          <DialogTitle>{t('图片编辑')}</DialogTitle>
         </DialogHeader>
         <div className="relative px-6 py-4 min-h-0 overflow-hidden">
           {!loaded && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-background">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">编辑器加载中...</span>
+              <span className="text-sm text-muted-foreground">{t('编辑器加载中...')}</span>
             </div>
           )}
           {open && (
@@ -87,8 +89,8 @@ export function ImageEditorDialog({
               onLoad={() => setLoaded(true)}
               onSave={handleSave}
               onCancel={onCancel}
-              onLoadError={handleFail('图片加载失败，请更换图片后重试')}
-              onError={handleFail('图片编辑器加载失败，请刷新页面后重试')}
+              onLoadError={handleFail(t('图片加载失败，请更换图片后重试'))}
+              onError={handleFail(t('图片编辑器加载失败，请刷新页面后重试'))}
             />
           )}
         </div>

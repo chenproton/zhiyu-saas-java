@@ -7,6 +7,7 @@ import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluati
 import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
 import { mergeEvalRuleMethods, DEFAULT_EVAL_RULE_SUBJECTS } from '@/lib/types/evaluation'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface EvalMethodConfigModuleProps {
   value: EvalRuleConfig | Partial<EvalRuleConfig> | undefined
@@ -22,9 +23,12 @@ export function EvalMethodConfigModule({
   onChange,
   knowledgePoints = [],
   abilityPoints = [],
-  methodTitle = '配置测评方式',
-  rulesTitle = '配置评价规则',
+  methodTitle,
+  rulesTitle,
 }: EvalMethodConfigModuleProps) {
+  const t = useT()
+  const methodTitleText = methodTitle ?? t('配置测评方式')
+  const rulesTitleText = rulesTitle ?? t('配置评价规则')
   const config = useMemo<EvalRuleConfig>(() => {
     if (!value) {
       return {
@@ -71,7 +75,7 @@ export function EvalMethodConfigModule({
     <div className="space-y-6">
       {/* Section 1: Method Selection */}
       <div>
-        <h4 className="text-sm font-semibold mb-3">{methodTitle}</h4>
+        <h4 className="text-sm font-semibold mb-3">{methodTitleText}</h4>
         <EvalMethodSelector
           value={methods}
           onChange={(nextMethods) => {
@@ -82,7 +86,7 @@ export function EvalMethodConfigModule({
 
       {/* Section 2: Rules Configuration */}
       <div>
-        <h4 className="text-sm font-semibold mb-3">{rulesTitle}</h4>
+        <h4 className="text-sm font-semibold mb-3">{rulesTitleText}</h4>
         {methods.length > 0 ? (
           <CourseEvaluationRulesDialog
             inline
@@ -91,12 +95,12 @@ export function EvalMethodConfigModule({
             onChange={onChange}
             knowledgePoints={knowledgePoints}
             abilityPoints={abilityPoints}
-            title={rulesTitle}
+            title={rulesTitleText}
           />
         ) : (
           <div className="text-center text-gray-400 py-8 bg-gray-50 rounded-lg border">
             <PenTool className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">请先在上方选择至少一种测评方式，再配置评价规则</p>
+            <p className="text-sm">{t('请先在上方选择至少一种测评方式，再配置评价规则')}</p>
           </div>
         )}
       </div>

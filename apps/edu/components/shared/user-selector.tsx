@@ -33,6 +33,7 @@ import {
 import { cn } from '@/lib/utils'
 import { orgApi, orgTypeApi, userManagementApi, portalUserManagementApi } from '@/lib/api'
 import type { User } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import { typeMetaFor } from '@/lib/org-type-icons'
 
@@ -134,11 +135,12 @@ export function UserSelector({
   multiple = true,
   excludeStudent = true,
   excludeUserIds = [],
-  placeholder = '选择用户',
+  placeholder,
   disabled = false,
   tenantId,
   usePortalApi = true,
 }: UserSelectorProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [orgs, setOrgs] = useState<(Organization & { children?: Organization[] })[]>([])
   const [orgTypes, setOrgTypes] = useState<OrgType[]>([])
@@ -232,11 +234,19 @@ export function UserSelector({
       setUsers(filtered)
       mergeUserCache(res.items)
     } catch (err) {
-      setUsersError(err instanceof Error ? err.message : '加载用户失败')
+      setUsersError(err instanceof Error ? err.message : t('加载用户失败'))
     } finally {
       setUsersLoading(false)
     }
-  }, [selectedOrgId, debouncedUserSearch, tenantId, usePortalApi, excludeStudent, mergeUserCache])
+  }, [
+    selectedOrgId,
+    debouncedUserSearch,
+    tenantId,
+    usePortalApi,
+    excludeStudent,
+    mergeUserCache,
+    t,
+  ])
 
   useEffect(() => {
     ;(async () => {
@@ -315,10 +325,10 @@ export function UserSelector({
 
   const triggerText =
     value.length === 0
-      ? placeholder
+      ? (placeholder ?? t('选择用户'))
       : value.length <= 3
         ? value.map((id) => displayName(id)).join('、')
-        : `已选 ${value.length} 人`
+        : t('已选 {count} 人', { count: value.length })
 
   return (
     <>
@@ -339,8 +349,8 @@ export function UserSelector({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[960px] max-h-[85vh] flex flex-col p-0 gap-0">
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
-            <DialogTitle>选择用户</DialogTitle>
-            <DialogDescription>从组织架构中选择审批人</DialogDescription>
+            <DialogTitle>{t('选择用户')}</DialogTitle>
+            <DialogDescription>{t('从组织架构中选择审批人')}</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-1 overflow-hidden min-h-0">
@@ -368,7 +378,7 @@ export function UserSelector({
                     )}
                   >
                     <Building className="w-4 h-4 text-slate-600" />
-                    <span>全部组织</span>
+                    <span>{t('全部组织')}</span>
                   </div>
                   {orgs.map((node) => (
                     <OrgTreeRow
@@ -392,7 +402,7 @@ export function UserSelector({
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="搜索用户..."
+                    placeholder={t('搜索用户...')}
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     className="pl-8 h-9"
@@ -408,22 +418,24 @@ export function UserSelector({
                 ) : usersError ? (
                   <div className="flex flex-col items-center justify-center py-12 text-red-500">
                     <p className="text-sm">{usersError}</p>
-                    <p className="text-xs text-muted-foreground mt-1">请检查网络或权限后重试</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('请检查网络或权限后重试')}
+                    </p>
                   </div>
                 ) : users.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <UsersIcon className="h-10 w-10 mb-2 opacity-30" />
-                    <p className="text-sm">暂无用户</p>
+                    <p className="text-sm">{t('暂无用户')}</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-10">{multiple ? '' : ''}</TableHead>
-                        <TableHead className="text-xs">账号</TableHead>
-                        <TableHead className="text-xs">姓名</TableHead>
-                        <TableHead className="text-xs">所属组织</TableHead>
-                        <TableHead className="text-xs">角色</TableHead>
+                        <TableHead className="text-xs">{t('账号')}</TableHead>
+                        <TableHead className="text-xs">{t('姓名')}</TableHead>
+                        <TableHead className="text-xs">{t('所属组织')}</TableHead>
+                        <TableHead className="text-xs">{t('角色')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -462,10 +474,10 @@ export function UserSelector({
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <span className="text-sm text-muted-foreground shrink-0">
                   {multiple
-                    ? `已选 ${selectedIds.length} 人`
+                    ? t('已选 {count} 人', { count: selectedIds.length })
                     : selectedIds.length > 0
-                      ? '已选'
-                      : '未选择'}
+                      ? t('已选')
+                      : t('未选择')}
                 </span>
                 <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
                   {selectedIds.map((id) => {
@@ -488,11 +500,11 @@ export function UserSelector({
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-4">
                 <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-                  取消
+                  {t('取消')}
                 </Button>
                 <Button size="sm" onClick={handleConfirm}>
                   <Check className="mr-1 h-4 w-4" />
-                  确认
+                  {t('确认')}
                 </Button>
               </div>
             </div>

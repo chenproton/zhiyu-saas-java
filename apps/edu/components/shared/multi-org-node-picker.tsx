@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { ChevronDown, ChevronRight, Search, Loader2, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import { useOrgTree } from '@/hooks/use-org-tree'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import { typeMetaFor } from '@/lib/org-type-icons'
@@ -177,9 +178,10 @@ export function MultiOrgNodePicker({
   onChange,
   selectableTypes,
   disabled,
-  title = '选择班级',
+  title,
   maxVisible = 5,
 }: MultiOrgNodePickerProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
@@ -306,19 +308,19 @@ export function MultiOrgNodePicker({
           onClick={() => handleOpenChange(true)}
         >
           <Plus className="mr-1 h-3 w-3" />
-          {value.length > 0 ? '管理班级' : '添加班级'}
+          {value.length > 0 ? t('管理班级') : t('添加班级')}
         </Button>
       </div>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
+            <DialogTitle>{title ?? t('选择班级')}</DialogTitle>
           </DialogHeader>
           <div className="relative mb-2">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="搜索..."
+              placeholder={t('搜索...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
@@ -331,7 +333,7 @@ export function MultiOrgNodePicker({
               </div>
             ) : orgs.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
-                暂无组织架构数据
+                {t('暂无组织架构数据')}
               </div>
             ) : (
               orgs.map((node) => (
@@ -355,9 +357,11 @@ export function MultiOrgNodePicker({
           </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              取消
+              {t('取消')}
             </Button>
-            <Button onClick={handleConfirm}>确认 ({pendingIds?.length ?? value.length})</Button>
+            <Button onClick={handleConfirm}>
+              {t('确认 ({count})', { count: pendingIds?.length ?? value.length })}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

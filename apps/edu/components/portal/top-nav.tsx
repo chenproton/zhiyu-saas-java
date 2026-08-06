@@ -31,6 +31,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/auth-provider'
 import { useFontScale } from '@/hooks/use-font-scale'
+import { useI18n, useT } from '@/lib/i18n/locale-provider'
 
 const navItems = [
   { href: '/portal', label: '门户首页', icon: Home },
@@ -42,6 +43,8 @@ export function TopNav() {
   const pathname = usePathname()
   const { user, tenant, roles, activeRole, setActiveRole, logout } = useAuth()
   const { level, maxLevel, increase, decrease, reset } = useFontScale()
+  const { locale, setLocale } = useI18n()
+  const t = useT()
   const isLoggedIn = !!user
   const [currentTime, setCurrentTime] = useState('')
   const [mounted, setMounted] = useState(false)
@@ -54,7 +57,10 @@ export function TopNav() {
     const updateTime = () => {
       if (document.visibilityState !== 'visible') return
       const now = new Date()
-      const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+      const weekDays =
+        locale === 'en'
+          ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+          : ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
       const year = now.getFullYear()
       const month = String(now.getMonth() + 1).padStart(2, '0')
       const day = String(now.getDate()).padStart(2, '0')
@@ -62,7 +68,11 @@ export function TopNav() {
       const hours = String(now.getHours()).padStart(2, '0')
       const minutes = String(now.getMinutes()).padStart(2, '0')
       const seconds = String(now.getSeconds()).padStart(2, '0')
-      setCurrentTime(`${year}年${month}月${day}日 ${weekDay} ${hours}:${minutes}:${seconds}`)
+      setCurrentTime(
+        locale === 'en'
+          ? `${year}-${month}-${day} ${weekDay} ${hours}:${minutes}:${seconds}`
+          : `${year}年${month}月${day}日 ${weekDay} ${hours}:${minutes}:${seconds}`,
+      )
     }
     // 仅在页面可见时更新时钟，后台标签页跳过 setState，避免每秒触发整树重渲染
     const handleVisibility = () => {
@@ -75,7 +85,7 @@ export function TopNav() {
       document.removeEventListener('visibilitychange', handleVisibility)
       clearInterval(timer)
     }
-  }, [])
+  }, [locale])
 
   // 实测导航栏内容是否溢出（窗口变窄/字号放大导致文字重叠），按优先级依次隐藏文字只保留图标：
   // 时间 → 系统名称 → 三个菜单文字 → 右侧用户信息文字
@@ -132,7 +142,7 @@ export function TopNav() {
               data-hide-order="2"
               className="hidden sm:inline font-semibold text-foreground text-base whitespace-nowrap"
             >
-              场景化数智教学服务平台
+              {t('场景化数智教学服务平台')}
             </span>
           </Link>
 
@@ -141,11 +151,12 @@ export function TopNav() {
               {navItems.map((item) => {
                 const Icon = item.icon
                 const active = isActive(item.href)
+                const label = t(item.label)
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    title={item.label}
+                    title={label}
                     className={`flex items-center gap-1.5 px-3 md:px-4 py-2 text-sm rounded-md transition-colors relative whitespace-nowrap ${
                       active
                         ? 'text-primary font-medium'
@@ -154,7 +165,7 @@ export function TopNav() {
                   >
                     <Icon className="w-5 h-5 md:w-4 md:h-4" />
                     <span data-hide-order="3" className="hidden md:inline whitespace-nowrap">
-                      {item.label}
+                      {label}
                     </span>
                     {active && (
                       <span className="absolute bottom-0 left-2 right-2 md:left-4 md:right-4 h-0.5 bg-primary rounded-full" />
@@ -189,7 +200,7 @@ export function TopNav() {
                   <div data-hide-order="4" className="hidden sm:block text-left">
                     <div className="text-sm text-foreground whitespace-nowrap">{user.name}</div>
                     <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {tenant?.name || '租户'} · {activeRole?.name || '用户'}
+                      {tenant?.name || t('租户')} · {activeRole?.name || t('用户')}
                     </div>
                   </div>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -200,7 +211,7 @@ export function TopNav() {
                   <>
                     <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
                       <UserCog className="w-3.5 h-3.5" />
-                      切换角色
+                      {t('切换角色')}
                     </DropdownMenuLabel>
                     {roles.map((r) => (
                       <DropdownMenuItem
@@ -219,16 +230,41 @@ export function TopNav() {
                 )}
                 <DropdownMenuItem>
                   <User className="w-4 h-4 mr-2" />
-                  个人中心
+                  {t('个人中心')}
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Settings className="w-4 h-4 mr-2" />
-                  账号设置
+                  {t('账号设置')}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Type className="w-3.5 h-3.5" />
+                  {t('语言')}
+                </DropdownMenuLabel>
+                <div className="flex items-center gap-1 px-2 py-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 justify-center h-8 text-sm hover:bg-muted"
+                    onClick={() => setLocale('zh')}
+                  >
+                    中文
+                    {locale === 'zh' && <Check className="w-4 h-4 text-primary" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 justify-center h-8 text-sm hover:bg-muted"
+                    onClick={() => setLocale('en')}
+                  >
+                    English
+                    {locale === 'en' && <Check className="w-4 h-4 text-primary" />}
+                  </Button>
+                </div>
                 <DropdownMenuSeparator />
                 <div className="flex items-center gap-2 px-2 py-1.5">
                   <Type className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <span className="text-sm text-foreground whitespace-nowrap">字号大小</span>
+                  <span className="text-sm text-foreground whitespace-nowrap">{t('字号大小')}</span>
                   <div className="flex-1" />
                   <Button
                     variant="ghost"
@@ -236,7 +272,7 @@ export function TopNav() {
                     className="h-7 w-7 p-0 hover:bg-muted"
                     onClick={decrease}
                     disabled={level === 0}
-                    aria-label="减小字号"
+                    aria-label={t('减小字号')}
                   >
                     <AArrowDown className="w-4 h-4" />
                   </Button>
@@ -246,7 +282,7 @@ export function TopNav() {
                     className="h-7 w-7 p-0 hover:bg-muted"
                     onClick={increase}
                     disabled={level === maxLevel}
-                    aria-label="增大字号"
+                    aria-label={t('增大字号')}
                   >
                     <AArrowUp className="w-4 h-4" />
                   </Button>
@@ -256,7 +292,7 @@ export function TopNav() {
                     className="h-7 w-7 p-0 hover:bg-muted"
                     onClick={reset}
                     disabled={level === 0}
-                    aria-label="恢复默认字号"
+                    aria-label={t('恢复默认字号')}
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </Button>
@@ -264,7 +300,7 @@ export function TopNav() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
-                  退出登录
+                  {t('退出登录')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -274,9 +310,9 @@ export function TopNav() {
               className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5"
               asChild
             >
-              <Link href="/portal/login" title="登录">
+              <Link href="/portal/login" title={t('登录')}>
                 <LogIn className="w-5 h-5 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">登录</span>
+                <span className="hidden sm:inline">{t('登录')}</span>
               </Link>
             </Button>
           )}

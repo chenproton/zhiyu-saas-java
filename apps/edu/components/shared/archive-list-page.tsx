@@ -25,6 +25,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { useT } from '@/lib/i18n/locale-provider'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 
@@ -86,6 +87,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
   renderStatus,
   emptyMessage = `暂无归档${entityLabel}`,
 }: ArchiveListPageProps<T>) {
+  const t = useT()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -138,8 +140,8 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">{pageTitle}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{pageDescription}</p>
+        <h1 className="text-xl font-semibold text-foreground">{t(pageTitle)}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t(pageDescription)}</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-start">
@@ -150,7 +152,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
           className="md:hidden w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-gray-100 bg-white shadow-sm text-muted-foreground hover:text-foreground"
         >
           <FolderTree className="h-4 w-4 text-primary" />
-          {sidebarTitle}
+          {t(sidebarTitle)}
           <ChevronDown
             className={cn('h-4 w-4 ml-auto transition-transform', sidebarOpen && 'rotate-180')}
           />
@@ -164,7 +166,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
         >
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
             <GraduationCap className="h-4 w-4 text-primary" />
-            {sidebarTitle}
+            {t(sidebarTitle)}
           </h3>
           <ScrollArea className="h-[500px]">
             <div className="space-y-1">
@@ -177,7 +179,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                     : 'hover:bg-muted',
                 )}
               >
-                全部专业
+                {t('全部专业')}
               </button>
               {sidebarItems.map((item) => (
                 <button
@@ -202,7 +204,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={searchPlaceholder}
+                placeholder={t(searchPlaceholder)}
                 className="pl-9"
                 value={searchValue}
                 onChange={(e) => onSearchChange(e.target.value)}
@@ -213,8 +215,10 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
           {hasBatchOps && selectedIds.length > 0 && (
             <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-white shadow-sm p-3">
               <span className="text-sm text-muted-foreground">
-                已选择 <span className="font-medium text-foreground">{selectedIds.length}</span> 个
-                {entityLabel}
+                {t('已选择 {count} 个{entityLabel}', {
+                  count: selectedIds.length,
+                  entityLabel: t(entityLabel),
+                })}
               </span>
               <div className="flex items-center gap-2">
                 {onBatchRestore && (
@@ -225,7 +229,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                     onClick={handleBatchRestore}
                   >
                     <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                    批量恢复
+                    {t('批量恢复')}
                   </Button>
                 )}
                 {onBatchDelete && (
@@ -236,7 +240,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                     onClick={handleBatchDelete}
                   >
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                    批量删除
+                    {t('批量删除')}
                   </Button>
                 )}
               </div>
@@ -253,17 +257,17 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                         <Checkbox
                           checked={someSelected ? 'indeterminate' : allSelected}
                           onCheckedChange={(checked) => handleSelectAll(checked === true)}
-                          aria-label="全选"
+                          aria-label={t('全选')}
                         />
                       </TableHead>
                     )}
                     {columns.map((col, i) => (
                       <TableHead key={i} className={col.className}>
-                        {col.header}
+                        {t(col.header)}
                       </TableHead>
                     ))}
-                    <TableHead className="w-20">状态</TableHead>
-                    <TableHead className="w-28 text-right px-3">操作</TableHead>
+                    <TableHead className="w-20">{t('状态')}</TableHead>
+                    <TableHead className="w-28 text-right px-3">{t('操作')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -273,7 +277,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                         colSpan={colSpan}
                         className="text-center py-10 text-muted-foreground"
                       >
-                        加载中...
+                        {t('加载中...')}
                       </TableCell>
                     </TableRow>
                   ) : items.length === 0 ? (
@@ -282,7 +286,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                         colSpan={colSpan}
                         className="text-center py-10 text-muted-foreground"
                       >
-                        {emptyMessage}
+                        {t(emptyMessage)}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -301,7 +305,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                                 onCheckedChange={(checked) =>
                                   handleSelect(item.id, checked === true)
                                 }
-                                aria-label={`选择 ${item.name}`}
+                                aria-label={t('选择 {name}', { name: item.name })}
                               />
                             </TableCell>
                           )}
@@ -321,7 +325,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                               <Link href={detailHref(item)}>
                                 <Eye className="mr-1 h-3 w-3" />
-                                查看
+                                {t('查看')}
                               </Link>
                             </Button>
                             <Button
@@ -331,7 +335,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                               onClick={() => handleRestore(item)}
                             >
                               <RotateCcw className="mr-1 h-3 w-3" />
-                              恢复
+                              {t('恢复')}
                             </Button>
                             {onDelete && (
                               <Button
@@ -341,7 +345,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                                 onClick={() => handleDelete(item)}
                               >
                                 <Trash2 className="mr-1 h-3 w-3" />
-                                删除
+                                {t('删除')}
                               </Button>
                             )}
                           </TableRowActions>
@@ -361,8 +365,12 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null)
         }}
-        title="确认删除"
-        description={deleteTarget ? `确定永久删除 "${deleteTarget.name}" 吗？此操作不可恢复。` : ''}
+        title={t('确认删除')}
+        description={
+          deleteTarget
+            ? t('确定永久删除 "{name}" 吗？此操作不可恢复。', { name: deleteTarget.name })
+            : ''
+        }
         variant="destructive"
         onConfirm={confirmDelete}
       />

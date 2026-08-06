@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { portalUserManagementApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/
 
@@ -33,6 +34,7 @@ export function ResetPasswordDialog({
   userName,
   onSuccess,
 }: ResetPasswordDialogProps) {
+  const t = useT()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -53,11 +55,11 @@ export function ResetPasswordDialog({
   }, [open])
 
   const validate = (): string | null => {
-    if (!password) return '请输入新密码'
+    if (!password) return t('请输入新密码')
     if (!PASSWORD_RULE.test(password)) {
-      return '密码长度至少 8 位，且需同时包含字母和数字'
+      return t('密码长度至少 8 位，且需同时包含字母和数字')
     }
-    if (password !== confirmPassword) return '两次输入的密码不一致'
+    if (password !== confirmPassword) return t('两次输入的密码不一致')
     return null
   }
 
@@ -75,7 +77,7 @@ export function ResetPasswordDialog({
       onOpenChange(false)
       onSuccess?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : '重置密码失败')
+      setError(e instanceof Error ? e.message : t('重置密码失败'))
     } finally {
       setSubmitting(false)
     }
@@ -85,26 +87,27 @@ export function ResetPasswordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="sm">
         <DialogHeader>
-          <DialogTitle>重置密码</DialogTitle>
+          <DialogTitle>{t('重置密码')}</DialogTitle>
           <DialogDescription>
-            正在为 <span className="font-medium">{userName || '该用户'}</span> 设置新密码
+            {t('正在为')} <span className="font-medium">{userName || t('该用户')}</span>{' '}
+            {t('设置新密码')}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <FormFieldRow label="新密码" htmlFor="reset-password">
+          <FormFieldRow label={t('新密码')} htmlFor="reset-password">
             <Input
               id="reset-password"
               type="password"
-              placeholder="至少 8 位，包含字母和数字"
+              placeholder={t('至少 8 位，包含字母和数字')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </FormFieldRow>
-          <FormFieldRow label="确认新密码" htmlFor="reset-confirm-password">
+          <FormFieldRow label={t('确认新密码')} htmlFor="reset-confirm-password">
             <Input
               id="reset-confirm-password"
               type="password"
-              placeholder="再次输入新密码"
+              placeholder={t('再次输入新密码')}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
@@ -118,11 +121,11 @@ export function ResetPasswordDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            取消
+            {t('取消')}
           </Button>
           <Button onClick={handleSubmit} disabled={submitting || !password || !confirmPassword}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            确认重置
+            {t('确认重置')}
           </Button>
         </DialogFooter>
       </DialogContent>

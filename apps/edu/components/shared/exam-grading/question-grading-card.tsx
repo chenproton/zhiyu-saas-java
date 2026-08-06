@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { QUESTION_TYPE_LABELS_SHORT } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export const questionTypeLabels = QUESTION_TYPE_LABELS_SHORT
 
@@ -85,6 +86,7 @@ export function ScoreInput({
   onBlur: () => void
   className?: string
 }) {
+  const t = useT()
   return (
     <TooltipProvider delayDuration={200}>
       <div className={cn('flex items-center gap-1.5', className)}>
@@ -116,7 +118,7 @@ export function ScoreInput({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">
-              <p>一键满分</p>
+              <p>{t('一键满分')}</p>
             </TooltipContent>
           </Tooltip>
         )}
@@ -144,6 +146,7 @@ export function QuestionGradingCard({
   isGraded: boolean
   onScoreChange: (questionId: string, newScore: number) => void
 }) {
+  const t = useT()
   const [localScore, setLocalScore] = useState(score.toString())
   const [expanded, setExpanded] = useState(!isAutoQuestion(question))
 
@@ -200,7 +203,9 @@ export function QuestionGradingCard({
             >
               {questionTypeLabels[question.type] || question.type}
             </Badge>
-            <span className="text-xs text-gray-400 shrink-0">第 {index + 1} 题</span>
+            <span className="text-xs text-gray-400 shrink-0">
+              {t('第 {index} 题', { index: index + 1 })}
+            </span>
           </div>
           <span className="text-sm font-medium text-gray-800 flex-1 truncate">
             {question.content}
@@ -224,7 +229,7 @@ export function QuestionGradingCard({
                     className="bg-green-50 text-green-600 border-green-200 text-[10px] px-1.5 py-0 h-5 gap-1"
                   >
                     <CheckCircle2 className="h-3 w-3" />
-                    正确
+                    {t('正确')}
                   </Badge>
                 ) : (
                   <Badge
@@ -232,7 +237,7 @@ export function QuestionGradingCard({
                     className="bg-red-50 text-red-600 border-red-200 text-[10px] px-1.5 py-0 h-5 gap-1"
                   >
                     <XCircle className="h-3 w-3" />
-                    错误
+                    {t('错误')}
                   </Badge>
                 )}
               </div>
@@ -307,14 +312,14 @@ export function QuestionGradingCard({
                 <div className="bg-amber-50/40 rounded-lg border border-amber-100 p-3">
                   <div className="text-xs text-amber-700 font-medium mb-1.5 flex items-center gap-1">
                     <User className="h-3 w-3" />
-                    学生答案
+                    {t('学生答案')}
                   </div>
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {getAnswerLabel(answer)}
+                    {t(getAnswerLabel(answer))}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500 shrink-0">教师评分</span>
+                  <span className="text-xs text-gray-500 shrink-0">{t('教师评分')}</span>
                   <ScoreInput
                     value={localScore}
                     max={question.score || 0}
@@ -329,17 +334,17 @@ export function QuestionGradingCard({
             {auto && (
               <div className="flex flex-wrap items-center gap-4 bg-gray-50 rounded-lg px-3 py-2.5">
                 <div className="text-sm">
-                  <span className="text-gray-500">学生答案：</span>
+                  <span className="text-gray-500">{t('学生答案：')}</span>
                   <span
                     className={correct ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}
                   >
-                    {getAnswerLabel(answer)}
+                    {t(getAnswerLabel(answer))}
                   </span>
                 </div>
                 <div className="text-sm">
-                  <span className="text-gray-500">正确答案：</span>
+                  <span className="text-gray-500">{t('正确答案：')}</span>
                   <span className="text-green-600 font-medium">
-                    {getAnswerLabel(question.answer)}
+                    {t(getAnswerLabel(question.answer))}
                   </span>
                 </div>
               </div>

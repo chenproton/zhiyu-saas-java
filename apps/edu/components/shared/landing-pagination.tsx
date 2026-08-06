@@ -1,6 +1,7 @@
 'use client'
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useT } from '@/lib/i18n/locale-provider'
 
 // 各业务模块固定主题色（不跟随系统主题）：岗位=紫 / 场景=青 / 测评=绿 / 课程=黄 / 联盟=红 / 默认蓝
 const ACCENT_CLASSES: Record<
@@ -53,6 +54,7 @@ export function LandingPagination({
   onPageChange,
   accentColor = 'blue',
 }: LandingPaginationProps) {
+  const t = useT()
   if (totalPages <= 1) return null
 
   const cls = ACCENT_CLASSES[accentColor] || ACCENT_CLASSES.blue
@@ -81,7 +83,7 @@ export function LandingPagination({
         className={arrowBtn}
         disabled={currentPage <= 1}
         onClick={() => onPageChange(currentPage - 1)}
-        aria-label="上一页"
+        aria-label={t('上一页')}
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
@@ -106,7 +108,7 @@ export function LandingPagination({
         className={arrowBtn}
         disabled={currentPage >= totalPages}
         onClick={() => onPageChange(currentPage + 1)}
-        aria-label="下一页"
+        aria-label={t('下一页')}
       >
         <ChevronRight className="w-4 h-4" />
       </button>

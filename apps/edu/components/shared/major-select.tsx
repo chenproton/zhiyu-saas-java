@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { majorApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { Major } from '@/lib/types/backend'
 
 interface MajorSelectProps {
@@ -25,10 +26,11 @@ export function MajorSelect({
   tenantId,
   value,
   onChange,
-  placeholder = '选择专业',
+  placeholder,
   disabled,
   className,
 }: MajorSelectProps) {
+  const t = useT()
   const [majors, setMajors] = useState<Major[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
@@ -44,11 +46,11 @@ export function MajorSelect({
       const res = await majorApi.list(params)
       setMajors(res.items.filter((m) => m.enabled))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载专业失败')
+      setError(err instanceof Error ? err.message : t('加载专业失败'))
     } finally {
       setLoading(false)
     }
-  }, [tenantId])
+  }, [tenantId, t])
 
   useEffect(() => {
     ;(async () => {
@@ -72,7 +74,7 @@ export function MajorSelect({
   return (
     <Select value={value || ''} onValueChange={handleChange} disabled={isDisabled}>
       <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={placeholder ?? t('选择专业')} />
       </SelectTrigger>
       <SelectContent>
         {majors.map((major) => (
@@ -84,7 +86,7 @@ export function MajorSelect({
           </SelectItem>
         ))}
         {majors.length === 0 && (
-          <div className="px-2 py-1.5 text-sm text-muted-foreground">暂无专业</div>
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('暂无专业')}</div>
         )}
       </SelectContent>
     </Select>

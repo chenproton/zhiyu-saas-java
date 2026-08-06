@@ -5,6 +5,7 @@ import { ThemeBrandSync } from '@/components/theme-brand-sync'
 import { ChunkErrorHandler } from '@/components/chunk-error-handler'
 import { GlobalApiErrorHandler } from '@/components/global-api-error-handler'
 import { DataProvider as EvaluationDataProvider } from '@/components/providers/data-provider'
+import { I18nProvider } from '@/lib/i18n/locale-provider'
 import { Toaster } from '@zhiyu/ui'
 import './globals.css'
 
@@ -38,22 +39,29 @@ export default function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
+            __html: `try{var l=localStorage.getItem('zhiyu-lang');if(l==='zh'||l==='en')document.documentElement.dataset.locale=l}catch(e){}`,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
             __html: `try{var c=localStorage.getItem('zhiyu-brand-color');if(c&&/^#[0-9a-fA-F]{6}$/.test(c))document.documentElement.style.setProperty('--brand',c)}catch(e){}`,
           }}
         />
       </head>
       <body className="font-sans antialiased">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AuthProvider>
-            <EvaluationDataProvider>
-              <ThemeBrandSync />
-              <ChunkErrorHandler />
-              <GlobalApiErrorHandler />
-              <Toaster />
-              {children}
-            </EvaluationDataProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <I18nProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <AuthProvider>
+              <EvaluationDataProvider>
+                <ThemeBrandSync />
+                <ChunkErrorHandler />
+                <GlobalApiErrorHandler />
+                <Toaster />
+                {children}
+              </EvaluationDataProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </I18nProvider>
       </body>
     </html>
   )

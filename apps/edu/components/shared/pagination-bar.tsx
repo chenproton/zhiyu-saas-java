@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface PaginationBarProps {
   page: number
@@ -14,6 +15,7 @@ interface PaginationBarProps {
  * 通用分页条（上一页/页码/下一页），替代各处手写分页。
  */
 export function PaginationBar({ page, totalPages, onPageChange, disabled }: PaginationBarProps) {
+  const t = useT()
   return (
     <div className="flex items-center gap-2">
       <Button
@@ -21,7 +23,7 @@ export function PaginationBar({ page, totalPages, onPageChange, disabled }: Pagi
         size="sm"
         disabled={page <= 1 || disabled}
         onClick={() => onPageChange(page - 1)}
-        aria-label="上一页"
+        aria-label={t('上一页')}
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
@@ -33,7 +35,7 @@ export function PaginationBar({ page, totalPages, onPageChange, disabled }: Pagi
         size="sm"
         disabled={page >= totalPages || disabled}
         onClick={() => onPageChange(page + 1)}
-        aria-label="下一页"
+        aria-label={t('下一页')}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

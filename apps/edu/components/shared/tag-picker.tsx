@@ -3,6 +3,7 @@
 import { Check } from 'lucide-react'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
 import { useTags } from './use-tags'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface TagPickerProps {
   value: string[]
@@ -16,13 +17,8 @@ interface TagPickerProps {
  * 表单标签多选器：可搜索、支持多选，选项带标签色点标识。
  * 标签数据经 useTags 模块级缓存，所有表单共用一份。
  */
-export function TagPicker({
-  value,
-  onChange,
-  className,
-  placeholder = '选择标签...',
-  disabled,
-}: TagPickerProps) {
+export function TagPicker({ value, onChange, className, placeholder, disabled }: TagPickerProps) {
+  const t = useT()
   const { tags, loading } = useTags()
 
   return (
@@ -31,9 +27,9 @@ export function TagPicker({
       value={value}
       onChange={onChange}
       options={tags.map((t) => ({ value: t.id, label: t.name }))}
-      placeholder={placeholder}
-      searchPlaceholder="搜索标签..."
-      emptyText="暂无标签，请先在标签管理页创建"
+      placeholder={placeholder ?? t('选择标签...')}
+      searchPlaceholder={t('搜索标签...')}
+      emptyText={t('暂无标签，请先在标签管理页创建')}
       loading={loading}
       disabled={disabled}
       className={className}

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/table'
 import { Loader2 } from 'lucide-react'
 import { PaginationBar } from '@/components/shared/pagination-bar'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface LogColumn<T> {
   header: string
@@ -39,6 +40,7 @@ export function LogTableShell<T extends { id: string }>({
   totalPages,
   onPageChange,
 }: LogTableShellProps<T>) {
+  const t = useT()
   return (
     <>
       <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
@@ -60,7 +62,7 @@ export function LogTableShell<T extends { id: string }>({
                   className="h-32 text-center text-muted-foreground"
                 >
                   <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                  <span className="mt-2 block text-sm">加载中...</span>
+                  <span className="mt-2 block text-sm">{t('加载中...')}</span>
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
@@ -88,7 +90,7 @@ export function LogTableShell<T extends { id: string }>({
       </div>
 
       <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
-        <span>共 {total} 条记录</span>
+        <span>{t('共 {total} 条记录', { total })}</span>
         <PaginationBar
           page={page}
           totalPages={totalPages}

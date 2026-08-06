@@ -31,6 +31,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import { EVAL_METHOD_LABELS, EVAL_METHOD_COLORS } from '@/lib/types'
 
 export interface EvalMethodViewModel {
@@ -157,13 +158,14 @@ interface EvalMethodCardProps {
 }
 
 export function EvalMethodCard({ method, result, examHref, onAction }: EvalMethodCardProps) {
+  const t = useT()
   const color = EVAL_METHOD_COLORS[method.methodKey] || '#94a3b8'
   const bg = methodBgMap[method.methodKey] || '#f8fafc'
   const border = methodBorderMap[method.methodKey] || '#e2e8f0'
-  const label = method.label || getEvalMethodLabel(method.methodKey)
+  const label = method.label || t(getEvalMethodLabel(method.methodKey))
   const Icon = methodIconMap[method.methodKey] || ClipboardList
   const weight = method.weight || 0
-  const description = method.description || getEvalMethodDescription(method.methodKey)
+  const description = method.description || t(getEvalMethodDescription(method.methodKey))
   const isExamMethod = EXAM_METHODS.includes(method.methodKey)
   const isManualSubmit = MANUAL_SUBMIT_METHODS.includes(method.methodKey)
 
@@ -187,7 +189,7 @@ export function EvalMethodCard({ method, result, examHref, onAction }: EvalMetho
                 className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/80 border text-gray-600"
                 style={{ borderColor: border }}
               >
-                权重 {Math.round(weight)}%
+                {t('权重 {weight}%', { weight: Math.round(weight) })}
               </span>
             </div>
             <p className="text-xs text-gray-600 mt-1">{description}</p>
@@ -204,8 +206,11 @@ export function EvalMethodCard({ method, result, examHref, onAction }: EvalMetho
               )}
             >
               {result.status === 'evaluated'
-                ? `得分 ${result.totalScore}/${result.maxScore}`
-                : '待评分'}
+                ? t('得分 {totalScore}/{maxScore}', {
+                    totalScore: result.totalScore ?? 0,
+                    maxScore: result.maxScore ?? 0,
+                  })
+                : t('待评分')}
             </span>
           ) : (
             <Button
@@ -220,8 +225,8 @@ export function EvalMethodCard({ method, result, examHref, onAction }: EvalMetho
                 <Link href={examHref || '#'}>
                   <Play className="w-3.5 h-3.5 fill-current" />
                   {examHref && examHref !== '#'
-                    ? methodActionText[method.methodKey] || '开始测评'
-                    : '未配置'}
+                    ? t(methodActionText[method.methodKey] || '开始测评')
+                    : t('未配置')}
                 </Link>
               ) : (
                 <>
@@ -230,7 +235,7 @@ export function EvalMethodCard({ method, result, examHref, onAction }: EvalMetho
                   ) : (
                     <Play className="w-3.5 h-3.5 fill-current" />
                   )}
-                  {methodActionText[method.methodKey] || '开始测评'}
+                  {t(methodActionText[method.methodKey] || '开始测评')}
                 </>
               )}
             </Button>
@@ -260,8 +265,9 @@ export function EvalMethodSubmitDialog({
   onSubmit,
   onSubmitted,
 }: EvalMethodSubmitDialogProps) {
+  const t = useT()
   const color = EVAL_METHOD_COLORS[method.methodKey] || '#94a3b8'
-  const label = method.label || getEvalMethodLabel(method.methodKey)
+  const label = method.label || t(getEvalMethodLabel(method.methodKey))
   const Icon = methodIconMap[method.methodKey] || ClipboardList
   const resourceConfig = method.resourceConfig || {}
   const reviewSteps = method.reviewSteps || []
@@ -311,7 +317,7 @@ export function EvalMethodSubmitDialog({
 
   const handleSubmit = async () => {
     if (!onSubmit) {
-      setError('未配置提交回调')
+      setError(t('未配置提交回调'))
       return
     }
     setSubmitting(true)
@@ -332,7 +338,7 @@ export function EvalMethodSubmitDialog({
       setSubmitted(true)
       onSubmitted?.()
     } catch (err: any) {
-      setError(err?.message || '提交失败')
+      setError(err?.message || t('提交失败'))
     } finally {
       setSubmitting(false)
     }
@@ -364,8 +370,8 @@ export function EvalMethodSubmitDialog({
                 <DialogTitle className="text-base font-semibold text-gray-900">{label}</DialogTitle>
                 <DialogDescription className="text-xs text-gray-500 mt-0.5">
                   {isTeacherLed
-                    ? '确认参加本次测评，后续由教师进行现场评价'
-                    : '按测评要求提交材料后等待教师评分'}
+                    ? t('确认参加本次测评，后续由教师进行现场评价')
+                    : t('按测评要求提交材料后等待教师评分')}
                 </DialogDescription>
               </div>
             </div>
@@ -378,18 +384,18 @@ export function EvalMethodSubmitDialog({
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
-              <h4 className="text-base font-semibold text-gray-900">提交成功</h4>
-              <p className="text-sm text-gray-500 mt-1">等待教师评分后可在学习页查看成绩</p>
+              <h4 className="text-base font-semibold text-gray-900">{t('提交成功')}</h4>
+              <p className="text-sm text-gray-500 mt-1">{t('等待教师评分后可在学习页查看成绩')}</p>
             </div>
           ) : (
             <>
               <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 space-y-2.5">
                 <h5 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                   <ClipboardList className="h-3.5 w-3.5" />
-                  测评要求
+                  {t('测评要求')}
                 </h5>
                 {!requiresMaterial ? (
-                  <p className="text-sm text-gray-600">本测评无需在线提交材料。</p>
+                  <p className="text-sm text-gray-600">{t('本测评无需在线提交材料。')}</p>
                 ) : (
                   <>
                     {resourceConfig.submitFormatDesc ? (
@@ -397,26 +403,26 @@ export function EvalMethodSubmitDialog({
                         {resourceConfig.submitFormatDesc}
                       </p>
                     ) : (
-                      <p className="text-sm text-gray-500">请按照教师要求准备材料</p>
+                      <p className="text-sm text-gray-500">{t('请按照教师要求准备材料')}</p>
                     )}
                   </>
                 )}
                 {resourceConfig.venueResources && (
                   <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
-                    <span className="font-medium text-gray-700">场地/环境：</span>
+                    <span className="font-medium text-gray-700">{t('场地/环境：')}</span>
                     {resourceConfig.venueResources}
                   </p>
                 )}
                 {resourceConfig.deadlineDays != null && (
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-700">预计提交天数：</span>
-                    {resourceConfig.deadlineDays} 天
+                    <span className="font-medium text-gray-700">{t('预计提交天数：')}</span>
+                    {t('{days} 天', { days: resourceConfig.deadlineDays })}
                   </p>
                 )}
                 {resourceConfig.allowResubmit !== undefined && (
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-700">允许重新提交：</span>
-                    {resourceConfig.allowResubmit ? '是' : '否'}
+                    <span className="font-medium text-gray-700">{t('允许重新提交：')}</span>
+                    {resourceConfig.allowResubmit ? t('是') : t('否')}
                   </p>
                 )}
               </div>
@@ -425,7 +431,7 @@ export function EvalMethodSubmitDialog({
                 <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 space-y-2.5">
                   <h5 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                     <ClipboardList className="h-3.5 w-3.5" />
-                    评审流程
+                    {t('评审流程')}
                   </h5>
                   <div className="space-y-2">
                     {reviewSteps
@@ -455,9 +461,9 @@ export function EvalMethodSubmitDialog({
               {isManualSubmit && requiresMaterial && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-700">文字说明</Label>
+                    <Label className="text-xs font-semibold text-gray-700">{t('文字说明')}</Label>
                     <Textarea
-                      placeholder="描述你的成果/作业内容..."
+                      placeholder={t('描述你的成果/作业内容...')}
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       rows={4}
@@ -465,7 +471,7 @@ export function EvalMethodSubmitDialog({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-700">上传文件</Label>
+                    <Label className="text-xs font-semibold text-gray-700">{t('上传文件')}</Label>
                     {files.length > 0 && (
                       <div className="space-y-1.5 mb-2">
                         {files.map((f: UploadedFile, i: number) => (
@@ -490,7 +496,7 @@ export function EvalMethodSubmitDialog({
                     <div className="flex items-center gap-3">
                       <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer">
                         <Upload className="h-3.5 w-3.5" />
-                        选择文件
+                        {t('选择文件')}
                         <input
                           type="file"
                           onChange={handleFileUpload}
@@ -499,7 +505,7 @@ export function EvalMethodSubmitDialog({
                         />
                       </label>
                       {effectiveUploading && (
-                        <span className="text-xs text-gray-400">上传中...</span>
+                        <span className="text-xs text-gray-400">{t('上传中...')}</span>
                       )}
                     </div>
                   </div>
@@ -510,8 +516,8 @@ export function EvalMethodSubmitDialog({
                 <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
                   <p className="text-sm text-primary leading-relaxed">
                     {method.methodKey === 'random_draw'
-                      ? '请确认参加本次现场问答，具体题目由教师在评分时抽取。'
-                      : '请确认参加本次现场评审，具体评价步骤由教师选择执行。'}
+                      ? t('请确认参加本次现场问答，具体题目由教师在评分时抽取。')
+                      : t('请确认参加本次现场评审，具体评价步骤由教师选择执行。')}
                   </p>
                 </div>
               )}
@@ -529,7 +535,7 @@ export function EvalMethodSubmitDialog({
               className="h-9 px-4"
               onClick={() => handleOpenChange(false)}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button
               size="sm"
@@ -547,7 +553,7 @@ export function EvalMethodSubmitDialog({
               ) : (
                 <Send className="w-3.5 h-3.5" />
               )}
-              {submitting ? '提交中...' : isTeacherLed ? '确认参加' : '提交测评'}
+              {submitting ? t('提交中...') : isTeacherLed ? t('确认参加') : t('提交测评')}
             </Button>
           </div>
         )}
@@ -559,7 +565,7 @@ export function EvalMethodSubmitDialog({
               style={{ backgroundColor: color }}
               onClick={() => handleOpenChange(false)}
             >
-              知道了
+              {t('知道了')}
             </Button>
           </div>
         )}

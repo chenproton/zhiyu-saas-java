@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fileApi } from '@zhiyu/api-client'
+import { useT } from '@/lib/i18n/locale-provider'
 
 import { ImageEditorDialog } from './image-editor-dialog'
 import { isPassthroughImage, isUndecodableImage } from './image-upload-utils'
@@ -29,8 +30,9 @@ export function ImageListUpload({
   value,
   onChange,
   multiple = true,
-  placeholder = '上传图片或输入 URL',
+  placeholder,
 }: UploadFieldProps) {
+  const t = useT()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [urlInput, setUrlInput] = useState('')
@@ -74,7 +76,7 @@ export function ImageListUpload({
     const list = Array.from(files)
     if (inputRef.current) inputRef.current.value = ''
     if (list.some(isUndecodableImage)) {
-      toast({ title: '暂不支持 HEIC/HEIF 格式，请先转换后再上传', variant: 'destructive' })
+      toast({ title: t('暂不支持 HEIC/HEIF 格式，请先转换后再上传'), variant: 'destructive' })
     }
     queueRef.current = list.filter((f) => !isUndecodableImage(f))
     processNext()
@@ -132,7 +134,7 @@ export function ImageListUpload({
             ) : (
               <>
                 <Plus className="h-4 w-4" />
-                <span className="text-[10px]">上传</span>
+                <span className="text-[10px]">{t('上传')}</span>
               </>
             )}
           </button>
@@ -158,11 +160,11 @@ export function ImageListUpload({
         <Input
           value={urlInput}
           onChange={(e) => setUrlInput(e.target.value)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('上传图片或输入 URL')}
           className="h-8 text-xs"
         />
         <Button type="button" variant="outline" size="sm" onClick={addUrl} className="h-8 text-xs">
-          添加
+          {t('添加')}
         </Button>
       </div>
     </div>
@@ -179,6 +181,7 @@ export function SingleImageUpload({
   value: string
   onChange: (v: string) => void
 }) {
+  const t = useT()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [urlInput, setUrlInput] = useState('')
@@ -201,7 +204,7 @@ export function SingleImageUpload({
     if (!f) return
     if (inputRef.current) inputRef.current.value = ''
     if (isUndecodableImage(f)) {
-      toast({ title: '暂不支持 HEIC/HEIF 格式，请先转换后再上传', variant: 'destructive' })
+      toast({ title: t('暂不支持 HEIC/HEIF 格式，请先转换后再上传'), variant: 'destructive' })
       return
     }
     if (isPassthroughImage(f)) {
@@ -245,7 +248,7 @@ export function SingleImageUpload({
           ) : (
             <>
               <Plus className="h-4 w-4" />
-              <span className="text-[10px]">上传</span>
+              <span className="text-[10px]">{t('上传')}</span>
             </>
           )}
         </button>
@@ -269,7 +272,7 @@ export function SingleImageUpload({
         <Input
           value={urlInput}
           onChange={(e) => setUrlInput(e.target.value)}
-          placeholder="或输入图片 URL"
+          placeholder={t('或输入图片 URL')}
           className="h-8 text-xs"
         />
         <Button
@@ -285,7 +288,7 @@ export function SingleImageUpload({
           }}
           className="h-8 text-xs"
         >
-          设置
+          {t('设置')}
         </Button>
       </div>
     </div>

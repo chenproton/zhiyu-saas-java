@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
+import { useT } from '@/lib/i18n/locale-provider'
 
 // 各业务模块固定主题色（不跟随系统主题）：岗位=紫 / 场景=青 / 测评=绿 / 课程=黄 / 联盟=红 / 默认蓝
 const ACCENT_CLASSES: Record<
@@ -80,6 +81,7 @@ export function LandingFilterRow({
   showBorder = true,
   accentColor = 'purple',
 }: LandingFilterRowProps) {
+  const t = useT()
   const containerRef = useRef<HTMLDivElement>(null)
   const [expanded, setExpanded] = useState(false)
   const [overflow, setOverflow] = useState(false)
@@ -118,7 +120,7 @@ export function LandingFilterRow({
             onClick={() => setExpanded(!expanded)}
             className={`text-[12px] ${cls.expand} mt-1.5 font-medium`}
           >
-            {expanded ? '收起' : '展开'}
+            {expanded ? t('收起') : t('展开')}
           </button>
         )}
       </div>

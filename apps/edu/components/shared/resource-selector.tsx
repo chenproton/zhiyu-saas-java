@@ -60,6 +60,7 @@ import {
   SOFTWARE_EXTS,
 } from '@/lib/resource-type-constants'
 import type { ResourceKind } from '@/lib/types/library'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface ResourceItem {
   id: string
@@ -161,6 +162,8 @@ export function ResourceSelector({
   const [newResUploading, setNewResUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const t = useT()
+
   const effectiveNodeId = nodeId && !nodeId.startsWith('node-') ? nodeId : undefined
   const courseScope = !!courseId && !effectiveNodeId
   const useApi = !!courseId || !!effectiveNodeId
@@ -186,11 +189,11 @@ export function ResourceSelector({
       setApiAvailable(true)
     } catch (e: any) {
       setApiAvailable(false)
-      toast({ title: e.message || '加载资源库失败', variant: 'destructive' })
+      toast({ title: e.message || t('加载资源库失败'), variant: 'destructive' })
     } finally {
       setLoadingPool(false)
     }
-  }, [useApi])
+  }, [useApi, t])
 
   useEffect(() => {
     if (isDialogOpen && useApi) {
@@ -249,12 +252,14 @@ export function ResourceSelector({
   }
 
   const validateResourceFile = (file: File, type: string): string | null => {
-    if (file.size > RESOURCE_MAX_FILE_SIZE) return '文件大小超过 100MB'
+    if (file.size > RESOURCE_MAX_FILE_SIZE) return t('文件大小超过 100MB')
     const allowed = resourceTypeExtensionMap[type] || []
     if (allowed.length === 0) return null
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
     if (!allowed.includes(ext)) {
-      return `不支持的文件格式，请上传 ${allowed.map((e) => `.${e}`).join('、')} 文件`
+      return t('不支持的文件格式，请上传 {exts} 文件', {
+        exts: allowed.map((e) => `.${e}`).join('、'),
+      })
     }
     return null
   }
@@ -311,14 +316,14 @@ export function ResourceSelector({
         fileUrl = res.url
         uploadedSize = res.size
       } catch (e: any) {
-        toast({ title: e.message || '上传失败', variant: 'destructive' })
+        toast({ title: e.message || t('上传失败'), variant: 'destructive' })
         setNewResUploading(false)
         return
       }
     }
 
     if (newResType === 'link' && !fileUrl) {
-      toast({ title: '请填写链接地址', variant: 'destructive' })
+      toast({ title: t('请填写链接地址'), variant: 'destructive' })
       return
     }
 
@@ -353,7 +358,7 @@ export function ResourceSelector({
           await nodeResourceApi.bind({ nodeId: effectiveNodeId, resourceId: created.id })
         }
       } catch (e: any) {
-        toast({ title: e.message || '资源保存失败', variant: 'destructive' })
+        toast({ title: e.message || t('资源保存失败'), variant: 'destructive' })
         setNewResUploading(false)
         return
       }
@@ -364,7 +369,7 @@ export function ResourceSelector({
     resetUploadForm()
     setShowUpload(false)
     setShowUploadTypePicker(false)
-    toast({ title: '资源已上传并选中' })
+    toast({ title: t('资源已上传并选中') })
   }
 
   const selectedResources = selectedIds
@@ -406,7 +411,7 @@ export function ResourceSelector({
             <Input
               value={resSearchName}
               onChange={(e) => setResSearchName(e.target.value)}
-              placeholder="搜索资源名称..."
+              placeholder={t('搜索资源名称...')}
               className="pl-9 text-sm"
             />
           </div>
@@ -415,17 +420,17 @@ export function ResourceSelector({
             <Input
               value={resSearchProvider}
               onChange={(e) => setResSearchProvider(e.target.value)}
-              placeholder="搜索资源提供者..."
+              placeholder={t('搜索资源提供者...')}
               className="pl-9 text-sm"
             />
           </div>
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
             <RotateCcw className="h-3.5 w-3.5 mr-1" />
-            重置
+            {t('重置')}
           </Button>
           <Button size="sm" className="h-9 text-xs" onClick={() => setShowUploadTypePicker(true)}>
             <Upload className="h-3.5 w-3.5 mr-1" />
-            上传资源
+            {t('上传资源')}
           </Button>
         </div>
       </div>
@@ -435,7 +440,8 @@ export function ResourceSelector({
         <div className="flex-1 flex flex-col min-h-0 min-w-0 border rounded-xl p-4 overflow-hidden">
           <div className="flex items-center justify-between mb-3 shrink-0">
             <p className="text-sm font-medium text-gray-700">
-              资源列表 <span className="text-gray-400 font-normal">({filteredRes.length})</span>
+              {t('资源列表')}{' '}
+              <span className="text-gray-400 font-normal">({filteredRes.length})</span>
             </p>
             {loadingPool && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
           </div>
@@ -443,8 +449,8 @@ export function ResourceSelector({
             {filteredRes.length === 0 ? (
               <div className="text-center text-gray-400 py-12">
                 <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">未找到匹配的资源</p>
-                <p className="text-xs mt-1">尝试调整筛选条件或上传新资源</p>
+                <p className="text-sm">{t('未找到匹配的资源')}</p>
+                <p className="text-xs mt-1">{t('尝试调整筛选条件或上传新资源')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -519,7 +525,7 @@ export function ResourceSelector({
                           }}
                         >
                           <Eye className="h-3 w-3 mr-0.5" />
-                          预览
+                          {t('预览')}
                         </Button>
                         <Button
                           variant={selected ? 'outline' : 'default'}
@@ -530,7 +536,7 @@ export function ResourceSelector({
                             toggleResource(r.id)
                           }}
                         >
-                          {selected ? '已选择' : '选择'}
+                          {selected ? t('已选择') : t('选择')}
                         </Button>
                       </div>
                     </div>
@@ -544,7 +550,7 @@ export function ResourceSelector({
         {/* Right: Selected resources sidebar */}
         <div className="w-64 shrink-0 flex flex-col min-h-0 border rounded-xl p-4 bg-gray-50/50 overflow-hidden">
           <div className="flex items-center justify-between mb-3 shrink-0">
-            <p className="text-sm font-semibold text-gray-700">已选资源</p>
+            <p className="text-sm font-semibold text-gray-700">{t('已选资源')}</p>
             <Badge variant="secondary" className="text-[10px]">
               {selectedIds.length}
             </Badge>
@@ -553,7 +559,7 @@ export function ResourceSelector({
             {selectedIds.length === 0 ? (
               <div className="text-center text-gray-400 py-8">
                 <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">请从左侧选择资源</p>
+                <p className="text-xs">{t('请从左侧选择资源')}</p>
               </div>
             ) : (
               selectedIds.map((rid) => {
@@ -600,8 +606,8 @@ export function ResourceSelector({
       <Dialog open={showUploadTypePicker} onOpenChange={setShowUploadTypePicker}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>选择资源类型</DialogTitle>
-            <DialogDescription>请选择要上传的资源类型</DialogDescription>
+            <DialogTitle>{t('选择资源类型')}</DialogTitle>
+            <DialogDescription>{t('请选择要上传的资源类型')}</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-3 gap-3 py-4">
             {ALL_TYPES.filter((t) => t !== 'all').map((t) => (
@@ -635,23 +641,23 @@ export function ResourceSelector({
       <Dialog open={showUpload} onOpenChange={setShowUpload}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>上传资源</DialogTitle>
-            <DialogDescription>补充本地资源，上传后将自动选中</DialogDescription>
+            <DialogTitle>{t('上传资源')}</DialogTitle>
+            <DialogDescription>{t('补充本地资源，上传后将自动选中')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
             <div>
-              <Label>资源名称</Label>
+              <Label>{t('资源名称')}</Label>
               <Input
                 value={newResName}
                 onChange={(e) => setNewResName(e.target.value)}
-                placeholder="输入资源名称"
+                placeholder={t('输入资源名称')}
                 className="mt-1.5"
               />
             </div>
 
             {newResType === 'link' && (
               <div>
-                <Label>URL 地址</Label>
+                <Label>{t('URL 地址')}</Label>
                 <Input
                   value={newResUrl}
                   onChange={(e) => setNewResUrl(e.target.value)}
@@ -664,39 +670,39 @@ export function ResourceSelector({
             {newResType === 'venue' && (
               <>
                 <div>
-                  <Label>场地地址</Label>
+                  <Label>{t('场地地址')}</Label>
                   <Input
                     value={newResAddress}
                     onChange={(e) => setNewResAddress(e.target.value)}
-                    placeholder="输入场地详细地址"
+                    placeholder={t('输入场地详细地址')}
                     className="mt-1.5"
                   />
                 </div>
                 <div>
-                  <Label>开放时间</Label>
+                  <Label>{t('开放时间')}</Label>
                   <Input
                     value={newResOpenTime}
                     onChange={(e) => setNewResOpenTime(e.target.value)}
-                    placeholder="例如：周一至周五 09:00-18:00"
+                    placeholder={t('例如：周一至周五 09:00-18:00')}
                     className="mt-1.5"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>容纳人数</Label>
+                    <Label>{t('容纳人数')}</Label>
                     <Input
                       value={newResCapacity}
                       onChange={(e) => setNewResCapacity(e.target.value)}
-                      placeholder="例如：50人"
+                      placeholder={t('例如：50人')}
                       className="mt-1.5"
                     />
                   </div>
                   <div>
-                    <Label>联系人/电话</Label>
+                    <Label>{t('联系人/电话')}</Label>
                     <Input
                       value={newResContact}
                       onChange={(e) => setNewResContact(e.target.value)}
-                      placeholder="输入联系人或电话"
+                      placeholder={t('输入联系人或电话')}
                       className="mt-1.5"
                     />
                   </div>
@@ -707,20 +713,20 @@ export function ResourceSelector({
             {newResType === 'facility' && (
               <>
                 <div>
-                  <Label>所在位置</Label>
+                  <Label>{t('所在位置')}</Label>
                   <Input
                     value={newResLocation}
                     onChange={(e) => setNewResLocation(e.target.value)}
-                    placeholder="输入设施所在位置"
+                    placeholder={t('输入设施所在位置')}
                     className="mt-1.5"
                   />
                 </div>
                 <div>
-                  <Label>数量</Label>
+                  <Label>{t('数量')}</Label>
                   <Input
                     value={newResQuantity}
                     onChange={(e) => setNewResQuantity(e.target.value)}
-                    placeholder="输入设施数量"
+                    placeholder={t('输入设施数量')}
                     className="mt-1.5"
                   />
                 </div>
@@ -730,16 +736,16 @@ export function ResourceSelector({
             {newResType === 'software' && (
               <>
                 <div>
-                  <Label>版本号</Label>
+                  <Label>{t('版本号')}</Label>
                   <Input
                     value={newResVersion}
                     onChange={(e) => setNewResVersion(e.target.value)}
-                    placeholder="例如：v2.1.0"
+                    placeholder={t('例如：v2.1.0')}
                     className="mt-1.5"
                   />
                 </div>
                 <div>
-                  <Label>下载链接</Label>
+                  <Label>{t('下载链接')}</Label>
                   <Input
                     value={newResUrl}
                     onChange={(e) => setNewResUrl(e.target.value)}
@@ -748,11 +754,11 @@ export function ResourceSelector({
                   />
                 </div>
                 <div>
-                  <Label>授权信息</Label>
+                  <Label>{t('授权信息')}</Label>
                   <Input
                     value={newResLicense}
                     onChange={(e) => setNewResLicense(e.target.value)}
-                    placeholder="例如：MIT / 商业授权 / 校内授权"
+                    placeholder={t('例如：MIT / 商业授权 / 校内授权')}
                     className="mt-1.5"
                   />
                 </div>
@@ -760,11 +766,11 @@ export function ResourceSelector({
             )}
 
             <div>
-              <Label>资源描述</Label>
+              <Label>{t('资源描述')}</Label>
               <Textarea
                 value={newResDescription}
                 onChange={(e) => setNewResDescription(e.target.value)}
-                placeholder="输入资源简介、用途说明等"
+                placeholder={t('输入资源简介、用途说明等')}
                 className="mt-1.5"
                 rows={2}
               />
@@ -827,11 +833,11 @@ export function ResourceSelector({
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">点击或拖拽上传文件</p>
+                      <p className="text-sm font-medium text-gray-700">{t('点击或拖拽上传文件')}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         {resourceTypeAccept[newResType]
-                          ? `支持 ${resourceTypeAccept[newResType]}，最大 100MB`
-                          : '支持多种格式，最大 100MB'}
+                          ? t('支持 {exts}，最大 100MB', { exts: resourceTypeAccept[newResType] })
+                          : t('支持多种格式，最大 100MB')}
                       </p>
                     </div>
                   </>
@@ -847,7 +853,7 @@ export function ResourceSelector({
                 resetUploadForm()
               }}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={handleUpload}
@@ -859,7 +865,7 @@ export function ResourceSelector({
               }
             >
               {newResUploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              上传并选中
+              {t('上传并选中')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -918,20 +924,20 @@ export function ResourceSelector({
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="w-full border-dashed">
             <Plus className="mr-2 h-4 w-4" />
-            添加课程资源
+            {t('添加课程资源')}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>添加课程资源</DialogTitle>
-            <DialogDescription>从资源库中选择或上传新资源</DialogDescription>
+            <DialogTitle>{t('添加课程资源')}</DialogTitle>
+            <DialogDescription>{t('从资源库中选择或上传新资源')}</DialogDescription>
           </DialogHeader>
 
           {selectionContent}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>
