@@ -225,22 +225,22 @@ export default function GraduatesPage() {
       }
       renderTableHeader={() => (
         <>
-          <TableHead>登录账号（学号）</TableHead>
-          <TableHead>姓名</TableHead>
-          <TableHead>所属院系</TableHead>
-          <TableHead>班级</TableHead>
-          <TableHead>毕业年份</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead className="text-right">操作</TableHead>
+          <TableHead className="w-32">登录账号（学号）</TableHead>
+          <TableHead className="w-28">姓名</TableHead>
+          <TableHead className="hidden md:table-cell">所属院系</TableHead>
+          <TableHead className="hidden md:table-cell">班级</TableHead>
+          <TableHead className="hidden md:table-cell">毕业年份</TableHead>
+          <TableHead className="w-24">状态</TableHead>
+          <TableHead className="w-24 text-right">操作</TableHead>
         </>
       )}
       renderTableRow={(graduate) => (
         <>
           <TableCell className="font-mono text-sm">{graduate.loginAccount}</TableCell>
           <TableCell className="font-medium">{graduate.name}</TableCell>
-          <TableCell>{graduate.department}</TableCell>
-          <TableCell>{graduate.className}</TableCell>
-          <TableCell>
+          <TableCell className="hidden md:table-cell">{graduate.department}</TableCell>
+          <TableCell className="hidden md:table-cell">{graduate.className}</TableCell>
+          <TableCell className="hidden md:table-cell">
             <Badge variant="secondary">
               {graduate.graduateYear !== undefined ? `${graduate.graduateYear}届` : '—'}
             </Badge>

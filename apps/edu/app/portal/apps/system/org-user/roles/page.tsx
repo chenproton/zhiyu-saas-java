@@ -500,12 +500,12 @@ export default function RolesPage() {
       onSave={saveRole}
       renderTableHeader={() => (
         <>
-          <TableHead>角色编码</TableHead>
-          <TableHead>角色名称</TableHead>
-          <TableHead>关联用户</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>创建时间</TableHead>
-          <TableHead className="text-right">操作</TableHead>
+          <TableHead className="w-32">角色编码</TableHead>
+          <TableHead className="w-28">角色名称</TableHead>
+          <TableHead className="w-32">关联用户</TableHead>
+          <TableHead className="w-24">状态</TableHead>
+          <TableHead className="hidden md:table-cell">创建时间</TableHead>
+          <TableHead className="w-24 text-right">操作</TableHead>
         </>
       )}
       renderTableRow={(role, actions) => {
@@ -520,7 +520,9 @@ export default function RolesPage() {
             <TableCell>
               <StatusBadge status={status} label={status === 'active' ? '启用' : '停用'} />
             </TableCell>
-            <TableCell className="text-muted-foreground">{role.createdAt}</TableCell>
+            <TableCell className="hidden md:table-cell text-muted-foreground">
+              {role.createdAt}
+            </TableCell>
             <TableRowActions>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
                 <Pencil className="mr-1 h-3 w-3" />

@@ -157,13 +157,13 @@ export default function RelationsPage() {
       renderTableHeader={() => (
         <>
           <TableHead className="w-12">序号</TableHead>
-          <TableHead>关系发起人</TableHead>
-          <TableHead>所属部门</TableHead>
-          <TableHead>关系目标人</TableHead>
-          <TableHead>所属部门</TableHead>
-          <TableHead>关系类型</TableHead>
-          <TableHead>创建时间</TableHead>
-          <TableHead className="w-32 text-center">操作</TableHead>
+          <TableHead className="w-32">关系发起人</TableHead>
+          <TableHead className="hidden md:table-cell">所属部门</TableHead>
+          <TableHead className="w-32">关系目标人</TableHead>
+          <TableHead className="hidden md:table-cell">所属部门</TableHead>
+          <TableHead className="w-28">关系类型</TableHead>
+          <TableHead className="hidden md:table-cell">创建时间</TableHead>
+          <TableHead className="w-24 text-center">操作</TableHead>
         </>
       )}
       renderTableRow={(relation, actions) => (
@@ -171,16 +171,26 @@ export default function RelationsPage() {
           <TableCell className="text-muted-foreground">
             {(relations ?? []).indexOf(relation) + 1}
           </TableCell>
-          <TableCell className="font-medium">{relation.initiatorName}</TableCell>
-          <TableCell className="text-muted-foreground">{relation.initiatorDept || '—'}</TableCell>
-          <TableCell className="font-medium">{relation.targetName}</TableCell>
-          <TableCell className="text-muted-foreground">{relation.targetDept || '—'}</TableCell>
+          <TableCell className="font-medium truncate max-w-[120px]">
+            {relation.initiatorName}
+          </TableCell>
+          <TableCell className="hidden md:table-cell text-muted-foreground">
+            {relation.initiatorDept || '—'}
+          </TableCell>
+          <TableCell className="font-medium truncate max-w-[120px]">
+            {relation.targetName}
+          </TableCell>
+          <TableCell className="hidden md:table-cell text-muted-foreground">
+            {relation.targetDept || '—'}
+          </TableCell>
           <TableCell>
             <span className="px-2 py-1 rounded text-xs bg-primary/10 text-primary">
               {typeLabelMap[relation.relationType] || relation.relationType}
             </span>
           </TableCell>
-          <TableCell className="text-muted-foreground">{relation.createdAt}</TableCell>
+          <TableCell className="hidden md:table-cell text-muted-foreground">
+            {relation.createdAt}
+          </TableCell>
           <TableRowActions>
             <Button
               variant="ghost"

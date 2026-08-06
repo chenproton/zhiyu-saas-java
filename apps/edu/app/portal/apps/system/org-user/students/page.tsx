@@ -213,20 +213,20 @@ export default function StudentsPage() {
         colSpan={6}
         renderTableHeader={() => (
           <>
-            <TableHead>登录账号（学号）</TableHead>
-            <TableHead>姓名</TableHead>
-            <TableHead>所属院系</TableHead>
-            <TableHead>班级</TableHead>
-            <TableHead>状态</TableHead>
-            <TableHead className="text-right">操作</TableHead>
+            <TableHead className="w-32">登录账号（学号）</TableHead>
+            <TableHead className="w-28">姓名</TableHead>
+            <TableHead className="hidden md:table-cell">所属院系</TableHead>
+            <TableHead className="hidden md:table-cell">班级</TableHead>
+            <TableHead className="w-24">状态</TableHead>
+            <TableHead className="w-24 text-right">操作</TableHead>
           </>
         )}
         renderTableRow={(student, actions) => (
           <>
             <TableCell className="font-mono text-sm">{student.loginAccount}</TableCell>
             <TableCell className="font-medium">{student.name}</TableCell>
-            <TableCell>{student.department}</TableCell>
-            <TableCell>{student.className}</TableCell>
+            <TableCell className="hidden md:table-cell">{student.department}</TableCell>
+            <TableCell className="hidden md:table-cell">{student.className}</TableCell>
             <TableCell>
               <StatusBadge status={toStatusBadgeKey(student.status)} />
             </TableCell>

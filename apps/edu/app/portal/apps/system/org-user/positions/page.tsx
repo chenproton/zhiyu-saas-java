@@ -168,11 +168,11 @@ export default function PositionsPage() {
       onToggleEnabled={toggleStatus}
       renderTableHeader={() => (
         <>
-          <TableHead>职位名称</TableHead>
-          <TableHead>关联用户数量</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>创建时间</TableHead>
-          <TableHead className="text-right">操作</TableHead>
+          <TableHead className="w-32">职位名称</TableHead>
+          <TableHead className="w-32">关联用户数量</TableHead>
+          <TableHead className="w-24">状态</TableHead>
+          <TableHead className="hidden md:table-cell">创建时间</TableHead>
+          <TableHead className="w-24 text-right">操作</TableHead>
         </>
       )}
       renderTableRow={(position, actions) => (
@@ -187,7 +187,7 @@ export default function PositionsPage() {
               label={position.status === 'active' ? '启用' : '停用'}
             />
           </TableCell>
-          <TableCell className="text-muted-foreground">
+          <TableCell className="hidden md:table-cell text-muted-foreground">
             {new Date(position.createdAt).toLocaleString('zh-CN')}
           </TableCell>
           <TableRowActions>

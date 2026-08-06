@@ -57,8 +57,8 @@ export default function MajorsPage() {
       renderTableHeader={() => (
         <>
           <TableHead className="w-28">专业代码</TableHead>
-          <TableHead>专业名称</TableHead>
-          <TableHead>别名（备注）</TableHead>
+          <TableHead className="w-32">专业名称</TableHead>
+          <TableHead className="hidden md:table-cell">别名（备注）</TableHead>
           <TableHead className="w-24 text-center">状态</TableHead>
           <TableHead className="w-24 text-center">启用/关闭</TableHead>
           <TableHead className="w-20 text-center">操作</TableHead>
@@ -68,7 +68,7 @@ export default function MajorsPage() {
         <>
           <TableCell className="font-mono text-sm">{major.code}</TableCell>
           <TableCell className="font-medium">{major.name}</TableCell>
-          <TableCell className="text-muted-foreground">
+          <TableCell className="hidden md:table-cell text-muted-foreground">
             {major.alias || <span className="text-gray-300">-</span>}
           </TableCell>
           <TableCell className="text-center">
