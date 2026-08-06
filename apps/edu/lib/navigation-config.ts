@@ -761,11 +761,54 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
   ],
   sideNavItems: [
     {
+      id: 'affairs-mgmt',
+      label: '教务管理',
+      icon: 'graduationCap',
+      children: [
+        {
+          id: 'org-structure',
+          label: '组织架构管理',
+          href: '/affairs/org-structure',
+          matchers: ['/affairs/org-structure'],
+        },
+        {
+          id: 'majors',
+          label: '专业管理',
+          href: '/affairs/majors',
+          matchers: ['/affairs/majors'],
+        },
+        {
+          id: 'students',
+          label: '学生管理',
+          href: '/affairs/students',
+          matchers: ['/affairs/students'],
+        },
+        {
+          id: 'teachers',
+          label: '教职工管理',
+          href: '/affairs/teachers',
+          matchers: ['/affairs/teachers'],
+        },
+        {
+          id: 'relations',
+          label: '人员关系管理',
+          href: '/affairs/relations',
+          matchers: ['/affairs/relations'],
+        },
+        {
+          id: 'positions',
+          label: '职位管理',
+          href: '/affairs/positions',
+          matchers: ['/affairs/positions'],
+        },
+        { id: 'config', label: '教务配置', href: '/affairs/config', matchers: ['/affairs/config'] },
+      ],
+    },
+    {
       id: 'teaching-mgmt',
       label: '教学管理',
       icon: 'calendar',
       children: [
-        { id: 'config', label: '教务配置', href: '/affairs/config', matchers: ['/affairs/config'] },
         {
           id: 'programs',
           label: '人才培养方案',
@@ -812,7 +855,7 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
       ],
     },
   ],
-  defaultExpandedSideNavIds: ['teaching-mgmt', 'teaching-approval'],
+  defaultExpandedSideNavIds: ['affairs-mgmt', 'teaching-mgmt', 'teaching-approval'],
   platformSwitchItems: [],
   shellClassName: 'bg-background',
   mainClassName: 'min-w-0 flex-1',
