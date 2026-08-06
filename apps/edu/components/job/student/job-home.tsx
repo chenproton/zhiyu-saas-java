@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Flag, Heart, Crosshair, ChevronRight, Layers, ListChecks, Factory, Building2 } from 'lucide-react'
+import { Flag, Heart, Crosshair, ChevronRight, Layers, ListChecks, Factory, Building2, Briefcase, GraduationCap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
@@ -713,6 +713,33 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     },
   ]
 
+  const jobStats = [
+    {
+      icon: Briefcase,
+      value: stats.total,
+      label: '岗位总数',
+      gradient: 'from-primary to-primary/80',
+    },
+    {
+      icon: Layers,
+      value: scenarios.length,
+      label: '实践场景',
+      gradient: 'from-primary/90 to-primary/70',
+    },
+    {
+      icon: Factory,
+      value: stats.industryCount,
+      label: '覆盖行业',
+      gradient: 'from-primary/80 to-primary/60',
+    },
+    {
+      icon: GraduationCap,
+      value: stats.majorCount,
+      label: '覆盖专业',
+      gradient: 'from-primary/90 to-primary/70',
+    },
+  ]
+
   return (
     <LandingShell
       hero={{
@@ -721,13 +748,13 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
           <>
             场景化实践教学
             <br />
-            以真实场景驱动能力成长
+            <span className="text-white/80">以真实场景驱动能力成长</span>
           </>
         ) : (
           <>
             对接产业前沿
             <br />
-            开启岗位能力学习新征程
+            <span className="text-white/80">开启岗位能力学习新征程</span>
           </>
         ),
         description: isScene
@@ -748,7 +775,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
           />
         ),
       }}
-      stats={isScene ? sceneStats : undefined}
+      stats={isScene ? sceneStats : jobStats}
       beforeList={
         <>
           <JobDashboard

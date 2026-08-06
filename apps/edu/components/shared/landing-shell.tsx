@@ -99,7 +99,7 @@ export function LandingShell({
         <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-primary/15 blur-[100px] pointer-events-none" />
         <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-primary/10 blur-[80px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8 lg:min-h-[440px]">
           <div className="flex-1 pt-4">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
