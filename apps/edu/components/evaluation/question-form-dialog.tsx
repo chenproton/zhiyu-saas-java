@@ -711,14 +711,14 @@ export function QuestionFormDialog({
                   key={index}
                   className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-all ${
                     checked
-                      ? 'border-l-4 border-l-indigo-500 border-indigo-200 bg-indigo-50 font-medium text-indigo-700'
-                      : 'border-border/60 bg-white hover:border-indigo-200 hover:bg-indigo-50/30'
+                      ? 'border-l-4 border-l-blue-500 border-blue-200 bg-blue-50 font-medium text-blue-700'
+                      : 'border-border/60 bg-white hover:border-blue-200 hover:bg-blue-50/30'
                   }`}
                 >
                   <Checkbox
                     checked={checked}
                     onCheckedChange={(c) => toggleMultipleAnswer(index, !!c)}
-                    className="size-4 shrink-0 border-2 data-[state=checked]:border-indigo-500 data-[state=checked]:bg-indigo-500"
+                    className="size-4 shrink-0 border-2 data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
                   />
                   <span className="truncate">
                     {String.fromCharCode(65 + index)}. {option || '（空选项）'}

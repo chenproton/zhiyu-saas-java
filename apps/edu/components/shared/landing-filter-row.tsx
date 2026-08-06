@@ -12,10 +12,10 @@ const ACCENT_CLASSES: Record<
   }
 > = {
   purple: {
-    selected: 'bg-purple-500 text-white border-purple-500 shadow-sm',
+    selected: 'bg-blue-500 text-white border-blue-500 shadow-sm',
     unselected:
-      'bg-slate-50 text-[#475569] border-slate-200 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50',
-    expand: 'text-purple-500 hover:text-purple-600',
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50',
+    expand: 'text-blue-500 hover:text-blue-600',
     border: 'border-b border-dashed border-[#cbd5e1]',
   },
   emerald: {

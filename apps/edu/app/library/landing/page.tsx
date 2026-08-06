@@ -1109,7 +1109,7 @@ export default function LibraryLandingPage() {
       {/* ═══ Footer ═══ */}
       <footer style={{ background: '#141a2e', width: '100%' }}>
         <div
-          style={{ height: 3, background: 'linear-gradient(90deg, #8b5cf6, #818cf8, #22d3ee)' }}
+          style={{ height: 3, background: 'linear-gradient(90deg, #1677ff, #5aa2ff, #22d3ee)' }}
         />
         <div style={{ padding: '48px 5% 32px' }}>
           <div style={{ maxWidth: 1280, margin: '0 auto' }}>

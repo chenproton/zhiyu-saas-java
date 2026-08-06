@@ -106,21 +106,21 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-indigo-500/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute left-1/3 top-1/2 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl" />
         <div className="absolute left-1/4 top-1/4 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl" />
         <svg
-          className="absolute left-1/3 top-1/3 h-96 w-96 text-indigo-500/5"
+          className="absolute left-1/3 top-1/3 h-96 w-96 text-blue-500/5"
           viewBox="0 0 200 200"
           fill="none"
         >
           <polygon points="100,0 200,100 100,200 0,100" />
         </svg>
         <svg
-          className="absolute bottom-1/4 right-1/4 h-48 w-48 text-purple-500/5"
+          className="absolute bottom-1/4 right-1/4 h-48 w-48 text-blue-500/5"
           viewBox="0 0 200 200"
           fill="none"
         >
@@ -130,11 +130,11 @@ export default function PortalLoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 ring-1 ring-white/20">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 ring-1 ring-white/20">
             <GraduationCap className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-white">场景化数智教学服务平台</h1>
-          <p className="text-sm text-indigo-200/60">数智融合 · 精准教学</p>
+          <p className="text-sm text-blue-200/60">数智融合 · 精准教学</p>
         </div>
 
         <Card className="border-0 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl">
@@ -148,7 +148,7 @@ export default function PortalLoginPage() {
                   onClick={() => setLoginMethod(key)}
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-all ${
                     loginMethod === key
-                      ? 'bg-white text-indigo-700 shadow-sm'
+                      ? 'bg-white text-blue-700 shadow-sm'
                       : 'text-slate-500 hover:text-slate-700'
                   } ${key !== 'password' ? 'cursor-not-allowed opacity-60' : ''}`}
                 >
@@ -169,7 +169,7 @@ export default function PortalLoginPage() {
                     <Input
                       id="username"
                       placeholder="请输入账号"
-                      className="border-slate-200 pl-10 focus-visible:border-indigo-400 focus-visible:ring-indigo-400/20"
+                      className="border-slate-200 pl-10 focus-visible:border-blue-400 focus-visible:ring-blue-400/20"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
@@ -186,7 +186,7 @@ export default function PortalLoginPage() {
                       id="password"
                       type="password"
                       placeholder="请输入密码"
-                      className="border-slate-200 pl-10 focus-visible:border-indigo-400 focus-visible:ring-indigo-400/20"
+                      className="border-slate-200 pl-10 focus-visible:border-blue-400 focus-visible:ring-blue-400/20"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -203,7 +203,7 @@ export default function PortalLoginPage() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 py-2.5 text-base shadow-lg shadow-indigo-600/25 hover:from-indigo-700 hover:to-purple-700"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-500 py-2.5 text-base shadow-lg shadow-blue-600/25 hover:from-blue-700 hover:to-blue-600"
                   disabled={loading}
                   size="lg"
                 >
@@ -235,7 +235,7 @@ export default function PortalLoginPage() {
           </CardContent>
         </Card>
 
-        <p className="mt-6 text-center text-xs text-indigo-200/40">
+        <p className="mt-6 text-center text-xs text-blue-200/40">
           © {new Date().getFullYear()} 场景化数智教学服务平台 All Rights Reserved
         </p>
       </div>

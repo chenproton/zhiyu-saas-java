@@ -341,8 +341,8 @@ export function EvalMethodSubmitDialog({
   const headerGradient = isManualSubmit
     ? 'from-amber-50 via-orange-50 to-white'
     : isTeacherLed
-      ? 'from-purple-50 via-indigo-50 to-white'
-      : 'from-blue-50 via-indigo-50 to-white'
+      ? 'from-blue-50 via-blue-50 to-white'
+      : 'from-blue-50 via-blue-100 to-white'
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

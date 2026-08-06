@@ -141,7 +141,7 @@ function AbilitiesTab({
 
   return (
     <div className="space-y-5">
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-100">
         <div className="flex items-center gap-2 text-blue-800 font-bold mb-2">
           <Sparkles className="w-5 h-5" />
           能力模型说明

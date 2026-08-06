@@ -167,9 +167,9 @@ export function CompetencyStandards({
                                 key={level.value}
                                 className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
                                   isTarget
-                                    ? 'border-indigo-500 bg-white ring-2 ring-indigo-200 scale-110'
+                                    ? 'border-blue-500 bg-white ring-2 ring-blue-200 scale-110'
                                     : isReached
-                                      ? 'border-indigo-300 bg-indigo-200'
+                                      ? 'border-blue-300 bg-blue-200'
                                       : 'border-[#e2e8f0] bg-white'
                                 }`}
                               />
@@ -185,9 +185,9 @@ export function CompetencyStandards({
                               key={level.value}
                               className={`text-[10px] font-medium transition-colors ${
                                 idx === targetIdx
-                                  ? 'text-indigo-600'
+                                  ? 'text-blue-600'
                                   : idx <= targetIdx
-                                    ? 'text-indigo-400'
+                                    ? 'text-blue-400'
                                     : 'text-[#cbd5e1]'
                               }`}
                             >

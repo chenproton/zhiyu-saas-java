@@ -59,9 +59,9 @@ export default function ExamCenterPage() {
   }, [items, tab, keyword])
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#faf5ff]">
+    <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* 页头 */}
-      <div className="bg-gradient-to-br from-[#4c1d95] via-[#7c3aed] to-[#a78bfa]">
+      <div className="bg-gradient-to-br from-[#0a3d91] via-[#1677ff] to-[#5aa2ff]">
         <div className="max-w-[1400px] mx-auto px-8 py-8">
           <Link
             href="/evaluation/landing"
@@ -90,14 +90,14 @@ export default function ExamCenterPage() {
             <TabsList className="bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm h-11">
               <TabsTrigger
                 value="all"
-                className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-blue-500 data-[state=active]:text-white"
               >
                 全部考试 ({items.length})
               </TabsTrigger>
               {isStudent && (
                 <TabsTrigger
                   value="mine"
-                  className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                  className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-blue-500 data-[state=active]:text-white"
                 >
                   我可参加 (
                   {items.filter((i) => i.participatable).length})
@@ -111,7 +111,7 @@ export default function ExamCenterPage() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="搜索考试名称..."
-              className="pl-10 h-11 bg-white border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition-all"
+              className="pl-10 h-11 bg-white border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all"
             />
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function ExamCenterPage() {
                       {canEnter ? (
                         <Button
                           asChild
-                          className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-purple-500 to-purple-400 hover:from-purple-600 hover:to-purple-500 text-white shadow-md shadow-purple-500/20"
+                          className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white shadow-md shadow-blue-500/20"
                         >
                           <Link href={entryHref}>
                             <PlayCircle className="w-3.5 h-3.5 mr-1" /> 开始考试
