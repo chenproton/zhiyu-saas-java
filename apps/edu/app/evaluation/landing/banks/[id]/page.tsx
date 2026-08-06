@@ -239,14 +239,13 @@ export default function BankDetailPage() {
                     className="w-full sm:w-[280px] h-[190px] rounded-2xl bg-cover bg-center flex items-center justify-center shrink-0 self-stretch shadow-[0_12px_40px_rgba(0,0,0,0.15)] relative overflow-hidden"
                     style={coverStyle}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                     {!bank.coverImage && (
                       <Library
-                        className="w-16 h-16 text-white/90 relative z-10"
-                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}
+                        className="w-16 h-16 text-white/85 drop-shadow-md relative z-10"
+                        strokeWidth={1.5}
                       />
                     )}
-                    <span className="absolute bottom-3 right-3 z-10 bg-black/40 backdrop-blur-sm text-white px-2.5 py-1 rounded-lg text-[11px] border border-white/10">
+                    <span className="absolute bottom-3 right-3 z-10 bg-[#0f172a]/40 backdrop-blur-sm text-white px-2.5 py-1 rounded-lg text-[11px] border border-white/20">
                       v{bank.version}
                     </span>
                   </div>
