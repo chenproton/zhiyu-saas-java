@@ -180,7 +180,7 @@ async function requestWithPlatform<T>(
 
   if (!res.ok) {
     const errorMessage = (data as any).error || `HTTP ${res.status}`
-    if (res.status === 401 && typeof window !== 'undefined' && token) {
+    if (res.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem(TOKEN_KEYS[platform])
       const loginPath = platform === 'portal' ? '/portal/login' : '/login'
       if (!window.location.pathname.startsWith(loginPath)) {
@@ -233,7 +233,7 @@ async function authedFetch(path: string, init: RequestInit = {}): Promise<Respon
     headers: { ...headers, ...((init.headers as Record<string, string>) || {}) },
   })
 
-  if (res.status === 401 && typeof window !== 'undefined' && token) {
+  if (res.status === 401 && typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEYS[platform as keyof typeof TOKEN_KEYS])
     const loginPath = platform === 'portal' ? '/portal/login' : '/login'
     if (!window.location.pathname.startsWith(loginPath)) {
