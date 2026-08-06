@@ -43,68 +43,80 @@ function SceneSideLists({
   recommendedPositions: CareerPosition[]
   favoritePositions: CareerPosition[]
 }) {
+  const [activeTab, setActiveTab] = useState<'recommended' | 'favorite'>('recommended')
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveTab((t) => (t === 'recommended' ? 'favorite' : 'recommended'))
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [tick])
+
+  const switchTab = (tab: 'recommended' | 'favorite') => {
+    setActiveTab(tab)
+    setTick((n) => n + 1)
+  }
+
+  const isRec = activeTab === 'recommended'
+  const positions = isRec ? recommendedPositions : favoritePositions
+  const emptyText = isRec ? '暂无目标推荐岗位' : '快去收藏岗位吧！'
+  const EmptyIcon = isRec ? Flag : Heart
+  const activeClass = isRec
+    ? 'bg-gradient-to-br from-yellow-400/30 to-orange-500/30 text-yellow-200 border border-white/15'
+    : 'bg-gradient-to-br from-rose-400/30 to-pink-500/30 text-rose-200 border border-white/15'
+
   return (
-    <div className="flex flex-col gap-4 w-full">
-      {/* 目标岗位配套场景 */}
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
-        <div className="flex items-center gap-2.5 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-yellow-400/30 to-orange-500/30 border border-white/15 flex items-center justify-center shadow-sm">
-            <Flag className="w-4 h-4 text-yellow-300" />
-          </div>
-          <span className="text-[15px] font-bold">目标岗位配套场景</span>
+    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="flex gap-1 p-1 rounded-xl bg-white/10 border border-white/15">
+          <button
+            onClick={() => switchTab('recommended')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all ${
+              isRec ? activeClass : 'text-white/60 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <Flag className="w-3.5 h-3.5" />
+            目标岗位
+          </button>
+          <button
+            onClick={() => switchTab('favorite')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all ${
+              !isRec ? activeClass : 'text-white/60 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <Heart className="w-3.5 h-3.5" />
+            收藏岗位
+          </button>
         </div>
-        {recommendedPositions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-white/50 text-center py-4">
-            <Flag className="w-9 h-9 mb-3 opacity-40" />
-            <div className="text-sm font-semibold text-white/80">暂无目标推荐岗位</div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
-            {recommendedPositions.map((pos) => (
-              <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
-                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
-                  <span className="flex-1 text-[13px] truncate group-hover:text-yellow-200 transition-colors">
-                    {pos.shortName || pos.name}
-                  </span>
-                  <span className="text-[11px] text-white/40 shrink-0">
-                    {pos.version || '1.0'}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        <span className="text-[12px] text-white/50 ml-auto shrink-0">
+          {positions.length} 个岗位
+        </span>
       </div>
-      {/* 收藏岗位配套场景 */}
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
-        <div className="flex items-center gap-2.5 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-400/30 to-pink-500/30 border border-white/15 flex items-center justify-center shadow-sm">
-            <Heart className="w-4 h-4 text-rose-300" />
-          </div>
-          <span className="text-[15px] font-bold">收藏岗位配套场景</span>
+
+      {positions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-white/50 text-center py-4">
+          <EmptyIcon className="w-9 h-9 mb-3 opacity-40" />
+          <div className="text-sm font-semibold text-white/80">{emptyText}</div>
         </div>
-        {favoritePositions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-white/50 text-center py-4">
-            <Heart className="w-9 h-9 mb-3 opacity-40" />
-            <div className="text-sm font-semibold text-white/80">快去收藏岗位吧！</div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
-            {favoritePositions.map((pos) => (
-              <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
-                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
-                  <span className="flex-1 text-[13px] truncate group-hover:text-rose-200 transition-colors">
-                    {pos.shortName || pos.name}
-                  </span>
-                  <span className="text-[11px] text-white/40 shrink-0">
-                    {pos.version || '1.0'}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      ) : (
+        <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
+          {positions.map((pos) => (
+            <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
+              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
+                <span
+                  className={`flex-1 text-[13px] truncate transition-colors ${
+                    isRec ? 'group-hover:text-yellow-200' : 'group-hover:text-rose-200'
+                  }`}
+                >
+                  {pos.shortName || pos.name}
+                </span>
+                <span className="text-[11px] text-white/40 shrink-0">{pos.version || '1.0'}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
       <style jsx>{`
         .custom-scrollbar-thin::-webkit-scrollbar {
           width: 4px;
