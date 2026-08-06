@@ -67,7 +67,7 @@ function SceneSideLists({
     : 'bg-gradient-to-br from-rose-400/30 to-pink-500/30 text-rose-200 border border-white/15'
 
   return (
-    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)] h-[320px] lg:h-full flex flex-col">
+    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)] h-[256px] lg:h-[340px] flex flex-col">
       <div className="flex items-center gap-2.5 mb-3">
         <div className="flex gap-1 p-1 rounded-xl bg-white/10 border border-white/15">
           <button
