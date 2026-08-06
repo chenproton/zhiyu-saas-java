@@ -42,12 +42,14 @@ export default function AlliancePublicMajorBrandDetailPage() {
         </Link>
       </div>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{brand.name}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold break-words">{brand.name}</h1>
           <p className="text-muted-foreground text-sm mt-1">专业品牌</p>
         </div>
-        <Badge variant="outline">{allianceLabel('brandStatus', brand.status)}</Badge>
+        <Badge variant="outline" className="shrink-0">
+          {allianceLabel('brandStatus', brand.status)}
+        </Badge>
       </div>
 
       {brand.coverImage && (
@@ -79,9 +81,11 @@ export default function AlliancePublicMajorBrandDetailPage() {
           <CardContent>
             <dl className="space-y-2 text-sm">
               {Object.entries(brand.data).map(([key, value]) => (
-                <div key={key} className="flex gap-2">
-                  <dt className="text-muted-foreground w-32 shrink-0">{key}:</dt>
-                  <dd>{String(value)}</dd>
+                <div key={key} className="flex gap-2 flex-col sm:flex-row sm:items-start">
+                  <dt className="text-muted-foreground w-full sm:w-32 sm:shrink-0 break-words">
+                    {key}:
+                  </dt>
+                  <dd className="break-words min-w-0">{String(value)}</dd>
                 </div>
               ))}
             </dl>

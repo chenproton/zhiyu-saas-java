@@ -161,7 +161,7 @@ function ResourceCard({
           {RESOURCE_TYPE_LABELS[resource.resourceType] || resource.resourceType}
         </span>
       </div>
-      <div className="p-5 flex-1 flex flex-col">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col">
         <h3 className="text-[15px] font-semibold text-slate-800 leading-snug line-clamp-2 mb-2">
           {resource.name}
         </h3>

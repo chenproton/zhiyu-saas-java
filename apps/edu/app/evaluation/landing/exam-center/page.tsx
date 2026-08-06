@@ -58,7 +58,7 @@ export default function ExamCenterPage() {
     <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* 页头 */}
       <div className="bg-gradient-to-br from-primary via-primary/75 to-primary/40">
-        <div className="max-w-[1400px] mx-auto px-8 py-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 sm:py-8">
           <Link
             href="/evaluation/landing"
             className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-4 transition-colors"
@@ -80,7 +80,7 @@ export default function ExamCenterPage() {
         </div>
       </div>
 
-      <main className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 w-full flex-1">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'all' | 'mine')}>
             <TabsList className="bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm h-11">

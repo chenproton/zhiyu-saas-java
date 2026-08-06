@@ -149,8 +149,8 @@ export function ProjectCard({ project }: { project: AllianceProject }) {
           </p>
           <div className="mt-auto space-y-2.5">
             {project.startDate && (
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <Calendar className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 min-w-0">
+                <Calendar className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">
                   {project.startDate}
                   {project.endDate ? ` 至 ${project.endDate}` : ''}
@@ -239,15 +239,15 @@ export function ExpertCard({ expert }: { expert: AllianceExpert }) {
             {[expert.title, expert.position].filter(Boolean).join(' · ') || '企业专家'}
           </p>
           <div className="mt-3 space-y-1.5 text-xs text-slate-600">
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-2 min-w-0">
               <span className="text-slate-400 shrink-0">企业</span>
-              <span className="text-right truncate">
+              <span className="text-right truncate min-w-0">
                 {expert.organization || expert.enterpriseId || '—'}
               </span>
             </div>
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-2 min-w-0">
               <span className="text-slate-400 shrink-0">行业</span>
-              <span className="text-right truncate">{expert.industry || '—'}</span>
+              <span className="text-right truncate min-w-0">{expert.industry || '—'}</span>
             </div>
             <div className="flex justify-between gap-2">
               <span className="text-slate-400 shrink-0">经验</span>

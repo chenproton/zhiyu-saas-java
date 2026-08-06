@@ -18,5 +18,5 @@ export default function AlliancePublicLayout({ children }: { children: React.Rea
     return <>{children}</>
   }
 
-  return <div className="container mx-auto py-8">{children}</div>
+  return <div className="container mx-auto py-6 sm:py-8 px-4 sm:px-6">{children}</div>
 }

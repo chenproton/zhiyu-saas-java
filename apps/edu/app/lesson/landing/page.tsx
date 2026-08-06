@@ -58,18 +58,24 @@ function CourseCard({ course }: { course: Course; index: number }) {
             </div>
           </div>
         </div>
-        <div className="p-5 flex-1 flex flex-col">
+        <div className="p-4 sm:p-5 flex-1 flex flex-col">
           <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{course.viewCount ?? 0}</div>
+            <div className="bg-slate-50 rounded-xl p-2 sm:p-2.5 text-center border border-slate-100">
+              <div className="text-base sm:text-lg font-bold text-slate-800">
+                {course.viewCount ?? 0}
+              </div>
               <div className="text-[11px] text-slate-400 mt-0.5">浏览次数</div>
             </div>
-            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{course.nodeCount}</div>
+            <div className="bg-slate-50 rounded-xl p-2 sm:p-2.5 text-center border border-slate-100">
+              <div className="text-base sm:text-lg font-bold text-slate-800">
+                {course.nodeCount}
+              </div>
               <div className="text-[11px] text-slate-400 mt-0.5">关联节点</div>
             </div>
-            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{course.resourceCount}</div>
+            <div className="bg-slate-50 rounded-xl p-2 sm:p-2.5 text-center border border-slate-100">
+              <div className="text-base sm:text-lg font-bold text-slate-800">
+                {course.resourceCount}
+              </div>
               <div className="text-[11px] text-slate-400 mt-0.5">关联资源</div>
             </div>
           </div>

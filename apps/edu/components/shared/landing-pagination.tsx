@@ -58,7 +58,7 @@ export function LandingPagination({
   if (totalPages <= 1) return null
 
   const cls = ACCENT_CLASSES[accentColor] || ACCENT_CLASSES.blue
-  const pageBtn = `min-w-[36px] h-9 px-2.5 rounded-xl border text-[13px] flex items-center justify-center transition-all ${cls.hover}`
+  const pageBtn = `min-w-[32px] sm:min-w-[36px] h-9 px-2 sm:px-2.5 rounded-xl border text-[13px] flex items-center justify-center transition-all ${cls.hover}`
   const pageBtnIdle = 'bg-white border-slate-200 text-slate-500'
   const arrowBtn = `w-9 h-9 border border-slate-200 rounded-xl bg-white text-slate-500 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed ${cls.hover}`
 
@@ -78,7 +78,7 @@ export function LandingPagination({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 mt-8">
+    <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-8">
       <button
         className={arrowBtn}
         disabled={currentPage <= 1}
@@ -87,7 +87,7 @@ export function LandingPagination({
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 sm:gap-1.5">
         {pages.map((p, i) =>
           p === '...' ? (
             <span key={`ellipsis-${i}`} className="px-2 text-slate-400">

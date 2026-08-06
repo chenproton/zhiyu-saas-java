@@ -68,12 +68,12 @@ const STAT_GRADIENTS = [
 
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="text-center mb-14">
+    <div className="text-center mb-8 sm:mb-14">
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-primary text-xs font-medium mb-4">
         <Sparkles className="w-3.5 h-3.5" />
         {title}
       </div>
-      <h2 className="text-3xl md:text-4xl font-semibold text-slate-900 mb-3 tracking-tight">
+      <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-slate-900 mb-3 tracking-tight">
         {title}
       </h2>
       <p className="text-slate-500 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
@@ -119,18 +119,18 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
               <p className="text-sm text-slate-300 mt-1">产教融合 · 协同育人 · 互利共赢</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4 mt-7 py-6 border-y border-white/10">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-white/90">—</p>
-              <p className="text-xs text-slate-400 mt-1">在校生</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-7 py-6 border-y border-white/10">
+            <div className="text-center min-w-0">
+              <p className="text-xl sm:text-3xl font-bold text-white/90 truncate">—</p>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">在校生</p>
             </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-white/90">—</p>
-              <p className="text-xs text-slate-400 mt-1">教师</p>
+            <div className="text-center min-w-0">
+              <p className="text-xl sm:text-3xl font-bold text-white/90 truncate">—</p>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">教师</p>
             </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-slate-300">—</p>
-              <p className="text-xs text-slate-400 mt-1">专业</p>
+            <div className="text-center min-w-0">
+              <p className="text-xl sm:text-3xl font-bold text-slate-300 truncate">—</p>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">专业</p>
             </div>
           </div>
         </CardContent>
@@ -171,22 +171,28 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
             )}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4 mt-7 py-6 border-y border-white/10">
-          <div className="text-center">
-            <p className="text-3xl font-bold text-white/90">
-              {scale.studentCount?.toLocaleString?.() ?? '—'}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">在校生</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-7 py-6 border-y border-white/10">
+            <div className="text-center min-w-0">
+              <p className="text-xl sm:text-3xl font-bold text-white/90 truncate">
+                {scale.studentCount?.toLocaleString?.() ?? '—'}
+              </p>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">在校生</p>
+            </div>
+            <div className="text-center min-w-0">
+              <p className="text-xl sm:text-3xl font-bold text-white/90 truncate">
+                {scale.teacherCount ?? '—'}
+              </p>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">教师</p>
+            </div>
+            <div className="text-center min-w-0">
+              <p className="text-xl sm:text-3xl font-bold text-slate-300 truncate">
+                {scale.majorCount ?? collegeCount}
+              </p>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
+                {scale.majorCount ? '专业' : '二级学院'}
+              </p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-white/90">{scale.teacherCount ?? '—'}</p>
-            <p className="text-xs text-slate-400 mt-1">教师</p>
-          </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-slate-300">{scale.majorCount ?? collegeCount}</p>
-            <p className="text-xs text-slate-400 mt-1">{scale.majorCount ? '专业' : '二级学院'}</p>
-          </div>
-        </div>
         {schoolInfo.description && (
           <p className="text-sm text-slate-300 mt-5 leading-relaxed line-clamp-3">
             {schoolInfo.description}
@@ -366,7 +372,7 @@ export default function AllianceLandingPage() {
         {data.experts.length === 0 ? (
           <LandingEmpty title="暂无专家资源" />
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
             {data.experts.map((expert) => (
               <ExpertCard key={expert.id} expert={expert} />
             ))}
@@ -456,7 +462,7 @@ export default function AllianceLandingPage() {
           </p>
           <Button
             asChild
-            className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/15 hover:-translate-y-0.5"
+            className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/15 hover:-translate-y-0.5 w-full sm:w-auto"
           >
             <Link href="/portal/alliance/brands">探索更多品牌</Link>
           </Button>

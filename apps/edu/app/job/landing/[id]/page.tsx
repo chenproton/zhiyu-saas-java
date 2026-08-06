@@ -169,7 +169,7 @@ export default function JobStudentDetailPage() {
     return (
       <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
         <Skeleton className="h-[320px] w-full" />
-        <div className="max-w-[1400px] mx-auto px-8 py-8 w-full flex-1">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-8 w-full flex-1">
           <Skeleton className="h-[400px] w-full rounded-2xl" />
         </div>
         <Footer className="mt-auto" />
@@ -255,7 +255,7 @@ export default function JobStudentDetailPage() {
         onStartLearning={handleStartLearning}
       />
 
-      <main className="flex-1 max-w-[1400px] mx-auto px-8 py-6 w-full">
+      <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-8 py-6 w-full">
         <StatsBox
           position={position}
           scenarioCount={scenarioCount}
@@ -268,7 +268,7 @@ export default function JobStudentDetailPage() {
           className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] overflow-hidden"
         >
           {/* Tabs */}
-          <div className="flex gap-8 border-b border-[#f5f5f4] px-6 overflow-x-auto">
+          <div className="flex gap-4 sm:gap-8 border-b border-[#f5f5f4] px-4 sm:px-6 overflow-x-auto">
             {TABS.map((t) => (
               <button
                 key={t.value}
@@ -288,7 +288,7 @@ export default function JobStudentDetailPage() {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6 min-h-[500px]">{renderTabContent()}</div>
+          <div className="p-4 sm:p-6 min-h-[500px]">{renderTabContent()}</div>
         </div>
       </main>
 

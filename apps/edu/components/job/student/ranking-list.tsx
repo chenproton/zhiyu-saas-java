@@ -98,7 +98,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
                 {formatCount(count)}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] overflow-hidden">
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
               <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-primary whitespace-nowrap font-medium border border-primary/10 shrink-0">
                 {categoryFor(pos)}
               </span>

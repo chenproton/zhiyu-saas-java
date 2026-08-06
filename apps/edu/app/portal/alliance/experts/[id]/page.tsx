@@ -52,15 +52,15 @@ export default function AlliancePublicExpertDetailPage() {
             className="h-20 w-20 rounded-full object-cover"
           />
         )}
-        <div className="flex-1">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">{expert.name}</h1>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold break-words">{expert.name}</h1>
               <p className="text-muted-foreground text-sm mt-1">
                 {[expert.title, expert.position].filter(Boolean).join(' · ') || ''}
               </p>
             </div>
-            <Badge variant="outline">
+            <Badge variant="outline" className="shrink-0">
               {expert.rating
                 ? allianceLabel('expertRating', expert.rating)
                 : allianceLabel('expertStatus', expert.status)}

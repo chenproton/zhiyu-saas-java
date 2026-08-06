@@ -8,7 +8,7 @@ export function Footer({ className }: { className?: string }) {
     <footer className={cn('relative mt-20 bg-[#141a2e]', className)}>
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-primary" />
 
-      <div className="max-w-6xl mx-auto px-10 pt-12 pb-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-10 pt-12 pb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="space-y-3">
             <h3 className="text-[15px] font-semibold text-white">场景化数智教学服务平台</h3>

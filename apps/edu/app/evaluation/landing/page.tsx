@@ -479,7 +479,7 @@ export default function LandingHomePage() {
       listRef={listRef}
     >
       {loading ? (
-        <LandingSkeleton count={8} height="h-[340px]" />
+        <LandingSkeleton count={8} height="h-[280px] sm:h-[340px]" />
       ) : filteredBanks.length === 0 && filteredExams.length === 0 ? (
         <LandingEmpty title="暂无匹配的资源" hint="试试调整搜索关键词" />
       ) : (

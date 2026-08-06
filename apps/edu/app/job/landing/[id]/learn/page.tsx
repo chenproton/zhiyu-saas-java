@@ -85,7 +85,7 @@ export default function JobStudentLearnPage() {
     return (
       <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
         <Skeleton className="h-[320px] w-full" />
-        <div className="max-w-[1400px] mx-auto px-8 py-8 w-full flex-1">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-8 w-full flex-1">
           <Skeleton className="h-[400px] w-full rounded-2xl" />
         </div>
         <Footer className="mt-auto" />
@@ -110,7 +110,7 @@ export default function JobStudentLearnPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
-      <main className="flex-1 max-w-[1400px] mx-auto px-8 py-6 w-full">
+      <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-8 py-6 w-full">
         <Link
           replace
           href={`/job/landing/${id}`}
@@ -119,7 +119,7 @@ export default function JobStudentLearnPage() {
           <ArrowLeft className="w-4 h-4" /> 返回岗位详情
         </Link>
 
-        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] p-6 min-h-[500px]">
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] p-4 sm:p-6 min-h-[500px]">
           {user ? (
             <LearningPath roads={roads} scenarios={scenarios} tasks={scenarioTasks} />
           ) : (

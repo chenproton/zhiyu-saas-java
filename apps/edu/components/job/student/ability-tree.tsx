@@ -113,7 +113,7 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
                           {info?.name || ab.abilityName || ab.domain || '未命名能力'}
                         </span>
                         {(info?.attributes?.length ?? 0) > 0 && (
-                          <div className="flex flex-wrap gap-1 shrink-0">
+                          <div className="flex flex-wrap gap-1 min-w-0 max-w-full">
                             {info.attributes.map((attr) => {
                               const colors = ATTRIBUTE_COLORS[attr] || ['#64748b', '#94a3b8']
                               return (

@@ -200,7 +200,7 @@ export default function CourseDetailPage() {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8fafc]">
         <Skeleton className="h-[320px] w-full" />
-        <div className="max-w-[1400px] mx-auto px-6 py-6 w-full flex-1">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full flex-1">
           <Skeleton className="h-[500px] w-full rounded-xl" />
         </div>
         <Footer className="mt-auto" />
@@ -555,29 +555,29 @@ export default function CourseDetailPage() {
       }}
     >
       <div className="bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="max-w-[1400px] mx-auto px-6 py-5">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
             <button
               onClick={() => router.back()}
-              className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+              className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer shrink-0"
             >
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary/5 hover:text-primary transition-colors">
                 ←
               </span>{' '}
               返回上一页
             </button>
-            <span className="text-slate-300">/</span>
-            <Link href="/lesson/landing" className="hover:text-primary transition-colors">
+            <span className="text-slate-300 shrink-0">/</span>
+            <Link href="/lesson/landing" className="hover:text-primary transition-colors hidden sm:inline">
               课程列表
             </Link>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-800 font-medium truncate">{course.name}</span>
+            <span className="text-slate-300 shrink-0 hidden sm:inline">/</span>
+            <span className="text-slate-800 font-medium truncate min-w-0">{course.name}</span>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-6 items-stretch">
             <div className="flex-1 flex">
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] w-full">
-                <div className="flex flex-col sm:flex-row gap-6 p-6">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-6">
                   <div
                     className="w-full sm:w-[280px] h-[190px] rounded-2xl bg-cover bg-center flex items-center justify-center shrink-0 self-stretch shadow-[0_12px_40px_rgba(0,0,0,0.15)] relative overflow-hidden"
                     style={coverStyle}
@@ -711,15 +711,15 @@ export default function CourseDetailPage() {
         </div>
       </div>
 
-      <main className="flex-1 max-w-[1400px] mx-auto px-6 py-6 w-full">
+      <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full">
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-          <div className="flex border-b border-slate-100 px-6 overflow-x-auto">
+          <div className="flex flex-wrap border-b border-slate-100 px-4 sm:px-6">
             {tabs.map((t) => (
               <button
                 key={t.value}
                 onClick={() => setActiveTab(t.value)}
                 className={`
-                  py-4 px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
+                  py-3.5 sm:py-4 px-3 sm:px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
                   ${effectiveTab === t.value ? 'text-primary font-semibold' : 'text-slate-500 hover:text-primary hover:bg-primary/5'}
                 `}
               >
@@ -755,7 +755,7 @@ export default function CourseDetailPage() {
             ))}
           </div>
 
-          <div className="p-6 min-h-[500px]">{renderTabContent()}</div>
+          <div className="p-4 sm:p-6 min-h-[500px]">{renderTabContent()}</div>
         </div>
       </main>
 
