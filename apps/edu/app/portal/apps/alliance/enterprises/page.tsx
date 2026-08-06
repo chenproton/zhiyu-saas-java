@@ -28,11 +28,13 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceEnterprise } from '@/lib/types'
 
 export default function AllianceEnterprisesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return { enterprises: [], projects: [], achievements: [], agreements: [] }
@@ -59,11 +61,11 @@ export default function AllianceEnterprisesPage() {
 
   return (
     <PortalCrudPage
-      title="合作企业管理"
-      description="管理全部合作企业档案，包含基本信息、合作协议、合作评级等。"
-      entityLabel="合作企业"
-      searchPlaceholder="搜索企业名称或行业..."
-      createButtonLabel="新建企业"
+      title={t('合作企业管理')}
+      description={t('管理全部合作企业档案，包含基本信息、合作协议、合作评级等。')}
+      entityLabel={t('合作企业')}
+      searchPlaceholder={t('搜索企业名称或行业...')}
+      createButtonLabel={t('新建企业')}
       items={enterprises ?? []}
       loading={loading}
       error={error?.message ?? null}
@@ -78,27 +80,27 @@ export default function AllianceEnterprisesPage() {
       }
       importConfig={{
         importType: 'alliance-enterprises',
-        entityLabel: '合作企业',
-        templateFileName: '合作企业批量导入模板.xlsx',
+        entityLabel: t('合作企业'),
+        templateFileName: t('合作企业批量导入模板.xlsx'),
       }}
       createHref="/portal/apps/alliance/enterprises/new"
       colSpan={14}
       renderTableHeader={() => (
         <>
-          <TableHead>企业名称</TableHead>
-          <TableHead>前台展示</TableHead>
-          <TableHead>类型</TableHead>
-          <TableHead>行业</TableHead>
-          <TableHead>地址</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>评级</TableHead>
-          <TableHead>合作协议</TableHead>
-          <TableHead>合作项目</TableHead>
-          <TableHead>合作成果</TableHead>
-          <TableHead>创建人</TableHead>
-          <TableHead>创建时间</TableHead>
-          <TableHead>更新时间</TableHead>
-          <TableHead>操作</TableHead>
+          <TableHead>{t('企业名称')}</TableHead>
+          <TableHead>{t('前台展示')}</TableHead>
+          <TableHead>{t('类型')}</TableHead>
+          <TableHead>{t('行业')}</TableHead>
+          <TableHead>{t('地址')}</TableHead>
+          <TableHead>{t('状态')}</TableHead>
+          <TableHead>{t('评级')}</TableHead>
+          <TableHead>{t('合作协议')}</TableHead>
+          <TableHead>{t('合作项目')}</TableHead>
+          <TableHead>{t('合作成果')}</TableHead>
+          <TableHead>{t('创建人')}</TableHead>
+          <TableHead>{t('创建时间')}</TableHead>
+          <TableHead>{t('更新时间')}</TableHead>
+          <TableHead>{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(enterprise: any, actions: any) => (
@@ -153,18 +155,18 @@ export default function AllianceEnterprisesPage() {
             <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}`}>
               <Button variant="ghost" size="sm">
                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                查看
+                {t('查看')}
               </Button>
             </Link>
             <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}/edit`}>
               <Button variant="ghost" size="sm">
                 <Pencil className="h-3.5 w-3.5 mr-1" />
-                编辑
+                {t('编辑')}
               </Button>
             </Link>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
               <Trash2 className="h-3.5 w-3.5 mr-1" />
-              删除
+              {t('删除')}
             </Button>
           </TableRowActions>
         </>
@@ -196,13 +198,13 @@ export default function AllianceEnterprisesPage() {
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormFieldRow label="企业名称" required>
+            <FormFieldRow label={t('企业名称')} required>
               <Input
                 value={item.name || ''}
                 onChange={(e: any) => setItem({ ...item, name: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="企业类型">
+            <FormFieldRow label={t('企业类型')}>
               <Select
                 value={item.enterpriseType || 'cooperation'}
                 onValueChange={(v: any) => setItem({ ...item, enterpriseType: v })}
@@ -211,24 +213,24 @@ export default function AllianceEnterprisesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cooperation">合作企业</SelectItem>
-                  <SelectItem value="third-party">第三方雇主企业</SelectItem>
+                  <SelectItem value="cooperation">{t('合作企业')}</SelectItem>
+                  <SelectItem value="third-party">{t('第三方雇主企业')}</SelectItem>
                 </SelectContent>
               </Select>
             </FormFieldRow>
-            <FormFieldRow label="所属行业">
+            <FormFieldRow label={t('所属行业')}>
               <Input
                 value={item.industry || ''}
                 onChange={(e: any) => setItem({ ...item, industry: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="所在地区">
+            <FormFieldRow label={t('所在地区')}>
               <Input
                 value={item.region || ''}
                 onChange={(e: any) => setItem({ ...item, region: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="合作状态">
+            <FormFieldRow label={t('合作状态')}>
               <Select
                 value={item.status || 'negotiating'}
                 onValueChange={(v: any) => setItem({ ...item, status: v })}
@@ -237,14 +239,14 @@ export default function AllianceEnterprisesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="negotiating">洽谈中</SelectItem>
-                  <SelectItem value="active">合作中</SelectItem>
-                  <SelectItem value="paused">已暂停</SelectItem>
-                  <SelectItem value="terminated">已终止</SelectItem>
+                  <SelectItem value="negotiating">{t('洽谈中')}</SelectItem>
+                  <SelectItem value="active">{t('合作中')}</SelectItem>
+                  <SelectItem value="paused">{t('已暂停')}</SelectItem>
+                  <SelectItem value="terminated">{t('已终止')}</SelectItem>
                 </SelectContent>
               </Select>
             </FormFieldRow>
-            <FormFieldRow label="合作评级">
+            <FormFieldRow label={t('合作评级')}>
               <Select
                 value={item.rating || 'general'}
                 onValueChange={(v: any) => setItem({ ...item, rating: v })}
@@ -253,38 +255,38 @@ export default function AllianceEnterprisesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="strategic">战略合作</SelectItem>
-                  <SelectItem value="deep">深度合作</SelectItem>
-                  <SelectItem value="general">一般合作</SelectItem>
+                  <SelectItem value="strategic">{t('战略合作')}</SelectItem>
+                  <SelectItem value="deep">{t('深度合作')}</SelectItem>
+                  <SelectItem value="general">{t('一般合作')}</SelectItem>
                 </SelectContent>
               </Select>
             </FormFieldRow>
-            <FormFieldRow label="联系人">
+            <FormFieldRow label={t('联系人')}>
               <Input
                 value={item.contactPerson || ''}
                 onChange={(e: any) => setItem({ ...item, contactPerson: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="联系电话">
+            <FormFieldRow label={t('联系电话')}>
               <Input
                 value={item.contactPhone || ''}
                 onChange={(e: any) => setItem({ ...item, contactPhone: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="联系邮箱">
+            <FormFieldRow label={t('联系邮箱')}>
               <Input
                 value={item.contactEmail || ''}
                 onChange={(e: any) => setItem({ ...item, contactEmail: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="Logo URL">
+            <FormFieldRow label={t('Logo URL')}>
               <Input
                 value={item.logoUrl || ''}
                 onChange={(e: any) => setItem({ ...item, logoUrl: e.target.value })}
                 placeholder="https://..."
               />
             </FormFieldRow>
-            <FormFieldRow label="企业地址">
+            <FormFieldRow label={t('企业地址')}>
               <Input
                 value={item.address || ''}
                 onChange={(e: any) => setItem({ ...item, address: e.target.value })}
@@ -295,10 +297,10 @@ export default function AllianceEnterprisesPage() {
                 checked={item.isPublic || false}
                 onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })}
               />
-              <Label>公开显示</Label>
+              <Label>{t('公开显示')}</Label>
             </div>
           </div>
-          <FormFieldRow label="企业描述">
+          <FormFieldRow label={t('企业描述')}>
             <Textarea
               value={item.description || ''}
               onChange={(e: any) => setItem({ ...item, description: e.target.value })}
@@ -308,9 +310,7 @@ export default function AllianceEnterprisesPage() {
         </div>
       )}
       getDeleteDescription={(item: any) => (
-        <>
-          确定要删除合作企业 <b>{item.name}</b> 吗？此操作不可撤销。
-        </>
+        <>{t('确定要删除合作企业 {name} 吗？此操作不可撤销。', { name: item.name })}</>
       )}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) {
@@ -318,12 +318,12 @@ export default function AllianceEnterprisesPage() {
         } else {
           await allianceEnterpriseApi.create(item)
         }
-        toast({ title: `企业已${isEdit ? '更新' : '创建'}` })
+        toast({ title: t('企业已{action}', { action: isEdit ? t('更新') : t('创建') }) })
         await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceEnterpriseApi.delete(item.id)
-        toast({ title: '企业已删除' })
+        toast({ title: t('企业已删除') })
         await refresh()
       }}
       onToggleEnabled={async (item: any) => {

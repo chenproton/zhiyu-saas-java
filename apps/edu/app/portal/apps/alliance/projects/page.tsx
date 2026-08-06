@@ -23,11 +23,13 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceProjectMilestone } from '@/lib/types'
 
 export default function AllianceProjectsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return { projects: [], enterprises: [], milestones: {} }
@@ -55,11 +57,11 @@ export default function AllianceProjectsPage() {
 
   return (
     <PortalCrudPage
-      title="合作项目管理"
-      description="管理校企合作项目，追踪项目阶段与里程碑。"
-      entityLabel="合作项目"
-      searchPlaceholder="搜索项目名称..."
-      createButtonLabel="新建项目"
+      title={t('合作项目管理')}
+      description={t('管理校企合作项目，追踪项目阶段与里程碑。')}
+      entityLabel={t('合作项目')}
+      searchPlaceholder={t('搜索项目名称...')}
+      createButtonLabel={t('新建项目')}
       items={projects ?? []}
       loading={loading}
       error={error?.message ?? null}
@@ -69,22 +71,22 @@ export default function AllianceProjectsPage() {
       }
       importConfig={{
         importType: 'alliance-projects',
-        entityLabel: '合作项目',
-        templateFileName: '合作项目批量导入模板.xlsx',
+        entityLabel: t('合作项目'),
+        templateFileName: t('合作项目批量导入模板.xlsx'),
       }}
       createHref="/portal/apps/alliance/projects/new"
       colSpan={9}
       renderTableHeader={() => (
         <>
-          <TableHead>项目名称</TableHead>
-          <TableHead>前台展示</TableHead>
-          <TableHead>合作企业</TableHead>
-          <TableHead>合作类型</TableHead>
-          <TableHead>起止时间</TableHead>
-          <TableHead>里程碑进度</TableHead>
-          <TableHead>阶段</TableHead>
-          <TableHead>更新时间</TableHead>
-          <TableHead>操作</TableHead>
+          <TableHead>{t('项目名称')}</TableHead>
+          <TableHead>{t('前台展示')}</TableHead>
+          <TableHead>{t('合作企业')}</TableHead>
+          <TableHead>{t('合作类型')}</TableHead>
+          <TableHead>{t('起止时间')}</TableHead>
+          <TableHead>{t('里程碑进度')}</TableHead>
+          <TableHead>{t('阶段')}</TableHead>
+          <TableHead>{t('更新时间')}</TableHead>
+          <TableHead>{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(p: any, actions: any) => {
@@ -121,18 +123,18 @@ export default function AllianceProjectsPage() {
               <Link href={`/portal/apps/alliance/projects/${p.id}`}>
                 <Button variant="ghost" size="sm">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                  查看
+                  {t('查看')}
                 </Button>
               </Link>
               <Link href={`/portal/apps/alliance/projects/${p.id}/edit`}>
                 <Button variant="ghost" size="sm">
                   <Pencil className="h-3.5 w-3.5 mr-1" />
-                  编辑
+                  {t('编辑')}
                 </Button>
               </Link>
               <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                删除
+                {t('删除')}
               </Button>
             </TableRowActions>
           </>
@@ -151,13 +153,13 @@ export default function AllianceProjectsPage() {
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <FormFieldRow label="项目名称" required>
+          <FormFieldRow label={t('项目名称')} required>
             <Input
               value={item.name || ''}
               onChange={(e: any) => setItem({ ...item, name: e.target.value })}
             />
           </FormFieldRow>
-          <FormFieldRow label="阶段">
+          <FormFieldRow label={t('阶段')}>
             <Select
               value={item.phase || ''}
               onValueChange={(v: any) => setItem({ ...item, phase: v })}
@@ -177,14 +179,14 @@ export default function AllianceProjectsPage() {
             </Select>
           </FormFieldRow>
           <FormFieldGrid>
-            <FormFieldRow label="开始日期">
+            <FormFieldRow label={t('开始日期')}>
               <Input
                 type="date"
                 value={item.startDate || ''}
                 onChange={(e: any) => setItem({ ...item, startDate: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="结束日期">
+            <FormFieldRow label={t('结束日期')}>
               <Input
                 type="date"
                 value={item.endDate || ''}
@@ -192,7 +194,7 @@ export default function AllianceProjectsPage() {
               />
             </FormFieldRow>
           </FormFieldGrid>
-          <FormFieldRow label="描述">
+          <FormFieldRow label={t('描述')}>
             <Textarea
               value={item.description || ''}
               onChange={(e: any) => setItem({ ...item, description: e.target.value })}
@@ -202,24 +204,22 @@ export default function AllianceProjectsPage() {
         </div>
       )}
       getDeleteDescription={(item: any) => (
-        <>
-          确定要删除项目 <b>{item.name}</b> 吗？
-        </>
+        <>{t('确定要删除项目 {name} 吗？', { name: item.name })}</>
       )}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) await allianceProjectApi.update(item.id, item)
         else await allianceProjectApi.create(item)
-        toast({ title: `项目已${isEdit ? '更新' : '创建'}` })
+        toast({ title: t('项目已{action}', { action: isEdit ? t('更新') : t('创建') }) })
         await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceProjectApi.delete(item.id)
-        toast({ title: '已删除' })
+        toast({ title: t('已删除') })
         await refresh()
       }}
       onToggleEnabled={async (item: any) => {
         await allianceProjectApi.update(item.id, { isPublic: !item.isPublic })
-        toast({ title: `已${item.isPublic ? '取消' : '设为'}前台展示` })
+        toast({ title: t('已{action}前台展示', { action: item.isPublic ? t('取消') : t('设为') }) })
         await refresh()
       }}
     />

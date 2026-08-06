@@ -31,6 +31,7 @@ import {
 } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { Link2, Plus, Loader2 } from 'lucide-react'
 import type {
@@ -44,6 +45,7 @@ export default function AllianceEnterpriseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const [enterprise, setEnterprise] = useState<AllianceEnterprise | null>(null)
   const [agreements, setAgreements] = useState<AllianceAgreement[]>([])
   const [allAgreements, setAllAgreements] = useState<AllianceAgreement[]>([])
@@ -84,7 +86,7 @@ export default function AllianceEnterpriseDetailPage() {
             [],
         )
       })
-      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
   }
   useEffect(() => {
@@ -100,12 +102,12 @@ export default function AllianceEnterpriseDetailPage() {
         const ids = [...(agreement.enterpriseIds || []), id]
         await allianceAgreementApi.update(aid, { ...agreement, enterpriseIds: ids })
       }
-      toast({ title: `已关联 ${linkSelected.length} 份协议` })
+      toast({ title: t('已关联 {count} 份协议', { count: linkSelected.length }) })
       setLinkDialog(false)
       setLinkSelected([])
       loadData()
     } catch (e: any) {
-      toast({ title: '关联失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('关联失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSavingA(false)
     }
@@ -113,18 +115,18 @@ export default function AllianceEnterpriseDetailPage() {
 
   const createAgreement = async () => {
     if (!aForm.name) {
-      toast({ title: '请填写协议名称', variant: 'destructive' })
+      toast({ title: t('请填写协议名称'), variant: 'destructive' })
       return
     }
     setSavingA(true)
     try {
       await allianceAgreementApi.create({ ...aForm, enterpriseIds: [id] })
-      toast({ title: '协议已创建并关联' })
+      toast({ title: t('协议已创建并关联') })
       setNewDialog(false)
       setAForm({ name: '', type: '', startDate: '', endDate: '', status: 'draft', content: '' })
       loadData()
     } catch (e: any) {
-      toast({ title: '创建失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('创建失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSavingA(false)
     }
@@ -138,10 +140,10 @@ export default function AllianceEnterpriseDetailPage() {
         ...agreement,
         enterpriseIds: (agreement.enterpriseIds || []).filter((x) => x !== id),
       })
-      toast({ title: '已取消关联' })
+      toast({ title: t('已取消关联') })
       loadData()
     } catch (e: any) {
-      toast({ title: '操作失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('操作失败'), description: e.message, variant: 'destructive' })
     }
   }
 
@@ -161,73 +163,73 @@ export default function AllianceEnterpriseDetailPage() {
   const tabs = [
     {
       key: 'info',
-      label: '基本信息',
+      label: t('基本信息'),
       content: (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>基础信息</CardTitle>
+              <CardTitle>{t('基础信息')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">企业类型：</span>
+                <span className="text-muted-foreground">{t('企业类型：')}</span>
                 {allianceLabel('enterpriseType', enterprise?.enterpriseType)}
               </p>
               <p>
-                <span className="text-muted-foreground">所属行业：</span>
+                <span className="text-muted-foreground">{t('所属行业：')}</span>
                 {enterprise?.industry || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">所在地区：</span>
+                <span className="text-muted-foreground">{t('所在地区：')}</span>
                 {enterprise?.region || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">统一社会信用代码：</span>
+                <span className="text-muted-foreground">{t('统一社会信用代码：')}</span>
                 {(enterprise as any)?.unifiedSocialCreditCode || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">成立年份：</span>
+                <span className="text-muted-foreground">{t('成立年份：')}</span>
                 {(enterprise as any)?.establishedYear || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">企业规模：</span>
+                <span className="text-muted-foreground">{t('企业规模：')}</span>
                 {(enterprise as any)?.employeeCount
-                  ? `${(enterprise as any).employeeCount}人`
+                  ? t('{count}人', { count: (enterprise as any).employeeCount })
                   : '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">合作评级：</span>
+                <span className="text-muted-foreground">{t('合作评级：')}</span>
                 {allianceLabel('enterpriseRating', enterprise?.rating)}
               </p>
               <p>
-                <span className="text-muted-foreground">关联二级学院：</span>
+                <span className="text-muted-foreground">{t('关联二级学院：')}</span>
                 {((enterprise as any)?.secondaryColleges || []).join('、') || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">前台展示：</span>
-                {enterprise?.isPublic ? '是' : '否'}
+                <span className="text-muted-foreground">{t('前台展示：')}</span>
+                {enterprise?.isPublic ? t('是') : t('否')}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>联系信息</CardTitle>
+              <CardTitle>{t('联系信息')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">联系人：</span>
+                <span className="text-muted-foreground">{t('联系人：')}</span>
                 {enterprise?.contactPerson || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">电话：</span>
+                <span className="text-muted-foreground">{t('电话：')}</span>
                 {enterprise?.contactPhone || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">邮箱：</span>
+                <span className="text-muted-foreground">{t('邮箱：')}</span>
                 {enterprise?.contactEmail || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">地址：</span>
+                <span className="text-muted-foreground">{t('地址：')}</span>
                 {enterprise?.address || '-'}
               </p>
             </CardContent>
@@ -235,7 +237,7 @@ export default function AllianceEnterpriseDetailPage() {
           {(enterprise as any)?.businessLicensePhotos?.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>营业执照</CardTitle>
+                <CardTitle>{t('营业执照')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {((enterprise as any).businessLicensePhotos || []).map((u: string, i: number) => (
@@ -243,7 +245,7 @@ export default function AllianceEnterpriseDetailPage() {
                   <img
                     key={i}
                     src={u}
-                    alt={`营业执照 ${i + 1}`}
+                    alt={t('营业执照 {n}', { n: i + 1 })}
                     className="w-24 h-16 object-cover rounded border"
                   />
                 ))}
@@ -253,7 +255,7 @@ export default function AllianceEnterpriseDetailPage() {
           {(enterprise as any)?.intellectualPropertyPhotos?.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>企业知识产权</CardTitle>
+                <CardTitle>{t('企业知识产权')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {((enterprise as any).intellectualPropertyPhotos || []).map(
@@ -262,7 +264,7 @@ export default function AllianceEnterpriseDetailPage() {
                     <img
                       key={i}
                       src={u}
-                      alt={`知识产权 ${i + 1}`}
+                      alt={t('知识产权 {n}', { n: i + 1 })}
                       className="w-24 h-16 object-cover rounded border"
                     />
                   ),
@@ -273,7 +275,7 @@ export default function AllianceEnterpriseDetailPage() {
           {(enterprise as any)?.qualificationPhotos?.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>企业荣誉资质</CardTitle>
+                <CardTitle>{t('企业荣誉资质')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {((enterprise as any).qualificationPhotos || []).map((u: string, i: number) => (
@@ -281,7 +283,7 @@ export default function AllianceEnterpriseDetailPage() {
                   <img
                     key={i}
                     src={u}
-                    alt={`荣誉资质 ${i + 1}`}
+                    alt={t('荣誉资质 {n}', { n: i + 1 })}
                     className="w-24 h-16 object-cover rounded border"
                   />
                 ))}
@@ -291,7 +293,7 @@ export default function AllianceEnterpriseDetailPage() {
           {enterprise?.description && (
             <Card className="col-span-2">
               <CardHeader>
-                <CardTitle>企业简介</CardTitle>
+                <CardTitle>{t('企业简介')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{enterprise.description}</p>
@@ -303,7 +305,7 @@ export default function AllianceEnterpriseDetailPage() {
     },
     {
       key: 'agreements',
-      label: '合作协议',
+      label: t('合作协议'),
       badge: agreements.length,
       content: (
         <div className="space-y-4">
@@ -318,29 +320,29 @@ export default function AllianceEnterpriseDetailPage() {
               disabled={availableForLink.length === 0}
             >
               <Link2 className="h-4 w-4 mr-1" />
-              关联已有协议
+              {t('关联已有协议')}
             </Button>
             <Button size="sm" onClick={() => setNewDialog(true)}>
               <Plus className="h-4 w-4 mr-1" />
-              新增协议
+              {t('新增协议')}
             </Button>
           </div>
           <div className="rounded-md border overflow-x-auto">
             <table className="w-full text-sm min-w-[700px]">
               <thead className="bg-muted/50 border-b">
                 <tr>
-                  <TableHead>协议名称</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>起止日期</TableHead>
-                  <TableHead>操作</TableHead>
+                  <TableHead>{t('协议名称')}</TableHead>
+                  <TableHead>{t('类型')}</TableHead>
+                  <TableHead>{t('状态')}</TableHead>
+                  <TableHead>{t('起止日期')}</TableHead>
+                  <TableHead>{t('操作')}</TableHead>
                 </tr>
               </thead>
               <tbody>
                 {agreements.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                      暂无合作协议，可点击右上角关联或新增
+                      {t('暂无合作协议，可点击右上角关联或新增')}
                     </td>
                   </tr>
                 ) : (
@@ -359,7 +361,7 @@ export default function AllianceEnterpriseDetailPage() {
                           className="text-red-600"
                           onClick={() => unlinkAgreement(a.id)}
                         >
-                          取消关联
+                          {t('取消关联')}
                         </Button>
                       </TableCell>
                     </tr>
@@ -373,23 +375,23 @@ export default function AllianceEnterpriseDetailPage() {
     },
     {
       key: 'projects',
-      label: '合作项目',
+      label: t('合作项目'),
       badge: projects.length,
       content: (
         <div className="rounded-md border overflow-x-auto">
           <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <TableHead>项目名称</TableHead>
-                <TableHead>阶段</TableHead>
-                <TableHead>开始日期</TableHead>
+                <TableHead>{t('项目名称')}</TableHead>
+                <TableHead>{t('阶段')}</TableHead>
+                <TableHead>{t('开始日期')}</TableHead>
               </tr>
             </thead>
             <tbody>
               {projects.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="text-center py-8 text-muted-foreground">
-                    暂无合作项目
+                    {t('暂无合作项目')}
                   </td>
                 </tr>
               ) : (
@@ -408,23 +410,23 @@ export default function AllianceEnterpriseDetailPage() {
     },
     {
       key: 'achievements',
-      label: '合作成果',
+      label: t('合作成果'),
       badge: achievements.length,
       content: (
         <div className="rounded-md border overflow-x-auto">
           <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <TableHead>成果名称</TableHead>
-                <TableHead>类型</TableHead>
-                <TableHead>状态</TableHead>
+                <TableHead>{t('成果名称')}</TableHead>
+                <TableHead>{t('类型')}</TableHead>
+                <TableHead>{t('状态')}</TableHead>
               </tr>
             </thead>
             <tbody>
               {achievements.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="text-center py-8 text-muted-foreground">
-                    暂无合作成果
+                    {t('暂无合作成果')}
                   </td>
                 </tr>
               ) : (
@@ -465,7 +467,7 @@ export default function AllianceEnterpriseDetailPage() {
       <Dialog open={linkDialog} onOpenChange={(o) => !o && setLinkDialog(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>关联已有协议</DialogTitle>
+            <DialogTitle>{t('关联已有协议')}</DialogTitle>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto space-y-2">
             {availableForLink.map((a) => (
@@ -484,22 +486,24 @@ export default function AllianceEnterpriseDetailPage() {
                 <div className="flex-1">
                   <p className="text-sm font-medium">{a.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {a.type || '未分类'} · {allianceLabel('agreementStatus', a.status)}
+                    {a.type || t('未分类')} · {allianceLabel('agreementStatus', a.status)}
                   </p>
                 </div>
               </label>
             ))}
             {availableForLink.length === 0 && (
-              <p className="text-center py-6 text-sm text-muted-foreground">暂无可关联的协议</p>
+              <p className="text-center py-6 text-sm text-muted-foreground">
+                {t('暂无可关联的协议')}
+              </p>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setLinkDialog(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={saveLink} disabled={savingA || linkSelected.length === 0}>
-              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}关联 (
-              {linkSelected.length})
+              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {t('关联 ({count})', { count: linkSelected.length })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -509,42 +513,42 @@ export default function AllianceEnterpriseDetailPage() {
       <Dialog open={newDialog} onOpenChange={(o) => !o && setNewDialog(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新增协议（自动关联当前企业）</DialogTitle>
+            <DialogTitle>{t('新增协议（自动关联当前企业）')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid gap-2">
-              <Label>协议名称 *</Label>
+              <Label>{t('协议名称 *')}</Label>
               <Input
                 value={aForm.name}
                 onChange={(e) => setAForm({ ...aForm, name: e.target.value })}
               />
             </div>
             <div className="grid gap-2">
-              <Label>协议类型</Label>
+              <Label>{t('协议类型')}</Label>
               <Input
                 value={aForm.type}
                 onChange={(e) => setAForm({ ...aForm, type: e.target.value })}
-                placeholder="如：战略合作协议"
+                placeholder={t('如：战略合作协议')}
               />
             </div>
             <div className="grid gap-2">
-              <Label>协议状态</Label>
+              <Label>{t('协议状态')}</Label>
               <Select value={aForm.status} onValueChange={(v) => setAForm({ ...aForm, status: v })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="draft">草稿</SelectItem>
-                  <SelectItem value="active">生效中</SelectItem>
-                  <SelectItem value="expired">已失效</SelectItem>
-                  <SelectItem value="renewed">已续签</SelectItem>
-                  <SelectItem value="terminated">已终止</SelectItem>
+                  <SelectItem value="draft">{t('草稿')}</SelectItem>
+                  <SelectItem value="active">{t('生效中')}</SelectItem>
+                  <SelectItem value="expired">{t('已失效')}</SelectItem>
+                  <SelectItem value="renewed">{t('已续签')}</SelectItem>
+                  <SelectItem value="terminated">{t('已终止')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>开始日期</Label>
+                <Label>{t('开始日期')}</Label>
                 <Input
                   type="date"
                   value={aForm.startDate}
@@ -552,7 +556,7 @@ export default function AllianceEnterpriseDetailPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>结束日期</Label>
+                <Label>{t('结束日期')}</Label>
                 <Input
                   type="date"
                   value={aForm.endDate}
@@ -563,10 +567,11 @@ export default function AllianceEnterpriseDetailPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewDialog(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={createAgreement} disabled={savingA}>
-              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}创建并关联
+              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {t('创建并关联')}
             </Button>
           </DialogFooter>
         </DialogContent>

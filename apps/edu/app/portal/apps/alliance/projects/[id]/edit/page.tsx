@@ -23,6 +23,7 @@ import { ArrowLeft, Loader2, Send } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast, LoadingView } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceProject } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
@@ -55,6 +56,7 @@ export default function AllianceProjectEditPage() {
   const { id } = useParams<{ id: string }>()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const router = useRouter()
   const [item, setItem] = useState<AllianceProject | null>(null)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
@@ -68,7 +70,7 @@ export default function AllianceProjectEditPage() {
         setItem(p)
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
       })
-      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
   }, [tenantId, id, toast])
 
@@ -80,17 +82,17 @@ export default function AllianceProjectEditPage() {
         ...item,
         publishStatus: publish ? 'published' : item.publishStatus || 'draft',
       })
-      toast({ title: publish ? '项目已发布' : '草稿已保存' })
+      toast({ title: publish ? t('项目已发布') : t('草稿已保存') })
       router.push(`/portal/apps/alliance/projects/${id}`)
     } catch (e: any) {
-      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
   }
 
   if (loading) return <LoadingView />
-  if (!item) return <div className="text-center py-12 text-muted-foreground">项目不存在</div>
+  if (!item) return <div className="text-center py-12 text-muted-foreground">{t('项目不存在')}</div>
 
   const setField = (field: string, value: any) =>
     setItem({ ...item, [field]: value } as AllianceProject)
@@ -102,11 +104,11 @@ export default function AllianceProjectEditPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-1" />
-          返回
+          {t('返回')}
         </Button>
-        <h1 className="text-xl font-semibold text-foreground">编辑合作项目</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('编辑合作项目')}</h1>
         <Badge variant={item.publishStatus === 'published' ? 'default' : 'secondary'}>
-          {item.publishStatus === 'published' ? '已发布' : '草稿'}
+          {item.publishStatus === 'published' ? t('已发布') : t('草稿')}
         </Badge>
       </div>
 
@@ -114,14 +116,14 @@ export default function AllianceProjectEditPage() {
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>基本信息</CardTitle>
+              <CardTitle>{t('基本信息')}</CardTitle>
             </CardHeader>
             <CardContent>
               <FormFieldGrid>
-                <FormFieldRow label="项目名称" required>
+                <FormFieldRow label={t('项目名称')} required>
                   <Input value={item.name} onChange={(e) => setField('name', e.target.value)} />
                 </FormFieldRow>
-                <FormFieldRow label="合作类型">
+                <FormFieldRow label={t('合作类型')}>
                   <Select
                     value={item.type || PROJECT_TYPES[0]}
                     onValueChange={(v) => setField('type', v)}
@@ -130,41 +132,41 @@ export default function AllianceProjectEditPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROJECT_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
+                      {PROJECT_TYPES.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
-                <FormFieldRow label="项目阶段">
+                <FormFieldRow label={t('项目阶段')}>
                   <Select value={item.phase} onValueChange={(v) => setField('phase', v)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="initiation">启动</SelectItem>
-                      <SelectItem value="execution">执行中</SelectItem>
-                      <SelectItem value="acceptance">验收</SelectItem>
-                      <SelectItem value="closure">关闭</SelectItem>
+                      <SelectItem value="initiation">{t('启动')}</SelectItem>
+                      <SelectItem value="execution">{t('执行中')}</SelectItem>
+                      <SelectItem value="acceptance">{t('验收')}</SelectItem>
+                      <SelectItem value="closure">{t('关闭')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
-                <FormFieldRow label="预算">
+                <FormFieldRow label={t('预算')}>
                   <Input
                     value={item.budget || ''}
                     onChange={(e) => setField('budget', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="开始日期">
+                <FormFieldRow label={t('开始日期')}>
                   <Input
                     value={item.startDate || ''}
                     onChange={(e) => setField('startDate', e.target.value)}
                     type="date"
                   />
                 </FormFieldRow>
-                <FormFieldRow label="结束日期">
+                <FormFieldRow label={t('结束日期')}>
                   <Input
                     value={item.endDate || ''}
                     onChange={(e) => setField('endDate', e.target.value)}
@@ -177,7 +179,7 @@ export default function AllianceProjectEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>项目描述</CardTitle>
+              <CardTitle>{t('项目描述')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -192,11 +194,11 @@ export default function AllianceProjectEditPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>项目封面</CardTitle>
+              <CardTitle>{t('项目封面')}</CardTitle>
             </CardHeader>
             <CardContent>
               <SingleImageUpload
-                label="项目封面"
+                label={t('项目封面')}
                 value={(item as any).coverImage || ''}
                 onChange={(v) => setField('coverImage', v)}
               />
@@ -205,39 +207,39 @@ export default function AllianceProjectEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>合作企业</CardTitle>
+              <CardTitle>{t('合作企业')}</CardTitle>
             </CardHeader>
             <CardContent>
               <MultiSelect
                 options={enterprises}
                 value={enterpriseIds}
                 onChange={(v) => setField('enterpriseIds', v)}
-                placeholder="选择合作企业"
+                placeholder={t('选择合作企业')}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>二级学院</CardTitle>
+              <CardTitle>{t('二级学院')}</CardTitle>
             </CardHeader>
             <CardContent>
               <MultiSelect
                 options={SECONDARY_COLLEGES}
                 value={secondaryColleges}
                 onChange={(v) => setField('secondaryColleges', v)}
-                placeholder="选择归属学院"
+                placeholder={t('选择归属学院')}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>设置</CardTitle>
+              <CardTitle>{t('设置')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>公开显示</Label>
+                <Label>{t('公开显示')}</Label>
                 <Switch
                   checked={item.isPublic || false}
                   onCheckedChange={(v) => setField('isPublic', v)}
@@ -254,16 +256,16 @@ export default function AllianceProjectEditPage() {
                 onClick={() => handleSave(false)}
                 disabled={saving}
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}保存草稿
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{t('保存草稿')}
               </Button>
               {item.publishStatus !== 'published' && (
                 <Button className="w-full" onClick={() => handleSave(true)} disabled={saving}>
                   <Send className="h-4 w-4 mr-1" />
-                  发布项目
+                  {t('发布项目')}
                 </Button>
               )}
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
-                取消
+                {t('取消')}
               </Button>
             </CardContent>
           </Card>

@@ -43,6 +43,7 @@ import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { Spinner } from '@/components/ui/spinner'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface Tenant {
   id: string
@@ -141,6 +142,7 @@ export default function AllianceSchoolPage() {
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const { toast } = useToast()
+  const t = useT()
   const cities = useMemo(
     () => (formData.province ? CHINA_REGION[formData.province] || [] : []),
     [formData.province],
@@ -176,11 +178,11 @@ export default function AllianceSchoolPage() {
       setTenant(t)
       loadTenantToForm(t)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('加载失败'))
     } finally {
       setLoading(false)
     }
-  }, [tenantId])
+  }, [tenantId, t])
 
   useEffect(() => {
     if (authLoading) return
@@ -192,7 +194,7 @@ export default function AllianceSchoolPage() {
 
   const handleUpdate = async () => {
     if (!formData.name || !tenant) {
-      setError('请填写学校名称')
+      setError(t('请填写学校名称'))
       return
     }
     setSubmitting(true)
@@ -223,10 +225,10 @@ export default function AllianceSchoolPage() {
         }),
       })
       setIsEditDialogOpen(false)
-      toast({ title: '已保存' })
+      toast({ title: t('已保存') })
       await fetchTenant()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '保存失败')
+      setError(err instanceof Error ? err.message : t('保存失败'))
     } finally {
       setSubmitting(false)
     }
@@ -242,7 +244,7 @@ export default function AllianceSchoolPage() {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
         <Spinner className="h-5 w-5" />
-        加载中...
+        {t('加载中...')}
       </div>
     )
 
@@ -250,8 +252,8 @@ export default function AllianceSchoolPage() {
     <div className="min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">学校信息管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">配置学校基本信息，与租户信息同步</p>
+          <h1 className="text-xl font-semibold text-foreground">{t('学校信息管理')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('配置学校基本信息，与租户信息同步')}</p>
         </div>
         {tenant && (
           <Button
@@ -262,7 +264,7 @@ export default function AllianceSchoolPage() {
             }}
           >
             <Pencil className="h-4 w-4 mr-1" />
-            编辑
+            {t('编辑')}
           </Button>
         )}
       </div>
@@ -285,24 +287,24 @@ export default function AllianceSchoolPage() {
           <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
             <F
               icon={Phone}
-              label="联系人"
+              label={t('联系人')}
               v={`${tenant.contact} / ${tenant.contactPhone !== '-' ? tenant.contactPhone : tenant.phone}`}
             />
-            <F icon={School} label="学校简称" v={tenant.shortName} />
-            <F icon={BookOpen} label="办学层次" v={tenant.educationLevel} />
-            <F icon={MapPin} label="省份/城市" v={`${tenant.province} ${tenant.city}`} />
-            <F icon={Globe} label="官网" v={tenant.website} />
-            <F icon={Globe} label="绑定域名" v={tenant.domain} />
-            <F icon={MapPin} label="学校地址" v={tenant.address} />
-            <F icon={Hash} label="学校代码" v={tenant.enterpriseCode} />
-            <F icon={Calendar} label="创建时间" v={tenant.createdAt} />
+            <F icon={School} label={t('学校简称')} v={tenant.shortName} />
+            <F icon={BookOpen} label={t('办学层次')} v={tenant.educationLevel} />
+            <F icon={MapPin} label={t('省份/城市')} v={`${tenant.province} ${tenant.city}`} />
+            <F icon={Globe} label={t('官网')} v={tenant.website} />
+            <F icon={Globe} label={t('绑定域名')} v={tenant.domain} />
+            <F icon={MapPin} label={t('学校地址')} v={tenant.address} />
+            <F icon={Hash} label={t('学校代码')} v={tenant.enterpriseCode} />
+            <F icon={Calendar} label={t('创建时间')} v={tenant.createdAt} />
           </div>
           {tenant.description && tenant.description !== '-' && (
             <div className="px-6 py-4 border-t border-gray-100">
               <div className="flex items-start gap-3">
                 <FileText className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs text-muted-foreground">学校简介</p>
+                  <p className="text-xs text-muted-foreground">{t('学校简介')}</p>
                   <p className="text-sm mt-1 leading-relaxed">{tenant.description}</p>
                 </div>
               </div>
@@ -313,17 +315,17 @@ export default function AllianceSchoolPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>编辑学校信息</DialogTitle>
-            <DialogDescription>修改学校基本信息，保存后与租户信息同步更新</DialogDescription>
+            <DialogTitle>{t('编辑学校信息')}</DialogTitle>
+            <DialogDescription>{t('修改学校基本信息，保存后与租户信息同步更新')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
-                基础信息
+                {t('基础信息')}
               </Label>
               <div className="space-y-4">
-                <FormFieldRow label="学校名称" required>
+                <FormFieldRow label={t('学校名称')} required>
                   <IconInput
                     icon={Building}
                     value={formData.name || ''}
@@ -331,14 +333,14 @@ export default function AllianceSchoolPage() {
                   />
                 </FormFieldRow>
                 <FormFieldGrid>
-                  <FormFieldRow label="学校代码">
+                  <FormFieldRow label={t('学校代码')}>
                     <IconInput
                       icon={Hash}
                       value={formData.enterpriseCode || ''}
                       onChange={(e) => setF('enterpriseCode', e.target.value)}
                     />
                   </FormFieldRow>
-                  <FormFieldRow label="学校简称">
+                  <FormFieldRow label={t('学校简称')}>
                     <IconInput
                       icon={School}
                       value={formData.shortName || ''}
@@ -347,13 +349,13 @@ export default function AllianceSchoolPage() {
                   </FormFieldRow>
                 </FormFieldGrid>
                 <FormFieldGrid>
-                  <FormFieldRow label="办学层次">
+                  <FormFieldRow label={t('办学层次')}>
                     <Select
                       value={formData.educationLevel || ''}
                       onValueChange={(v) => setF('educationLevel', v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择" />
+                        <SelectValue placeholder={t('请选择')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="普通本科院校">普通本科院校</SelectItem>
@@ -365,13 +367,13 @@ export default function AllianceSchoolPage() {
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
-                  <FormFieldRow label="办学性质">
+                  <FormFieldRow label={t('办学性质')}>
                     <Select
                       value={formData.educationNature || ''}
                       onValueChange={(v) => setF('educationNature', v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择" />
+                        <SelectValue placeholder={t('请选择')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="公办">公办</SelectItem>
@@ -381,13 +383,13 @@ export default function AllianceSchoolPage() {
                   </FormFieldRow>
                 </FormFieldGrid>
                 <FormFieldGrid>
-                  <FormFieldRow label="省份">
+                  <FormFieldRow label={t('省份')}>
                     <Select
                       value={formData.province || ''}
                       onValueChange={(v) => setF('province', v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择省份" />
+                        <SelectValue placeholder={t('请选择省份')} />
                       </SelectTrigger>
                       <SelectContent>
                         {PROVINCES.map((p) => (
@@ -398,7 +400,7 @@ export default function AllianceSchoolPage() {
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
-                  <FormFieldRow label="城市">
+                  <FormFieldRow label={t('城市')}>
                     <Select
                       value={formData.city || ''}
                       onValueChange={(v) => setF('city', v)}
@@ -406,7 +408,7 @@ export default function AllianceSchoolPage() {
                     >
                       <SelectTrigger>
                         <SelectValue
-                          placeholder={formData.province ? '请选择城市' : '请先选省份'}
+                          placeholder={formData.province ? t('请选择城市') : t('请先选省份')}
                         />
                       </SelectTrigger>
                       <SelectContent>
@@ -419,7 +421,7 @@ export default function AllianceSchoolPage() {
                     </Select>
                   </FormFieldRow>
                 </FormFieldGrid>
-                <FormFieldRow label="学校简介">
+                <FormFieldRow label={t('学校简介')}>
                   <Textarea
                     value={formData.description || ''}
                     onChange={(e) => setF('description', e.target.value)}
@@ -431,18 +433,18 @@ export default function AllianceSchoolPage() {
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
-                联系信息
+                {t('联系信息')}
               </Label>
               <div className="space-y-4">
                 <FormFieldGrid>
-                  <FormFieldRow label="联系人">
+                  <FormFieldRow label={t('联系人')}>
                     <IconInput
                       icon={User}
                       value={formData.contact || ''}
                       onChange={(e) => setF('contact', e.target.value)}
                     />
                   </FormFieldRow>
-                  <FormFieldRow label="联系电话">
+                  <FormFieldRow label={t('联系电话')}>
                     <IconInput
                       icon={Phone}
                       value={formData.contactPhone || formData.phone || ''}
@@ -453,7 +455,7 @@ export default function AllianceSchoolPage() {
                     />
                   </FormFieldRow>
                 </FormFieldGrid>
-                <FormFieldRow label="学校地址">
+                <FormFieldRow label={t('学校地址')}>
                   <IconInput
                     icon={MapPin}
                     value={formData.address || ''}
@@ -465,7 +467,7 @@ export default function AllianceSchoolPage() {
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
-                二级学院
+                {t('二级学院')}
               </Label>
               <div className="space-y-4">
                 <MultiSelect
@@ -485,21 +487,21 @@ export default function AllianceSchoolPage() {
                   ]}
                   value={(formData as any).secondaryColleges || []}
                   onChange={(v) => setF('secondaryColleges' as any, v as any)}
-                  placeholder="选择或维护二级学院（多选）"
+                  placeholder={t('选择或维护二级学院（多选）')}
                 />
                 <p className="text-xs text-muted-foreground">
-                  二级学院将作为企业/项目/成果/专家表单的归属学院选项
+                  {t('二级学院将作为企业/项目/成果/专家表单的归属学院选项')}
                 </p>
               </div>
             </div>
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
-                网络信息
+                {t('网络信息')}
               </Label>
               <div className="space-y-4">
                 <FormFieldGrid>
-                  <FormFieldRow label="官网">
+                  <FormFieldRow label={t('官网')}>
                     <IconInput
                       icon={Globe}
                       value={formData.website || ''}
@@ -516,7 +518,7 @@ export default function AllianceSchoolPage() {
                       placeholder="https://www.example.edu.cn"
                     />
                   </FormFieldRow>
-                  <FormFieldRow label="绑定域名">
+                  <FormFieldRow label={t('绑定域名')}>
                     <IconInput
                       icon={Monitor}
                       value={formData.domain || ''}
@@ -538,10 +540,10 @@ export default function AllianceSchoolPage() {
               onClick={() => setIsEditDialogOpen(false)}
               disabled={submitting}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleUpdate} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}保存
+              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}{t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
