@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import ZipPreview, { isZipUrl } from '@/components/shared/zip-preview'
 import {
   Eye,
   Building2,
@@ -18,11 +17,12 @@ import {
   Wrench,
   Cpu,
   Package,
-  ExternalLink,
-  X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import {
+  ResourcePreviewModal,
+  usePreviewResources,
+} from '@/components/shared/resource-preview-modal'
 import {
   resourceLibraryApi,
   knowledgeApi,
@@ -141,12 +141,6 @@ function timeFromLabel(label: string): string {
   return TIME_RANGES.find((r) => r.label === label)?.value || 'all'
 }
 
-function buildKkFileViewUrl(fileUrl: string): string {
-  if (typeof window === 'undefined') return ''
-  const origin = `${window.location.protocol}//${window.location.host}`
-  return `/kkfileview/onlinePreview?url=${btoa(`${origin}${fileUrl}`)}`
-}
-
 function ResourceCard({
   resource,
   onPreview,
@@ -250,8 +244,7 @@ export default function LibraryLandingPage() {
   const [majorFilter, setMajorFilter] = useState('全部')
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest')
   const [currentPage, setCurrentPage] = useState(1)
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewResource, setPreviewResource] = useState<ResourceLibraryItem | null>(null)
+  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
 
   useEffect(() => {
     const load = async () => {
@@ -365,18 +358,6 @@ export default function LibraryLandingPage() {
     const start = (currentPage - 1) * CARDS_PER_PAGE
     return filteredResources.slice(start, start + CARDS_PER_PAGE)
   }, [filteredResources, currentPage])
-
-  const handleCardClick = (resource: ResourceLibraryItem) => {
-    if (resource.url) {
-      setPreviewResource(resource)
-      setPreviewOpen(true)
-    }
-  }
-
-  const kkFileViewUrl = useMemo(() => {
-    if (!previewResource?.url) return ''
-    return buildKkFileViewUrl(previewResource.url)
-  }, [previewResource])
 
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []
@@ -520,7 +501,11 @@ export default function LibraryLandingPage() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {pageResources.map((resource) => (
-                <ResourceCard key={resource.id} resource={resource} onPreview={handleCardClick} />
+                <ResourceCard
+                  key={resource.id}
+                  resource={resource}
+                  onPreview={(r) => addPreviewResource(r as any)}
+                />
               ))}
             </div>
             <LandingPagination
@@ -536,108 +521,21 @@ export default function LibraryLandingPage() {
         )}
       </LandingShell>
 
-      {/* ═══ kkFileView Preview Dialog ═══ */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent
-          style={{
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            height: '90vh',
-            padding: 0,
-            overflow: 'hidden',
-            borderRadius: 16,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '14px 20px',
-              borderBottom: '1px solid #e2e8f0',
-              background: '#f8fafc',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  fontSize: 20,
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background:
-                    TYPE_GRADIENTS[previewResource?.resourceType || 'other'] || '#f1f5f9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {TYPE_EMOJI[previewResource?.resourceType || 'other'] || '📦'}
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
-                  {previewResource?.name}
-                </div>
-                <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                  {previewResource && RESOURCE_TYPE_LABELS[previewResource.resourceType]}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {previewResource?.url && (
-                <a
-                  href={previewResource.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--primary)',
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '6px 12px',
-                    borderRadius: 8,
-                    background: 'color-mix(in srgb, var(--primary) 8%, white)',
-                  }}
-                >
-                  <ExternalLink style={{ width: 14, height: 14 }} />
-                  新窗口打开
-                </a>
-              )}
-              <button
-                onClick={() => setPreviewOpen(false)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  color: '#94a3b8',
-                  padding: 4,
-                }}
-              >
-                <X style={{ width: 20, height: 20 }} />
-              </button>
-            </div>
-          </div>
-          {kkFileViewUrl && !isZipUrl(previewResource?.url) && (
-            <iframe
-              src={kkFileViewUrl}
-              style={{ width: '100%', height: 'calc(100% - 64px)', border: 'none' }}
-              title="资源预览"
-            />
-          )}
-          {previewResource?.url && isZipUrl(previewResource.url) && (
-            <div style={{ width: '100%', height: 'calc(100% - 64px)', border: 'none' }}>
-              <ZipPreview
-                key={previewResource.url}
-                url={previewResource.url}
-                name={previewResource.name}
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {previewResources.length > 0 && (
+        <div
+          className="fixed inset-0 bg-black/40 z-[90]"
+          onClick={() => previewResources.forEach((r) => removePreviewResource(r.id))}
+        />
+      )}
+      {previewResources.map((r, i) => (
+        <ResourcePreviewModal
+          key={r.id}
+          resource={r}
+          open
+          index={i}
+          onOpenChange={() => removePreviewResource(r.id)}
+        />
+      ))}
     </>
   )
 }
