@@ -75,6 +75,17 @@ func (s *AffairsService) DeletePeriodSlot(ctx context.Context, id, tenantID stri
 	return s.st.Scheduling().DeletePeriodSlot(ctx, id, tenantID)
 }
 
+// ReplacePeriodSlots 事务内按名称整体替换节次，返回替换后的完整列表。
+func (s *AffairsService) ReplacePeriodSlots(ctx context.Context, tenantID string, items []store.PeriodSlotParams) ([]domain.PeriodSlot, error) {
+	var result []domain.PeriodSlot
+	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		var err error
+		result, err = txStore.Scheduling().ReplacePeriodSlots(ctx, txStore.Q(), tenantID, items)
+		return err
+	})
+	return result, err
+}
+
 // ===== 排课 =====
 
 // ListSchedules 查询排课列表。

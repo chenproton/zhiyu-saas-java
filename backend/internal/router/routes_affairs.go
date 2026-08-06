@@ -41,6 +41,8 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 
 	// 节次只读接口挂在 jobViewer 角色组（routes.go，含学生），学生/教师课表渲染共用
 	r.Post("/affairs/period-slots", h.schedulingHandler.CreatePeriodSlot)
+	// replace 需先于 {id} 注册，避免被当作文档 id 捕获
+	r.Put("/affairs/period-slots/replace", h.schedulingHandler.ReplacePeriodSlots)
 	r.Put("/affairs/period-slots/{id}", h.schedulingHandler.UpdatePeriodSlot)
 	r.Delete("/affairs/period-slots/{id}", h.schedulingHandler.DeletePeriodSlot)
 

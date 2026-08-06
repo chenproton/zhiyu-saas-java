@@ -796,36 +796,47 @@ func (s *PortalStore) BatchSceneTaskStatus(ctx context.Context, taskIDs []string
 	return result
 }
 
-// PeriodLabelMap 节次名称→网格标签（按 sort_order 索引分割）。
+// PeriodLabelMap 节次名称→网格标签（按时段类型分组内序号生成）。
 func (s *PortalStore) PeriodLabelMap(ctx context.Context, tenantID *string) map[string]string {
 	m := map[string]string{}
 	if tenantID == nil {
 		return m
 	}
 	rows, err := s.q.Query(ctx, `
-		SELECT name FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
+		SELECT name, slot_type FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
 	`, *tenantID)
 	if err != nil {
 		return m
 	}
 	defer rows.Close()
-	var names []string
+	type labelPair struct {
+		name  string
+		group string
+	}
+	var pairs []labelPair
+	groupCounts := map[string]int{}
 	for rows.Next() {
-		var n string
-		if err := rows.Scan(&n); err != nil {
+		var n, t string
+		if err := rows.Scan(&n, &t); err != nil {
 			continue
 		}
-		names = append(names, n)
+		pairs = append(pairs, labelPair{name: n, group: t})
+		groupCounts[t]++
 	}
-	for i, n := range names {
-		switch {
-		case i < 4:
-			m[n] = "上午 " + Itoa(i+1)
-		case i < 8:
-			m[n] = "下午 " + Itoa(i-3)
-		default:
-			m[n] = "晚自习 " + Itoa(i-7)
+	prefixes := map[string]string{
+		"morning_self": "早自习",
+		"morning":      "上午",
+		"afternoon":    "下午",
+		"evening":      "晚自习",
+	}
+	index := map[string]int{}
+	for _, p := range pairs {
+		prefix := prefixes[p.group]
+		if prefix == "" {
+			prefix = "上午"
 		}
+		index[p.group]++
+		m[p.name] = prefix + " " + Itoa(index[p.group])
 	}
 	return m
 }

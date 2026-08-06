@@ -148,6 +148,12 @@ export const periodSlotApi = {
     }),
   delete: (id: string) =>
     request<{ id: string }>(`/affairs/period-slots/${id}`, { method: 'DELETE' }),
+  /** 按名称整体替换节次（事务内原子落库），返回替换后的完整列表 */
+  replace: (items: PeriodSlotPayload[]) =>
+    request<ListResponse<PeriodSlot>>('/affairs/period-slots/replace', {
+      method: 'PUT',
+      body: JSON.stringify({ items }),
+    }),
 }
 
 // ==================== 排课 ====================

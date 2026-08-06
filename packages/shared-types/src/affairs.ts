@@ -150,10 +150,11 @@ export interface VenuePayload {
   capacity?: number
 }
 
-/** 节次（课表行） */
+/** 节次（课表行），type: morning_self(早自习)/morning(上午)/afternoon(下午)/evening(晚自习) */
 export interface PeriodSlot {
   id: string
   name: string
+  type: string
   sortOrder: number
   startTime?: string
   endTime?: string
@@ -161,6 +162,7 @@ export interface PeriodSlot {
 
 export interface PeriodSlotPayload {
   name: string
+  type: string
   sortOrder: number
   startTime?: string
   endTime?: string

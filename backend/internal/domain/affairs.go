@@ -114,6 +114,7 @@ type Venue struct {
 type PeriodSlot struct {
 	ID        string  `json:"id"`
 	Name      string  `json:"name"`
+	Type      string  `json:"type"` // morning_self/morning/afternoon/evening
 	SortOrder int     `json:"sortOrder"`
 	StartTime *string `json:"startTime,omitempty"`
 	EndTime   *string `json:"endTime,omitempty"`

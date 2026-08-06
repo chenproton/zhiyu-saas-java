@@ -154,9 +154,20 @@ func (h *SchedulingHandler) DeleteVenue(w http.ResponseWriter, r *http.Request) 
 // ---------- 节次 ----------
 type PeriodSlotRequest struct {
 	Name      string  `json:"name"`
+	Type      string  `json:"type"`
 	SortOrder int     `json:"sortOrder"`
 	StartTime *string `json:"startTime"`
 	EndTime   *string `json:"endTime"`
+}
+
+// periodSlotType 归一化节次时段类型，空值默认 morning（上午）。
+func periodSlotType(t string) string {
+	switch t {
+	case "morning_self", "afternoon", "evening", "morning":
+		return t
+	default:
+		return "morning"
+	}
 }
 
 func (h *SchedulingHandler) ListPeriodSlots(w http.ResponseWriter, r *http.Request) {
@@ -208,6 +219,7 @@ func (h *SchedulingHandler) CreatePeriodSlot(w http.ResponseWriter, r *http.Requ
 	slot, err := h.Service.CreatePeriodSlot(r.Context(), &store.PeriodSlotParams{
 		TenantID:  tenantID,
 		Name:      req.Name,
+		Type:      periodSlotType(req.Type),
 		SortOrder: req.SortOrder,
 		StartTime: emptyStrToNil(req.StartTime),
 		EndTime:   emptyStrToNil(req.EndTime),
@@ -247,6 +259,7 @@ func (h *SchedulingHandler) UpdatePeriodSlot(w http.ResponseWriter, r *http.Requ
 
 	slot, err := h.Service.UpdatePeriodSlot(r.Context(), id, tenantID, &store.PeriodSlotParams{
 		Name:      req.Name,
+		Type:      periodSlotType(req.Type),
 		SortOrder: req.SortOrder,
 		StartTime: emptyStrToNil(req.StartTime),
 		EndTime:   emptyStrToNil(req.EndTime),
@@ -280,6 +293,57 @@ func (h *SchedulingHandler) DeletePeriodSlot(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// ReplacePeriodSlots PUT /affairs/period-slots/replace — 按名称整体替换节次（事务内）。
+type ReplacePeriodSlotsRequest struct {
+	Items []PeriodSlotRequest `json:"items"`
+}
+
+func (h *SchedulingHandler) ReplacePeriodSlots(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+
+	var req ReplacePeriodSlotsRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if len(req.Items) == 0 {
+		respondError(w, http.StatusBadRequest, "节次列表不能为空")
+		return
+	}
+	for _, it := range req.Items {
+		if it.Name == "" {
+			respondError(w, http.StatusBadRequest, "节次名称不能为空")
+			return
+		}
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	items := make([]store.PeriodSlotParams, 0, len(req.Items))
+	for _, it := range req.Items {
+		items = append(items, store.PeriodSlotParams{
+			TenantID:  tenantID,
+			Name:      it.Name,
+			Type:      periodSlotType(it.Type),
+			SortOrder: it.SortOrder,
+			StartTime: emptyStrToNil(it.StartTime),
+			EndTime:   emptyStrToNil(it.EndTime),
+		})
+	}
+	slots, err := h.Service.ReplacePeriodSlots(r.Context(), tenantID, items)
+	if err != nil {
+		respondServerError(w, r, err, "保存节次失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.PeriodSlot]{Items: slots, Total: len(slots)})
 }
 
 // ---------- 排课 ----------

@@ -102,7 +102,7 @@ type VenueParams struct {
 // ListPeriodSlots 查询节次列表。
 func (s *SchedulingStore) ListPeriodSlots(ctx context.Context, tenantID string) ([]domain.PeriodSlot, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT id, name, sort_order, start_time, end_time
+		SELECT id, name, slot_type, sort_order, start_time, end_time
 		FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
 	`, tenantID)
 	if err != nil {
@@ -116,10 +116,10 @@ func (s *SchedulingStore) ListPeriodSlots(ctx context.Context, tenantID string) 
 func (s *SchedulingStore) CreatePeriodSlot(ctx context.Context, p *PeriodSlotParams) (*domain.PeriodSlot, error) {
 	var id string
 	err := s.q.QueryRow(ctx, `
-		INSERT INTO period_slots (id, tenant_id, name, sort_order, start_time, end_time)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+		INSERT INTO period_slots (id, tenant_id, name, slot_type, sort_order, start_time, end_time)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
 		RETURNING id
-	`, p.TenantID, p.Name, p.SortOrder, p.StartTime, p.EndTime).Scan(&id)
+	`, p.TenantID, p.Name, p.Type, p.SortOrder, p.StartTime, p.EndTime).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
@@ -132,9 +132,9 @@ func (s *SchedulingStore) UpdatePeriodSlot(ctx context.Context, id, tenantID str
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE period_slots SET name = $1, sort_order = $2, start_time = $3, end_time = $4
-		WHERE id = $5 AND tenant_id = $6
-	`, p.Name, p.SortOrder, p.StartTime, p.EndTime, id, tenantID); err != nil {
+		UPDATE period_slots SET name = $1, slot_type = $2, sort_order = $3, start_time = $4, end_time = $5
+		WHERE id = $6 AND tenant_id = $7
+	`, p.Name, p.Type, p.SortOrder, p.StartTime, p.EndTime, id, tenantID); err != nil {
 		return nil, err
 	}
 	return s.fetchPeriodSlot(ctx, id, tenantID)
@@ -151,10 +151,72 @@ func (s *SchedulingStore) DeletePeriodSlot(ctx context.Context, id, tenantID str
 	return err
 }
 
+// ReplacePeriodSlots 事务内按名称整体替换节次：同名节次更新、新增列表中不存在的、删除列表外的旧节次。
+// items 非空由调用方保证。
+func (s *SchedulingStore) ReplacePeriodSlots(ctx context.Context, q Queryer, tenantID string, items []PeriodSlotParams) ([]domain.PeriodSlot, error) {
+	rows, err := q.Query(ctx, `SELECT id, name FROM period_slots WHERE tenant_id = $1`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	existing := make(map[string]string, 16) // name → id
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		existing[name] = id
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	kept := make(map[string]struct{}, len(items))
+	for _, p := range items {
+		kept[p.Name] = struct{}{}
+		if id, ok := existing[p.Name]; ok {
+			if _, err := q.Exec(ctx, `
+				UPDATE period_slots SET slot_type = $1, sort_order = $2, start_time = $3, end_time = $4
+				WHERE id = $5 AND tenant_id = $6
+			`, p.Type, p.SortOrder, p.StartTime, p.EndTime, id, tenantID); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		if _, err := q.Exec(ctx, `
+			INSERT INTO period_slots (id, tenant_id, name, slot_type, sort_order, start_time, end_time)
+			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
+		`, tenantID, p.Name, p.Type, p.SortOrder, p.StartTime, p.EndTime); err != nil {
+			return nil, err
+		}
+	}
+
+	// 删除列表外旧节次（名称可能重复，按 id 逐个删除）
+	for name, id := range existing {
+		if _, ok := kept[name]; !ok {
+			if _, err := q.Exec(ctx, `DELETE FROM period_slots WHERE id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	result, err := q.Query(ctx, `
+		SELECT id, name, slot_type, sort_order, start_time, end_time
+		FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+	return ScanPeriodSlotRows(result)
+}
+
 // PeriodSlotParams 节次参数。
 type PeriodSlotParams struct {
 	TenantID  string
 	Name      string
+	Type      string
 	SortOrder int
 	StartTime *string
 	EndTime   *string
@@ -164,9 +226,9 @@ func (s *SchedulingStore) fetchPeriodSlot(ctx context.Context, id, tenantID stri
 	var p domain.PeriodSlot
 	var startTime, endTime *time.Time
 	err := s.q.QueryRow(ctx, `
-		SELECT id, name, sort_order, start_time, end_time
+		SELECT id, name, slot_type, sort_order, start_time, end_time
 		FROM period_slots WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&p.ID, &p.Name, &p.SortOrder, &startTime, &endTime)
+	`, id, tenantID).Scan(&p.ID, &p.Name, &p.Type, &p.SortOrder, &startTime, &endTime)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +249,7 @@ func ScanPeriodSlotRows(rows pgx.Rows) ([]domain.PeriodSlot, error) {
 	for rows.Next() {
 		var p domain.PeriodSlot
 		var startTime, endTime *time.Time
-		if err := rows.Scan(&p.ID, &p.Name, &p.SortOrder, &startTime, &endTime); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Type, &p.SortOrder, &startTime, &endTime); err != nil {
 			return nil, err
 		}
 		if startTime != nil {
@@ -796,7 +858,7 @@ func (s *SchedulingStore) ListVenuesConfig() ListQueryConfig[domain.Venue] {
 func (s *SchedulingStore) ListPeriodSlotsConfig() ListQueryConfig[domain.PeriodSlot] {
 	return ListQueryConfig[domain.PeriodSlot]{
 		Table:         "period_slots",
-		SelectColumns: "id, name, sort_order, start_time, end_time",
+		SelectColumns: "id, name, slot_type, sort_order, start_time, end_time",
 		TenantScoped:  true,
 		OrderBy:       "sort_order ASC",
 		ScanRows:      ScanPeriodSlotRows,
