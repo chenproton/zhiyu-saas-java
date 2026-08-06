@@ -38,9 +38,17 @@ function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
       <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
         <div
           className="h-[110px] flex items-center justify-center shrink-0 relative"
-          style={{ background: coverGradients[index % coverGradients.length] }}
+          style={
+            bank.coverImage
+              ? {
+                  backgroundImage: `url('${bank.coverImage}')`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }
+              : { background: coverGradients[index % coverGradients.length] }
+          }
         >
-          <Library className="w-12 h-12 text-white/80" />
+          {!bank.coverImage && <Library className="w-12 h-12 text-white/80" />}
           <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
             v{bank.version}
           </span>
@@ -74,9 +82,17 @@ function ExamCard({ exam, index }: { exam: Exam; index: number }) {
       <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
         <div
           className="h-[110px] flex items-center justify-center shrink-0 relative"
-          style={{ background: coverGradients[(index + 3) % coverGradients.length] }}
+          style={
+            exam.coverImage
+              ? {
+                  backgroundImage: `url('${exam.coverImage}')`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }
+              : { background: coverGradients[(index + 3) % coverGradients.length] }
+          }
         >
-          <ClipboardList className="w-12 h-12 text-white/80" />
+          {!exam.coverImage && <ClipboardList className="w-12 h-12 text-white/80" />}
           <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
             {exam.duration} 分钟
           </span>
