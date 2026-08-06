@@ -154,7 +154,6 @@ export default function LandingHomePage() {
       inProgress,
       finished,
       submitted,
-      participatable: centerItems.filter((i) => i.participatable).length,
     }
   }, [centerItems])
 
@@ -168,6 +167,14 @@ export default function LandingHomePage() {
       ].filter((d) => d.value > 0),
     [centerStats],
   )
+
+  const examCoverMap = useMemo(() => {
+    const map = new Map<string, string>()
+    exams.forEach((e) => {
+      if (e.coverImage) map.set(e.id, e.coverImage)
+    })
+    return map
+  }, [exams])
 
   const batches = useMemo(() => {
     const set = new Set<string>()
@@ -368,26 +375,6 @@ export default function LandingHomePage() {
               </Button>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {[
-                  { label: '全部考试', value: centerStats.total },
-                  { label: '待考', value: centerStats.pending },
-                  { label: '进行中', value: centerStats.inProgress },
-                  { label: '我可参加', value: centerStats.participatable },
-                ].map((s) => (
-                  <div
-                    key={s.label}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-[#f8fafc] border border-[#eef2f7]"
-                  >
-                    <div className="flex-1">
-                      <div className="text-[26px] font-bold text-[#0f172a] leading-none">
-                        {s.value}
-                      </div>
-                      <div className="text-[13px] text-[#64748b] mt-1.5 font-medium">{s.label}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-[250px] shrink-0">
                   <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-5 h-full">
@@ -441,7 +428,11 @@ export default function LandingHomePage() {
                 </div>
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                   {centerItems.slice(0, 3).map((item) => (
-                    <ExamCenterCard key={item.id} item={item} />
+                    <ExamCenterCard
+                      key={item.id}
+                      item={item}
+                      coverImage={examCoverMap.get(item.examId)}
+                    />
                   ))}
                 </div>
               </div>
