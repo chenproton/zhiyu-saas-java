@@ -1,88 +1,86 @@
 'use client'
 
-import Link from 'next/link'
-import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect, useMemo, useState } from 'react'
+import { Sparkles } from 'lucide-react'
+import { portalRequest } from '@/lib/api'
+import { allianceLabel } from '@zhiyu/shared-types'
+import type { AllianceBrand } from '@/lib/types'
+import { reportError } from '@/lib/error-handling'
+import { BrandCard } from '@/components/alliance/public-cards'
+import { PublicListShell } from '@/components/alliance/public-list-shell'
 
-const brandCards = [
-  {
-    type: 'talent',
-    label: '人才品牌',
-    desc: '展示学生能力画像与典型就业案例',
-    icon: GraduationCap,
-    color: 'text-blue-600 bg-blue-50',
-  },
-  {
-    type: 'employer',
-    label: '雇主品牌',
-    desc: '展示合作企业/机构的品牌形象',
-    icon: Building,
-    color: 'text-green-600 bg-green-50',
-  },
-  {
-    type: 'job',
-    label: '岗位品牌',
-    desc: '展示优质岗位的品牌级运营',
-    icon: Briefcase,
-    color: 'text-orange-600 bg-orange-50',
-  },
-  {
-    type: 'major',
-    label: '专业品牌',
-    desc: '展示专业建设水平与培养特色',
-    icon: BookOpen,
-    color: 'text-purple-600 bg-purple-50',
-  },
-  {
-    type: 'teacher',
-    label: '师资品牌',
-    desc: '展示校本师资与产业导师',
-    icon: Users,
-    color: 'text-red-600 bg-red-50',
-  },
-  {
-    type: 'culture',
-    label: '文化思政品牌',
-    desc: '展示典型案例、思政资源与文化活动',
-    icon: Palette,
-    color: 'text-cyan-600 bg-cyan-50',
-  },
-]
-
-const pageMap: Record<string, string> = {
-  talent: '/portal/alliance/brands/talent',
-  employer: '/portal/alliance/brands/employer',
-  job: '/portal/alliance/brands/job',
-  major: '/portal/alliance/brands/major',
-  teacher: '/portal/alliance/brands/teacher',
-  culture: '/portal/alliance/brands/culture',
-}
+const BRAND_TYPES = ['talent', 'employer', 'job', 'major', 'teacher', 'culture']
 
 export default function AlliancePublicBrandsPage() {
+  const [items, setItems] = useState<AllianceBrand[]>([])
+  const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('all')
+  const [keyword, setKeyword] = useState('')
+
+  useEffect(() => {
+    portalRequest<{ items: AllianceBrand[] }>('/alliance/public/brands')
+      .then((data) => setItems(data.items || []))
+      .catch((err) => {
+        reportError(err, { source: '加载品牌列表' })
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  const tabs = useMemo(
+    () => [
+      { value: 'all', label: '全部品牌', count: items.length },
+      ...BRAND_TYPES.map((type) => ({
+        value: type,
+        label: allianceLabel('brandType', type),
+        count: items.filter((i) => i.brandType === type).length,
+      })),
+    ],
+    [items],
+  )
+
+  const filtered = useMemo(() => {
+    let list = items
+    if (tab !== 'all') list = list.filter((i) => i.brandType === tab)
+    if (keyword.trim()) {
+      const q = keyword.trim().toLowerCase()
+      list = list.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          (i.description ?? '').toLowerCase().includes(q) ||
+          (Array.isArray(i.data?.tags)
+            ? (i.data.tags as string[]).some((t) => t.toLowerCase().includes(q))
+            : false),
+      )
+    }
+    return list
+  }, [items, tab, keyword])
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">品牌展示</h1>
-      <p className="text-muted-foreground">展示学校六大品牌模块建设成果</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {brandCards.map((card) => {
-          const Icon = card.icon
-          return (
-            <Link key={card.type} href={pageMap[card.type]}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                  <div className={`p-2 rounded-lg ${card.color}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <CardTitle className="text-base">{card.label}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-xs">{card.desc}</CardDescription>
-                </CardContent>
-              </Card>
-            </Link>
-          )
-        })}
-      </div>
-    </div>
+    <PublicListShell
+      title="品牌展示"
+      subtitle="查看学校六大品牌模块建设成果，按品牌分类筛选"
+      icon={<Sparkles className="w-7 h-7 text-white" />}
+      tabs={tabs}
+      activeTab={tab}
+      onTabChange={setTab}
+      keyword={keyword}
+      onKeywordChange={setKeyword}
+      placeholder="搜索品牌名称、描述或标签..."
+      loading={loading}
+    >
+      {filtered.length === 0 ? (
+        <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
+          <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-30" />
+          <div className="text-[15px] font-medium text-[#475569]">暂无品牌</div>
+          <div className="text-[13px] mt-1">发布后的品牌成果会展示在这里</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filtered.map((item) => (
+            <BrandCard key={item.id} brand={item} />
+          ))}
+        </div>
+      )}
+    </PublicListShell>
   )
 }

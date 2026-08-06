@@ -1,18 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { useEffect, useMemo, useState } from 'react'
+import { Users } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
-import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceExpert } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView } from '@zhiyu/ui'
+import { ExpertCard } from '@/components/alliance/public-cards'
+import { PublicListShell } from '@/components/alliance/public-list-shell'
+
+const RATING_TABS = [
+  { value: 'gold', label: '金牌专家' },
+  { value: 'silver', label: '银牌专家' },
+  { value: 'copper', label: '铜牌专家' },
+]
 
 export default function AlliancePublicExpertsPage() {
   const [items, setItems] = useState<AllianceExpert[]>([])
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('all')
+  const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
     portalRequest<{ items: AllianceExpert[] }>('/alliance/public/experts')
@@ -23,45 +29,61 @@ export default function AlliancePublicExpertsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <LoadingView />
+  const tabs = useMemo(
+    () => [
+      { value: 'all', label: '全部专家', count: items.length },
+      ...RATING_TABS.map((t) => ({
+        value: t.value,
+        label: t.label,
+        count: items.filter((i) => i.rating === t.value).length,
+      })),
+    ],
+    [items],
+  )
+
+  const filtered = useMemo(() => {
+    let list = items
+    if (tab !== 'all') list = list.filter((i) => i.rating === tab)
+    if (keyword.trim()) {
+      const q = keyword.trim().toLowerCase()
+      list = list.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          (i.title ?? '').toLowerCase().includes(q) ||
+          (i.position ?? '').toLowerCase().includes(q) ||
+          (i.industry ?? '').toLowerCase().includes(q) ||
+          (i.specialties ?? []).some((s) => s.toLowerCase().includes(q)),
+      )
+    }
+    return list
+  }, [items, tab, keyword])
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">企业专家</h1>
-      <p className="text-muted-foreground">产业专家与校企专家资源展示</p>
-      {items.length === 0 ? (
-        <p className="text-muted-foreground">暂无专家</p>
+    <PublicListShell
+      title="企业专家"
+      subtitle="查看全部产业专家与校企专家资源，按专家评级筛选"
+      icon={<Users className="w-7 h-7 text-white" />}
+      tabs={tabs}
+      activeTab={tab}
+      onTabChange={setTab}
+      keyword={keyword}
+      onKeywordChange={setKeyword}
+      placeholder="搜索专家姓名、职务、行业或专长..."
+      loading={loading}
+    >
+      {filtered.length === 0 ? (
+        <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
+          <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
+          <div className="text-[15px] font-medium text-[#475569]">暂无专家</div>
+          <div className="text-[13px] mt-1">发布后的专家资源会展示在这里</div>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((item) => (
-            <Link key={item.id} href={`/portal/alliance/experts/${item.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <Badge variant="outline">
-                      {item.rating
-                        ? allianceLabel('expertRating', item.rating)
-                        : allianceLabel('expertStatus', item.status)}
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    {[item.title, item.position, item.industry].filter(Boolean).join(' · ') ||
-                      '专家'}
-                  </CardDescription>
-                </CardHeader>
-                {item.introduction && (
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {item.introduction}
-                    </p>
-                  </CardContent>
-                )}
-              </Card>
-            </Link>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filtered.map((item) => (
+            <ExpertCard key={item.id} expert={item} />
           ))}
         </div>
       )}
-    </div>
+    </PublicListShell>
   )
 }

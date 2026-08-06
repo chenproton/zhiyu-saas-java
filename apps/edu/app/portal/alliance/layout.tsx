@@ -2,10 +2,19 @@
 
 import { usePathname } from 'next/navigation'
 
+const FULL_WIDTH_PAGES = [
+  '/portal/alliance/landing',
+  '/portal/alliance/enterprises',
+  '/portal/alliance/projects',
+  '/portal/alliance/achievements',
+  '/portal/alliance/experts',
+  '/portal/alliance/brands',
+]
+
 export default function AlliancePublicLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  if (pathname === '/portal/alliance/landing') {
+  if (FULL_WIDTH_PAGES.includes(pathname)) {
     return <>{children}</>
   }
 
