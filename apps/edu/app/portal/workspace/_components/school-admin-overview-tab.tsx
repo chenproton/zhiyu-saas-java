@@ -52,7 +52,6 @@ const extraResourceEntries = [
     href: '/portal/apps/alliance/enterprises',
     desc: '合作企业、项目与成果',
   },
-  { label: '应用中心', icon: LayoutGrid, href: '/portal/apps', desc: '全部平台应用入口' },
 ]
 
 interface SchoolAdminOverviewTabProps {

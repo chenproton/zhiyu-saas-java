@@ -29,9 +29,9 @@ const iconMap: Record<string, LucideIcon> = {
 }
 
 const resourceTrendItems = [
-  { key: 'courses', label: '课程', icon: BookOpen, color: '#3b82f6' },
-  { key: 'scenarios', label: '场景', icon: Layers, color: '#10b981' },
   { key: 'careerPositions', label: '岗位', icon: Briefcase, color: '#8b5cf6' },
+  { key: 'scenarios', label: '场景', icon: Layers, color: '#10b981' },
+  { key: 'courses', label: '课程', icon: BookOpen, color: '#3b82f6' },
   { key: 'questionBanks', label: '题库', icon: Database, color: '#06b6d4' },
   { key: 'exams', label: '试卷', icon: FileText, color: '#f97316' },
   { key: 'examUsages', label: '考试', icon: CheckSquare, color: '#ef4444' },

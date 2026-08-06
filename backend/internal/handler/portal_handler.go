@@ -227,9 +227,9 @@ func (h *PortalHandler) schoolAdminStats(ctx context.Context, tenantID *string) 
 func (h *PortalHandler) schoolAdminResourceStats(ctx context.Context, tenantID *string) []domain.WorkspaceResourceStat {
 	courseCount, scenarioCount, positionCount, questionBankCount, examCount, examUsageCount := h.Service.SchoolAdminResourceStats(ctx, tenantID)
 	return []domain.WorkspaceResourceStat{
-		{Label: "课程资源", Value: courseCount, Icon: "book-open", Href: "/lesson/admin/system"},
-		{Label: "实践场景", Value: scenarioCount, Icon: "layers", Href: "/scene/"},
 		{Label: "产业岗位", Value: positionCount, Icon: "briefcase", Href: "/job/positions"},
+		{Label: "实践场景", Value: scenarioCount, Icon: "layers", Href: "/scene/"},
+		{Label: "课程资源", Value: courseCount, Icon: "book-open", Href: "/lesson/admin/system"},
 		{Label: "题库", Value: questionBankCount, Icon: "book-open", Href: "/evaluation/question-banks"},
 		{Label: "试卷", Value: examCount, Icon: "file-text", Href: "/evaluation/exams"},
 		{Label: "考试", Value: examUsageCount, Icon: "check-circle", Href: "/evaluation/exam-usage"},
