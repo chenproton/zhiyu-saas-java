@@ -142,10 +142,15 @@ const schoolAdminTabs = [
 
 function StudentWorkspace({ userId }: { userId?: string }) {
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState(() => {
-    const t = searchParams.get('tab')
-    return t && studentTabs.some((x) => x.id === t) ? t : 'dashboard'
-  })
+  const urlTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
+  if (urlTab !== prevUrlTab) {
+    setPrevUrlTab(urlTab)
+    if (urlTab && studentTabs.some((x) => x.id === urlTab)) {
+      setActiveTab(urlTab)
+    }
+  }
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -206,13 +211,18 @@ function StudentWorkspace({ userId }: { userId?: string }) {
 
 function TeacherWorkspace() {
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState(() => {
-    const t = searchParams.get('tab')
-    return t && teacherTabs.some((x) => x.id === t) ? t : 'dashboard'
-  })
+  const urlTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState('dashboard')
   const [prepAssociations, setPrepAssociations] = useState<Record<string, PrepAssociationRecord>>(
     {},
   )
+  const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
+  if (urlTab !== prevUrlTab) {
+    setPrevUrlTab(urlTab)
+    if (urlTab && teacherTabs.some((x) => x.id === urlTab)) {
+      setActiveTab(urlTab)
+    }
+  }
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -284,10 +294,15 @@ function TeacherWorkspace() {
 
 function SchoolAdminWorkspace() {
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState(() => {
-    const t = searchParams.get('tab')
-    return t && schoolAdminTabs.some((x) => x.id === t) ? t : 'dashboard'
-  })
+  const urlTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
+  if (urlTab !== prevUrlTab) {
+    setPrevUrlTab(urlTab)
+    if (urlTab && schoolAdminTabs.some((x) => x.id === urlTab)) {
+      setActiveTab(urlTab)
+    }
+  }
 
   const renderTabContent = () => {
     switch (activeTab) {
