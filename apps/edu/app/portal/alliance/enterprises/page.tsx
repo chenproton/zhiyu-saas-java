@@ -1,18 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { useEffect, useMemo, useState } from 'react'
+import { Building2 } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
-import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceEnterprise } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView } from '@zhiyu/ui'
+import { EnterpriseCard } from '@/components/alliance/public-cards'
+import { PublicListShell } from '@/components/alliance/public-list-shell'
+
+const RATING_TABS = [
+  { value: 'strategic', label: '战略合作' },
+  { value: 'deep', label: '深度合作' },
+  { value: 'general', label: '一般合作' },
+]
 
 export default function AlliancePublicEnterprisesPage() {
   const [items, setItems] = useState<AllianceEnterprise[]>([])
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('all')
+  const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
     portalRequest<{ items: AllianceEnterprise[] }>('/alliance/public/enterprises')
@@ -23,43 +29,59 @@ export default function AlliancePublicEnterprisesPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <LoadingView />
+  const tabs = useMemo(
+    () => [
+      { value: 'all', label: '全部企业', count: items.length },
+      ...RATING_TABS.map((t) => ({
+        value: t.value,
+        label: t.label,
+        count: items.filter((i) => i.rating === t.value).length,
+      })),
+    ],
+    [items],
+  )
+
+  const filtered = useMemo(() => {
+    let list = items
+    if (tab !== 'all') list = list.filter((i) => i.rating === tab)
+    if (keyword.trim()) {
+      const q = keyword.trim().toLowerCase()
+      list = list.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          (i.industry ?? '').toLowerCase().includes(q) ||
+          (i.region ?? '').toLowerCase().includes(q),
+      )
+    }
+    return list
+  }, [items, tab, keyword])
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">合作企业</h1>
-      <p className="text-muted-foreground">校企合作企业展示</p>
-      {items.length === 0 ? (
-        <p className="text-muted-foreground">暂无合作企业</p>
+    <PublicListShell
+      title="合作企业"
+      subtitle="查看全部校企合作企业，按合作等级筛选"
+      icon={<Building2 className="w-7 h-7 text-white" />}
+      tabs={tabs}
+      activeTab={tab}
+      onTabChange={setTab}
+      keyword={keyword}
+      onKeywordChange={setKeyword}
+      placeholder="搜索企业名称、行业或地区..."
+      loading={loading}
+    >
+      {filtered.length === 0 ? (
+        <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
+          <Building2 className="h-12 w-12 mx-auto mb-4 opacity-30" />
+          <div className="text-[15px] font-medium text-[#475569]">暂无合作企业</div>
+          <div className="text-[13px] mt-1">发布后的合作企业会展示在这里</div>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((item) => (
-            <Link key={item.id} href={`/portal/alliance/enterprises/${item.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <Badge variant="outline">
-                      {allianceLabel('enterpriseStatus', item.status)}
-                    </Badge>
-                  </div>
-                  {item.industry && (
-                    <CardDescription>
-                      {item.industry}
-                      {item.region ? ` · ${item.region}` : ''}
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                {item.description && (
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-                  </CardContent>
-                )}
-              </Card>
-            </Link>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filtered.map((item) => (
+            <EnterpriseCard key={item.id} enterprise={item} />
           ))}
         </div>
       )}
-    </div>
+    </PublicListShell>
   )
 }

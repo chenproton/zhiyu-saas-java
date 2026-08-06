@@ -92,6 +92,8 @@
 | `PageHeaderCard` | `shared/page-header-card.tsx` | 页头统计卡片（标题 + 统计数字 + 操作按钮） | `title`, `stats`, `actions` |
 | `LandingFilterRow` | `shared/landing-filter-row.tsx` | Landing 页筛选行（标签云+展开收起） | `label`, `items`, `selected`, `onSelect`, `accentColor` |
 | `LandingPagination` | `shared/landing-pagination.tsx` | Landing 页分页器（省略号+图标按钮） | `currentPage`, `totalPages`, `onPageChange`, `accentColor` |
+| `PublicListShell` | `alliance/public-list-shell.tsx` | 联盟前台「查看全部」页外壳（顶部色块+Tabs 筛选+搜索+页脚，参照 exam-center） | `title`, `subtitle`, `icon`, `tabs{value,label,count}[]`, `activeTab`, `onTabChange`, `keyword`, `onKeywordChange`, `placeholder`, `loading`, `gridClassName`, `children` |
+| `PublicCard` 系列 | `alliance/public-cards.tsx` | 联盟前台卡片：`EnterpriseCard` / `ProjectCard` / `AchievementCard` / `ExpertCard` / `BrandCard`（landing 与查看全部页共用） | 各对象类型，如 `enterprise: AllianceEnterprise` |
 
 ## Hooks
 
