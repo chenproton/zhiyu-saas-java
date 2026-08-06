@@ -4,17 +4,39 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
-import type { PlatformNavigationConfig, SideNavItem } from './config'
+import type { PlatformNavigationConfig, SideNavChild, SideNavItem } from './config'
 import { resolvePlatformIcon } from './icons'
 import { cn } from '@/lib/utils'
 import { matchesPath } from './utils'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 
+function getMatchedTarget(pathname: string, href?: string, matchers?: string[]) {
+  const targets = matchers && matchers.length > 0 ? matchers : href ? [href] : []
+  return targets.find((target) => {
+    if (target === '/') {
+      return pathname === '/'
+    }
+    if (target.endsWith('$')) {
+      return pathname === target.slice(0, -1)
+    }
+    return pathname === target || pathname.startsWith(`${target}/`)
+  })
+}
+
+function getActiveChild(pathname: string, children?: SideNavChild[]): SideNavChild | undefined {
+  if (!children?.length) return undefined
+  const matched = children
+    .map((child) => ({ child, target: getMatchedTarget(pathname, child.href, child.matchers) }))
+    .filter((m): m is { child: SideNavChild; target: string } => m.target !== undefined)
+  if (matched.length === 0) return undefined
+  return matched.sort((a, b) => b.target.length - a.target.length)[0].child
+}
+
 function isSideItemActive(pathname: string, item: SideNavItem) {
   if (item.children?.length) {
-    return item.children.some((child) => matchesPath(pathname, child.href, child.matchers))
+    return getActiveChild(pathname, item.children) !== undefined
   }
-  return matchesPath(pathname, item.href, item.matchers)
+  return getMatchedTarget(pathname, item.href, item.matchers) !== undefined
 }
 
 function getVisibleSideNavItems(
@@ -148,20 +170,23 @@ export function PlatformSideNav({
 
               {hasChildren && isExpanded ? (
                 <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-gray-100 pl-3">
-                  {item.children?.map((child) => (
-                    <Link
-                      key={child.id}
-                      href={child.href}
-                      className={cn(
-                        'block rounded-lg px-3 py-2 text-sm transition-colors',
-                        matchesPath(pathname, child.href, child.matchers)
-                          ? 'bg-primary text-white font-medium'
-                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800',
-                      )}
-                    >
-                      {child.label}
-                    </Link>
-                  ))}
+                  {(() => {
+                    const activeChildId = getActiveChild(pathname, item.children)?.id
+                    return item.children?.map((child) => (
+                      <Link
+                        key={child.id}
+                        href={child.href}
+                        className={cn(
+                          'block rounded-lg px-3 py-2 text-sm transition-colors',
+                          activeChildId === child.id
+                            ? 'bg-primary text-white font-medium'
+                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800',
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    ))
+                  })()}
                 </div>
               ) : null}
             </div>
