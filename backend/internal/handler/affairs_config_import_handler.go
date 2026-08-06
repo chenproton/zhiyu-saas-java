@@ -15,6 +15,22 @@ type AffairsConfigImportHandler struct {
 	DB *pgxpool.Pool
 }
 
+// parseSlotTypeName 将「时段类型」列中文值映射为 slot_type，无法识别时返回空串。
+func parseSlotTypeName(s string) string {
+	switch s {
+	case "早自习":
+		return "morning_self"
+	case "上午":
+		return "morning"
+	case "下午":
+		return "afternoon"
+	case "晚自习":
+		return "evening"
+	default:
+		return ""
+	}
+}
+
 // ImportExcel POST /import/affairs-config/excel — 三 Sheet Excel 导入学期/场地/节次。
 func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
@@ -116,12 +132,15 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 				continue
 			}
 			sortOrder, _ := strconv.Atoi(sortStr)
-			// 导入无时段类型列，按排序位置推断（与迁移回填/旧标签约定一致：0-3 上午、4-7 下午、8+ 晚自习）
-			slotType := "morning"
-			if sortOrder >= 4 && sortOrder < 8 {
-				slotType = "afternoon"
-			} else if sortOrder >= 8 {
-				slotType = "evening"
+			// 时段类型优先读「时段类型」列；为空时按排序位置推断（0-3 上午、4-7 下午、8+ 晚自习）
+			slotType := parseSlotTypeName(col(row, 4))
+			if slotType == "" {
+				slotType = "morning"
+				if sortOrder >= 4 && sortOrder < 8 {
+					slotType = "afternoon"
+				} else if sortOrder >= 8 {
+					slotType = "evening"
+				}
 			}
 			var st, et *string
 			if startTime != "" {
@@ -189,9 +208,9 @@ func (h *AffairsConfigImportHandler) ServeTemplate(w http.ResponseWriter, r *htt
 	makeSheet("场地", []string{"名称 *", "类型 *", "容量"},
 		[]float64{20, 14, 8},
 		"填写说明：\n类型：教室/机房/实训室/实验室/校外基地\n容量：整数，选填")
-	makeSheet("节次", []string{"名称 *", "开始时间", "结束时间", "排序"},
-		[]float64{16, 10, 10, 8},
-		"填写说明：\n名称：如 上午1-2\n时间：HH:MM 格式\n排序：整数，用于课表行顺序；时段类型按排序自动识别（0-3 上午、4-7 下午、8+ 晚自习）")
+	makeSheet("节次", []string{"名称 *", "开始时间", "结束时间", "排序", "时段类型"},
+		[]float64{16, 10, 10, 8, 10},
+		"填写说明：\n名称：如 上午1-2\n时间：HH:MM 格式\n排序：整数，用于课表行顺序\n时段类型：早自习/上午/下午/晚自习，选填；不填时按排序自动识别（0-3 上午、4-7 下午、8+ 晚自习）")
 
 	if _, err := f.NewSheet("Sheet1"); err == nil {
 		f.DeleteSheet("Sheet1")
