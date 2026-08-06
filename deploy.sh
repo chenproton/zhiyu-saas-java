@@ -154,6 +154,19 @@ prune_old_images() {
   done
 }
 
+# 清理同一镜像 ID 上残留的历史标签：只保留 content-hash 与当前 IMAGE_TAG 两个标签。
+# 历史 commit 标签（每次部署都会打一个）不占额外磁盘（指向同一 ID），
+# 但会随部署无限累积，导致 docker images 列表膨胀、误以为镜像堆积。
+# 仅删标签不动镜像（镜像还有其他标签时 docker rmi 只移除该标签），被容器引用的标签删除会失败并安全跳过。
+prune_extra_tags() {
+  local repo="$1" hash_tag="$2"
+  local img
+  for img in $(docker images --format '{{.Repository}}:{{.Tag}}' "$repo" 2>/dev/null); do
+    [[ "$img" == "$repo:$hash_tag" || "$img" == "$repo:$IMAGE_TAG" ]] && continue
+    docker rmi "$img" >/dev/null 2>&1 || true
+  done
+}
+
 # 检查本地离线资源是否存在
 offline_file() {
   local path="$OFFLINE_DIR/$1"
@@ -922,9 +935,15 @@ if [[ "$CLEAN_BUILD" == "true" ]]; then
   fi
 fi
 
-# 每次部署后的磁盘清理：构建缓存超限自动裁剪（保留近期缓存，不拖慢下次构建）
-if docker builder prune --help 2>/dev/null | grep -q -- '--keep-storage'; then
-  docker builder prune -f --keep-storage 10GB >/dev/null 2>&1 || true
+# 每次部署后的磁盘清理：构建缓存超限自动裁剪（保留近期缓存，不拖慢下次构建）。
+# buildx 新版参数为 --max-used-space（旧版 --keep-storage 已废弃移除），
+# 探测失败再退化为按时间的 --filter until=72h 兜底。
+# 阈值可用 BUILD_CACHE_LIMIT_GB 配置（默认 10GB）；缓存未超限时 prune 快速返回，不影响部署速度。
+BUILD_CACHE_LIMIT="${BUILD_CACHE_LIMIT_GB:-10}GB"
+if docker builder prune --help 2>/dev/null | grep -q -- '--max-used-space'; then
+  docker builder prune -f --max-used-space "$BUILD_CACHE_LIMIT" >/dev/null 2>&1 || true
+elif docker builder prune --help 2>/dev/null | grep -q -- '--keep-storage'; then
+  docker builder prune -f --keep-storage "$BUILD_CACHE_LIMIT" >/dev/null 2>&1 || true
 else
   docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
 fi
@@ -935,6 +954,9 @@ docker image prune -f >/dev/null 2>&1 || true
 prune_old_images "zhiyu-backend" 1
 prune_old_images "zhiyu-edu" 1
 prune_old_images "fangzhengjin/kkfileview" 1
+# 再清理保留镜像上的历史 commit 标签（只留 content-hash 与当前 IMAGE_TAG）
+prune_extra_tags "zhiyu-backend" "$BACKEND_HASH"
+prune_extra_tags "zhiyu-edu" "$FRONTEND_HASH"
 
 # Go 编译缓存超限（默认 2GB）时整体清理，避免无限增长（下次后端构建全量重编，可接受）
 GO_CACHE_DIR="$BUILD_CACHE/go-cache"
