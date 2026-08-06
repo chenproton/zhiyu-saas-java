@@ -13,7 +13,9 @@ import type { AllianceExpert } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 
+import { useT } from '@/lib/i18n/locale-provider'
 export default function AlliancePublicExpertDetailPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const [expert, setExpert] = useState<AllianceExpert | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,7 +31,8 @@ export default function AlliancePublicExpertDetailPage() {
   }, [id])
 
   if (loading) return <LoadingView />
-  if (!expert) return <div className="text-center py-12 text-muted-foreground">专家不存在</div>
+  if (!expert)
+    return <div className="text-center py-12 text-muted-foreground">{t('专家不存在')}</div>
 
   return (
     <div className="space-y-6">
@@ -38,7 +41,7 @@ export default function AlliancePublicExpertDetailPage() {
           href="/portal/alliance/experts"
           className="text-sm text-primary hover:underline inline-flex items-center gap-1"
         >
-          <ArrowLeft className="h-4 w-4" /> 返回列表
+          <ArrowLeft className="h-4 w-4" /> {t('返回列表')}
         </Link>
       </div>
 
@@ -72,23 +75,23 @@ export default function AlliancePublicExpertDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>基本信息</CardTitle>
+            <CardTitle>{t('基本信息')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
-              <span className="text-muted-foreground">行业：</span>
+              <span className="text-muted-foreground">{t('行业：')}</span>
               {expert.industry || '-'}
             </p>
             <p>
-              <span className="text-muted-foreground">城市：</span>
+              <span className="text-muted-foreground">{t('城市：')}</span>
               {expert.city || '-'}
             </p>
             <p>
-              <span className="text-muted-foreground">从业年限：</span>
-              {expert.experienceYears ? `${expert.experienceYears}年` : '-'}
+              <span className="text-muted-foreground">{t('从业年限：')}</span>
+              {expert.experienceYears ? t('{years}年', { years: expert.experienceYears }) : '-'}
             </p>
             <p>
-              <span className="text-muted-foreground">学历：</span>
+              <span className="text-muted-foreground">{t('学历：')}</span>
               {expert.education || '-'}
             </p>
           </CardContent>
@@ -96,7 +99,7 @@ export default function AlliancePublicExpertDetailPage() {
         {expert.professionalFields && expert.professionalFields.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>专业领域</CardTitle>
+              <CardTitle>{t('专业领域')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -114,7 +117,7 @@ export default function AlliancePublicExpertDetailPage() {
       {expert.specialties && expert.specialties.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>专长</CardTitle>
+            <CardTitle>{t('专长')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -131,7 +134,7 @@ export default function AlliancePublicExpertDetailPage() {
       {expert.introduction && (
         <Card>
           <CardHeader>
-            <CardTitle>简介</CardTitle>
+            <CardTitle>{t('简介')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap">{expert.introduction}</p>
@@ -142,7 +145,7 @@ export default function AlliancePublicExpertDetailPage() {
       {expert.workExperience && (
         <Card>
           <CardHeader>
-            <CardTitle>工作经历</CardTitle>
+            <CardTitle>{t('工作经历')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap">{expert.workExperience}</p>
@@ -153,7 +156,7 @@ export default function AlliancePublicExpertDetailPage() {
       {expert.photos && expert.photos.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>照片</CardTitle>
+            <CardTitle>{t('照片')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -161,7 +164,7 @@ export default function AlliancePublicExpertDetailPage() {
                 <div key={idx} className="relative w-full h-40 rounded-lg overflow-hidden">
                   <Image
                     src={photo}
-                    alt={`${expert.name} 照片 ${idx + 1}`}
+                    alt={t('{name} 照片 {idx}', { name: expert.name, idx: idx + 1 })}
                     fill
                     className="object-cover"
                   />

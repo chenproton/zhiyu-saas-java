@@ -6,6 +6,7 @@ import { ArrowLeft, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Footer } from '@/components/portal/footer'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface PublicListTab {
   value: string
@@ -46,6 +47,7 @@ export function PublicListShell({
   gridClassName = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5',
   children,
 }: PublicListShellProps) {
+  const t = useT()
   return (
     <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* 页头 */}
@@ -56,7 +58,7 @@ export function PublicListShell({
             className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            {backLabel}
+            {t(backLabel)}
           </Link>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center">
@@ -90,7 +92,7 @@ export function PublicListShell({
             <Input
               value={keyword}
               onChange={(e) => onKeywordChange(e.target.value)}
-              placeholder={placeholder}
+              placeholder={t(placeholder)}
               className="pl-10 h-11 bg-white border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 transition-all"
             />
           </div>

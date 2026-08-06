@@ -8,6 +8,7 @@ import { reportError } from '@/lib/error-handling'
 import { AchievementCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 
+import { useT } from '@/lib/i18n/locale-provider'
 const TYPE_TABS = [
   { value: 'job', label: '岗位成果' },
   { value: 'scene', label: '场景成果' },
@@ -16,6 +17,7 @@ const TYPE_TABS = [
 ]
 
 export default function AlliancePublicAchievementsPage() {
+  const t = useT()
   const [items, setItems] = useState<AllianceAchievement[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('all')
@@ -32,14 +34,14 @@ export default function AlliancePublicAchievementsPage() {
 
   const tabs = useMemo(
     () => [
-      { value: 'all', label: '全部成果', count: items.length },
-      ...TYPE_TABS.map((t) => ({
-        value: t.value,
-        label: t.label,
-        count: items.filter((i) => i.type === t.value).length,
+      { value: 'all', label: t('全部成果'), count: items.length },
+      ...TYPE_TABS.map((tab) => ({
+        value: tab.value,
+        label: t(tab.label),
+        count: items.filter((i) => i.type === tab.value).length,
       })),
     ],
-    [items],
+    [items, t],
   )
 
   const filtered = useMemo(() => {
@@ -48,8 +50,7 @@ export default function AlliancePublicAchievementsPage() {
     if (keyword.trim()) {
       const q = keyword.trim().toLowerCase()
       list = list.filter(
-        (i) =>
-          i.title.toLowerCase().includes(q) || (i.description ?? '').toLowerCase().includes(q),
+        (i) => i.title.toLowerCase().includes(q) || (i.description ?? '').toLowerCase().includes(q),
       )
     }
     return list
@@ -57,22 +58,22 @@ export default function AlliancePublicAchievementsPage() {
 
   return (
     <PublicListShell
-      title="合作成果"
-      subtitle="查看全部校企合作成果，按成果类型筛选"
+      title={t('合作成果')}
+      subtitle={t('查看全部校企合作成果，按成果类型筛选')}
       icon={<Trophy className="w-7 h-7 text-white" />}
       tabs={tabs}
       activeTab={tab}
       onTabChange={setTab}
       keyword={keyword}
       onKeywordChange={setKeyword}
-      placeholder="搜索成果标题或描述..."
+      placeholder={t('搜索成果标题或描述...')}
       loading={loading}
     >
       {filtered.length === 0 ? (
         <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
           <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <div className="text-[15px] font-medium text-[#475569]">暂无合作成果</div>
-          <div className="text-[13px] mt-1">发布后的合作成果会展示在这里</div>
+          <div className="text-[15px] font-medium text-[#475569]">{t('暂无合作成果')}</div>
+          <div className="text-[13px] mt-1">{t('发布后的合作成果会展示在这里')}</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

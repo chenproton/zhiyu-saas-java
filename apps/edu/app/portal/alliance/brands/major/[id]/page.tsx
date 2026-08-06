@@ -13,7 +13,9 @@ import type { AllianceBrand } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 
+import { useT } from '@/lib/i18n/locale-provider'
 export default function AlliancePublicMajorBrandDetailPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const [brand, setBrand] = useState<AllianceBrand | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,7 +31,8 @@ export default function AlliancePublicMajorBrandDetailPage() {
   }, [id])
 
   if (loading) return <LoadingView />
-  if (!brand) return <div className="text-center py-12 text-muted-foreground">品牌不存在</div>
+  if (!brand)
+    return <div className="text-center py-12 text-muted-foreground">{t('品牌不存在')}</div>
 
   return (
     <div className="space-y-6">
@@ -38,14 +41,14 @@ export default function AlliancePublicMajorBrandDetailPage() {
           href="/portal/alliance/brands?type=major"
           className="text-sm text-primary hover:underline inline-flex items-center gap-1"
         >
-          <ArrowLeft className="h-4 w-4" /> 返回
+          <ArrowLeft className="h-4 w-4" /> {t('返回')}
         </Link>
       </div>
 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold break-words">{brand.name}</h1>
-          <p className="text-muted-foreground text-sm mt-1">专业品牌</p>
+          <p className="text-muted-foreground text-sm mt-1">{t('专业品牌')}</p>
         </div>
         <Badge variant="outline" className="shrink-0">
           {allianceLabel('brandStatus', brand.status)}
@@ -65,7 +68,7 @@ export default function AlliancePublicMajorBrandDetailPage() {
       {brand.description && (
         <Card>
           <CardHeader>
-            <CardTitle>品牌介绍</CardTitle>
+            <CardTitle>{t('品牌介绍')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap">{brand.description}</p>
@@ -76,7 +79,7 @@ export default function AlliancePublicMajorBrandDetailPage() {
       {brand.data && Object.keys(brand.data).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>详细数据</CardTitle>
+            <CardTitle>{t('详细数据')}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-2 text-sm">

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import {
   ABILITY_PLATFORM_URL,
   AI_ASSISTANT_URL,
@@ -341,11 +342,12 @@ function getIcon(name: string) {
 }
 
 function ModuleItem({ module }: { module: AppModule }) {
+  const t = useT()
   if (!module.href) {
     return (
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground opacity-60 bg-muted/50">
         <LayoutGrid className="w-3 h-3" />
-        <span>{module.title}</span>
+        <span>{t(module.title)}</span>
       </div>
     )
   }
@@ -358,7 +360,7 @@ function ModuleItem({ module }: { module: AppModule }) {
       className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-primary/5 hover:text-primary transition-colors group"
     >
       <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary" />
-      <span className="line-clamp-1">{module.title}</span>
+      <span className="line-clamp-1">{t(module.title)}</span>
     </a>
   )
 }
@@ -374,6 +376,7 @@ function ResourceItem({
   onToggle: () => void
   modules: AppModule[]
 }) {
+  const t = useT()
   const isExpandable = resource.category === 'platform'
   const isClickable = resource.originalType === 'kb' || resource.originalType === 'bot'
 
@@ -412,15 +415,15 @@ function ResourceItem({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h4 className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors duration-200">
-                {resource.title}
+                {t(resource.title)}
               </h4>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{resource.desc}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t(resource.desc)}</p>
             {resource.tags && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {resource.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
-                    {tag}
+                  <Badge key={t(tag)} variant="secondary" className="text-[10px] px-1.5 py-0">
+                    {t(tag)}
                   </Badge>
                 ))}
               </div>
@@ -438,7 +441,9 @@ function ResourceItem({
               ))}
             </div>
           ) : (
-            <div className="text-center py-3 text-xs text-muted-foreground">暂无模块配置</div>
+            <div className="text-center py-3 text-xs text-muted-foreground">
+              {t('暂无模块配置')}
+            </div>
           )}
         </div>
       )}
@@ -447,6 +452,7 @@ function ResourceItem({
 }
 
 function QuickActionItem({ action }: { action: QuickAction }) {
+  const t = useT()
   return (
     <a
       href={action.href}
@@ -458,13 +464,14 @@ function QuickActionItem({ action }: { action: QuickAction }) {
       )}
     >
       {getIcon(action.icon)}
-      <span>{action.label}</span>
+      <span>{t(action.label)}</span>
       <ExternalLink className="w-3 h-3 ml-auto opacity-40 group-hover:opacity-100 transition-opacity" />
     </a>
   )
 }
 
 export function YiKnowAssistant() {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<ResourceCategory | 'all'>('all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -544,41 +551,46 @@ export function YiKnowAssistant() {
     const q = question.toLowerCase()
 
     if (q.includes('我要建岗位')) {
-      reply = '已为你找到岗位管理入口，点击即可进入岗位新建页面。'
+      reply = t('已为你找到岗位管理入口，点击即可进入岗位新建页面。')
       quickActions = QUICK_ACTIONS.filter((a) => a.id === 'create-position')
     } else if (q.includes('我要建场景')) {
-      reply = '已为你找到新建场景入口，点击即可进入场景新建页面。'
+      reply = t('已为你找到新建场景入口，点击即可进入场景新建页面。')
       quickActions = QUICK_ACTIONS.filter((a) => a.id === 'create-scene')
     } else if (q.includes('我要ai帮我建岗位')) {
-      reply = '已为你唤起 AI 智能体，点击即可使用 AI 辅助创建岗位。'
+      reply = t('已为你唤起 AI 智能体，点击即可使用 AI 辅助创建岗位。')
       quickActions = QUICK_ACTIONS.filter((a) => a.id === 'ai-create-position')
     } else if (q.includes('网络安全工程师') || q.includes('岗位')) {
-      reply =
-        '推荐你进入【职业岗位学习平台】的网络安全工程师岗位页面。该岗位需要掌握网络协议分析、安全设备配置、渗透测试与日志审计等能力，涉及 NISP、CISP 等证书。建议先学习《网络协议与安全基础》，再完成对应实训场景。'
+      reply = t(
+        '推荐你进入【职业岗位学习平台】的网络安全工程师岗位页面。该岗位需要掌握网络协议分析、安全设备配置、渗透测试与日志审计等能力，涉及 NISP、CISP 等证书。建议先学习《网络协议与安全基础》，再完成对应实训场景。',
+      )
       recommendations = RESOURCES.filter((r) =>
         ['career-platform', 'finance-kb', 'position-agent'].includes(r.id),
       )
     } else if (q.includes('实训场景') || q.includes('信息安全')) {
-      reply =
-        '信息安全专业已发布 12 个实践场景，包括 Web 渗透测试、内网安全加固、日志审计分析等。每个场景已标注关联岗位、能力点和任务数，你可以直接进入【实践场景学习平台】查看详情。'
+      reply = t(
+        '信息安全专业已发布 12 个实践场景，包括 Web 渗透测试、内网安全加固、日志审计分析等。每个场景已标注关联岗位、能力点和任务数，你可以直接进入【实践场景学习平台】查看详情。',
+      )
       recommendations = RESOURCES.filter((r) =>
         ['scene-platform', 'cnc-kb', 'scene-agent'].includes(r.id),
       )
     } else if (q.includes('岗位认证') || q.includes('能力')) {
-      reply =
-        '根据你的能力画像对比网络安全工程师岗位认证标准：已达成网络基础、系统配置；待提升渗透测试、安全报告撰写。已为你推荐对应测评任务和 3 个练习资源。'
+      reply = t(
+        '根据你的能力画像对比网络安全工程师岗位认证标准：已达成网络基础、系统配置；待提升渗透测试、安全报告撰写。已为你推荐对应测评任务和 3 个练习资源。',
+      )
       recommendations = RESOURCES.filter((r) =>
         ['eval-platform', 'qa-robot', 'custom-robot'].includes(r.id),
       )
     } else if (q.includes('校企合作') || q.includes('合作单位')) {
-      reply =
-        '学校现有 8 家深度合作企业，包括金融科技、智能制造、现代服务等领域。你可以在【产业联盟与品牌运营平台】查看合作类型、重点项目成果及专家资源。'
+      reply = t(
+        '学校现有 8 家深度合作企业，包括金融科技、智能制造、现代服务等领域。你可以在【产业联盟与品牌运营平台】查看合作类型、重点项目成果及专家资源。',
+      )
       recommendations = RESOURCES.filter((r) =>
         ['brand-platform', 'hotel-kb', 'logistics-kb'].includes(r.id),
       )
     } else {
-      reply =
-        '我帮你找到了一些相关资源，你可以点击卡片快速查看。如需更精准的推荐，可以补充专业、年级或目标岗位。'
+      reply = t(
+        '我帮你找到了一些相关资源，你可以点击卡片快速查看。如需更精准的推荐，可以补充专业、年级或目标岗位。',
+      )
       recommendations = RESOURCES.filter((r) => {
         return (
           r.title.toLowerCase().includes(q) ||
@@ -650,7 +662,7 @@ export function YiKnowAssistant() {
         />
       ))}
       {filteredResources.length === 0 && (
-        <div className="text-center py-8 text-sm text-muted-foreground">未找到相关资源</div>
+        <div className="text-center py-8 text-sm text-muted-foreground">{t('未找到相关资源')}</div>
       )}
     </div>
   )
@@ -667,7 +679,7 @@ export function YiKnowAssistant() {
                 {getIcon(CATEGORY_META[cat].icon)}
               </div>
               <h4 className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">
-                {CATEGORY_META[cat].label}
+                {t(CATEGORY_META[cat].label)}
               </h4>
               <div className="flex-1 h-px bg-gradient-to-r from-border/60 to-transparent ml-1" />
             </div>
@@ -687,7 +699,7 @@ export function YiKnowAssistant() {
       })}
       {filteredResources.length === 0 && (
         <div className="text-center py-8 text-sm text-muted-foreground">
-          未找到相关资源，换个关键词试试
+          {t('未找到相关资源，换个关键词试试')}
         </div>
       )}
     </div>
@@ -698,12 +710,12 @@ export function YiKnowAssistant() {
       <div className="flex items-center justify-between px-3 py-2 border-b bg-gradient-to-r from-primary/[0.04] to-transparent shrink-0">
         <div className="flex items-center gap-2">
           <MessageCircle className="w-4 h-4 text-primary" />
-          <span className="text-xs font-medium">AI 对话</span>
+          <span className="text-xs font-medium">{t('AI 对话')}</span>
         </div>
         <button
           onClick={handleCloseChat}
           className="w-6 h-6 rounded-full hover:bg-muted/80 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
-          title="返回导航面板"
+          title={t('返回导航面板')}
         >
           <X className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
@@ -738,7 +750,7 @@ export function YiKnowAssistant() {
                 )}
                 {msg.recommendations && msg.recommendations.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    <p className="text-[10px] text-muted-foreground">为你推荐：</p>
+                    <p className="text-[10px] text-muted-foreground">{t('为你推荐：')}</p>
                     {msg.recommendations.map((r) => (
                       <div
                         key={r.id}
@@ -781,7 +793,7 @@ export function YiKnowAssistant() {
                     style={{ animationDelay: '400ms', animationDuration: '1.2s' }}
                   />
                 </span>
-                <span>思考中</span>
+                <span>{t('思考中')}</span>
               </div>
             </div>
           )}
@@ -800,7 +812,7 @@ export function YiKnowAssistant() {
         <button
           onClick={() => setDismissed(true)}
           className="absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-muted-foreground/50 hover:bg-muted-foreground/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          aria-label="关闭 YI KNOW"
+          aria-label={t('关闭 YI KNOW')}
         >
           <X className="w-3 h-3 text-white" />
         </button>
@@ -824,17 +836,17 @@ export function YiKnowAssistant() {
               >
                 👋
               </span>
-              Hi～
+              {t('Hi～')}
             </span>
             <p className="mt-1.5 text-sm text-[#2a3650] leading-relaxed">
-              我是{' '}
+              {t('我是')}{' '}
               <span className="text-[#1a73e8] font-extrabold">
                 YI
                 <span className="inline-block w-1.5 h-1.5 bg-[#ffce3d] rounded-full mx-0.5 align-middle shadow-[0_0_8px_#ffce3d]" />
                 Know
               </span>
               <br />
-              你的专属智能助理
+              {t('你的专属智能助理')}
             </p>
             {/* tail */}
             <div
@@ -852,7 +864,7 @@ export function YiKnowAssistant() {
         <button
           onClick={() => handleOpenChange(!open)}
           className="block w-28 h-28 rounded-full p-0 border-0 bg-transparent cursor-pointer transition-transform hover:scale-110 active:scale-95 shrink-0"
-          aria-label="YI KNOW 教学智能助理"
+          aria-label={t('YI KNOW 教学智能助理')}
           style={{ filter: 'drop-shadow(0 8px 16px rgba(120,140,180,.35))' }}
         >
           <div
@@ -1057,7 +1069,9 @@ export function YiKnowAssistant() {
                 <h3 className="font-semibold text-sm tracking-wide">
                   <span className="text-primary">YI</span> <span>KNOW</span>
                 </h3>
-                <p className="text-[10px] text-muted-foreground/80">职业教育场景化教学智能助理</p>
+                <p className="text-[10px] text-muted-foreground/80">
+                  {t('职业教育场景化教学智能助理')}
+                </p>
               </div>
             </div>
             <button
@@ -1082,25 +1096,25 @@ export function YiKnowAssistant() {
                 value="all"
                 className="text-xs data-[state=active]:shadow-sm data-[state=active]:bg-background rounded-lg transition-all duration-200"
               >
-                全部
+                {t('全部')}
               </TabsTrigger>
               <TabsTrigger
                 value="knowledge"
                 className="text-xs data-[state=active]:shadow-sm data-[state=active]:bg-background rounded-lg transition-all duration-200"
               >
-                知识库
+                {t('知识库')}
               </TabsTrigger>
               <TabsTrigger
                 value="agent"
                 className="text-xs data-[state=active]:shadow-sm data-[state=active]:bg-background rounded-lg transition-all duration-200"
               >
-                智能体
+                {t('智能体')}
               </TabsTrigger>
               <TabsTrigger
                 value="platform"
                 className="text-xs data-[state=active]:shadow-sm data-[state=active]:bg-background rounded-lg transition-all duration-200"
               >
-                教学平台
+                {t('教学平台')}
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -1125,19 +1139,19 @@ export function YiKnowAssistant() {
               <div className="px-4 pt-3 pb-0">
                 <div className="flex items-center gap-1.5 mb-2 text-[11px] text-muted-foreground/70">
                   <Sparkles className="w-3 h-3 text-primary/70" />
-                  <span>试试问我：</span>
+                  <span>{t('试试问我：')}</span>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                   {PROMPT_TAGS.map((tag) => (
                     <button
-                      key={tag.label}
+                      key={t(tag.label)}
                       type="button"
                       className="shrink-0 px-3 py-1.5 rounded-full text-xs border bg-background/80 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all duration-200 active:scale-95 shadow-sm"
                       onClick={() => {
                         setInputValue(tag.value)
                       }}
                     >
-                      {tag.label}
+                      {t(tag.label)}
                     </button>
                   ))}
                 </div>
@@ -1147,7 +1161,7 @@ export function YiKnowAssistant() {
               <div className="relative flex-1 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 group-focus-within:text-primary transition-colors duration-200" />
                 <Input
-                  placeholder="搜索资源或提问..."
+                  placeholder={t('搜索资源或提问...')}
                   className="pl-9 h-9 text-sm bg-muted/40 border-muted-foreground/20 focus-visible:bg-background transition-all duration-200"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
@@ -1164,7 +1178,7 @@ export function YiKnowAssistant() {
                 className="h-9 w-9 shrink-0 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-sm transition-all duration-200 active:scale-95"
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isTyping}
-                aria-label="发送"
+                aria-label={t('发送')}
               >
                 <Send className="w-4 h-4" />
               </Button>

@@ -10,10 +10,12 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalLogApi } from '@/lib/api'
 import type { OperationLog } from '@/lib/types/backend'
 import { LogTableShell, type LogColumn } from '@/components/shared/log-table-shell'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const PAGE_SIZE = 20
 
 export default function OperationLogsPage() {
+  const t = useT()
   const { tenantId } = usePortalAuth()
 
   const [logs, setLogs] = useState<OperationLog[]>([])
@@ -39,12 +41,12 @@ export default function OperationLogsPage() {
         setLogs(res.items)
         setTotal(res.total)
       } catch (err: any) {
-        setError(err?.message || '加载操作日志失败')
+        setError(err?.message || t('加载操作日志失败'))
       } finally {
         setLoading(false)
       }
     },
-    [tenantId, page, searchTerm],
+    [tenantId, page, searchTerm, t],
   )
 
   useEffect(() => {
@@ -87,7 +89,7 @@ export default function OperationLogsPage() {
 
   const columns: LogColumn<OperationLog>[] = [
     {
-      header: '用户',
+      header: t('用户'),
       cell: (log) => (
         <>
           <div className="font-medium">{log.userName || '-'}</div>
@@ -95,10 +97,10 @@ export default function OperationLogsPage() {
         </>
       ),
     },
-    { header: '模块', cell: (log) => log.module || '-' },
-    { header: '操作', cell: (log) => log.action },
+    { header: t('模块'), cell: (log) => log.module || '-' },
+    { header: t('操作'), cell: (log) => log.action },
     {
-      header: '操作对象',
+      header: t('操作对象'),
       cell: (log) => (
         <span className="text-muted-foreground max-w-xs truncate" title={formatTarget(log)}>
           {formatTarget(log)}
@@ -106,22 +108,22 @@ export default function OperationLogsPage() {
       ),
     },
     {
-      header: 'IP地址',
+      header: t('IP地址'),
       cell: (log) => (
         <span className="font-mono text-sm text-muted-foreground">{log.ip || '-'}</span>
       ),
     },
     {
-      header: '状态',
+      header: t('状态'),
       cell: (log) => (
         <StatusBadge
           status={log.status === 'success' ? 'success' : log.status || 'failed'}
-          label={log.status === 'success' ? '成功' : log.status || '失败'}
+          label={log.status === 'success' ? t('成功') : log.status || t('失败')}
         />
       ),
     },
     {
-      header: '操作时间',
+      header: t('操作时间'),
       cell: (log) => <span className="text-muted-foreground">{log.createdAt}</span>,
     },
   ]
@@ -130,17 +132,17 @@ export default function OperationLogsPage() {
     <div className="min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">操作日志查看</h1>
-          <p className="mt-1 text-sm text-muted-foreground">查看用户操作记录</p>
+          <h1 className="text-xl font-semibold text-foreground">{t('操作日志查看')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('查看用户操作记录')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-            刷新
+            {t('刷新')}
           </Button>
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" disabled title={t('即将上线')}>
             <Download className="h-4 w-4 mr-1" />
-            批量导出
+            {t('批量导出')}
           </Button>
         </div>
       </div>
@@ -149,7 +151,7 @@ export default function OperationLogsPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="搜索用户、模块或操作..."
+            placeholder={t('搜索用户、模块或操作...')}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value)
@@ -163,11 +165,11 @@ export default function OperationLogsPage() {
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>加载失败</AlertTitle>
+          <AlertTitle>{t('加载失败')}</AlertTitle>
           <AlertDescription className="flex items-center gap-4">
             {error}
             <Button variant="outline" size="sm" onClick={handleRefresh}>
-              重试
+              {t('重试')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -177,7 +179,7 @@ export default function OperationLogsPage() {
         loading={loading}
         items={displayLogs}
         columns={columns}
-        emptyText="暂无操作日志"
+        emptyText={t('暂无操作日志')}
         total={searching ? searchFiltered.length : total}
         page={page}
         totalPages={totalPages}

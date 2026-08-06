@@ -10,9 +10,11 @@ import { reportError } from '@/lib/error-handling'
 import { BrandCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 
+import { useT } from '@/lib/i18n/locale-provider'
 const BRAND_TYPES = ['talent', 'employer', 'job', 'major', 'teacher', 'culture']
 
 function AlliancePublicBrandsList() {
+  const t = useT()
   const searchParams = useSearchParams()
   const [items, setItems] = useState<AllianceBrand[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,14 +35,14 @@ function AlliancePublicBrandsList() {
 
   const tabs = useMemo(
     () => [
-      { value: 'all', label: '全部品牌', count: items.length },
+      { value: 'all', label: t('全部品牌'), count: items.length },
       ...BRAND_TYPES.map((type) => ({
         value: type,
         label: allianceLabel('brandType', type),
         count: items.filter((i) => i.brandType === type).length,
       })),
     ],
-    [items],
+    [items, t],
   )
 
   const filtered = useMemo(() => {
@@ -62,22 +64,22 @@ function AlliancePublicBrandsList() {
 
   return (
     <PublicListShell
-      title="品牌展示"
-      subtitle="查看学校六大品牌模块建设成果，按品牌分类筛选"
+      title={t('品牌展示')}
+      subtitle={t('查看学校六大品牌模块建设成果，按品牌分类筛选')}
       icon={<Sparkles className="w-7 h-7 text-white" />}
       tabs={tabs}
       activeTab={tab}
       onTabChange={setTab}
       keyword={keyword}
       onKeywordChange={setKeyword}
-      placeholder="搜索品牌名称、描述或标签..."
+      placeholder={t('搜索品牌名称、描述或标签...')}
       loading={loading}
     >
       {filtered.length === 0 ? (
         <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
           <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <div className="text-[15px] font-medium text-[#475569]">暂无品牌</div>
-          <div className="text-[13px] mt-1">发布后的品牌成果会展示在这里</div>
+          <div className="text-[15px] font-medium text-[#475569]">{t('暂无品牌')}</div>
+          <div className="text-[13px] mt-1">{t('发布后的品牌成果会展示在这里')}</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

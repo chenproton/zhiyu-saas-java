@@ -9,6 +9,7 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest, buildQuery } from '@/lib/api'
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { SubscriptionPackage } from '@/lib/types/backend'
 
 interface SubModule {
@@ -41,6 +42,7 @@ function buildPackageModules(modules: Record<string, any> | undefined): PackageM
 }
 
 export default function PackagePage() {
+  const t = useT()
   const { tenantId, loading: authLoading } = usePortalAuth()
   const [subscription, setSubscription] = useState<SubscriptionPackage | null>(null)
   const [loading, setLoading] = useState(false)
@@ -69,7 +71,7 @@ export default function PackagePage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : '加载套餐信息失败')
+          setError(err instanceof Error ? err.message : t('加载套餐信息失败'))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -79,7 +81,7 @@ export default function PackagePage() {
     return () => {
       cancelled = true
     }
-  }, [tenantId, authLoading, reloadTick])
+  }, [tenantId, authLoading, reloadTick, t])
 
   const packageModules = useMemo(() => buildPackageModules(subscription?.modules), [subscription])
 
@@ -96,17 +98,17 @@ export default function PackagePage() {
     subscription?.status === 'active' ? (
       <Badge variant="default" className="bg-green-500 text-white">
         <CheckCircle className="w-3 h-3 mr-1" />
-        已激活
+        {t('已激活')}
       </Badge>
     ) : (
-      <Badge variant="secondary">{subscription?.status || '未知'}</Badge>
+      <Badge variant="secondary">{subscription?.status || t('未知')}</Badge>
     )
 
   return (
     <PortalCrudPage
-      title="套餐情况查看"
-      description="查看当前租户购买的套餐内容和功能模块"
-      entityLabel="套餐"
+      title={t('套餐情况查看')}
+      description={t('查看当前租户购买的套餐内容和功能模块')}
+      entityLabel={t('套餐')}
       items={[]}
       loading={loading}
       error={error}
@@ -134,10 +136,13 @@ export default function PackagePage() {
                       <CardDescription className="flex items-center gap-4 mt-1">
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          有效期至 {subscription.validUntil || '未设置'}
+                          {t('有效期至 {date}', { date: subscription.validUntil || t('未设置') })}
                         </span>
                         <span className="text-primary">
-                          已开通 {enabledCount}/{totalCount} 个平台
+                          {t('已开通 {enabled}/{total} 个平台', {
+                            enabled: enabledCount,
+                            total: totalCount,
+                          })}
                         </span>
                       </CardDescription>
                     </div>
@@ -150,19 +155,21 @@ export default function PackagePage() {
             {/* 套餐功能模块 - 两级结构 */}
             <Card className="border-gray-100 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-base">套餐功能模块</CardTitle>
-                <CardDescription>展开查看各平台包含的二级功能模块</CardDescription>
+                <CardTitle className="text-base">{t('套餐功能模块')}</CardTitle>
+                <CardDescription>{t('展开查看各平台包含的二级功能模块')}</CardDescription>
               </CardHeader>
               <CardContent>
                 {packageModules.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">暂无模块配置</div>
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    {t('暂无模块配置')}
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {packageModules.map((module) => {
                       const isExpanded = expandedModules.includes(module.name)
                       return (
                         <div
-                          key={module.name}
+                          key={t(module.name)}
                           className="border border-gray-100 rounded-lg overflow-hidden"
                         >
                           {/* 一级模块 */}
@@ -186,18 +193,18 @@ export default function PackagePage() {
                                   module.enabled ? 'text-foreground' : 'text-muted-foreground',
                                 )}
                               >
-                                {module.name}
+                                {t(module.name)}
                               </span>
                               {!module.enabled && (
                                 <Badge variant="secondary" className="text-xs">
-                                  未开通
+                                  {t('未开通')}
                                 </Badge>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-muted-foreground">
                                 {module.subModules.filter((s) => s.enabled).length}/
-                                {module.subModules.length} 个功能
+                                {t('{count} 个功能', { count: module.subModules.length })}
                               </span>
                               {isExpanded ? (
                                 <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -213,7 +220,7 @@ export default function PackagePage() {
                               <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                                 {module.subModules.map((subModule) => (
                                   <div
-                                    key={subModule.name}
+                                    key={t(subModule.name)}
                                     className={cn(
                                       'flex items-center gap-2 p-2.5 rounded-md border text-sm',
                                       subModule.enabled
@@ -237,7 +244,7 @@ export default function PackagePage() {
                                           : 'text-muted-foreground',
                                       )}
                                     >
-                                      {subModule.name}
+                                      {t(subModule.name)}
                                     </span>
                                   </div>
                                 ))}

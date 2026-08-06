@@ -16,6 +16,7 @@ import type {
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 
+import { useT } from '@/lib/i18n/locale-provider'
 interface HomeData {
   stats: AlliancePublicStats | null
   featuredBrands: AllianceBrand[]
@@ -24,6 +25,7 @@ interface HomeData {
 }
 
 export default function AlliancePublicHomePage() {
+  const t = useT()
   const [data, setData] = useState<HomeData>({
     stats: null,
     featuredBrands: [],
@@ -64,18 +66,18 @@ export default function AlliancePublicHomePage() {
   return (
     <div className="space-y-10">
       <section className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">校企合作联盟</h1>
-        <p className="text-muted-foreground text-lg">产教融合 · 协同育人 · 互利共赢</p>
+        <h1 className="text-3xl font-bold">{t('校企合作联盟')}</h1>
+        <p className="text-muted-foreground text-lg">{t('产教融合 · 协同育人 · 互利共赢')}</p>
       </section>
 
       {data.stats && (
         <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: '合作企业', value: data.stats.enterpriseCount, icon: Building },
-            { label: '合作项目', value: data.stats.projectCount, icon: Briefcase },
-            { label: '企业专家', value: data.stats.expertCount, icon: Users },
-            { label: '合作成果', value: data.stats.achievementCount, icon: Trophy },
-            { label: '品牌展示', value: data.stats.brandCount, icon: Sparkles },
+            { label: t('合作企业'), value: data.stats.enterpriseCount, icon: Building },
+            { label: t('合作项目'), value: data.stats.projectCount, icon: Briefcase },
+            { label: t('企业专家'), value: data.stats.expertCount, icon: Users },
+            { label: t('合作成果'), value: data.stats.achievementCount, icon: Trophy },
+            { label: t('品牌展示'), value: data.stats.brandCount, icon: Sparkles },
           ].map((item) => {
             const Icon = item.icon
             return (
@@ -93,16 +95,16 @@ export default function AlliancePublicHomePage() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">品牌展示</h2>
+          <h2 className="text-xl font-bold">{t('品牌展示')}</h2>
           <Link
             href="/portal/alliance/brands"
             className="text-sm text-primary hover:underline inline-flex items-center gap-1"
           >
-            查看更多 <ArrowRight className="h-3 w-3" />
+            {t('查看更多')} <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         {data.featuredBrands.length === 0 ? (
-          <p className="text-muted-foreground">暂无品牌内容</p>
+          <p className="text-muted-foreground">{t('暂无品牌内容')}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {data.featuredBrands.map((brand) => (
@@ -111,7 +113,7 @@ export default function AlliancePublicHomePage() {
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{brand.name}</CardTitle>
                     <div className="flex items-center gap-1.5">
-                      {brand.isFeatured && <Badge variant="secondary">推荐</Badge>}
+                      {brand.isFeatured && <Badge variant="secondary">{t('推荐')}</Badge>}
                       <Badge variant="outline">{allianceLabel('brandType', brand.brandType)}</Badge>
                     </div>
                   </div>
@@ -121,11 +123,13 @@ export default function AlliancePublicHomePage() {
                 </CardHeader>
                 <CardContent className="space-y-1">
                   {brand.data?.major && (
-                    <p className="text-xs text-muted-foreground">专业: {brand.data.major}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('专业: {major}', { major: brand.data.major })}
+                    </p>
                   )}
                   {brand.data?.abilityScore != null && (
                     <p className="text-xs text-muted-foreground">
-                      能力评分: {brand.data.abilityScore}
+                      {t('能力评分: {score}', { score: brand.data.abilityScore })}
                     </p>
                   )}
                   {brand.data?.tags && brand.data.tags.length > 0 && (
@@ -146,16 +150,16 @@ export default function AlliancePublicHomePage() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">合作企业</h2>
+          <h2 className="text-xl font-bold">{t('合作企业')}</h2>
           <Link
             href="/portal/alliance/enterprises"
             className="text-sm text-primary hover:underline inline-flex items-center gap-1"
           >
-            查看更多 <ArrowRight className="h-3 w-3" />
+            {t('查看更多')} <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         {data.featuredEnterprises.length === 0 ? (
-          <p className="text-muted-foreground">暂无合作企业</p>
+          <p className="text-muted-foreground">{t('暂无合作企业')}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.featuredEnterprises.map((enterprise) => (
@@ -183,16 +187,16 @@ export default function AlliancePublicHomePage() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">最新成果</h2>
+          <h2 className="text-xl font-bold">{t('最新成果')}</h2>
           <Link
             href="/portal/alliance/achievements"
             className="text-sm text-primary hover:underline inline-flex items-center gap-1"
           >
-            查看更多 <ArrowRight className="h-3 w-3" />
+            {t('查看更多')} <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         {data.latestAchievements.length === 0 ? (
-          <p className="text-muted-foreground">暂无成果</p>
+          <p className="text-muted-foreground">{t('暂无成果')}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.latestAchievements.map((achievement) => (

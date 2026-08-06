@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Footer } from '@/components/portal/footer'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const features = [
   { label: '以产业需求为牵引', active: true },
@@ -352,6 +353,7 @@ function GradientTile({
   gridColumn: string
   gridRow: string
 }) {
+  const t = useT()
   const isBig = variant === 'big'
   const effectiveUrl = INTERNAL_ROUTES[item.id] || ''
   const isLocked = !effectiveUrl
@@ -399,7 +401,9 @@ function GradientTile({
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0110 0v4" />
           </svg>
-          <span className="text-[9px] font-medium text-[#8590a6] whitespace-nowrap">暂未开放</span>
+          <span className="text-[9px] font-medium text-[#8590a6] whitespace-nowrap">
+            {t('暂未开放')}
+          </span>
         </div>
       )}
 
@@ -413,9 +417,9 @@ function GradientTile({
       {/* shared title + desc — identical across all variants */}
       <div className="relative" style={{ zIndex: 2 }}>
         <h4 className="text-base sm:text-lg font-bold leading-tight mb-1 text-[#333]">
-          {item.title}
+          {t(item.title)}
         </h4>
-        <p className="text-xs leading-relaxed text-[#666] line-clamp-2">{item.desc}</p>
+        <p className="text-xs leading-relaxed text-[#666] line-clamp-2">{t(item.desc)}</p>
       </div>
 
       {!isLocked && (
@@ -423,7 +427,7 @@ function GradientTile({
           className="absolute bottom-3 right-4 flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{ zIndex: 2 }}
         >
-          进入
+          {t('进入')}
           <svg
             className="w-3.5 h-3.5"
             viewBox="0 0 24 24"
@@ -441,11 +445,12 @@ function GradientTile({
 
 /* ─── Section label ─── */
 function SectionLabel({ title }: { title: string }) {
+  const t = useT()
   return (
     <div className="flex items-center gap-3 mb-[18px] mt-5">
       <h3 className="text-lg font-bold text-[#333] flex items-center gap-2.5">
         <span className="w-1 h-[18px] rounded-sm bg-primary inline-block" />
-        {title}
+        {t(title)}
       </h3>
       <span className="flex-1 h-px bg-[#e9edf4]" />
     </div>
@@ -454,6 +459,7 @@ function SectionLabel({ title }: { title: string }) {
 
 /* ─── Page ─── */
 export default function PortalHomePage() {
+  const t = useT()
   const items = getFlatItems()
 
   return (
@@ -496,8 +502,8 @@ export default function PortalHomePage() {
 
           <div className="relative" style={{ zIndex: 2 }}>
             <h1 className="text-[28px] sm:text-4xl lg:text-[40px] font-extrabold text-[#333] tracking-[1px] leading-tight mb-5">
-              <span className="text-primary">场景化数智</span>
-              教学服务体系
+              <span className="text-primary">{t('场景化数智')}</span>
+              {t('教学服务体系')}
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-2.5">
               {features.map((f) => (
@@ -505,7 +511,7 @@ export default function PortalHomePage() {
                   key={f.label}
                   className="text-xs sm:text-[13px] text-[#555] bg-[#f2f5fa] border border-[#e6ebf3] rounded-full px-4 py-1.5"
                 >
-                  {f.label}
+                  {t(f.label)}
                 </span>
               ))}
             </div>

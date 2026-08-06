@@ -23,6 +23,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { getPlatformCardModules, platformModuleDefs } from '@/lib/navigation-config'
 import { getServiceClickCounts, recordServiceClick } from '@/lib/frequent-services'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const menuItems = [
   { id: 'system', label: '系统管理', icon: Settings },
@@ -90,18 +91,21 @@ interface ModuleSection {
 }
 
 function ModuleCard({ module }: { module: ModuleItem }) {
+  const t = useT()
   const isExternal = module.href.startsWith('http')
   const href = module.href
 
   const cardContent = (
     <>
       <h3 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors mb-2 pr-2 leading-tight flex items-center gap-1">
-        {module.title}
+        {t(module.title)}
         {isExternal && (
           <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary/70" />
         )}
       </h3>
-      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{module.desc}</p>
+      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+        {t(module.desc ?? '')}
+      </p>
       <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
         <ChevronRight className="w-4 h-4 text-primary" />
       </div>
@@ -135,13 +139,19 @@ function ModuleCard({ module }: { module: ModuleItem }) {
   }
 
   return (
-    <Link key={module.id} href={href} onClick={() => recordServiceClick(module.href)} className={className}>
+    <Link
+      key={module.id}
+      href={href}
+      onClick={() => recordServiceClick(module.href)}
+      className={className}
+    >
       {cardContent}
     </Link>
   )
 }
 
 export default function AppsPage() {
+  const t = useT()
   const { hasMenuPermission, subscriptionModules } = usePortalAuth()
   const [activeMenu, setActiveMenu] = useState(menuItems[0].id)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -234,7 +244,7 @@ export default function AppsPage() {
           <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
               <Sparkles className="w-4 h-4 text-amber-500" />
-              <span className="font-medium">常用服务</span>
+              <span className="font-medium">{t('常用服务')}</span>
             </div>
             <div className="flex items-center gap-2 overflow-x-auto">
               {visibleQuickAccess.map((item) => (
@@ -246,7 +256,7 @@ export default function AppsPage() {
                 >
                   <item.icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                   <span className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
-                    {item.label}
+                    {t(item.label)}
                   </span>
                 </Link>
               ))}
@@ -300,7 +310,7 @@ export default function AppsPage() {
                             : 'text-muted-foreground group-hover:text-muted-foreground',
                         )}
                       />
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate">{t(item.label)}</span>
                       {isActive && <ChevronRight className="w-4 h-4 ml-auto text-white/70" />}
                     </button>
                   )
@@ -315,12 +325,12 @@ export default function AppsPage() {
           >
             {subscriptionLoading ? (
               <div className="flex items-center justify-center h-64">
-                <div className="text-sm text-muted-foreground">加载中...</div>
+                <div className="text-sm text-muted-foreground">{t('加载中...')}</div>
               </div>
             ) : allModules.length === 0 ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-sm text-muted-foreground">
-                  暂无可用应用，请联系管理员开通套餐
+                  {t('暂无可用应用，请联系管理员开通套餐')}
                 </div>
               </div>
             ) : (
@@ -355,7 +365,7 @@ export default function AppsPage() {
                         <h2 className="text-base font-semibold text-foreground">{section.label}</h2>
                       )}
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                        {section.modules.length} 个模块
+                        {t('{count} 个模块', { count: section.modules.length })}
                       </span>
                     </div>
 

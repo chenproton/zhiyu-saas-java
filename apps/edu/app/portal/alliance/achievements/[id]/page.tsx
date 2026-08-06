@@ -13,7 +13,9 @@ import type { AllianceAchievement } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 
+import { useT } from '@/lib/i18n/locale-provider'
 export default function AlliancePublicAchievementDetailPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const [achievement, setAchievement] = useState<AllianceAchievement | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,7 +31,8 @@ export default function AlliancePublicAchievementDetailPage() {
   }, [id])
 
   if (loading) return <LoadingView />
-  if (!achievement) return <div className="text-center py-12 text-muted-foreground">成果不存在</div>
+  if (!achievement)
+    return <div className="text-center py-12 text-muted-foreground">{t('成果不存在')}</div>
 
   return (
     <div className="space-y-6">
@@ -38,7 +41,7 @@ export default function AlliancePublicAchievementDetailPage() {
           href="/portal/alliance/achievements"
           className="text-sm text-primary hover:underline inline-flex items-center gap-1"
         >
-          <ArrowLeft className="h-4 w-4" /> 返回列表
+          <ArrowLeft className="h-4 w-4" /> {t('返回列表')}
         </Link>
       </div>
 
@@ -52,7 +55,9 @@ export default function AlliancePublicAchievementDetailPage() {
         </div>
         <div className="flex gap-2 items-center shrink-0">
           <Badge variant="outline">{allianceLabel('achievementStatus', achievement.status)}</Badge>
-          <span className="text-sm text-muted-foreground">{achievement.viewCount} 次浏览</span>
+          <span className="text-sm text-muted-foreground">
+            {t('{count} 次浏览', { count: achievement.viewCount })}
+          </span>
         </div>
       </div>
 
@@ -69,7 +74,7 @@ export default function AlliancePublicAchievementDetailPage() {
       {achievement.description && (
         <Card>
           <CardHeader>
-            <CardTitle>成果描述</CardTitle>
+            <CardTitle>{t('成果描述')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap">{achievement.description}</p>

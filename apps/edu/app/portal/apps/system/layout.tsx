@@ -9,10 +9,12 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { systemNavigationConfig } from '@/lib/navigation-config'
 import { resolvePlatformIcon } from '@/components/platform-shell'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const menuItems = systemNavigationConfig.sideNavItems
 
 export default function SystemLayout({ children }: { children: React.ReactNode }) {
+  const t = useT()
   const pathname = usePathname()
   const { hasMenuPermission, loading } = usePortalAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -63,7 +65,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
           </Link>
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-medium text-foreground">系统设置</h2>
+            <h2 className="text-sm font-medium text-foreground">{t('系统设置')}</h2>
           </div>
         </div>
       </div>
@@ -91,7 +93,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
                 >
                   <div className="flex items-center gap-2.5">
                     <Icon className="w-4 h-4" />
-                    {item.label}
+                    {t(item.label)}
                   </div>
                   {isExpanded ? (
                     <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -110,7 +112,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
                   )}
                 >
                   <Icon className="w-4 h-4" />
-                  {item.label}
+                  {t(item.label)}
                 </Link>
               )}
 
@@ -128,7 +130,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted',
                       )}
                     >
-                      {child.label}
+                      {t(child.label)}
                     </Link>
                   ))}
                 </div>
@@ -146,7 +148,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        aria-label="打开导航菜单"
+        aria-label={t('打开导航菜单')}
         className="fixed left-3 top-16 z-40 flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:text-primary md:hidden"
       >
         <Menu className="h-4 w-4" />
@@ -168,7 +170,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
           children
         ) : (
           <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-            当前角色暂无权限访问该页面，请联系管理员在角色权限中开通
+            {t('当前角色暂无权限访问该页面，请联系管理员在角色权限中开通')}
           </div>
         )}
       </main>

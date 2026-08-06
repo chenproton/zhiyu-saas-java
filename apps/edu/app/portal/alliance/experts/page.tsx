@@ -8,6 +8,7 @@ import { reportError } from '@/lib/error-handling'
 import { ExpertCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 
+import { useT } from '@/lib/i18n/locale-provider'
 const RATING_TABS = [
   { value: 'gold', label: '金牌专家' },
   { value: 'silver', label: '银牌专家' },
@@ -15,6 +16,7 @@ const RATING_TABS = [
 ]
 
 export default function AlliancePublicExpertsPage() {
+  const t = useT()
   const [items, setItems] = useState<AllianceExpert[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('all')
@@ -31,14 +33,14 @@ export default function AlliancePublicExpertsPage() {
 
   const tabs = useMemo(
     () => [
-      { value: 'all', label: '全部专家', count: items.length },
-      ...RATING_TABS.map((t) => ({
-        value: t.value,
-        label: t.label,
-        count: items.filter((i) => i.rating === t.value).length,
+      { value: 'all', label: t('全部专家'), count: items.length },
+      ...RATING_TABS.map((tab) => ({
+        value: tab.value,
+        label: t(tab.label),
+        count: items.filter((i) => i.rating === tab.value).length,
       })),
     ],
-    [items],
+    [items, t],
   )
 
   const filtered = useMemo(() => {
@@ -60,22 +62,22 @@ export default function AlliancePublicExpertsPage() {
 
   return (
     <PublicListShell
-      title="企业专家"
-      subtitle="查看全部产业专家与校企专家资源，按专家评级筛选"
+      title={t('企业专家')}
+      subtitle={t('查看全部产业专家与校企专家资源，按专家评级筛选')}
       icon={<Users className="w-7 h-7 text-white" />}
       tabs={tabs}
       activeTab={tab}
       onTabChange={setTab}
       keyword={keyword}
       onKeywordChange={setKeyword}
-      placeholder="搜索专家姓名、职务、行业或专长..."
+      placeholder={t('搜索专家姓名、职务、行业或专长...')}
       loading={loading}
     >
       {filtered.length === 0 ? (
         <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
           <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <div className="text-[15px] font-medium text-[#475569]">暂无专家</div>
-          <div className="text-[13px] mt-1">发布后的专家资源会展示在这里</div>
+          <div className="text-[15px] font-medium text-[#475569]">{t('暂无专家')}</div>
+          <div className="text-[13px] mt-1">{t('发布后的专家资源会展示在这里')}</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

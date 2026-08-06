@@ -13,7 +13,9 @@ import type { AllianceProject } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 
+import { useT } from '@/lib/i18n/locale-provider'
 export default function AlliancePublicProjectDetailPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const [project, setProject] = useState<AllianceProject | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,7 +31,8 @@ export default function AlliancePublicProjectDetailPage() {
   }, [id])
 
   if (loading) return <LoadingView />
-  if (!project) return <div className="text-center py-12 text-muted-foreground">项目不存在</div>
+  if (!project)
+    return <div className="text-center py-12 text-muted-foreground">{t('项目不存在')}</div>
 
   return (
     <div className="space-y-6">
@@ -38,7 +41,7 @@ export default function AlliancePublicProjectDetailPage() {
           href="/portal/alliance/projects"
           className="text-sm text-primary hover:underline inline-flex items-center gap-1"
         >
-          <ArrowLeft className="h-4 w-4" /> 返回列表
+          <ArrowLeft className="h-4 w-4" /> {t('返回列表')}
         </Link>
       </div>
 
@@ -67,23 +70,23 @@ export default function AlliancePublicProjectDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>项目信息</CardTitle>
+            <CardTitle>{t('项目信息')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
-              <span className="text-muted-foreground">阶段：</span>
+              <span className="text-muted-foreground">{t('阶段：')}</span>
               {allianceLabel('projectPhase', project.phase)}
             </p>
             <p>
-              <span className="text-muted-foreground">开始日期：</span>
+              <span className="text-muted-foreground">{t('开始日期：')}</span>
               {project.startDate || '-'}
             </p>
             <p>
-              <span className="text-muted-foreground">结束日期：</span>
+              <span className="text-muted-foreground">{t('结束日期：')}</span>
               {project.endDate || '-'}
             </p>
             <p>
-              <span className="text-muted-foreground">预算：</span>
+              <span className="text-muted-foreground">{t('预算：')}</span>
               {project.budget || '-'}
             </p>
           </CardContent>
@@ -93,7 +96,7 @@ export default function AlliancePublicProjectDetailPage() {
       {project.description && (
         <Card>
           <CardHeader>
-            <CardTitle>项目描述</CardTitle>
+            <CardTitle>{t('项目描述')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap">{project.description}</p>

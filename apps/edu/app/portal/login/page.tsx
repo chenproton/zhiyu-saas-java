@@ -26,6 +26,7 @@ import { authApi, setToken } from '@/lib/api'
 import type { TenantOption } from '@/lib/api'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useAuth } from '@/components/auth-provider'
+import { useT } from '@/lib/i18n/locale-provider'
 import { resolveActiveRole } from '@/lib/active-role'
 
 function getPostLoginPath(roleCode?: string): string {
@@ -49,6 +50,7 @@ const methodTabs: { key: LoginMethod; label: string; icon: typeof MessageCircle 
 ]
 
 export default function PortalLoginPage() {
+  const t = useT()
   const router = useRouter()
   const { refresh } = usePortalAuth()
   const { refresh: refreshRootAuth } = useAuth()
@@ -76,7 +78,7 @@ export default function PortalLoginPage() {
       const res = await authApi.selectTenant({ preAuthToken, tenantId })
       await doLogin(res.token)
     } catch (err: any) {
-      setError(err.message || '选择租户失败')
+      setError(err.message || t('选择租户失败'))
       setShowTenantSelect(false)
     } finally {
       setSelectingTenant(false)
@@ -100,7 +102,7 @@ export default function PortalLoginPage() {
       }
       await doLogin(res.token)
     } catch (err: any) {
-      setError(err.message || '登录失败')
+      setError(err.message || t('登录失败'))
       setLoading(false)
     }
   }
@@ -133,8 +135,10 @@ export default function PortalLoginPage() {
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30 ring-1 ring-white/20">
             <GraduationCap className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">场景化数智教学服务平台</h1>
-          <p className="text-sm text-primary/60">数智融合 · 精准教学</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">
+            {t('场景化数智教学服务平台')}
+          </h1>
+          <p className="text-sm text-primary/60">{t('数智融合 · 精准教学')}</p>
         </div>
 
         <Card className="border-0 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl">
@@ -153,7 +157,7 @@ export default function PortalLoginPage() {
                   } ${key !== 'password' ? 'cursor-not-allowed opacity-60' : ''}`}
                 >
                   <Icon className="h-4 w-4" />
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
@@ -162,13 +166,13 @@ export default function PortalLoginPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="username" className="text-sm font-medium text-slate-700">
-                    账号
+                    {t('账号')}
                   </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       id="username"
-                      placeholder="请输入账号"
+                      placeholder={t('请输入账号')}
                       className="border-slate-200 pl-10 focus-visible:border-primary/50 focus-visible:ring-primary/20"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
@@ -178,14 +182,14 @@ export default function PortalLoginPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-sm font-medium text-slate-700">
-                    密码
+                    {t('密码')}
                   </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       id="password"
                       type="password"
-                      placeholder="请输入密码"
+                      placeholder={t('请输入密码')}
                       className="border-slate-200 pl-10 focus-visible:border-primary/50 focus-visible:ring-primary/20"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -207,28 +211,30 @@ export default function PortalLoginPage() {
                   disabled={loading}
                   size="lg"
                 >
-                  {loading ? '登录中...' : '登 录'}
+                  {loading ? t('登录中...') : t('登 录')}
                 </Button>
               </form>
             ) : loginMethod === 'sms' ? (
               <div className="py-8 text-center text-sm text-slate-400">
                 <MessageCircle className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                <p>短信登录功能开发中</p>
+                <p>{t('短信登录功能开发中')}</p>
               </div>
             ) : (
               <div className="py-8 text-center text-sm text-slate-400">
                 <QrCode className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                <p>微信扫码登录功能开发中</p>
+                <p>{t('微信扫码登录功能开发中')}</p>
               </div>
             )}
 
             {process.env.NODE_ENV !== 'production' && (
               <div className="mt-6 rounded-lg bg-slate-50 p-3 text-xs text-slate-400">
-                <p className="mb-1 font-medium text-slate-500">测试账号（仅开发环境显示）：</p>
+                <p className="mb-1 font-medium text-slate-500">
+                  {t('测试账号（仅开发环境显示）：')}
+                </p>
                 <ul className="space-y-0.5">
-                  <li>学校管理员：school / school123</li>
-                  <li>教师：teacher / teacher123</li>
-                  <li>学生：student / student123</li>
+                  <li>{t('学校管理员：school / school123')}</li>
+                  <li>{t('教师：teacher / teacher123')}</li>
+                  <li>{t('学生：student / student123')}</li>
                 </ul>
               </div>
             )}
@@ -236,15 +242,15 @@ export default function PortalLoginPage() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-blue-200/40">
-          © {new Date().getFullYear()} 场景化数智教学服务平台 All Rights Reserved
+          © {new Date().getFullYear()} {t('场景化数智教学服务平台')} All Rights Reserved
         </p>
       </div>
 
       <Dialog open={showTenantSelect} onOpenChange={setShowTenantSelect}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>选择租户</DialogTitle>
-            <DialogDescription>您的账号关联了多个学校，请选择要登录的学校</DialogDescription>
+            <DialogTitle>{t('选择租户')}</DialogTitle>
+            <DialogDescription>{t('您的账号关联了多个学校，请选择要登录的学校')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 py-4">
             {tenantOptions.map((t) => (
