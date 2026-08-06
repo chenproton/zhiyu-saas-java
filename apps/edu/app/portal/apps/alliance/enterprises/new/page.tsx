@@ -21,6 +21,7 @@ import { FormFieldRow } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { allianceEnterpriseApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -39,6 +40,7 @@ const SECONDARY_COLLEGES = [
 
 export default function AllianceEnterpriseNewPage() {
   const { toast } = useToast()
+  const t = useT()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [item, setItem] = useState({
@@ -69,16 +71,16 @@ export default function AllianceEnterpriseNewPage() {
 
   const handleSave = async () => {
     if (!item.name) {
-      toast({ title: '请填写企业名称', variant: 'destructive' })
+      toast({ title: t('请填写企业名称'), variant: 'destructive' })
       return
     }
     setSaving(true)
     try {
       const data = await allianceEnterpriseApi.create(item)
-      toast({ title: '企业已创建' })
+      toast({ title: t('企业已创建') })
       router.push(`/portal/apps/alliance/enterprises/${data.id}`)
     } catch (e: any) {
-      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -89,33 +91,33 @@ export default function AllianceEnterpriseNewPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-1" />
-          返回
+          {t('返回')}
         </Button>
-        <h1 className="text-xl font-semibold text-foreground">新建合作企业</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('新建合作企业')}</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>基本信息</CardTitle>
+              <CardTitle>{t('基本信息')}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormFieldRow label="企业名称" required>
+              <FormFieldRow label={t('企业名称')} required>
                 <Input
                   value={item.name}
                   onChange={(e) => setField('name', e.target.value)}
-                  placeholder="请输入企业名称"
+                  placeholder={t('请输入企业名称')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="统一社会信用代码">
+              <FormFieldRow label={t('统一社会信用代码')}>
                 <Input
                   value={item.unifiedSocialCreditCode}
                   onChange={(e) => setField('unifiedSocialCreditCode', e.target.value)}
-                  placeholder="如：91320594MA1P7XXXX1"
+                  placeholder={t('如：91320594MA1P7XXXX1')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="企业类型">
+              <FormFieldRow label={t('企业类型')}>
                 <Select
                   value={item.enterpriseType}
                   onValueChange={(v) => setField('enterpriseType', v)}
@@ -124,68 +126,68 @@ export default function AllianceEnterpriseNewPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cooperation">合作企业</SelectItem>
-                    <SelectItem value="third-party">第三方雇主企业</SelectItem>
+                    <SelectItem value="cooperation">{t('合作企业')}</SelectItem>
+                    <SelectItem value="third-party">{t('第三方雇主企业')}</SelectItem>
                   </SelectContent>
                 </Select>
               </FormFieldRow>
-              <FormFieldRow label="所属行业">
+              <FormFieldRow label={t('所属行业')}>
                 <Input
                   value={item.industry}
                   onChange={(e) => setField('industry', e.target.value)}
-                  placeholder="如：信息技术"
+                  placeholder={t('如：信息技术')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="所在地区">
+              <FormFieldRow label={t('所在地区')}>
                 <Input
                   value={item.region}
                   onChange={(e) => setField('region', e.target.value)}
-                  placeholder="如：深圳"
+                  placeholder={t('如：深圳')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="合作状态">
+              <FormFieldRow label={t('合作状态')}>
                 <Select value={item.status} onValueChange={(v) => setField('status', v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="negotiating">洽谈中</SelectItem>
-                    <SelectItem value="active">合作中</SelectItem>
-                    <SelectItem value="paused">已暂停</SelectItem>
-                    <SelectItem value="terminated">已终止</SelectItem>
+                    <SelectItem value="negotiating">{t('洽谈中')}</SelectItem>
+                    <SelectItem value="active">{t('合作中')}</SelectItem>
+                    <SelectItem value="paused">{t('已暂停')}</SelectItem>
+                    <SelectItem value="terminated">{t('已终止')}</SelectItem>
                   </SelectContent>
                 </Select>
               </FormFieldRow>
-              <FormFieldRow label="合作评级">
+              <FormFieldRow label={t('合作评级')}>
                 <Select value={item.rating} onValueChange={(v) => setField('rating', v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="strategic">战略合作</SelectItem>
-                    <SelectItem value="deep">深度合作</SelectItem>
-                    <SelectItem value="general">一般合作</SelectItem>
+                    <SelectItem value="strategic">{t('战略合作')}</SelectItem>
+                    <SelectItem value="deep">{t('深度合作')}</SelectItem>
+                    <SelectItem value="general">{t('一般合作')}</SelectItem>
                   </SelectContent>
                 </Select>
               </FormFieldRow>
-              <FormFieldRow label="成立年份">
+              <FormFieldRow label={t('成立年份')}>
                 <Input
                   type="number"
                   value={item.establishedYear ?? ''}
                   onChange={(e) =>
                     setField('establishedYear', e.target.value ? Number(e.target.value) : undefined)
                   }
-                  placeholder="如：2010"
+                  placeholder={t('如：2010')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="企业规模（人数）">
+              <FormFieldRow label={t('企业规模（人数）')}>
                 <Input
                   type="number"
                   value={item.employeeCount ?? ''}
                   onChange={(e) =>
                     setField('employeeCount', e.target.value ? Number(e.target.value) : undefined)
                   }
-                  placeholder="如：500"
+                  placeholder={t('如：500')}
                 />
               </FormFieldRow>
             </CardContent>
@@ -193,16 +195,16 @@ export default function AllianceEnterpriseNewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业形象</CardTitle>
+              <CardTitle>{t('企业形象')}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SingleImageUpload
-                label="企业 Logo"
+                label={t('企业 Logo')}
                 value={item.logoUrl}
                 onChange={(v) => setField('logoUrl', v)}
               />
               <SingleImageUpload
-                label="企业主页封面"
+                label={t('企业主页封面')}
                 value={item.coverImage}
                 onChange={(v) => setField('coverImage', v)}
               />
@@ -211,21 +213,21 @@ export default function AllianceEnterpriseNewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业证照</CardTitle>
+              <CardTitle>{t('企业证照')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <ImageListUpload
-                label="企业营业执照"
+                label={t('企业营业执照')}
                 value={item.businessLicensePhotos}
                 onChange={(v) => setField('businessLicensePhotos', v)}
               />
               <ImageListUpload
-                label="企业知识产权"
+                label={t('企业知识产权')}
                 value={item.intellectualPropertyPhotos}
                 onChange={(v) => setField('intellectualPropertyPhotos', v)}
               />
               <ImageListUpload
-                label="企业荣誉资质"
+                label={t('企业荣誉资质')}
                 value={item.qualificationPhotos}
                 onChange={(v) => setField('qualificationPhotos', v)}
               />
@@ -234,28 +236,28 @@ export default function AllianceEnterpriseNewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>联系信息</CardTitle>
+              <CardTitle>{t('联系信息')}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormFieldRow label="联系人">
+              <FormFieldRow label={t('联系人')}>
                 <Input
                   value={item.contactPerson}
                   onChange={(e) => setField('contactPerson', e.target.value)}
                 />
               </FormFieldRow>
-              <FormFieldRow label="联系电话">
+              <FormFieldRow label={t('联系电话')}>
                 <Input
                   value={item.contactPhone}
                   onChange={(e) => setField('contactPhone', e.target.value)}
                 />
               </FormFieldRow>
-              <FormFieldRow label="联系邮箱">
+              <FormFieldRow label={t('联系邮箱')}>
                 <Input
                   value={item.contactEmail}
                   onChange={(e) => setField('contactEmail', e.target.value)}
                 />
               </FormFieldRow>
-              <FormFieldRow label="详细地址">
+              <FormFieldRow label={t('详细地址')}>
                 <Input value={item.address} onChange={(e) => setField('address', e.target.value)} />
               </FormFieldRow>
             </CardContent>
@@ -263,7 +265,7 @@ export default function AllianceEnterpriseNewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业简介</CardTitle>
+              <CardTitle>{t('企业简介')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -278,25 +280,25 @@ export default function AllianceEnterpriseNewPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>二级学院</CardTitle>
+              <CardTitle>{t('二级学院')}</CardTitle>
             </CardHeader>
             <CardContent>
               <MultiSelect
                 options={SECONDARY_COLLEGES}
                 value={item.secondaryColleges}
                 onChange={(v) => setField('secondaryColleges', v)}
-                placeholder="选择归属学院"
+                placeholder={t('选择归属学院')}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>设置</CardTitle>
+              <CardTitle>{t('设置')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>前台展示</Label>
+                <Label>{t('前台展示')}</Label>
                 <Switch checked={item.isPublic} onCheckedChange={(v) => setField('isPublic', v)} />
               </div>
             </CardContent>
@@ -305,10 +307,11 @@ export default function AllianceEnterpriseNewPage() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}创建
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {t('创建')}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
-                取消
+                {t('取消')}
               </Button>
             </CardContent>
           </Card>

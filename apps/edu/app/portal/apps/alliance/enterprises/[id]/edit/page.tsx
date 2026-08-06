@@ -22,6 +22,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi } from '@/lib/api'
 import { useToast, LoadingView } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceEnterprise } from '@/lib/types'
 
 const SECONDARY_COLLEGES = [
@@ -43,6 +44,7 @@ export default function AllianceEnterpriseEditPage() {
   const { id } = useParams<{ id: string }>()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const router = useRouter()
   const [item, setItem] = useState<AllianceEnterprise | null>(null)
   const [loading, setLoading] = useState(true)
@@ -53,26 +55,26 @@ export default function AllianceEnterpriseEditPage() {
     allianceEnterpriseApi
       .get(id)
       .then((data) => setItem(data))
-      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
-  }, [tenantId, id, toast])
+  }, [tenantId, id, toast, t])
 
   const handleSave = async () => {
     if (!item) return
     setSaving(true)
     try {
       await allianceEnterpriseApi.update(id, item)
-      toast({ title: '企业已更新' })
+      toast({ title: t('企业已更新') })
       router.push(`/portal/apps/alliance/enterprises/${id}`)
     } catch (e: any) {
-      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
   }
 
   if (loading) return <LoadingView />
-  if (!item) return <div className="text-center py-12 text-muted-foreground">企业不存在</div>
+  if (!item) return <div className="text-center py-12 text-muted-foreground">{t('企业不存在')}</div>
 
   const setField = (field: string, value: any) =>
     setItem({ ...item, [field]: value } as AllianceEnterprise)
@@ -86,32 +88,32 @@ export default function AllianceEnterpriseEditPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-1" />
-          返回
+          {t('返回')}
         </Button>
-        <h1 className="text-xl font-semibold text-foreground">编辑合作企业</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('编辑合作企业')}</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>基本信息</CardTitle>
+              <CardTitle>{t('基本信息')}</CardTitle>
             </CardHeader>
             <CardContent>
               <FormFieldGrid>
-                <FormFieldRow label="企业名称" required>
+                <FormFieldRow label={t('企业名称')} required>
                   <Input
                     value={item.name || ''}
                     onChange={(e) => setField('name', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="统一社会信用代码">
+                <FormFieldRow label={t('统一社会信用代码')}>
                   <Input
                     value={(item as any).unifiedSocialCreditCode || ''}
                     onChange={(e) => setField('unifiedSocialCreditCode', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="企业类型">
+                <FormFieldRow label={t('企业类型')}>
                   <Select
                     value={item.enterpriseType || 'cooperation'}
                     onValueChange={(v) => setField('enterpriseType', v)}
@@ -120,24 +122,24 @@ export default function AllianceEnterpriseEditPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cooperation">合作企业</SelectItem>
-                      <SelectItem value="third-party">第三方雇主企业</SelectItem>
+                      <SelectItem value="cooperation">{t('合作企业')}</SelectItem>
+                      <SelectItem value="third-party">{t('第三方雇主企业')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
-                <FormFieldRow label="所属行业">
+                <FormFieldRow label={t('所属行业')}>
                   <Input
                     value={item.industry || ''}
                     onChange={(e) => setField('industry', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="所在地区">
+                <FormFieldRow label={t('所在地区')}>
                   <Input
                     value={item.region || ''}
                     onChange={(e) => setField('region', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="合作状态">
+                <FormFieldRow label={t('合作状态')}>
                   <Select
                     value={item.status || 'negotiating'}
                     onValueChange={(v) => setField('status', v)}
@@ -146,14 +148,14 @@ export default function AllianceEnterpriseEditPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="negotiating">洽谈中</SelectItem>
-                      <SelectItem value="active">合作中</SelectItem>
-                      <SelectItem value="paused">已暂停</SelectItem>
-                      <SelectItem value="terminated">已终止</SelectItem>
+                      <SelectItem value="negotiating">{t('洽谈中')}</SelectItem>
+                      <SelectItem value="active">{t('合作中')}</SelectItem>
+                      <SelectItem value="paused">{t('已暂停')}</SelectItem>
+                      <SelectItem value="terminated">{t('已终止')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
-                <FormFieldRow label="合作评级">
+                <FormFieldRow label={t('合作评级')}>
                   <Select
                     value={item.rating || 'general'}
                     onValueChange={(v) => setField('rating', v)}
@@ -162,13 +164,13 @@ export default function AllianceEnterpriseEditPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="strategic">战略合作</SelectItem>
-                      <SelectItem value="deep">深度合作</SelectItem>
-                      <SelectItem value="general">一般合作</SelectItem>
+                      <SelectItem value="strategic">{t('战略合作')}</SelectItem>
+                      <SelectItem value="deep">{t('深度合作')}</SelectItem>
+                      <SelectItem value="general">{t('一般合作')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
-                <FormFieldRow label="成立年份">
+                <FormFieldRow label={t('成立年份')}>
                   <Input
                     type="number"
                     value={(item as any).establishedYear ?? ''}
@@ -180,7 +182,7 @@ export default function AllianceEnterpriseEditPage() {
                     }
                   />
                 </FormFieldRow>
-                <FormFieldRow label="企业规模（人数）">
+                <FormFieldRow label={t('企业规模（人数）')}>
                   <Input
                     type="number"
                     value={(item as any).employeeCount ?? ''}
@@ -195,16 +197,16 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业形象</CardTitle>
+              <CardTitle>{t('企业形象')}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SingleImageUpload
-                label="企业 Logo"
+                label={t('企业 Logo')}
                 value={(item as any).logoUrl || ''}
                 onChange={(v) => setField('logoUrl', v)}
               />
               <SingleImageUpload
-                label="企业主页封面"
+                label={t('企业主页封面')}
                 value={(item as any).coverImage || ''}
                 onChange={(v) => setField('coverImage', v)}
               />
@@ -213,21 +215,21 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业证照</CardTitle>
+              <CardTitle>{t('企业证照')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <ImageListUpload
-                label="企业营业执照"
+                label={t('企业营业执照')}
                 value={bizPhotos}
                 onChange={(v) => setField('businessLicensePhotos', v)}
               />
               <ImageListUpload
-                label="企业知识产权"
+                label={t('企业知识产权')}
                 value={ipPhotos}
                 onChange={(v) => setField('intellectualPropertyPhotos', v)}
               />
               <ImageListUpload
-                label="企业荣誉资质"
+                label={t('企业荣誉资质')}
                 value={qualPhotos}
                 onChange={(v) => setField('qualificationPhotos', v)}
               />
@@ -236,29 +238,29 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>联系信息</CardTitle>
+              <CardTitle>{t('联系信息')}</CardTitle>
             </CardHeader>
             <CardContent>
               <FormFieldGrid>
-                <FormFieldRow label="联系人">
+                <FormFieldRow label={t('联系人')}>
                   <Input
                     value={item.contactPerson || ''}
                     onChange={(e) => setField('contactPerson', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="联系电话">
+                <FormFieldRow label={t('联系电话')}>
                   <Input
                     value={item.contactPhone || ''}
                     onChange={(e) => setField('contactPhone', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="联系邮箱">
+                <FormFieldRow label={t('联系邮箱')}>
                   <Input
                     value={item.contactEmail || ''}
                     onChange={(e) => setField('contactEmail', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="详细地址">
+                <FormFieldRow label={t('详细地址')}>
                   <Input
                     value={item.address || ''}
                     onChange={(e) => setField('address', e.target.value)}
@@ -270,7 +272,7 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业简介</CardTitle>
+              <CardTitle>{t('企业简介')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -285,25 +287,25 @@ export default function AllianceEnterpriseEditPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>二级学院</CardTitle>
+              <CardTitle>{t('二级学院')}</CardTitle>
             </CardHeader>
             <CardContent>
               <MultiSelect
                 options={SECONDARY_COLLEGES}
                 value={secondaryColleges}
                 onChange={(v) => setField('secondaryColleges', v)}
-                placeholder="选择归属学院"
+                placeholder={t('选择归属学院')}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>设置</CardTitle>
+              <CardTitle>{t('设置')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>前台展示</Label>
+                <Label>{t('前台展示')}</Label>
                 <Switch
                   checked={item.isPublic || false}
                   onCheckedChange={(v) => setField('isPublic', v)}
@@ -315,10 +317,11 @@ export default function AllianceEnterpriseEditPage() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}保存
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {t('保存')}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
-                取消
+                {t('取消')}
               </Button>
             </CardContent>
           </Card>

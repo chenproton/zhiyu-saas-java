@@ -21,6 +21,7 @@ import { portalApi } from '@/lib/api'
 import type { WorkspaceAnnouncement, WorkspaceTodo, WorkspaceScheduleEvent } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface DashboardTabProps {
   onTabChange: (tab: string) => void
@@ -33,16 +34,18 @@ const typeIconMap: Record<string, LucideIcon> = {
   report: Briefcase,
 }
 
-const typeLabelMap: Record<string, string> = {
-  course: '课程',
-  scene: '场景',
-  exam: '测评',
-  report: '报告',
-}
-
 export function DashboardTab({ onTabChange }: DashboardTabProps) {
   const { activeRoleCode } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
+
+  const typeLabelMap: Record<string, string> = {
+    course: t('课程'),
+    scene: t('场景'),
+    exam: t('测评'),
+    report: t('报告'),
+  }
+
   const [announcements, setAnnouncements] = useState<WorkspaceAnnouncement[]>([])
   const [todos, setTodos] = useState<WorkspaceTodo[]>([])
   const [schedule, setSchedule] = useState<WorkspaceScheduleEvent[]>([])
@@ -59,11 +62,11 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
         reportError(err, { source: '加载工作台 dashboard' })
         toast({
           variant: 'destructive',
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '加载工作台 dashboard 失败',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('加载工作台 dashboard 失败'),
         })
       })
-  }, [activeRoleCode, toast])
+  }, [activeRoleCode, toast, t])
 
   return (
     <div className="space-y-3">
@@ -78,15 +81,15 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
         <div className="space-y-3">
           {/* 今日待办 */}
           <SectionCard
-            title="今日待办"
+            title={t('今日待办')}
             icon={CheckSquare}
             iconColor="rose"
-            action={{ label: '查看全部', onClick: () => onTabChange('learning') }}
+            action={{ label: t('查看全部'), onClick: () => onTabChange('learning') }}
           >
             <ScrollArea className="h-[260px]">
               <div className="space-y-2 pr-2">
                 {todos.length === 0 && (
-                  <div className="py-8 text-center text-xs text-gray-400">暂无待办事项</div>
+                  <div className="py-8 text-center text-xs text-gray-400">{t('暂无待办事项')}</div>
                 )}
                 {todos.map((item) => {
                   const Icon = typeIconMap[item.type]
@@ -104,7 +107,10 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                           {item.deadline && (
                             <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                               <Clock className="w-3 h-3" />
-                              截止 {item.deadline} · {typeLabelMap[item.type]}
+                              {t('截止 {deadline} · {type}', {
+                                deadline: item.deadline,
+                                type: typeLabelMap[item.type],
+                              })}
                             </p>
                           )}
                         </div>
@@ -126,11 +132,16 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
           </SectionCard>
 
           {/* 通知公告 */}
-          <SectionCard title="通知公告" icon={Bell} iconColor="blue" action={{ label: '查看全部' }}>
+          <SectionCard
+            title={t('通知公告')}
+            icon={Bell}
+            iconColor="blue"
+            action={{ label: t('查看全部') }}
+          >
             <ScrollArea className="h-[220px]">
               <div className="space-y-2 pr-2">
                 {announcements.length === 0 && (
-                  <div className="py-8 text-center text-xs text-gray-400">暂无通知公告</div>
+                  <div className="py-8 text-center text-xs text-gray-400">{t('暂无通知公告')}</div>
                 )}
                 {announcements.map((item) => (
                   <div

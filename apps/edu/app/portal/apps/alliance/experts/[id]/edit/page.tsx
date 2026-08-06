@@ -22,6 +22,7 @@ import { ArrowLeft, Loader2, X, Plus } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
 import { useToast, LoadingView } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -41,6 +42,7 @@ const SECONDARY_COLLEGES = [
 export default function AllianceExpertEditPage() {
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const [loading, setLoading] = useState(true)
@@ -110,9 +112,9 @@ export default function AllianceExpertEditPage() {
         })
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
       })
-      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
-  }, [tenantId, id, toast])
+  }, [tenantId, id, toast, t])
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
@@ -124,7 +126,7 @@ export default function AllianceExpertEditPage() {
 
   const handleSave = async () => {
     if (!item.name) {
-      toast({ title: '请填写姓名', variant: 'destructive' })
+      toast({ title: t('请填写姓名'), variant: 'destructive' })
       return
     }
     setSaving(true)
@@ -137,10 +139,10 @@ export default function AllianceExpertEditPage() {
         payload.enterpriseId = ''
       }
       await allianceExpertApi.update(id, payload)
-      toast({ title: '专家已更新' })
+      toast({ title: t('专家已更新') })
       router.push(`/portal/apps/alliance/experts/${id}`)
     } catch (e: any) {
-      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -153,34 +155,34 @@ export default function AllianceExpertEditPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-1" />
-          返回
+          {t('返回')}
         </Button>
-        <h1 className="text-xl font-semibold text-foreground">编辑专家</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('编辑专家')}</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>基础信息</CardTitle>
+              <CardTitle>{t('基础信息')}</CardTitle>
             </CardHeader>
             <CardContent>
               <FormFieldGrid>
-                <FormFieldRow label="姓名" required>
+                <FormFieldRow label={t('姓名')} required>
                   <Input value={item.name} onChange={(e) => setField('name', e.target.value)} />
                 </FormFieldRow>
-                <FormFieldRow label="性别">
+                <FormFieldRow label={t('性别')}>
                   <Select value={item.gender} onValueChange={(v) => setField('gender', v)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="male">男</SelectItem>
-                      <SelectItem value="female">女</SelectItem>
+                      <SelectItem value="male">{t('男')}</SelectItem>
+                      <SelectItem value="female">{t('女')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
-                <FormFieldRow label="年龄">
+                <FormFieldRow label={t('年龄')}>
                   <Input
                     type="number"
                     value={item.age ?? ''}
@@ -189,23 +191,23 @@ export default function AllianceExpertEditPage() {
                     }
                   />
                 </FormFieldRow>
-                <FormFieldRow label="所在城市">
+                <FormFieldRow label={t('所在城市')}>
                   <Input value={item.city} onChange={(e) => setField('city', e.target.value)} />
                 </FormFieldRow>
-                <FormFieldRow label="职称/职位">
+                <FormFieldRow label={t('职称/职位')}>
                   <Input
                     value={item.title}
                     onChange={(e) => setField('title', e.target.value)}
-                    placeholder="如：高级工程师"
+                    placeholder={t('如：高级工程师')}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="任职岗位">
+                <FormFieldRow label={t('任职岗位')}>
                   <Input
                     value={item.position}
                     onChange={(e) => setField('position', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="从业年限">
+                <FormFieldRow label={t('从业年限')}>
                   <Input
                     type="number"
                     value={item.experienceYears ?? ''}
@@ -217,18 +219,18 @@ export default function AllianceExpertEditPage() {
                     }
                   />
                 </FormFieldRow>
-                <FormFieldRow label="教育背景">
+                <FormFieldRow label={t('教育背景')}>
                   <Input
                     value={item.education}
                     onChange={(e) => setField('education', e.target.value)}
-                    placeholder="如：XX大学 硕士"
+                    placeholder={t('如：XX大学 硕士')}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="行业方向">
+                <FormFieldRow label={t('行业方向')}>
                   <Input
                     value={item.industry}
                     onChange={(e) => setField('industry', e.target.value)}
-                    placeholder="如：智能制造"
+                    placeholder={t('如：智能制造')}
                   />
                 </FormFieldRow>
               </FormFieldGrid>
@@ -237,16 +239,16 @@ export default function AllianceExpertEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>专家形象</CardTitle>
+              <CardTitle>{t('专家形象')}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SingleImageUpload
-                label="专家头像"
+                label={t('专家头像')}
                 value={item.avatarUrl}
                 onChange={(v) => setField('avatarUrl', v)}
               />
               <SingleImageUpload
-                label="专家主页封面"
+                label={t('专家主页封面')}
                 value={item.coverImage}
                 onChange={(v) => setField('coverImage', v)}
               />
@@ -255,7 +257,7 @@ export default function AllianceExpertEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>擅长领域</CardTitle>
+              <CardTitle>{t('擅长领域')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2">
@@ -283,7 +285,7 @@ export default function AllianceExpertEditPage() {
                   value={specialtyInput}
                   onChange={(e) => setSpecialtyInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialty())}
-                  placeholder="输入擅长领域后回车添加"
+                  placeholder={t('输入擅长领域后回车添加')}
                   className="h-8 text-xs"
                 />
                 <Button
@@ -294,7 +296,7 @@ export default function AllianceExpertEditPage() {
                   className="h-8 text-xs"
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  添加
+                  {t('添加')}
                 </Button>
               </div>
             </CardContent>
@@ -302,7 +304,7 @@ export default function AllianceExpertEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>专家简介</CardTitle>
+              <CardTitle>{t('专家简介')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -315,7 +317,7 @@ export default function AllianceExpertEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>从业经历</CardTitle>
+              <CardTitle>{t('从业经历')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -328,15 +330,15 @@ export default function AllianceExpertEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>资质荣誉（佐证材料）</CardTitle>
+              <CardTitle>{t('资质荣誉（佐证材料）')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ImageListUpload
-                label="佐证材料"
+                label={t('佐证材料')}
                 value={item.attachments}
                 onChange={(v) => setField('attachments', v)}
                 multiple
-                placeholder="上传附件或输入 URL"
+                placeholder={t('上传附件或输入 URL')}
               />
             </CardContent>
           </Card>
@@ -345,10 +347,10 @@ export default function AllianceExpertEditPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>所属机构来源</CardTitle>
+              <CardTitle>{t('所属机构来源')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <FormFieldRow label="来源">
+              <FormFieldRow label={t('来源')}>
                 <Select
                   value={item.partnerSource}
                   onValueChange={(v) => setField('partnerSource', v)}
@@ -357,19 +359,19 @@ export default function AllianceExpertEditPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cooperation">合作企业库</SelectItem>
-                    <SelectItem value="third-party">第三方机构</SelectItem>
+                    <SelectItem value="cooperation">{t('合作企业库')}</SelectItem>
+                    <SelectItem value="third-party">{t('第三方机构')}</SelectItem>
                   </SelectContent>
                 </Select>
               </FormFieldRow>
               {item.partnerSource === 'cooperation' ? (
-                <FormFieldRow label="选择企业">
+                <FormFieldRow label={t('选择企业')}>
                   <Select
                     value={item.enterpriseId}
                     onValueChange={(v) => setField('enterpriseId', v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="选择合作企业" />
+                      <SelectValue placeholder={t('选择合作企业')} />
                     </SelectTrigger>
                     <SelectContent>
                       {enterprises.map((e) => (
@@ -381,11 +383,11 @@ export default function AllianceExpertEditPage() {
                   </Select>
                 </FormFieldRow>
               ) : (
-                <FormFieldRow label="机构名称">
+                <FormFieldRow label={t('机构名称')}>
                   <Input
                     value={item.organization}
                     onChange={(e) => setField('organization', e.target.value)}
-                    placeholder="输入第三方机构名称"
+                    placeholder={t('输入第三方机构名称')}
                   />
                 </FormFieldRow>
               )}
@@ -394,36 +396,36 @@ export default function AllianceExpertEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>二级学院</CardTitle>
+              <CardTitle>{t('二级学院')}</CardTitle>
             </CardHeader>
             <CardContent>
               <MultiSelect
                 options={SECONDARY_COLLEGES}
                 value={item.secondaryColleges}
                 onChange={(v) => setField('secondaryColleges', v)}
-                placeholder="选择归属学院"
+                placeholder={t('选择归属学院')}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>设置</CardTitle>
+              <CardTitle>{t('设置')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormFieldRow label="状态">
+              <FormFieldRow label={t('状态')}>
                 <Select value={item.status} onValueChange={(v) => setField('status', v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">启用</SelectItem>
-                    <SelectItem value="inactive">禁用</SelectItem>
+                    <SelectItem value="active">{t('启用')}</SelectItem>
+                    <SelectItem value="inactive">{t('禁用')}</SelectItem>
                   </SelectContent>
                 </Select>
               </FormFieldRow>
               <div className="flex items-center justify-between">
-                <Label>前台展示</Label>
+                <Label>{t('前台展示')}</Label>
                 <Switch checked={item.isPublic} onCheckedChange={(v) => setField('isPublic', v)} />
               </div>
             </CardContent>
@@ -432,10 +434,11 @@ export default function AllianceExpertEditPage() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}保存
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {t('保存')}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
-                取消
+                {t('取消')}
               </Button>
             </CardContent>
           </Card>

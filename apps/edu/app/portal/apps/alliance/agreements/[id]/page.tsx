@@ -8,12 +8,14 @@ import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from 
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceAgreement, AllianceEnterprise, AllianceProject } from '@/lib/types'
 
 export default function AllianceAgreementDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const [agreement, setAgreement] = useState<AllianceAgreement | null>(null)
   const [enterprises, setEnterprises] = useState<AllianceEnterprise[]>([])
   const [projects, setProjects] = useState<AllianceProject[]>([])
@@ -31,9 +33,9 @@ export default function AllianceAgreementDetailPage() {
         setEnterprises(ents.items || [])
         setProjects(projs.items || [])
       })
-      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
-  }, [tenantId, id, toast])
+  }, [tenantId, id, toast, t])
 
   if (!agreement && !loading) {
     return (
@@ -52,43 +54,43 @@ export default function AllianceAgreementDetailPage() {
   const tabs = [
     {
       key: 'info',
-      label: '基本信息',
+      label: t('基本信息'),
       content: (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>协议信息</CardTitle>
+              <CardTitle>{t('协议信息')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">协议类型：</span>
+                <span className="text-muted-foreground">{t('协议类型：')}</span>
                 {agreement?.type || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">协议状态：</span>
+                <span className="text-muted-foreground">{t('协议状态：')}</span>
                 {allianceLabel('agreementStatus', agreement?.status)}
               </p>
               <p>
-                <span className="text-muted-foreground">生效日期：</span>
+                <span className="text-muted-foreground">{t('生效日期：')}</span>
                 {agreement?.startDate || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">到期日期：</span>
+                <span className="text-muted-foreground">{t('到期日期：')}</span>
                 {agreement?.endDate || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">创建人：</span>
+                <span className="text-muted-foreground">{t('创建人：')}</span>
                 {agreement?.createdBy || '-'}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>关联对象</CardTitle>
+              <CardTitle>{t('关联对象')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">合作企业：</span>
+                <span className="text-muted-foreground">{t('合作企业：')}</span>
                 {entIds.length > 0
                   ? entIds.map((eid) => {
                       const ent = enterprises.find((e) => e.id === eid)
@@ -107,7 +109,7 @@ export default function AllianceAgreementDetailPage() {
                   : '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">关联项目：</span>
+                <span className="text-muted-foreground">{t('关联项目：')}</span>
                 {projIds.length > 0
                   ? projIds.map((pid) => {
                       const proj = projects.find((p) => p.id === pid)
@@ -130,7 +132,7 @@ export default function AllianceAgreementDetailPage() {
           {agreement?.content && (
             <Card className="col-span-2">
               <CardHeader>
-                <CardTitle>协议概要</CardTitle>
+                <CardTitle>{t('协议概要')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{agreement.content}</p>
@@ -140,12 +142,12 @@ export default function AllianceAgreementDetailPage() {
           {agreement && agreement.attachments && agreement.attachments.length > 0 && (
             <Card className="col-span-2">
               <CardHeader>
-                <CardTitle>协议附件</CardTitle>
+                <CardTitle>{t('协议附件')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
                 {agreement.attachments.map((a, i) => (
                   <p key={i} className="text-sm text-muted-foreground">
-                    📄 {typeof a === 'string' ? a : (a as any)?.name || '附件'}
+                    📄 {typeof a === 'string' ? a : (a as any)?.name || t('附件')}
                   </p>
                 ))}
               </CardContent>

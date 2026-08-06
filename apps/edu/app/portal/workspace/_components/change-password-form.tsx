@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { useToast } from '@zhiyu/ui'
 import { portalMeApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/
 
@@ -16,6 +17,7 @@ const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/
  */
 export function ChangePasswordForm() {
   const { toast } = useToast()
+  const t = useT()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -23,22 +25,22 @@ export function ChangePasswordForm() {
 
   const handleSubmit = async () => {
     if (!PASSWORD_RULE.test(password)) {
-      setError('密码长度至少 8 位，且需同时包含字母和数字')
+      setError(t('密码长度至少 8 位，且需同时包含字母和数字'))
       return
     }
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致')
+      setError(t('两次输入的密码不一致'))
       return
     }
     setError(null)
     setSubmitting(true)
     try {
       await portalMeApi.changePassword(password)
-      toast({ title: '修改成功', description: '密码已更新，下次登录请使用新密码' })
+      toast({ title: t('修改成功'), description: t('密码已更新，下次登录请使用新密码') })
       setPassword('')
       setConfirmPassword('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : '修改密码失败')
+      setError(e instanceof Error ? e.message : t('修改密码失败'))
     } finally {
       setSubmitting(false)
     }
@@ -47,24 +49,24 @@ export function ChangePasswordForm() {
   return (
     <div className="space-y-4">
       <FormFieldGrid>
-        <FormFieldRow label="新密码" htmlFor="new-password" labelClassName="text-gray-700">
+        <FormFieldRow label={t('新密码')} htmlFor="new-password" labelClassName="text-gray-700">
           <Input
             id="new-password"
             type="password"
-            placeholder="至少 8 位，包含字母和数字"
+            placeholder={t('至少 8 位，包含字母和数字')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </FormFieldRow>
         <FormFieldRow
-          label="确认新密码"
+          label={t('确认新密码')}
           htmlFor="confirm-new-password"
           labelClassName="text-gray-700"
         >
           <Input
             id="confirm-new-password"
             type="password"
-            placeholder="再次输入新密码"
+            placeholder={t('再次输入新密码')}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
@@ -74,7 +76,7 @@ export function ChangePasswordForm() {
       <div className="flex justify-end">
         <Button onClick={handleSubmit} disabled={submitting || !password || !confirmPassword}>
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          确认修改
+          {t('确认修改')}
         </Button>
       </div>
     </div>

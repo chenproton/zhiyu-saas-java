@@ -18,6 +18,7 @@ import {
   scenarioTasks,
   type PrepSubItem,
 } from '../_data/workspace-teacher-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface PrepAssociateDialogProps {
   open: boolean
@@ -40,12 +41,13 @@ export function PrepAssociateDialog({
   onConfirm,
   prepUrl,
 }: PrepAssociateDialogProps) {
+  const t = useT()
   const subItems = isHybrid ? hybridCourseSessions[planId] || [] : scenarioTasks[planId] || []
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(currentSubItemIds || []))
   const [confirmed, setConfirmed] = useState(false)
 
-  const level1Label = isHybrid ? '混合课程' : '实践场景'
-  const level2Label = isHybrid ? '节次' : '任务'
+  const level1Label = t(isHybrid ? '混合课程' : '实践场景')
+  const level2Label = t(isHybrid ? '节次' : '任务')
 
   const toggleItem = (id: string) => {
     setSelectedIds((prev) => {
@@ -89,10 +91,12 @@ export function PrepAssociateDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" />
-            关联备课内容
+            {t('关联备课内容')}
           </DialogTitle>
           <DialogDescription>
-            勾选要备课的{level2Label}（可多选），后续可直接跳转到对应备课页面。
+            {t('勾选要备课的{label}（可多选），后续可直接跳转到对应备课页面。', {
+              label: level2Label,
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -103,7 +107,9 @@ export function PrepAssociateDialog({
               <Badge
                 variant="outline"
                 className={
-                  isHybrid ? 'border-primary/15 text-primary' : 'border-emerald-200 text-emerald-600'
+                  isHybrid
+                    ? 'border-primary/15 text-primary'
+                    : 'border-emerald-200 text-emerald-600'
                 }
               >
                 {level1Label}
@@ -114,15 +120,22 @@ export function PrepAssociateDialog({
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-gray-500">{level2Label}名称</label>
+              <label className="text-xs font-medium text-gray-500">
+                {t('{label}名称', { label: level2Label })}
+              </label>
               {selectedIds.size > 0 && (
                 <span className="text-xs text-gray-400">
-                  已选 {selectedIds.size}/{subItems.length}
+                  {t('已选 {selected}/{total}', {
+                    selected: selectedIds.size,
+                    total: subItems.length,
+                  })}
                 </span>
               )}
             </div>
             {subItems.length === 0 ? (
-              <p className="text-xs text-gray-400 py-3 text-center">暂无可用{level2Label}</p>
+              <p className="text-xs text-gray-400 py-3 text-center">
+                {t('暂无可用{label}', { label: level2Label })}
+              </p>
             ) : (
               <div className="space-y-1 max-h-[280px] overflow-y-auto pr-1">
                 {subItems.map((item) => {
@@ -149,7 +162,7 @@ export function PrepAssociateDialog({
                         <span
                           className={`text-[10px] shrink-0 px-1.5 py-0.5 rounded border ${isHybrid ? 'text-primary bg-primary/5 border-primary/15' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}
                         >
-                          已关联
+                          {t('已关联')}
                         </span>
                       ) : isSelected ? (
                         <Check
@@ -170,21 +183,23 @@ export function PrepAssociateDialog({
               className="text-xs text-gray-400"
               onClick={() => setSelectedIds(new Set())}
             >
-              清空选择
+              {t('清空选择')}
             </Button>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-                取消
+                {t('取消')}
               </Button>
               <Button
                 size="sm"
                 disabled={selectedIds.size === 0}
                 className={
-                  isHybrid ? 'bg-primary hover:bg-primary/90' : 'bg-emerald-600 hover:bg-emerald-700'
+                  isHybrid
+                    ? 'bg-primary hover:bg-primary/90'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
                 }
                 onClick={handleConfirm}
               >
-                {confirmed ? '修改关联' : '确认关联'}
+                {t(confirmed ? '修改关联' : '确认关联')}
               </Button>
               {confirmed && prepUrl && (
                 <Button
@@ -196,7 +211,7 @@ export function PrepAssociateDialog({
                   }
                   onClick={handleNavigate}
                 >
-                  {isHybrid ? '前往备课' : '前往导学'}
+                  {t(isHybrid ? '前往备课' : '前往导学')}
                 </Button>
               )}
             </div>

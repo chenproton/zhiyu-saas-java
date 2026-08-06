@@ -273,7 +273,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     <div className="min-h-full">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+          <h1 className="text-xl font-semibold text-foreground">{t(title)}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -313,7 +313,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
               className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <div className="text-xs text-muted-foreground">{stat.label}</div>
+                <div className="text-xs text-muted-foreground">{t(stat.label)}</div>
                 {stat.icon && (
                   <div
                     className={cn(

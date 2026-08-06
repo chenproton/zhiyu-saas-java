@@ -13,10 +13,12 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import type { AllianceDictionary, AllianceListResponse } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 
 function DictionaryTab({ dictType }: { dictType: string }) {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const [items, setItems] = useState<AllianceDictionary[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -69,9 +71,9 @@ function DictionaryTab({ dictType }: { dictType: string }) {
       setDialogOpen(false)
       setEditId(null)
       await fetchItems()
-      toast({ title: '已保存' })
+      toast({ title: t('已保存') })
     } catch (e: any) {
-      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -86,9 +88,9 @@ function DictionaryTab({ dictType }: { dictType: string }) {
       })
       setDeleteTarget(null)
       await fetchItems()
-      toast({ title: '已删除' })
+      toast({ title: t('已删除') })
     } catch (e: any) {
-      toast({ title: '删除失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('删除失败'), description: e.message, variant: 'destructive' })
     } finally {
       setDeleting(false)
     }
@@ -106,31 +108,33 @@ function DictionaryTab({ dictType }: { dictType: string }) {
           }}
         >
           <Plus className="h-4 w-4 mr-1" />
-          新增
+          {t('新增')}
         </Button>
-        <span className="text-sm text-muted-foreground">共 {items.length} 项</span>
+        <span className="text-sm text-muted-foreground">
+          {t('共 {count} 项', { count: items.length })}
+        </span>
       </div>
       <div className="rounded-md border overflow-x-auto">
         <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-muted/50 border-b">
             <tr>
-              <TableHead>编码</TableHead>
-              <TableHead>名称</TableHead>
-              <TableHead>排序</TableHead>
-              <TableHead>操作</TableHead>
+              <TableHead>{t('编码')}</TableHead>
+              <TableHead>{t('名称')}</TableHead>
+              <TableHead>{t('排序')}</TableHead>
+              <TableHead>{t('操作')}</TableHead>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
                 <td colSpan={4} className="text-center py-8 text-muted-foreground">
-                  加载中...
+                  {t('加载中...')}
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
                 <td colSpan={4} className="text-center py-8 text-muted-foreground">
-                  暂无
+                  {t('暂无')}
                 </td>
               </tr>
             ) : (
@@ -151,7 +155,7 @@ function DictionaryTab({ dictType }: { dictType: string }) {
                         }}
                       >
                         <Pencil className="h-4 w-4 mr-1" />
-                        编辑
+                        {t('编辑')}
                       </Button>
                       <Button
                         variant="ghost"
@@ -160,7 +164,7 @@ function DictionaryTab({ dictType }: { dictType: string }) {
                         onClick={() => setDeleteTarget(d)}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
-                        删除
+                        {t('删除')}
                       </Button>
                     </TableRowActions>
                   </TableCell>
@@ -179,22 +183,24 @@ function DictionaryTab({ dictType }: { dictType: string }) {
             className="bg-background rounded-lg shadow-lg w-full max-w-sm p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold mb-4">{editId ? '编辑字典项' : '新增字典项'}</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              {editId ? t('编辑字典项') : t('新增字典项')}
+            </h2>
             <div className="space-y-4">
-              <FormFieldRow label="编码" required>
+              <FormFieldRow label={t('编码')} required>
                 <Input
                   value={formItem.code}
                   onChange={(e) => setFormItem({ ...formItem, code: e.target.value })}
                   disabled={!!editId}
                 />
               </FormFieldRow>
-              <FormFieldRow label="名称" required>
+              <FormFieldRow label={t('名称')} required>
                 <Input
                   value={formItem.name}
                   onChange={(e) => setFormItem({ ...formItem, name: e.target.value })}
                 />
               </FormFieldRow>
-              <FormFieldRow label="排序">
+              <FormFieldRow label={t('排序')}>
                 <Input
                   type="number"
                   value={formItem.sortOrder}
@@ -206,10 +212,10 @@ function DictionaryTab({ dictType }: { dictType: string }) {
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                取消
+                {t('取消')}
               </Button>
               <Button onClick={handleSave} disabled={saving || !formItem.code || !formItem.name}>
-                {saving ? '保存中...' : '保存'}
+                {saving ? t('保存中...') : t('保存')}
               </Button>
             </div>
           </div>
@@ -220,10 +226,10 @@ function DictionaryTab({ dictType }: { dictType: string }) {
         onOpenChange={(v) => {
           if (!v) setDeleteTarget(null)
         }}
-        title="确认删除"
-        description={deleteTarget ? `确定要删除「${deleteTarget.name}」吗？` : ''}
+        title={t('确认删除')}
+        description={deleteTarget ? t('确定要删除「{name}」吗？', { name: deleteTarget.name }) : ''}
         variant="destructive"
-        confirmText="删除"
+        confirmText={t('删除')}
         onConfirm={handleDelete}
       />
     </div>
@@ -231,58 +237,77 @@ function DictionaryTab({ dictType }: { dictType: string }) {
 }
 
 export default function AllianceDictionariesPage() {
+  const t = useT()
   const tabs = [
     {
       dictType: 'cooperation_type',
-      label: '合作类型',
-      desc: '校企合作类型字典（人才培养/实习实训/技术研发等）',
+      label: t('合作类型'),
+      desc: t('校企合作类型字典（人才培养/实习实训/技术研发等）'),
     },
     {
       dictType: 'cooperation_rating',
-      label: '合作评级',
-      desc: '企业合作评级字典（战略合作/深度合作/一般合作）',
+      label: t('合作评级'),
+      desc: t('企业合作评级字典（战略合作/深度合作/一般合作）'),
     },
     {
       dictType: 'enterprise_status',
-      label: '合作状态',
-      desc: '企业合作状态字典（洽谈中/合作中/已暂停/已终止）',
+      label: t('合作状态'),
+      desc: t('企业合作状态字典（洽谈中/合作中/已暂停/已终止）'),
     },
     {
       dictType: 'achievement_type',
-      label: '成果类型',
-      desc: '合作成果类型字典（岗位/场景/课程/自定义）',
+      label: t('成果类型'),
+      desc: t('合作成果类型字典（岗位/场景/课程/自定义）'),
     },
-    { dictType: 'agreement_type', label: '协议类型', desc: '合作协议类型字典' },
-    { dictType: 'agreement_status', label: '协议状态', desc: '合作协议状态字典' },
-    { dictType: 'expert_rating', label: '专家评级', desc: '专家评级字典（金牌/银牌/铜牌）' },
-    { dictType: 'project_type', label: '项目类型', desc: '合作项目类型字典' },
+    {
+      dictType: 'agreement_type',
+      label: t('协议类型'),
+      desc: t('合作协议类型字典'),
+    },
+    {
+      dictType: 'agreement_status',
+      label: t('协议状态'),
+      desc: t('合作协议状态字典'),
+    },
+    {
+      dictType: 'expert_rating',
+      label: t('专家评级'),
+      desc: t('专家评级字典（金牌/银牌/铜牌）'),
+    },
+    {
+      dictType: 'project_type',
+      label: t('项目类型'),
+      desc: t('合作项目类型字典'),
+    },
   ]
   const [active, setActive] = useState(tabs[0].dictType)
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">字典管理</h1>
-        <p className="text-muted-foreground text-sm mt-1">维护联盟业务字典，供各模块下拉使用</p>
+        <h1 className="text-xl font-semibold text-foreground">{t('字典管理')}</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          {t('维护联盟业务字典，供各模块下拉使用')}
+        </p>
       </div>
       <div className="flex gap-1 border-b overflow-x-auto">
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <button
-            key={t.dictType}
-            onClick={() => setActive(t.dictType)}
-            className={`px-4 py-2 text-sm border-b-2 whitespace-nowrap transition-colors ${active === t.dictType ? 'border-primary text-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            key={tab.dictType}
+            onClick={() => setActive(tab.dictType)}
+            className={`px-4 py-2 text-sm border-b-2 whitespace-nowrap transition-colors ${active === tab.dictType ? 'border-primary text-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
       {tabs
-        .filter((t) => t.dictType === active)
-        .map((t) => (
-          <div key={t.dictType} className="rounded-lg border p-6">
-            <h2 className="text-lg font-semibold mb-1">{t.label}字典</h2>
-            <p className="text-sm text-muted-foreground mb-4">{t.desc}</p>
-            <DictionaryTab dictType={t.dictType} />
+        .filter((tab) => tab.dictType === active)
+        .map((tab) => (
+          <div key={tab.dictType} className="rounded-lg border p-6">
+            <h2 className="text-lg font-semibold mb-1">{t('{label}字典', { label: tab.label })}</h2>
+            <p className="text-sm text-muted-foreground mb-4">{tab.desc}</p>
+            <DictionaryTab dictType={tab.dictType} />
           </div>
         ))}
     </div>

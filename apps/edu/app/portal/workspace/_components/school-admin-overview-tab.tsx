@@ -24,6 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard, WorkspaceResourceStat } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const iconMap: Record<string, LucideIcon> = {
   'book-open': BookOpen,
@@ -33,32 +34,34 @@ const iconMap: Record<string, LucideIcon> = {
   'check-circle': CheckSquare,
 }
 
-const extraResourceEntries = [
-  {
-    label: '教学资源共享库',
-    icon: Library,
-    href: '/library/knowledge',
-    desc: '知识点、能力点与教学资源',
-  },
-  {
-    label: '教务管理',
-    icon: Calendar,
-    href: '/affairs/programs',
-    desc: '培养方案、教学计划、排课',
-  },
-  {
-    label: '产教融合',
-    icon: Users,
-    href: '/portal/apps/alliance/enterprises',
-    desc: '合作企业、项目与成果',
-  },
-]
-
 interface SchoolAdminOverviewTabProps {
   onTabChange?: (tab: string) => void
 }
 
 export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabProps) {
+  const t = useT()
+
+  const extraResourceEntries = [
+    {
+      label: t('教学资源共享库'),
+      icon: Library,
+      href: '/library/knowledge',
+      desc: t('知识点、能力点与教学资源'),
+    },
+    {
+      label: t('教务管理'),
+      icon: Calendar,
+      href: '/affairs/programs',
+      desc: t('培养方案、教学计划、排课'),
+    },
+    {
+      label: t('产教融合'),
+      icon: Users,
+      href: '/portal/apps/alliance/enterprises',
+      desc: t('合作企业、项目与成果'),
+    },
+  ]
+
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
@@ -78,7 +81,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
           {/* 资源管理入口 */}
-          <SectionCard title="资源管理入口" icon={LayoutGrid} iconColor="blue">
+          <SectionCard title={t('资源管理入口')} icon={LayoutGrid} iconColor="blue">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {resourceStats.map((item) => (
                 <ResourceCard key={item.label} item={item} />
@@ -100,7 +103,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-gray-300 group-hover:text-primary group-hover:bg-primary/5"
-                    aria-label="查看详情"
+                    aria-label={t('查看详情')}
                   >
                     <ChevronRight className="w-4 h-4" />
                   </Button>
@@ -110,7 +113,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
           </SectionCard>
 
           {/* 人员概览小卡片 */}
-          <SectionCard title="学校人员概览" icon={Users} iconColor="green">
+          <SectionCard title={t('学校人员概览')} icon={Users} iconColor="green">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {personnelStats.map((item) => (
                 <div
@@ -123,7 +126,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
               ))}
               {personnelStats.length === 0 && (
                 <div className="col-span-full py-6 text-center text-xs text-gray-400">
-                  暂无人员数据
+                  {t('暂无人员数据')}
                 </div>
               )}
             </div>
@@ -133,15 +136,15 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
         <div className="space-y-3">
           {/* 待办事项 */}
           <SectionCard
-            title="待办事项"
+            title={t('待办事项')}
             icon={CheckSquare}
             iconColor="rose"
-            action={{ label: '全部待办', onClick: () => onTabChange?.('approvals') }}
+            action={{ label: t('全部待办'), onClick: () => onTabChange?.('approvals') }}
           >
             <ScrollArea className="h-[260px]">
               <div className="space-y-2 pr-2">
                 {todos.length === 0 && (
-                  <div className="py-8 text-center text-xs text-gray-400">暂无待办事项</div>
+                  <div className="py-8 text-center text-xs text-gray-400">{t('暂无待办事项')}</div>
                 )}
                 {todos.map((item) => (
                   <div
@@ -157,7 +160,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
                         {item.deadline && (
                           <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                             <Clock className="w-3 h-3" />
-                            截止 {item.deadline}
+                            {t('截止 {deadline}', { deadline: item.deadline })}
                           </p>
                         )}
                       </div>
@@ -175,11 +178,16 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
           </SectionCard>
 
           {/* 通知公告 */}
-          <SectionCard title="通知公告" icon={Bell} iconColor="blue" action={{ label: '全部通知' }}>
+          <SectionCard
+            title={t('通知公告')}
+            icon={Bell}
+            iconColor="blue"
+            action={{ label: t('全部通知') }}
+          >
             <ScrollArea className="h-[240px]">
               <div className="space-y-2 pr-2">
                 {announcements.length === 0 && (
-                  <div className="py-8 text-center text-xs text-gray-400">暂无通知公告</div>
+                  <div className="py-8 text-center text-xs text-gray-400">{t('暂无通知公告')}</div>
                 )}
                 {announcements.map((item) => (
                   <div
@@ -213,6 +221,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
 }
 
 function ResourceCard({ item }: { item: WorkspaceResourceStat }) {
+  const t = useT()
   const Icon = iconMap[item.icon || ''] || Database
   return (
     <a
@@ -230,7 +239,7 @@ function ResourceCard({ item }: { item: WorkspaceResourceStat }) {
         variant="ghost"
         size="icon"
         className="h-8 w-8 text-gray-300 group-hover:text-primary group-hover:bg-primary/5"
-        aria-label="查看详情"
+        aria-label={t('查看详情')}
       >
         <ChevronRight className="w-4 h-4" />
       </Button>

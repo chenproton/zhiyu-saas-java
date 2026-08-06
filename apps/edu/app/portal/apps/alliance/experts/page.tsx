@@ -20,11 +20,13 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceExpert } from '@/lib/types'
 
 export default function AllianceExpertsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
 
   const { data, loading, error, refresh } = useAsync(
     async () => {
@@ -39,11 +41,11 @@ export default function AllianceExpertsPage() {
 
   return (
     <PortalCrudPage
-      title="专家资源库"
-      description="管理产业专家与校企专家档案信息。"
-      entityLabel="专家"
-      searchPlaceholder="搜索姓名、头衔或行业..."
-      createButtonLabel="新建专家"
+      title={t('专家资源库')}
+      description={t('管理产业专家与校企专家档案信息。')}
+      entityLabel={t('专家')}
+      searchPlaceholder={t('搜索姓名、头衔或行业...')}
+      createButtonLabel={t('新建专家')}
       items={experts}
       loading={loading}
       error={error?.message ?? null}
@@ -59,21 +61,21 @@ export default function AllianceExpertsPage() {
       }
       importConfig={{
         importType: 'alliance-experts',
-        entityLabel: '专家资源',
-        templateFileName: '专家资源批量导入模板.xlsx',
+        entityLabel: t('专家资源'),
+        templateFileName: t('专家资源批量导入模板.xlsx'),
       }}
       createHref="/portal/apps/alliance/experts/new"
       colSpan={8}
       renderTableHeader={() => (
         <>
-          <TableHead>姓名</TableHead>
-          <TableHead>头衔</TableHead>
-          <TableHead>职位</TableHead>
-          <TableHead>所属机构</TableHead>
-          <TableHead>行业</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>评级</TableHead>
-          <TableHead>操作</TableHead>
+          <TableHead>{t('姓名')}</TableHead>
+          <TableHead>{t('头衔')}</TableHead>
+          <TableHead>{t('职位')}</TableHead>
+          <TableHead>{t('所属机构')}</TableHead>
+          <TableHead>{t('行业')}</TableHead>
+          <TableHead>{t('状态')}</TableHead>
+          <TableHead>{t('评级')}</TableHead>
+          <TableHead>{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(e: any, actions: any) => (
@@ -93,18 +95,18 @@ export default function AllianceExpertsPage() {
             <Link href={`/portal/apps/alliance/experts/${e.id}`}>
               <Button variant="ghost" size="sm">
                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                查看
+                {t('查看')}
               </Button>
             </Link>
             <Link href={`/portal/apps/alliance/experts/${e.id}/edit`}>
               <Button variant="ghost" size="sm">
                 <Pencil className="h-3.5 w-3.5 mr-1" />
-                编辑
+                {t('编辑')}
               </Button>
             </Link>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
               <Trash2 className="h-3.5 w-3.5 mr-1" />
-              删除
+              {t('删除')}
             </Button>
           </TableRowActions>
         </>
@@ -123,37 +125,37 @@ export default function AllianceExpertsPage() {
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
           <FormFieldGrid>
-            <FormFieldRow label="姓名" required>
+            <FormFieldRow label={t('姓名')} required>
               <Input
                 value={item.name || ''}
                 onChange={(e: any) => setItem({ ...item, name: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="头衔">
+            <FormFieldRow label={t('头衔')}>
               <Input
                 value={item.title || ''}
                 onChange={(e: any) => setItem({ ...item, title: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="职位">
+            <FormFieldRow label={t('职位')}>
               <Input
                 value={item.position || ''}
                 onChange={(e: any) => setItem({ ...item, position: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="行业">
+            <FormFieldRow label={t('行业')}>
               <Input
                 value={item.industry || ''}
                 onChange={(e: any) => setItem({ ...item, industry: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="城市">
+            <FormFieldRow label={t('城市')}>
               <Input
                 value={item.city || ''}
                 onChange={(e: any) => setItem({ ...item, city: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="评级">
+            <FormFieldRow label={t('评级')}>
               <Select
                 value={item.rating || 'copper'}
                 onValueChange={(v: any) => setItem({ ...item, rating: v })}
@@ -162,14 +164,14 @@ export default function AllianceExpertsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gold">金牌</SelectItem>
-                  <SelectItem value="silver">银牌</SelectItem>
-                  <SelectItem value="copper">铜牌</SelectItem>
+                  <SelectItem value="gold">{t('金牌')}</SelectItem>
+                  <SelectItem value="silver">{t('银牌')}</SelectItem>
+                  <SelectItem value="copper">{t('铜牌')}</SelectItem>
                 </SelectContent>
               </Select>
             </FormFieldRow>
           </FormFieldGrid>
-          <FormFieldRow label="简介">
+          <FormFieldRow label={t('简介')}>
             <Textarea
               value={item.introduction || ''}
               onChange={(e: any) => setItem({ ...item, introduction: e.target.value })}
@@ -179,19 +181,17 @@ export default function AllianceExpertsPage() {
         </div>
       )}
       getDeleteDescription={(item: any) => (
-        <>
-          确定要删除专家 <b>{item.name}</b> 吗？
-        </>
+        <>{t('确定要删除专家 {name} 吗？', { name: item.name })}</>
       )}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) await allianceExpertApi.update(item.id, item)
         else await allianceExpertApi.create(item)
-        toast({ title: `专家已${isEdit ? '更新' : '创建'}` })
+        toast({ title: t('专家已{action}', { action: isEdit ? t('更新') : t('创建') }) })
         await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceExpertApi.delete(item.id)
-        toast({ title: '已删除' })
+        toast({ title: t('已删除') })
         await refresh()
       }}
       onToggleEnabled={async () => {}}

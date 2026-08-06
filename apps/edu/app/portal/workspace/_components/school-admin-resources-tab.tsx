@@ -19,6 +19,7 @@ import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard } from '@/lib/types'
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const iconMap: Record<string, LucideIcon> = {
   'book-open': BookOpen,
@@ -28,16 +29,25 @@ const iconMap: Record<string, LucideIcon> = {
   'check-circle': CheckSquare,
 }
 
-const resourceTrendItems = [
-  { key: 'careerPositions', label: '岗位', icon: Briefcase, color: '#8b5cf6' },
-  { key: 'scenarios', label: '场景', icon: Layers, color: '#10b981' },
-  { key: 'courses', label: '课程', icon: BookOpen, color: '#3b82f6' },
-  { key: 'questionBanks', label: '题库', icon: Database, color: '#06b6d4' },
-  { key: 'exams', label: '试卷', icon: FileText, color: '#f97316' },
-  { key: 'examUsages', label: '考试', icon: CheckSquare, color: '#ef4444' },
-]
+interface ResourceTrendItem {
+  key: string
+  label: string
+  icon: LucideIcon
+  color: string
+}
 
 export function SchoolAdminResourcesTab() {
+  const t = useT()
+
+  const resourceTrendItems: ResourceTrendItem[] = [
+    { key: 'careerPositions', label: t('岗位'), icon: Briefcase, color: '#8b5cf6' },
+    { key: 'scenarios', label: t('场景'), icon: Layers, color: '#10b981' },
+    { key: 'courses', label: t('课程'), icon: BookOpen, color: '#3b82f6' },
+    { key: 'questionBanks', label: t('题库'), icon: Database, color: '#06b6d4' },
+    { key: 'exams', label: t('试卷'), icon: FileText, color: '#f97316' },
+    { key: 'examUsages', label: t('考试'), icon: CheckSquare, color: '#ef4444' },
+  ]
+
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
@@ -82,9 +92,9 @@ export function SchoolAdminResourcesTab() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
           {/* 资源增长趋势（每种资源一张卡片） */}
-          <SectionCard title="资源增长趋势" icon={TrendingUp} iconColor="blue">
+          <SectionCard title={t('资源增长趋势')} icon={TrendingUp} iconColor="blue">
             {growth.length === 0 ? (
-              <div className="py-10 text-center text-sm text-gray-400">暂无增长数据</div>
+              <div className="py-10 text-center text-sm text-gray-400">{t('暂无增长数据')}</div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {resourceTrendItems.map((item) => (
@@ -103,16 +113,16 @@ export function SchoolAdminResourcesTab() {
         </div>
 
         <div>
-          <SectionCard title="待审批资源" icon={ClipboardList} iconColor="amber">
+          <SectionCard title={t('待审批资源')} icon={ClipboardList} iconColor="amber">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">待审批总数</span>
+                <span className="text-sm text-gray-500">{t('待审批总数')}</span>
                 <Badge variant="destructive" className="text-xs">
                   {pendingCount}
                 </Badge>
               </div>
               {todos.length === 0 && (
-                <div className="py-4 text-center text-xs text-gray-400">暂无待审批</div>
+                <div className="py-4 text-center text-xs text-gray-400">{t('暂无待审批')}</div>
               )}
               {todos.map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-sm">
@@ -134,9 +144,10 @@ function ResourceTrendCard({
   item,
   data,
 }: {
-  item: (typeof resourceTrendItems)[number]
+  item: ResourceTrendItem
   data: { date: string; value: number }[]
 }) {
+  const t = useT()
   const Icon = item.icon
   const latest = data[data.length - 1]?.value ?? 0
   return (
@@ -150,13 +161,16 @@ function ResourceTrendCard({
             >
               <Icon className="w-4 h-4" />
             </div>
-            <span className="text-sm font-semibold text-gray-900">{item.label}资源增长</span>
+            <span className="text-sm font-semibold text-gray-900">
+              {item.label}
+              {t('资源增长')}
+            </span>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold" style={{ color: item.color }}>
               {latest}
             </p>
-            <p className="text-xs text-gray-400">今日新增</p>
+            <p className="text-xs text-gray-400">{t('今日新增')}</p>
           </div>
         </div>
         <div className="h-20 w-full">

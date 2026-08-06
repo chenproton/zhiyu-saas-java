@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const approvalHrefMap: Record<string, string> = {
   'pending-course': '/lesson/admin/approvals',
@@ -28,6 +29,7 @@ const typeHrefMap: Record<string, string> = {
 }
 
 export function SchoolAdminApprovalsTab() {
+  const t = useT()
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function SchoolAdminApprovalsTab() {
         <Card className="bg-gradient-to-r from-primary to-primary/70 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-primary-foreground/80 text-sm">待审批总数</p>
+              <p className="text-primary-foreground/80 text-sm">{t('待审批总数')}</p>
               <p className="text-2xl font-bold">{total}</p>
             </div>
             <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
@@ -67,10 +69,10 @@ export function SchoolAdminApprovalsTab() {
         ))}
       </div>
 
-      <SectionCard title="待审批事项清单" icon={CheckSquare} iconColor="rose">
+      <SectionCard title={t('待审批事项清单')} icon={CheckSquare} iconColor="rose">
         <div className="space-y-2">
           {todos.length === 0 && (
-            <div className="py-12 text-center text-sm text-gray-400">暂无待审批事项</div>
+            <div className="py-12 text-center text-sm text-gray-400">{t('暂无待审批事项')}</div>
           )}
           {todos.map((item) => (
             <a
@@ -84,7 +86,7 @@ export function SchoolAdminApprovalsTab() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{item.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">点击前往对应审批中心处理</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{t('点击前往对应审批中心处理')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -95,7 +97,7 @@ export function SchoolAdminApprovalsTab() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-gray-300 group-hover:text-primary group-hover:bg-primary/5"
-                  aria-label="查看详情"
+                  aria-label={t('查看详情')}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>

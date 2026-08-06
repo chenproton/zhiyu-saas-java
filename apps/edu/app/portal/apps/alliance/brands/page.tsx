@@ -7,55 +7,57 @@ import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette } from 'lu
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
-
-const brandCards = [
-  {
-    type: 'talent',
-    label: '人才品牌',
-    desc: '展示学生能力画像与典型就业案例',
-    icon: GraduationCap,
-    color: 'text-blue-600 bg-blue-50',
-  },
-  {
-    type: 'employer',
-    label: '雇主品牌',
-    desc: '展示合作企业/机构的品牌形象',
-    icon: Building,
-    color: 'text-green-600 bg-green-50',
-  },
-  {
-    type: 'job',
-    label: '岗位品牌',
-    desc: '展示优质岗位的品牌级运营',
-    icon: Briefcase,
-    color: 'text-orange-600 bg-orange-50',
-  },
-  {
-    type: 'major',
-    label: '专业品牌',
-    desc: '展示专业建设水平与培养特色',
-    icon: BookOpen,
-    color: 'text-purple-600 bg-purple-50',
-  },
-  {
-    type: 'teacher',
-    label: '师资品牌',
-    desc: '展示校本师资与产业导师',
-    icon: Users,
-    color: 'text-red-600 bg-red-50',
-  },
-  {
-    type: 'culture',
-    label: '文化思政品牌',
-    desc: '展示典型案例、思政资源与文化活动',
-    icon: Palette,
-    color: 'text-cyan-600 bg-cyan-50',
-  },
-]
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AllianceBrandsPage() {
   const { tenantId } = usePortalAuth()
+  const t = useT()
   const [counts, setCounts] = useState<Record<string, number>>({})
+
+  const brandCards = [
+    {
+      type: 'talent',
+      label: t('人才品牌'),
+      desc: t('展示学生能力画像与典型就业案例'),
+      icon: GraduationCap,
+      color: 'text-blue-600 bg-blue-50',
+    },
+    {
+      type: 'employer',
+      label: t('雇主品牌'),
+      desc: t('展示合作企业/机构的品牌形象'),
+      icon: Building,
+      color: 'text-green-600 bg-green-50',
+    },
+    {
+      type: 'job',
+      label: t('岗位品牌'),
+      desc: t('展示优质岗位的品牌级运营'),
+      icon: Briefcase,
+      color: 'text-orange-600 bg-orange-50',
+    },
+    {
+      type: 'major',
+      label: t('专业品牌'),
+      desc: t('展示专业建设水平与培养特色'),
+      icon: BookOpen,
+      color: 'text-purple-600 bg-purple-50',
+    },
+    {
+      type: 'teacher',
+      label: t('师资品牌'),
+      desc: t('展示校本师资与产业导师'),
+      icon: Users,
+      color: 'text-red-600 bg-red-50',
+    },
+    {
+      type: 'culture',
+      label: t('文化思政品牌'),
+      desc: t('展示典型案例、思政资源与文化活动'),
+      icon: Palette,
+      color: 'text-cyan-600 bg-cyan-50',
+    },
+  ]
 
   useEffect(() => {
     if (!tenantId) return
@@ -86,8 +88,10 @@ export default function AllianceBrandsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">品牌运营管理</h1>
-        <p className="text-muted-foreground text-sm mt-1">管理六大品牌模块内容，配置前台展示</p>
+        <h1 className="text-xl font-semibold text-foreground">{t('品牌运营管理')}</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          {t('管理六大品牌模块内容，配置前台展示')}
+        </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {brandCards.map((card) => {
@@ -104,7 +108,7 @@ export default function AllianceBrandsPage() {
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-xs">{card.desc}</CardDescription>
-                  <p className="text-sm font-semibold mt-2">{count} 条内容</p>
+                  <p className="text-sm font-semibold mt-2">{t('{count} 条内容', { count })}</p>
                 </CardContent>
               </Card>
             </Link>

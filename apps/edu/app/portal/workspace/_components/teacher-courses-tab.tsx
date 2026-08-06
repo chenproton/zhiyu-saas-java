@@ -71,6 +71,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const gradeColorMap: Record<string, string> = {
   A: 'bg-emerald-100 text-emerald-700',
@@ -88,6 +89,7 @@ interface SelectedCourse {
 }
 
 function TrackingView() {
+  const t = useT()
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -95,7 +97,7 @@ function TrackingView() {
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-primary" />
             <div>
-              <p className="text-xs text-gray-500">应到人数</p>
+              <p className="text-xs text-gray-500">{t('应到人数')}</p>
               <p className="text-lg font-bold">{mockSignInData.total}</p>
             </div>
           </div>
@@ -104,7 +106,7 @@ function TrackingView() {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <div>
-              <p className="text-xs text-gray-500">实到/迟到/缺勤</p>
+              <p className="text-xs text-gray-500">{t('实到/迟到/缺勤')}</p>
               <p className="text-lg font-bold">
                 {mockSignInData.present}
                 <span className="text-sm font-normal text-gray-400">
@@ -118,7 +120,7 @@ function TrackingView() {
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-purple-600" />
             <div>
-              <p className="text-xs text-gray-500">随堂测验均分</p>
+              <p className="text-xs text-gray-500">{t('随堂测验均分')}</p>
               <p className="text-lg font-bold">
                 {mockQuizResults.length > 0
                   ? Math.round(
@@ -133,7 +135,7 @@ function TrackingView() {
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4 text-amber-600" />
             <div>
-              <p className="text-xs text-gray-500">抢答参与率</p>
+              <p className="text-xs text-gray-500">{t('抢答参与率')}</p>
               <p className="text-lg font-bold">0%</p>
             </div>
           </div>
@@ -142,7 +144,7 @@ function TrackingView() {
           <div className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4 text-cyan-600" />
             <div>
-              <p className="text-xs text-gray-500">课堂互动次数</p>
+              <p className="text-xs text-gray-500">{t('课堂互动次数')}</p>
               <p className="text-lg font-bold">28</p>
             </div>
           </div>
@@ -151,27 +153,33 @@ function TrackingView() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="border rounded-xl p-4">
-          <h4 className="text-sm font-semibold mb-3">每日签到统计</h4>
+          <h4 className="text-sm font-semibold mb-3">{t('每日签到统计')}</h4>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={mockSignInDaily}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
               <Tooltip />
-              <Bar dataKey="present" fill="#22c55e" stackId="a" name="实到" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="late" fill="#f59e0b" stackId="a" name="迟到" />
-              <Bar dataKey="absent" fill="#ef4444" stackId="a" name="缺勤" />
+              <Bar
+                dataKey="present"
+                fill="#22c55e"
+                stackId="a"
+                name={t('实到')}
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar dataKey="late" fill="#f59e0b" stackId="a" name={t('迟到')} />
+              <Bar dataKey="absent" fill="#ef4444" stackId="a" name={t('缺勤')} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="border rounded-xl p-4">
-          <h4 className="text-sm font-semibold mb-3">出勤率趋势</h4>
+          <h4 className="text-sm font-semibold mb-3">{t('出勤率趋势')}</h4>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={mockAttendanceRateData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" />
               <YAxis domain={[80, 100]} tick={{ fontSize: 11 }} stroke="#94a3b8" />
               <Tooltip />
-              <Bar dataKey="rate" fill="var(--primary)" radius={[4, 4, 0, 0]} name="出勤率%" />
+              <Bar dataKey="rate" fill="var(--primary)" radius={[4, 4, 0, 0]} name={t('出勤率%')} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -179,7 +187,7 @@ function TrackingView() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="border rounded-xl p-4">
-          <h4 className="text-sm font-semibold mb-3">课堂抢答排行</h4>
+          <h4 className="text-sm font-semibold mb-3">{t('课堂抢答排行')}</h4>
           <div className="space-y-2">
             {mockRushAnswerRanking.map((r) => (
               <div
@@ -200,21 +208,24 @@ function TrackingView() {
                   )}
                 </div>
                 <div className="text-xs text-gray-400">
-                  正确 {r.correctCount} 题 · {r.avgTime}
+                  {t('正确 {correctCount} 题 · {avgTime}', {
+                    correctCount: r.correctCount,
+                    avgTime: r.avgTime,
+                  })}
                 </div>
               </div>
             ))}
           </div>
         </div>
         <div className="border rounded-xl p-4">
-          <h4 className="text-sm font-semibold mb-3">课堂互动参与度</h4>
+          <h4 className="text-sm font-semibold mb-3">{t('课堂互动参与度')}</h4>
           <div className="space-y-3">
             {mockClassInteraction.map((item) => (
               <div key={item.name} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
                   <span>{item.name}</span>
                   <span className="text-xs text-gray-400">
-                    {item.active}/{item.total} 次
+                    {t('{active}/{total} 次', { active: item.active, total: item.total })}
                   </span>
                 </div>
                 <Progress value={(item.active / item.total) * 100} className="h-1.5" />
@@ -225,16 +236,16 @@ function TrackingView() {
       </div>
 
       <div className="border rounded-xl overflow-hidden">
-        <h4 className="text-sm font-semibold p-4 pb-2">学生课中学习明细</h4>
+        <h4 className="text-sm font-semibold p-4 pb-2">{t('学生课中学习明细')}</h4>
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="text-xs">姓名</TableHead>
-              <TableHead className="text-xs">出勤率</TableHead>
-              <TableHead className="text-xs">测验均分</TableHead>
-              <TableHead className="text-xs">互动次数</TableHead>
-              <TableHead className="text-xs">表扬次数</TableHead>
-              <TableHead className="text-xs">综合评价</TableHead>
+              <TableHead className="text-xs">{t('姓名')}</TableHead>
+              <TableHead className="text-xs">{t('出勤率')}</TableHead>
+              <TableHead className="text-xs">{t('测验均分')}</TableHead>
+              <TableHead className="text-xs">{t('互动次数')}</TableHead>
+              <TableHead className="text-xs">{t('表扬次数')}</TableHead>
+              <TableHead className="text-xs">{t('综合评价')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -269,11 +280,12 @@ function TrackingView() {
 }
 
 function AssessmentView() {
+  const t = useT()
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="border rounded-xl p-4">
-          <h4 className="text-sm font-semibold mb-3">课后作业提交</h4>
+          <h4 className="text-sm font-semibold mb-3">{t('课后作业提交')}</h4>
           <div className="space-y-3">
             {mockHomeworkSubmissions.map((hw) => (
               <div key={hw.id}>
@@ -295,16 +307,21 @@ function AssessmentView() {
                 <Progress value={hw.submitRate} className="h-1.5 mb-1" />
                 <div className="flex items-center justify-between text-xs text-gray-400">
                   <span>
-                    已提交 {Math.round((hw.total * hw.submitRate) / 100)}/{hw.total} 人
+                    {t('已提交 {submitted}/{total} 人', {
+                      submitted: Math.round((hw.total * hw.submitRate) / 100),
+                      total: hw.total,
+                    })}
                   </span>
-                  {hw.submitRate >= 70 && <span>均分 {hw.avgScore}</span>}
+                  {hw.submitRate >= 70 && (
+                    <span>{t('均分 {avgScore}', { avgScore: hw.avgScore })}</span>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </div>
         <div className="border rounded-xl p-4">
-          <h4 className="text-sm font-semibold mb-3">作业提交率趋势</h4>
+          <h4 className="text-sm font-semibold mb-3">{t('作业提交率趋势')}</h4>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={mockHomeworkTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
@@ -324,7 +341,7 @@ function AssessmentView() {
       </div>
 
       <div className="border rounded-xl p-4">
-        <h4 className="text-sm font-semibold mb-3">单元测验分数分布</h4>
+        <h4 className="text-sm font-semibold mb-3">{t('单元测验分数分布')}</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {mockHomeworkSubmissions
             .filter((hw) => hw.avgScore > 0)
@@ -333,11 +350,11 @@ function AssessmentView() {
                 <h5 className="text-sm font-medium mb-2">{hw.name}</h5>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">提交率</span>
+                    <span className="text-gray-500">{t('提交率')}</span>
                     <span className="font-semibold">{hw.submitRate}%</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">平均分</span>
+                    <span className="text-gray-500">{t('平均分')}</span>
                     <span className="font-semibold text-primary">{hw.avgScore}/100</span>
                   </div>
                 </div>
@@ -366,23 +383,23 @@ function AssessmentView() {
       </div>
 
       <div className="border rounded-xl p-4">
-        <h4 className="text-sm font-semibold mb-3">互评互判统计</h4>
+        <h4 className="text-sm font-semibold mb-3">{t('互评互判统计')}</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
           <div className="text-center p-3 bg-primary/5 rounded-lg border border-primary/10">
             <div className="text-xl font-bold text-primary">{mockPeerReviewStats.totalGroups}</div>
-            <div className="text-[10px] text-primary">总小组数</div>
+            <div className="text-[10px] text-primary">{t('总小组数')}</div>
           </div>
           <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
             <div className="text-xl font-bold text-green-700">
               {mockPeerReviewStats.avgPeerScore}
             </div>
-            <div className="text-[10px] text-green-500">平均互评得分</div>
+            <div className="text-[10px] text-green-500">{t('平均互评得分')}</div>
           </div>
           <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
             <div className="text-xl font-bold text-purple-700">
               {mockPeerReviewStats.completionRate}%
             </div>
-            <div className="text-[10px] text-purple-500">完成率</div>
+            <div className="text-[10px] text-purple-500">{t('完成率')}</div>
           </div>
         </div>
         {mockPeerReviewStats.steps.map((step) => (
@@ -390,7 +407,10 @@ function AssessmentView() {
             <div className="flex items-center justify-between text-sm">
               <span>{step.name}</span>
               <span className="text-xs text-gray-400">
-                权重 {step.weight}% · 均分 {step.avgScore}
+                {t('权重 {weight}% · 均分 {avgScore}', {
+                  weight: step.weight,
+                  avgScore: step.avgScore,
+                })}
               </span>
             </div>
             <Progress value={step.avgScore} className="h-1.5" />
@@ -399,15 +419,15 @@ function AssessmentView() {
       </div>
 
       <div className="border rounded-xl overflow-hidden">
-        <h4 className="text-sm font-semibold p-4 pb-2">实训报告统计</h4>
+        <h4 className="text-sm font-semibold p-4 pb-2">{t('实训报告统计')}</h4>
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="text-xs">报告名称</TableHead>
-              <TableHead className="text-xs">已提交/总数</TableHead>
-              <TableHead className="text-xs">提交率</TableHead>
-              <TableHead className="text-xs">平均分</TableHead>
-              <TableHead className="text-xs">评价</TableHead>
+              <TableHead className="text-xs">{t('报告名称')}</TableHead>
+              <TableHead className="text-xs">{t('已提交/总数')}</TableHead>
+              <TableHead className="text-xs">{t('提交率')}</TableHead>
+              <TableHead className="text-xs">{t('平均分')}</TableHead>
+              <TableHead className="text-xs">{t('评价')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -445,46 +465,47 @@ function AssessmentView() {
 }
 
 function FinalView() {
+  const t = useT()
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 text-center">
           <div className="text-lg font-bold text-primary">{mockSemesterSummary.totalSessions}</div>
-          <div className="text-[10px] text-primary">课程节次</div>
+          <div className="text-[10px] text-primary">{t('课程节次')}</div>
         </div>
         <div className="p-3 rounded-lg bg-green-50 border border-green-100 text-center">
           <div className="text-lg font-bold text-green-700">
             {mockSemesterSummary.avgAttendance}%
           </div>
-          <div className="text-[10px] text-green-500">平均出勤率</div>
+          <div className="text-[10px] text-green-500">{t('平均出勤率')}</div>
         </div>
         <div className="p-3 rounded-lg bg-purple-50 border border-purple-100 text-center">
           <div className="text-lg font-bold text-purple-700">
             {mockSemesterSummary.compositeAvgScore}
           </div>
-          <div className="text-[10px] text-purple-500">综合评测均分</div>
+          <div className="text-[10px] text-purple-500">{t('综合评测均分')}</div>
         </div>
         <div className="p-3 rounded-lg bg-amber-50 border border-amber-100 text-center">
           <div className="text-lg font-bold text-amber-700">
             {mockSemesterSummary.totalStudents}
           </div>
-          <div className="text-[10px] text-amber-500">总学生数</div>
+          <div className="text-[10px] text-amber-500">{t('总学生数')}</div>
         </div>
         <div className="p-3 rounded-lg bg-cyan-50 border border-cyan-100 text-center">
           <div className="text-lg font-bold text-cyan-700">
             {mockSemesterSummary.dataCollectionRate}%
           </div>
-          <div className="text-[10px] text-cyan-500">数据采集率</div>
+          <div className="text-[10px] text-cyan-500">{t('数据采集率')}</div>
         </div>
         <div className="p-3 rounded-lg bg-rose-50 border border-rose-100 text-center">
           <div className="text-lg font-bold text-rose-700">{mockSemesterSummary.needAttention}</div>
-          <div className="text-[10px] text-rose-500">需关注学生</div>
+          <div className="text-[10px] text-rose-500">{t('需关注学生')}</div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="border rounded-xl p-4">
-          <h4 className="text-sm font-semibold mb-3">过程性考核维度</h4>
+          <h4 className="text-sm font-semibold mb-3">{t('过程性考核维度')}</h4>
           <div className="space-y-3">
             {mockAssessmentDimensions.slice(0, 6).map((dim) => (
               <div key={dim.id} className="space-y-1">
@@ -503,32 +524,32 @@ function FinalView() {
           </div>
         </div>
         <div className="border rounded-xl p-4">
-          <h4 className="text-sm font-semibold mb-3">综合成绩分布</h4>
+          <h4 className="text-sm font-semibold mb-3">{t('综合成绩分布')}</h4>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={mockCompositeDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="range" tick={{ fontSize: 11 }} stroke="#94a3b8" />
               <Tooltip />
-              <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="学生数" />
+              <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name={t('学生数')} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="border rounded-xl overflow-hidden">
-        <h4 className="text-sm font-semibold p-4 pb-2">学生综合排名</h4>
+        <h4 className="text-sm font-semibold p-4 pb-2">{t('学生综合排名')}</h4>
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="text-xs w-10">排名</TableHead>
-              <TableHead className="text-xs">姓名</TableHead>
-              <TableHead className="text-xs">出勤</TableHead>
-              <TableHead className="text-xs">随堂测验</TableHead>
-              <TableHead className="text-xs">课后作业</TableHead>
-              <TableHead className="text-xs">互评</TableHead>
-              <TableHead className="text-xs">实训报告</TableHead>
-              <TableHead className="text-xs">总评</TableHead>
-              <TableHead className="text-xs">等级</TableHead>
+              <TableHead className="text-xs w-10">{t('排名')}</TableHead>
+              <TableHead className="text-xs">{t('姓名')}</TableHead>
+              <TableHead className="text-xs">{t('出勤')}</TableHead>
+              <TableHead className="text-xs">{t('随堂测验')}</TableHead>
+              <TableHead className="text-xs">{t('课后作业')}</TableHead>
+              <TableHead className="text-xs">{t('互评')}</TableHead>
+              <TableHead className="text-xs">{t('实训报告')}</TableHead>
+              <TableHead className="text-xs">{t('总评')}</TableHead>
+              <TableHead className="text-xs">{t('等级')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -569,10 +590,11 @@ export function CourseDetailDialog({
   course: SelectedCourse | null
   initialTab: string
 }) {
+  const t = useT()
   const titleMap: Record<string, string> = {
-    tracking: '节次教学进展',
-    assessment: '节次测评进展',
-    final: '课程教学进展分析',
+    tracking: t('节次教学进展'),
+    assessment: t('节次测评进展'),
+    final: t('课程教学进展分析'),
   }
 
   const renderContent = () => {
@@ -596,7 +618,7 @@ export function CourseDetailDialog({
             <BookOpen className="h-5 w-5 text-primary" />
             {course?.name}
             <Badge variant="outline">{course?.className}</Badge>
-            <Badge variant="secondary">{course?.students}人</Badge>
+            <Badge variant="secondary">{t('{count}人', { count: course?.students ?? 0 })}</Badge>
             <Badge className="bg-primary/10 text-primary">{titleMap[initialTab] || ''}</Badge>
           </DialogTitle>
         </DialogHeader>
@@ -618,6 +640,7 @@ export function TeacherCoursesTab({
   onAssociate,
 }: TeacherCoursesTabProps = {}) {
   const router = useRouter()
+  const t = useT()
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
   const [selectedTerm, setSelectedTerm] = useState('')
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
@@ -708,14 +731,16 @@ export function TeacherCoursesTab({
         <div className="lg:col-span-3">
           <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
             <div className="border-b bg-gradient-to-r from-gray-50 to-white p-3">
-              <h3 className="text-sm font-semibold text-gray-900">课程/场景</h3>
-              <p className="text-xs text-gray-500 mt-0.5">共 {termPlans.length} 个</p>
+              <h3 className="text-sm font-semibold text-gray-900">{t('课程/场景')}</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {t('共 {count} 个', { count: termPlans.length })}
+              </p>
             </div>
             <div className="max-h-[calc(100vh-320px)] overflow-y-auto p-2">
               {termPlans.map((plan) => {
                 const sessions = classSessions.filter((s) => s.courseId === plan.id)
                 const isHybrid = !!plan.courseId
-                const courseTypeTag = isHybrid ? '混合课程' : '实践场景'
+                const courseTypeTag = isHybrid ? t('混合课程') : t('实践场景')
                 const isActive = selectedPlanId === plan.id
                 return (
                   <button
@@ -753,7 +778,7 @@ export function TeacherCoursesTab({
                       <p
                         className={`text-xs mt-0.5 ${isActive ? 'text-primary' : 'text-gray-400'}`}
                       >
-                        {sessions.length} 个节次
+                        {t('{count} 个节次', { count: sessions.length })}
                       </p>
                     </div>
                   </button>
@@ -765,11 +790,11 @@ export function TeacherCoursesTab({
 
         {/* 右侧节次内容 */}
         <div className="lg:col-span-9">
-          <SectionCard title="节次列表" icon={Calendar} iconColor="blue">
+          <SectionCard title={t('节次列表')} icon={Calendar} iconColor="blue">
             {!selectedPlan ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                 <BookOpen className="w-12 h-12 mb-3 text-gray-200" />
-                <p className="text-sm font-medium">请从左侧选择课程/场景</p>
+                <p className="text-sm font-medium">{t('请从左侧选择课程/场景')}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -779,7 +804,7 @@ export function TeacherCoursesTab({
                     .filter((s) => s.courseId === plan.id)
                     .sort((a, b) => a.week - b.week)
                   const isHybrid = !!plan.courseId
-                  const courseTypeTag = isHybrid ? '混合课程' : '实践场景'
+                  const courseTypeTag = isHybrid ? t('混合课程') : t('实践场景')
                   const accentColors = isHybrid
                     ? {
                         bg: 'from-primary/5 to-primary/10',
@@ -820,7 +845,7 @@ export function TeacherCoursesTab({
                               </Badge>
                               <StatusBadge
                                 status={plan.status}
-                                label={plan.status === 'active' ? '已开课' : '待开课'}
+                                label={plan.status === 'active' ? t('已开课') : t('待开课')}
                               />
                               <Badge
                                 className={`text-[10px] font-semibold border-0 text-white ${accentColors.badgeBg}`}
@@ -829,7 +854,11 @@ export function TeacherCoursesTab({
                               </Badge>
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5">
-                              {plan.students}人 · {plan.term} · 任课教师：{plan.teacher}
+                              {t('{students}人 · {term} · 任课教师：{teacher}', {
+                                students: plan.students,
+                                term: plan.term,
+                                teacher: plan.teacher,
+                              })}
                             </p>
                           </div>
                         </div>
@@ -840,7 +869,7 @@ export function TeacherCoursesTab({
                             onClick={() => openSessionDialog(plan, 'final')}
                           >
                             <TrendingUp className="h-3 w-3 mr-1" />
-                            课程期末总评
+                            {t('课程期末总评')}
                           </Button>
                         </div>
                       </div>
@@ -850,11 +879,15 @@ export function TeacherCoursesTab({
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-xs text-gray-400">
                               <span className="inline-block w-2 h-2 rounded-full bg-primary mr-1 align-middle" />
-                              已上 {sessions.filter((s) => s.status === 'associated').length} 节
+                              {t('已上 {count} 节', {
+                                count: sessions.filter((s) => s.status === 'associated').length,
+                              })}
                               <span className="inline-block w-2 h-2 rounded-full bg-gray-300 ml-3 mr-1 align-middle" />
-                              未上 {sessions.filter((s) => s.status === 'pending').length} 节
-                              <span className="text-gray-300 mx-2">·</span>共 {sessions.length}{' '}
-                              个节次
+                              {t('未上 {count} 节', {
+                                count: sessions.filter((s) => s.status === 'pending').length,
+                              })}
+                              <span className="text-gray-300 mx-2">·</span>
+                              {t('共 {count} 个节次', { count: sessions.length })}
                             </span>
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
@@ -892,14 +925,14 @@ export function TeacherCoursesTab({
                                           variant="outline"
                                           className={`text-[10px] h-4 px-1 font-medium ${sessionBadge}`}
                                         >
-                                          {isDone ? '已上' : '未上'}
+                                          {isDone ? t('已上') : t('未上')}
                                         </Badge>
                                         <span className="text-[10px] text-gray-500 truncate">
                                           {session.weekday}
                                         </span>
                                       </div>
                                       <div className="font-semibold text-gray-900 truncate">
-                                        第 {session.week} 周
+                                        {t('第 {week} 周', { week: session.week })}
                                       </div>
                                       <div className="text-[10px] text-gray-500 truncate">
                                         {session.period
@@ -913,7 +946,7 @@ export function TeacherCoursesTab({
                                         </div>
                                       )}
                                       <div className="text-[10px] text-primary font-medium">
-                                        点击查看操作
+                                        {t('点击查看操作')}
                                       </div>
                                     </div>
                                   </PopoverTrigger>
@@ -926,13 +959,17 @@ export function TeacherCoursesTab({
                                     <div className="space-y-2">
                                       <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
                                         <span className="text-sm font-semibold text-gray-800">
-                                          第 {session.week} 周 · {session.weekday} {session.period}
+                                          {t('第 {week} 周 · {weekday} {period}', {
+                                            week: session.week,
+                                            weekday: session.weekday,
+                                            period: session.period,
+                                          })}
                                         </span>
                                         <Badge
                                           variant={isDone ? 'default' : 'secondary'}
                                           className="text-[10px] h-4 px-1.5"
                                         >
-                                          {isDone ? '已上' : '未上'}
+                                          {isDone ? t('已上') : t('未上')}
                                         </Badge>
                                       </div>
                                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -945,7 +982,7 @@ export function TeacherCoursesTab({
                                           return (
                                             <div className="rounded-lg border border-primary/10 bg-primary/5 p-2 space-y-1">
                                               <span className="text-[10px] text-primary font-medium block">
-                                                {isHybrid ? '已关联节次' : '已关联任务'}（
+                                                {isHybrid ? t('已关联节次') : t('已关联任务')}（
                                                 {existing.subItems.length}）
                                               </span>
                                               <div className="space-y-0.5 max-h-[80px] overflow-y-auto">
@@ -975,14 +1012,16 @@ export function TeacherCoursesTab({
                                                   }))
                                                 }}
                                               >
-                                                修改关联
+                                                {t('修改关联')}
                                               </Button>
                                             </div>
                                           )
                                         }
                                         return null
                                       })()}
-                                      <span className="text-[10px] text-gray-400 block">操作</span>
+                                      <span className="text-[10px] text-gray-400 block">
+                                        {t('操作')}
+                                      </span>
                                       <div className="flex items-center gap-1.5">
                                         <Button
                                           size="sm"
@@ -1002,7 +1041,7 @@ export function TeacherCoursesTab({
                                           }}
                                         >
                                           <ExternalLink className="h-3 w-3 mr-0.5" />
-                                          {isHybrid ? '前往备课' : '导学准备'}
+                                          {isHybrid ? t('前往备课') : t('导学准备')}
                                         </Button>
                                         <Button
                                           size="sm"
@@ -1015,7 +1054,7 @@ export function TeacherCoursesTab({
                                           }}
                                         >
                                           <PlayCircle className="h-3 w-3 mr-0.5" />
-                                          {isHybrid ? '上课' : '前往导学'}
+                                          {isHybrid ? t('上课') : t('前往导学')}
                                         </Button>
                                         <Button
                                           size="sm"
@@ -1033,7 +1072,11 @@ export function TeacherCoursesTab({
                                                 const c = await courseApi.get(plan.courseId)
                                                 if (c.type === 'hybrid') {
                                                   setHybridGradeSessionTitle(
-                                                    `第 ${session.week} 周 · ${session.weekday} ${session.period}`,
+                                                    t('第 {week} 周 · {weekday} {period}', {
+                                                      week: session.week,
+                                                      weekday: session.weekday,
+                                                      period: session.period,
+                                                    }),
                                                   )
                                                   setHybridGradeClassName(plan.name)
                                                   setHybridGradeDialogOpen(true)
@@ -1051,12 +1094,12 @@ export function TeacherCoursesTab({
                                           }}
                                         >
                                           <GraduationCap className="h-3 w-3 mr-0.5" />
-                                          前往评分
+                                          {t('前往评分')}
                                         </Button>
                                       </div>
                                       <div className="pt-1.5 mt-1 border-t border-dashed border-gray-200">
                                         <span className="text-[10px] text-gray-400 block mb-1">
-                                          数据查看
+                                          {t('数据查看')}
                                         </span>
                                         <div className="flex items-center gap-1.5">
                                           <Button
@@ -1068,7 +1111,7 @@ export function TeacherCoursesTab({
                                             }}
                                           >
                                             <TrendingUp className="h-3 w-3 mr-0.5" />
-                                            教学进展
+                                            {t('教学进展')}
                                           </Button>
                                           <Button
                                             size="sm"
@@ -1079,7 +1122,7 @@ export function TeacherCoursesTab({
                                             }}
                                           >
                                             <FileCheck className="h-3 w-3 mr-0.5" />
-                                            测评进展
+                                            {t('测评进展')}
                                           </Button>
                                         </div>
                                       </div>

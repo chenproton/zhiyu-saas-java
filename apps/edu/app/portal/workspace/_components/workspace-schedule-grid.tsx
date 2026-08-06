@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { allPeriods, days, type ScheduleEvent } from '../_data/workspace-student-types'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ScheduleGridProps {
   events: ScheduleEvent[]
@@ -122,6 +123,7 @@ function getWeeksInMonth(year: number, month: number) {
 }
 
 export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
+  const t = useT()
   const [view, setView] = useState<ViewType>('week')
   const [currentDate, setCurrentDate] = useState(() => new Date())
 
@@ -187,7 +189,8 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
           </div>
           <div>
             <div className="text-base font-semibold text-gray-900">
-              {year}年{month}月{view === 'week' && ` · 第${weekIndex}周`}
+              {t('{year}年{month}月', { year, month })}
+              {view === 'week' && t(' · 第{week}周', { week: weekIndex })}
             </div>
             {view === 'week' && (
               <div className="text-xs text-gray-500">
@@ -203,12 +206,12 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
             <>
               <Select value={String(year)} onValueChange={handleYearChange}>
                 <SelectTrigger className="w-[108px] h-9 text-xs">
-                  <SelectValue placeholder="年份" />
+                  <SelectValue placeholder={t('年份')} />
                 </SelectTrigger>
                 <SelectContent>
                   {[2025, 2026, 2027].map((y) => (
                     <SelectItem key={y} value={String(y)} className="text-xs">
-                      {y}年
+                      {t('{year}年', { year: y })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -216,12 +219,12 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
 
               <Select value={String(month)} onValueChange={handleMonthChange}>
                 <SelectTrigger className="w-[100px] h-9 text-xs">
-                  <SelectValue placeholder="月份" />
+                  <SelectValue placeholder={t('月份')} />
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                     <SelectItem key={m} value={String(m)} className="text-xs">
-                      {m}月
+                      {t('{month}月', { month: m })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -230,14 +233,14 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
           )}
 
           {view === 'week' && (
-              <Select value={String(weekIndex)} onValueChange={handleWeekChange}>
-                <SelectTrigger className="w-[112px] h-9 text-xs">
-                  <SelectValue placeholder="周次" />
-                </SelectTrigger>
+            <Select value={String(weekIndex)} onValueChange={handleWeekChange}>
+              <SelectTrigger className="w-[112px] h-9 text-xs">
+                <SelectValue placeholder={t('周次')} />
+              </SelectTrigger>
               <SelectContent>
                 {Array.from({ length: weeksInMonth }, (_, i) => i + 1).map((w) => (
                   <SelectItem key={w} value={String(w)} className="text-xs">
-                    第{w}周
+                    {t('第{week}周', { week: w })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -250,7 +253,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
               size="icon"
               className="h-9 w-9 rounded-r-none border-r-0"
               onClick={prevPeriod}
-              aria-label="上一周"
+              aria-label={t('上一周')}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -259,26 +262,26 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
               size="icon"
               className="h-9 w-9 rounded-l-none"
               onClick={nextPeriod}
-              aria-label="下一周"
+              aria-label={t('下一周')}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={goToday}>
-            今天
+            {t('今天')}
           </Button>
 
           <Tabs value={view} onValueChange={(v) => setView(v as ViewType)}>
             <TabsList className="h-9">
               <TabsTrigger value="year" className="text-xs px-3">
-                年
+                {t('年')}
               </TabsTrigger>
               <TabsTrigger value="month" className="text-xs px-3">
-                月
+                {t('月')}
               </TabsTrigger>
               <TabsTrigger value="week" className="text-xs px-3">
-                周
+                {t('周')}
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -296,6 +299,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
 function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; children: ReactNode }) {
   const action = getStudentActionUrls(event)
   const router = useRouter()
+  const t = useT()
 
   if (!action.isActionable) {
     return <>{children}</>
@@ -344,7 +348,7 @@ function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; child
             {event.description && <div className="truncate">{event.description}</div>}
           </div>
           <div className={`rounded-lg border p-2 ${lightBg} ${lightBorder}`}>
-            <span className="text-[10px] text-gray-400 block mb-1.5">操作</span>
+            <span className="text-[10px] text-gray-400 block mb-1.5">{t('操作')}</span>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
@@ -353,7 +357,7 @@ function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; child
                 onClick={() => router.push(action.learnUrl)}
               >
                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                前往学习
+                {t('前往学习')}
               </Button>
               <Button
                 size="sm"
@@ -362,7 +366,7 @@ function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; child
                 disabled
               >
                 <FileCheck className="h-3.5 w-3.5 mr-1" />
-                查看测评结果
+                {t('查看测评结果')}
               </Button>
             </div>
           </div>
@@ -382,12 +386,13 @@ function WeekView({
   weekEnd: Date
 }) {
   // 事件需属于当前周（weekStart ~ weekEnd）才显示，避免其他周的安排出现在本周视图
+  const t = useT()
   const weekEvents = events.filter((e) => isEventInWeek(e, weekStart, weekEnd))
   return (
     <div className="border border-gray-200 rounded-xl overflow-x-auto bg-white shadow-sm">
       <div className="grid grid-cols-8 min-w-[760px] bg-gray-50">
         <div className="p-3 text-sm font-semibold text-gray-700 border-r border-gray-200 flex items-center justify-center">
-          节次 / 星期
+          {t('节次 / 星期')}
         </div>
         {days.map((d) => (
           <div
@@ -420,7 +425,7 @@ function WeekView({
                     variant="outline"
                     className={cn('text-[10px] h-4 px-1 font-medium', typeStyles[event.type].badge)}
                   >
-                    {typeStyles[event.type].label}
+                    {t(typeStyles[event.type].label)}
                   </Badge>
                   {event.tag && (
                     <span className="text-[10px] text-gray-500 truncate">{event.tag}</span>
@@ -485,14 +490,15 @@ function MonthView({
   for (let i = 0; i < startDayOfWeek; i++) calendarDays.push(null)
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i)
 
-  const weekDays = ['日', '一', '二', '三', '四', '五', '六']
+  const t = useT()
+  const weekDays = [t('日'), t('一'), t('二'), t('三'), t('四'), t('五'), t('六')]
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm p-5">
       <div className="grid grid-cols-7 gap-1 mb-2">
         {weekDays.map((d) => (
           <div key={d} className="text-center text-xs text-gray-500 py-2 font-medium">
-            周{d}
+            {t('周{day}', { day: d })}
           </div>
         ))}
       </div>
@@ -532,7 +538,7 @@ function MonthView({
                     })}
                     {dayEvents.length > 3 && (
                       <div className="text-[10px] text-gray-400 pl-1">
-                        +{dayEvents.length - 3} 项
+                        {t('+{count} 项', { count: dayEvents.length - 3 })}
                       </div>
                     )}
                   </div>
@@ -547,6 +553,7 @@ function MonthView({
 }
 
 function YearView({ events }: { events: ScheduleEvent[] }) {
+  const t = useT()
   const months = Array.from({ length: 12 }, (_, i) => i + 1)
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -557,7 +564,9 @@ function YearView({ events }: { events: ScheduleEvent[] }) {
             key={m}
             className="border border-gray-200 rounded-xl bg-white p-4 hover:shadow-sm transition-shadow cursor-pointer"
           >
-            <div className="text-sm font-semibold text-gray-900 mb-3">{m}月</div>
+            <div className="text-sm font-semibold text-gray-900 mb-3">
+              {t('{month}月', { month: m })}
+            </div>
             <div className="space-y-1.5">
               {monthEvents.map((e) => {
                 const eventCard = (
@@ -579,7 +588,7 @@ function YearView({ events }: { events: ScheduleEvent[] }) {
                 )
               })}
               {monthEvents.length === 0 && (
-                <div className="text-[10px] text-gray-400">暂无安排</div>
+                <div className="text-[10px] text-gray-400">{t('暂无安排')}</div>
               )}
             </div>
           </div>

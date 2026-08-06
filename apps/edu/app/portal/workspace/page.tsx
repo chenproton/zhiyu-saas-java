@@ -64,22 +64,7 @@ import { SchoolAdminOverviewTab } from './_components/school-admin-overview-tab'
 import { SchoolAdminResourcesTab } from './_components/school-admin-resources-tab'
 import { SchoolAdminApprovalsTab } from './_components/school-admin-approvals-tab'
 import { SchoolAdminPersonnelTab } from './_components/school-admin-personnel-tab'
-
-// 不同身份的服务台内容（非学生角色保留原展示；公告/待办/日历事件均由后端接口提供）
-const roleConfigs = {
-  teacher: {
-    welcomeText: '欢迎回来，张老师。',
-    stats: { label1: '授课课程', value1: 8, label2: '学生人数', value2: 256 },
-  },
-  enterprise: {
-    welcomeText: '欢迎回来，企业用户。',
-    stats: { label1: '合作项目', value1: 5, label2: '实习学生', value2: 23 },
-  },
-  admin: {
-    welcomeText: '欢迎回来，管理员。',
-    stats: { label1: '在线用户', value1: 1256, label2: '总用户数', value2: 8500 },
-  },
-}
+import { useT } from '@/lib/i18n/locale-provider'
 
 // 这些模块数据需从后端接口获取，当前先置空，避免展示写死的 Mock 数据
 const securityItems: { label: string; status: string; statusText: string; action: string }[] = []
@@ -110,40 +95,22 @@ const roleIcons = {
   admin: Briefcase,
 }
 
-// 教师工作台 Tab 配置
-const teacherTabs = [
-  { id: 'dashboard', label: '工作台首页', icon: LayoutDashboard },
-  { id: 'courses', label: '我的场景/课程', icon: BookOpen },
-  { id: 'schedule', label: '我的课表', icon: CalendarDays },
-  { id: 'portraits', label: '我的学生', icon: BarChart3 },
-  { id: 'profile', label: '个人中心', icon: User },
-]
-
-// 学生工作台 Tab 配置
-const studentTabs = [
-  { id: 'dashboard', label: '工作台首页', icon: LayoutDashboard },
-  { id: 'learning', label: '我的学习', icon: Layers },
-  { id: 'schedule', label: '我的课表', icon: CalendarDays },
-  { id: 'career', label: '我的收藏', icon: Compass },
-  { id: 'assessment', label: '测评认证', icon: Award },
-  { id: 'portrait', label: '学生画像', icon: BarChart3 },
-  { id: 'community', label: '学习社区', icon: MessageSquare },
-  { id: 'profile', label: '个人中心', icon: User },
-]
-
-// 学校管理员工作台 Tab 配置
-const schoolAdminTabs = [
-  { id: 'dashboard', label: '工作台首页', icon: LayoutDashboard },
-  { id: 'resources', label: '资源运营', icon: BookOpen },
-  { id: 'approvals', label: '审批中心', icon: CheckSquare },
-  { id: 'personnel', label: '教师学生情况', icon: Users },
-  { id: 'profile', label: '个人中心', icon: User },
-]
-
 function StudentWorkspace({ userId }: { userId?: string }) {
+  const t = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab')
+  // 学生工作台 Tab 配置
+  const studentTabs = [
+    { id: 'dashboard', label: t('工作台首页'), icon: LayoutDashboard },
+    { id: 'learning', label: t('我的学习'), icon: Layers },
+    { id: 'schedule', label: t('我的课表'), icon: CalendarDays },
+    { id: 'career', label: t('我的收藏'), icon: Compass },
+    { id: 'assessment', label: t('测评认证'), icon: Award },
+    { id: 'portrait', label: t('学生画像'), icon: BarChart3 },
+    { id: 'community', label: t('学习社区'), icon: MessageSquare },
+    { id: 'profile', label: t('个人中心'), icon: User },
+  ]
   const activeTab = urlTab && studentTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
   const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
 
@@ -205,9 +172,18 @@ function StudentWorkspace({ userId }: { userId?: string }) {
 }
 
 function TeacherWorkspace() {
+  const t = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab')
+  // 教师工作台 Tab 配置
+  const teacherTabs = [
+    { id: 'dashboard', label: t('工作台首页'), icon: LayoutDashboard },
+    { id: 'courses', label: t('我的场景/课程'), icon: BookOpen },
+    { id: 'schedule', label: t('我的课表'), icon: CalendarDays },
+    { id: 'portraits', label: t('我的学生'), icon: BarChart3 },
+    { id: 'profile', label: t('个人中心'), icon: User },
+  ]
   const activeTab = urlTab && teacherTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
   const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
   const [prepAssociations, setPrepAssociations] = useState<Record<string, PrepAssociationRecord>>(
@@ -283,9 +259,18 @@ function TeacherWorkspace() {
 }
 
 function SchoolAdminWorkspace() {
+  const t = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab')
+  // 学校管理员工作台 Tab 配置
+  const schoolAdminTabs = [
+    { id: 'dashboard', label: t('工作台首页'), icon: LayoutDashboard },
+    { id: 'resources', label: t('资源运营'), icon: BookOpen },
+    { id: 'approvals', label: t('审批中心'), icon: CheckSquare },
+    { id: 'personnel', label: t('教师学生情况'), icon: Users },
+    { id: 'profile', label: t('个人中心'), icon: User },
+  ]
   const activeTab = urlTab && schoolAdminTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
   const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
 
@@ -352,6 +337,23 @@ function WorkspacePageInner() {
   const { user, activeRole, loading: isLoading } = usePortalAuth()
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
+  const t = useT()
+  // 不同身份的服务台内容（非学生角色保留原展示；公告/待办/日历事件均由后端接口提供）
+  const roleConfigs = {
+    teacher: {
+      welcomeText: t('欢迎回来，张老师。'),
+      stats: { label1: t('授课课程'), value1: 8, label2: t('学生人数'), value2: 256 },
+    },
+    enterprise: {
+      welcomeText: t('欢迎回来，企业用户。'),
+      stats: { label1: t('合作项目'), value1: 5, label2: t('实习学生'), value2: 23 },
+    },
+    admin: {
+      welcomeText: t('欢迎回来，管理员。'),
+      stats: { label1: t('在线用户'), value1: 1256, label2: t('总用户数'), value2: 8500 },
+    },
+  }
+
   useEffect(() => {
     // 学生/教师/学校管理员工作台由各自 Tab 自行拉取数据，此处仅兜底视图（企业导师）需要
     if (activeRole?.code !== 'enterprise_mentor') return
@@ -372,9 +374,9 @@ function WorkspacePageInner() {
   if (!user) {
     return (
       <div className="flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4 text-sm text-muted-foreground">
-        <p>请先登录后查看服务台</p>
+        <p>{t('请先登录后查看服务台')}</p>
         <a href="/portal/login" className="text-primary hover:underline">
-          去登录
+          {t('去登录')}
         </a>
       </div>
     )
@@ -396,15 +398,17 @@ function WorkspacePageInner() {
       <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">学生工作台</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('学生工作台')}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              欢迎回来，同学。今天是{todayLabel}。管理你的学习、岗位、测评与成长。
+              {t('欢迎回来，同学。今天是{todayLabel}。管理你的学习、岗位、测评与成长。', {
+                todayLabel,
+              })}
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
             <BookOpen className="w-5 h-5 text-primary" />
             <span className="text-sm font-medium text-gray-700">
-              当前角色：{activeRole?.name || '学生'}
+              {t('当前角色：{name}', { name: activeRole?.name || t('学生') })}
             </span>
           </div>
         </div>
@@ -419,15 +423,17 @@ function WorkspacePageInner() {
       <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">教师工作台</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('教师工作台')}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              欢迎回来，张老师。今天是{todayLabel}。管理你的课程、教学跟踪与测评。
+              {t('欢迎回来，张老师。今天是{todayLabel}。管理你的课程、教学跟踪与测评。', {
+                todayLabel,
+              })}
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
             <GraduationCap className="w-5 h-5 text-primary" />
             <span className="text-sm font-medium text-gray-700">
-              当前角色：{activeRole?.name || '教职工'}
+              {t('当前角色：{name}', { name: activeRole?.name || t('教职工') })}
             </span>
           </div>
         </div>
@@ -442,15 +448,15 @@ function WorkspacePageInner() {
       <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">学校管理员工作台</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('学校管理员工作台')}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              欢迎回来，管理员。管理全校教学资源、审批与人员。
+              {t('欢迎回来，管理员。管理全校教学资源、审批与人员。')}
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
             <Building2 className="w-5 h-5 text-primary" />
             <span className="text-sm font-medium text-gray-700">
-              当前角色：{activeRole?.name || '学校管理员'}
+              {t('当前角色：{name}', { name: activeRole?.name || t('学校管理员') })}
             </span>
           </div>
         </div>
@@ -479,7 +485,7 @@ function WorkspacePageInner() {
   const totalTodo = todosWithColor.reduce((acc, item) => acc + item.count, 0)
 
   const calendarDays = generateCalendarDays(today.getFullYear(), today.getMonth())
-  const weekDays = ['日', '一', '二', '三', '四', '五', '六']
+  const weekDays = [t('日'), t('一'), t('二'), t('三'), t('四'), t('五'), t('六')]
   const calendarEvents: { id: number; title: string; time: string; date: number; color: string }[] =
     []
   const RoleIcon = roleIcons.enterprise
@@ -488,15 +494,16 @@ function WorkspacePageInner() {
     <div className="px-4 pt-6 pb-2 bg-gray-50 min-h-[calc(100vh-3.5rem)]">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">我的服务台</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('我的服务台')}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {config.welcomeText}今天是{todayLabel}。
+            {config.welcomeText}
+            {t('今天是{todayLabel}。', { todayLabel })}
           </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
           <RoleIcon className="w-5 h-5 text-primary" />
           <span className="text-sm font-medium text-gray-700">
-            当前角色：{activeRole?.name || '教职工'}
+            {t('当前角色：{name}', { name: activeRole?.name || t('教职工') })}
           </span>
         </div>
       </div>
@@ -506,7 +513,7 @@ function WorkspacePageInner() {
         <Card className="bg-gradient-to-r from-primary to-primary/70 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-primary-foreground/80 text-sm">{stats.label1}</p>
+              <p className="text-primary-foreground/80 text-sm">{t(stats.label1)}</p>
               <p className="text-2xl font-bold">{stats.value1}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
@@ -517,7 +524,7 @@ function WorkspacePageInner() {
         <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-emerald-100 text-sm">{stats.label2}</p>
+              <p className="text-emerald-100 text-sm">{t(stats.label2)}</p>
               <p className="text-2xl font-bold">{stats.value2}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
@@ -528,7 +535,7 @@ function WorkspacePageInner() {
         <Card className="bg-gradient-to-r from-amber-500 to-amber-600 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-amber-100 text-sm">待办事项</p>
+              <p className="text-amber-100 text-sm">{t('待办事项')}</p>
               <p className="text-2xl font-bold">{totalTodo}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
@@ -539,7 +546,7 @@ function WorkspacePageInner() {
         <Card className="bg-gradient-to-r from-primary to-primary/70 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-primary-foreground/80 text-sm">消息通知</p>
+              <p className="text-primary-foreground/80 text-sm">{t('消息通知')}</p>
               <p className="text-2xl font-bold">{announcements.filter((a) => a.isNew).length}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
@@ -558,7 +565,7 @@ function WorkspacePageInner() {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Bell className="w-4 h-4 text-primary" />
                 </div>
-                通知公告
+                {t('通知公告')}
               </CardTitle>
             </div>
           </CardHeader>
@@ -600,10 +607,10 @@ function WorkspacePageInner() {
                 <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
                   <Calendar className="w-4 h-4 text-amber-500" />
                 </div>
-                校园日历
+                {t('校园日历')}
               </CardTitle>
               <span className="text-sm font-medium text-foreground">
-                {today.getFullYear()}年{today.getMonth() + 1}月
+                {t('{year}年{month}月', { year: today.getFullYear(), month: today.getMonth() + 1 })}
               </span>
             </div>
           </CardHeader>
@@ -634,7 +641,7 @@ function WorkspacePageInner() {
               })}
             </div>
             <div className="border-t border-border pt-2">
-              <div className="text-xs text-muted-foreground mb-2">今日日程</div>
+              <div className="text-xs text-muted-foreground mb-2">{t('今日日程')}</div>
               <div className="space-y-1.5">
                 {calendarEvents
                   .filter((e) => e.date === today.getDate())
@@ -658,7 +665,7 @@ function WorkspacePageInner() {
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                   <CheckSquare className="w-4 h-4 text-emerald-500" />
                 </div>
-                待办事项
+                {t('待办事项')}
                 <Badge className="ml-1 text-xs px-1.5 py-0 bg-rose-500">{totalTodo}</Badge>
               </CardTitle>
             </div>
@@ -686,7 +693,7 @@ function WorkspacePageInner() {
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-lg font-bold text-foreground">{totalTodo}</div>
-                    <div className="text-xs text-muted-foreground">待办</div>
+                    <div className="text-xs text-muted-foreground">{t('待办')}</div>
                   </div>
                 </div>
               </div>
@@ -718,7 +725,7 @@ function WorkspacePageInner() {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Shield className="w-4 h-4 text-primary" />
                 </div>
-                账号安全中心
+                {t('账号安全中心')}
               </CardTitle>
             </div>
           </CardHeader>
@@ -726,7 +733,7 @@ function WorkspacePageInner() {
             <div className="space-y-3">
               {securityItems.map((item, index) => (
                 <div key={index} className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{item.label}</span>
+                  <span className="text-sm text-muted-foreground">{t(item.label)}</span>
                   <div className="flex items-center gap-3">
                     <span
                       className={`text-sm ${
@@ -737,10 +744,10 @@ function WorkspacePageInner() {
                           : 'text-muted-foreground'
                       }`}
                     >
-                      {item.statusText}
+                      {t(item.statusText)}
                     </span>
                     <Button variant="link" size="sm" className="text-xs text-primary h-auto p-0">
-                      {item.action}
+                      {t(item.action)}
                     </Button>
                   </div>
                 </div>
@@ -757,7 +764,7 @@ function WorkspacePageInner() {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 text-primary" />
                 </div>
-                本周活跃度
+                {t('本周活跃度')}
               </CardTitle>
               <Badge variant="secondary" className="text-xs">
                 +12.5%
@@ -797,7 +804,7 @@ function WorkspacePageInner() {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <BarChart3 className="w-4 h-4 text-primary" />
                 </div>
-                学习数据统计
+                {t('学习数据统计')}
               </CardTitle>
             </div>
           </CardHeader>
@@ -808,7 +815,7 @@ function WorkspacePageInner() {
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="students" fill="#6366f1" radius={[4, 4, 0, 0]} name="学生数" />
+                <Bar dataKey="students" fill="#6366f1" radius={[4, 4, 0, 0]} name={t('学生数')} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -822,7 +829,7 @@ function WorkspacePageInner() {
                 <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
                   <PieChart className="w-4 h-4 text-cyan-500" />
                 </div>
-                资源使用占比
+                {t('资源使用占比')}
               </CardTitle>
             </div>
           </CardHeader>
@@ -873,7 +880,7 @@ function WorkspacePageInner() {
                 <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center">
                   <Users className="w-4 h-4 text-teal-500" />
                 </div>
-                校园通讯录
+                {t('校园通讯录')}
               </CardTitle>
             </div>
           </CardHeader>

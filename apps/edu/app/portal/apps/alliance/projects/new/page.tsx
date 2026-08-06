@@ -22,6 +22,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const SECONDARY_COLLEGES = [
   '智能制造学院',
@@ -51,6 +52,7 @@ const PROJECT_TYPES = [
 
 export default function AllianceProjectNewPage() {
   const { toast } = useToast()
+  const t = useT()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
@@ -75,12 +77,12 @@ export default function AllianceProjectNewPage() {
       .catch((err) => {
         reportError(err, '加载企业下拉数据')
         toast({
-          title: '企业列表加载失败',
-          description: '可稍后重试',
+          title: t('企业列表加载失败'),
+          description: t('可稍后重试'),
           variant: 'destructive',
         })
       })
-  }, [toast])
+  }, [toast, t])
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
@@ -88,10 +90,10 @@ export default function AllianceProjectNewPage() {
     setSaving(true)
     try {
       const data = await allianceProjectApi.create(item)
-      toast({ title: '项目已创建' })
+      toast({ title: t('项目已创建') })
       router.push(`/portal/apps/alliance/projects/${data.id}`)
     } catch (e: any) {
-      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -102,68 +104,68 @@ export default function AllianceProjectNewPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-1" />
-          返回
+          {t('返回')}
         </Button>
-        <h1 className="text-xl font-semibold text-foreground">新建合作项目</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('新建合作项目')}</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>基本信息</CardTitle>
+              <CardTitle>{t('基本信息')}</CardTitle>
             </CardHeader>
             <CardContent>
               <FormFieldGrid>
-                <FormFieldRow label="项目名称" required>
+                <FormFieldRow label={t('项目名称')} required>
                   <Input
                     value={item.name}
                     onChange={(e) => setField('name', e.target.value)}
-                    placeholder="请输入项目名称"
+                    placeholder={t('请输入项目名称')}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="合作类型">
+                <FormFieldRow label={t('合作类型')}>
                   <Select value={item.type} onValueChange={(v) => setField('type', v)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROJECT_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
+                      {PROJECT_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {t(type)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
-                <FormFieldRow label="项目阶段">
+                <FormFieldRow label={t('项目阶段')}>
                   <Select value={item.phase} onValueChange={(v) => setField('phase', v)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="initiation">启动</SelectItem>
-                      <SelectItem value="execution">执行中</SelectItem>
-                      <SelectItem value="acceptance">验收</SelectItem>
-                      <SelectItem value="closure">关闭</SelectItem>
+                      <SelectItem value="initiation">{t('启动')}</SelectItem>
+                      <SelectItem value="execution">{t('执行中')}</SelectItem>
+                      <SelectItem value="acceptance">{t('验收')}</SelectItem>
+                      <SelectItem value="closure">{t('关闭')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
-                <FormFieldRow label="预算">
+                <FormFieldRow label={t('预算')}>
                   <Input
                     value={item.budget}
                     onChange={(e) => setField('budget', e.target.value)}
-                    placeholder="如：50万"
+                    placeholder={t('如：50万')}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="开始日期">
+                <FormFieldRow label={t('开始日期')}>
                   <Input
                     value={item.startDate}
                     onChange={(e) => setField('startDate', e.target.value)}
                     type="date"
                   />
                 </FormFieldRow>
-                <FormFieldRow label="结束日期">
+                <FormFieldRow label={t('结束日期')}>
                   <Input
                     value={item.endDate}
                     onChange={(e) => setField('endDate', e.target.value)}
@@ -176,7 +178,7 @@ export default function AllianceProjectNewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>项目描述</CardTitle>
+              <CardTitle>{t('项目描述')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -191,11 +193,11 @@ export default function AllianceProjectNewPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>项目封面</CardTitle>
+              <CardTitle>{t('项目封面')}</CardTitle>
             </CardHeader>
             <CardContent>
               <SingleImageUpload
-                label="项目封面"
+                label={t('项目封面')}
                 value={item.coverImage}
                 onChange={(v) => setField('coverImage', v)}
               />
@@ -204,39 +206,39 @@ export default function AllianceProjectNewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>合作企业</CardTitle>
+              <CardTitle>{t('合作企业')}</CardTitle>
             </CardHeader>
             <CardContent>
               <MultiSelect
                 options={enterprises}
                 value={item.enterpriseIds}
                 onChange={(v) => setField('enterpriseIds', v)}
-                placeholder="选择合作企业"
+                placeholder={t('选择合作企业')}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>二级学院</CardTitle>
+              <CardTitle>{t('二级学院')}</CardTitle>
             </CardHeader>
             <CardContent>
               <MultiSelect
                 options={SECONDARY_COLLEGES}
                 value={item.secondaryColleges}
                 onChange={(v) => setField('secondaryColleges', v)}
-                placeholder="选择归属学院"
+                placeholder={t('选择归属学院')}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>设置</CardTitle>
+              <CardTitle>{t('设置')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>公开显示</Label>
+                <Label>{t('公开显示')}</Label>
                 <Switch checked={item.isPublic} onCheckedChange={(v) => setField('isPublic', v)} />
               </div>
             </CardContent>
@@ -245,10 +247,11 @@ export default function AllianceProjectNewPage() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}创建
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {t('创建')}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
-                取消
+                {t('取消')}
               </Button>
             </CardContent>
           </Card>
