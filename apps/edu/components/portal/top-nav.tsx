@@ -248,15 +248,13 @@ export function TopNav() {
                   {t('移动端访问')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Type className="w-3.5 h-3.5" />
-                  {t('语言')}
-                </DropdownMenuLabel>
-                <div className="flex items-center gap-1 px-2 py-1">
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <Type className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground whitespace-nowrap">{t('语言')}</span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex-1 justify-center h-8 text-sm hover:bg-muted"
+                    className="h-7 px-2 text-sm hover:bg-muted"
                     onClick={() => setLocale('zh')}
                   >
                     中文
@@ -265,7 +263,7 @@ export function TopNav() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex-1 justify-center h-8 text-sm hover:bg-muted"
+                    className="h-7 px-2 text-sm hover:bg-muted"
                     onClick={() => setLocale('en')}
                   >
                     English
@@ -274,9 +272,8 @@ export function TopNav() {
                 </div>
                 <DropdownMenuSeparator />
                 <div className="flex items-center gap-2 px-2 py-1.5">
-                  <Type className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <Type className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm text-foreground whitespace-nowrap">{t('字号大小')}</span>
-                  <div className="flex-1" />
                   <Button
                     variant="ghost"
                     size="sm"
@@ -305,7 +302,7 @@ export function TopNav() {
                     disabled={level === 0}
                     aria-label={t('恢复默认字号')}
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-4 h-4" />
                   </Button>
                 </div>
                 <DropdownMenuSeparator />
