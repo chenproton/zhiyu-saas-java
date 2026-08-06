@@ -298,10 +298,10 @@ const BENTO_LAYOUT: CardLayout[] = [
   { id: 'opc', col: '4', row: '1', variant: 'small' },
 ]
 
-const SECTIONS: { title: string; highlight: string; layouts: CardLayout[] }[] = [
-  { title: '产教协同育人', highlight: '生态', layouts: BENTO_LAYOUT.slice(0, 4) },
-  { title: '教学资源保障', highlight: '生态', layouts: BENTO_LAYOUT.slice(4, 8) },
-  { title: '教学治理服务', highlight: '生态', layouts: BENTO_LAYOUT.slice(8) },
+const SECTIONS: { title: string; layouts: CardLayout[] }[] = [
+  { title: '产教协同育人生态', layouts: BENTO_LAYOUT.slice(0, 4) },
+  { title: '教学资源保障生态', layouts: BENTO_LAYOUT.slice(4, 8) },
+  { title: '教学治理服务生态', layouts: BENTO_LAYOUT.slice(8) },
 ]
 
 /* ─── helpers ─── */
@@ -440,13 +440,12 @@ function GradientTile({
 }
 
 /* ─── Section label ─── */
-function SectionLabel({ title, highlight }: { title: string; highlight: string }) {
+function SectionLabel({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3 mb-[18px] mt-9">
       <h3 className="text-lg font-bold text-[#333] flex items-center gap-2.5">
         <span className="w-1 h-[18px] rounded-sm bg-[#1677FF] inline-block" />
         {title}
-        <span className="text-[#0049AE]">{highlight}</span>
       </h3>
       <span className="flex-1 h-px bg-[#e9edf4]" />
     </div>
@@ -474,7 +473,7 @@ export default function PortalHomePage() {
       {/* Hero banner */}
       <section className="relative pt-8 px-4 sm:px-10">
         <div
-          className="relative max-w-[1312px] mx-auto rounded-2xl overflow-hidden px-6 py-12 sm:px-16 sm:py-14 text-center"
+          className="relative max-w-[1312px] mx-auto rounded-2xl overflow-hidden px-6 py-7 sm:px-16 sm:py-8 text-center"
           style={{
             background: 'linear-gradient(120deg,#eef5ff 0%,#f8fbff 55%,#f2f8ff 100%)',
             boxShadow: '0 0 30px rgba(0,73,174,0.06)',
@@ -513,7 +512,7 @@ export default function PortalHomePage() {
       <main className="max-w-[1312px] mx-auto px-4 sm:px-10 relative" style={{ zIndex: 2 }}>
         {SECTIONS.map((section) => (
           <div key={section.title}>
-            <SectionLabel title={section.title} highlight={section.highlight} />
+            <SectionLabel title={section.title} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-[18px]">
               {section.layouts.map((layout) => {
