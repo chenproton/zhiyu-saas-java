@@ -115,7 +115,7 @@ func TestSettings_TenantThemeOverride(t *testing.T) {
 	}
 
 	// 清除租户覆盖 → 回退平台默认
-	w = env.Do("DELETE", "/api/v1/admin/tenants/"+tenantID+"/settings/theme")
+	w = env.Do("DELETE", "/api/v1/admin/tenants/"+tenantID+"/settings/theme", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("delete tenant theme: %d %s", w.Code, testhelper.ErrMsg(w))
 	}
