@@ -15,14 +15,17 @@ import {
   AlertCircle,
   CheckSquare,
   Type,
+  Share2,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { questionBankApi, questionApi, knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
 import { Footer } from '@/components/portal/footer'
+import { MobileAccessDialog } from '@/components/portal/mobile-access-dialog'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
@@ -99,6 +102,7 @@ export default function BankDetailPage() {
   const [typeFilter, setTypeFilter] = useState('全部')
   const [showAllAnswers, setShowAllAnswers] = useState(false)
   const [knowledgePointMap, setKnowledgePointMap] = useState<Record<string, string>>({})
+  const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -284,6 +288,14 @@ export default function BankDetailPage() {
 
                     <div className="flex flex-wrap items-center gap-3 text-xs mt-auto pt-5">
                       <FavoriteButton targetType="question_bank" targetId={id} label="收藏题库" />
+                      <Button
+                        variant="ghost"
+                        className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-primary border border-slate-200 hover:bg-primary/5 hover:border-primary/30 transition-all"
+                        aria-label="分享"
+                        onClick={() => setMobileAccessOpen(true)}
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </Button>
                       {Object.entries(typeCounts).length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {Object.entries(typeCounts).map(([t, count]) => (
@@ -512,6 +524,7 @@ export default function BankDetailPage() {
       </main>
 
       <Footer className="mt-auto" />
+      <MobileAccessDialog open={mobileAccessOpen} onOpenChange={setMobileAccessOpen} />
     </div>
   )
 }

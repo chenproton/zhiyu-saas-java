@@ -16,6 +16,7 @@ import {
   Eye,
   ChevronRight,
   ChevronDown,
+  Share2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,6 +30,7 @@ import {
 } from '@/lib/types'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import { Footer } from '@/components/portal/footer'
+import { MobileAccessDialog } from '@/components/portal/mobile-access-dialog'
 import { formatDate } from '@/lib/format-utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-graph'
@@ -104,6 +106,7 @@ export default function CourseDetailPage() {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
 
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
+  const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -664,6 +667,14 @@ export default function CourseDetailPage() {
                         label="收藏课程"
                         className="h-11 rounded-xl"
                       />
+                      <Button
+                        variant="ghost"
+                        className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-primary border border-slate-200 hover:bg-primary/5 hover:border-primary/30 transition-all"
+                        aria-label="分享"
+                        onClick={() => setMobileAccessOpen(true)}
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -787,6 +798,8 @@ export default function CourseDetailPage() {
           onOpenChange={() => removePreviewResource(r.id)}
         />
       ))}
+
+      <MobileAccessDialog open={mobileAccessOpen} onOpenChange={setMobileAccessOpen} />
 
       <Footer className="mt-auto" />
     </div>

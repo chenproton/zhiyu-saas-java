@@ -16,6 +16,7 @@ import {
   BookOpen,
   Users,
   Info,
+  Share2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -36,6 +37,7 @@ import { reportError } from '@/lib/error-handling'
 import { formatDateTime } from '@/lib/format-utils'
 import { useToast } from '@zhiyu/ui'
 import { FavoriteButton } from '@/components/shared/favorite-button'
+import { MobileAccessDialog } from '@/components/portal/mobile-access-dialog'
 /* ─── 题型标签映射 ─── */
 const typeLabelMap: Record<string, string> = {
   single: '单选题',
@@ -80,6 +82,7 @@ export default function ExamDetailPage() {
   const [, setUsages] = useState<ExamUsage[]>([])
   const [currentUsage, setCurrentUsage] = useState<ExamUsage | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
 
   const questionTypeStats = useMemo(() => {
     if (!exam) return []
@@ -610,6 +613,15 @@ export default function ExamDetailPage() {
               activeLabel="已收藏试卷"
               light
             />
+            <Button
+              variant="ghost"
+              size="icon"
+              style={{ color: 'white', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)' }}
+              aria-label="分享"
+              onClick={() => setMobileAccessOpen(true)}
+            >
+              <Share2 style={{ width: 18, height: 18 }} />
+            </Button>
           </div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 px-4 sm:px-8 py-5 sm:py-6">
@@ -875,6 +887,8 @@ export default function ExamDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <MobileAccessDialog open={mobileAccessOpen} onOpenChange={setMobileAccessOpen} />
     </div>
   )
 }

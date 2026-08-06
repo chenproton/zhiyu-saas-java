@@ -48,6 +48,7 @@ import {
   EVAL_METHOD_COLORS,
 } from '@/lib/types'
 import { Footer } from '@/components/portal/footer'
+import { MobileAccessDialog } from '@/components/portal/mobile-access-dialog'
 import { SceneKnowledgeGraph } from '@/components/scene/student/knowledge-graph'
 import {
   ResourcePreviewModal,
@@ -364,6 +365,7 @@ export default function SceneDetailPage() {
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [abilityDomainMap, setAbilityDomainMap] = useState<Map<string, string>>(new Map())
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
+  const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -868,6 +870,7 @@ export default function SceneDetailPage() {
                         variant="ghost"
                         className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-primary border border-slate-200 hover:bg-primary/5 hover:border-primary/30 transition-all"
                         aria-label="分享"
+                        onClick={() => setMobileAccessOpen(true)}
                       >
                         <Share2 className="w-4 h-4" />
                       </Button>
@@ -1033,6 +1036,8 @@ export default function SceneDetailPage() {
           onOpenChange={() => removePreviewResource(r.id)}
         />
       ))}
+
+      <MobileAccessDialog open={mobileAccessOpen} onOpenChange={setMobileAccessOpen} />
 
       <Footer className="mt-auto" />
     </div>
