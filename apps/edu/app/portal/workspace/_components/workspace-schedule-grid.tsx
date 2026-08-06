@@ -202,7 +202,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
           {view !== 'year' && (
             <>
               <Select value={String(year)} onValueChange={handleYearChange}>
-                <SelectTrigger className="w-[88px] h-9 text-xs">
+                <SelectTrigger className="w-[108px] h-9 text-xs">
                   <SelectValue placeholder="年份" />
                 </SelectTrigger>
                 <SelectContent>
@@ -215,7 +215,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
               </Select>
 
               <Select value={String(month)} onValueChange={handleMonthChange}>
-                <SelectTrigger className="w-[80px] h-9 text-xs">
+                <SelectTrigger className="w-[100px] h-9 text-xs">
                   <SelectValue placeholder="月份" />
                 </SelectTrigger>
                 <SelectContent>
@@ -230,10 +230,10 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
           )}
 
           {view === 'week' && (
-            <Select value={String(weekIndex)} onValueChange={handleWeekChange}>
-              <SelectTrigger className="w-[92px] h-9 text-xs">
-                <SelectValue placeholder="周次" />
-              </SelectTrigger>
+              <Select value={String(weekIndex)} onValueChange={handleWeekChange}>
+                <SelectTrigger className="w-[112px] h-9 text-xs">
+                  <SelectValue placeholder="周次" />
+                </SelectTrigger>
               <SelectContent>
                 {Array.from({ length: weeksInMonth }, (_, i) => i + 1).map((w) => (
                   <SelectItem key={w} value={String(w)} className="text-xs">
