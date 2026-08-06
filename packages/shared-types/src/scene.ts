@@ -43,6 +43,8 @@ export interface ScenarioTask {
   sourceScenarioId?: string
   knowledgePointIds: string[]
   abilityPointIds: string[]
+  /** 与 abilityPointIds 按序对齐的能力点名称（服务端 JOIN 返回，避免前端依赖全量能力点列表） */
+  abilityPointNames?: string[]
   resourceIds: string[]
   evalData?: Record<string, any>
 }

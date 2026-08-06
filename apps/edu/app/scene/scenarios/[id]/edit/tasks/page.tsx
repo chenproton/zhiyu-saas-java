@@ -276,6 +276,7 @@ export default function TasksEditPage() {
           deliverables: [],
           knowledgePoints: at.knowledgePointIds || [],
           abilityPoints: at.abilityPointIds || [],
+          abilityPointNames: at.abilityPointNames || [],
           assessment: null,
           isReferenced: at.isReferenced || false,
           sourceScenarioId: at.sourceScenarioId || undefined,
@@ -422,21 +423,37 @@ export default function TasksEditPage() {
           kpNames.slice(0, 3).join('、') +
           (kpNames.length > 3 ? ` 等${state.knowledgePoints.length}个` : '')
         )
-      case 'ability':
+      case 'ability': {
         if (state.abilityPoints.length === 0) return '未配置'
+        // 优先使用服务端随任务返回的名称（与 abilityPointIds 对齐），
+        // 再回退全量能力点列表与岗位绑定名称（全量列表接口 maxPageSize=200 会截断）
+        const apiNameById = new Map<string, string>()
+        ;(task.abilityPointNames || []).forEach((n, i) => {
+          if (task.abilityPoints[i] && n) apiNameById.set(task.abilityPoints[i], n)
+        })
+        const bindingNameById = new Map<string, string>()
+        datasets.positionAbilityBindings.forEach((b) => {
+          const binding = b as { abilityPointId?: string; abilityName?: string }
+          if (binding.abilityPointId && binding.abilityName) {
+            bindingNameById.set(binding.abilityPointId, binding.abilityName)
+          }
+        })
         const abNames = state.abilityPoints
           .map(
             (id) =>
+              apiNameById.get(id) ||
               (
                 datasets.abilityPoints.find((a) => (a as { id: string }).id === id) as
                   { name?: string } | undefined
-              )?.name,
+              )?.name ||
+              bindingNameById.get(id),
           )
           .filter(Boolean)
         return (
           abNames.slice(0, 3).join('、') +
           (abNames.length > 3 ? ` 等${state.abilityPoints.length}个` : '')
         )
+      }
       case 'resources':
         if (state.resources.length === 0) return '未配置'
         const resNames = state.resources
