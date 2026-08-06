@@ -272,6 +272,9 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 	r.Get("/admin/settings/theme", h.settingsHandler.GetTheme)
 	r.Put("/admin/settings/theme", h.settingsHandler.UpdateTheme)
 
+	r.Put("/admin/tenants/{tenantId}/settings/theme", h.settingsHandler.UpdateTenantTheme)
+	r.Delete("/admin/tenants/{tenantId}/settings/theme", h.settingsHandler.DeleteTenantTheme)
+
 }
 
 func registerWorkflowRoutes(r chi.Router, h *Handlers) {

@@ -44,12 +44,12 @@ import {
   LogOut,
   Shield,
   Palette,
-  RotateCcw,
 } from 'lucide-react'
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
 import { authApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
@@ -62,8 +62,6 @@ import {
 } from '@/lib/theme-brand'
 
 const TENANTS_API = '/admin/tenants'
-
-const THEME_PRESETS = ['#4862e4', '#1677ff', '#0b5bd0', '#0ea5e9', '#7c3aed', '#059669', '#ea580c']
 
 interface AdminTenant {
   id: string
@@ -166,6 +164,10 @@ export default function SuperAdminPage() {
   const [themeColor, setThemeColor] = useState(DEFAULT_BRAND_COLOR)
   const [themeSaving, setThemeSaving] = useState(false)
 
+  const [tenantThemeTarget, setTenantThemeTarget] = useState<AdminTenant | null>(null)
+  const [tenantThemeColor, setTenantThemeColor] = useState(DEFAULT_BRAND_COLOR)
+  const [tenantThemeSaving, setTenantThemeSaving] = useState(false)
+
   const { toast } = useToast()
 
   // 加载平台主题配置（公开接口）
@@ -199,6 +201,53 @@ export default function SuperAdminPage() {
       })
     } finally {
       setThemeSaving(false)
+    }
+  }
+
+  const openTenantTheme = async (t: AdminTenant) => {
+    setTenantThemeTarget(t)
+    setTenantThemeSaving(false)
+    setTenantThemeColor(await fetchThemeColor(t.id))
+  }
+
+  const saveTenantTheme = async (t: AdminTenant, color: string) => {
+    if (!isHexColor(color)) {
+      toast({ variant: 'destructive', title: '主题色格式错误', description: '应为 #RRGGBB 格式' })
+      return
+    }
+    setTenantThemeSaving(true)
+    try {
+      await saasRequest(`/admin/tenants/${t.id}/settings/theme`, {
+        method: 'PUT',
+        body: JSON.stringify({ primary: color }),
+      })
+      setTenantThemeColor(color)
+      toast({ title: `已保存，租户「${t.name}」主题色生效` })
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
+    } finally {
+      setTenantThemeSaving(false)
+    }
+  }
+
+  const clearTenantTheme = async (t: AdminTenant) => {
+    setTenantThemeSaving(true)
+    try {
+      await saasRequest(`/admin/tenants/${t.id}/settings/theme`, { method: 'DELETE' })
+      setTenantThemeColor(DEFAULT_BRAND_COLOR)
+      toast({ title: `已恢复平台默认主题色` })
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: '恢复失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
+    } finally {
+      setTenantThemeSaving(false)
     }
   }
 
@@ -727,86 +776,26 @@ export default function SuperAdminPage() {
           <div>
             <h2 className="text-sm font-semibold">平台主题配置</h2>
             <p className="text-xs text-muted-foreground">
-              设置全平台主题色，保存后对所有用户实时生效（刷新或新开页面即同步）
+              设置全平台主题色，保存后对所有用户实时生效（刷新或新开页面即同步）；可在下方租户列表中为单个租户单独配置
             </p>
           </div>
         </div>
         <div className="px-5 py-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {THEME_PRESETS.map((color) => (
-              <button
-                key={color}
-                type="button"
-                title={color}
-                aria-label={`主题色 ${color}`}
-                onClick={() => setThemeColor(color)}
-                className={`h-8 w-8 rounded-full transition-transform hover:scale-110 ${
-                  themeColor.toLowerCase() === color.toLowerCase()
-                    ? 'ring-2 ring-offset-2 ring-foreground/30'
-                    : ''
-                }`}
-                style={{ backgroundColor: color }}
-              />
-            ))}
-            <label
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-gray-300 text-xs text-muted-foreground cursor-pointer hover:border-primary hover:text-primary"
-              title="自定义颜色"
-            >
-              <input
-                type="color"
-                value={themeColor}
-                onChange={(e) => setThemeColor(e.target.value)}
-                className="sr-only"
-              />
-              +
-            </label>
-            <input
-              value={themeColor}
-              onChange={(e) => setThemeColor(e.target.value)}
-              className="h-8 w-28 rounded-md border border-gray-200 px-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder="#RRGGBB"
-            />
-            <span className="text-xs text-muted-foreground">自定义色值</span>
-          </div>
-
-          {/* 实时预览 */}
-          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-muted/50 p-3">
-            <span className="text-xs text-muted-foreground">预览：</span>
-            <Button size="sm" style={{ backgroundColor: themeColor }}>
-              主要按钮
-            </Button>
-            <Button size="sm" variant="outline" style={{ color: themeColor }}>
-              次要按钮
-            </Button>
-            <span
-              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
-              style={{ backgroundColor: themeColor }}
-            >
-              标签
-            </span>
-            <span className="text-xs text-muted-foreground">
-              当前色值：<span className="font-mono">{themeColor}</span>
-            </span>
-          </div>
-
-          <div className="mt-4 flex items-center gap-2">
-            <Button size="sm" onClick={() => saveTheme(themeColor)} disabled={themeSaving}>
-              {themeSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              保存并应用
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={themeSaving}
-              onClick={() => {
-                setThemeColor(DEFAULT_BRAND_COLOR)
-                void saveTheme(DEFAULT_BRAND_COLOR)
-              }}
-            >
-              <RotateCcw className="h-3.5 w-3.5 mr-1" />
-              恢复默认
-            </Button>
-          </div>
+          <ThemeColorPicker
+            color={themeColor}
+            onChange={setThemeColor}
+            onSubmit={saveTheme}
+            submitting={themeSaving}
+            secondary={[
+              {
+                label: '恢复默认',
+                onClick: () => {
+                  setThemeColor(DEFAULT_BRAND_COLOR)
+                  void saveTheme(DEFAULT_BRAND_COLOR)
+                },
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -868,6 +857,15 @@ export default function SuperAdminPage() {
                       >
                         <Package className="mr-1 h-3 w-3" />
                         套餐配置
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => openTenantTheme(t)}
+                      >
+                        <Palette className="mr-1 h-3 w-3" />
+                        主题配置
                       </Button>
                       <Button
                         variant="ghost"
@@ -1131,6 +1129,41 @@ export default function SuperAdminPage() {
               保存
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={tenantThemeTarget !== null} onOpenChange={(open) => !open && setTenantThemeTarget(null)}>
+        <DialogContent size="sm">
+          <DialogHeader>
+            <DialogTitle>租户主题配置</DialogTitle>
+            <DialogDescription>
+              {tenantThemeTarget
+                ? `为租户「${tenantThemeTarget.name}」单独配置主题色，该租户下所有用户生效；不配置则使用平台默认色`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <ThemeColorPicker
+              color={tenantThemeColor}
+              onChange={setTenantThemeColor}
+              onSubmit={(color) => {
+                if (tenantThemeTarget) void saveTenantTheme(tenantThemeTarget, color)
+              }}
+              submitting={tenantThemeSaving}
+              submitLabel="保存"
+              secondary={
+                tenantThemeTarget
+                  ? [
+                      {
+                        label: '恢复平台默认',
+                        onClick: () => clearTenantTheme(tenantThemeTarget),
+                        disabled: tenantThemeSaving,
+                      },
+                    ]
+                  : []
+              }
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
