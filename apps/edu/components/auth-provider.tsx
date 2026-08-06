@@ -12,6 +12,7 @@ export type UserRole = 'school' | 'enterprise' | 'operator'
 interface AuthContextType {
   user?: MeResponse['user']
   institution?: MeResponse['institution']
+  tenant?: MeResponse['tenant']
   role?: UserRole
   institutionId?: string
 
@@ -171,6 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       institution: state.me?.institution,
+      tenant: state.me?.tenant,
       role,
       institutionId: user?.institutionId,
       tenantId: user?.tenantId,

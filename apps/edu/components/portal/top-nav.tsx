@@ -40,7 +40,7 @@ const navItems = [
 
 export function TopNav() {
   const pathname = usePathname()
-  const { user, institution, roles, activeRole, setActiveRole, logout } = useAuth()
+  const { user, tenant, roles, activeRole, setActiveRole, logout } = useAuth()
   const { level, maxLevel, increase, decrease, reset } = useFontScale()
   const isLoggedIn = !!user
   const [currentTime, setCurrentTime] = useState('')
@@ -189,7 +189,7 @@ export function TopNav() {
                   <div data-hide-order="4" className="hidden sm:block text-left">
                     <div className="text-sm text-foreground whitespace-nowrap">{user.name}</div>
                     <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {activeRole?.name || '用户'} · {institution?.name || '组织'}
+                      {tenant?.name || '租户'} · {activeRole?.name || '用户'}
                     </div>
                   </div>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
