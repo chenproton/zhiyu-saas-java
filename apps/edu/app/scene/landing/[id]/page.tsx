@@ -56,6 +56,7 @@ import {
 import { formatDate } from '@/lib/format-utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { FavoriteButton } from '@/components/shared/favorite-button'
+import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 
 const TABS = [
   { value: 'tasks', label: '任务概览', icon: ListChecks },
@@ -951,9 +952,26 @@ export default function SceneDetailPage() {
       <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full">
         <div
           ref={tabsRef}
-          className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
+          className="bg-white rounded-2xl border border-slate-200 overflow-visible md:overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
         >
-          <div className="flex flex-wrap border-b border-slate-100 px-4 sm:px-6">
+          <MobileTabDropdown
+            items={[
+              { value: 'tasks', label: '任务概览', icon: ListChecks, count: tasks.length },
+              { value: 'resources', label: '资源中心', icon: FolderOpen, count: totalResources },
+              {
+                value: 'abilities',
+                label: '能力模型',
+                icon: Lightbulb,
+                count: uniqueAbilityIds.size,
+              },
+              { value: 'evaluation', label: '评价标准', icon: Target, count: totalEvalConfigs },
+              { value: 'knowledge', label: '知识图谱', icon: GitBranch },
+            ]}
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="md:hidden m-4"
+          />
+          <div className="hidden md:flex overflow-x-auto border-b border-slate-100 px-4 sm:px-6">
             {TABS.map((t) => (
               <button
                 key={t.value}

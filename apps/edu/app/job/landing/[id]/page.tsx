@@ -35,6 +35,7 @@ import { CompetencyStandards } from '@/components/job/student/competency-standar
 import { KnowledgeGraph } from '@/components/job/student/knowledge-graph'
 import { SceneList } from '@/components/job/student/scene-list'
 import { Footer } from '@/components/portal/footer'
+import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Briefcase,
@@ -265,10 +266,16 @@ export default function JobStudentDetailPage() {
 
         <div
           ref={tabsRef}
-          className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] overflow-hidden"
+          className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] overflow-visible md:overflow-hidden"
         >
           {/* Tabs */}
-          <div className="flex gap-4 sm:gap-8 border-b border-[#f5f5f4] px-4 sm:px-6 overflow-x-auto">
+          <MobileTabDropdown
+            items={TABS}
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="md:hidden m-4"
+          />
+          <div className="hidden md:flex gap-4 sm:gap-8 border-b border-[#f5f5f4] px-4 sm:px-6 overflow-x-auto">
             {TABS.map((t) => (
               <button
                 key={t.value}
