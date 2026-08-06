@@ -11,6 +11,7 @@ import type { QuestionBank, Exam, ExamCenterItem } from '@/lib/types'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
+import { HeroStatsCard } from '@/components/shared/hero-stats-card'
 import { ExamCenterCard } from '@/components/evaluation/exam-center-card'
 import { coverGradientFor } from '@/lib/cover-gradients'
 
@@ -304,30 +305,14 @@ export default function LandingHomePage() {
         description: '丰富题库资源与智能组卷工具，支持在线考试与自动评分，让教学测评更高效',
         ctaLabel: '浏览资源',
         right: (
-          <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-7 text-white shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
-            <div className="text-[15px] font-bold text-white/90 mb-5 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
-                📊
-              </span>
-              平台统计
-            </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] text-white/65">题库总数</span>
-                <span className="text-[26px] font-bold">{banks.length.toLocaleString()}</span>
-              </div>
-              <hr className="border-white/8" />
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] text-white/65">试卷总数</span>
-                <span className="text-[26px] font-bold">{exams.length.toLocaleString()}</span>
-              </div>
-              <hr className="border-white/8" />
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] text-white/65">题目总数</span>
-                <span className="text-[26px] font-bold">{totalQuestions.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
+          <HeroStatsCard
+            title="平台统计"
+            stats={[
+              { icon: Library, label: '题库总数', value: banks.length },
+              { icon: ClipboardList, label: '试卷总数', value: exams.length },
+              { icon: FileText, label: '题目总数', value: totalQuestions },
+            ]}
+          />
         ),
       }}
       stats={[

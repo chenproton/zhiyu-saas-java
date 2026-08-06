@@ -9,6 +9,7 @@ import { coverGradientFor } from '@/lib/cover-gradients'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
+import { HeroStatsCard } from '@/components/shared/hero-stats-card'
 import { formatDate } from '@/lib/format-utils'
 
 const CARDS_PER_PAGE = 12
@@ -219,30 +220,14 @@ export default function LessonLandingPage() {
         description: '体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效',
         ctaLabel: '浏览课程',
         right: (
-          <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-7 text-white shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
-            <div className="text-[15px] font-bold text-white/90 mb-5 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
-                📊
-              </span>
-              课程统计
-            </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] text-white/65">课程总数</span>
-                <span className="text-[26px] font-bold">{courses.length.toLocaleString()}</span>
-              </div>
-              <hr className="border-white/8" />
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] text-white/65">课程节点</span>
-                <span className="text-[26px] font-bold">{totalNodes.toLocaleString()}</span>
-              </div>
-              <hr className="border-white/8" />
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] text-white/65">教学资源</span>
-                <span className="text-[26px] font-bold">{totalResources.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
+          <HeroStatsCard
+            title="课程统计"
+            stats={[
+              { icon: BookOpen, label: '课程总数', value: courses.length },
+              { icon: Layers, label: '课程节点', value: totalNodes },
+              { icon: FileText, label: '教学资源', value: totalResources },
+            ]}
+          />
         ),
       }}
       stats={[

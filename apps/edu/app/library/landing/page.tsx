@@ -17,6 +17,9 @@ import {
   Wrench,
   Cpu,
   Package,
+  Boxes,
+  Brain,
+  BadgeCheck,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -37,6 +40,7 @@ import { reportError } from '@/lib/error-handling'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
+import { HeroStatsCard } from '@/components/shared/hero-stats-card'
 
 // 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
 const ALL_TYPES = Object.keys(RESOURCE_TYPE_LABELS) as (keyof typeof RESOURCE_TYPE_LABELS)[]
@@ -391,10 +395,10 @@ export default function LibraryLandingPage() {
   }
 
   const heroStats = [
-    { label: '资源总量', value: totalCount },
-    { label: '教学资源', value: resources.length },
-    { label: '知识/能力点', value: knowledgeCount + abilityCount },
-    { label: '证书/题库', value: certCount + questionCount },
+    { icon: Boxes, label: '资源总量', value: totalCount },
+    { icon: FileText, label: '教学资源', value: resources.length },
+    { icon: Brain, label: '知识/能力点', value: knowledgeCount + abilityCount },
+    { icon: BadgeCheck, label: '证书/题库', value: certCount + questionCount },
   ]
 
   return (
@@ -411,27 +415,7 @@ export default function LibraryLandingPage() {
           ),
           description: '汇聚视频、文档、软件、场地等教学资源，为教师提供一站式资源共享服务',
           ctaLabel: '浏览资源',
-          right: (
-            <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-7 text-white shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
-              <div className="text-[15px] font-bold text-white/90 mb-5 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
-                  📊
-                </span>
-                资源统计
-              </div>
-              <div className="space-y-4">
-                {heroStats.map((s, i) => (
-                  <div key={i}>
-                    {i > 0 && <hr className="border-white/8" />}
-                    <div className="flex justify-between items-center">
-                      <span className="text-[14px] text-white/65">{s.label}</span>
-                      <span className="text-[26px] font-bold">{s.value.toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ),
+          right: <HeroStatsCard title="资源统计" stats={heroStats} />,
         }}
         stats={topTypes.map((s, i) => ({
           icon: TYPE_ICONS[s.type] || Package,
