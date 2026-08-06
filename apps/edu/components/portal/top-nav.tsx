@@ -231,13 +231,17 @@ export function TopNav() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem>
-                  <User className="w-4 h-4 mr-2" />
-                  {t('个人中心')}
+                <DropdownMenuItem asChild>
+                  <Link href="/portal/workspace">
+                    <User className="w-4 h-4 mr-2" />
+                    {t('个人中心')}
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="w-4 h-4 mr-2" />
-                  {t('账号设置')}
+                <DropdownMenuItem asChild>
+                  <Link href="/portal/workspace?tab=profile">
+                    <Settings className="w-4 h-4 mr-2" />
+                    {t('账号设置')}
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setMobileAccessOpen(true)}>
                   <QrCode className="w-4 h-4 mr-2" />

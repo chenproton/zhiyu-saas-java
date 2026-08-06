@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import {
   Bell,
   Calendar,
@@ -40,6 +40,7 @@ import {
   AreaChart,
 } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { useSearchParams } from 'next/navigation'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard } from '@/lib/types'
@@ -140,7 +141,11 @@ const schoolAdminTabs = [
 ]
 
 function StudentWorkspace({ userId }: { userId?: string }) {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get('tab')
+    return t && studentTabs.some((x) => x.id === t) ? t : 'dashboard'
+  })
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -200,7 +205,11 @@ function StudentWorkspace({ userId }: { userId?: string }) {
 }
 
 function TeacherWorkspace() {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get('tab')
+    return t && teacherTabs.some((x) => x.id === t) ? t : 'dashboard'
+  })
   const [prepAssociations, setPrepAssociations] = useState<Record<string, PrepAssociationRecord>>(
     {},
   )
@@ -274,7 +283,11 @@ function TeacherWorkspace() {
 }
 
 function SchoolAdminWorkspace() {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get('tab')
+    return t && schoolAdminTabs.some((x) => x.id === t) ? t : 'dashboard'
+  })
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -328,6 +341,14 @@ function SchoolAdminWorkspace() {
 }
 
 export default function WorkspacePage() {
+  return (
+    <Suspense fallback={null}>
+      <WorkspacePageInner />
+    </Suspense>
+  )
+}
+
+function WorkspacePageInner() {
   const { user, activeRole, loading: isLoading } = usePortalAuth()
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
