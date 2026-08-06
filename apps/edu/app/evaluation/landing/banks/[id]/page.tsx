@@ -342,28 +342,6 @@ export default function BankDetailPage() {
                           <div className="text-[11px] text-slate-400 mt-1">总题量</div>
                         </div>
                       </div>
-                      <div className="mt-4 space-y-2.5">
-                        {pieData.map((entry) => (
-                          <div key={entry.name} className="flex items-center justify-between">
-                            <span className="flex items-center gap-2 text-sm text-slate-500">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: entry.color }}
-                              />
-                              {entry.name}
-                            </span>
-                            <span className="text-sm font-bold text-slate-700">
-                              {entry.value} 题
-                            </span>
-                          </div>
-                        ))}
-                        {bank.version && (
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                            <span className="text-sm text-slate-500">版本</span>
-                            <span className="text-sm font-bold text-blue-600">v{bank.version}</span>
-                          </div>
-                        )}
-                      </div>
                     </>
                   )}
                 </div>
