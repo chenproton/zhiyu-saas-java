@@ -40,7 +40,7 @@ import {
   AreaChart,
 } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard } from '@/lib/types'
@@ -141,21 +141,16 @@ const schoolAdminTabs = [
 ]
 
 function StudentWorkspace({ userId }: { userId?: string }) {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab')
-  const [activeTab, setActiveTab] = useState('dashboard')
-  const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
-  if (urlTab !== prevUrlTab) {
-    setPrevUrlTab(urlTab)
-    if (urlTab && studentTabs.some((x) => x.id === urlTab)) {
-      setActiveTab(urlTab)
-    }
-  }
+  const activeTab = urlTab && studentTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
+  const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardTab onTabChange={setActiveTab} />
+        return <DashboardTab onTabChange={goTab} />
       case 'learning':
         return <LearningTab />
       case 'schedule':
@@ -171,7 +166,7 @@ function StudentWorkspace({ userId }: { userId?: string }) {
       case 'profile':
         return <ProfileTab />
       default:
-        return <DashboardTab onTabChange={setActiveTab} />
+        return <DashboardTab onTabChange={goTab} />
     }
   }
 
@@ -186,7 +181,7 @@ function StudentWorkspace({ userId }: { userId?: string }) {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => goTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-primary text-white shadow-sm'
@@ -210,26 +205,21 @@ function StudentWorkspace({ userId }: { userId?: string }) {
 }
 
 function TeacherWorkspace() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab')
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const activeTab = urlTab && teacherTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
+  const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
   const [prepAssociations, setPrepAssociations] = useState<Record<string, PrepAssociationRecord>>(
     {},
   )
-  const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
-  if (urlTab !== prevUrlTab) {
-    setPrevUrlTab(urlTab)
-    if (urlTab && teacherTabs.some((x) => x.id === urlTab)) {
-      setActiveTab(urlTab)
-    }
-  }
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return (
           <TeacherDashboardTab
-            onTabChange={setActiveTab}
+            onTabChange={goTab}
             prepAssociations={prepAssociations}
             onAssociate={setPrepAssociations}
           />
@@ -250,7 +240,7 @@ function TeacherWorkspace() {
       default:
         return (
           <TeacherDashboardTab
-            onTabChange={setActiveTab}
+            onTabChange={goTab}
             prepAssociations={prepAssociations}
             onAssociate={setPrepAssociations}
           />
@@ -269,7 +259,7 @@ function TeacherWorkspace() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => goTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-primary text-white shadow-sm'
@@ -293,21 +283,16 @@ function TeacherWorkspace() {
 }
 
 function SchoolAdminWorkspace() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab')
-  const [activeTab, setActiveTab] = useState('dashboard')
-  const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
-  if (urlTab !== prevUrlTab) {
-    setPrevUrlTab(urlTab)
-    if (urlTab && schoolAdminTabs.some((x) => x.id === urlTab)) {
-      setActiveTab(urlTab)
-    }
-  }
+  const activeTab = urlTab && schoolAdminTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
+  const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <SchoolAdminOverviewTab onTabChange={setActiveTab} />
+        return <SchoolAdminOverviewTab onTabChange={goTab} />
       case 'resources':
         return <SchoolAdminResourcesTab />
       case 'approvals':
@@ -317,7 +302,7 @@ function SchoolAdminWorkspace() {
       case 'profile':
         return <ProfileTab variant="staff" />
       default:
-        return <SchoolAdminOverviewTab onTabChange={setActiveTab} />
+        return <SchoolAdminOverviewTab onTabChange={goTab} />
     }
   }
 
@@ -332,7 +317,7 @@ function SchoolAdminWorkspace() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => goTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-primary text-white shadow-sm'
