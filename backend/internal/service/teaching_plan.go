@@ -80,6 +80,11 @@ func (s *AffairsPlanService) FetchTeachingPlanProgramBrief(ctx context.Context, 
 	return s.st.TeachingPlans().FetchProgramBrief(ctx, id, tenantID)
 }
 
+// FetchTeachingPlanMajorClasses 查询人培方案关联专业在组织树中的全部班级节点。
+func (s *AffairsPlanService) FetchTeachingPlanMajorClasses(ctx context.Context, tenantID, majorID string) ([]string, error) {
+	return s.st.TeachingPlans().FetchProgramClasses(ctx, tenantID, majorID)
+}
+
 // FetchTeachingPlanCourses 查询方案课程。
 func (s *AffairsPlanService) FetchTeachingPlanCourses(ctx context.Context, programID string) ([]store.PlanCourse, error) {
 	return s.st.TeachingPlans().FetchProgramCourses(ctx, programID)
