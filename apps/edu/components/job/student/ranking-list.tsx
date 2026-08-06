@@ -115,10 +115,10 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
 
   if (ranked.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5">
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5">
         <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800 mb-3">
-          <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
-          <Trophy className="w-4 h-4 text-amber-500" />
+          <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
+          <Trophy className="w-4 h-4 text-primary" />
           收藏岗位排行榜
         </div>
         <div className="text-center py-6 text-slate-400 text-sm">暂无岗位数据</div>
@@ -127,11 +127,11 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] px-5 py-5">
+    <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] px-5 py-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5 text-[15px] font-bold text-slate-800">
-          <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
-          <Trophy className="w-4 h-4 text-amber-500" />
+          <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
+          <Trophy className="w-4 h-4 text-primary" />
           收藏岗位排行榜
         </div>
         <div className="flex items-center gap-2">

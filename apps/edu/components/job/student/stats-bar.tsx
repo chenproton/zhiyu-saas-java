@@ -18,22 +18,22 @@ export function StatsBar({ total, majorCount, industryCount, mode = 'job' }: Sta
           icon: Layers,
           label: '实践场景',
           value: total,
-          gradient: 'from-blue-500 to-blue-400',
-          light: 'from-blue-500/20 to-blue-400/5',
+          gradient: 'from-primary to-primary/80',
+          light: 'from-primary/20 to-primary/5',
         },
         {
           icon: ClipboardList,
           label: '任务总数',
           value: majorCount,
-          gradient: 'from-violet-500 to-violet-400',
-          light: 'from-violet-500/20 to-violet-400/5',
+          gradient: 'from-primary/90 to-primary/70',
+          light: 'from-primary/20 to-primary/5',
         },
         {
           icon: Factory,
           label: '涉及行业',
           value: industryCount,
-          gradient: 'from-emerald-500 to-emerald-400',
-          light: 'from-emerald-500/20 to-emerald-400/5',
+          gradient: 'from-primary/80 to-primary/60',
+          light: 'from-primary/20 to-primary/5',
         },
       ]
     : [
@@ -41,27 +41,27 @@ export function StatsBar({ total, majorCount, industryCount, mode = 'job' }: Sta
           icon: Briefcase,
           label: '收录岗位',
           value: total,
-          gradient: 'from-blue-500 to-blue-400',
-          light: 'from-blue-500/20 to-blue-400/5',
+          gradient: 'from-primary to-primary/80',
+          light: 'from-primary/20 to-primary/5',
         },
         {
           icon: GraduationCap,
           label: '覆盖专业',
           value: majorCount,
-          gradient: 'from-violet-500 to-violet-400',
-          light: 'from-violet-500/20 to-violet-400/5',
+          gradient: 'from-primary/90 to-primary/70',
+          light: 'from-primary/20 to-primary/5',
         },
         {
           icon: Factory,
           label: '涉及行业',
           value: industryCount,
-          gradient: 'from-emerald-500 to-emerald-400',
-          light: 'from-emerald-500/20 to-emerald-400/5',
+          gradient: 'from-primary/80 to-primary/60',
+          light: 'from-primary/20 to-primary/5',
         },
       ]
 
   return (
-    <div className="w-full lg:w-[460px] shrink-0 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
+    <div className="w-full shrink-0 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
       <div className="flex items-center gap-2 text-[14px] font-bold mb-4">
         <div className="w-7 h-7 rounded-xl bg-white/15 border border-white/10 flex items-center justify-center">
           <BarChart3 className="w-4 h-4 text-white/90" />

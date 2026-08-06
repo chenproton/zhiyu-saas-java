@@ -2,26 +2,14 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Search,
-  Filter,
-  X,
-  ChevronRight,
-  Library,
-  ClipboardList,
-  FileText,
-  Clock,
-  Sparkles,
-  PlayCircle,
-} from 'lucide-react'
+import { ChevronRight, Library, ClipboardList, FileText, Clock, PlayCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { questionBankApi, examApi, evaluationBatchApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
 import type { QuestionBank, Exam } from '@/lib/types'
-import { PlatformFooter } from '@/components/job/student/platform-footer'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
+import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
@@ -45,7 +33,7 @@ function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
       href={`/evaluation/landing/banks/${bank.id}`}
       className="group block no-underline text-inherit"
     >
-      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-primary/30 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
         <div
           className="h-[110px] flex items-center justify-center shrink-0 relative"
           style={{ background: coverGradients[index % coverGradients.length] }}
@@ -67,9 +55,7 @@ function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" /> {formatDate(bank.createdAt)}
             </span>
-            <span className="text-primary group-hover:text-primary font-medium">
-              查看详情 →
-            </span>
+            <span className="text-primary group-hover:text-primary font-medium">查看详情 →</span>
           </div>
         </div>
       </div>
@@ -83,7 +69,7 @@ function ExamCard({ exam, index }: { exam: Exam; index: number }) {
       href={`/evaluation/landing/exams/${exam.id}`}
       className="group block no-underline text-inherit"
     >
-      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-primary/30 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
         <div
           className="h-[110px] flex items-center justify-center shrink-0 relative"
           style={{ background: coverGradients[(index + 3) % coverGradients.length] }}
@@ -244,127 +230,94 @@ export default function LandingHomePage() {
     setCurrentPage(1)
   }
 
+  const removeFilter = (type: string) => {
+    if (type === 'keyword') setKeyword('')
+    if (type === 'batch') setSelectedBatch('全部')
+    setCurrentPage(1)
+  }
+
+  const activeFilters = useMemo(() => {
+    const filters: { type: string; label: string }[] = []
+    if (keyword.trim()) filters.push({ type: 'keyword', label: `关键词：${keyword.trim()}` })
+    if (selectedBatch !== '全部') filters.push({ type: 'batch', label: `批次：${selectedBatch}` })
+    return filters
+  }, [keyword, selectedBatch])
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
-      {/* Hero Banner */}
-      <div className="relative w-full pt-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/75 to-primary/40" />
-        <div
-          className="absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)`,
-            backgroundSize: '52px 52px',
-          }}
-        />
-        <div className="absolute top-[-120px] right-[-5%] w-[500px] h-[500px] rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-primary/15 blur-[100px] pointer-events-none" />
-        <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-primary/10 blur-[80px] pointer-events-none" />
-
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
-          <div className="flex-1 pt-4">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-              海量题库 · 智能组卷 · 在线考试
+    <LandingShell
+      hero={{
+        badge: '海量题库 · 智能组卷 · 在线考试',
+        title: (
+          <>
+            测评资源平台
+            <br />
+            <span className="text-white/80">海量题库与试卷，助力教学测评</span>
+          </>
+        ),
+        description: '丰富题库资源与智能组卷工具，支持在线考试与自动评分，让教学测评更高效',
+        ctaLabel: '浏览资源',
+        right: (
+          <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-7 text-white shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
+            <div className="text-[15px] font-bold text-white/90 mb-5 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
+                📊
+              </span>
+              平台统计
             </div>
-            <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
-              测评资源平台
-              <br />
-              <span className="text-white/80">海量题库与试卷，助力教学测评</span>
-            </h1>
-            <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
-              丰富题库资源与智能组卷工具，支持在线考试与自动评分，让教学测评更高效
-            </p>
-            <Button
-              className="inline-flex items-center gap-2 bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
-              onClick={() =>
-                listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }
-            >
-              浏览资源 <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-4 pt-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-7 text-white shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
-              <div className="text-[15px] font-bold text-white/90 mb-5 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
-                  📊
-                </span>
-                平台统计
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] text-white/65">题库总数</span>
+                <span className="text-[26px] font-bold">{banks.length.toLocaleString()}</span>
               </div>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-[14px] text-white/65">题库总数</span>
-                  <span className="text-[26px] font-bold">{banks.length.toLocaleString()}</span>
-                </div>
-                <hr className="border-white/8" />
-                <div className="flex justify-between items-center">
-                  <span className="text-[14px] text-white/65">试卷总数</span>
-                  <span className="text-[26px] font-bold">{exams.length.toLocaleString()}</span>
-                </div>
-                <hr className="border-white/8" />
-                <div className="flex justify-between items-center">
-                  <span className="text-[14px] text-white/65">题目总数</span>
-                  <span className="text-[26px] font-bold">{totalQuestions.toLocaleString()}</span>
-                </div>
+              <hr className="border-white/8" />
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] text-white/65">试卷总数</span>
+                <span className="text-[26px] font-bold">{exams.length.toLocaleString()}</span>
+              </div>
+              <hr className="border-white/8" />
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] text-white/65">题目总数</span>
+                <span className="text-[26px] font-bold">{totalQuestions.toLocaleString()}</span>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Stats bar */}
-      <div className="max-w-[1400px] mx-auto px-8 -mt-10 relative z-20 w-full">
-        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_12px_40px_rgba(0,0,0,0.08)] p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              icon: Library,
-              value: banks.length,
-              label: '题库总数',
-              gradient: 'from-purple-500 to-purple-400',
-            },
-            {
-              icon: ClipboardList,
-              value: exams.length,
-              label: '试卷总数',
-              gradient: 'from-violet-500 to-violet-400',
-            },
-            {
-              icon: FileText,
-              value: totalQuestions,
-              label: '题目总数',
-              gradient: 'from-fuchsia-500 to-fuchsia-400',
-            },
-            {
-              icon: PlayCircle,
-              value: exams.length,
-              label: '可参与考试',
-              gradient: 'from-pink-500 to-pink-400',
-            },
-          ].map((s, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 p-4 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-lg hover:bg-[#f5f8ff] cursor-default group"
-            >
-              <div
-                className={`relative w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient} shrink-0 overflow-hidden`}
-              >
-                <s.icon className="w-7 h-7 relative z-10" strokeWidth={1.8} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[28px] font-bold text-[#0f172a] leading-none tracking-tight">
-                  {s.value.toLocaleString()}
-                </div>
-                <div className="text-[13px] text-[#64748b] mt-1 font-medium">{s.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <main ref={listRef} className="max-w-[1400px] mx-auto px-8 py-8 w-full flex-1">
-        {/* 考试中心入口 */}
+        ),
+      }}
+      stats={[
+        {
+          icon: Library,
+          value: banks.length,
+          label: '题库总数',
+          gradient: 'from-primary to-primary/80',
+        },
+        {
+          icon: ClipboardList,
+          value: exams.length,
+          label: '试卷总数',
+          gradient: 'from-primary/90 to-primary/70',
+        },
+        {
+          icon: FileText,
+          value: totalQuestions,
+          label: '题目总数',
+          gradient: 'from-primary/80 to-primary/60',
+        },
+        {
+          icon: PlayCircle,
+          value: exams.length,
+          label: '可参与考试',
+          gradient: 'from-primary/90 to-primary/70',
+        },
+      ]}
+      beforeList={
         <div className="bg-gradient-to-r from-primary via-primary to-primary/80 rounded-2xl p-6 mb-6 shadow-[0_8px_24px_rgba(22,119,255,0.25)] relative overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.1] pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)`, backgroundSize: '36px 36px' }} />
+          <div
+            className="absolute inset-0 opacity-[0.1] pointer-events-none"
+            style={{
+              backgroundImage: `linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)`,
+              backgroundSize: '36px 36px',
+            }}
+          />
           <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-4">
               <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0">
@@ -387,166 +340,85 @@ export default function LandingHomePage() {
             </Button>
           </div>
         </div>
-
-        {/* Filter */}
-        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-6">
-          <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
-            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-            <Filter className="w-4 h-4 text-primary" />
-            资源筛选
-          </div>
-          <div className="space-y-0">
-            {batches.length > 1 && (
-              <LandingFilterRow
-                label="批次"
-                items={batches}
-                selected={selectedBatch}
-                onSelect={handleBatchChange}
-                showBorder={false}
+      }
+      filterTitle="资源筛选"
+      filterRows={
+        <LandingFilterRow
+          label="批次"
+          items={batches}
+          selected={selectedBatch}
+          onSelect={handleBatchChange}
+          showBorder={false}
+          accentColor="primary"
+        />
+      }
+      activeFilters={activeFilters}
+      onRemoveFilter={removeFilter}
+      onClearFilters={clearFilters}
+      sortOptions={SORT_OPTIONS}
+      sort={sort}
+      onSortChange={handleSortChange}
+      keyword={keyword}
+      onKeywordChange={handleKeywordChange}
+      onSearch={executeSearch}
+      searchPlaceholder="搜索题库、试卷名称"
+      totalCount={filteredBanks.length + filteredExams.length}
+      countLabel="个资源"
+      listRef={listRef}
+    >
+      {loading ? (
+        <LandingSkeleton count={8} height="h-[340px]" />
+      ) : filteredBanks.length === 0 && filteredExams.length === 0 ? (
+        <LandingEmpty title="暂无匹配的资源" hint="试试调整搜索关键词" />
+      ) : (
+        <>
+          {filteredBanks.length > 0 && (
+            <div className="mb-10">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
+                  题库
+                  <span className="text-[13px] text-[#64748b] font-normal ml-1">
+                    ({filteredBanks.length})
+                  </span>
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {pageBanks.map((bank, i) => (
+                  <BankCard key={bank.id} bank={bank} index={i} />
+                ))}
+              </div>
+              <LandingPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(p) => {
+                  setCurrentPage(p)
+                  listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
                 accentColor="primary"
               />
-            )}
-          </div>
-          {(keyword.trim() || selectedBatch !== '全部') && (
-            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-dashed border-[#cbd5e1]">
-              <span className="text-[13px] text-[#64748b]">已选条件：</span>
-              {keyword.trim() && (
-                <span className="inline-flex items-center gap-1.5 bg-primary/5 text-primary text-xs px-2.5 py-1 rounded-full border border-primary/10">
-                  关键词：{keyword.trim()}
-                  <X
-                    className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors"
-                    onClick={() => handleKeywordChange('')}
-                  />
-                </span>
-              )}
-              {selectedBatch !== '全部' && (
-                <span className="inline-flex items-center gap-1.5 bg-primary/5 text-primary text-xs px-2.5 py-1 rounded-full border border-primary/10">
-                  批次：{selectedBatch}
-                  <X
-                    className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors"
-                    onClick={() => handleBatchChange('全部')}
-                  />
-                </span>
-              )}
-              <button
-                onClick={clearFilters}
-                className="text-[13px] text-primary hover:text-primary font-medium"
-              >
-                清空筛选
-              </button>
             </div>
           )}
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm">
-            {SORT_OPTIONS.map((s) => (
-              <button
-                key={s.value}
-                onClick={() => handleSortChange(s.value)}
-                className={`px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium ${sort === s.value ? 'bg-primary text-white shadow-md' : 'text-[#475569] hover:text-primary hover:bg-primary/5'}`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-          <div className="relative w-full sm:w-[360px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
-            <Input
-              value={keyword}
-              onChange={(e) => handleKeywordChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') executeSearch()
-              }}
-              placeholder="搜索题库、试卷名称"
-              className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 focus:bg-white transition-all"
-            />
-            <Button
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
-              onClick={executeSearch}
-            >
-              搜索
-            </Button>
-          </div>
-        </div>
-
-        <div className="text-[13px] text-[#64748b] mb-6">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            当前共展示{' '}
-            <b className="text-primary">{filteredBanks.length + filteredExams.length}</b> 个资源
-          </span>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl border border-[#e7e5e4] h-[340px] animate-pulse shadow-sm"
-              />
-            ))}
-          </div>
-        ) : filteredBanks.length === 0 && filteredExams.length === 0 ? (
-          <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#f8fafc] flex items-center justify-center">
-              <Search className="w-8 h-8 opacity-30" />
+          {filteredExams.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
+                  试卷
+                  <span className="text-[13px] text-[#64748b] font-normal ml-1">
+                    ({filteredExams.length})
+                  </span>
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {filteredExams.map((exam, i) => (
+                  <ExamCard key={exam.id} exam={exam} index={i} />
+                ))}
+              </div>
             </div>
-            <div className="text-[15px] font-medium text-[#475569]">暂无匹配的资源</div>
-            <div className="text-[13px] mt-1">试试调整搜索关键词</div>
-          </div>
-        ) : (
-          <>
-            {filteredBanks.length > 0 && (
-              <div className="mb-10">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
-                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-                    题库
-                    <span className="text-[13px] text-[#64748b] font-normal ml-1">
-                      ({filteredBanks.length})
-                    </span>
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  {pageBanks.map((bank, i) => (
-                    <BankCard key={bank.id} bank={bank} index={i} />
-                  ))}
-                </div>
-                <LandingPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={(p) => {
-                    setCurrentPage(p)
-                    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }}
-                  accentColor="primary"
-                />
-              </div>
-            )}
-            {filteredExams.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
-                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-                    试卷
-                    <span className="text-[13px] text-[#64748b] font-normal ml-1">
-                      ({filteredExams.length})
-                    </span>
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  {filteredExams.map((exam, i) => (
-                    <ExamCard key={exam.id} exam={exam} index={i} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </main>
-      <PlatformFooter />
-    </div>
+          )}
+        </>
+      )}
+    </LandingShell>
   )
 }

@@ -2,7 +2,7 @@
 
 import { TopNav } from '@/components/portal/top-nav'
 
-export default function JobStudentLayout({
+export default function AllianceLandingLayout({
   children,
 }: Readonly<{
   children: React.ReactNode

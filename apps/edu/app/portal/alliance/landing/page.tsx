@@ -8,7 +8,6 @@ import {
   Users,
   Trophy,
   Briefcase,
-  Star,
   GraduationCap,
   UserCircle,
   Heart,
@@ -37,6 +36,7 @@ import type {
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { LandingShell, LandingEmpty } from '@/components/shared/landing-shell'
 
 interface LandingData {
   schoolInfo: AllianceSchoolInfo | null
@@ -48,11 +48,6 @@ interface LandingData {
   brands: AllianceBrand[]
 }
 
-const SECTION_ANCHORS = [
-  { id: 'achievement-library', label: '产教融合成果库' },
-  { id: 'brand-library', label: '产教品牌库' },
-]
-
 const BRAND_CATEGORIES = [
   { id: 'talent', title: '人才品牌', icon: Users, href: '/portal/alliance/brands/talent' },
   { id: 'employer', title: '雇主品牌', icon: Building2, href: '/portal/alliance/brands/employer' },
@@ -62,22 +57,21 @@ const BRAND_CATEGORIES = [
   { id: 'culture', title: '文化品牌', icon: Heart, href: '/portal/alliance/brands/culture' },
 ]
 
-const STAT_COLORS = [
-  'from-red-500 to-red-600',
-  'from-red-400 to-rose-500',
-  'from-slate-600 to-slate-700',
-  'from-emerald-500 to-emerald-600',
-  'from-amber-500 to-amber-600',
+const STAT_GRADIENTS = [
+  'from-primary to-primary/80',
+  'from-primary/90 to-primary/70',
+  'from-primary/80 to-primary/60',
+  'from-primary/90 to-primary/70',
 ]
 
 function GradientPlaceholder({ className, seed }: { className?: string; seed?: string }) {
   const gradients = [
-    'from-red-500 to-red-600',
-    'from-rose-500 to-red-500',
+    'from-primary to-primary/80',
+    'from-primary/80 to-primary/60',
     'from-slate-500 to-slate-700',
-    'from-red-700 to-slate-700',
-    'from-orange-500 to-red-500',
-    'from-red-500 to-rose-500',
+    'from-primary/90 to-primary/70',
+    'from-primary to-primary/70',
+    'from-primary/80 to-primary/70',
   ]
   const grad = gradients[(seed?.length ?? 0) % gradients.length]
   return <div className={`bg-gradient-to-br ${grad} ${className ?? ''}`} />
@@ -104,7 +98,7 @@ function getProjectProgress(project: AllianceProject) {
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="text-center mb-14">
-      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 border border-red-100 text-red-600 text-xs font-medium mb-4">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-primary text-xs font-medium mb-4">
         <Sparkles className="w-3.5 h-3.5" />
         {title}
       </div>
@@ -122,25 +116,10 @@ function SectionSubHeading({ title, action }: { title: string; action?: React.Re
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
       <div className="flex items-center gap-3">
-        <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
+        <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-primary/80 to-primary/60" />
         <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
       </div>
       {action}
-    </div>
-  )
-}
-
-function SectionDivider() {
-  return <div className="border-t border-slate-100 pt-16 mt-16" />
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="text-center py-16 px-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 mb-20">
-      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-100 text-slate-400 mb-3">
-        <Sparkles className="h-5 w-5" />
-      </div>
-      <p className="text-sm text-slate-500 font-medium">{message}</p>
     </div>
   )
 }
@@ -149,7 +128,7 @@ function ViewAllLink({ href }: { href: string }) {
   return (
     <Link
       href={href}
-      className="group inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+      className="group inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
     >
       查看全部
       <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -161,7 +140,7 @@ function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
   const img = enterprise.coverImage
   return (
     <Link href={`/portal/alliance/enterprises/${enterprise.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-44 overflow-hidden bg-slate-800">
           {img ? (
             <img
@@ -227,7 +206,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
   const progress = getProjectProgress(project)
   return (
     <Link href={`/portal/alliance/projects/${project.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden">
           {project.coverImage ? (
             <img
@@ -252,7 +231,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
           </div>
         </div>
         <CardContent className="p-4 flex-1 flex flex-col">
-          <h4 className="font-semibold text-slate-900 text-sm mb-1.5 group-hover:text-red-600 transition-colors line-clamp-1">
+          <h4 className="font-semibold text-slate-900 text-sm mb-1.5 group-hover:text-primary transition-colors line-clamp-1">
             {project.name}
           </h4>
           <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3 min-h-[2.6em]">
@@ -285,7 +264,7 @@ function ProjectCard({ project }: { project: AllianceProject }) {
 function AchievementCard({ achievement }: { achievement: AllianceAchievement }) {
   return (
     <Link href={`/portal/alliance/achievements/${achievement.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden">
           {achievement.coverImage ? (
             <img
@@ -307,7 +286,7 @@ function AchievementCard({ achievement }: { achievement: AllianceAchievement }) 
           </div>
         </div>
         <CardContent className="p-4 flex-1 flex flex-col">
-          <h4 className="font-semibold text-slate-900 text-sm mb-1.5 group-hover:text-red-600 transition-colors line-clamp-1">
+          <h4 className="font-semibold text-slate-900 text-sm mb-1.5 group-hover:text-primary transition-colors line-clamp-1">
             {achievement.title}
           </h4>
           <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3 min-h-[2.6em]">
@@ -329,7 +308,7 @@ function AchievementCard({ achievement }: { achievement: AllianceAchievement }) 
 function ExpertCard({ expert }: { expert: AllianceExpert }) {
   return (
     <Link href={`/portal/alliance/experts/${expert.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col p-0 gap-0">
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col p-0 gap-0">
         <div className="h-16 relative">
           <GradientPlaceholder seed={expert.industry} className="absolute inset-0 w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -390,7 +369,7 @@ function ExpertCard({ expert }: { expert: AllianceExpert }) {
 function BrandCard({ brand }: { brand: AllianceBrand }) {
   return (
     <Link href={`/portal/alliance/brands/${brand.id}`}>
-      <Card className="group border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden">
           {brand.coverImage ? (
             <img
@@ -409,7 +388,7 @@ function BrandCard({ brand }: { brand: AllianceBrand }) {
           </div>
         </div>
         <CardContent className="p-4 flex-1 flex flex-col">
-          <h4 className="font-semibold text-slate-900 text-sm mb-1 group-hover:text-red-600 transition-colors line-clamp-1">
+          <h4 className="font-semibold text-slate-900 text-sm mb-1 group-hover:text-primary transition-colors line-clamp-1">
             {brand.name}
           </h4>
           <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-2.5 min-h-[2.6em]">
@@ -433,70 +412,13 @@ function BrandCard({ brand }: { brand: AllianceBrand }) {
   )
 }
 
-function SectionAnchorNav() {
-  const [activeId, setActiveId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveId(entry.target.id)
-          }
-        })
-      },
-      { rootMargin: '-45% 0px -45% 0px', threshold: 0 },
-    )
-
-    SECTION_ANCHORS.forEach(({ id }) => {
-      const el = document.getElementById(id)
-      if (el) observer.observe(el)
-    })
-
-    return () => observer.disconnect()
-  }, [])
-
-  const handleClick = (id: string) => {
-    const el = document.getElementById(id)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
-  return (
-    <nav className="fixed right-5 top-1/2 -translate-y-1/2 z-50 hidden lg:flex flex-col items-end gap-4">
-      {SECTION_ANCHORS.map(({ id, label }) => {
-        const active = activeId === id
-        return (
-          <button
-            key={id}
-            onClick={() => handleClick(id)}
-            className="group flex items-center gap-3 text-right"
-          >
-            <span className="text-sm font-medium transition-all duration-300 text-slate-500 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0">
-              {label}
-            </span>
-            <span
-              className={`block w-2.5 h-2.5 rounded-full border-2 transition-all duration-300 ${
-                active
-                  ? 'bg-red-500 border-red-500 scale-125'
-                  : 'bg-white border-slate-300 group-hover:border-red-300'
-              }`}
-            />
-          </button>
-        )
-      })}
-    </nav>
-  )
-}
-
 function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null }) {
   if (!schoolInfo) {
     return (
       <Card className="border border-white/10 shadow-2xl shadow-black/20 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl">
         <CardContent className="p-7">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-xl border border-white/20 shadow-md bg-gradient-to-br from-red-500 to-red-600" />
+            <div className="w-16 h-16 rounded-xl border border-white/20 shadow-md bg-gradient-to-br from-primary to-primary/70" />
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg text-white">校企合作联盟</h3>
               <p className="text-sm text-slate-300 mt-1">产教融合 · 协同育人 · 互利共赢</p>
@@ -504,11 +426,11 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
           </div>
           <div className="grid grid-cols-3 gap-4 mt-7 py-6 border-y border-white/10">
             <div className="text-center">
-              <p className="text-3xl font-bold text-red-100">—</p>
+              <p className="text-3xl font-bold text-white/90">—</p>
               <p className="text-xs text-slate-400 mt-1">在校生</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-bold text-red-100">—</p>
+              <p className="text-3xl font-bold text-white/90">—</p>
               <p className="text-xs text-slate-400 mt-1">教师</p>
             </div>
             <div className="text-center">
@@ -547,7 +469,7 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
                 href={schoolInfo.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-red-100 hover:text-white mt-1 inline-flex items-center gap-1"
+                className="text-sm text-white/70 hover:text-white mt-1 inline-flex items-center gap-1"
               >
                 前往官网 <ArrowUpRight className="h-3 w-3" />
               </a>
@@ -556,13 +478,13 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
         </div>
         <div className="grid grid-cols-3 gap-4 mt-7 py-6 border-y border-white/10">
           <div className="text-center">
-            <p className="text-3xl font-bold text-red-100">
+            <p className="text-3xl font-bold text-white/90">
               {scale.studentCount?.toLocaleString?.() ?? '—'}
             </p>
             <p className="text-xs text-slate-400 mt-1">在校生</p>
           </div>
           <div className="text-center">
-            <p className="text-3xl font-bold text-red-100">{scale.teacherCount ?? '—'}</p>
+            <p className="text-3xl font-bold text-white/90">{scale.teacherCount ?? '—'}</p>
             <p className="text-xs text-slate-400 mt-1">教师</p>
           </div>
           <div className="text-center">
@@ -653,7 +575,6 @@ export default function AllianceLandingPage() {
       { label: '合作项目', value: data.stats.projectCount, icon: FolderKanban },
       { label: '企业专家', value: data.stats.expertCount, icon: Users },
       { label: '合作成果', value: data.stats.achievementCount, icon: Trophy },
-      { label: '品牌展示', value: data.stats.brandCount, icon: Star },
     ]
   }, [data.stats])
 
@@ -669,249 +590,166 @@ export default function AllianceLandingPage() {
   if (loading) return <LoadingView />
 
   return (
-    <div className="min-h-screen bg-white">
-      <SectionAnchorNav />
-
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800" />
-        <div
-          className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)',
-            backgroundSize: '40px 40px',
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/30 to-slate-950/60" />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-red-500/15 rounded-full blur-[140px] -translate-y-1/3 translate-x-1/4" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-red-500/15 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-500/5 rounded-full blur-[160px]" />
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 lg:pb-32">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs border border-white/15 mb-6 shadow-sm shadow-black/20">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                产教融合 · 协同育人 · 互利共赢
-              </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white mb-6 leading-[1.15] tracking-tight">
-                搭建产教融合桥梁
-                <span className="block mt-2 bg-clip-text text-transparent bg-gradient-to-r from-red-200 via-red-100 to-red-200">
-                  共育产业英才
-                </span>
-              </h1>
-              <p className="text-base md:text-lg text-slate-300 mb-10 max-w-lg leading-relaxed">
-                坚持以产业需求为牵引，面向职业岗位能力要求，依托真实实践场景，推动企业用人标准、教学培养目标与人才测评体系协同贯通。
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Button
-                  asChild
-                  className="rounded-full px-7 py-5 text-sm font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg shadow-red-500/30 transition-all hover:shadow-xl hover:shadow-red-500/20 hover:-translate-y-0.5"
-                >
-                  <Link href="/portal/alliance/enterprises">探索合作企业</Link>
-                </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="rounded-full px-7 py-5 text-sm font-semibold border border-white/25 text-white bg-white/5 hover:bg-white/10 hover:border-white/40 transition-all backdrop-blur-sm shadow-sm shadow-black/10"
-                >
-                  <Link href="/portal/alliance/projects">浏览合作项目</Link>
-                </Button>
-              </div>
-            </div>
-
-            <div className="hidden lg:block">
-              <HeroSchoolCard schoolInfo={data.schoolInfo} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="relative -mt-12 z-10 pb-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="border border-slate-100/80 shadow-2xl shadow-slate-200/40 rounded-2xl bg-white/95 backdrop-blur-sm">
-            <CardContent className="p-6 md:p-10">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 md:gap-8">
-                {statsList.map((stat, idx) => {
-                  const Icon = stat.icon
-                  return (
-                    <div
-                      key={stat.label}
-                      className="text-center group p-3 rounded-2xl hover:bg-slate-50/80 transition-colors duration-300"
-                    >
-                      <div
-                        className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br ${STAT_COLORS[idx]} text-white mb-4 shadow-md shadow-slate-200/60 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300`}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <p className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-slate-900 to-slate-700">
-                        {stat.value}+
-                      </p>
-                      <p className="text-sm text-slate-500 mt-1.5 font-medium">{stat.label}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
+    <LandingShell
+      hero={{
+        badge: '产教融合 · 协同育人 · 互利共赢',
+        title: (
+          <>
+            搭建产教融合桥梁
+            <br />
+            <span className="text-white/80">共育产业英才</span>
+          </>
+        ),
+        description:
+          '坚持以产业需求为牵引，面向职业岗位能力要求，依托真实实践场景，推动企业用人标准、教学培养目标与人才测评体系协同贯通。',
+        ctaLabel: '探索合作企业',
+        right: <HeroSchoolCard schoolInfo={data.schoolInfo} />,
+      }}
+      stats={statsList.map((stat, idx) => ({
+        icon: stat.icon,
+        value: `${stat.value}+`,
+        label: stat.label,
+        gradient: STAT_GRADIENTS[idx % STAT_GRADIENTS.length],
+      }))}
+    >
       {/* 产教融合成果库 */}
-      <section
-        id="achievement-library"
-        className="relative py-20 bg-gradient-to-b from-slate-50/90 via-white to-red-500/5 overflow-hidden"
-      >
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeading
-            title="产教融合成果库"
-            subtitle="多元主体协同，以产业需求为牵引，以学生能力为中心，以场景实践为载体，以跨专业融合为特征"
-          />
+      <section className="relative py-10">
+        <SectionHeading
+          title="产教融合成果库"
+          subtitle="多元主体协同，以产业需求为牵引，以学生能力为中心，以场景实践为载体，以跨专业融合为特征"
+        />
 
-          <SectionSubHeading
-            title="合作企业"
-            action={<ViewAllLink href="/portal/alliance/enterprises" />}
-          />
-          {data.enterprises.length === 0 ? (
-            <EmptyState message="暂无合作企业" />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-20">
-              {data.enterprises.map((enterprise) => (
-                <EnterpriseCard key={enterprise.id} enterprise={enterprise} />
-              ))}
-            </div>
-          )}
+        <SectionSubHeading
+          title="合作企业"
+          action={<ViewAllLink href="/portal/alliance/enterprises" />}
+        />
+        {data.enterprises.length === 0 ? (
+          <div className="mb-20">
+            <LandingEmpty title="暂无合作企业" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-20">
+            {data.enterprises.map((enterprise) => (
+              <EnterpriseCard key={enterprise.id} enterprise={enterprise} />
+            ))}
+          </div>
+        )}
 
-          <SectionDivider />
+        <SectionSubHeading
+          title="合作项目"
+          action={<ViewAllLink href="/portal/alliance/projects" />}
+        />
+        {data.projects.length === 0 ? (
+          <div className="mb-20">
+            <LandingEmpty title="暂无合作项目" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
+            {data.projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        )}
 
-          <SectionSubHeading
-            title="合作项目"
-            action={<ViewAllLink href="/portal/alliance/projects" />}
-          />
-          {data.projects.length === 0 ? (
-            <EmptyState message="暂无合作项目" />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
-              {data.projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
-          )}
+        <SectionSubHeading
+          title="合作成果"
+          action={<ViewAllLink href="/portal/alliance/achievements" />}
+        />
+        {data.achievements.length === 0 ? (
+          <div className="mb-20">
+            <LandingEmpty title="暂无合作成果" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
+            {data.achievements.map((achievement) => (
+              <AchievementCard key={achievement.id} achievement={achievement} />
+            ))}
+          </div>
+        )}
 
-          <SectionDivider />
-
-          <SectionSubHeading
-            title="合作成果"
-            action={<ViewAllLink href="/portal/alliance/achievements" />}
-          />
-          {data.achievements.length === 0 ? (
-            <EmptyState message="暂无合作成果" />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
-              {data.achievements.map((achievement) => (
-                <AchievementCard key={achievement.id} achievement={achievement} />
-              ))}
-            </div>
-          )}
-
-          <SectionDivider />
-
-          <SectionSubHeading
-            title="专家资源"
-            action={<ViewAllLink href="/portal/alliance/experts" />}
-          />
-          {data.experts.length === 0 ? (
-            <EmptyState message="暂无专家资源" />
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-              {data.experts.map((expert) => (
-                <ExpertCard key={expert.id} expert={expert} />
-              ))}
-            </div>
-          )}
-        </div>
+        <SectionSubHeading title="专家资源" action={<ViewAllLink href="/portal/alliance/experts" />} />
+        {data.experts.length === 0 ? (
+          <LandingEmpty title="暂无专家资源" />
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+            {data.experts.map((expert) => (
+              <ExpertCard key={expert.id} expert={expert} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 产教品牌库 */}
-      <section
-        id="brand-library"
-        className="relative py-20 bg-gradient-to-b from-white via-slate-50/50 to-white overflow-hidden"
-      >
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeading
-            title="产教品牌库"
-            subtitle="人才培养、校企合作、专业建设等各领域品牌成果"
-          />
+      <section className="relative py-14">
+        <SectionHeading
+          title="产教品牌库"
+          subtitle="人才培养、校企合作、专业建设等各领域品牌成果"
+        />
 
-          {/* 六大分类 */}
-          <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-16">
-            {BRAND_CATEGORIES.map((cat) => {
-              const Icon = cat.icon
-              return (
-                <Link key={cat.id} href={cat.href}>
-                  <div className="group flex items-center gap-3 px-5 py-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:shadow-red-500/10 hover:border-red-300 hover:bg-red-50 transition-all duration-300 hover:-translate-y-0.5">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center group-hover:from-red-100 group-hover:to-red-200 transition-colors">
-                      <Icon className="h-[18px] w-[18px] text-red-600" />
-                    </div>
-                    <span className="font-medium text-slate-700 group-hover:text-red-600 transition-colors">
-                      {cat.title}
-                    </span>
+        {/* 六大分类 */}
+        <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-16">
+          {BRAND_CATEGORIES.map((cat) => {
+            const Icon = cat.icon
+            return (
+              <Link key={cat.id} href={cat.href}>
+                <div className="group flex items-center gap-3 px-5 py-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 hover:bg-primary/5 transition-all duration-300 hover:-translate-y-0.5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
+                    <Icon className="h-[18px] w-[18px] text-primary" />
                   </div>
-                </Link>
+                  <span className="font-medium text-slate-700 group-hover:text-primary transition-colors">
+                    {cat.title}
+                  </span>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Featured brands grouped by type */}
+        {data.brands.length > 0 && (
+          <Tabs defaultValue={BRAND_CATEGORIES[0].id} className="w-full">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary/80 to-primary/60" />
+                <h3 className="text-lg font-semibold text-slate-800">推荐品牌</h3>
+              </div>
+              <TabsList className="rounded-xl">
+                {BRAND_CATEGORIES.map((cat) => (
+                  <TabsTrigger key={cat.id} value={cat.id} className="rounded-lg text-xs">
+                    {cat.title}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <ViewAllLink href="/portal/alliance/brands" />
+            </div>
+            {BRAND_CATEGORIES.map((cat) => {
+              const items = featuredBrandsByType[cat.id] ?? []
+              return (
+                <TabsContent key={cat.id} value={cat.id}>
+                  {items.length === 0 ? (
+                    <LandingEmpty title={`暂无${cat.title}`} />
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {items.map((brand) => (
+                        <BrandCard key={brand.id} brand={brand} />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
               )
             })}
-          </div>
-
-          {/* Featured brands grouped by type */}
-          {data.brands.length > 0 && (
-            <Tabs defaultValue={BRAND_CATEGORIES[0].id} className="w-full">
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-1 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
-                  <h3 className="text-lg font-semibold text-slate-800">推荐品牌</h3>
-                </div>
-                <TabsList className="rounded-xl">
-                  {BRAND_CATEGORIES.map((cat) => (
-                    <TabsTrigger key={cat.id} value={cat.id} className="rounded-lg text-xs">
-                      {cat.title}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                <ViewAllLink href="/portal/alliance/brands" />
-              </div>
-              {BRAND_CATEGORIES.map((cat) => {
-                const items = featuredBrandsByType[cat.id] ?? []
-                return (
-                  <TabsContent key={cat.id} value={cat.id}>
-                    {items.length === 0 ? (
-                      <EmptyState message={`暂无${cat.title}`} />
-                    ) : (
-                      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {items.map((brand) => (
-                          <BrandCard key={brand.id} brand={brand} />
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
-                )
-              })}
-            </Tabs>
-          )}
-        </div>
+          </Tabs>
+        )}
       </section>
 
       {/* CTA */}
-      <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-red-500/10 via-red-500/5 to-red-500/6" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-1/4 w-[400px] h-[200px] bg-red-500/10 rounded-full blur-[100px]" />
+      <section className="relative py-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-primary/5 to-primary/10" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-1/4 w-[400px] h-[200px] bg-primary/10 rounded-full blur-[100px]" />
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-red-100 text-red-600 text-xs font-medium mb-5 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-primary/10 text-primary text-xs font-medium mb-5 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
             共建生态
           </div>
@@ -923,12 +761,12 @@ export default function AllianceLandingPage() {
           </p>
           <Button
             asChild
-            className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg shadow-red-500/20 transition-all hover:shadow-xl hover:shadow-red-500/15 hover:-translate-y-0.5"
+            className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/15 hover:-translate-y-0.5"
           >
             <Link href="/portal/alliance/brands">探索更多品牌</Link>
           </Button>
         </div>
       </section>
-    </div>
+    </LandingShell>
   )
 }
