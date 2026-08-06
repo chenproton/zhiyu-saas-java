@@ -55,6 +55,7 @@ func (h *CertificateLibraryHandler) crud() crudConfig[CertificateLibraryRequest,
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *CertificateLibraryRequest) (string, bool) {
 			return requireTenant(w, r)
 		},
+		TenantFn: requireTenant,
 		CreateFn: func(ctx context.Context, t *CertificateLibraryRequest, tenantID, userID string) (string, error) {
 			return h.Store.Create(ctx, store.CertificateLibraryCreateParams{
 				TenantID:    tenantID,
