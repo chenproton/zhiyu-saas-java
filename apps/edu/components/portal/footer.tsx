@@ -5,7 +5,7 @@ import { MALL_URL } from '@/lib/external-links'
 export function Footer() {
   return (
     <footer className="relative mt-20 bg-[#141a2e]">
-      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-500 via-indigo-400 to-cyan-400" />
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#1677FF]" />
 
       <div className="max-w-6xl mx-auto px-10 pt-12 pb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -15,7 +15,7 @@ export function Footer() {
             <div className="text-[12px] text-[#6b7a99]">版本：V3.2.1</div>
             <a
               href="#"
-              className="inline-flex items-center gap-1 text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors"
+              className="inline-flex items-center gap-1 text-[13px] text-[#9db4e0] hover:text-white transition-colors"
             >
               访问官网 →
             </a>
@@ -30,7 +30,7 @@ export function Footer() {
               href={`${MALL_URL}/login`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors"
+              className="inline-flex items-center gap-1 text-[13px] text-[#9db4e0] hover:text-white transition-colors"
             >
               进入资源商城 →
             </a>
@@ -42,12 +42,12 @@ export function Footer() {
               <li>服务热线：400-888-8888</li>
               <li>邮箱：support@example.com</li>
               <li>
-                <a href="#" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                <a href="#" className="text-[#9db4e0] hover:text-white transition-colors">
                   使用手册
                 </a>
               </li>
               <li>
-                <a href="#" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                <a href="#" className="text-[#9db4e0] hover:text-white transition-colors">
                   常见问题
                 </a>
               </li>

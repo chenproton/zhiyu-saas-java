@@ -273,92 +273,9 @@ function getIcon(name: string): ReactNode {
   return icons[name] || icons.book
 }
 
-/* ─── card style config ─── */
+/* ─── Bento layout: explicit 4-column grid placement ─── */
 type CardVariant = 'big' | 'tall' | 'wide' | 'small'
 
-interface CardConfig {
-  gradient: string
-  color: string
-  shadow: string
-  icon: string
-}
-
-const CARD_STYLES: Record<string, CardConfig> = {
-  alliance: {
-    gradient: 'linear-gradient(145deg,#fecaca,#fca5a5)',
-    color: '#ef4444',
-    shadow: 'rgba(239,68,68,0.3)',
-    icon: 'users',
-  },
-  career: {
-    gradient: 'linear-gradient(145deg,#ccfbf1,#99f6e4)',
-    color: '#14b8a6',
-    shadow: 'rgba(20,184,166,0.3)',
-    icon: 'briefcase',
-  },
-  scene: {
-    gradient: 'linear-gradient(120deg,#e0f2fe,#bae6fd)',
-    color: '#38bdf8',
-    shadow: 'rgba(56,189,248,0.3)',
-    icon: 'layers',
-  },
-  course: {
-    gradient: 'linear-gradient(145deg,#d1fae5,#a7f3d0)',
-    color: '#34d399',
-    shadow: 'rgba(52,211,153,0.3)',
-    icon: 'book',
-  },
-  ability: {
-    gradient: 'linear-gradient(145deg,#ede9fe,#ddd6fe)',
-    color: '#a78bfa',
-    shadow: 'rgba(167,139,250,0.3)',
-    icon: 'check-circle',
-  },
-  affairs: {
-    gradient: 'linear-gradient(145deg,#fef3c7,#fde68a)',
-    color: '#f59e0b',
-    shadow: 'rgba(245,158,11,0.3)',
-    icon: 'calendar',
-  },
-  ai: {
-    gradient: 'linear-gradient(120deg,#fce7f3,#fbcfe8)',
-    color: '#f472b6',
-    shadow: 'rgba(244,114,182,0.3)',
-    icon: 'sparkles',
-  },
-  resource: {
-    gradient: 'linear-gradient(120deg,#dbeafe,#bfdbfe)',
-    color: '#3b82f6',
-    shadow: 'rgba(59,130,246,0.3)',
-    icon: 'share',
-  },
-  mall: {
-    gradient: 'linear-gradient(120deg,#ecfccb,#d9f99d)',
-    color: '#84cc16',
-    shadow: 'rgba(132,204,22,0.3)',
-    icon: 'shopping-cart',
-  },
-  opc: {
-    gradient: 'linear-gradient(145deg,#fed7aa,#fdba74)',
-    color: '#fb923c',
-    shadow: 'rgba(251,146,60,0.3)',
-    icon: 'rocket',
-  },
-  decision: {
-    gradient: 'linear-gradient(120deg,#cffafe,#a5f3fc)',
-    color: '#22d3ee',
-    shadow: 'rgba(34,211,238,0.3)',
-    icon: 'bar-chart',
-  },
-  research: {
-    gradient: 'linear-gradient(145deg,#fae8ff,#f5d0fe)',
-    color: '#d946ef',
-    shadow: 'rgba(217,70,239,0.3)',
-    icon: 'graduation-cap',
-  },
-}
-
-/* ─── Bento layout: explicit 4-column grid placement ─── */
 interface CardLayout {
   id: string
   col: string
@@ -435,9 +352,7 @@ function GradientTile({
   gridColumn: string
   gridRow: string
 }) {
-  const style = CARD_STYLES[item.id]
   const isBig = variant === 'big'
-  const isTall = variant === 'tall'
   const effectiveUrl = INTERNAL_ROUTES[item.id] || ''
   const isLocked = !effectiveUrl
   const isRelative = effectiveUrl.startsWith('/')
@@ -458,33 +373,18 @@ function GradientTile({
   }
 
   const layoutClass = 'flex-col'
-  const color = style?.color || '#000'
-
   const iconH = isBig ? 'w-16 h-16 text-2xl mb-5' : 'w-[46px] h-[46px] text-xl mb-3.5'
   const placementClass = `${COL_START_CLASS[gridColumn] || ''} ${ROW_START_CLASS[gridRow] || ''}`
 
   return (
     <Wrapper
       {...wrapperProps}
-      className={`group rounded-2xl p-4 sm:p-6 bg-white/60 backdrop-blur-xl relative overflow-hidden flex border-[1.5px] ${layoutClass} ${placementClass} ${isLocked ? '' : 'cursor-pointer hover:-translate-y-2 transition-all duration-[400ms]'}`}
+      className={`group rounded-2xl p-4 sm:p-6 bg-white relative overflow-hidden flex border ${layoutClass} ${placementClass} ${isLocked ? '' : 'cursor-pointer hover:-translate-y-2 transition-all duration-[400ms]'}`}
       style={{
-        borderColor: `${color}3d`,
-        boxShadow: `0 2px 8px ${color}14, 0 16px 40px ${color}0a`,
+        borderColor: '#e8ecf3',
+        boxShadow: '0 0 30px rgba(0,73,174,0.08)',
       }}
     >
-      {/* decorative bubble */}
-      <div
-        className="absolute rounded-full pointer-events-none transition-all duration-700 group-hover:scale-[1.4]"
-        style={{ width: 140, height: 140, top: -50, right: -35, backgroundColor: `${color}28` }}
-      />
-
-      {(isBig || isTall) && (
-        <div
-          className="absolute rounded-full pointer-events-none"
-          style={{ width: 240, height: 240, bottom: -80, left: -80, backgroundColor: `${color}14` }}
-        />
-      )}
-
       {isLocked && (
         <div
           className="absolute top-3 right-3 flex flex-col items-center gap-0.5"
@@ -505,23 +405,18 @@ function GradientTile({
       )}
 
       <div
-        className={`rounded-2xl flex items-center justify-center relative transition-all duration-[400ms] group-hover:scale-110 group-hover:-rotate-6 shrink-0 ${iconH}`}
-        style={{
-          zIndex: 2,
-          backgroundColor: color,
-          color: '#fff',
-          boxShadow: `0 8px 28px ${color}3d`,
-        }}
+        className={`rounded-2xl flex items-center justify-center relative transition-all duration-[400ms] group-hover:scale-110 shrink-0 ${iconH} ${item.color}`}
+        style={{ zIndex: 2 }}
       >
         {getIcon(item.icon)}
       </div>
 
       {/* shared title + desc — identical across all variants */}
       <div className="relative" style={{ zIndex: 2 }}>
-        <h4 className="text-base sm:text-lg font-bold leading-tight mb-1 text-[#141a2e]">
+        <h4 className="text-base sm:text-lg font-bold leading-tight mb-1 text-[#333]">
           {item.title}
         </h4>
-        <p className="text-xs leading-relaxed text-[#5b677b] line-clamp-2">{item.desc}</p>
+        <p className="text-xs leading-relaxed text-[#666] line-clamp-2">{item.desc}</p>
       </div>
     </Wrapper>
   )
@@ -531,8 +426,8 @@ function GradientTile({
 function SectionLabel({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3 mb-[18px] mt-9">
-      <h3 className="text-base font-bold text-[#141a2e] flex items-center gap-2.5">
-        <span className="w-1 h-[18px] rounded-sm bg-gradient-to-b from-violet-600 to-cyan-400 inline-block" />
+      <h3 className="text-base font-bold text-[#333] flex items-center gap-2.5">
+        <span className="w-1 h-[18px] rounded-sm bg-[#1677FF] inline-block" />
         {title}
       </h3>
       <span className="flex-1 h-px bg-[#e9edf4]" />
@@ -546,46 +441,28 @@ export default function PortalHomePage() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Background: base color + radial gradients + grid pattern */}
+      {/* Background: plain light neutral base */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           zIndex: -2,
           background: `
-            radial-gradient(circle at 5% 8%, rgba(124,58,237,0.16), transparent 28%),
-            radial-gradient(circle at 95% 6%, rgba(236,72,153,0.13), transparent 30%),
-            radial-gradient(circle at 88% 92%, rgba(6,182,212,0.13), transparent 32%),
-            radial-gradient(circle at 10% 95%, rgba(245,158,11,0.1), transparent 30%),
-            #eef1f8
+            radial-gradient(circle at 50% -10%, rgba(22,119,255,0.06), transparent 45%),
+            #f7f9fc
           `,
-        }}
-      />
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          zIndex: -1,
-          backgroundImage: `
-            linear-gradient(rgba(79,70,229,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(79,70,229,0.03) 1px, transparent 1px)
-          `,
-          backgroundSize: '56px 56px',
-          WebkitMaskImage: 'linear-gradient(180deg, #000 0%, transparent 75%)',
-          maskImage: 'linear-gradient(180deg, #000 0%, transparent 75%)',
         }}
       />
 
       {/* Hero */}
       <section className="relative pt-8 pb-6 text-center px-4 sm:px-10">
         <div className="relative max-w-3xl mx-auto" style={{ zIndex: 2 }}>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#141a2e] tracking-wide leading-tight mb-3">
-            <span className="bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-400 bg-clip-text text-transparent">
-              场景化数智
-            </span>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#333] tracking-wide leading-tight mb-3">
+            <span className="text-[#0049AE]">场景化数智</span>
             教学服务体系
           </h1>
           <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-2">
             {features.map((f, i) => (
-              <span key={i} className="relative text-xs sm:text-sm text-[#8590a6] px-2 sm:px-4">
+              <span key={i} className="relative text-xs sm:text-sm text-[#666] px-2 sm:px-4">
                 {f.label}
                 {i < features.length - 1 && (
                   <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-[#c5cede]" />
