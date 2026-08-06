@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, FileEdit, Trash2, Lightbulb } from 'lucide-react'
+import { Plus, FileEdit, Trash2, Lightbulb, CalendarDays, MapPin, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -540,7 +540,7 @@ function VenuesSection() {
 
 // ==================== 节次管理 ====================
 
-const DAY_LABELS = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
+const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 const PERIOD_TYPE_META: Record<string, { label: string; bg: string; text: string; border: string; dot: string }> = {
   morning_self: { label: '早自习', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', dot: 'bg-sky-400' },
@@ -1120,13 +1120,46 @@ function DurationRow({
   )
 }
 
-/** Tab1 教务基础配置：学期 / 场地 / 节次 三组 CRUD */
+/** 教务基础配置：学期 / 场地 / 节次 三组 CRUD，Tab 切换 */
+const CONFIG_TABS = [
+  { id: 'terms', label: '学期管理', icon: CalendarDays },
+  { id: 'venues', label: '场地管理', icon: MapPin },
+  { id: 'periods', label: '节次管理', icon: Clock },
+] as const
+
+type ConfigTabId = (typeof CONFIG_TABS)[number]['id']
+
 export function VenuePeriodConfigTab({ onTermsChanged }: { onTermsChanged?: () => void }) {
+  const [tab, setTab] = useState<ConfigTabId>('terms')
+
   return (
     <div className="space-y-6">
-      <TermsSection onTermsChanged={onTermsChanged} />
-      <VenuesSection />
-      <PeriodSlotsSection />
+      <div className="rounded-xl border border-gray-100 bg-white p-1 shadow-sm">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+          {CONFIG_TABS.map((t) => {
+            const Icon = t.icon
+            const isActive = tab === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all',
+                  isActive
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      {tab === 'terms' && <TermsSection onTermsChanged={onTermsChanged} />}
+      {tab === 'venues' && <VenuesSection />}
+      {tab === 'periods' && <PeriodSlotsSection />}
     </div>
   )
 }
