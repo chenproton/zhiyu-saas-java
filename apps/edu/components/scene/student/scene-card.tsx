@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Layers, MapPin } from 'lucide-react'
 import type { Scenario } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
-import { COVER_GRADIENTS } from '@/lib/cover-gradients'
+import { coverGradientFor } from '@/lib/cover-gradients'
 
 interface SceneCardProps {
   scenario: Scenario
@@ -27,14 +27,13 @@ const professionTagMap: Record<string, { bg: string; text: string; border: strin
 
 export function SceneCard({
   scenario,
-  index = 0,
   taskCount = 0,
   knowledgePointCount = 0,
 }: SceneCardProps) {
   const displayTitle = scenario.name
   const coverStyle = scenario.coverImage
     ? { backgroundImage: `url('${scenario.coverImage}')` }
-    : { background: COVER_GRADIENTS[index % COVER_GRADIENTS.length] }
+    : { background: coverGradientFor(scenario.id) }
 
   const industryName =
     scenario.industryNames?.[0] || (scenario.industryIds?.length ? '已关联' : '未分类')

@@ -54,7 +54,7 @@ import {
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
 import { formatDate } from '@/lib/format-utils'
-import { COVER_GRADIENTS } from '@/lib/cover-gradients'
+import { coverGradientFor } from '@/lib/cover-gradients'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 
 const TABS = [
@@ -521,7 +521,7 @@ export default function SceneDetailPage() {
 
   const coverStyle = scenario.coverImage
     ? { backgroundImage: `url('${scenario.coverImage}')` }
-    : { background: COVER_GRADIENTS[0] }
+    : { background: coverGradientFor(scenario.id) }
 
   const renderTabContent = () => {
     switch (activeTab) {
