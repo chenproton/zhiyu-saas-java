@@ -54,6 +54,7 @@ import {
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
 import { formatDate } from '@/lib/format-utils'
+import { COVER_GRADIENTS } from '@/lib/cover-gradients'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 
 const TABS = [
@@ -62,14 +63,6 @@ const TABS = [
   { value: 'abilities', label: '能力模型', icon: Lightbulb },
   { value: 'evaluation', label: '评价标准', icon: Target },
   { value: 'knowledge', label: '知识图谱', icon: GitBranch },
-]
-
-const coverGradients = [
-  'linear-gradient(135deg,#667eea,#764ba2)',
-  'linear-gradient(135deg,#f093fb,#f5576c)',
-  'linear-gradient(135deg,#4facfe,#00f2fe)',
-  'linear-gradient(135deg,#fa709a,#fee140)',
-  'linear-gradient(135deg,#30cfd0,#330867)',
 ]
 
 const taskTypeLabels: Record<string, string> = {
@@ -528,7 +521,7 @@ export default function SceneDetailPage() {
 
   const coverStyle = scenario.coverImage
     ? { backgroundImage: `url('${scenario.coverImage}')` }
-    : { background: coverGradients[0] }
+    : { background: COVER_GRADIENTS[0] }
 
   const renderTabContent = () => {
     switch (activeTab) {
