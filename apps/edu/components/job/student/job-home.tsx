@@ -61,17 +61,17 @@ function PositionSideLists({
   const emptyText = isRec ? '暂无目标推荐岗位' : '快去收藏岗位吧！'
   const EmptyIcon = isRec ? Flag : Heart
   const activeClass = isRec
-    ? 'bg-gradient-to-br from-yellow-400/30 to-orange-500/30 text-yellow-200 border border-white/15'
-    : 'bg-gradient-to-br from-rose-400/30 to-pink-500/30 text-rose-200 border border-white/15'
+    ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white border border-transparent shadow-sm'
+    : 'bg-gradient-to-br from-rose-400 to-pink-500 text-white border border-transparent shadow-sm'
 
   return (
-    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)] h-[256px] lg:h-[340px] flex flex-col">
+    <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 text-[#0f172a] shadow-[0_8px_32px_rgba(0,0,0,0.12)] h-[256px] lg:h-[340px] flex flex-col">
       <div className="flex flex-wrap items-center gap-2.5 mb-3">
-        <div className="flex gap-1 p-1 rounded-xl bg-white/10 border border-white/15">
+        <div className="flex gap-1 p-1 rounded-xl bg-[#f1f5f9] border border-[#e2e8f0]">
           <button
             onClick={() => switchTab('recommended')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all ${
-              isRec ? activeClass : 'text-white/60 hover:text-white hover:bg-white/10'
+              isRec ? activeClass : 'text-[#64748b] hover:text-[#0f172a] hover:bg-white'
             }`}
           >
             <Flag className="w-3.5 h-3.5" />
@@ -80,37 +80,37 @@ function PositionSideLists({
           <button
             onClick={() => switchTab('favorite')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all ${
-              !isRec ? activeClass : 'text-white/60 hover:text-white hover:bg-white/10'
+              !isRec ? activeClass : 'text-[#64748b] hover:text-[#0f172a] hover:bg-white'
             }`}
           >
             <Heart className="w-3.5 h-3.5" />
             收藏岗位
           </button>
         </div>
-        <span className="text-[12px] text-white/50 ml-auto shrink-0">
+        <span className="text-[12px] text-[#94a3b8] ml-auto shrink-0">
           {positions.length} 个岗位
         </span>
       </div>
 
       {positions.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-white/50 text-center py-4">
+        <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center py-4">
           <EmptyIcon className="w-9 h-9 mb-3 opacity-40" />
-          <div className="text-sm font-semibold text-white/80">{emptyText}</div>
+          <div className="text-sm font-semibold text-[#475569]">{emptyText}</div>
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar-thin flex flex-col gap-1">
           {positions.map((pos) => (
             <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
-              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#f8fafc] cursor-pointer transition-all group">
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <span
-                    className={`text-[13px] truncate transition-colors ${
-                      isRec ? 'group-hover:text-yellow-200' : 'group-hover:text-rose-200'
+                    className={`text-[13px] truncate text-[#0f172a] transition-colors ${
+                      isRec ? 'group-hover:text-yellow-600' : 'group-hover:text-rose-600'
                     }`}
                   >
                     {pos.shortName || pos.name}
                   </span>
-                  <span className="text-[11px] text-white/50 truncate">
+                  <span className="text-[11px] text-[#94a3b8] truncate">
                     适用专业：{pos.majorNames?.filter(Boolean)[0] || '未分类'} · 更新：
                     {formatDate(pos.updatedAt)}
                   </span>
@@ -125,7 +125,7 @@ function PositionSideLists({
           width: 4px;
         }
         .custom-scrollbar-thin::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.3);
+          background: rgba(0, 0, 0, 0.2);
           border-radius: 2px;
         }
         .custom-scrollbar-thin::-webkit-scrollbar-track {
