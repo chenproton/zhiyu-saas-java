@@ -99,7 +99,7 @@ export default function JobStudentLearnPage() {
         <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
           <Briefcase className="w-16 h-16 mb-4 opacity-40" />
           <div className="text-lg font-semibold text-[#475569]">岗位不存在或暂未公开</div>
-          <Link href="/job/landing" className="text-primary hover:underline mt-2">
+          <Link href="/job/landing" className="text-purple-600 hover:underline mt-2">
             返回岗位列表
           </Link>
         </div>
@@ -114,7 +114,7 @@ export default function JobStudentLearnPage() {
         <Link
           replace
           href={`/job/landing/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-primary mb-4"
+          className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-purple-600 mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> 返回岗位详情
         </Link>

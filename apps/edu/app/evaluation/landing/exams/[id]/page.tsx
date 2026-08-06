@@ -579,7 +579,7 @@ export default function ExamDetailPage() {
         <div
           style={{
             padding: '24px 32px',
-            background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary) 75%, white), var(--primary))',
+            background: 'linear-gradient(135deg, #34d399, #10b981)',
             color: 'white',
             display: 'flex',
             alignItems: 'center',

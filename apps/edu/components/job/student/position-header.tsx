@@ -99,7 +99,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
           <Button
             variant="ghost"
             size="sm"
-            className="text-[#64748b] hover:text-primary pl-0"
+            className="text-[#64748b] hover:text-purple-600 pl-0"
             onClick={() => router.back()}
           >
             <ArrowLeft className="w-4 h-4 mr-1" /> 返回上一页
@@ -110,7 +110,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Cover */}
             <div
-              className="w-full lg:w-[280px] h-[180px] rounded-xl bg-cover bg-center bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 relative overflow-hidden self-stretch"
+              className="w-full lg:w-[280px] h-[180px] rounded-xl bg-cover bg-center bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shrink-0 relative overflow-hidden self-stretch"
               style={coverStyle}
             >
               {!position.coverImage && (
@@ -132,7 +132,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h1 className="text-2xl font-bold text-[#0f172a]">{position.name}</h1>
-                    <span className="text-2xl font-bold text-primary leading-none">
+                    <span className="text-2xl font-bold text-purple-600 leading-none">
                       {formatSalary(position.salaryMin, position.salaryMax)}
                     </span>
                   </div>
@@ -176,7 +176,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
               <div className="flex flex-wrap gap-3 mt-auto">
                 {onStartLearning && (
                   <Button
-                    className="rounded-md px-6 h-10 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-medium"
+                    className="rounded-md px-6 h-10 bg-gradient-to-r from-purple-500 to-purple-400 hover:from-purple-600 hover:to-purple-500 text-white font-medium"
                     onClick={onStartLearning}
                   >
                     <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习

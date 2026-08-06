@@ -293,7 +293,7 @@ export default function CourseDetailPage() {
                     {node.name}
                   </div>
                   {node.type === 'original' && (
-                    <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-primary/5 text-primary border-primary/15 shrink-0">
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-amber-50 text-amber-600 border-amber-200 shrink-0">
                       引用颗粒课
                     </span>
                   )}
@@ -405,7 +405,7 @@ export default function CourseDetailPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {resList.map((r) => {
                             const typeColors: Record<string, string> = {
-                              document: 'bg-primary/5 text-primary border-primary/10',
+                              document: 'bg-amber-50 text-amber-600 border-amber-100',
                               video: 'bg-amber-50 text-amber-600 border-amber-100',
                               link: 'bg-purple-50 text-purple-600 border-purple-100',
                               file: 'bg-emerald-50 text-emerald-600 border-emerald-100',

@@ -30,7 +30,7 @@ export function CertCards({ certificates }: CertCardsProps) {
   return (
     <div>
       <div className="text-sm text-[#64748b] mb-5">
-        共涉及 <strong className="text-primary">{certificates.length}</strong> 个相关证书
+        共涉及 <strong className="text-purple-600">{certificates.length}</strong> 个相关证书
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {certificates.map((cert, i) => {
@@ -70,7 +70,7 @@ export function CertCards({ certificates }: CertCardsProps) {
                       {cert.description}
                     </p>
                     <button
-                      className="text-xs text-primary font-medium inline-flex items-center gap-1 mt-1 hover:underline"
+                      className="text-xs text-purple-600 font-medium inline-flex items-center gap-1 mt-1 hover:underline"
                       onClick={() =>
                         setExpanded((prev) => ({ ...prev, [cert.id]: !prev[cert.id] }))
                       }
@@ -92,7 +92,7 @@ export function CertCards({ certificates }: CertCardsProps) {
                     href={cert.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[color-mix(in_srgb,var(--primary)_8%,white)] text-primary text-[13px] hover:bg-primary hover:text-white transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-purple-50 text-purple-600 text-[13px] hover:bg-purple-500 hover:text-white transition-colors"
                   >
                     <ExternalLink className="w-3.5 h-3.5" /> 查看证书详情
                   </a>

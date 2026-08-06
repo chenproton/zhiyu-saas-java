@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 
+// 各业务模块固定主题色（不跟随系统主题）：岗位=紫 / 场景=青 / 测评=绿 / 课程=黄 / 联盟=红 / 默认蓝
 const ACCENT_CLASSES: Record<
   string,
   {
@@ -12,10 +13,17 @@ const ACCENT_CLASSES: Record<
   }
 > = {
   purple: {
-    selected: 'bg-primary text-white border-primary shadow-sm',
+    selected: 'bg-purple-500 text-white border-purple-500 shadow-sm',
     unselected:
-      'bg-slate-50 text-[#475569] border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5',
-    expand: 'text-primary hover:text-primary',
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50',
+    expand: 'text-purple-500 hover:text-purple-600',
+    border: 'border-b border-dashed border-[#cbd5e1]',
+  },
+  cyan: {
+    selected: 'bg-cyan-500 text-white border-cyan-500 shadow-sm',
+    unselected:
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-cyan-300 hover:text-cyan-600 hover:bg-cyan-50/50',
+    expand: 'text-cyan-500 hover:text-cyan-600',
     border: 'border-b border-dashed border-[#cbd5e1]',
   },
   emerald: {
@@ -25,11 +33,25 @@ const ACCENT_CLASSES: Record<
     expand: 'text-emerald-500 hover:text-emerald-600',
     border: 'border-b border-dashed border-[#cbd5e1]',
   },
-  blue: {
-    selected: 'bg-primary text-white border-primary shadow-sm',
+  amber: {
+    selected: 'bg-amber-500 text-white border-amber-500 shadow-sm',
     unselected:
-      'bg-slate-50 text-[#475569] border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5',
-    expand: 'text-primary hover:text-primary',
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50/50',
+    expand: 'text-amber-500 hover:text-amber-600',
+    border: 'border-b border-dashed border-[#cbd5e1]',
+  },
+  red: {
+    selected: 'bg-red-500 text-white border-red-500 shadow-sm',
+    unselected:
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-red-300 hover:text-red-600 hover:bg-red-50/50',
+    expand: 'text-red-500 hover:text-red-600',
+    border: 'border-b border-dashed border-[#cbd5e1]',
+  },
+  blue: {
+    selected: 'bg-blue-500 text-white border-blue-500 shadow-sm',
+    unselected:
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50',
+    expand: 'text-blue-500 hover:text-blue-600',
     border: 'border-b border-dashed border-[#cbd5e1]',
   },
 }
@@ -40,7 +62,7 @@ interface LandingFilterRowProps {
   selected: string
   onSelect: (item: string) => void
   showBorder?: boolean
-  accentColor?: 'purple' | 'emerald' | 'blue'
+  accentColor?: 'purple' | 'cyan' | 'emerald' | 'amber' | 'red' | 'blue'
 }
 
 export function LandingFilterRow({

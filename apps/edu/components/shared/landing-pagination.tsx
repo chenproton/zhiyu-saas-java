@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
+// 各业务模块固定主题色（不跟随系统主题）：岗位=紫 / 场景=青 / 测评=绿 / 课程=黄 / 联盟=红 / 默认蓝
 const ACCENT_CLASSES: Record<
   string,
   {
@@ -10,16 +11,28 @@ const ACCENT_CLASSES: Record<
   }
 > = {
   purple: {
-    active: 'bg-primary border-primary text-white shadow-md shadow-primary/20',
-    hover: 'hover:border-primary/30 hover:text-primary hover:bg-primary/5',
+    active: 'bg-purple-500 border-purple-500 text-white shadow-md shadow-purple-500/20',
+    hover: 'hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50',
+  },
+  cyan: {
+    active: 'bg-cyan-500 border-cyan-500 text-white shadow-md shadow-cyan-500/20',
+    hover: 'hover:border-cyan-300 hover:text-cyan-600 hover:bg-cyan-50/50',
   },
   emerald: {
     active: 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20',
     hover: 'hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/50',
   },
+  amber: {
+    active: 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20',
+    hover: 'hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50/50',
+  },
+  red: {
+    active: 'bg-red-500 border-red-500 text-white shadow-md shadow-red-500/20',
+    hover: 'hover:border-red-300 hover:text-red-600 hover:bg-red-50/50',
+  },
   blue: {
-    active: 'bg-primary border-primary text-white shadow-md shadow-primary/20',
-    hover: 'hover:border-primary/30 hover:text-primary hover:bg-primary/5',
+    active: 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20',
+    hover: 'hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50',
   },
 }
 
@@ -27,7 +40,7 @@ interface LandingPaginationProps {
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
-  accentColor?: 'purple' | 'emerald' | 'blue'
+  accentColor?: 'purple' | 'cyan' | 'emerald' | 'amber' | 'red' | 'blue'
 }
 
 export function LandingPagination({

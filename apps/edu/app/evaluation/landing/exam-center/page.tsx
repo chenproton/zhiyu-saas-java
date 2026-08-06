@@ -61,7 +61,7 @@ export default function ExamCenterPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* 页头 */}
-      <div className="bg-gradient-to-br from-primary via-primary/75 to-primary/40">
+      <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-400">
         <div className="max-w-[1400px] mx-auto px-8 py-8">
           <Link
             href="/evaluation/landing"
@@ -90,14 +90,14 @@ export default function ExamCenterPage() {
             <TabsList className="bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm h-11">
               <TabsTrigger
                 value="all"
-                className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
+                className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white"
               >
                 全部考试 ({items.length})
               </TabsTrigger>
               {isStudent && (
                 <TabsTrigger
                   value="mine"
-                  className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
+                  className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white"
                 >
                   我可参加 (
                   {items.filter((i) => i.participatable).length})
@@ -111,7 +111,7 @@ export default function ExamCenterPage() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="搜索考试名称..."
-              className="pl-10 h-11 bg-white border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 transition-all"
+              className="pl-10 h-11 bg-white border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 transition-all"
             />
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function ExamCenterPage() {
                       {canEnter ? (
                         <Button
                           asChild
-                          className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20"
+                          className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white shadow-md shadow-emerald-500/20"
                         >
                           <Link href={entryHref}>
                             <PlayCircle className="w-3.5 h-3.5 mr-1" /> 开始考试

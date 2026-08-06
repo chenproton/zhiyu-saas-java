@@ -68,8 +68,8 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
 
   return (
     <div className="space-y-5">
-      <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-5 border border-primary/10">
-        <div className="flex items-center gap-2 text-primary font-bold mb-2">
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-5 border border-purple-100">
+        <div className="flex items-center gap-2 text-purple-700 font-bold mb-2">
           <Sparkles className="w-5 h-5" />
           能力模型说明
         </div>
@@ -79,14 +79,14 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
       </div>
 
       <div className="text-sm text-[#64748b] mb-2">
-        共 <strong className="text-primary">{groupedByDomain.length}</strong> 个能力领域，
-        <strong className="text-primary">{bindings.length}</strong> 个能力点
+        共 <strong className="text-purple-600">{groupedByDomain.length}</strong> 个能力领域，
+        <strong className="text-purple-600">{bindings.length}</strong> 个能力点
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {groupedByDomain.map(({ domain, items }) => (
           <div key={domain} className="border border-[#f5f5f4] rounded-xl overflow-hidden bg-white">
-            <div className="bg-[color-mix(in_srgb,var(--primary)_8%,white)] px-4 py-3 font-medium text-primary flex items-center gap-2 text-sm">
+            <div className="bg-purple-50 px-4 py-3 font-medium text-purple-700 flex items-center gap-2 text-sm">
               <Target className="w-4 h-4" />
               {domain}
             </div>
@@ -96,7 +96,7 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
                 return (
                   <div
                     key={ab.id}
-                    className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)] cursor-pointer transition-colors gap-2"
+                    className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-purple-50 cursor-pointer transition-colors gap-2"
                     onClick={() => setSelectedAbility({ binding: ab, abilityPoint: info })}
                     role="button"
                     tabIndex={0}
