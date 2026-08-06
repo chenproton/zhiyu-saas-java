@@ -226,9 +226,9 @@ export function TopNav() {
                   账号设置
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <div className="flex items-center gap-1 px-2 py-1.5">
-                  <Type className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">字号大小</span>
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <Type className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground whitespace-nowrap">字号大小</span>
                   <div className="flex-1" />
                   <Button
                     variant="ghost"
