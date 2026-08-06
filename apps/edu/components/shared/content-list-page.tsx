@@ -169,8 +169,8 @@ export interface ContentListPageConfig<
   importExportApi: ContentImportExportApi
 
   approvalTargetType: string
-  importEntityName: string
-  exportEntityName: string
+  importEntityName?: string
+  exportEntityName?: string
   importExcelEntity?: string
 
   statusFilterOptions: { value: string; label: string }[]
@@ -233,8 +233,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     approvalApi,
     importExportApi,
     approvalTargetType,
-    importEntityName,
-    exportEntityName,
+    importEntityName = '',
+    exportEntityName = '',
     statusFilterOptions,
     mapItem,
     mapBatch,
@@ -1298,10 +1298,12 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         actions={
           <>
             {extraHeaderActions}
-            <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              {t('批量导入{entityLabel}', { entityLabel })}
-            </Button>
+            {(hasExcel || !!importEntityName) && (
+              <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                {t('批量导入{entityLabel}', { entityLabel })}
+              </Button>
+            )}
             <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={handleCreate}>
               <Plus className="mr-2 h-4 w-4" />
               {t('新建{entityLabel}', { entityLabel })}

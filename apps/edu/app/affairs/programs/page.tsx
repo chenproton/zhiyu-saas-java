@@ -38,9 +38,6 @@ export default function ProgramsPage() {
       approvalApi={approvalApi}
       importExportApi={importExportApi}
       approvalTargetType="training_program"
-      importExcelEntity=""
-      importEntityName=""
-      exportEntityName=""
       coBuilderField="collaborators"
       createRedirectUrl={(id) => `/affairs/programs/${id}?new=true`}
       statusFilterOptions={STATUS_FILTER_OPTIONS}
