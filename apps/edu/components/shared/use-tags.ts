@@ -24,12 +24,16 @@ function getSnapshot() {
   return version
 }
 
+function getServerSnapshot() {
+  return 0
+}
+
 /**
  * 拉取租户全部标签（含绑定数量），带模块级缓存与跨组件同步。
  * 列表页筛选栏/表单标签选择器复用同一份数据。
  */
 export function useTags() {
-  const v = useSyncExternalStore(subscribe, getSnapshot)
+  const v = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
   const [loading, setLoading] = useState(cachedTags === null)
 
   useEffect(() => {
