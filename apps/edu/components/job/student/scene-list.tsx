@@ -133,7 +133,7 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
                       className="flex items-center justify-between py-3 border-t border-[#f5f5f4]"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-xs font-bold">
+                        <div className="w-7 h-7 rounded-full bg-primary/5 text-primary flex items-center justify-center text-xs font-bold">
                           {ti + 1}
                         </div>
                         <div>

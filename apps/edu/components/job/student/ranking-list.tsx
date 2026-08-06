@@ -14,9 +14,9 @@ interface RankingListProps {
 const ROWS_PER_PAGE = 5
 
 const cardPalette = {
-  bg: 'bg-purple-50/70',
-  hover: 'hover:bg-purple-100/60',
-  border: 'border-purple-100',
+  bg: 'bg-primary/5',
+  hover: 'hover:bg-primary/10',
+  border: 'border-primary/10',
 }
 
 export function RankingList({ positions = [], industryMap }: RankingListProps) {
@@ -80,7 +80,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
           </span>
           <div className="flex-1 min-w-0 flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="flex-1 text-[13px] font-semibold text-slate-800 truncate group-hover:text-purple-600 transition-colors">
+              <span className="flex-1 text-[13px] font-semibold text-slate-800 truncate group-hover:text-primary transition-colors">
                 {display}
               </span>
               <span className="text-[11px] text-rose-500 flex items-center gap-0.5 whitespace-nowrap font-medium">
@@ -89,7 +89,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] overflow-hidden">
-              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-purple-600 whitespace-nowrap font-medium border border-purple-100 shrink-0">
+              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-primary whitespace-nowrap font-medium border border-primary/10 shrink-0">
                 {categoryFor(pos)}
               </span>
               {(pos.majorNames?.filter(Boolean) || []).length === 0 ? (
@@ -138,7 +138,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7 rounded-lg border-slate-200 bg-white text-slate-500 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50 disabled:opacity-30 transition-all"
+            className="h-7 w-7 rounded-lg border-slate-200 bg-white text-slate-500 hover:border-primary/30 hover:text-primary hover:bg-primary/5 disabled:opacity-30 transition-all"
             disabled={page <= 0}
             onClick={() => setPage(page - 1)}
           >
@@ -150,7 +150,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7 rounded-lg border-slate-200 bg-white text-slate-500 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50 disabled:opacity-30 transition-all"
+            className="h-7 w-7 rounded-lg border-slate-200 bg-white text-slate-500 hover:border-primary/30 hover:text-primary hover:bg-primary/5 disabled:opacity-30 transition-all"
             disabled={page >= totalPages - 1}
             onClick={() => setPage(page + 1)}
           >

@@ -12,6 +12,13 @@ const ACCENT_CLASSES: Record<
     border: string
   }
 > = {
+  primary: {
+    selected: 'bg-primary text-white border-primary shadow-sm',
+    unselected:
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5',
+    expand: 'text-primary hover:text-primary',
+    border: 'border-b border-dashed border-[#cbd5e1]',
+  },
   purple: {
     selected: 'bg-purple-500 text-white border-purple-500 shadow-sm',
     unselected:
@@ -62,7 +69,7 @@ interface LandingFilterRowProps {
   selected: string
   onSelect: (item: string) => void
   showBorder?: boolean
-  accentColor?: 'purple' | 'cyan' | 'emerald' | 'amber' | 'red' | 'blue'
+  accentColor?: 'primary' | 'purple' | 'cyan' | 'emerald' | 'amber' | 'red' | 'blue'
 }
 
 export function LandingFilterRow({

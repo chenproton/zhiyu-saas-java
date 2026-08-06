@@ -53,40 +53,40 @@ interface JobHomeProps {
 // 业务模块固定主题色：岗位=紫 / 场景=青（不跟随系统主题）
 const MODE_ACCENTS = {
   job: {
-    text: 'text-purple-600',
-    hoverText: 'hover:text-purple-600',
-    groupHoverText: 'group-hover:text-purple-600',
-    solid: 'bg-purple-500',
-    gradient: 'from-purple-500 to-purple-600',
-    gradientBtn: 'from-purple-500 to-purple-400 hover:from-purple-600 hover:to-purple-500',
-    gradientBar: 'from-purple-400 to-purple-600',
-    softBg: 'bg-purple-50',
-    hoverSoftBg: 'hover:bg-purple-50',
-    softBgHover: 'hover:bg-purple-100',
-    chipBg: 'bg-purple-50',
-    border: 'border-purple-100',
-    shadow: 'shadow-purple-500/20',
-    focus: 'focus:border-purple-300 focus:ring-2 focus:ring-purple-100',
-    blob: 'bg-purple-500/15',
-    accent: 'purple' as const,
+    text: 'text-primary',
+    hoverText: 'hover:text-primary',
+    groupHoverText: 'group-hover:text-primary',
+    solid: 'bg-primary',
+    gradient: 'from-primary to-primary/70',
+    gradientBtn: 'from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70',
+    gradientBar: 'from-primary/80 to-primary/70',
+    softBg: 'bg-primary/5',
+    hoverSoftBg: 'hover:bg-primary/5',
+    softBgHover: 'hover:bg-primary/10',
+    chipBg: 'bg-primary/5',
+    border: 'border-primary/10',
+    shadow: 'shadow-primary/20',
+    focus: 'focus:border-primary/30 focus:ring-2 focus:ring-primary/10',
+    blob: 'bg-primary/15',
+    accent: 'primary' as const,
   },
   scene: {
-    text: 'text-cyan-600',
-    hoverText: 'hover:text-cyan-600',
-    groupHoverText: 'group-hover:text-cyan-600',
-    solid: 'bg-cyan-500',
-    gradient: 'from-cyan-500 to-cyan-600',
-    gradientBtn: 'from-cyan-500 to-cyan-400 hover:from-cyan-600 hover:to-cyan-500',
-    gradientBar: 'from-cyan-400 to-cyan-600',
-    softBg: 'bg-cyan-50',
-    hoverSoftBg: 'hover:bg-cyan-50',
-    softBgHover: 'hover:bg-cyan-100',
-    chipBg: 'bg-cyan-50',
-    border: 'border-cyan-100',
-    shadow: 'shadow-cyan-500/20',
-    focus: 'focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100',
-    blob: 'bg-cyan-500/15',
-    accent: 'cyan' as const,
+    text: 'text-primary',
+    hoverText: 'hover:text-primary',
+    groupHoverText: 'group-hover:text-primary',
+    solid: 'bg-primary',
+    gradient: 'from-primary to-primary/70',
+    gradientBtn: 'from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70',
+    gradientBar: 'from-primary/80 to-primary/70',
+    softBg: 'bg-primary/5',
+    hoverSoftBg: 'hover:bg-primary/5',
+    softBgHover: 'hover:bg-primary/10',
+    chipBg: 'bg-primary/5',
+    border: 'border-primary/10',
+    shadow: 'shadow-primary/20',
+    focus: 'focus:border-primary/30 focus:ring-2 focus:ring-primary/10',
+    blob: 'bg-primary/15',
+    accent: 'primary' as const,
   },
 }
 
@@ -510,7 +510,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
       {/* Hero Banner */}
       <div className="relative w-full pt-16 overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-br ${isScene ? 'from-[rgba(8,145,178,0.88)] via-[rgba(6,182,212,0.78)] to-[rgba(34,211,238,0.78)]' : 'from-[rgba(76,29,149,0.88)] via-[rgba(139,92,246,0.78)] to-[rgba(168,85,247,0.78)]'}`} />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-primary/60" />
         <div
           className="absolute inset-0 opacity-[0.12]"
           style={{
@@ -1030,7 +1030,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
         </div>
       </main>
 
-      <PlatformFooter accent={accent.accent === "cyan" ? "cyan" : "purple"} />
+      <PlatformFooter />
 
       <style jsx>{`
         .custom-scrollbar-thin::-webkit-scrollbar {

@@ -101,7 +101,7 @@ export function CompetencyStandards({
     <div>
       <div className="flex items-center justify-between mb-4">
         <span className="text-sm text-[#64748b]">
-          全览岗位 <strong className="text-purple-600">{bindings.length}</strong> 个关键能力点胜任标准
+          全览岗位 <strong className="text-primary">{bindings.length}</strong> 个关键能力点胜任标准
         </span>
       </div>
 
@@ -114,8 +114,8 @@ export function CompetencyStandards({
               onClick={() => scrollTo(g.duty)}
               className={`w-full text-left px-4 py-3 rounded-md text-sm transition-colors mb-1 ${
                 activeId === g.duty
-                  ? 'bg-purple-50 text-purple-700 font-medium'
-                  : 'text-[#64748b] hover:bg-purple-50 hover:text-purple-600'
+                  ? 'bg-primary/5 text-primary font-medium'
+                  : 'text-[#64748b] hover:bg-primary/5 hover:text-primary'
               }`}
             >
               {g.duty}
@@ -128,7 +128,7 @@ export function CompetencyStandards({
           {groups.map((g) => (
             <div key={g.duty} id={`comp-sec-${g.duty}`} className="mb-10 pt-2">
               <div className="text-base font-semibold text-[#1f2937] mb-4 pb-3 border-b border-[#f5f5f4] flex items-center gap-2">
-                <Target className="w-4 h-4 text-purple-600" />
+                <Target className="w-4 h-4 text-primary" />
                 {g.duty}
               </div>
               <div className="grid grid-cols-2 max-md:grid-cols-1 gap-4">
@@ -138,7 +138,7 @@ export function CompetencyStandards({
                   return (
                     <div
                       key={item.id}
-                      className="bg-white border border-[#f5f5f4] rounded-xl p-4 hover:border-purple-300 hover:shadow-sm transition-all"
+                      className="bg-white border border-[#f5f5f4] rounded-xl p-4 hover:border-primary/25 hover:shadow-sm transition-all"
                     >
                       <div className="text-sm font-semibold text-[#1f2937] mb-3">{item.name}</div>
 
@@ -167,9 +167,9 @@ export function CompetencyStandards({
                                 key={level.value}
                                 className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
                                   isTarget
-                                    ? 'border-purple-500 bg-white ring-2 ring-purple-200 scale-110'
+                                    ? 'border-primary bg-white ring-2 ring-primary/20 scale-110'
                                     : isReached
-                                      ? 'border-purple-300 bg-purple-100'
+                                      ? 'border-primary/30 bg-primary/15'
                                       : 'border-[#e2e8f0] bg-white'
                                 }`}
                               />
@@ -185,9 +185,9 @@ export function CompetencyStandards({
                               key={level.value}
                               className={`text-[10px] font-medium transition-colors ${
                                 idx === targetIdx
-                                  ? 'text-purple-600'
+                                  ? 'text-primary'
                                   : idx <= targetIdx
-                                    ? 'text-purple-400'
+                                    ? 'text-primary/70'
                                     : 'text-[#cbd5e1]'
                               }`}
                             >
@@ -200,13 +200,13 @@ export function CompetencyStandards({
                       <div className="flex items-center gap-2 text-xs text-[#64748b] mb-2">
                         <Target className="w-3 h-3" />
                         目标等级：
-                        <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">
+                        <span className="px-2 py-0.5 rounded bg-primary/5 text-primary font-medium">
                           {targetLabel}
                         </span>
                       </div>
 
                       {item.rubricDescription && (
-                        <div className="text-xs text-[#64748b] leading-relaxed p-2.5 bg-[#fafafa] rounded-md border-l-[3px] border-purple-500 mt-3">
+                        <div className="text-xs text-[#64748b] leading-relaxed p-2.5 bg-[#fafafa] rounded-md border-l-[3px] border-primary mt-3">
                           {item.rubricDescription}
                         </div>
                       )}

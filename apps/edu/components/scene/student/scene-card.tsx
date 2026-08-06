@@ -29,9 +29,9 @@ const industryTagMap: Record<string, { bg: string; text: string; border: string 
 
 const professionTagMap: Record<string, { bg: string; text: string; border: string }> = {
   default: {
-    bg: '#ecfeff',
-    text: '#0891b2',
-    border: '#cffafe',
+    bg: 'color-mix(in srgb, var(--primary) 8%, white)',
+    text: 'var(--primary)',
+    border: 'color-mix(in srgb, var(--primary) 15%, white)',
   },
 }
 
@@ -57,7 +57,7 @@ export function SceneCard({
 
   return (
     <Link href={`/scene/landing/${scenario.id}`}>
-      <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-cyan-300 cursor-pointer h-full flex flex-col">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/25 cursor-pointer h-full flex flex-col">
         <div
           className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4 text-white"
           style={coverStyle}

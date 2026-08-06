@@ -45,7 +45,7 @@ export function JobCard({
 
   return (
     <Link href={`/job/landing/${position.id}`}>
-      <div className="group bg-white rounded-2xl overflow-hidden border border-slate-200 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-purple-300 cursor-pointer h-full flex flex-col">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-slate-200 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col">
         <div
           className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4 text-white"
           style={coverStyle}
@@ -94,7 +94,7 @@ export function JobCard({
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 font-medium">
               面向行业：{industryName || '未分类'}
             </span>
-            <span className="text-[11px] px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100 font-medium flex items-center gap-1">
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-primary/5 text-primary border border-primary/10 font-medium flex items-center gap-1">
               <MapPin className="w-3 h-3" /> 适用专业：{majorName}
             </span>
           </div>

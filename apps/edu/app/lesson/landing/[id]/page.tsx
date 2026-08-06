@@ -225,7 +225,7 @@ export default function CourseDetailPage() {
           <div className="text-lg font-semibold text-slate-600">课程不存在或暂未公开</div>
           <Link
             href="/lesson/landing"
-            className="text-emerald-600 hover:text-emerald-700 mt-3 text-sm font-medium"
+            className="text-primary hover:text-primary mt-3 text-sm font-medium"
           >
             返回课程列表
           </Link>
@@ -266,13 +266,13 @@ export default function CourseDetailPage() {
         <div key={node.id}>
           <div
             id={`course-node-${node.id}`}
-            className={`group bg-white rounded-xl border overflow-hidden transition-all ${highlightNodeId === node.id ? 'ring-2 ring-emerald-400 border-emerald-300' : 'border-slate-200 hover:border-emerald-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]'}`}
+            className={`group bg-white rounded-xl border overflow-hidden transition-all ${highlightNodeId === node.id ? 'ring-2 ring-primary/20 border-primary/30' : 'border-slate-200 hover:border-primary/25 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]'}`}
           >
             <div className="flex items-center gap-3 p-4">
               {hasChildren ? (
                 <button
                   onClick={() => toggleCollapse(node.id)}
-                  className="w-5 h-5 rounded-md bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                  className="w-5 h-5 rounded-md bg-slate-100 text-slate-500 hover:bg-primary/5 hover:text-primary flex items-center justify-center shrink-0 transition-colors cursor-pointer"
                   title={collapsed ? '展开子节点' : '收起子节点'}
                 >
                   {collapsed ? (
@@ -284,7 +284,7 @@ export default function CourseDetailPage() {
               ) : (
                 <span className="w-5 h-5 shrink-0" />
               )}
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md shadow-emerald-500/25">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-primary/80 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md shadow-primary/25">
                 {flatIndex + 1}
               </div>
               <div className="flex-1 min-w-0">
@@ -293,7 +293,7 @@ export default function CourseDetailPage() {
                     {node.name}
                   </div>
                   {node.type === 'original' && (
-                    <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-amber-50 text-amber-600 border-amber-200 shrink-0">
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-primary/5 text-primary border-primary/15 shrink-0">
                       引用颗粒课
                     </span>
                   )}
@@ -369,7 +369,7 @@ export default function CourseDetailPage() {
         return (
           <div>
             <div className="text-sm text-slate-500 mb-4">
-              共 <strong className="text-emerald-600">{totalResources}</strong> 个资源
+              共 <strong className="text-primary">{totalResources}</strong> 个资源
             </div>
             {totalResources === 0 ? (
               <div className="text-center py-16 text-slate-400">
@@ -396,7 +396,7 @@ export default function CourseDetailPage() {
                     return (
                       <div key={nid}>
                         <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                          <BookOpen className="w-4 h-4 text-emerald-500" />
+                          <BookOpen className="w-4 h-4 text-primary" />
                           {nodeName}
                           <span className="text-xs text-slate-400 font-normal">
                             ({resList.length})
@@ -405,15 +405,15 @@ export default function CourseDetailPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {resList.map((r) => {
                             const typeColors: Record<string, string> = {
-                              document: 'bg-amber-50 text-amber-600 border-amber-100',
-                              video: 'bg-amber-50 text-amber-600 border-amber-100',
+                              document: 'bg-primary/5 text-primary border-primary/10',
+                              video: 'bg-primary/5 text-primary border-primary/10',
                               link: 'bg-purple-50 text-purple-600 border-purple-100',
-                              file: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                              file: 'bg-primary/5 text-primary border-primary/10',
                             }
                             return (
                               <div
                                 key={r.id}
-                                className="group bg-slate-50 rounded-xl p-3.5 border border-slate-100 hover:border-emerald-200 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                                className="group bg-slate-50 rounded-xl p-3.5 border border-slate-100 hover:border-primary/25 hover:shadow-md hover:-translate-y-0.5 transition-all"
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1 min-w-0">
@@ -442,7 +442,7 @@ export default function CourseDetailPage() {
                                       onClick={() =>
                                         addPreviewResource(r as unknown as TaskResource)
                                       }
-                                      className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 flex items-center justify-center transition-colors"
+                                      className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-primary/5 text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
                                       title="预览资源"
                                     >
                                       <Eye className="w-3.5 h-3.5" />
@@ -479,7 +479,7 @@ export default function CourseDetailPage() {
           return (
             <div>
               <div className="text-sm text-slate-500 mb-4">
-                共 <strong className="text-emerald-600">{evalNodes.length}</strong>{' '}
+                共 <strong className="text-primary">{evalNodes.length}</strong>{' '}
                 个节点配置了评价标准
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -492,10 +492,10 @@ export default function CourseDetailPage() {
                   return (
                     <div
                       key={node.id}
-                      className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all"
+                      className="bg-white rounded-xl border border-slate-200 p-4 hover:border-primary/25 hover:shadow-md transition-all"
                     >
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 text-white flex items-center justify-center text-xs font-bold shrink-0">
                           <Target className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -566,15 +566,15 @@ export default function CourseDetailPage() {
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
             <button
               onClick={() => router.back()}
-              className="hover:text-emerald-600 transition-colors flex items-center gap-1 cursor-pointer"
+              className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary/5 hover:text-primary transition-colors">
                 ←
               </span>{' '}
               返回上一页
             </button>
             <span className="text-slate-300">/</span>
-            <Link href="/lesson/landing" className="hover:text-emerald-600 transition-colors">
+            <Link href="/lesson/landing" className="hover:text-primary transition-colors">
               课程列表
             </Link>
             <span className="text-slate-300">/</span>
@@ -607,7 +607,7 @@ export default function CourseDetailPage() {
                         <h1 className="text-[26px] font-bold text-slate-900 truncate">
                           {course.name}
                         </h1>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 font-medium shrink-0 border border-emerald-200">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-primary/5 text-primary font-medium shrink-0 border border-primary/15">
                           {courseTypeLabels[course.type] || course.type}
                         </span>
                       </div>
@@ -635,7 +635,7 @@ export default function CourseDetailPage() {
                       {course.majorName && (
                         <div className="flex items-center gap-2">
                           <span className="text-slate-400 shrink-0">适用专业：</span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium">
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-primary/5 text-primary border border-primary/10 font-medium">
                             {course.majorName}
                           </span>
                         </div>
@@ -660,7 +660,7 @@ export default function CourseDetailPage() {
                     <div className="flex flex-wrap gap-3 mt-auto pt-5">
                       {!isGranular && (
                         <Link href={`/lesson/landing/${id}/learn`}>
-                          <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
+                          <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
                             <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
                           </Button>
                         </Link>
@@ -680,35 +680,35 @@ export default function CourseDetailPage() {
             <div className="lg:w-[320px] shrink-0 flex">
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] w-full">
                 <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <Layers className="w-4 h-4 text-emerald-500" />
+                  <div className="w-7 h-7 rounded-lg bg-primary/5 flex items-center justify-center">
+                    <Layers className="w-4 h-4 text-primary" />
                   </div>
                   <span className="text-sm font-bold text-slate-800">课程统计</span>
                 </div>
                 <div className="p-5 space-y-3">
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
                     <span className="text-sm text-slate-500">课程节点</span>
-                    <span className="text-sm font-bold text-emerald-600">{nodes.length}</span>
+                    <span className="text-sm font-bold text-primary">{nodes.length}</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
                     <span className="text-sm text-slate-500">教学资源</span>
-                    <span className="text-sm font-bold text-emerald-600">{totalResources}</span>
+                    <span className="text-sm font-bold text-primary">{totalResources}</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
                     <span className="text-sm text-slate-500">知识点</span>
-                    <span className="text-sm font-bold text-emerald-600">
+                    <span className="text-sm font-bold text-primary">
                       {courseKnowledgeList.length}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
                     <span className="text-sm text-slate-500">线上课时</span>
-                    <span className="text-sm font-bold text-emerald-600">
+                    <span className="text-sm font-bold text-primary">
                       {course.onlineHours || 0}h
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <span className="text-sm text-slate-500">线下课时</span>
-                    <span className="text-sm font-bold text-emerald-600">
+                    <span className="text-sm font-bold text-primary">
                       {course.offlineHours || 0}h
                     </span>
                   </div>
@@ -728,36 +728,36 @@ export default function CourseDetailPage() {
                 onClick={() => setActiveTab(t.value)}
                 className={`
                   py-4 px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
-                  ${effectiveTab === t.value ? 'text-emerald-600 font-semibold' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50/40'}
+                  ${effectiveTab === t.value ? 'text-primary font-semibold' : 'text-slate-500 hover:text-primary hover:bg-primary/5'}
                 `}
               >
                 <t.icon
-                  className={`w-4 h-4 ${effectiveTab === t.value ? 'text-emerald-500' : 'text-slate-400'}`}
+                  className={`w-4 h-4 ${effectiveTab === t.value ? 'text-primary' : 'text-slate-400'}`}
                 />
                 {t.label}
                 {t.value === 'nodes' && nodes.length > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {nodes.length}
                   </span>
                 )}
                 {t.value === 'resources' && totalResources > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {totalResources}
                   </span>
                 )}
                 {t.value === 'knowledge' && courseKnowledgeList.length > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {courseKnowledgeList.length}
                   </span>
                 )}
                 {effectiveTab === t.value && (
-                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-emerald-500 rounded-t-full" />
+                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-primary rounded-t-full" />
                 )}
               </button>
             ))}

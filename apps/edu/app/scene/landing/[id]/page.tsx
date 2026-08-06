@@ -141,8 +141,8 @@ function AbilitiesTab({
 
   return (
     <div className="space-y-5">
-      <div className="bg-gradient-to-r from-cyan-50 to-cyan-100 rounded-xl p-5 border border-cyan-100">
-        <div className="flex items-center gap-2 text-cyan-700 font-bold mb-2">
+      <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-5 border border-primary/10">
+        <div className="flex items-center gap-2 text-primary font-bold mb-2">
           <Sparkles className="w-5 h-5" />
           能力模型说明
         </div>
@@ -153,14 +153,14 @@ function AbilitiesTab({
       </div>
 
       <div className="text-sm text-[#64748b] mb-2">
-        共 <strong className="text-cyan-600">{groupedByDomain.length}</strong> 个{groupLabel}，
-        <strong className="text-cyan-600"> {uniqueAbilityIds.size}</strong> 个能力点
+        共 <strong className="text-primary">{groupedByDomain.length}</strong> 个{groupLabel}，
+        <strong className="text-primary"> {uniqueAbilityIds.size}</strong> 个能力点
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {groupedByDomain.map(({ name, items }) => (
           <div key={name} className="border border-[#f5f5f4] rounded-xl overflow-hidden bg-white">
-            <div className="bg-cyan-50 px-4 py-3 font-medium text-cyan-700 flex items-center gap-2 text-sm">
+            <div className="bg-primary/5 px-4 py-3 font-medium text-primary flex items-center gap-2 text-sm">
               <Target className="w-4 h-4" />
               {name}
             </div>
@@ -168,7 +168,7 @@ function AbilitiesTab({
               {items.map(({ ap, taskNames }, i) => (
                 <div
                   key={`${ap.id}-${i}`}
-                  className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-cyan-50 cursor-pointer transition-colors gap-2"
+                  className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-primary/5 cursor-pointer transition-colors gap-2"
                   onClick={() => setSelectedAbility({ ap, taskNames })}
                 >
                   <div className="flex flex-col min-w-0 gap-1">
@@ -224,7 +224,7 @@ function AbilitiesTab({
               </button>
             </div>
             <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-cyan-400 to-emerald-500" />
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-primary/60" />
               <div className="text-sm font-semibold text-[#1f2937] mb-3">
                 {selectedAbility.ap.name}
               </div>
@@ -278,7 +278,7 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
   return (
     <div>
       <div className="text-sm text-slate-500 mb-4">
-        共 <strong className="text-cyan-600">{totalEvalConfigs}</strong> 个评价配置
+        共 <strong className="text-primary">{totalEvalConfigs}</strong> 个评价配置
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {tasksWithEval.map((task) => {
@@ -289,10 +289,10 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
           return (
             <div
               key={task.id}
-              className="bg-white rounded-xl border border-slate-200 p-4 hover:border-cyan-300 hover:shadow-md transition-all"
+              className="bg-white rounded-xl border border-slate-200 p-4 hover:border-primary/30 hover:shadow-md transition-all"
             >
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 text-white flex items-center justify-center text-xs font-bold shrink-0">
                   <Target className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -300,8 +300,8 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
                   <span
                     className="text-[10px] px-1.5 py-0.5 rounded font-medium"
                     style={{
-                      backgroundColor: task.taskType === 'assessment' ? '#fef2f2' : '#ecfeff',
-                      color: task.taskType === 'assessment' ? '#dc2626' : '#0891b2',
+                      backgroundColor: task.taskType === 'assessment' ? '#fef2f2' : 'color-mix(in srgb, var(--primary) 8%, white)',
+                      color: task.taskType === 'assessment' ? '#dc2626' : 'var(--primary)',
                     }}
                   >
                     {taskTypeLabels[task.taskType] || task.taskType}
@@ -516,7 +516,7 @@ export default function SceneDetailPage() {
           <div className="text-lg font-semibold text-slate-600">场景不存在或暂未公开</div>
           <Link
             href="/scene/landing"
-            className="text-cyan-600 hover:text-cyan-700 mt-3 text-sm font-medium"
+            className="text-primary hover:text-primary mt-3 text-sm font-medium"
           >
             返回场景列表
           </Link>
@@ -552,10 +552,10 @@ export default function SceneDetailPage() {
                   return (
                     <div
                       key={task.id}
-                      className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-cyan-300 transition-all"
+                      className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-primary/30 transition-all"
                     >
                       <div className="flex items-center gap-4 p-5">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-cyan-500/25">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/70 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-primary/25">
                           {idx + 1}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -567,8 +567,8 @@ export default function SceneDetailPage() {
                               className="text-[11px] px-2.5 py-0.5 rounded-full font-medium shrink-0 border"
                               style={{
                                 backgroundColor:
-                                  task.taskType === 'assessment' ? '#fef2f2' : '#ecfeff',
-                                color: task.taskType === 'assessment' ? '#dc2626' : '#0891b2',
+                                  task.taskType === 'assessment' ? '#fef2f2' : 'color-mix(in srgb, var(--primary) 8%, white)',
+                                color: task.taskType === 'assessment' ? '#dc2626' : 'var(--primary)',
                                 borderColor: task.taskType === 'assessment' ? '#fecaca' : '#bfdbfe',
                               }}
                             >
@@ -633,7 +633,7 @@ export default function SceneDetailPage() {
                         >
                           <Button
                             size="sm"
-                            className="rounded-lg h-9 px-4 text-xs bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-600 hover:to-cyan-500 text-white shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 transition-all"
+                            className="rounded-lg h-9 px-4 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all"
                           >
                             <PlayCircle className="w-3.5 h-3.5 mr-1" /> 开始任务
                           </Button>
@@ -651,7 +651,7 @@ export default function SceneDetailPage() {
         return (
           <div>
             <div className="text-sm text-slate-500 mb-4">
-              共 <strong className="text-cyan-600">{totalResources}</strong> 个资源
+              共 <strong className="text-primary">{totalResources}</strong> 个资源
             </div>
             {totalResources === 0 ? (
               <div className="text-center py-16 text-slate-400">
@@ -669,7 +669,7 @@ export default function SceneDetailPage() {
                   return (
                     <div key={task.id}>
                       <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-cyan-600" />
+                        <BookOpen className="w-4 h-4 text-primary" />
                         {task.name}
                         <span className="text-xs text-slate-400 font-normal">
                           ({resources.length})
@@ -678,7 +678,7 @@ export default function SceneDetailPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {resources.map((r) => {
                           const typeColors: Record<string, string> = {
-                            document: 'bg-cyan-50 text-cyan-600 border-cyan-100',
+                            document: 'bg-primary/5 text-primary border-primary/10',
                             video: 'bg-amber-50 text-amber-600 border-amber-100',
                             link: 'bg-purple-50 text-purple-600 border-purple-100',
                             file: 'bg-emerald-50 text-emerald-600 border-emerald-100',
@@ -686,7 +686,7 @@ export default function SceneDetailPage() {
                           return (
                             <div
                               key={r.id}
-                              className="group bg-slate-50 rounded-xl p-3.5 border border-slate-100 hover:border-cyan-300 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                              className="group bg-slate-50 rounded-xl p-3.5 border border-slate-100 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 transition-all"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
@@ -705,7 +705,7 @@ export default function SceneDetailPage() {
                                 {r.url && (
                                   <button
                                     onClick={() => addPreviewResource(r)}
-                                    className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-100 flex items-center justify-center transition-colors"
+                                    className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-primary/5 text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
                                     title="预览资源"
                                   >
                                     <Eye className="w-3.5 h-3.5" />
@@ -766,9 +766,9 @@ export default function SceneDetailPage() {
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
             <button
               onClick={() => router.back()}
-              className="hover:text-cyan-600 transition-colors flex items-center gap-1 cursor-pointer"
+              className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-cyan-50 hover:text-cyan-600 transition-colors">
+              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary/5 hover:text-primary transition-colors">
                 ←
               </span>{' '}
               返回上一页
@@ -865,7 +865,7 @@ export default function SceneDetailPage() {
 
                     <div className="flex flex-wrap gap-3 mt-auto pt-5">
                       <Link href={`/scene/landing/${id}/learn`}>
-                        <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-600 hover:to-cyan-500 text-white font-semibold text-sm shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:-translate-y-0.5 transition-all">
+                        <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
                           <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
                         </Button>
                       </Link>
@@ -877,7 +877,7 @@ export default function SceneDetailPage() {
                       />
                       <Button
                         variant="ghost"
-                        className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-cyan-600 border border-slate-200 hover:bg-cyan-50 hover:border-cyan-300 transition-all"
+                        className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-primary border border-slate-200 hover:bg-primary/5 hover:border-primary/30 transition-all"
                         aria-label="分享"
                       >
                         <Share2 className="w-4 h-4" />
@@ -892,8 +892,8 @@ export default function SceneDetailPage() {
             <div className="lg:w-[320px] shrink-0 flex">
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] w-full">
                 <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4 text-cyan-600" />
+                  <div className="w-7 h-7 rounded-lg bg-primary/5 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-primary" />
                   </div>
                   <span className="text-sm font-bold text-slate-800">课时统计</span>
                 </div>
@@ -915,7 +915,7 @@ export default function SceneDetailPage() {
                             cy="70"
                             r="58"
                             fill="none"
-                            stroke="#06b6d4"
+                            stroke="var(--primary)"
                             strokeWidth="10"
                             strokeLinecap="round"
                             strokeDasharray={`${(assessmentHours / totalHours) * Math.PI * 116 || 0} ${Math.PI * 116}`}
@@ -945,7 +945,7 @@ export default function SceneDetailPage() {
                   </div>
                   <div className="flex justify-center gap-6 text-xs">
                     <div className="flex items-center gap-2 text-slate-600">
-                      <div className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary/50" />
                       <span>考核 {assessmentHours} 课时</span>
                     </div>
                     <div className="flex items-center gap-2 text-slate-600">
@@ -972,43 +972,43 @@ export default function SceneDetailPage() {
                 onClick={() => setActiveTab(t.value)}
                 className={`
                   py-4 px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
-                  ${activeTab === t.value ? 'text-cyan-600 font-semibold' : 'text-slate-500 hover:text-cyan-600 hover:bg-cyan-50'}
+                  ${activeTab === t.value ? 'text-primary font-semibold' : 'text-slate-500 hover:text-primary hover:bg-primary/5'}
                 `}
               >
                 <t.icon
-                  className={`w-4 h-4 ${activeTab === t.value ? 'text-cyan-600' : 'text-slate-400'}`}
+                  className={`w-4 h-4 ${activeTab === t.value ? 'text-primary' : 'text-slate-400'}`}
                 />
                 {t.label}
                 {t.value === 'tasks' && tasks.length > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {tasks.length}
                   </span>
                 )}
                 {t.value === 'resources' && totalResources > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {totalResources}
                   </span>
                 )}
                 {t.value === 'abilities' && uniqueAbilityIds.size > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {uniqueAbilityIds.size}
                   </span>
                 )}
                 {t.value === 'evaluation' && totalEvalConfigs > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {totalEvalConfigs}
                   </span>
                 )}
                 {activeTab === t.value && (
-                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-cyan-500 rounded-t-full" />
+                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-primary/50 rounded-t-full" />
                 )}
               </button>
             ))}

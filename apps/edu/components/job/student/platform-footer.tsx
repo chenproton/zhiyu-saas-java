@@ -1,9 +1,9 @@
 'use client'
 
-export function PlatformFooter({ accent = 'purple' }: { accent?: 'purple' | 'cyan' } = {}) {
+export function PlatformFooter() {
   return (
     <footer className="bg-[#141a2e] mt-auto w-full">
-      <div className={`h-[3px] bg-gradient-to-r ${accent === 'cyan' ? 'from-cyan-500 via-cyan-400 to-cyan-300' : 'from-purple-500 via-purple-400 to-purple-300'}`} />
+      <div className="h-[3px] bg-gradient-to-r from-primary via-primary/60 to-primary/30" />
       <div className="max-w-[1600px] mx-auto px-8 py-12 pb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>

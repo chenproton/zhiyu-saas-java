@@ -46,7 +46,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
 
   return (
     <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
-      <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-amber-300 cursor-pointer h-full flex flex-col">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col">
         <div
           className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4 text-white"
           style={coverStyle}
@@ -90,7 +90,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 font-medium">
               面向行业：{course.industryName || '未分类'}
             </span>
-            <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 font-medium">
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-primary/5 text-primary border border-primary/10 font-medium">
               适用专业：{course.majorName || '未分类'}
             </span>
           </div>
@@ -210,7 +210,7 @@ export default function LessonLandingPage() {
     <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
       {/* Hero Banner */}
       <div className="relative w-full pt-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(217,119,6,0.88)] via-[rgba(245,158,11,0.78)] to-[rgba(251,191,36,0.78)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-primary/60" />
         <div
           className="absolute inset-0 opacity-[0.08]"
           style={{
@@ -218,9 +218,9 @@ export default function LessonLandingPage() {
             backgroundSize: '52px 52px',
           }}
         />
-        <div className="absolute top-[-120px] right-[-5%] w-[500px] h-[500px] rounded-full bg-amber-300/20 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-orange-400/15 blur-[100px] pointer-events-none" />
-        <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-yellow-400/10 blur-[80px] pointer-events-none" />
+        <div className="absolute top-[-120px] right-[-5%] w-[500px] h-[500px] rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-primary/15 blur-[100px] pointer-events-none" />
+        <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-primary/10 blur-[80px] pointer-events-none" />
 
         <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
           <div className="flex-1 pt-4">
@@ -231,13 +231,13 @@ export default function LessonLandingPage() {
             <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
               课程教学管理平台
               <br />
-              <span className="text-amber-200">从基础到进阶，系统提升专业能力</span>
+              <span className="text-white/80">从基础到进阶，系统提升专业能力</span>
             </h1>
             <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
               体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效
             </p>
             <Button
-              className="inline-flex items-center gap-2 bg-white text-amber-600 hover:bg-amber-50 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
+              className="inline-flex items-center gap-2 bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
               onClick={() =>
                 listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }
@@ -283,25 +283,25 @@ export default function LessonLandingPage() {
               icon: BookOpen,
               value: systemCourses.length,
               label: '体系课',
-              gradient: 'from-amber-500 to-amber-400',
+              gradient: 'from-primary to-primary/80',
             },
             {
               icon: Layers,
               value: granularCourses.length,
               label: '颗粒课',
-              gradient: 'from-orange-500 to-orange-400',
+              gradient: 'from-primary/90 to-primary/70',
             },
             {
               icon: FileText,
               value: totalResources,
               label: '教学资源',
-              gradient: 'from-yellow-500 to-yellow-400',
+              gradient: 'from-primary/80 to-primary/60',
             },
             {
               icon: GraduationCap,
               value: totalNodes,
               label: '课程节点',
-              gradient: 'from-amber-600 to-amber-500',
+              gradient: 'from-primary/90 to-primary/70',
             },
           ].map((s, i) => (
             <div
@@ -328,8 +328,8 @@ export default function LessonLandingPage() {
         {/* Filter */}
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-5">
           <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
-            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-amber-600" />
-            <Filter className="w-4 h-4 text-amber-500" />
+            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
+            <Filter className="w-4 h-4 text-primary" />
             课程筛选
           </div>
           <div className="space-y-0">
@@ -339,7 +339,7 @@ export default function LessonLandingPage() {
                 items={industries}
                 selected={selectedIndustry}
                 onSelect={setSelectedIndustry}
-                accentColor="amber"
+                accentColor="primary"
               />
             )}
             {batches.length > 1 && (
@@ -349,7 +349,7 @@ export default function LessonLandingPage() {
                 selected={selectedBatch}
                 onSelect={setSelectedBatch}
                 showBorder={industries.length <= 1}
-                accentColor="amber"
+                accentColor="primary"
               />
             )}
           </div>
@@ -359,7 +359,7 @@ export default function LessonLandingPage() {
               {activeFilters.map((f) => (
                 <span
                   key={f.type}
-                  className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 text-xs px-2.5 py-1 rounded-full border border-amber-100"
+                  className="inline-flex items-center gap-1.5 bg-primary/5 text-primary text-xs px-2.5 py-1 rounded-full border border-primary/10"
                 >
                   {f.label}
                   <X
@@ -378,7 +378,7 @@ export default function LessonLandingPage() {
                   setSelectedBatch('全部')
                   setKeyword('')
                 }}
-                className="text-[13px] text-amber-600 hover:text-amber-700 font-medium"
+                className="text-[13px] text-primary hover:text-primary font-medium"
               >
                 清空筛选
               </button>
@@ -395,8 +395,8 @@ export default function LessonLandingPage() {
                 onClick={() => setSort(s.value)}
                 className={`px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium ${
                   sort === s.value
-                    ? 'bg-amber-500 text-white shadow-md'
-                    : 'text-[#475569] hover:text-amber-600 hover:bg-[#f8fafc]'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-[#475569] hover:text-primary hover:bg-[#f8fafc]'
                 }`}
               >
                 {s.label}
@@ -412,10 +412,10 @@ export default function LessonLandingPage() {
                 if (e.key === 'Enter') executeSearch()
               }}
               placeholder="搜索课程名称、描述或专业"
-              className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-amber-300 focus:ring-2 focus:ring-amber-100 focus:bg-white transition-all"
+              className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 focus:bg-white transition-all"
             />
             <Button
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
               onClick={executeSearch}
             >
               搜索
@@ -425,8 +425,8 @@ export default function LessonLandingPage() {
 
         <div className="text-[13px] text-[#64748b] mb-5">
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            当前共展示 <b className="text-amber-600">{filtered.length}</b> 个课程
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            当前共展示 <b className="text-primary">{filtered.length}</b> 个课程
           </span>
         </div>
 
@@ -455,7 +455,7 @@ export default function LessonLandingPage() {
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
-                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-amber-600" />
+                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
                     体系课
                     <span className="text-[13px] text-[#64748b] font-normal ml-1">
                       ({systemCourses.length})
@@ -474,7 +474,7 @@ export default function LessonLandingPage() {
                     setCurrentPage(p)
                     listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   }}
-                  accentColor="amber"
+                  accentColor="primary"
                 />
               </div>
             )}
@@ -484,7 +484,7 @@ export default function LessonLandingPage() {
               <div>
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
-                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-orange-400 to-orange-600" />
+                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
                     颗粒课
                     <span className="text-[13px] text-[#64748b] font-normal ml-1">
                       ({granularCourses.length})

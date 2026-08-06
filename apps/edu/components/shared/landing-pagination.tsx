@@ -10,6 +10,10 @@ const ACCENT_CLASSES: Record<
     hover: string
   }
 > = {
+  primary: {
+    active: 'bg-primary border-primary text-white shadow-md shadow-primary/20',
+    hover: 'hover:border-primary/30 hover:text-primary hover:bg-primary/5',
+  },
   purple: {
     active: 'bg-purple-500 border-purple-500 text-white shadow-md shadow-purple-500/20',
     hover: 'hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50',
@@ -40,7 +44,7 @@ interface LandingPaginationProps {
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
-  accentColor?: 'purple' | 'cyan' | 'emerald' | 'amber' | 'red' | 'blue'
+  accentColor?: 'primary' | 'purple' | 'cyan' | 'emerald' | 'amber' | 'red' | 'blue'
 }
 
 export function LandingPagination({

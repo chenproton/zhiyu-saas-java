@@ -42,7 +42,7 @@ export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointC
 
   return (
     <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 relative overflow-hidden shadow-sm hover:shadow-md transition-all h-full flex flex-col">
-      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 to-emerald-500" />
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-primary/60" />
 
       <div className="flex gap-3 mb-3">
         {typeof index === 'number' && (

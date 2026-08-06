@@ -77,14 +77,14 @@ import type {
 /* ---------- constants ---------- */
 
 const resourceTypeIcons: Record<string, string> = {
-  document: 'text-cyan-600 bg-cyan-50',
+  document: 'text-primary bg-primary/5',
   video: 'text-[#f59e0b] bg-amber-50',
   link: 'text-[#8b5cf6] bg-purple-50',
   file: 'text-[#10b981] bg-emerald-50',
   spreadsheet: 'text-[#16a34a] bg-green-50',
   presentation: 'text-[#f97316] bg-orange-50',
   image: 'text-[#ec4899] bg-pink-50',
-  audio: 'text-[#06b6d4] bg-cyan-50',
+  audio: 'text-[#06b6d4] bg-primary/5',
   pdf: 'text-[#ef4444] bg-red-50',
 }
 
@@ -348,8 +348,8 @@ export default function SceneLearnPage() {
     return (
       <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
         <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-cyan-500/10 blur-[120px]" />
-          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-cyan-500/10 blur-[100px]" />
+          <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-primary/10 blur-[120px]" />
+          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-primary/10 blur-[100px]" />
         </div>
         <header className="relative z-10 bg-white border-b border-gray-200/60 shrink-0 h-16 flex items-center px-6">
           <Skeleton className="h-5 w-48" />
@@ -371,21 +371,21 @@ export default function SceneLearnPage() {
     return (
       <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
         <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-cyan-500/10 blur-[120px]" />
-          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-cyan-500/10 blur-[100px]" />
+          <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-primary/10 blur-[120px]" />
+          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-primary/10 blur-[100px]" />
         </div>
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
           <div className="relative w-24 h-24 mb-6">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/15 to-cyan-500/15 opacity-40 blur-xl" />
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/10 opacity-60" />
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/15 to-primary/15 opacity-40 blur-xl" />
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/10 opacity-60" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <BookOpen className="w-12 h-12 text-cyan-100" />
+              <BookOpen className="w-12 h-12 text-white/80" />
             </div>
           </div>
           <div className="text-lg font-semibold text-gray-600">场景不存在</div>
           <Link
             href="/scene/landing"
-            className="text-cyan-600 hover:text-cyan-700 mt-2 text-sm font-medium transition-colors"
+            className="text-primary hover:text-primary mt-2 text-sm font-medium transition-colors"
           >
             返回场景列表
           </Link>
@@ -399,8 +399,8 @@ export default function SceneLearnPage() {
     <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
       {/* ---------- ambient background ---------- */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-cyan-500/10 blur-[120px]" />
-        <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-cyan-500/10 blur-[100px]" />
+        <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-primary/10 blur-[100px]" />
         <div
           className="absolute inset-0 opacity-[0.35]"
           style={{
@@ -418,12 +418,12 @@ export default function SceneLearnPage() {
               <Link
                 replace
                 href={`/scene/landing/${id}`}
-                className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-cyan-600 transition-all duration-200"
+                className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-primary transition-all duration-200"
               >
-                <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-cyan-50 group-hover:border-cyan-300 group-hover:text-cyan-600 transition-all duration-200">
+                <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-primary/5 group-hover:border-primary/30 group-hover:text-primary transition-all duration-200">
                   <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
                 </span>
-                <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-cyan-600 transition-colors">
+                <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-primary transition-colors">
                   {scenario.name}
                 </span>
               </Link>
@@ -431,26 +431,26 @@ export default function SceneLearnPage() {
             <div className="flex items-center gap-2">
               {activeTask && (
                 <>
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-cyan-50 px-3 py-1.5 rounded-full border border-cyan-100">
-                    <Target className="w-3.5 h-3.5 text-cyan-600" />{' '}
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
+                    <Target className="w-3.5 h-3.5 text-primary" />{' '}
                     {activeTask.taskType === 'assessment' ? '考核' : '训练'}
                   </span>
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-cyan-50 px-3 py-1.5 rounded-full border border-cyan-100">
-                    <BarChart3 className="w-3.5 h-3.5 text-cyan-600" />{' '}
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
+                    <BarChart3 className="w-3.5 h-3.5 text-primary" />{' '}
                     {SCENE_DIFFICULTY[activeTask.difficulty]?.label ||
                       `Lv.${activeTask.difficulty}`}
                   </span>
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-cyan-50 px-3 py-1.5 rounded-full border border-cyan-100">
-                    <Clock className="w-3.5 h-3.5 text-cyan-600" /> {activeTask.estimatedHours || 0}{' '}
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
+                    <Clock className="w-3.5 h-3.5 text-primary" /> {activeTask.estimatedHours || 0}{' '}
                     课时
                   </span>
                 </>
               )}
               <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <ListChecks className="w-3.5 h-3.5 text-cyan-600" /> {tasks.length} 个任务
+                <ListChecks className="w-3.5 h-3.5 text-primary" /> {tasks.length} 个任务
               </span>
               <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <Clock className="w-3.5 h-3.5 text-cyan-600" /> {totalHours} 课时
+                <Clock className="w-3.5 h-3.5 text-primary" /> {totalHours} 课时
               </span>
             </div>
           </div>
@@ -474,7 +474,7 @@ export default function SceneLearnPage() {
         >
           {/* sidebar header */}
           <div className="relative border-b border-gray-100 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-500 via-cyan-500 to-cyan-400 shadow-sm" />
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-primary to-primary/70 shadow-sm" />
             <div
               className={cn(
                 'flex items-center',
@@ -498,7 +498,7 @@ export default function SceneLearnPage() {
                 className={cn(
                   'flex items-center justify-center rounded-lg hover:bg-gray-100 transition-all duration-200',
                   sidebarCollapsed
-                    ? 'w-9 h-9 text-gray-500 hover:text-cyan-600'
+                    ? 'w-9 h-9 text-gray-500 hover:text-primary'
                     : 'w-8 h-8 ml-auto',
                 )}
                 title={sidebarCollapsed ? '展开任务列表' : '折叠任务列表'}
@@ -527,7 +527,7 @@ export default function SceneLearnPage() {
                         className={cn(
                           'flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-bold transition-all duration-200',
                           isActive
-                            ? 'bg-gradient-to-br from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30'
+                            ? 'bg-gradient-to-br from-primary to-primary/70 text-white shadow-lg shadow-primary/30'
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600 hover:-translate-y-0.5',
                         )}
                         title={`${idx + 1}. ${task.name} (${diff.label}, ${task.estimatedHours || 0}h)`}
@@ -545,18 +545,18 @@ export default function SceneLearnPage() {
                     className={cn(
                       'relative flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 group',
                       isActive
-                        ? 'bg-gradient-to-r from-cyan-50 via-cyan-50 to-transparent'
+                        ? 'bg-gradient-to-r from-primary/5 via-primary/5 to-transparent'
                         : 'hover:bg-gray-50/80 hover:pl-5',
                     )}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-gradient-to-b from-cyan-500 to-cyan-600 rounded-r-full shadow-[0_0_8px_rgba(6,182,212,0.4)]" />
+                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-gradient-to-b from-primary to-primary/70 rounded-r-full shadow-[0_0_8px_rgba(6,182,212,0.4)]" />
                     )}
                     <div
                       className={cn(
                         'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold transition-all duration-200',
                         isActive
-                          ? 'bg-gradient-to-br from-cyan-500 to-cyan-600 text-white shadow-md shadow-cyan-500/25'
+                          ? 'bg-gradient-to-br from-primary to-primary/70 text-white shadow-md shadow-primary/25'
                           : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-600 group-hover:-translate-y-0.5',
                       )}
                     >
@@ -566,7 +566,7 @@ export default function SceneLearnPage() {
                       <div
                         className={cn(
                           'text-[13px] font-semibold truncate transition-colors duration-200',
-                          isActive ? 'text-cyan-600' : 'text-gray-700 group-hover:text-gray-900',
+                          isActive ? 'text-primary' : 'text-gray-700 group-hover:text-gray-900',
                         )}
                       >
                         {task.name}
@@ -586,8 +586,8 @@ export default function SceneLearnPage() {
                         <span
                           className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                           style={{
-                            backgroundColor: task.taskType === 'assessment' ? '#fef2f2' : '#ecfeff',
-                            color: task.taskType === 'assessment' ? '#dc2626' : '#0891b2',
+                            backgroundColor: task.taskType === 'assessment' ? '#fef2f2' : 'color-mix(in srgb, var(--primary) 8%, white)',
+                            color: task.taskType === 'assessment' ? '#dc2626' : 'var(--primary)',
                           }}
                         >
                           {task.taskType === 'assessment' ? '考核' : '训练'}
@@ -606,10 +606,10 @@ export default function SceneLearnPage() {
           {!activeTask ? (
             <div className="flex flex-col items-center justify-center flex-1 p-8">
               <div className="relative w-28 h-28 mb-6">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/15 to-cyan-500/15 opacity-40 blur-xl animate-pulse" />
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/10 opacity-60" />
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/15 to-primary/15 opacity-40 blur-xl animate-pulse" />
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/10 opacity-60" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <BookOpen className="w-12 h-12 text-cyan-100" />
+                  <BookOpen className="w-12 h-12 text-white/80" />
                 </div>
               </div>
               <p className="text-base font-semibold text-gray-600">选择一个任务开始学习</p>
@@ -673,7 +673,7 @@ export default function SceneLearnPage() {
                             已评分 {taskAggregate.evaluatedCount}/{taskAggregate.totalMethods}
                           </span>
                           {taskAggregate.evaluatedCount > 0 && (
-                            <span className="text-sm font-semibold text-cyan-600">
+                            <span className="text-sm font-semibold text-primary">
                               综合 {taskAggregate.score}/{taskAggregate.maxScore}
                             </span>
                           )}
@@ -742,21 +742,21 @@ export default function SceneLearnPage() {
                   <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
                     <TabsTrigger
                       value="collapsed-knowledge"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-50 data-[state=active]:to-cyan-100 data-[state=active]:text-cyan-600 data-[state=active]:shadow-sm transition-all"
+                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                     >
                       <BrainCircuit className="mr-1 h-3.5 w-3.5" />
                       知识点
                     </TabsTrigger>
                     <TabsTrigger
                       value="collapsed-ability"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-50 data-[state=active]:to-cyan-100 data-[state=active]:text-cyan-600 data-[state=active]:shadow-sm transition-all"
+                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                     >
                       <Target className="mr-1 h-3.5 w-3.5" />
                       能力点
                     </TabsTrigger>
                     <TabsTrigger
                       value="collapsed-resource"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-50 data-[state=active]:to-cyan-100 data-[state=active]:text-cyan-600 data-[state=active]:shadow-sm transition-all"
+                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                     >
                       <FolderOpen className="mr-1 h-3.5 w-3.5" />
                       资源
@@ -769,10 +769,10 @@ export default function SceneLearnPage() {
                       taskKnowledgePoints.map((kp, i) => (
                         <div
                           key={kp.id}
-                          className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-cyan-300 hover:bg-cyan-50/30 transition-all cursor-pointer"
+                          className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
                           onClick={() => setActiveKnowledgePoint(kp)}
                         >
-                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                             {i + 1}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -794,14 +794,14 @@ export default function SceneLearnPage() {
                       taskAbilityPoints.map((ap, i) => {
                         const cat = {
                           label: ap.attributes?.[0] || '能力点',
-                          color: '#0891b2',
+                          color: 'var(--primary)',
                         }
                         return (
                           <div
                             key={ap.id}
-                            className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-cyan-300 hover:bg-cyan-50/30 transition-all cursor-pointer"
+                            className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
                           >
-                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                               {i + 1}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -825,7 +825,7 @@ export default function SceneLearnPage() {
                       taskResources.map((r) => (
                         <div
                           key={r.id}
-                          className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-cyan-300 hover:bg-cyan-50/30 transition-all cursor-pointer"
+                          className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
                           onClick={() => addPreviewResource(r)}
                         >
                           <div
@@ -874,7 +874,7 @@ export default function SceneLearnPage() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <BrainCircuit className="h-5 w-5 text-cyan-600" />
+                <BrainCircuit className="h-5 w-5 text-primary" />
                 {activeKnowledgePoint.name}
               </DialogTitle>
               {activeKnowledgePoint.code && (
@@ -898,20 +898,20 @@ export default function SceneLearnPage() {
                       <Link
                         key={c.id}
                         href={`/lesson/landing/${c.id}`}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-cyan-300 hover:bg-cyan-50/30 transition-all group"
+                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group"
                       >
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shrink-0">
                           <BookOpen className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-700 truncate group-hover:text-cyan-600 transition-colors">
+                          <p className="text-sm font-medium text-gray-700 truncate group-hover:text-primary transition-colors">
                             {c.name}
                           </p>
                           <p className="text-[11px] text-gray-400">
                             {c.code ? `${c.code} · ` : ''}颗粒课
                           </p>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-cyan-600 group-hover:translate-x-0.5 transition-all" />
+                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                       </Link>
                     ))}
                   </div>

@@ -29,7 +29,7 @@ export function StatsBox({
       {stats.map((s, i) => (
         <div
           key={i}
-          className="bg-white rounded-xl border border-[#e2e8f0] shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-3 py-5 text-center transition-all hover:border-purple-300 hover:shadow-[0_4px_12px] hover:shadow-purple-500/10"
+          className="bg-white rounded-xl border border-[#e2e8f0] shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-3 py-5 text-center transition-all hover:border-primary/25 hover:shadow-[0_4px_12px] hover:shadow-primary/10"
         >
           <div className="text-[28px] font-bold text-[#1e293b] leading-tight mb-1.5">
             {typeof s.value === 'number' ? s.value.toLocaleString() : s.value}
