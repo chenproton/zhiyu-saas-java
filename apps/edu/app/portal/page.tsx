@@ -298,10 +298,10 @@ const BENTO_LAYOUT: CardLayout[] = [
   { id: 'opc', col: '4', row: '1', variant: 'small' },
 ]
 
-const SECTIONS: { title: string; layouts: CardLayout[] }[] = [
-  { title: '产教协同育人生态', layouts: BENTO_LAYOUT.slice(0, 4) },
-  { title: '教学资源保障生态', layouts: BENTO_LAYOUT.slice(4, 8) },
-  { title: '教学治理服务生态', layouts: BENTO_LAYOUT.slice(8) },
+const SECTIONS: { title: string; highlight: string; layouts: CardLayout[] }[] = [
+  { title: '产教协同育人', highlight: '生态', layouts: BENTO_LAYOUT.slice(0, 4) },
+  { title: '教学资源保障', highlight: '生态', layouts: BENTO_LAYOUT.slice(4, 8) },
+  { title: '教学治理服务', highlight: '生态', layouts: BENTO_LAYOUT.slice(8) },
 ]
 
 /* ─── helpers ─── */
@@ -372,18 +372,17 @@ function GradientTile({
     }
   }
 
-  const layoutClass = 'flex-col'
   const iconH = isBig ? 'w-16 h-16 text-2xl mb-5' : 'w-[46px] h-[46px] text-xl mb-3.5'
   const placementClass = `${COL_START_CLASS[gridColumn] || ''} ${ROW_START_CLASS[gridRow] || ''}`
 
   return (
     <Wrapper
       {...wrapperProps}
-      className={`group rounded-2xl p-4 sm:p-6 bg-white relative overflow-hidden flex border ${layoutClass} ${placementClass} ${isLocked ? '' : 'cursor-pointer hover:-translate-y-2 transition-all duration-[400ms]'}`}
-      style={{
-        borderColor: '#e8ecf3',
-        boxShadow: '0 0 30px rgba(0,73,174,0.08)',
-      }}
+      className={`group rounded-2xl p-4 sm:p-6 relative overflow-hidden flex border flex-col ${placementClass} ${
+        isLocked
+          ? 'border-dashed border-[#d7dce6] bg-[#fafbfc]'
+          : 'cursor-pointer bg-white border-[#e8ecf3] shadow-[0_0_30px_rgba(0,73,174,0.08)] hover:-translate-y-2 hover:border-[#1677FF40] hover:shadow-[0_10px_32px_rgba(0,73,174,0.15)] transition-all duration-[400ms]'
+      }`}
     >
       {isLocked && (
         <div
@@ -405,7 +404,7 @@ function GradientTile({
       )}
 
       <div
-        className={`rounded-2xl flex items-center justify-center relative transition-all duration-[400ms] group-hover:scale-110 shrink-0 ${iconH} ${item.color}`}
+        className={`rounded-2xl flex items-center justify-center relative transition-all duration-[400ms] group-hover:scale-110 shrink-0 shadow-sm ${iconH} ${item.color}`}
         style={{ zIndex: 2 }}
       >
         {getIcon(item.icon)}
@@ -418,17 +417,36 @@ function GradientTile({
         </h4>
         <p className="text-xs leading-relaxed text-[#666] line-clamp-2">{item.desc}</p>
       </div>
+
+      {!isLocked && (
+        <div
+          className="absolute bottom-3 right-4 flex items-center gap-1 text-xs font-medium text-[#1677FF] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{ zIndex: 2 }}
+        >
+          进入
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
+          </svg>
+        </div>
+      )}
     </Wrapper>
   )
 }
 
 /* ─── Section label ─── */
-function SectionLabel({ title }: { title: string }) {
+function SectionLabel({ title, highlight }: { title: string; highlight: string }) {
   return (
     <div className="flex items-center gap-3 mb-[18px] mt-9">
-      <h3 className="text-base font-bold text-[#333] flex items-center gap-2.5">
+      <h3 className="text-lg font-bold text-[#333] flex items-center gap-2.5">
         <span className="w-1 h-[18px] rounded-sm bg-[#1677FF] inline-block" />
         {title}
+        <span className="text-[#0049AE]">{highlight}</span>
       </h3>
       <span className="flex-1 h-px bg-[#e9edf4]" />
     </div>
@@ -453,22 +471,40 @@ export default function PortalHomePage() {
         }}
       />
 
-      {/* Hero */}
-      <section className="relative pt-8 pb-6 text-center px-4 sm:px-10">
-        <div className="relative max-w-3xl mx-auto" style={{ zIndex: 2 }}>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#333] tracking-wide leading-tight mb-3">
-            <span className="text-[#0049AE]">场景化数智</span>
-            教学服务体系
-          </h1>
-          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-2">
-            {features.map((f, i) => (
-              <span key={i} className="relative text-xs sm:text-sm text-[#666] px-2 sm:px-4">
-                {f.label}
-                {i < features.length - 1 && (
-                  <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-[#c5cede]" />
-                )}
-              </span>
-            ))}
+      {/* Hero banner */}
+      <section className="relative pt-8 px-4 sm:px-10">
+        <div
+          className="relative max-w-[1312px] mx-auto rounded-2xl overflow-hidden px-6 py-12 sm:px-16 sm:py-14 text-center"
+          style={{
+            background: 'linear-gradient(120deg,#eef5ff 0%,#f8fbff 55%,#f2f8ff 100%)',
+            boxShadow: '0 0 30px rgba(0,73,174,0.06)',
+          }}
+        >
+          {/* geometric decorations */}
+          <div className="absolute -right-16 -top-20 w-64 h-64 rounded-full border border-[#1677FF]/10 pointer-events-none" />
+          <div className="absolute -right-4 -top-8 w-36 h-36 rounded-full border border-[#1677FF]/10 pointer-events-none" />
+          <div
+            className="absolute -left-24 -bottom-28 w-80 h-80 border border-[#1677FF]/[0.07] rounded-2xl pointer-events-none"
+            style={{ transform: 'rotate(45deg)' }}
+          />
+          <div className="absolute left-16 top-8 w-3 h-3 rounded-full bg-[#1677FF]/10 pointer-events-none" />
+          <div className="absolute right-24 bottom-10 w-2 h-2 rounded-full bg-[#1677FF]/10 pointer-events-none" />
+
+          <div className="relative" style={{ zIndex: 2 }}>
+            <h1 className="text-[28px] sm:text-4xl lg:text-[40px] font-extrabold text-[#333] tracking-[1px] leading-tight mb-5">
+              <span className="text-[#0049AE]">场景化数智</span>
+              教学服务体系
+            </h1>
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              {features.map((f) => (
+                <span
+                  key={f.label}
+                  className="text-xs sm:text-[13px] text-[#555] bg-[#f2f5fa] border border-[#e6ebf3] rounded-full px-4 py-1.5"
+                >
+                  {f.label}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -477,7 +513,7 @@ export default function PortalHomePage() {
       <main className="max-w-[1312px] mx-auto px-4 sm:px-10 relative" style={{ zIndex: 2 }}>
         {SECTIONS.map((section) => (
           <div key={section.title}>
-            <SectionLabel title={section.title} />
+            <SectionLabel title={section.title} highlight={section.highlight} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-[18px]">
               {section.layouts.map((layout) => {
