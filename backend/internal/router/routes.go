@@ -41,6 +41,7 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 	r.With(loginLimiter).Post("/auth/saas/login", h.authHandler.SaasLogin)
 	r.With(loginLimiter).Post("/auth/portal/login", h.authHandler.PortalLogin)
 	r.Post("/auth/select-tenant", h.authHandler.SelectTenant)
+	r.Get("/settings/theme", h.settingsHandler.GetTheme)
 }
 
 func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
@@ -267,6 +268,9 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 
 	r.Get("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminGet)
 	r.Put("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminUpdate)
+
+	r.Get("/admin/settings/theme", h.settingsHandler.GetTheme)
+	r.Put("/admin/settings/theme", h.settingsHandler.UpdateTheme)
 
 }
 

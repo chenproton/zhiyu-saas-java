@@ -102,6 +102,7 @@ type Store struct {
 	alliance         *AllianceStore
 	community        *CommunityStore
 	favorites        *FavoritesStore
+	platformSettings *PlatformSettingsStore
 }
 
 // newStore 装配全部领域 store（连接池模式与事务模式共用，仅查询器不同）。
@@ -189,6 +190,7 @@ func newStore(q Queryer) *Store {
 		alliance:         NewAllianceStore(q),
 		community:        NewCommunityStore(q),
 		favorites:        NewFavoritesStore(q),
+		platformSettings: NewPlatformSettingsStore(q),
 	}
 }
 
@@ -615,4 +617,9 @@ func (s *Store) Community() *CommunityStore {
 // Favorites 返回通用收藏 store。
 func (s *Store) Favorites() *FavoritesStore {
 	return s.favorites
+}
+
+// PlatformSettings 返回平台级配置 store。
+func (s *Store) PlatformSettings() *PlatformSettingsStore {
+	return s.platformSettings
 }

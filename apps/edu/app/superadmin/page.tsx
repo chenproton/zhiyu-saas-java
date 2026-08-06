@@ -55,7 +55,7 @@ import { authApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
 import {
   applyBrandColor,
-  getCachedBrandColor,
+  fetchThemeColor,
   isHexColor,
   DEFAULT_BRAND_COLOR,
   BRAND_CHANGED_EVENT,
@@ -163,7 +163,44 @@ export default function SuperAdminPage() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [subscriptionSubmitting, setSubscriptionSubmitting] = useState(false)
 
+  const [themeColor, setThemeColor] = useState(DEFAULT_BRAND_COLOR)
+  const [themeSaving, setThemeSaving] = useState(false)
+
   const { toast } = useToast()
+
+  // 加载平台主题配置（公开接口）
+  useEffect(() => {
+    if (!authenticated) return
+    ;(async () => {
+      setThemeColor(await fetchThemeColor())
+    })()
+  }, [authenticated])
+
+  const saveTheme = async (color: string) => {
+    if (!isHexColor(color)) {
+      toast({ variant: 'destructive', title: '主题色格式错误', description: '应为 #RRGGBB 格式' })
+      return
+    }
+    setThemeSaving(true)
+    try {
+      await saasRequest('/admin/settings/theme', {
+        method: 'PUT',
+        body: JSON.stringify({ primary: color }),
+      })
+      applyBrandColor(color)
+      window.dispatchEvent(new Event(BRAND_CHANGED_EVENT))
+      setThemeColor(color)
+      toast({ title: '主题色已保存并生效' })
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: '保存失败',
+        description: err instanceof Error ? err.message : '未知错误',
+      })
+    } finally {
+      setThemeSaving(false)
+    }
+  }
 
   useEffect(() => {
     ;(async () => {
@@ -678,6 +715,98 @@ export default function SuperAdminPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
           />
+        </div>
+      </div>
+
+      {/* 平台主题配置 */}
+      <div className="mb-6 rounded-lg border border-gray-100 bg-white shadow-sm">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Palette className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold">平台主题配置</h2>
+            <p className="text-xs text-muted-foreground">
+              设置全平台主题色，保存后对所有用户实时生效（刷新或新开页面即同步）
+            </p>
+          </div>
+        </div>
+        <div className="px-5 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {THEME_PRESETS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                title={color}
+                aria-label={`主题色 ${color}`}
+                onClick={() => setThemeColor(color)}
+                className={`h-8 w-8 rounded-full transition-transform hover:scale-110 ${
+                  themeColor.toLowerCase() === color.toLowerCase()
+                    ? 'ring-2 ring-offset-2 ring-foreground/30'
+                    : ''
+                }`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+            <label
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-gray-300 text-xs text-muted-foreground cursor-pointer hover:border-primary hover:text-primary"
+              title="自定义颜色"
+            >
+              <input
+                type="color"
+                value={themeColor}
+                onChange={(e) => setThemeColor(e.target.value)}
+                className="sr-only"
+              />
+              +
+            </label>
+            <input
+              value={themeColor}
+              onChange={(e) => setThemeColor(e.target.value)}
+              className="h-8 w-28 rounded-md border border-gray-200 px-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="#RRGGBB"
+            />
+            <span className="text-xs text-muted-foreground">自定义色值</span>
+          </div>
+
+          {/* 实时预览 */}
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-muted/50 p-3">
+            <span className="text-xs text-muted-foreground">预览：</span>
+            <Button size="sm" style={{ backgroundColor: themeColor }}>
+              主要按钮
+            </Button>
+            <Button size="sm" variant="outline" style={{ color: themeColor }}>
+              次要按钮
+            </Button>
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+              style={{ backgroundColor: themeColor }}
+            >
+              标签
+            </span>
+            <span className="text-xs text-muted-foreground">
+              当前色值：<span className="font-mono">{themeColor}</span>
+            </span>
+          </div>
+
+          <div className="mt-4 flex items-center gap-2">
+            <Button size="sm" onClick={() => saveTheme(themeColor)} disabled={themeSaving}>
+              {themeSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              保存并应用
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={themeSaving}
+              onClick={() => {
+                setThemeColor(DEFAULT_BRAND_COLOR)
+                void saveTheme(DEFAULT_BRAND_COLOR)
+              }}
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1" />
+              恢复默认
+            </Button>
+          </div>
         </div>
       </div>
 

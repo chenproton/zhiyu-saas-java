@@ -4,25 +4,27 @@
 
 :root {
   /* Base palette: cool light background with business blue accents */
+  /* --brand 为唯一主题色源，运行时可通过平台配置实时覆盖（superadmin 主题配置） */
+  --brand: #4862e4;
   --background: oklch(0.978 0.006 260);
   --foreground: oklch(0.22 0.015 260);
   --card: oklch(0.997 0.003 260);
   --card-foreground: oklch(0.22 0.015 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.015 260);
-  --primary: #4862e4;
+  --primary: var(--brand);
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.94 0.03 250);
   --secondary-foreground: oklch(0.35 0.06 255);
   --muted: oklch(0.945 0.01 260);
   --muted-foreground: oklch(0.48 0.02 260);
-  --accent: #4862e4;
+  --accent: var(--brand);
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.58 0.22 25);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.9 0.012 260);
   --input: oklch(0.92 0.01 260);
-  --ring: oklch(0.72 0.1 250);
+  --ring: color-mix(in srgb, var(--brand) 55%, white);
   --chart-1: oklch(0.62 0.2 250);
   --chart-2: oklch(0.62 0.2 250);
   --chart-3: oklch(0.7 0.16 60);
@@ -31,19 +33,19 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.96 0.008 260);
   --sidebar-foreground: oklch(0.22 0.015 260);
-  --sidebar-primary: #4862e4;
+  --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.92 0.02 255);
   --sidebar-accent-foreground: oklch(0.35 0.06 255);
   --sidebar-border: oklch(0.87 0.015 260);
-  --sidebar-ring: oklch(0.72 0.1 250);
+  --sidebar-ring: color-mix(in srgb, var(--brand) 55%, white);
 
   /* Vibrant status tokens */
   --success: oklch(0.62 0.18 150);
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.72 0.18 75);
   --warning-foreground: oklch(0.2 0 0);
-  --info: #4862e4;
+  --info: var(--brand);
   --info-foreground: oklch(1 0 0);
 }
 
