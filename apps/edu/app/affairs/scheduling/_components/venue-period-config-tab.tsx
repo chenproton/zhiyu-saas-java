@@ -733,12 +733,6 @@ function PeriodSlotsSection() {
     setDirty(true)
   }
 
-  const openAdd = () => {
-    setEditingIndex(null)
-    setForm({ name: '', type: 'morning', startTime: '', endTime: '' })
-    setDialogOpen(true)
-  }
-
   const openEdit = (idx: number) => {
     setEditingIndex(idx)
     setForm({ ...rows[idx] })
@@ -746,12 +740,8 @@ function PeriodSlotsSection() {
   }
 
   const handleFormSave = () => {
-    if (!form.name.trim()) return
-    if (editingIndex != null) {
-      setRows((prev) => prev.map((r, i) => (i === editingIndex ? { ...form, name: form.name.trim() } : r)))
-    } else {
-      setRows((prev) => [...prev, { ...form, name: form.name.trim() }])
-    }
+    if (!form.name.trim() || editingIndex == null) return
+    setRows((prev) => prev.map((r, i) => (i === editingIndex ? { ...form, name: form.name.trim() } : r)))
     setDialogOpen(false)
     setDirty(true)
   }
@@ -827,10 +817,6 @@ function PeriodSlotsSection() {
                 </div>
               ))}
             </div>
-            <Button size="sm" onClick={openAdd}>
-              <Plus className="mr-1 size-4" />
-              添加节次
-            </Button>
           </div>
 
           <div className="overflow-x-auto rounded-lg border">
@@ -860,7 +846,7 @@ function PeriodSlotsSection() {
                 ) : rows.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="h-24 border text-center text-sm text-muted-foreground">
-                      暂无节次，在右侧配置各时段参数自动生成，或点击「添加节次」手动创建
+                      暂无节次，在右侧配置各时段参数自动生成
                     </td>
                   </tr>
                 ) : (
@@ -1032,11 +1018,11 @@ function PeriodSlotsSection() {
         </div>
       </div>
 
-      {/* 编辑 / 添加节次弹窗 */}
+      {/* 编辑节次弹窗 */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingIndex != null ? '编辑节次' : '添加节次'}</DialogTitle>
+            <DialogTitle>编辑节次</DialogTitle>
             <DialogDescription>
               节次名称需与排课/导入时填写的名称一致（如 上午1-2）
             </DialogDescription>
