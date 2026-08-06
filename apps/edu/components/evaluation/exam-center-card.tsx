@@ -15,13 +15,7 @@ import { Button } from '@/components/ui/button'
 import type { ExamCenterItem } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
 import { cn } from '@/lib/utils'
-import { COVER_GRADIENTS } from '@/lib/cover-gradients'
-
-function gradientFor(id: string) {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
-  return COVER_GRADIENTS[h % COVER_GRADIENTS.length]
-}
+import { coverGradientFor } from '@/lib/cover-gradients'
 
 const STATUS_META: Record<string, { label: string; text: string; dot: string }> = {
   published: { label: '待考', text: 'text-amber-600', dot: 'bg-amber-500' },
@@ -56,7 +50,7 @@ export function ExamCenterCard({
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }
-            : { background: gradientFor(item.id) }
+            : { background: coverGradientFor(item.id) }
         }
       >
         {!coverImage && <ClipboardList className="w-10 h-10 text-white/80" />}

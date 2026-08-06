@@ -30,7 +30,7 @@ import {
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import { Footer } from '@/components/portal/footer'
 import { formatDate } from '@/lib/format-utils'
-import { COVER_GRADIENTS } from '@/lib/cover-gradients'
+import { coverGradientFor } from '@/lib/cover-gradients'
 import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-graph'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import {
@@ -244,7 +244,7 @@ export default function CourseDetailPage() {
 
   const coverStyle = course.coverImage
     ? { backgroundImage: `url('${course.coverImage}')` }
-    : { background: COVER_GRADIENTS[0] }
+    : { background: coverGradientFor(course.id) }
 
   const renderTreeNodes = (items: TreeItem[], flatIndexes: Map<string, number>): ReactNode =>
     items.map((item) => {

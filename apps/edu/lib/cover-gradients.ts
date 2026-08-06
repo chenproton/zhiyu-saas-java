@@ -1,7 +1,8 @@
 /**
  * Landing 对象卡片默认封面渐变（8 种，色系对齐 /portal 门户图标色：
  * purple / cyan / emerald / amber / blue / red / teal / indigo）。
- * 各 landing 页面无 coverImage 时按列表下标轮转取色，保证视觉统一。
+ * 各 landing 页面无 coverImage 时按对象 id 哈希稳定取色，
+ * 同一对象在列表卡片与详情页封面颜色保持一致。
  */
 export const COVER_GRADIENTS = [
   'linear-gradient(135deg,#7c3aed,#a855f7)',
@@ -13,3 +14,10 @@ export const COVER_GRADIENTS = [
   'linear-gradient(135deg,#0f766e,#14b8a6)',
   'linear-gradient(135deg,#4338ca,#818cf8)',
 ]
+
+/** 按对象 id 哈希取稳定渐变，同一对象在所有页面颜色一致。 */
+export function coverGradientFor(id: string): string {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
+  return COVER_GRADIENTS[h % COVER_GRADIENTS.length]
+}

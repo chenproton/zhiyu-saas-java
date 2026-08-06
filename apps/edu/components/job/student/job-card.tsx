@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Briefcase, MapPin, Flame } from 'lucide-react'
 import type { CareerPosition } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
-import { COVER_GRADIENTS } from '@/lib/cover-gradients'
+import { coverGradientFor } from '@/lib/cover-gradients'
 
 interface JobCardProps {
   position: CareerPosition
@@ -17,7 +17,6 @@ interface JobCardProps {
 
 export function JobCard({
   position,
-  index = 0,
   isHot,
   scenarioCount = 0,
   abilityCount = 0,
@@ -26,7 +25,7 @@ export function JobCard({
   const displayTitle = position.name
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
-    : { background: COVER_GRADIENTS[index % COVER_GRADIENTS.length] }
+    : { background: coverGradientFor(position.id) }
 
   const majorName = position.majorNames?.[0] || '未分类'
   const viewCount = position.viewCount ?? 0

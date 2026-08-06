@@ -26,7 +26,7 @@ import { Footer } from '@/components/portal/footer'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
-import { COVER_GRADIENTS } from '@/lib/cover-gradients'
+import { coverGradientFor } from '@/lib/cover-gradients'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
 const questionTypeLabels = QUESTION_TYPE_LABELS
@@ -201,7 +201,7 @@ export default function BankDetailPage() {
 
   const coverStyle = bank.coverImage
     ? { backgroundImage: `url('${bank.coverImage}')` }
-    : { background: COVER_GRADIENTS[0] }
+    : { background: coverGradientFor(bank.id) }
 
   return (
     <div

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Layers, FileText, GraduationCap } from 'lucide-react'
 import { courseApi } from '@/lib/api'
 import type { Course } from '@/lib/types'
-import { COVER_GRADIENTS } from '@/lib/cover-gradients'
+import { coverGradientFor } from '@/lib/cover-gradients'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
@@ -18,11 +18,11 @@ const SORT_OPTIONS = [
   { value: 'update', label: '最近更新' },
 ]
 
-function CourseCard({ course, index }: { course: Course; index: number }) {
+function CourseCard({ course }: { course: Course; index: number }) {
   const creatorName = course.creatorName || course.creatorId?.slice(0, 8) || '-'
   const coverStyle = course.coverImage
     ? { backgroundImage: `url('${course.coverImage}')` }
-    : { background: COVER_GRADIENTS[index % COVER_GRADIENTS.length] }
+    : { background: coverGradientFor(course.id) }
 
   return (
     <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
