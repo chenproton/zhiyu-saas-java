@@ -116,6 +116,27 @@ const TYPE_LEVEL_D3: Record<GraphNode['type'], number> = {
   course: 4,
 }
 
+const D3_GRAD_RED = 'kg-d3-grad-red'
+
+const D3_SPHERE_GRAD_ID: Record<GraphNode['type'], string> = {
+  position: 'kg-d3-grad-position',
+  domain: 'kg-d3-grad-domain',
+  unit: 'kg-d3-grad-unit',
+  knowledge: 'kg-d3-grad-knowledge',
+  course: 'kg-d3-grad-course',
+}
+
+/** 由基色生成球体径向渐变 stops：左上光源（35%,32%），亮→基色→暗 */
+function sphereGradientStops(color: string): { offset: string; color: string }[] {
+  const base = d3.hsl(color)
+  return [
+    { offset: '0%', color: base.brighter(0.9).formatRgb() },
+    { offset: '30%', color: base.brighter(0.35).formatRgb() },
+    { offset: '65%', color: base.formatRgb() },
+    { offset: '100%', color: base.darker(0.45).formatRgb() },
+  ]
+}
+
 function getD3IconSvg(type: GraphNode['type']): SVGSVGElement | null {
   const parser = new DOMParser()
   const svgs: Record<string, string> = {
@@ -292,8 +313,12 @@ export function KnowledgeGraphD3View({
       .attr('r', (d) =>
         highlightNodeIds?.has(d.id) ? TYPE_META_D3[d.type].radius + 3 : TYPE_META_D3[d.type].radius,
       )
-      .attr('fill', (d) => (highlightNodeIds?.has(d.id) ? '#ef4444' : TYPE_META_D3[d.type].color))
-      .attr('fill-opacity', (d) => (highlightNodeIds?.has(d.id) ? 0.95 : 0.16))
+      .attr('fill', (d) =>
+        highlightNodeIds?.has(d.id)
+          ? `url(#${D3_GRAD_RED})`
+          : `url(#${D3_SPHERE_GRAD_ID[d.type]})`,
+      )
+      .attr('fill-opacity', 1)
       .attr('stroke', (d) => (highlightNodeIds?.has(d.id) ? '#b91c1c' : TYPE_META_D3[d.type].color))
       .attr('stroke-opacity', (d) => (highlightNodeIds?.has(d.id) ? 1 : 0.55))
       .attr('stroke-width', (d) =>
@@ -316,9 +341,7 @@ export function KnowledgeGraphD3View({
       .style('pointer-events', 'none')
       .each(function (d) {
         const div = this as HTMLElement
-        div.style.color = highlightNodeIds?.has((d as SimNode).id)
-          ? '#ffffff'
-          : TYPE_META_D3[(d as SimNode).type].color
+        div.style.color = '#ffffff'
         div.innerHTML = ''
         const icon = getD3IconSvg((d as SimNode).type)
         if (icon) div.appendChild(icon)
@@ -365,12 +388,10 @@ export function KnowledgeGraphD3View({
         )
         .attr('fill', (d: any) =>
           highlightNodeIds?.has((d as SimNode).id) && selectedId !== d.id
-            ? '#ef4444'
-            : TYPE_META_D3[(d as SimNode).type].color,
+            ? `url(#${D3_GRAD_RED})`
+            : `url(#${D3_SPHERE_GRAD_ID[(d as SimNode).type]})`,
         )
-        .attr('fill-opacity', (d: any) =>
-          selectedId === d.id ? 0.3 : highlightNodeIds?.has((d as SimNode).id) ? 0.95 : 0.16,
-        )
+        .attr('fill-opacity', 1)
         .attr('stroke', (d: any) =>
           highlightNodeIds?.has((d as SimNode).id)
             ? '#b91c1c'
@@ -458,7 +479,7 @@ export function KnowledgeGraphD3View({
           ? TYPE_META_D3[(d as SimNode).type].radius + 4
           : TYPE_META_D3[(d as SimNode).type].radius,
       )
-      .attr('fill-opacity', (d: any) => (selectedId === d.id ? 0.3 : 0.16))
+      .attr('fill-opacity', 1)
       .attr('stroke', (d: any) => TYPE_META_D3[(d as SimNode).type].color)
       .attr('stroke-opacity', (d: any) => (selectedId === d.id ? 1 : 0.55))
       .attr('stroke-width', (d: any) =>
@@ -586,6 +607,18 @@ export function KnowledgeGraphD3View({
         >
           <svg ref={svgRef} width={dims.width} height={dims.height} className="block w-full h-full">
             <defs>
+              {(Object.keys(TYPE_LEVEL_D3) as GraphNode['type'][]).map((t) => (
+                <radialGradient key={t} id={D3_SPHERE_GRAD_ID[t]} cx="0.35" cy="0.32" r="0.95">
+                  {sphereGradientStops(TYPE_META_D3[t].color).map((s) => (
+                    <stop key={s.offset} offset={s.offset} stopColor={s.color} />
+                  ))}
+                </radialGradient>
+              ))}
+              <radialGradient id={D3_GRAD_RED} cx="0.35" cy="0.32" r="0.95">
+                {sphereGradientStops('#ef4444').map((s) => (
+                  <stop key={s.offset} offset={s.offset} stopColor={s.color} />
+                ))}
+              </radialGradient>
               <marker
                 id="arrow-d3"
                 viewBox="0 -5 10 10"
