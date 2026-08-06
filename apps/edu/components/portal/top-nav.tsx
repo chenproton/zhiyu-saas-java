@@ -19,6 +19,7 @@ import {
   AArrowUp,
   Type,
   RotateCcw,
+  QrCode,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -32,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/auth-provider'
 import { useFontScale } from '@/hooks/use-font-scale'
 import { useI18n, useT } from '@/lib/i18n/locale-provider'
+import { MobileAccessDialog } from './mobile-access-dialog'
 
 const navItems = [
   { href: '/portal', label: '门户首页', icon: Home },
@@ -49,6 +51,7 @@ export function TopNav() {
   const [currentTime, setCurrentTime] = useState('')
   const [mounted, setMounted] = useState(false)
   const [layoutTick, setLayoutTick] = useState(0)
+  const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
   const headerRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -236,6 +239,10 @@ export function TopNav() {
                   <Settings className="w-4 h-4 mr-2" />
                   {t('账号设置')}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMobileAccessOpen(true)}>
+                  <QrCode className="w-4 h-4 mr-2" />
+                  {t('移动端访问')}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Type className="w-3.5 h-3.5" />
@@ -318,6 +325,7 @@ export function TopNav() {
           )}
         </div>
       </header>
+      <MobileAccessDialog open={mobileAccessOpen} onOpenChange={setMobileAccessOpen} />
     </>
   )
 }

@@ -533,7 +533,8 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-true}"
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
-      echo "KK_BASE_URL=${KK_BASE_URL:-}"  # deploy.sh 会根据 nginx 配置自动推导
+       echo "KK_BASE_URL=${KK_BASE_URL:-}"  # deploy.sh 会根据 nginx 配置自动推导
+       echo "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-}"  # 移动端访问二维码站点地址，deploy.sh 会根据 nginx 配置自动推导
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
       echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}"
     } >> "$ENV_FILE"
@@ -587,6 +588,27 @@ if [[ -z "${KK_BASE_URL:-}" ]]; then
   KK_BASE_URL="${kk_scheme}://${kk_host}/kkfileview"
 fi
 update_env_var "$ENV_FILE" "KK_BASE_URL" "$KK_BASE_URL"
+
+# 移动端访问二维码站点地址：未手动设置时，根据 nginx 配置自动推导协议、域名和端口
+if [[ -z "${NEXT_PUBLIC_SITE_URL:-}" ]]; then
+  if [[ -n "${NGINX_SSL_DOMAIN:-}" ]] || [[ -f /etc/nginx/conf.d/zhiyu-saas-ssl.conf ]] || [[ -f /etc/nginx/conf.d/ai-zhiyu-https.conf ]] || [[ -n "${NGINX_SSL_CERT:-}" ]] || [[ "${NGINX_PORT:-80}" == "443" ]]; then
+    site_scheme="https"
+  else
+    site_scheme="http"
+  fi
+  if [[ -n "${NGINX_SSL_DOMAIN:-}" ]]; then
+    site_host="$NGINX_SSL_DOMAIN"
+  else
+    site_host="${NGINX_SERVER_NAME:-_}"
+    [[ "$site_host" == "_" ]] && site_host="localhost"
+  fi
+  site_port=""
+  if [[ "$site_scheme" == "http" && "${NGINX_PORT:-80}" != "80" ]]; then
+    site_port=":${NGINX_PORT}"
+  fi
+  NEXT_PUBLIC_SITE_URL="${site_scheme}://${site_host}${site_port}"
+fi
+update_env_var "$ENV_FILE" "NEXT_PUBLIC_SITE_URL" "$NEXT_PUBLIC_SITE_URL"
 
 # 如果数据库 host 端口发生变化，同步更新 DATABASE_URL 中的 host 端口
 if [[ "$DATABASE_URL" != *":${POSTGRES_HOST_PORT}/zhiyu-saas"* ]]; then
