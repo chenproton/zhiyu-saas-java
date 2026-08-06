@@ -443,7 +443,7 @@ function CourseScheduleTable({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={String(year)} onValueChange={handleYearChange}>
-                <SelectTrigger className="w-[76px] h-8 text-xs">
+                <SelectTrigger className="w-[96px] h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -455,7 +455,7 @@ function CourseScheduleTable({
                 </SelectContent>
               </Select>
               <Select value={String(month)} onValueChange={handleMonthChange}>
-                <SelectTrigger className="w-[68px] h-8 text-xs">
+                <SelectTrigger className="w-[88px] h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -467,7 +467,7 @@ function CourseScheduleTable({
                 </SelectContent>
               </Select>
               <Select value={String(weekIndex)} onValueChange={handleWeekChange}>
-                <SelectTrigger className="w-[84px] h-8 text-xs">
+                <SelectTrigger className="w-[104px] h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
