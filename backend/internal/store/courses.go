@@ -28,7 +28,7 @@ func (s *CourseStore) List(ctx context.Context, p ListParams, cfg ListQueryConfi
 
 const courseListFrom = "courses c"
 const courseListJoins = " LEFT JOIN majors m ON m.id = c.major_id LEFT JOIN industries i ON i.id = c.industry_id LEFT JOIN lesson_batches lb ON lb.id = c.batch_id LEFT JOIN view_counters vc ON vc.target_type = 'course' AND vc.target_id = c.id LEFT JOIN users cr_u ON cr_u.id = c.creator_id"
-const courseListSelectColumns = `c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version, c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name, c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description, c.knowledge_point_ids::text[] AS knowledge_point_ids, c.ability_point_ids::text[] AS ability_point_ids, c.resource_ids::text[] AS resource_ids, c.eval_data, c.creator_id, COALESCE(cr_u.name, c.creator_id::text) AS creator_name, c.co_creator_ids, c.batch_id, lb.name AS batch_name, c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count, COALESCE(vc.cnt, 0) AS view_count, c.study_count, c.created_at, c.updated_at`
+const courseListSelectColumns = `c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version, c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name, c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description, c.knowledge_point_ids::text[] AS knowledge_point_ids, c.ability_point_ids::text[] AS ability_point_ids, c.resource_ids::text[] AS resource_ids, c.eval_data, c.creator_id, COALESCE(cr_u.name, c.creator_id::text) AS creator_name, c.co_creator_ids, c.batch_id, lb.name AS batch_name, COALESCE((SELECT COUNT(*) FROM system_course_nodes scn WHERE scn.course_id = c.id), 0) AS node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count, COALESCE(vc.cnt, 0) AS view_count, c.study_count, c.created_at, c.updated_at`
 
 // ListConfig 返回课程列表查询配置，SQL 片段沉淀在 store 层。
 func (s *CourseStore) ListConfig() ListQueryConfig[domain.Course] {
@@ -258,7 +258,7 @@ func (s *CourseStore) fetchCourse(ctx context.Context, id string) (*domain.Cours
 			c.resource_ids::text[] AS resource_ids,
 			c.eval_data,
 			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
-			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
+			COALESCE((SELECT COUNT(*) FROM system_course_nodes scn WHERE scn.course_id = c.id), 0) AS node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
 			COALESCE(vc.cnt, 0) AS view_count,
 			c.study_count, c.created_at, c.updated_at
 		FROM courses c
@@ -292,7 +292,7 @@ func (s *CourseStore) fetchCourseScoped(ctx context.Context, id, tenantID string
 			c.resource_ids::text[] AS resource_ids,
 			c.eval_data,
 			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
-			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
+			COALESCE((SELECT COUNT(*) FROM system_course_nodes scn WHERE scn.course_id = c.id), 0) AS node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
 			COALESCE(vc.cnt, 0) AS view_count,
 			c.study_count, c.created_at, c.updated_at
 		FROM courses c
