@@ -344,7 +344,12 @@ export function KnowledgeGraphD3View({
         div.style.color = '#ffffff'
         div.innerHTML = ''
         const icon = getD3IconSvg((d as SimNode).type)
-        if (icon) div.appendChild(icon)
+        if (icon) {
+          const size = TYPE_META_D3[(d as SimNode).type].radius
+          icon.setAttribute('width', String(size))
+          icon.setAttribute('height', String(size))
+          div.appendChild(icon)
+        }
       })
 
     nodeG
