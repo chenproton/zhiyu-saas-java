@@ -932,6 +932,7 @@ export default function SceneLearnPage() {
           resource={r}
           open
           index={i}
+          backdrop={false}
           onOpenChange={() => removePreviewResource(r.id)}
         />
       ))}

@@ -39,6 +39,8 @@ interface ResourcePreviewModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   index?: number
+  /** 是否渲染全屏点击关闭遮罩；设为 false 时可与页面及其他弹窗同时交互 */
+  backdrop?: boolean
 }
 
 function ResourcePreviewModalInner({
@@ -46,6 +48,7 @@ function ResourcePreviewModalInner({
   open,
   onOpenChange,
   index = 0,
+  backdrop = true,
 }: ResourcePreviewModalProps) {
   const initialPosition = useMemo(() => ({ x: index * OFFSET, y: index * OFFSET }), [index])
   const [position, setPosition] = useState(initialPosition)
@@ -196,10 +199,12 @@ function ResourcePreviewModalInner({
 
   return createPortal(
     <DialogBranch>
-      <div
-        className="fixed inset-0 bg-black/40 z-[90] pointer-events-auto"
-        onClick={() => onOpenChange(false)}
-      />
+      {backdrop && (
+        <div
+          className="fixed inset-0 bg-black/40 z-[90] pointer-events-auto"
+          onClick={() => onOpenChange(false)}
+        />
+      )}
       <div
         ref={contentRef}
         data-resource-preview
