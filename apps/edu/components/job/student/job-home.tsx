@@ -2,15 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Flag, Heart, Crosshair, ChevronRight, Layers, ListChecks, Factory, Building2, Briefcase, GraduationCap } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Flag, Heart, Layers, ListChecks, Factory, Building2, Briefcase, GraduationCap } from 'lucide-react'
 import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import type { CareerPosition, Scenario } from '@/lib/types'
 import { SCENE_DIFFICULTY } from '@/lib/types'
-import { StatsBar } from './stats-bar'
 import { JobCard } from './job-card'
 import { SceneCard } from '@/components/scene/student/scene-card'
 import { LandingPagination } from '@/components/shared/landing-pagination'
@@ -36,7 +33,7 @@ interface JobHomeProps {
   mode?: 'job' | 'scene'
 }
 
-function SceneSideLists({
+function PositionSideLists({
   recommendedPositions,
   favoritePositions,
 }: {
@@ -133,140 +130,8 @@ function SceneSideLists({
   )
 }
 
-function JobDashboard({
-  isScene,
-  favoritePositions,
-  industryMap,
-  onStartEvaluation,
-}: {
-  isScene: boolean
-  favoritePositions: CareerPosition[]
-  industryMap: Map<string, string>
-  onStartEvaluation: () => void
-}) {
-  if (isScene) return null
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_340px] gap-5 mb-6">
-      <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 flex flex-col min-h-[178px] overflow-hidden min-w-0">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
-            <div className="w-7 h-7 rounded-lg bg-primary/5 flex items-center justify-center">
-              <Flag className="w-4 h-4 text-primary" />
-            </div>
-            目标推荐岗位
-          </div>
-          <div className="text-xs text-slate-400 cursor-pointer hover:text-primary transition-colors">
-            全部 <ChevronRight className="w-3 h-3 inline" />
-          </div>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-center px-4">
-          <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
-            <Flag className="w-7 h-7 text-slate-300" />
-          </div>
-          <div className="text-sm font-semibold text-slate-600">暂无目标推荐岗位</div>
-          <div className="text-xs mt-1">完成能力测评后，系统将为你推荐匹配岗位</div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 flex flex-col min-h-[178px] overflow-hidden min-w-0">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
-            <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
-              <Heart className="w-4 h-4 text-rose-500" />
-            </div>
-            我的收藏岗位
-          </div>
-          <Link
-            href="/job/landing"
-            className="text-xs text-slate-400 hover:text-primary cursor-pointer transition-colors"
-          >
-            全部 <ChevronRight className="w-3 h-3 inline" />
-          </Link>
-        </div>
-        {favoritePositions.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-center px-4">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
-              <Heart className="w-7 h-7 text-slate-300" />
-            </div>
-            <div className="text-sm font-semibold text-slate-600">快去查看岗位点击收藏吧！</div>
-            <div className="text-xs mt-1">浏览岗位资源，收藏你感兴趣的岗位</div>
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
-            {favoritePositions.slice(0, 5).map((pos) => {
-              const display = pos.shortName || pos.name
-              const category =
-                pos.industryId && industryMap.get(pos.industryId)
-                  ? industryMap.get(pos.industryId)
-                  : pos.positionType === 'enterprise'
-                    ? '企业'
-                    : '教学'
-              const majors = pos.majorNames?.filter(Boolean) || []
-              return (
-                <Link key={pos.id} href={`/job/landing/${pos.id}`}>
-                  <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-xl border bg-primary/5 hover:bg-primary/10 cursor-pointer transition-all group">
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="flex-1 text-[13px] font-semibold text-slate-800 truncate group-hover:text-primary transition-colors">
-                          {display}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/70 text-slate-500 whitespace-nowrap font-medium border border-slate-200">
-                          {pos.version || '1.0'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] overflow-hidden min-w-0">
-                        <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-primary whitespace-nowrap font-medium border border-primary/10 shrink-0">
-                          {category}
-                        </span>
-                        {majors.length === 0 ? (
-                          <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0">
-                            未分类
-                          </span>
-                        ) : (
-                          majors.map((m) => (
-                            <span
-                              key={m}
-                              className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0"
-                            >
-                              {m}
-                            </span>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-primary to-primary/70 flex flex-col justify-between min-h-[178px] shadow-lg shadow-primary/20">
-        <div>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-sm">
-              <Crosshair className="w-5 h-5" />
-            </div>
-            <div className="text-[17px] font-bold">学前能力基线测评</div>
-          </div>
-          <p className="text-[13px] text-white/85 leading-relaxed">
-            学习前先测一测，精准定位你的能力起点，量身规划学习路径
-          </p>
-        </div>
-        <Button
-          className="self-start bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 rounded-full h-10 px-6 text-[13px] font-semibold shadow-lg transition-all"
-          onClick={onStartEvaluation}
-        >
-          开始测评 <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
-      </div>
-    </div>
-  )
-}
 
 export function JobHome({ mode = 'job' }: JobHomeProps) {
-  const router = useRouter()
   const { user } = useAuth()
   const industryMap = useIndustryMap()
   const listRef = useRef<HTMLDivElement>(null)
@@ -533,12 +398,11 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
   )
 
   const recommendedPositions = useMemo(() => {
-    if (!isScene) return []
     const orderMap = new Map(hotPositions.map((h) => [h.positionId, h.order]))
     return positions
       .filter((p) => hotPositionIds.has(p.id))
       .sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999))
-  }, [isScene, positions, hotPositions, hotPositionIds])
+  }, [positions, hotPositions, hotPositionIds])
 
   const jobFiltered = useMemo(() => {
     let list = [...positions]
@@ -773,35 +637,20 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
           ? '基于真实业务场景的任务化训练，从入门到专家，系统提升综合实战能力'
           : '链接真实岗位场景，构建从认知到胜任的能力进阶闭环',
         ctaLabel: isScene ? '浏览场景' : '浏览岗位',
-        right: isScene ? (
-          <SceneSideLists
+        right: (
+          <PositionSideLists
             recommendedPositions={recommendedPositions}
             favoritePositions={favoritePositions}
-          />
-        ) : (
-          <StatsBar
-            total={stats.total}
-            majorCount={stats.majorCount}
-            industryCount={stats.industryCount}
-            favoriteTotal={stats.favoriteTotal}
           />
         ),
       }}
       stats={isScene ? sceneStats : jobStats}
       beforeList={
-        <>
-          <JobDashboard
-            isScene={isScene}
-            favoritePositions={favoritePositions}
-            industryMap={industryMap}
-            onStartEvaluation={() => router.push(`/evaluation`)}
-          />
-          {!isScene && (
-            <div className="mb-6">
-              <RankingList positions={positions} industryMap={industryMap} />
-            </div>
-          )}
-        </>
+        !isScene ? (
+          <div className="mb-6">
+            <RankingList positions={positions} industryMap={industryMap} />
+          </div>
+        ) : undefined
       }
       filterTitle={isScene ? '场景筛选' : '岗位筛选'}
       filterRows={
