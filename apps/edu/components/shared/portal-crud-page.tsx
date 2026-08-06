@@ -86,6 +86,7 @@ export interface PortalCrudPageConfig<T extends { id: string; enabled?: boolean 
   // ── 可选差异点 ────────────────────────────────────────────
   children?: ReactNode
   headerActions?: ReactNode
+  afterImportActions?: ReactNode
   hideImport?: boolean
   hideCreate?: boolean
   search?: boolean
@@ -126,6 +127,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   createHref,
   children,
   headerActions,
+  afterImportActions,
   hideImport,
   hideCreate,
   search = true,
@@ -277,9 +279,10 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           {!hideImport && importConfig && (
             <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-1" />
-              导入
+              批量导入
             </Button>
           )}
+          {afterImportActions}
           {!hideCreate && (createHref || createButtonLabel) && (
             <>
               {createHref ? (

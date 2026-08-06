@@ -542,11 +542,13 @@ export default function OrgStructurePage() {
             <Download className="h-4 w-4 mr-1" />
             批量导出
           </Button>
-          <Button size="sm" onClick={() => openDialog('addRoot')}>
-            <Plus className="h-4 w-4 mr-1" />
-            新增节点
-          </Button>
         </>
+      }
+      afterImportActions={
+        <Button size="sm" onClick={() => openDialog('addRoot')}>
+          <Plus className="h-4 w-4 mr-1" />
+          新建节点
+        </Button>
       }
       body={
         <div className="rounded-lg border border-gray-100 bg-white shadow-sm">

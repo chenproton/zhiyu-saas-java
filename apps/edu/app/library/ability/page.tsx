@@ -127,7 +127,7 @@ export default function AbilityPointsPage() {
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAdd={handleOpenAdd}
-      addLabel="新增能力点"
+      addLabel="新建能力点"
       loading={loading}
       items={items}
       deleteTarget={deleteTarget}

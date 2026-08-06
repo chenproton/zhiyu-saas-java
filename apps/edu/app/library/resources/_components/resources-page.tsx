@@ -262,7 +262,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
             </Button>
             <Button onClick={handleOpenAddWithType} size="sm">
               <Plus className="size-4 mr-1" />
-              新增资源
+              新建资源
             </Button>
           </div>
         </CardHeader>

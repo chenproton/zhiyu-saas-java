@@ -132,7 +132,7 @@ export default function CertificatesPage() {
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAdd={handleOpenAdd}
-      addLabel="新增证书"
+      addLabel="新建证书"
       loading={loading}
       items={items}
       deleteTarget={deleteTarget}

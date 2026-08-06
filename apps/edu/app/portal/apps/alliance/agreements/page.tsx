@@ -51,7 +51,7 @@ export default function AllianceAgreementsPage() {
       description="管理校企合作协议的独立记录"
       entityLabel="合作协议"
       searchPlaceholder="搜索协议名称..."
-      createButtonLabel="新增协议"
+      createButtonLabel="新建协议"
       items={items ?? []}
       loading={loading}
       error={error?.message ?? null}

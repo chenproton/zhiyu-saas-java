@@ -328,7 +328,7 @@ export function BatchGroupPage({
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              新增批次
+              新建批次
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">

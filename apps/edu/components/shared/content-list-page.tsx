@@ -1267,11 +1267,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             {extraHeaderActions}
             <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="mr-2 h-4 w-4" />
-              导入{entityLabel}
+              批量导入{entityLabel}
             </Button>
             <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={handleCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              新增{entityLabel}
+              新建{entityLabel}
             </Button>
           </>
         }
@@ -1639,7 +1639,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           <p className="mb-4 text-sm text-slate-500">当前筛选条件下没有{entityLabel}数据</p>
           <Button size="sm" onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            新增{entityLabel}
+            新建{entityLabel}
           </Button>
         </div>
       )}

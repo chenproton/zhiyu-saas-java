@@ -35,7 +35,7 @@ export default function MajorsPage() {
       description="管理教育专业，可为专业配置别名并启用/关闭"
       entityLabel="专业"
       searchPlaceholder="搜索专业代码、名称或别名..."
-      createButtonLabel="新增专业"
+      createButtonLabel="新建专业"
       items={majors}
       loading={loading}
       error={error?.message ?? null}

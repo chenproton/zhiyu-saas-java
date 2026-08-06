@@ -107,7 +107,7 @@ export default function RelationsPage() {
       searchValue={searchText}
       onSearchChange={setSearchText}
       hideImport
-      createButtonLabel="新增关系"
+      createButtonLabel="新建人员关系"
       createDefault={() => ({ id: '', initiatorId: '', targetId: '', relationType: '' })}
       renderForm={(item, setItem) => (
         <div className="space-y-4">

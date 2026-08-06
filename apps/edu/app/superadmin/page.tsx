@@ -43,6 +43,8 @@ import {
   LogIn,
   LogOut,
   Shield,
+  Palette,
+  RotateCcw,
 } from 'lucide-react'
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { useToast } from '@zhiyu/ui'
@@ -51,8 +53,17 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
 import { authApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
+import {
+  applyBrandColor,
+  getCachedBrandColor,
+  isHexColor,
+  DEFAULT_BRAND_COLOR,
+  BRAND_CHANGED_EVENT,
+} from '@/lib/theme-brand'
 
 const TENANTS_API = '/admin/tenants'
+
+const THEME_PRESETS = ['#4862e4', '#1677ff', '#0b5bd0', '#0ea5e9', '#7c3aed', '#059669', '#ea580c']
 
 interface AdminTenant {
   id: string
@@ -653,7 +664,7 @@ export default function SuperAdminPage() {
           </Button>
           <Button onClick={openCreate} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            新增租户
+            新建租户
           </Button>
         </div>
       </div>

@@ -42,7 +42,7 @@ export default function AlliancePermissionsPage() {
       description="管理合作企业/专家的账号权限授权"
       entityLabel="权限授权"
       searchPlaceholder="搜索账号名称..."
-      createButtonLabel="新增授权"
+      createButtonLabel="新建授权"
       items={items}
       loading={loading}
       error={error?.message ?? null}

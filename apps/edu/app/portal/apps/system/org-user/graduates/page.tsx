@@ -220,7 +220,7 @@ export default function GraduatesPage() {
       headerActions={
         <Button variant="outline" size="sm" disabled title="即将上线">
           <Download className="h-4 w-4 mr-1" />
-          导出
+          批量导出
         </Button>
       }
       renderTableHeader={() => (

@@ -49,7 +49,7 @@ export default function AllianceTalentBrandPage() {
       description={brandDesc}
       entityLabel={brandLabel}
       searchPlaceholder="搜索品牌名称..."
-      createButtonLabel="新增品牌"
+      createButtonLabel="新建品牌"
       items={items}
       loading={loading}
       error={error?.message ?? null}

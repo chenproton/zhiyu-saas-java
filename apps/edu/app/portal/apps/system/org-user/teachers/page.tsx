@@ -294,7 +294,7 @@ export default function TeachersPage() {
             </TableRowActions>
           </>
         )}
-        headerActions={(selectedIds, openJoinDialog) => (
+        headerActions={(selectedIds) => (
           <>
             <Button
               variant="destructive"
@@ -312,6 +312,10 @@ export default function TeachersPage() {
               )}
               {selectedIds.length > 0 ? `批量删除(${selectedIds.length})` : '批量删除'}
             </Button>
+          </>
+        )}
+        afterImportActions={(selectedIds, openJoinDialog) => (
+          <>
             <Button
               variant="outline"
               size="sm"

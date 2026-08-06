@@ -130,7 +130,7 @@ export default function QuestionsPage() {
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAdd={handleAdd}
-      addLabel="新增现场问答题"
+      addLabel="新建现场问答题"
       loading={loading}
       items={items}
       deleteTarget={deleteTarget}

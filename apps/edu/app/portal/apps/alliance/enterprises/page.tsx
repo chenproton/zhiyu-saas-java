@@ -63,7 +63,7 @@ export default function AllianceEnterprisesPage() {
       description="管理全部合作企业档案，包含基本信息、合作协议、合作评级等。"
       entityLabel="合作企业"
       searchPlaceholder="搜索企业名称或行业..."
-      createButtonLabel="新增企业"
+      createButtonLabel="新建企业"
       items={enterprises ?? []}
       loading={loading}
       error={error?.message ?? null}

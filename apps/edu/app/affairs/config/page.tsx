@@ -23,7 +23,7 @@ export default function AffairsConfigPage() {
         actions={
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="mr-2 size-4" />
-            导入
+            批量导入
           </Button>
         }
       />

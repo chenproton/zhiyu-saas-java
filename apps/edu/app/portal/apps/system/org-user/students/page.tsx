@@ -175,7 +175,7 @@ export default function StudentsPage() {
         description="管理学生基础信息与学籍数据"
         entityLabel="学生"
         searchPlaceholder="搜索姓名、登录账号..."
-        createButtonLabel="新生录入"
+        createButtonLabel="新建学生"
         items={students}
         loading={loading}
         error={error}
@@ -283,7 +283,27 @@ export default function StudentsPage() {
             </TableRowActions>
           </>
         )}
-        headerActions={(selectedIds, openJoinDialog) => (
+        headerActions={(selectedIds) => (
+          <>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={selectedIds.length === 0 || batchDeleting}
+              onClick={() => {
+                if (selectedIds.length === 0) return
+                setBatchDeleteTarget([...selectedIds])
+              }}
+            >
+              {batchDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-1" />
+              )}
+              批量删除({selectedIds.length})
+            </Button>
+          </>
+        )}
+        afterImportActions={(selectedIds, openJoinDialog) => (
           <>
             <Button
               variant="outline"
@@ -326,22 +346,6 @@ export default function StudentsPage() {
               <Users className="h-4 w-4 mr-1" />
               {selectedIds.length > 0 ? `批量加入班级(${selectedIds.length})` : '批量加入班级'}
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={selectedIds.length === 0 || batchDeleting}
-              onClick={() => {
-                if (selectedIds.length === 0) return
-                setBatchDeleteTarget([...selectedIds])
-              }}
-            >
-              {batchDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-1" />
-              )}
-              批量删除({selectedIds.length})
-            </Button>
           </>
         )}
         onOpenCreate={() => {
@@ -359,7 +363,7 @@ export default function StudentsPage() {
         }}
         isEditDialogOpen={isDialogOpen}
         setIsEditDialogOpen={setIsDialogOpen}
-        editDialogTitle={selectedStudent ? '编辑学生' : '新生录入'}
+        editDialogTitle={selectedStudent ? '编辑学生' : '新建学生'}
         editDialogDescription={
           selectedStudent ? '修改学生基本信息与班级归属' : '填写学生基本信息，并关联到真实班级'
         }

@@ -164,7 +164,7 @@ export default function KnowledgePointsPage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAdd={handleOpenAdd}
-        addLabel="新增知识点"
+        addLabel="新建知识点"
         loading={loading}
         items={items}
         deleteTarget={deleteTarget}

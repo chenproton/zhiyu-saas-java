@@ -90,6 +90,7 @@ export interface PortalSidebarCrudPageConfig<T extends { id: string; orgNodeId?:
   ) => ReactNode
 
   headerActions?: (selectedIds: string[], openJoinDialog: () => void) => ReactNode
+  afterImportActions?: (selectedIds: string[], openJoinDialog: () => void) => ReactNode
 
   onOpenCreate: () => void
   onOpenEdit: (item: T) => void
@@ -143,6 +144,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   renderTableHeader,
   renderTableRow,
   headerActions,
+  afterImportActions,
   onOpenCreate,
   onOpenEdit,
   isEditDialogOpen,
@@ -300,14 +302,18 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
             setJoinTargetNodeId('')
             setIsJoinDialogOpen(true)
           })}
-          <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" />
-            导入
-          </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1" />
-            导出{selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+            批量导出{selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" />
+            批量导入
+          </Button>
+          {afterImportActions?.(selectedIds, () => {
+            setJoinTargetNodeId('')
+            setIsJoinDialogOpen(true)
+          })}
           <Button size="sm" onClick={onOpenCreate}>
             <span className="h-4 w-4 mr-1">+</span>
             {createButtonLabel}

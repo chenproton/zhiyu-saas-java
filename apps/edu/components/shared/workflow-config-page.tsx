@@ -237,7 +237,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              新增审批流程
+              新建审批流程
             </Button>
           </DialogTrigger>
           {renderDialog(false)}

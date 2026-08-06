@@ -59,7 +59,7 @@ export default function AllianceProjectsPage() {
       description="管理校企合作项目，追踪项目阶段与里程碑。"
       entityLabel="合作项目"
       searchPlaceholder="搜索项目名称..."
-      createButtonLabel="新增项目"
+      createButtonLabel="新建项目"
       items={projects ?? []}
       loading={loading}
       error={error?.message ?? null}

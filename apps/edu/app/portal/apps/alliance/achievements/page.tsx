@@ -52,7 +52,7 @@ export default function AllianceAchievementsPage() {
       description="管理校企合作产出的各类成果"
       entityLabel="合作成果"
       searchPlaceholder="搜索成果名称..."
-      createButtonLabel="新增成果"
+      createButtonLabel="新建成果"
       items={items ?? []}
       loading={loading}
       error={error?.message ?? null}

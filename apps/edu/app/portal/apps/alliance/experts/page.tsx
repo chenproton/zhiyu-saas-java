@@ -43,7 +43,7 @@ export default function AllianceExpertsPage() {
       description="管理产业专家与校企专家档案信息。"
       entityLabel="专家"
       searchPlaceholder="搜索姓名、头衔或行业..."
-      createButtonLabel="新增专家"
+      createButtonLabel="新建专家"
       items={experts}
       loading={loading}
       error={error?.message ?? null}

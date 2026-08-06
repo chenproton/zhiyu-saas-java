@@ -126,7 +126,7 @@ export default function ProgramEditPage() {
                   onClick={() => coursesRef.current?.openImport()}
                 >
                   <Upload className="mr-1 size-4" />
-                  导入
+                  批量导入
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => coursesRef.current?.addRow()}>
                   <Plus className="mr-1 size-4" />
