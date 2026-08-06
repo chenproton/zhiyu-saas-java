@@ -1080,13 +1080,13 @@ function StartTimeRow({
   onChange: (v: string) => void
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-foreground">开始时间</span>
+    <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 text-xs text-muted-foreground">开始时间</span>
       <Input
         type="time"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-[110px] text-center text-sm"
+        className="h-8 flex-1 text-sm"
       />
     </div>
   )
@@ -1102,17 +1102,19 @@ function DurationRow({
   onChange: (v: number) => void
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 text-xs text-muted-foreground">{label}</span>
+      <div className="relative flex-1">
         <Input
           type="number"
           min={1}
           value={value}
           onChange={(e) => onChange(Math.max(1, Number(e.target.value) || 1))}
-          className="h-8 w-16 text-center text-sm"
+          className="h-8 w-full pr-7 text-sm"
         />
-        <span className="w-4 text-xs text-muted-foreground">分</span>
+        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+          分
+        </span>
       </div>
     </div>
   )
