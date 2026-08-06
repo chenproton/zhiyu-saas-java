@@ -990,11 +990,11 @@ function AddSystemPageInner() {
         <div className="relative min-w-0">
           {/* Node type hint / selector */}
           {selectedNode?.type === 'original' && (
-            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-xl px-4 py-3 mt-5 relative z-20 flex items-center gap-3 shadow-sm">
-              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 text-purple-600" />
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-100 rounded-xl px-4 py-3 mt-5 relative z-20 flex items-center gap-3 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-blue-600" />
               </div>
-              <p className="text-sm text-purple-800">
+              <p className="text-sm text-blue-800">
                 当前节点的课程内容将被纳入颗粒课管理体系，支持跨课程复用。
               </p>
             </div>

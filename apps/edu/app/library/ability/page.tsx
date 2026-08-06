@@ -117,11 +117,11 @@ export default function AbilityPointsPage() {
       title="能力点管理"
       statLabel="能力点总数"
       statIcon={
-        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-          <Lightbulb className="size-5 text-purple-600" />
+        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+          <Lightbulb className="size-5 text-blue-600" />
         </div>
       }
-      statGradient="from-purple-50 to-purple-100"
+      statGradient="from-blue-50 to-blue-100"
       statCount={total}
       searchPlaceholder="搜索能力点..."
       searchQuery={searchQuery}
@@ -160,7 +160,7 @@ export default function AbilityPointsPage() {
         <TableRow key={item.id} className="hover:bg-slate-50/50">
           <TableCell className="p-3">
             <div className="flex items-center gap-2">
-              <Lightbulb className="size-4 text-purple-500" />
+              <Lightbulb className="size-4 text-blue-500" />
               <span className="text-sm font-medium text-slate-700">{item.name}</span>
             </div>
           </TableCell>

@@ -515,10 +515,10 @@ export default function WorkspacePage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0">
+        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm">消息通知</p>
+              <p className="text-blue-100 text-sm">消息通知</p>
               <p className="text-2xl font-bold">{announcements.filter((a) => a.isNew).length}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
@@ -694,8 +694,8 @@ export default function WorkspacePage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-purple-500" />
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-blue-500" />
                 </div>
                 账号安全中心
               </CardTitle>
@@ -773,8 +773,8 @@ export default function WorkspacePage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-indigo-500" />
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-blue-500" />
                 </div>
                 学习数据统计
               </CardTitle>

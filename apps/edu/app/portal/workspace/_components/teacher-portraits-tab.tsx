@@ -222,13 +222,13 @@ export function TeacherPortraitsTab() {
               <p className="text-lg font-bold text-blue-700">{students.length}</p>
             </div>
           </div>
-          <div className="rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 p-3.5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-sm">
+          <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 p-3.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-[11px] text-purple-500 font-medium">当前筛选</p>
-              <p className="text-lg font-bold text-purple-700">{selectedClassName}</p>
+              <p className="text-[11px] text-blue-500 font-medium">当前筛选</p>
+              <p className="text-lg font-bold text-blue-700">{selectedClassName}</p>
             </div>
           </div>
           <div className="rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 p-3.5 flex items-center gap-3">
@@ -394,7 +394,7 @@ export function TeacherPortraitsTab() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 gap-1.5 text-xs border-purple-200 text-purple-600 hover:bg-purple-50"
+                                  className="h-8 gap-1.5 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     setActiveStudent(student)
@@ -482,7 +482,7 @@ export function TeacherPortraitsTab() {
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-purple-600" />
+              <Target className="h-5 w-5 text-blue-600" />
               查看学生能力报告
             </DialogTitle>
             <DialogDescription>

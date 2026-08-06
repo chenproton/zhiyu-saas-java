@@ -161,7 +161,7 @@ export function PositionList({
                     </span>
                   </TableCell>
                   <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600">
                       {position.abilityBindings.length}
                     </span>
                   </TableCell>

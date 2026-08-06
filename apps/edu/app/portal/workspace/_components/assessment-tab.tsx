@@ -350,7 +350,7 @@ export function AssessmentTab() {
                                   'text-xs',
                                   point.levelLabel === '未达标'
                                     ? 'bg-red-50 text-red-600 border-red-200'
-                                    : 'bg-indigo-50 text-indigo-600 border-indigo-200',
+                                    : 'bg-blue-50 text-blue-600 border-blue-200',
                                 )}
                               >
                                 {point.levelLabel}

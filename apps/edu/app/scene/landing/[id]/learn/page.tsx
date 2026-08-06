@@ -349,7 +349,7 @@ export default function SceneLearnPage() {
       <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-blue-400/10 blur-[120px]" />
-          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-indigo-400/10 blur-[100px]" />
+          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-blue-400/10 blur-[100px]" />
         </div>
         <header className="relative z-10 bg-white border-b border-gray-200/60 shrink-0 h-16 flex items-center px-6">
           <Skeleton className="h-5 w-48" />
@@ -372,12 +372,12 @@ export default function SceneLearnPage() {
       <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-blue-400/10 blur-[120px]" />
-          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-indigo-400/10 blur-[100px]" />
+          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-blue-400/10 blur-[100px]" />
         </div>
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
           <div className="relative w-24 h-24 mb-6">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-200 to-indigo-200 opacity-40 blur-xl" />
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-60" />
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-200 to-blue-200 opacity-40 blur-xl" />
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-blue-100 opacity-60" />
             <div className="absolute inset-0 flex items-center justify-center">
               <BookOpen className="w-12 h-12 text-blue-400/70" />
             </div>
@@ -400,7 +400,7 @@ export default function SceneLearnPage() {
       {/* ---------- ambient background ---------- */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-blue-400/10 blur-[120px]" />
-        <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-indigo-400/10 blur-[100px]" />
+        <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-blue-400/10 blur-[100px]" />
         <div
           className="absolute inset-0 opacity-[0.35]"
           style={{
@@ -474,7 +474,7 @@ export default function SceneLearnPage() {
         >
           {/* sidebar header */}
           <div className="relative border-b border-gray-100 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-sm" />
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-blue-500 to-blue-500 shadow-sm" />
             <div
               className={cn(
                 'flex items-center',
@@ -527,7 +527,7 @@ export default function SceneLearnPage() {
                         className={cn(
                           'flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-bold transition-all duration-200',
                           isActive
-                            ? 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/30'
+                            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30'
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600 hover:-translate-y-0.5',
                         )}
                         title={`${idx + 1}. ${task.name} (${diff.label}, ${task.estimatedHours || 0}h)`}
@@ -550,13 +550,13 @@ export default function SceneLearnPage() {
                     )}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-gradient-to-b from-blue-500 to-indigo-500 rounded-r-full shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
+                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-gradient-to-b from-blue-500 to-blue-600 rounded-r-full shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
                     )}
                     <div
                       className={cn(
                         'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold transition-all duration-200',
                         isActive
-                          ? 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25'
+                          ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25'
                           : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-600 group-hover:-translate-y-0.5',
                       )}
                     >
@@ -606,8 +606,8 @@ export default function SceneLearnPage() {
           {!activeTask ? (
             <div className="flex flex-col items-center justify-center flex-1 p-8">
               <div className="relative w-28 h-28 mb-6">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-200 to-indigo-200 opacity-40 blur-xl animate-pulse" />
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-60" />
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-200 to-blue-200 opacity-40 blur-xl animate-pulse" />
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-blue-100 opacity-60" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <BookOpen className="w-12 h-12 text-blue-400/70" />
                 </div>
@@ -742,21 +742,21 @@ export default function SceneLearnPage() {
                   <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
                     <TabsTrigger
                       value="collapsed-knowledge"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
+                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-blue-100 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
                     >
                       <BrainCircuit className="mr-1 h-3.5 w-3.5" />
                       知识点
                     </TabsTrigger>
                     <TabsTrigger
                       value="collapsed-ability"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
+                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-blue-100 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
                     >
                       <Target className="mr-1 h-3.5 w-3.5" />
                       能力点
                     </TabsTrigger>
                     <TabsTrigger
                       value="collapsed-resource"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
+                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-blue-100 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
                     >
                       <FolderOpen className="mr-1 h-3.5 w-3.5" />
                       资源
@@ -772,7 +772,7 @@ export default function SceneLearnPage() {
                           className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer"
                           onClick={() => setActiveKnowledgePoint(kp)}
                         >
-                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                             {i + 1}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -801,7 +801,7 @@ export default function SceneLearnPage() {
                             key={ap.id}
                             className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer"
                           >
-                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                               {i + 1}
                             </div>
                             <div className="flex-1 min-w-0">

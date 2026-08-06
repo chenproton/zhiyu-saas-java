@@ -253,7 +253,7 @@ export function LearningTab() {
                 className="group p-4 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 flex items-center justify-center text-xl font-bold shrink-0">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 flex items-center justify-center text-xl font-bold shrink-0">
                     {course.cover}
                   </div>
                   <div className="flex-1 min-w-0">

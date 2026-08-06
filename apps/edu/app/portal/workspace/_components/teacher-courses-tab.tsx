@@ -728,7 +728,7 @@ export function TeacherCoursesTab({
                     }`}
                   >
                     <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0 ${isHybrid ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0 ${isHybrid ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}
                     >
                       {plan.course.charAt(0)}
                     </div>
@@ -745,7 +745,7 @@ export function TeacherCoursesTab({
                           {plan.name}
                         </Badge>
                         <Badge
-                          className={`text-[10px] h-4 px-1 border-0 text-white ${isHybrid ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}
+                          className={`text-[10px] h-4 px-1 border-0 text-white ${isHybrid ? 'bg-gradient-to-r from-blue-500 to-blue-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}
                         >
                           {courseTypeTag}
                         </Badge>
@@ -782,10 +782,10 @@ export function TeacherCoursesTab({
                   const courseTypeTag = isHybrid ? '混合课程' : '实践场景'
                   const accentColors = isHybrid
                     ? {
-                        bg: 'from-blue-50 to-indigo-50',
+                        bg: 'from-blue-50 to-blue-100',
                         border: 'border-blue-100 hover:border-blue-300',
-                        iconBg: 'bg-gradient-to-br from-blue-500 to-indigo-600',
-                        badgeBg: 'bg-gradient-to-r from-blue-500 to-indigo-500',
+                        iconBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
+                        badgeBg: 'bg-gradient-to-r from-blue-500 to-blue-500',
                         prepUrl: '/lesson/admin/hybrid/add?id=hybrid-1',
                         learnUrl: plan.courseId ? `/lesson/landing/${plan.courseId}` : '',
                       }
@@ -1073,7 +1073,7 @@ export function TeacherCoursesTab({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="flex-1 justify-center text-[10px] h-6 px-1.5 text-purple-600 hover:bg-purple-50"
+                                            className="flex-1 justify-center text-[10px] h-6 px-1.5 text-blue-600 hover:bg-blue-50"
                                             onClick={() => {
                                               openSessionDialog(plan, 'assessment')
                                             }}

@@ -64,7 +64,7 @@ const BRAND_CATEGORIES = [
 
 const STAT_COLORS = [
   'from-blue-500 to-blue-600',
-  'from-indigo-500 to-indigo-600',
+  'from-blue-500 to-blue-600',
   'from-slate-600 to-slate-700',
   'from-emerald-500 to-emerald-600',
   'from-amber-500 to-amber-600',
@@ -72,12 +72,12 @@ const STAT_COLORS = [
 
 function GradientPlaceholder({ className, seed }: { className?: string; seed?: string }) {
   const gradients = [
-    'from-blue-500 to-indigo-600',
-    'from-indigo-500 to-violet-600',
+    'from-blue-500 to-blue-600',
+    'from-blue-500 to-blue-600',
     'from-slate-500 to-slate-700',
     'from-blue-600 to-slate-700',
     'from-cyan-500 to-blue-600',
-    'from-violet-500 to-purple-600',
+    'from-blue-500 to-blue-600',
   ]
   const grad = gradients[(seed?.length ?? 0) % gradients.length]
   return <div className={`bg-gradient-to-br ${grad} ${className ?? ''}`} />
@@ -122,7 +122,7 @@ function SectionSubHeading({ title, action }: { title: string; action?: React.Re
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
       <div className="flex items-center gap-3">
-        <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
+        <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
         <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
       </div>
       {action}
@@ -496,7 +496,7 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
       <Card className="border border-white/10 shadow-2xl shadow-black/20 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl">
         <CardContent className="p-7">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-xl border border-white/20 shadow-md bg-gradient-to-br from-blue-500 to-indigo-600" />
+            <div className="w-16 h-16 rounded-xl border border-white/20 shadow-md bg-gradient-to-br from-blue-500 to-blue-600" />
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg text-white">校企合作联盟</h3>
               <p className="text-sm text-slate-300 mt-1">产教融合 · 协同育人 · 互利共赢</p>
@@ -508,7 +508,7 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
               <p className="text-xs text-slate-400 mt-1">在校生</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-bold text-indigo-300">—</p>
+              <p className="text-3xl font-bold text-blue-300">—</p>
               <p className="text-xs text-slate-400 mt-1">教师</p>
             </div>
             <div className="text-center">
@@ -562,7 +562,7 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
             <p className="text-xs text-slate-400 mt-1">在校生</p>
           </div>
           <div className="text-center">
-            <p className="text-3xl font-bold text-indigo-300">{scale.teacherCount ?? '—'}</p>
+            <p className="text-3xl font-bold text-blue-300">{scale.teacherCount ?? '—'}</p>
             <p className="text-xs text-slate-400 mt-1">教师</p>
           </div>
           <div className="text-center">
@@ -685,8 +685,8 @@ export default function AllianceLandingPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/30 to-slate-950/60" />
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/15 rounded-full blur-[140px] -translate-y-1/3 translate-x-1/4" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-600/5 rounded-full blur-[160px]" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/5 rounded-full blur-[160px]" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 lg:pb-32">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -697,7 +697,7 @@ export default function AllianceLandingPage() {
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white mb-6 leading-[1.15] tracking-tight">
                 搭建产教融合桥梁
-                <span className="block mt-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-300 via-indigo-300 to-violet-300">
+                <span className="block mt-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-300 via-blue-200 to-blue-300">
                   共育产业英才
                 </span>
               </h1>
@@ -707,7 +707,7 @@ export default function AllianceLandingPage() {
               <div className="flex flex-wrap gap-4">
                 <Button
                   asChild
-                  className="rounded-full px-7 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-950/60 transition-all hover:shadow-xl hover:shadow-blue-950/50 hover:-translate-y-0.5"
+                  className="rounded-full px-7 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-blue-500 text-white shadow-lg shadow-blue-950/60 transition-all hover:shadow-xl hover:shadow-blue-950/50 hover:-translate-y-0.5"
                 >
                   <Link href="/portal/alliance/enterprises">探索合作企业</Link>
                 </Button>
@@ -854,7 +854,7 @@ export default function AllianceLandingPage() {
               return (
                 <Link key={cat.id} href={cat.href}>
                   <div className="group flex items-center gap-3 px-5 py-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:shadow-blue-900/5 hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-300 hover:-translate-y-0.5">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center group-hover:from-blue-100 group-hover:to-indigo-100 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center group-hover:from-blue-100 group-hover:to-blue-200 transition-colors">
                       <Icon className="h-[18px] w-[18px] text-blue-600" />
                     </div>
                     <span className="font-medium text-slate-700 group-hover:text-blue-700 transition-colors">
@@ -871,7 +871,7 @@ export default function AllianceLandingPage() {
             <Tabs defaultValue={BRAND_CATEGORIES[0].id} className="w-full">
               <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-6 w-1 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
+                  <div className="h-6 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
                   <h3 className="text-lg font-semibold text-slate-800">推荐品牌</h3>
                 </div>
                 <TabsList className="rounded-xl">
@@ -906,9 +906,9 @@ export default function AllianceLandingPage() {
 
       {/* CTA */}
       <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/80 via-indigo-50/50 to-violet-50/60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/80 via-blue-50/50 to-blue-50/60" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-400/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-1/4 w-[400px] h-[200px] bg-indigo-400/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 left-1/4 w-[400px] h-[200px] bg-blue-400/10 rounded-full blur-[100px]" />
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-blue-100 text-blue-600 text-xs font-medium mb-5 shadow-sm">
@@ -923,7 +923,7 @@ export default function AllianceLandingPage() {
           </p>
           <Button
             asChild
-            className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-200/70 transition-all hover:shadow-xl hover:shadow-blue-200/60 hover:-translate-y-0.5"
+            className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-blue-500 text-white shadow-lg shadow-blue-200/70 transition-all hover:shadow-xl hover:shadow-blue-200/60 hover:-translate-y-0.5"
           >
             <Link href="/portal/alliance/brands">探索更多品牌</Link>
           </Button>

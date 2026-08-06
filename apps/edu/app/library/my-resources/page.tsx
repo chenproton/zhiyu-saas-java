@@ -246,14 +246,14 @@ export default function MyResourcesPage() {
           部分数据超过单次加载上限（200 条），当前仅展示前 200 条，请按条件筛选查看完整数据。
         </div>
       )}
-      <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50 to-violet-100">
+      <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
         <CardContent className="p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
-            <FileText className="size-5 text-violet-600" />
+          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <FileText className="size-5 text-blue-600" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-violet-700">{countForTab(activeTab)}</div>
-            <div className="text-xs text-violet-500">
+            <div className="text-2xl font-bold text-blue-700">{countForTab(activeTab)}</div>
+            <div className="text-xs text-blue-500">
               {TABS.find((t) => t.key === activeTab)?.label} · 共 {countForTab(activeTab)} 项
             </div>
           </div>

@@ -2144,7 +2144,7 @@ export function EvaluationRulesEditor({
         if (erDialogMethod === 'homework') {
           return (
             <div className="space-y-4">
-              <div className="p-4 bg-pink-50 rounded-lg border border-pink-100 text-sm text-pink-700">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="h-4 w-4" />
                   <span className="font-medium">作业说明</span>

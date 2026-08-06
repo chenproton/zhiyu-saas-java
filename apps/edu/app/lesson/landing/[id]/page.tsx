@@ -293,7 +293,7 @@ export default function CourseDetailPage() {
                     {node.name}
                   </div>
                   {node.type === 'original' && (
-                    <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-purple-50 text-purple-600 border-purple-200 shrink-0">
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-blue-50 text-blue-600 border-blue-200 shrink-0">
                       引用颗粒课
                     </span>
                   )}

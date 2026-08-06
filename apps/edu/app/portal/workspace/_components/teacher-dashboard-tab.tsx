@@ -735,7 +735,7 @@ function CourseScheduleTable({
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="flex-1 justify-center text-[11px] h-7 px-2 text-purple-600 hover:bg-purple-50"
+                              className="flex-1 justify-center text-[11px] h-7 px-2 text-blue-600 hover:bg-blue-50"
                               onClick={() => openActionDialog(event, 'assessment')}
                             >
                               <FileCheck className="h-3.5 w-3.5 mr-1" />

@@ -790,7 +790,7 @@ export default function LearnRoadsPage() {
                       <TableCell>
                         <Badge
                           variant="secondary"
-                          className="bg-purple-50 text-purple-600 hover:bg-purple-50"
+                          className="bg-blue-50 text-blue-600 hover:bg-blue-50"
                         >
                           {taskCount}
                         </Badge>

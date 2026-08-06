@@ -755,7 +755,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
               )}
             </div>
 
-            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col justify-between min-h-[178px] shadow-lg shadow-indigo-500/20">
+            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-blue-500 to-blue-600 flex flex-col justify-between min-h-[178px] shadow-lg shadow-blue-500/20">
               <div>
                 <div className="flex items-center gap-2.5 mb-3">
                   <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-sm">
@@ -768,7 +768,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
                 </p>
               </div>
               <Button
-                className="self-start bg-white text-indigo-600 hover:bg-blue-50 hover:-translate-y-0.5 rounded-full h-10 px-6 text-[13px] font-semibold shadow-lg transition-all"
+                className="self-start bg-white text-blue-600 hover:bg-blue-50 hover:-translate-y-0.5 rounded-full h-10 px-6 text-[13px] font-semibold shadow-lg transition-all"
                 onClick={() => router.push('/evaluation')}
               >
                 开始测评 <ChevronRight className="w-4 h-4 ml-1" />

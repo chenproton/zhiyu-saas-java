@@ -1469,7 +1469,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs text-purple-600 hover:text-purple-700"
+                className="h-8 text-xs text-blue-600 hover:text-blue-700"
                 disabled={!hasSelected || !canBatchArchive}
                 onClick={handleBatchArchive}
               >

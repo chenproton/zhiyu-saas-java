@@ -152,7 +152,7 @@ function BankCard({
         href={`/evaluation/landing/banks/${bank.id}`}
         className="group block no-underline text-inherit"
       >
-        <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-purple-200 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-blue-200 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
           <div
             className="h-[110px] flex items-center justify-center shrink-0 relative"
             style={
@@ -177,7 +177,7 @@ function BankCard({
               <span className="flex items-center gap-1">
                 <FileText className="w-3 h-3" /> {bank.questionCount} 题
               </span>
-              <span className="text-purple-500 group-hover:text-purple-600 font-medium">
+              <span className="text-blue-500 group-hover:text-blue-600 font-medium">
                 查看详情 →
               </span>
             </div>
@@ -214,7 +214,7 @@ function ExamCard({
         href={`/evaluation/landing/exams/${exam.id}`}
         className="group block no-underline text-inherit"
       >
-        <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-purple-200 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-blue-200 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
           <div
             className="h-[110px] flex items-center justify-center shrink-0 relative"
             style={
@@ -472,7 +472,7 @@ export function CareerTab() {
             {visibleKeys.includes('exams') && (
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-purple-500" />
+                  <FileText className="w-4 h-4 text-blue-500" />
                   测评资源
                   <span className="text-xs text-gray-400 font-normal">
                     （{favorites.banks.length + favorites.exams.length}）
