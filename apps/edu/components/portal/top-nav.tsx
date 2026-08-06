@@ -227,7 +227,7 @@ export function TopNav() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <div className="flex items-center gap-2 px-2 py-1.5">
-                  <Type className="w-4 h-4 text-muted-foreground" />
+                  <Type className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span className="text-sm text-foreground whitespace-nowrap">字号大小</span>
                   <div className="flex-1" />
                   <Button
