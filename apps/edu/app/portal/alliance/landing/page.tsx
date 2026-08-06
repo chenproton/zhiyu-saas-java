@@ -31,6 +31,7 @@ import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { LandingShell, LandingEmpty } from '@/components/shared/landing-shell'
+import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import {
   GradientPlaceholder,
   EnterpriseCard,
@@ -223,6 +224,7 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
 
 export default function AllianceLandingPage() {
   const { tenantId } = usePortalAuth()
+  const [brandTab, setBrandTab] = useState(BRAND_CATEGORIES[0].id)
   const [data, setData] = useState<LandingData>({
     schoolInfo: null,
     stats: null,
@@ -433,13 +435,19 @@ export default function AllianceLandingPage() {
 
         {/* Featured brands grouped by type */}
         {data.brands.length > 0 && (
-          <Tabs defaultValue={BRAND_CATEGORIES[0].id} className="w-full">
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+          <Tabs value={brandTab} onValueChange={setBrandTab} className="w-full">
+            <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
               <div className="flex items-center gap-3">
                 <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary/80 to-primary/60" />
                 <h3 className="text-lg font-semibold text-slate-800">{t('推荐品牌')}</h3>
               </div>
-              <TabsList className="rounded-xl">
+              <MobileTabDropdown
+                items={BRAND_CATEGORIES.map((cat) => ({ value: cat.id, label: cat.title }))}
+                value={brandTab}
+                onValueChange={setBrandTab}
+                className="md:hidden w-full"
+              />
+              <TabsList className="hidden md:inline-flex rounded-xl">
                 {BRAND_CATEGORIES.map((cat) => (
                   <TabsTrigger key={cat.id} value={cat.id} className="rounded-lg text-xs">
                     {t(cat.title)}

@@ -33,6 +33,7 @@ import { formatDate } from '@/lib/format-utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-graph'
 import { FavoriteButton } from '@/components/shared/favorite-button'
+import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import {
   ResourcePreviewModal,
   usePreviewResources,
@@ -712,8 +713,26 @@ export default function CourseDetailPage() {
       </div>
 
       <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full">
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-          <div className="flex flex-wrap border-b border-slate-100 px-4 sm:px-6">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-visible md:overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+          <MobileTabDropdown
+            items={tabs.map((t) => ({
+              value: t.value,
+              label: t.label,
+              icon: t.icon,
+              count:
+                t.value === 'nodes'
+                  ? nodes.length
+                  : t.value === 'resources'
+                    ? totalResources
+                    : t.value === 'knowledge'
+                      ? courseKnowledgeList.length
+                      : undefined,
+            }))}
+            value={effectiveTab}
+            onValueChange={setActiveTab}
+            className="md:hidden m-4"
+          />
+          <div className="hidden md:flex overflow-x-auto border-b border-slate-100 px-4 sm:px-6">
             {tabs.map((t) => (
               <button
                 key={t.value}

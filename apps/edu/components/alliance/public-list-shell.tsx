@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import { Footer } from '@/components/portal/footer'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -74,19 +75,27 @@ export function PublicListShell({
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 w-full flex-1">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <Tabs value={activeTab} onValueChange={onTabChange}>
-            <TabsList className="bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm h-11">
-              {tabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="px-3 sm:px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
-                >
-                  {tab.label} ({tab.count})
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <div className="w-full md:w-auto">
+            <MobileTabDropdown
+              items={tabs.map((tab) => ({ value: tab.value, label: `${tab.label} (${tab.count})` }))}
+              value={activeTab}
+              onValueChange={onTabChange}
+              className="md:hidden w-full"
+            />
+            <Tabs value={activeTab} onValueChange={onTabChange} className="hidden md:block">
+              <TabsList className="bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm h-11">
+                {tabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="px-3 sm:px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
+                  >
+                    {tab.label} ({tab.count})
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
           <div className="relative w-full sm:w-[320px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
             <Input
