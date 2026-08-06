@@ -85,6 +85,46 @@ type ScenarioBrief struct {
 	Code *string
 }
 
+// FetchProgramClasses 查询人培方案关联专业在组织树中的全部班级节点。
+// 匹配规则：组织树中类型为「专业」且名称与 majors 表一致的组织节点，取其下所有「班级」子节点。
+func (s *TeachingPlanStore) FetchProgramClasses(ctx context.Context, tenantID, majorID string) ([]string, error) {
+	rows, err := s.q.Query(ctx, `
+		WITH RECURSIVE major_org AS (
+			SELECT o.id
+			FROM organizations o
+			JOIN org_types t ON t.id = o.type_id AND t.tenant_id = o.tenant_id
+			WHERE o.tenant_id = $1 AND t.name = '专业'
+			  AND o.name = (SELECT name FROM majors WHERE id = $2)
+		),
+		org_tree AS (
+			SELECT o.id, o.type_id
+			FROM organizations o
+			JOIN major_org mo ON mo.id = o.id
+			UNION ALL
+			SELECT o.id, o.type_id
+			FROM organizations o
+			JOIN org_tree c ON c.id = o.parent_id
+		)
+		SELECT DISTINCT ot.id
+		FROM org_tree ot
+		JOIN org_types t ON t.id = ot.type_id AND t.tenant_id = ot.tenant_id
+		WHERE t.name = '班级'
+	`, tenantID, majorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	return items, rows.Err()
+}
+
 // FetchPositionScenarios 查询岗位已发布场景。
 func (s *TeachingPlanStore) FetchPositionScenarios(ctx context.Context, positionID string) ([]ScenarioBrief, error) {
 	rows, err := s.q.Query(ctx, `SELECT id, name, code FROM scenarios WHERE career_position_id=$1 AND status='published'`, positionID)
@@ -150,20 +190,28 @@ func (s *TeachingPlanStore) GeneratePlan(ctx context.Context, tx Queryer, p *Gen
 		}
 		if c.PositionID != nil && *c.PositionID != "" {
 			for _, sc := range posScenMap[*c.PositionID] {
+				entryID := uuid.NewString()
 				if _, err := tx.Exec(ctx, `
 					INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, course_id, status)
 					VALUES ($1, $2, $3, $4, 'scene', $5, $6, $7, $8, 1, $9, 'all', $10, $11, 'planned')
-				`, uuid.NewString(), planID, sc.Name, sc.Code, c.Nature,
+				`, entryID, planID, sc.Name, sc.Code, c.Nature,
 					c.Credits, c.Hours, weekHours, weeksCount, sc.ID, c.CourseID); err != nil {
+					return "", err
+				}
+				if err := insertEntryClasses(ctx, tx, entryID, p.ClassNodeIDs); err != nil {
 					return "", err
 				}
 			}
 		} else {
+			entryID := uuid.NewString()
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, course_id, status)
 				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, $10, 'all', $11, $12, 'planned')
-			`, uuid.NewString(), planID, c.Name, c.Code, entryType, c.Nature,
+			`, entryID, planID, c.Name, c.Code, entryType, c.Nature,
 				c.Credits, c.Hours, weekHours, weeksCount, (*string)(nil), c.CourseID); err != nil {
+				return "", err
+			}
+			if err := insertEntryClasses(ctx, tx, entryID, p.ClassNodeIDs); err != nil {
 				return "", err
 			}
 		}
@@ -171,13 +219,29 @@ func (s *TeachingPlanStore) GeneratePlan(ctx context.Context, tx Queryer, p *Gen
 	return planID, nil
 }
 
+// insertEntryClasses 为教学计划条目写入班级关联。
+func insertEntryClasses(ctx context.Context, tx Queryer, entryID string, classNodeIDs []string) error {
+	for _, cid := range classNodeIDs {
+		if cid == "" {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO teaching_plan_entry_classes (entry_id, class_node_id) VALUES ($1, $2)
+		`, entryID, cid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GeneratePlanParams 生成参数。
 type GeneratePlanParams struct {
-	TenantID  string
-	ProgramID string
-	TermID    string
-	MajorID   *string
-	EntryYear *int
+	TenantID     string
+	ProgramID    string
+	TermID       string
+	MajorID      *string
+	EntryYear    *int
+	ClassNodeIDs []string
 }
 
 // List 查询教学计划列表。
