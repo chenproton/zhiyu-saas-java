@@ -48,7 +48,7 @@ import type {
   QuestionType,
   QuestionFormData,
 } from '@/lib/types'
-import { QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, canPerformAction } from '@/lib/types'
+import { QUESTION_TYPES, QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, canPerformAction } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format-utils'
 export default function ExamComposerPage() {
@@ -468,7 +468,7 @@ export default function ExamComposerPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+                  {QUESTION_TYPES.map((type) => (
                     <DropdownMenuItem
                       key={type}
                       onClick={() => {

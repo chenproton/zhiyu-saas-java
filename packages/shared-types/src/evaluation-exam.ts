@@ -19,6 +19,16 @@ export const DIFFICULTY_COLORS: Record<string, string> = {
 // 题目类型枚举
 export type QuestionType = 'single' | 'multiple' | 'judge' | 'fill' | 'essay' | 'short_answer'
 
+// 规范题型键列表（去重后的权威顺序，UI 遍历统一使用，避免 judge/judgment 别名重复渲染）
+export const QUESTION_TYPES: QuestionType[] = [
+  'single',
+  'multiple',
+  'judge',
+  'fill',
+  'essay',
+  'short_answer',
+]
+
 // 题目类型中文映射（完整版：含"题"后缀，用于前台展示）
 export const QUESTION_TYPE_LABELS: Record<string, string> = {
   single: '单选题',

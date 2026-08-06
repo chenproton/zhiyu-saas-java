@@ -49,7 +49,7 @@ import type {
   Difficulty,
   EvalKnowledgePoint,
 } from '@/lib/types'
-import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
+import { QUESTION_TYPES, QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { knowledgeApi } from '@/lib/api'
 
 interface QuestionFormDialogProps {
@@ -1022,7 +1022,7 @@ export function QuestionFormDialog({
             <span className="text-xs font-medium text-muted-foreground">切换题型</span>
             <span className="text-[10px] text-muted-foreground/60">不影响已输入题目与基础设置</span>
           </div>
-          {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((t) => (
+          {QUESTION_TYPES.map((t) => (
             <button
               key={t}
               type="button"
