@@ -217,13 +217,17 @@ export function TopNav() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem>
-                  <User className="w-4 h-4 mr-2" />
-                  个人中心
+                <DropdownMenuItem asChild>
+                  <Link href="/portal/workspace">
+                    <User className="w-4 h-4 mr-2" />
+                    个人中心
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="w-4 h-4 mr-2" />
-                  账号设置
+                <DropdownMenuItem asChild>
+                  <Link href="/portal/workspace?tab=profile">
+                    <Settings className="w-4 h-4 mr-2" />
+                    账号设置
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <div className="flex items-center gap-2 px-2 py-1.5">

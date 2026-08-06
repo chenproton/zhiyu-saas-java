@@ -34,7 +34,7 @@ import type { Exam, ExamUsage } from '@/lib/types'
 import { examApi, examUsageApi, examResultApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { formatDateTime } from '@/lib/format-utils'
-import { useToast, StatusBadge } from '@zhiyu/ui'
+import { useToast } from '@zhiyu/ui'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 /* ─── 题型标签映射 ─── */
 const typeLabelMap: Record<string, string> = {
@@ -591,7 +591,6 @@ export default function ExamDetailPage() {
             <p style={{ fontSize: 14, opacity: 0.9 }}>{exam.description}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <StatusBadge status={exam.status} />
             <FavoriteButton
               targetType="exam"
               targetId={exam.id}
