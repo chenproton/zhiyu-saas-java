@@ -207,21 +207,21 @@ export default function TeachersPage() {
         colSpan={7}
         renderTableHeader={() => (
           <>
-            <TableHead>登录账号（工号）</TableHead>
-            <TableHead>姓名</TableHead>
-            <TableHead>所属组织节点</TableHead>
-            <TableHead>关联角色</TableHead>
-            <TableHead>职位</TableHead>
-            <TableHead>状态</TableHead>
-            <TableHead className="text-right">操作</TableHead>
+            <TableHead className="w-32">登录账号（工号）</TableHead>
+            <TableHead className="w-28">姓名</TableHead>
+            <TableHead className="hidden md:table-cell">所属组织节点</TableHead>
+            <TableHead className="hidden md:table-cell">关联角色</TableHead>
+            <TableHead className="hidden md:table-cell">职位</TableHead>
+            <TableHead className="w-24">状态</TableHead>
+            <TableHead className="w-24 text-right">操作</TableHead>
           </>
         )}
         renderTableRow={(teacher, actions) => (
           <>
             <TableCell className="font-mono text-sm">{teacher.loginAccount}</TableCell>
             <TableCell className="font-medium">{teacher.name}</TableCell>
-            <TableCell>{teacher.department}</TableCell>
-            <TableCell>
+            <TableCell className="hidden md:table-cell">{teacher.department}</TableCell>
+            <TableCell className="hidden md:table-cell">
               {teacher.roles.length > 0 ? (
                 <div className="flex gap-1 flex-wrap">
                   {teacher.roles.map((role, i) => (
@@ -234,7 +234,7 @@ export default function TeachersPage() {
                 <span className="text-muted-foreground">—</span>
               )}
             </TableCell>
-            <TableCell>
+            <TableCell className="hidden md:table-cell">
               {teacher.positions.length > 0 ? (
                 <div className="flex gap-1 flex-wrap">
                   {teacher.positions.map((pos, i) => (

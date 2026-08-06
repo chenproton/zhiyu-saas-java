@@ -189,12 +189,12 @@ export default function AccountsPage() {
       }
       renderTableHeader={() => (
         <>
-          <TableHead>姓名</TableHead>
-          <TableHead>角色</TableHead>
-          <TableHead>所属组织</TableHead>
-          <TableHead>账户登录名</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>最后登录时间</TableHead>
+          <TableHead className="w-28">姓名</TableHead>
+          <TableHead className="w-36">角色</TableHead>
+          <TableHead className="hidden md:table-cell">所属组织</TableHead>
+          <TableHead className="w-36">账户登录名</TableHead>
+          <TableHead className="w-24">状态</TableHead>
+          <TableHead className="hidden md:table-cell">最后登录时间</TableHead>
           <TableHead className="w-24 text-center">操作</TableHead>
         </>
       )}
@@ -214,7 +214,7 @@ export default function AccountsPage() {
               )}
             </div>
           </TableCell>
-          <TableCell>
+          <TableCell className="hidden md:table-cell">
             <div className="flex items-center gap-1.5">
               <span>{account.orgNodeName}</span>
               {account.orgTypeName && (
@@ -228,7 +228,9 @@ export default function AccountsPage() {
           <TableCell>
             <StatusBadge status={account.status} />
           </TableCell>
-          <TableCell className="text-muted-foreground">{account.lastLogin}</TableCell>
+          <TableCell className="hidden md:table-cell text-muted-foreground">
+            {account.lastLogin}
+          </TableCell>
           <TableRowActions>
             <Button
               variant="ghost"

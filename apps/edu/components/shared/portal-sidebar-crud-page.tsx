@@ -420,7 +420,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           </div>
 
           <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <Table className="min-w-[900px]">
+            <Table>
               <TableHeader>
                 <TableRow className="border-border">
                   <TableHead className="w-12">
