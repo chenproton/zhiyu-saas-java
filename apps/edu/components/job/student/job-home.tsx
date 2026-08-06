@@ -37,9 +37,11 @@ interface JobHomeProps {
 function PositionSideLists({
   recommendedPositions,
   favoritePositions,
+  linkToLearn,
 }: {
   recommendedPositions: CareerPosition[]
   favoritePositions: CareerPosition[]
+  linkToLearn: boolean
 }) {
   const [activeTab, setActiveTab] = useState<'recommended' | 'favorite'>('recommended')
   const [tick, setTick] = useState(0)
@@ -100,7 +102,7 @@ function PositionSideLists({
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar-thin flex flex-col gap-1">
           {positions.map((pos) => (
-            <Link key={pos.id} href={`/job/landing/${pos.id}/learn`}>
+            <Link key={pos.id} href={linkToLearn ? `/job/landing/${pos.id}/learn` : `/job/landing/${pos.id}`}>
               <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#f8fafc] cursor-pointer transition-all group">
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <span
@@ -647,6 +649,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
           <PositionSideLists
             recommendedPositions={recommendedPositions}
             favoritePositions={favoritePositions}
+            linkToLearn={isScene}
           />
         ),
       }}
