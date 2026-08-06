@@ -27,8 +27,18 @@ import { FavoriteButton } from '@/components/shared/favorite-button'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
 import { COVER_GRADIENTS } from '@/lib/cover-gradients'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
 const questionTypeLabels = QUESTION_TYPE_LABELS
+
+const questionTypeChartColors: Record<string, string> = {
+  single: '#3b82f6',
+  multiple: '#a855f7',
+  judge: '#f59e0b',
+  fill: '#10b981',
+  essay: '#f43f5e',
+  short_answer: '#06b6d4',
+}
 
 const questionTypeIcons: Record<string, React.ComponentType<any>> = {
   single: ListChecks,
@@ -149,6 +159,14 @@ export default function BankDetailPage() {
     return counts
   }, [questions])
 
+  const pieData = useMemo(() => {
+    return Object.entries(typeCounts).map(([type, count]) => ({
+      name: questionTypeLabels[type] || type,
+      value: count,
+      color: questionTypeChartColors[type] || '#94a3b8',
+    }))
+  }, [typeCounts])
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8fafc]">
@@ -239,9 +257,6 @@ export default function BankDetailPage() {
                         <h1 className="text-[26px] font-bold text-slate-900 truncate">
                           {bank.name}
                         </h1>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 font-medium shrink-0 border border-blue-200">
-                          {bank.status === 'published' ? '已发布' : bank.status}
-                        </span>
                       </div>
                     </div>
 
@@ -293,27 +308,63 @@ export default function BankDetailPage() {
                   </div>
                   <span className="text-sm font-bold text-slate-800">题库统计</span>
                 </div>
-                <div className="p-5 space-y-3">
-                  {Object.entries(typeCounts).map(([type, count]) => (
-                    <div
-                      key={type}
-                      className="flex items-center justify-between py-2 border-b border-slate-50"
-                    >
-                      <span className="text-sm text-slate-500">
-                        {questionTypeLabels[type] || type}
-                      </span>
-                      <span className="text-sm font-bold text-blue-600">{count} 题</span>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                    <span className="text-sm text-slate-500">总题量</span>
-                    <span className="text-sm font-bold text-blue-600">{questions.length}</span>
-                  </div>
-                  {bank.version && (
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-sm text-slate-500">版本</span>
-                      <span className="text-sm font-bold text-blue-600">v{bank.version}</span>
-                    </div>
+                <div className="p-5">
+                  {pieData.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400 text-sm">暂无题目</div>
+                  ) : (
+                    <>
+                      <div className="relative h-[180px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={48}
+                              outerRadius={72}
+                              paddingAngle={3}
+                              dataKey="value"
+                              strokeWidth={0}
+                            >
+                              {pieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value: number, name: string) => [`${value} 题`, name]}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <div className="text-[20px] font-bold text-slate-800 leading-none">
+                            {questions.length}
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-1">总题量</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 space-y-2.5">
+                        {pieData.map((entry) => (
+                          <div key={entry.name} className="flex items-center justify-between">
+                            <span className="flex items-center gap-2 text-sm text-slate-500">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              {entry.name}
+                            </span>
+                            <span className="text-sm font-bold text-slate-700">
+                              {entry.value} 题
+                            </span>
+                          </div>
+                        ))}
+                        {bank.version && (
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                            <span className="text-sm text-slate-500">版本</span>
+                            <span className="text-sm font-bold text-blue-600">v{bank.version}</span>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
