@@ -92,6 +92,8 @@ export interface Task {
   deliverables: TaskDeliverable[]
   knowledgePoints: string[]
   abilityPoints: string[]
+  /** 与 abilityPoints 按序对齐的能力点名称（服务端返回，卡片预览直接使用，不依赖全量能力点列表） */
+  abilityPointNames?: string[]
   assessment: Assessment | null
   isReferenced?: boolean
   sourceScenarioId?: string

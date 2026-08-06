@@ -47,6 +47,7 @@ type ScenarioTask struct {
 	SourceScenarioID    *string  `json:"sourceScenarioId,omitempty"`
 	KnowledgePointIDs   []string `json:"knowledgePointIds,omitempty"`
 	AbilityPointIDs     []string `json:"abilityPointIds,omitempty"`
+	AbilityPointNames   []string `json:"abilityPointNames,omitempty"`
 	ResourceIDs         []string `json:"resourceIds,omitempty"`
 	EvalData            JSONMap  `json:"evalData,omitempty"`
 	TenantID            *string  `json:"tenantId,omitempty"`
