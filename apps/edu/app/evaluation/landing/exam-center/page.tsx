@@ -9,13 +9,14 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { examUsageApi } from '@/lib/api'
-import type { ExamCenterItem } from '@/lib/types'
+import { examUsageApi, examApi } from '@/lib/api'
+import type { ExamCenterItem, Exam } from '@/lib/types'
 import { ExamCenterCard } from '@/components/evaluation/exam-center-card'
 import { PlatformFooter } from '@/components/job/student/platform-footer'
 
 export default function ExamCenterPage() {
   const [items, setItems] = useState<ExamCenterItem[]>([])
+  const [examCovers, setExamCovers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'all' | 'mine'>('all')
   const [keyword, setKeyword] = useState('')
@@ -26,6 +27,16 @@ export default function ExamCenterPage() {
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
+    examApi
+      .list({ status: 'published', limit: 1000 } as any)
+      .then((res) => {
+        const map: Record<string, string> = {}
+        ;(res.items || []).forEach((e: Exam) => {
+          if (e.coverImage) map[e.id] = e.coverImage
+        })
+        setExamCovers(map)
+      })
+      .catch(() => {})
   }, [])
 
   const isStudent = items.length > 0 ? items[0]?.studentView : true
@@ -119,7 +130,7 @@ export default function ExamCenterPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((item) => (
-              <ExamCenterCard key={item.id} item={item} />
+              <ExamCenterCard key={item.id} item={item} coverImage={examCovers[item.examId]} />
             ))}
           </div>
         )}
