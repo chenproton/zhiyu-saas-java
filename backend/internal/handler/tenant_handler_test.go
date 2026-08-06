@@ -51,6 +51,14 @@ func TestTenant_Create(t *testing.T) {
 	if tenant.Name != "Test Tenant Create" {
 		t.Fatalf("expected name 'Test Tenant Create', got %s", tenant.Name)
 	}
+	var industryCount int
+	if err := env.DB.QueryRow(ctx,
+		"SELECT COUNT(*) FROM industries WHERE tenant_id = $1", tenant.ID).Scan(&industryCount); err != nil {
+		t.Fatalf("count industries: %v", err)
+	}
+	if industryCount != 97 {
+		t.Fatalf("expected 97 seeded industries, got %d", industryCount)
+	}
 	defer cleanupTenant(ctx, t, env, tenant.ID)
 }
 
