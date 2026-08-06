@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -122,6 +123,24 @@ func (s *ExamUsageStore) Delete(ctx context.Context, id string) error {
 func (s *ExamUsageStore) SetStatus(ctx context.Context, id, status string) error {
 	_, err := s.q.Exec(ctx, `UPDATE exam_usages SET status = $1, updated_at = NOW() WHERE id = $2`, status, id)
 	return err
+}
+
+// NextAutoUsageName 生成自动考试安排名称：{前缀}-{测评类型}-{YYYYMMDD}-{序号}。
+// 前缀由调用方传入（场景任务：场景名-任务名；课程节点：课程名-节点名）。
+// 序号为同租户同目标类型当天已生成数量 +1（同一天生成多个测评时递增）。
+func NextAutoUsageName(ctx context.Context, q Queryer, tenantID, targetType, prefix, label string) (string, error) {
+	var date string
+	if err := q.QueryRow(ctx, `SELECT to_char(NOW(), 'YYYYMMDD')`).Scan(&date); err != nil {
+		return "", err
+	}
+	var n int
+	if err := q.QueryRow(ctx, `
+		SELECT COALESCE(COUNT(*), 0) FROM exam_usages
+		WHERE tenant_id = $1 AND target_type = $2 AND created_at::date = CURRENT_DATE
+	`, tenantID, targetType).Scan(&n); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s-%s-%s-%d", prefix, label, date, n+1), nil
 }
 
 // ExamCenterItemRow 考试中心查询行。

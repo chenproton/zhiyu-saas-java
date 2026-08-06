@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -214,9 +215,20 @@ func (s *TaskEvaluationStore) MaxMethodVersion(ctx context.Context, taskID, tena
 }
 
 // TaskName 查询任务名称。
-func (s *TaskEvaluationStore) TaskName(ctx context.Context, taskID string) (string, error) {
+func (s *TaskEvaluationStore) TaskName(ctx context.Context, q Queryer, taskID string) (string, error) {
 	var name string
-	err := s.q.QueryRow(ctx, `SELECT name FROM scenario_tasks WHERE id = $1`, taskID).Scan(&name)
+	err := q.QueryRow(ctx, `SELECT name FROM scenario_tasks WHERE id = $1`, taskID).Scan(&name)
+	return name, err
+}
+
+// TaskScenarioName 查询任务所属场景名称。
+func (s *TaskEvaluationStore) TaskScenarioName(ctx context.Context, q Queryer, taskID string) (string, error) {
+	var name string
+	err := q.QueryRow(ctx, `
+		SELECT COALESCE(sc.name, '') FROM scenario_tasks st
+		JOIN scenarios sc ON sc.id = st.scenario_id
+		WHERE st.id = $1
+	`, taskID).Scan(&name)
 	return name, err
 }
 
@@ -397,7 +409,14 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 	duration := ExtractExamUsageDuration(resourceConfig, methodKey)
 	activationMode := ResolveActivationMode(resourceConfig, methodKey)
 	if usageID == "" {
-		id, err := s.createTempExamUsage(ctx, tx, tenantID, examID, taskID, creatorID, startTime, endTime, duration, activationMode)
+		// 名称前缀：场景名-任务名（示例：软件项目经理场景2-任务 1）
+		scenarioName, _ := s.TaskScenarioName(ctx, tx, taskID)
+		taskDisplayName, _ := s.TaskName(ctx, tx, taskID)
+		prefix := strings.TrimSpace(strings.Join([]string{scenarioName, taskDisplayName}, "-"))
+		if prefix == "-" || prefix == "" {
+			prefix = "场景任务"
+		}
+		id, err := s.createTempExamUsage(ctx, tx, tenantID, examID, taskID, creatorID, startTime, endTime, duration, activationMode, methodKey, label, prefix)
 		if err != nil {
 			return resourceConfig, err
 		}
@@ -455,7 +474,7 @@ func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, te
 	return id, nil
 }
 
-func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Queryer, tenantID, examID, taskID, creatorID string, startTime, endTime *string, duration *int, activationMode string) (string, error) {
+func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Queryer, tenantID, examID, taskID, creatorID string, startTime, endTime *string, duration *int, activationMode, methodKey, label, prefix string) (string, error) {
 	var existingID string
 	err := tx.QueryRow(ctx, `
 		SELECT id FROM exam_usages
@@ -486,10 +505,15 @@ func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Querye
 	if activationMode == "always" {
 		status = "published"
 	}
+	// 名称：{场景名-任务名}-{测评类型}-{YYYYMMDD}-{序号}（同一天多个测评序号递增）
+	name, err := NextAutoUsageName(ctx, tx, tenantID, "task", prefix, label)
+	if err != nil {
+		return "", fmt.Errorf("生成考试安排名称失败: %w", err)
+	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
 		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'task', $8, $9, $10, $11)
-	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), startTime, endTime, duration, []string{taskID}, status, activationMode, creator)
+	`, id, tenantID, examID, name, startTime, endTime, duration, []string{taskID}, status, activationMode, creator)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam usage: %w", err)
 	}

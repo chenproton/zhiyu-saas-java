@@ -34,7 +34,7 @@ func (s *TaskEvaluationService) TaskTenantID(ctx context.Context, taskID string)
 // SaveMethods 保存任务测评方式（乐观锁 + 事务内软删/重写，临时考试联动在事务外执行）。
 func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskID, creatorID string, version int, inputs []*MethodSaveInput) ([]domain.TaskEvaluationMethod, error) {
 	taskName := "未命名任务"
-	if name, err := s.st.TaskEval().TaskName(ctx, taskID); err == nil && name != "" {
+	if name, err := s.st.TaskEval().TaskName(ctx, s.st.Q(), taskID); err == nil && name != "" {
 		taskName = name
 	}
 	newVersion := version + 1

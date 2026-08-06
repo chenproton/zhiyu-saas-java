@@ -3,6 +3,8 @@ package handler_test
 import (
 	"context"
 	"encoding/json"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -70,6 +72,8 @@ func TestCourseNodeUsageWindow(t *testing.T) {
 		t.Fatal("应生成节点考试安排")
 	}
 	checkUsageWindow(t, env, ctx, usage, "2026-09-01T08:00:00Z", "2026-09-30T18:00:00Z", 45)
+	// 名称格式：课程名-节点名-试卷-{YYYYMMDD}-{序号}
+	checkUsageName(t, env, ctx, usage, "测试体系课-节点一-试卷-")
 
 	// 2. 配置变更后重新生成：同步更新已有安排
 	evalData["evalRuleConfig"].(map[string]interface{})["methodResourceConfigs"].(map[string]interface{})["paper"] = map[string]interface{}{
@@ -102,6 +106,26 @@ func TestCourseNodeUsageWindow(t *testing.T) {
 	checkUsageWindow(t, env, ctx, usage, "", "", 45)
 
 	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = $1", usage)
+}
+
+// checkUsageName 校验考试安排名称以指定前缀开头，且后缀为 {YYYYMMDD}-{序号}。
+func checkUsageName(t *testing.T, env *testhelper.TestEnv, ctx context.Context, usageID, wantPrefix string) {
+	t.Helper()
+	var name, date string
+	if err := env.DB.QueryRow(ctx, `
+		SELECT name, to_char(NOW(), 'YYYYMMDD') FROM exam_usages WHERE id = $1
+	`, usageID).Scan(&name, &date); err != nil {
+		t.Fatalf("查询考试安排名称失败: %v", err)
+	}
+	// 期望格式：{前缀}{YYYYMMDD}-{序号}，如 测试体系课-节点一-试卷-20260806-1
+	want := wantPrefix + date + "-"
+	if !strings.HasPrefix(name, want) {
+		t.Fatalf("考试安排名称格式不匹配：got %q, want prefix %q", name, want)
+	}
+	suffix := strings.TrimPrefix(name, want)
+	if n, err := strconv.Atoi(suffix); err != nil || n < 1 {
+		t.Fatalf("考试安排名称序号不合法：got %q", name)
+	}
 }
 
 func checkUsageWindow(t *testing.T, env *testhelper.TestEnv, ctx context.Context, usageID, wantStart, wantEnd string, wantDuration int) {

@@ -453,16 +453,17 @@ func (s *LessonContentService) ensureNodePaperUsage(ctx context.Context, q store
 		if paperID == "" {
 			continue
 		}
-		examName, err := s.st.CourseAssessments().PaperExamName(ctx, q, paperID, info.TenantID)
-		if err != nil {
-			return rc, err
-		}
 		usageID, err := s.st.CourseAssessments().FindNodeUsage(ctx, q, paperID, n.ID)
 		if err != nil {
 			return rc, err
 		}
 		if usageID == "" {
-			usageID, err = s.st.CourseAssessments().CreateNodeUsage(ctx, q, info.TenantID, paperID, n.ID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, examName), info.CreatorID, startTime, endTime, duration, activationMode)
+			// 名称：课程名-节点名-试卷-{YYYYMMDD}-{序号}
+			usageName, err := store.NextAutoUsageName(ctx, q, info.TenantID, "node", fmt.Sprintf("%s-%s", info.Name, n.Name), "试卷")
+			if err != nil {
+				return rc, err
+			}
+			usageID, err = s.st.CourseAssessments().CreateNodeUsage(ctx, q, info.TenantID, paperID, n.ID, usageName, info.CreatorID, startTime, endTime, duration, activationMode)
 			if err != nil {
 				return rc, err
 			}
@@ -517,7 +518,12 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 	}
 
 	if usageID == "" {
-		newID, err := s.st.CourseAssessments().CreateExamUsage(ctx, q, info.TenantID, examID, "node", n.ID, fmt.Sprintf("%s-%s-%s", info.Name, n.Name, label), info.CreatorID, startTime, endTime, duration, activationMode)
+		// 名称：课程名-节点名-{测评类型}-{YYYYMMDD}-{序号}
+		usageName, err := store.NextAutoUsageName(ctx, q, info.TenantID, "node", fmt.Sprintf("%s-%s", info.Name, n.Name), label)
+		if err != nil {
+			return rc, err
+		}
+		newID, err := s.st.CourseAssessments().CreateExamUsage(ctx, q, info.TenantID, examID, "node", n.ID, usageName, info.CreatorID, startTime, endTime, duration, activationMode)
 		if err != nil {
 			return rc, err
 		}

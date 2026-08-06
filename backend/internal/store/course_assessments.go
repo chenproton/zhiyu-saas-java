@@ -78,13 +78,6 @@ func (s *CourseAssessmentStore) UpdateNodeEvalData(ctx context.Context, q Querye
 	return err
 }
 
-// PaperExamName 查询试卷名称。
-func (s *CourseAssessmentStore) PaperExamName(ctx context.Context, q Queryer, paperID, tenantID string) (string, error) {
-	var name string
-	err := q.QueryRow(ctx, `SELECT name FROM exams WHERE id = $1 AND tenant_id = $2`, paperID, tenantID).Scan(&name)
-	return name, err
-}
-
 // FindNodeUsage 查询节点已有考试安排。
 func (s *CourseAssessmentStore) FindNodeUsage(ctx context.Context, q Queryer, examID, nodeID string) (string, error) {
 	var usageID string
