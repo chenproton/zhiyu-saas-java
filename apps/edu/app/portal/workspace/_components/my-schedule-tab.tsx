@@ -6,6 +6,7 @@ import { useAsync } from '@zhiyu/ui'
 import { ScheduleGrid } from '@/components/shared/schedule-grid'
 import { myScheduleApi, periodSlotApi } from '@/lib/api'
 import type { AffairsTerm, PeriodSlot, ScheduleEntry } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface MyScheduleTabProps {
   /** student：场景课跳场景学习；teacher：场景课跳场景测评 */
@@ -14,6 +15,7 @@ interface MyScheduleTabProps {
 
 /** 我的课表 Tab（学生/教师工作台共用，当前学期已发布课表） */
 export function MyScheduleTab({ role }: MyScheduleTabProps) {
+  const t = useT()
   const [noTerm, setNoTerm] = useState(false)
 
   const { data, loading } = useAsync(async () => {
@@ -55,18 +57,26 @@ export function MyScheduleTab({ role }: MyScheduleTabProps) {
       <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">
-            {term ? `${term.name}课表` : '我的课表'}
+            {term ? t('{name}课表', { name: term.name }) : t('我的课表')}
           </h3>
           <p className="text-xs text-gray-500">
             {term
-              ? `${term.startDate} 至 ${term.endDate} · 共 ${term.weeksCount} 周 · 仅显示已发布课表`
-              : '仅显示当前学期已发布的课表'}
+              ? t('{start} 至 {end} · 共 {count} 周 · 仅显示已发布课表', {
+                  start: term.startDate,
+                  end: term.endDate,
+                  count: term.weeksCount,
+                })
+              : t('仅显示当前学期已发布的课表')}
           </p>
         </div>
         {role === 'student' ? (
-          <span className="text-xs text-gray-400">带「场景」徽标的课程可点击进入场景学习</span>
+          <span className="text-xs text-gray-400">
+            {t('带「场景」徽标的课程可点击进入场景学习')}
+          </span>
         ) : (
-          <span className="text-xs text-gray-400">带「场景」徽标的课程可点击进入场景测评</span>
+          <span className="text-xs text-gray-400">
+            {t('带「场景」徽标的课程可点击进入场景测评')}
+          </span>
         )}
       </div>
 
@@ -76,15 +86,15 @@ export function MyScheduleTab({ role }: MyScheduleTabProps) {
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-sm text-gray-400">
             <CalendarX2 className="h-10 w-10 text-gray-300" />
             {noTerm
-              ? '学校尚未配置学期，课表发布后这里会展示你的课表'
-              : '当前学期暂无已发布的课表，发布后即可查看'}
+              ? t('学校尚未配置学期，课表发布后这里会展示你的课表')
+              : t('当前学期暂无已发布的课表，发布后即可查看')}
           </div>
         ) : (
           <ScheduleGrid
             entries={entries ?? []}
             periodSlots={periodSlots ?? []}
             loading={loading}
-            emptyText="当前学期暂无已发布的课表"
+            emptyText={t('当前学期暂无已发布的课表')}
             getEntryHref={getEntryHref}
           />
         )}

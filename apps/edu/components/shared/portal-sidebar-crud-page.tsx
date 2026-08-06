@@ -309,7 +309,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
     <div className="min-h-full">
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+          <h1 className="text-xl font-semibold text-foreground">{t(title)}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -411,7 +411,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                 <SelectContent>
                   {statusOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {t(opt.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>

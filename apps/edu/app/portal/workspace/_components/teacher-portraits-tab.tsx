@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/table'
 import { jobAbilityResultApi } from '@/lib/api'
 import type { JobAbilityResult, JobAbilityPointDetail } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const gradeColorMap: Record<string, string> = {
   卓越: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -76,6 +77,7 @@ function getGradeColor(grade?: string) {
 }
 
 export function TeacherPortraitsTab() {
+  const t = useT()
   const [searchTerm, setSearchTerm] = useState('')
   const [navSearch, setNavSearch] = useState('')
   const [selectedClass, setSelectedClass] = useState<string>('all')
@@ -139,10 +141,10 @@ export function TeacherPortraitsTab() {
   const groupedByClass = useMemo(() => {
     const majorMap = new Map<string, Map<string, string[]>>()
     students.forEach((s) => {
-      const major = s.majorName || '未分类'
+      const major = s.majorName || t('未分类')
       if (!majorMap.has(major)) majorMap.set(major, new Map())
       const gradeMap = majorMap.get(major)!
-      const cls = s.className || '未分班'
+      const cls = s.className || t('未分班')
       if (!gradeMap.has(cls)) gradeMap.set(cls, [])
       const q = navSearch.trim().toLowerCase()
       if (
@@ -163,7 +165,7 @@ export function TeacherPortraitsTab() {
       if (classes.length > 0) result.push({ major, classes })
     })
     return result.sort((a, b) => a.major.localeCompare(b.major))
-  }, [students, navSearch])
+  }, [students, navSearch, t])
 
   const filteredStudents = useMemo(() => {
     let list = students
@@ -179,7 +181,7 @@ export function TeacherPortraitsTab() {
     return list
   }, [students, selectedClass, searchTerm])
 
-  const selectedClassName = selectedClass === 'all' ? '全部班级' : selectedClass
+  const selectedClassName = selectedClass === 'all' ? t('全部班级') : selectedClass
 
   if (selectedUserId) {
     return (
@@ -191,7 +193,7 @@ export function TeacherPortraitsTab() {
           className="text-sm text-gray-500 hover:text-gray-900 -ml-2"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
-          返回学生列表
+          {t('返回学生列表')}
         </Button>
         <PortraitTab userId={selectedUserId} />
       </div>
@@ -200,10 +202,10 @@ export function TeacherPortraitsTab() {
 
   if (loading) {
     return (
-      <SectionCard title="我的学生" icon={User} iconColor="blue">
+      <SectionCard title={t('我的学生')} icon={User} iconColor="blue">
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-sm text-gray-500">正在加载学生数据...</span>
+          <span className="ml-3 text-sm text-gray-500">{t('正在加载学生数据...')}</span>
         </div>
       </SectionCard>
     )
@@ -211,14 +213,14 @@ export function TeacherPortraitsTab() {
 
   return (
     <>
-      <SectionCard title="我的学生" icon={User} iconColor="blue">
+      <SectionCard title={t('我的学生')} icon={User} iconColor="blue">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           <div className="rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/15 p-3.5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm">
               <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-[11px] text-primary font-medium">总学生数</p>
+              <p className="text-[11px] text-primary font-medium">{t('总学生数')}</p>
               <p className="text-lg font-bold text-primary">{students.length}</p>
             </div>
           </div>
@@ -227,7 +229,7 @@ export function TeacherPortraitsTab() {
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-[11px] text-primary font-medium">当前筛选</p>
+              <p className="text-[11px] text-primary font-medium">{t('当前筛选')}</p>
               <p className="text-lg font-bold text-primary">{selectedClassName}</p>
             </div>
           </div>
@@ -236,8 +238,10 @@ export function TeacherPortraitsTab() {
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-[11px] text-amber-500 font-medium">匹配结果</p>
-              <p className="text-lg font-bold text-amber-700">{filteredStudents.length} 人</p>
+              <p className="text-[11px] text-amber-500 font-medium">{t('匹配结果')}</p>
+              <p className="text-lg font-bold text-amber-700">
+                {t('{count} 人', { count: filteredStudents.length })}
+              </p>
             </div>
           </div>
         </div>
@@ -249,7 +253,7 @@ export function TeacherPortraitsTab() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="搜索姓名或学号..."
+                    placeholder={t('搜索姓名或学号...')}
                     value={navSearch}
                     onChange={(e) => setNavSearch(e.target.value)}
                     className="h-9 pl-8 text-xs border-gray-200 bg-white focus:border-primary/30"
@@ -268,7 +272,7 @@ export function TeacherPortraitsTab() {
                   <div
                     className={`w-1.5 h-1.5 rounded-full mr-2.5 ${selectedClass === 'all' ? 'bg-primary' : 'bg-gray-300'}`}
                   />
-                  <span>全部班级</span>
+                  <span>{t('全部班级')}</span>
                   <span
                     className={`ml-auto text-xs font-medium ${selectedClass === 'all' ? 'text-primary' : 'text-gray-400'}`}
                   >
@@ -320,7 +324,7 @@ export function TeacherPortraitsTab() {
             <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="搜索姓名或学号..."
+                placeholder={t('搜索姓名或学号...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 h-10 text-sm border-gray-200 bg-white focus:border-primary/30 rounded-xl"
@@ -330,8 +334,8 @@ export function TeacherPortraitsTab() {
             {filteredStudents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                 <Search className="w-12 h-12 mb-3 text-gray-200" />
-                <p className="text-sm font-medium">暂无匹配的学生</p>
-                <p className="text-xs mt-1">请尝试调整搜索条件或筛选班级</p>
+                <p className="text-sm font-medium">{t('暂无匹配的学生')}</p>
+                <p className="text-xs mt-1">{t('请尝试调整搜索条件或筛选班级')}</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-[60vh] overflow-auto pr-1">
@@ -376,7 +380,7 @@ export function TeacherPortraitsTab() {
                                   }}
                                 >
                                   <Eye className="w-3.5 h-3.5" />
-                                  查看画像
+                                  {t('查看画像')}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -389,7 +393,7 @@ export function TeacherPortraitsTab() {
                                   }}
                                 >
                                   <FileText className="w-3.5 h-3.5" />
-                                  学业成绩
+                                  {t('学业成绩')}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -402,7 +406,7 @@ export function TeacherPortraitsTab() {
                                   }}
                                 >
                                   <Target className="w-3.5 h-3.5" />
-                                  能力档案
+                                  {t('能力档案')}
                                 </Button>
                               </div>
                             </div>
@@ -419,7 +423,7 @@ export function TeacherPortraitsTab() {
                               <span className="text-xs text-gray-500">{student.majorName}</span>
                               <span className="text-[11px] text-gray-400">|</span>
                               <span className="text-xs text-gray-500">
-                                达成率 {student.achievementRate.toFixed(1)}%
+                                {t('达成率 {rate}%', { rate: student.achievementRate.toFixed(1) })}
                               </span>
                             </div>
                           </div>
@@ -438,7 +442,7 @@ export function TeacherPortraitsTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-amber-600" />
-              查看学生成绩单
+              {t('查看学生成绩单')}
             </DialogTitle>
             <DialogDescription>
               {activeStudent?.name} · {activeStudent?.studentNo} · {activeStudent?.className}
@@ -447,27 +451,27 @@ export function TeacherPortraitsTab() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead className="text-xs">指标</TableHead>
-                <TableHead className="text-xs">数值</TableHead>
+                <TableHead className="text-xs">{t('指标')}</TableHead>
+                <TableHead className="text-xs">{t('数值')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell className="text-sm font-medium">总能力点</TableCell>
+                <TableCell className="text-sm font-medium">{t('总能力点')}</TableCell>
                 <TableCell className="text-sm">{activeStudent?.totalPoints ?? '-'}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="text-sm font-medium">已达成能力点</TableCell>
+                <TableCell className="text-sm font-medium">{t('已达成能力点')}</TableCell>
                 <TableCell className="text-sm">{activeStudent?.achievedPoints ?? '-'}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="text-sm font-medium">达标率</TableCell>
+                <TableCell className="text-sm font-medium">{t('达标率')}</TableCell>
                 <TableCell className="text-sm">
                   {activeStudent?.achievementRate.toFixed(1) ?? '-'}%
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="text-sm font-medium">认定等级</TableCell>
+                <TableCell className="text-sm font-medium">{t('认定等级')}</TableCell>
                 <TableCell>
                   <Badge className={`text-xs ${getGradeColor(activeStudent?.grade)}`}>
                     {activeStudent?.grade || '-'}
@@ -483,7 +487,7 @@ export function TeacherPortraitsTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
-              查看学生能力报告
+              {t('查看学生能力报告')}
             </DialogTitle>
             <DialogDescription>
               {activeStudent?.name} · {activeStudent?.majorName} · {activeStudent?.className}
@@ -501,11 +505,11 @@ export function TeacherPortraitsTab() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-400 text-center py-4">暂无能力点数据</p>
+              <p className="text-sm text-gray-400 text-center py-4">{t('暂无能力点数据')}</p>
             )}
             <div className="pt-2 border-t border-gray-100">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">综合评级</span>
+                <span className="text-gray-500">{t('综合评级')}</span>
                 <Badge className={`text-xs font-bold ${getGradeColor(activeStudent?.grade)}`}>
                   {activeStudent?.grade || '-'}
                 </Badge>

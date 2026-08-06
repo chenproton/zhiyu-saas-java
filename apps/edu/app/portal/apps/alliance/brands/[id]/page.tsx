@@ -9,12 +9,14 @@ import { allianceBrandApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceBrand } from '@/lib/types'
 
 export default function AllianceBrandDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const [brand, setBrand] = useState<AllianceBrand | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -23,9 +25,9 @@ export default function AllianceBrandDetailPage() {
     allianceBrandApi
       .get(id)
       .then((b) => setBrand(b))
-      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
-  }, [tenantId, id, toast])
+  }, [tenantId, id, toast, t])
 
   if (!brand && !loading) {
     return (
@@ -34,47 +36,47 @@ export default function AllianceBrandDetailPage() {
   }
 
   const related: { label: string; value?: string | null }[] = [
-    { label: '关联学生', value: brand?.studentId },
-    { label: '关联企业', value: brand?.enterpriseId },
-    { label: '关联岗位', value: brand?.positionId },
-    { label: '关联专业', value: brand?.majorId },
-    { label: '关联教师', value: brand?.teacherId },
-    { label: '关联专家', value: brand?.expertId },
+    { label: t('关联学生'), value: brand?.studentId },
+    { label: t('关联企业'), value: brand?.enterpriseId },
+    { label: t('关联岗位'), value: brand?.positionId },
+    { label: t('关联专业'), value: brand?.majorId },
+    { label: t('关联教师'), value: brand?.teacherId },
+    { label: t('关联专家'), value: brand?.expertId },
   ].filter((x) => x.value)
 
   const tabs = [
     {
       key: 'info',
-      label: '基本信息',
+      label: t('基本信息'),
       content: (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>品牌信息</CardTitle>
+              <CardTitle>{t('品牌信息')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">品牌类型：</span>
+                <span className="text-muted-foreground">{t('品牌类型：')}</span>
                 {allianceLabel('brandType', brand?.brandType)}
               </p>
               <p>
-                <span className="text-muted-foreground">状态：</span>
+                <span className="text-muted-foreground">{t('状态：')}</span>
                 {allianceLabel('brandStatus', brand?.status)}
               </p>
               <p>
-                <span className="text-muted-foreground">推荐：</span>
-                {brand?.isFeatured ? '是' : '否'}
+                <span className="text-muted-foreground">{t('推荐：')}</span>
+                {brand?.isFeatured ? t('是') : t('否')}
               </p>
               <p>
-                <span className="text-muted-foreground">前台展示：</span>
-                {brand?.isPublic ? '是' : '否'}
+                <span className="text-muted-foreground">{t('前台展示：')}</span>
+                {brand?.isPublic ? t('是') : t('否')}
               </p>
               <p>
-                <span className="text-muted-foreground">浏览量：</span>
+                <span className="text-muted-foreground">{t('浏览量：')}</span>
                 {brand?.viewCount || 0}
               </p>
               <p>
-                <span className="text-muted-foreground">排序：</span>
+                <span className="text-muted-foreground">{t('排序：')}</span>
                 {brand?.sortOrder ?? 0}
               </p>
             </CardContent>
@@ -82,7 +84,7 @@ export default function AllianceBrandDetailPage() {
           {related.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>关联对象</CardTitle>
+                <CardTitle>{t('关联对象')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 {related.map((r) => (
@@ -97,7 +99,7 @@ export default function AllianceBrandDetailPage() {
           {brand?.description && (
             <Card className="col-span-2">
               <CardHeader>
-                <CardTitle>品牌描述</CardTitle>
+                <CardTitle>{t('品牌描述')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{brand.description}</p>
@@ -107,7 +109,7 @@ export default function AllianceBrandDetailPage() {
           {brand?.data && JSON.stringify(brand.data) !== '{}' && (
             <Card className="col-span-2">
               <CardHeader>
-                <CardTitle>数据详情</CardTitle>
+                <CardTitle>{t('数据详情')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <pre className="text-xs text-muted-foreground whitespace-pre-wrap">

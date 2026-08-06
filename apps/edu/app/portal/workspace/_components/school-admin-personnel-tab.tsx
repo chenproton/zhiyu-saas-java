@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SectionCard } from './section-card'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const iconMap: Record<string, LucideIcon> = {
   学生: GraduationCap,
@@ -25,40 +26,42 @@ const iconMap: Record<string, LucideIcon> = {
   学校管理员: UserCog,
 }
 
-const quickLinks = [
-  {
-    label: '学生管理',
-    desc: '查看、编辑、批量导入学生',
-    href: '/portal/apps/system/org-user/students',
-    icon: GraduationCap,
-  },
-  {
-    label: '教职工管理',
-    desc: '管理教师账号与角色',
-    href: '/portal/apps/system/org-user/teachers',
-    icon: Users,
-  },
-  {
-    label: '账户列表',
-    desc: '全部账户启停与密码重置',
-    href: '/portal/apps/system/org-user/accounts',
-    icon: UserPlus,
-  },
-  {
-    label: '角色权限',
-    desc: '自定义角色与菜单授权',
-    href: '/portal/apps/system/org-user/roles',
-    icon: KeyRound,
-  },
-  {
-    label: '组织架构',
-    desc: '学院、专业、班级维护',
-    href: '/portal/apps/system/org-user/org-structure',
-    icon: Building2,
-  },
-]
-
 export function SchoolAdminPersonnelTab() {
+  const t = useT()
+
+  const quickLinks = [
+    {
+      label: t('学生管理'),
+      desc: t('查看、编辑、批量导入学生'),
+      href: '/portal/apps/system/org-user/students',
+      icon: GraduationCap,
+    },
+    {
+      label: t('教职工管理'),
+      desc: t('管理教师账号与角色'),
+      href: '/portal/apps/system/org-user/teachers',
+      icon: Users,
+    },
+    {
+      label: t('账户列表'),
+      desc: t('全部账户启停与密码重置'),
+      href: '/portal/apps/system/org-user/accounts',
+      icon: UserPlus,
+    },
+    {
+      label: t('角色权限'),
+      desc: t('自定义角色与菜单授权'),
+      href: '/portal/apps/system/org-user/roles',
+      icon: KeyRound,
+    },
+    {
+      label: t('组织架构'),
+      desc: t('学院、专业、班级维护'),
+      href: '/portal/apps/system/org-user/org-structure',
+      icon: Building2,
+    },
+  ]
+
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
@@ -94,7 +97,7 @@ export function SchoolAdminPersonnelTab() {
         })}
       </div>
 
-      <SectionCard title="人员管理入口" icon={Users} iconColor="green">
+      <SectionCard title={t('人员管理入口')} icon={Users} iconColor="green">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {quickLinks.map((entry) => (
             <a
@@ -113,7 +116,7 @@ export function SchoolAdminPersonnelTab() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-gray-300 group-hover:text-primary group-hover:bg-primary/5"
-                aria-label="查看详情"
+                aria-label={t('查看详情')}
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>

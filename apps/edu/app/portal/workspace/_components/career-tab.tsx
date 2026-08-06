@@ -21,6 +21,7 @@ import type { CareerPosition, Scenario, Course, QuestionBank, Exam } from '@/lib
 import type { FavoriteTargetType } from '@/lib/api'
 import { JobCard } from '@/components/job/student/job-card'
 import { SceneCard } from '@/components/scene/student/scene-card'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const coverGradients = [
   'linear-gradient(135deg,#1e3a8a,#3b7cff)',
@@ -45,13 +46,6 @@ const emptyFavorites: FavoritesState = {
   courses: [],
   banks: [],
   exams: [],
-}
-
-const categoryConfig = {
-  jobs: { label: '职业岗位', icon: Briefcase, color: 'blue' as const },
-  scenes: { label: '实践场景', icon: Layers, color: 'amber' as const },
-  courses: { label: '数字课程', icon: BookOpen, color: 'emerald' as const },
-  exams: { label: '测评资源', icon: FileText, color: 'purple' as const },
 }
 
 // 分类 -> 收藏实体集合的键名映射（测评资源含题库与试卷）
@@ -80,6 +74,7 @@ function CourseCoverCard({
   index: number
   onUnfavorite: () => void
 }) {
+  const t = useT()
   return (
     <div className="relative group">
       <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
@@ -97,7 +92,7 @@ function CourseCoverCard({
                 {course.name.slice(0, 8)}
               </span>
             )}
-            <CoverBadge label="已发布" />
+            <CoverBadge label={t('已发布')} />
             {course.batchName && (
               <span className="absolute bottom-3 left-3 bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] border border-white/10">
                 {course.batchName}
@@ -113,10 +108,11 @@ function CourseCoverCard({
             )}
             <div className="mt-auto flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-2">
               <span className="flex items-center gap-1">
-                <Layers className="w-3 h-3" /> {course.nodeCount} 节点
+                <Layers className="w-3 h-3" /> {t('{count} 节点', { count: course.nodeCount })}
               </span>
               <span className="flex items-center gap-1">
-                <BookOpen className="w-3 h-3" /> {course.resourceCount} 资源
+                <BookOpen className="w-3 h-3" />{' '}
+                {t('{count} 资源', { count: course.resourceCount })}
               </span>
             </div>
           </div>
@@ -128,10 +124,10 @@ function CourseCoverCard({
           onUnfavorite()
         }}
         className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
-        title="取消收藏"
+        title={t('取消收藏')}
       >
         <Heart className="w-3 h-3 fill-current" />
-        取消收藏
+        {t('取消收藏')}
       </button>
     </div>
   )
@@ -146,6 +142,7 @@ function BankCard({
   index: number
   onUnfavorite: () => void
 }) {
+  const t = useT()
   return (
     <div className="relative group">
       <Link
@@ -171,14 +168,14 @@ function BankCard({
           <div className="p-4 flex-1 flex flex-col">
             <h3 className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{bank.name}</h3>
             <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
-              {bank.description || '暂无描述'}
+              {bank.description || t('暂无描述')}
             </p>
             <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-2">
               <span className="flex items-center gap-1">
-                <FileText className="w-3 h-3" /> {bank.questionCount} 题
+                <FileText className="w-3 h-3" /> {t('{count} 题', { count: bank.questionCount })}
               </span>
               <span className="text-primary group-hover:text-primary font-medium">
-                查看详情 →
+                {t('查看详情')} →
               </span>
             </div>
           </div>
@@ -190,10 +187,10 @@ function BankCard({
           onUnfavorite()
         }}
         className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
-        title="取消收藏"
+        title={t('取消收藏')}
       >
         <Heart className="w-3 h-3 fill-current" />
-        取消收藏
+        {t('取消收藏')}
       </button>
     </div>
   )
@@ -208,6 +205,7 @@ function ExamCard({
   index: number
   onUnfavorite: () => void
 }) {
+  const t = useT()
   return (
     <div className="relative group">
       <Link
@@ -228,16 +226,16 @@ function ExamCard({
             }
           >
             {!exam.coverImage && <ClipboardList className="w-12 h-12 text-white/80" />}
-            <CoverBadge label={`${exam.duration} 分钟`} />
+            <CoverBadge label={t('{count} 分钟', { count: exam.duration })} />
           </div>
           <div className="p-4 flex-1 flex flex-col">
             <h3 className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{exam.name}</h3>
             <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
-              {exam.description || '暂无描述'}
+              {exam.description || t('暂无描述')}
             </p>
             <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-2">
               <span className="flex items-center gap-1">
-                <ClipboardList className="w-3 h-3" /> {exam.totalScore} 分
+                <ClipboardList className="w-3 h-3" /> {t('{count} 分', { count: exam.totalScore })}
               </span>
               <StatusBadge status={exam.status} className="text-[10px] px-1.5 py-0.5 rounded" />
             </div>
@@ -250,10 +248,10 @@ function ExamCard({
           onUnfavorite()
         }}
         className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
-        title="取消收藏"
+        title={t('取消收藏')}
       >
         <Heart className="w-3 h-3 fill-current" />
-        取消收藏
+        {t('取消收藏')}
       </button>
     </div>
   )
@@ -261,6 +259,15 @@ function ExamCard({
 
 export function CareerTab() {
   const { toast } = useToast()
+  const t = useT()
+
+  const categoryConfig = {
+    jobs: { label: t('职业岗位'), icon: Briefcase, color: 'blue' as const },
+    scenes: { label: t('实践场景'), icon: Layers, color: 'amber' as const },
+    courses: { label: t('数字课程'), icon: BookOpen, color: 'emerald' as const },
+    exams: { label: t('测评资源'), icon: FileText, color: 'purple' as const },
+  }
+
   const [activeCategory, setActiveCategory] = useState('all')
   const [loading, setLoading] = useState(true)
   const [favorites, setFavorites] = useState<FavoritesState>(emptyFavorites)
@@ -311,7 +318,11 @@ export function CareerTab() {
       }
       removeFavorite(key, id)
     } catch {
-      toast({ variant: 'destructive', title: '操作失败', description: '取消收藏失败，请稍后再试' })
+      toast({
+        variant: 'destructive',
+        title: t('操作失败'),
+        description: t('取消收藏失败，请稍后再试'),
+      })
     }
   }
 
@@ -327,7 +338,7 @@ export function CareerTab() {
 
   return (
     <div className="space-y-5">
-      <SectionCard title="我的收藏" icon={Heart} iconColor="rose">
+      <SectionCard title={t('我的收藏')} icon={Heart} iconColor="rose">
         {/* 分类筛选 */}
         <div className="flex items-center gap-5 mb-5 border-b border-gray-100">
           <button
@@ -338,7 +349,7 @@ export function CareerTab() {
                 : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
-            全部收藏（{totalCount}）
+            {t('全部收藏（{count}）', { count: totalCount })}
           </button>
           {cats.map((c) => (
             <button
@@ -358,32 +369,32 @@ export function CareerTab() {
 
         {loading ? (
           <div className="flex items-center justify-center py-16 text-gray-400">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" /> 加载收藏中...
+            <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('加载收藏中...')}
           </div>
         ) : totalCount === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-rose-50 flex items-center justify-center">
               <Heart className="w-8 h-8 text-rose-200" />
             </div>
-            <div className="text-[15px] font-medium text-gray-600">暂无收藏内容</div>
+            <div className="text-[15px] font-medium text-gray-600">{t('暂无收藏内容')}</div>
             <div className="text-[13px] mt-1">
-              浏览岗位、场景、课程或测评资源时，点击“收藏”即可在这里查看
+              {t('浏览岗位、场景、课程或测评资源时，点击“收藏”即可在这里查看')}
             </div>
             <div className="flex items-center justify-center gap-4 mt-4 text-xs text-rose-500">
               <Link href="/job/landing" className="hover:underline flex items-center gap-0.5">
-                去收藏岗位 <ChevronRight className="w-3 h-3" />
+                {t('去收藏岗位')} <ChevronRight className="w-3 h-3" />
               </Link>
               <Link href="/scene/landing" className="hover:underline flex items-center gap-0.5">
-                去收藏场景 <ChevronRight className="w-3 h-3" />
+                {t('去收藏场景')} <ChevronRight className="w-3 h-3" />
               </Link>
               <Link href="/lesson/landing" className="hover:underline flex items-center gap-0.5">
-                去收藏课程 <ChevronRight className="w-3 h-3" />
+                {t('去收藏课程')} <ChevronRight className="w-3 h-3" />
               </Link>
               <Link
                 href="/evaluation/landing"
                 className="hover:underline flex items-center gap-0.5"
               >
-                去收藏测评 <ChevronRight className="w-3 h-3" />
+                {t('去收藏测评')} <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
           </div>
@@ -394,7 +405,7 @@ export function CareerTab() {
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-primary" />
-                  职业岗位
+                  {t('职业岗位')}
                   <span className="text-xs text-gray-400 font-normal">
                     （{favorites.jobs.length}）
                   </span>
@@ -406,10 +417,10 @@ export function CareerTab() {
                       <button
                         onClick={() => handleUnfavorite('jobs', job.id)}
                         className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
-                        title="取消收藏"
+                        title={t('取消收藏')}
                       >
                         <Heart className="w-3 h-3 fill-current" />
-                        取消收藏
+                        {t('取消收藏')}
                       </button>
                     </div>
                   ))}
@@ -422,7 +433,7 @@ export function CareerTab() {
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <Layers className="w-4 h-4 text-amber-500" />
-                  实践场景
+                  {t('实践场景')}
                   <span className="text-xs text-gray-400 font-normal">
                     （{favorites.scenes.length}）
                   </span>
@@ -434,10 +445,10 @@ export function CareerTab() {
                       <button
                         onClick={() => handleUnfavorite('scenes', scene.id, 'scene')}
                         className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-white/90 hover:text-rose-300 transition-colors"
-                        title="取消收藏"
+                        title={t('取消收藏')}
                       >
                         <Heart className="w-3 h-3 fill-current" />
-                        取消收藏
+                        {t('取消收藏')}
                       </button>
                     </div>
                   ))}
@@ -450,7 +461,7 @@ export function CareerTab() {
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-emerald-500" />
-                  数字课程
+                  {t('数字课程')}
                   <span className="text-xs text-gray-400 font-normal">
                     （{favorites.courses.length}）
                   </span>
@@ -473,7 +484,7 @@ export function CareerTab() {
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
-                  测评资源
+                  {t('测评资源')}
                   <span className="text-xs text-gray-400 font-normal">
                     （{favorites.banks.length + favorites.exams.length}）
                   </span>
@@ -481,7 +492,7 @@ export function CareerTab() {
                 {favorites.banks.length > 0 && (
                   <div className="mb-4">
                     <div className="text-xs text-slate-500 mb-2 flex items-center gap-1.5">
-                      <Library className="w-3.5 h-3.5" /> 题库
+                      <Library className="w-3.5 h-3.5" /> {t('题库')}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                       {favorites.banks.map((bank, i) => (
@@ -498,7 +509,7 @@ export function CareerTab() {
                 {favorites.exams.length > 0 && (
                   <div>
                     <div className="text-xs text-slate-500 mb-2 flex items-center gap-1.5">
-                      <ClipboardList className="w-3.5 h-3.5" /> 试卷
+                      <ClipboardList className="w-3.5 h-3.5" /> {t('试卷')}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                       {favorites.exams.map((exam, i) => (

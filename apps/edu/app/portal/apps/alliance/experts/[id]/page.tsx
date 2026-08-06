@@ -9,12 +9,14 @@ import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceExpert, AllianceEnterprise } from '@/lib/types'
 
 export default function AllianceExpertDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const [expert, setExpert] = useState<AllianceExpert | null>(null)
   const [enterprise, setEnterprise] = useState<AllianceEnterprise | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,10 +29,10 @@ export default function AllianceExpertDetailPage() {
         setEnterprise((ents.items || []).find((x) => x.id === e.enterpriseId) || null)
       })
       .catch((err) =>
-        toast({ title: '加载失败', description: err.message, variant: 'destructive' }),
+        toast({ title: t('加载失败'), description: err.message, variant: 'destructive' }),
       )
       .finally(() => setLoading(false))
-  }, [tenantId, id, toast])
+  }, [tenantId, id, toast, t])
 
   if (!expert && !loading) {
     return (
@@ -41,68 +43,68 @@ export default function AllianceExpertDetailPage() {
   const tabs = [
     {
       key: 'info',
-      label: '基本信息',
+      label: t('基本信息'),
       content: (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>基础信息</CardTitle>
+              <CardTitle>{t('基础信息')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">性别：</span>
-                {expert?.gender === 'male' ? '男' : expert?.gender === 'female' ? '女' : '-'}
+                <span className="text-muted-foreground">{t('性别：')}</span>
+                {expert?.gender === 'male' ? t('男') : expert?.gender === 'female' ? t('女') : '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">年龄：</span>
-                {expert?.age ? `${expert.age}岁` : '-'}
+                <span className="text-muted-foreground">{t('年龄：')}</span>
+                {expert?.age ? t('{age}岁', { age: expert.age }) : '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">所在城市：</span>
+                <span className="text-muted-foreground">{t('所在城市：')}</span>
                 {expert?.city || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">从业年限：</span>
-                {expert?.experienceYears ? `${expert.experienceYears}年` : '-'}
+                <span className="text-muted-foreground">{t('从业年限：')}</span>
+                {expert?.experienceYears ? t('{years}年', { years: expert.experienceYears }) : '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">教育背景：</span>
+                <span className="text-muted-foreground">{t('教育背景：')}</span>
                 {expert?.education || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">行业方向：</span>
+                <span className="text-muted-foreground">{t('行业方向：')}</span>
                 {expert?.industry || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">前台展示：</span>
-                {expert?.isPublic ? '是' : '否'}
+                <span className="text-muted-foreground">{t('前台展示：')}</span>
+                {expert?.isPublic ? t('是') : t('否')}
               </p>
               <p>
-                <span className="text-muted-foreground">创建人：</span>
+                <span className="text-muted-foreground">{t('创建人：')}</span>
                 {expert?.createdBy || '-'}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>所属机构</CardTitle>
+              <CardTitle>{t('所属机构')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">来源：</span>
+                <span className="text-muted-foreground">{t('来源：')}</span>
                 {expert?.partnerSource === 'cooperation'
-                  ? '合作企业'
+                  ? t('合作企业')
                   : expert?.partnerSource === 'third-party'
-                    ? '第三方机构'
+                    ? t('第三方机构')
                     : '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">所属机构：</span>
+                <span className="text-muted-foreground">{t('所属机构：')}</span>
                 {expert?.organization || enterprise?.name || '-'}
               </p>
               {enterprise && (
                 <p>
-                  <span className="text-muted-foreground">关联企业：</span>
+                  <span className="text-muted-foreground">{t('关联企业：')}</span>
                   <a
                     href={`/portal/apps/alliance/enterprises/${enterprise.id}`}
                     className="text-primary hover:underline"
@@ -112,7 +114,7 @@ export default function AllianceExpertDetailPage() {
                 </p>
               )}
               <p>
-                <span className="text-muted-foreground">关联二级学院：</span>
+                <span className="text-muted-foreground">{t('关联二级学院：')}</span>
                 {((expert as any)?.secondaryColleges || []).join('、') || '-'}
               </p>
             </CardContent>
@@ -120,7 +122,7 @@ export default function AllianceExpertDetailPage() {
           {expert?.avatarUrl && (
             <Card>
               <CardHeader>
-                <CardTitle>头像</CardTitle>
+                <CardTitle>{t('头像')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -135,7 +137,7 @@ export default function AllianceExpertDetailPage() {
           {(expert as any)?.specialties?.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>擅长领域</CardTitle>
+                <CardTitle>{t('擅长领域')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
@@ -151,7 +153,7 @@ export default function AllianceExpertDetailPage() {
           {expert?.introduction && (
             <Card>
               <CardHeader>
-                <CardTitle>专家简介</CardTitle>
+                <CardTitle>{t('专家简介')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{expert.introduction}</p>
@@ -161,7 +163,7 @@ export default function AllianceExpertDetailPage() {
           {expert?.workExperience && (
             <Card>
               <CardHeader>
-                <CardTitle>从业经历</CardTitle>
+                <CardTitle>{t('从业经历')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{expert.workExperience}</p>
@@ -171,7 +173,7 @@ export default function AllianceExpertDetailPage() {
           {(expert as any)?.attachments?.length > 0 && (
             <Card className="col-span-2">
               <CardHeader>
-                <CardTitle>资质荣誉</CardTitle>
+                <CardTitle>{t('资质荣誉')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
                 {((expert as any).attachments || []).map((a: string, i: number) => (

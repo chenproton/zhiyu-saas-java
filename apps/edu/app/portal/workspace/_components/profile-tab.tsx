@@ -34,6 +34,7 @@ import { ChangePasswordForm } from './change-password-form'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { studentHonorApi, fileApi } from '@/lib/api'
 import type { StudentHonor } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ProfileTabProps {
   /** student：学生个人中心（含荣誉奖励）；staff：学校管理员（无荣誉奖励，展示机构/工号） */
@@ -52,6 +53,7 @@ const emptyForm: HonorForm = { name: '', issuer: '', honorDate: '', fileName: ''
 
 export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
   const { user, major, orgNode, institution } = usePortalAuth()
+  const t = useT()
   const isStaff = variant === 'staff'
 
   const [honors, setHonors] = useState<StudentHonor[]>([])
@@ -168,35 +170,43 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
 
   const securityItems = [
     {
-      label: '手机绑定',
+      label: t('手机绑定'),
       status: 'bound',
-      statusText: user?.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : '未绑定',
-      action: user?.phone ? '更换' : '绑定',
+      statusText: user?.phone
+        ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`
+        : t('未绑定'),
+      action: user?.phone ? t('更换') : t('绑定'),
       icon: Smartphone,
     },
     {
-      label: '邮箱绑定',
+      label: t('邮箱绑定'),
       status: user?.email ? 'bound' : 'unbound',
-      statusText: user?.email ? '已绑定' : '未绑定',
-      action: user?.email ? '更换' : '绑定',
+      statusText: user?.email ? t('已绑定') : t('未绑定'),
+      action: user?.email ? t('更换') : t('绑定'),
       icon: Mail,
     },
-    { label: '微信绑定', status: 'unbound', statusText: '未绑定', action: '绑定', icon: Phone },
+    {
+      label: t('微信绑定'),
+      status: 'unbound',
+      statusText: t('未绑定'),
+      action: t('绑定'),
+      icon: Phone,
+    },
   ]
 
   const readOnlyFields = isStaff
     ? [
-        { label: '工号', value: user?.workId || '—' },
-        { label: '所属机构', value: institution?.name || '—' },
-        { label: '手机号', value: user?.phone || '—' },
-        { label: '邮箱', value: user?.email || '—' },
+        { label: t('工号'), value: user?.workId || '—' },
+        { label: t('所属机构'), value: institution?.name || '—' },
+        { label: t('手机号'), value: user?.phone || '—' },
+        { label: t('邮箱'), value: user?.email || '—' },
       ]
     : [
-        { label: '学号', value: user?.studentNo || '—' },
-        { label: '手机号', value: user?.phone || '—' },
-        { label: '邮箱', value: user?.email || '—' },
-        { label: '专业', value: major?.name || '—' },
-        { label: '班级', value: orgNode?.name || '—' },
+        { label: t('学号'), value: user?.studentNo || '—' },
+        { label: t('手机号'), value: user?.phone || '—' },
+        { label: t('邮箱'), value: user?.email || '—' },
+        { label: t('专业'), value: major?.name || '—' },
+        { label: t('班级'), value: orgNode?.name || '—' },
       ]
 
   return (
@@ -207,32 +217,32 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
             value="profile"
             className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
-            个人资料
+            {t('个人资料')}
           </TabsTrigger>
           {!isStaff && (
             <TabsTrigger
               value="archive"
               className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
             >
-              我的荣誉奖励
+              {t('我的荣誉奖励')}
             </TabsTrigger>
           )}
           <TabsTrigger
             value="security"
             className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
-            账号安全
+            {t('账号安全')}
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
             className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
-            通知偏好
+            {t('通知偏好')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="mt-0">
-          <SectionCard title="个人资料" icon={User} iconColor="blue">
+          <SectionCard title={t('个人资料')} icon={User} iconColor="blue">
             <div className="flex items-center gap-4 mb-6">
               <Avatar className="w-20 h-20">
                 <AvatarFallback className="bg-primary text-white text-2xl font-bold">
@@ -244,8 +254,8 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
                 <p className="text-sm text-gray-500">
                   {isStaff
                     ? [orgNode?.name, institution?.name].filter(Boolean).join(' · ') ||
-                      '暂无身份信息'
-                    : [major?.name, orgNode?.name].filter(Boolean).join(' · ') || '暂无身份信息'}
+                      t('暂无身份信息')
+                    : [major?.name, orgNode?.name].filter(Boolean).join(' · ') || t('暂无身份信息')}
                 </p>
               </div>
             </div>
@@ -254,7 +264,9 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
               <AccountInfoForm />
 
               <div className="border-t border-gray-100 pt-5">
-                <p className="text-sm font-medium text-gray-900 mb-3">其它信息（不可修改）</p>
+                <p className="text-sm font-medium text-gray-900 mb-3">
+                  {t('其它信息（不可修改）')}
+                </p>
                 <FormFieldGrid>
                   {readOnlyFields.map((field) => (
                     <FormFieldRow
@@ -274,15 +286,17 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
         {!isStaff && (
           <TabsContent value="archive" className="mt-0">
             <SectionCard
-              title="我的荣誉奖励"
+              title={t('我的荣誉奖励')}
               icon={Award}
               iconColor="purple"
-              action={{ label: '添加荣誉', onClick: openCreate }}
+              action={{ label: t('添加荣誉'), onClick: openCreate }}
             >
               <div className="space-y-4">
-                <p className="text-xs text-gray-500">共 {honors.length} 项荣誉与证书</p>
+                <p className="text-xs text-gray-500">
+                  {t('共 {count} 项荣誉与证书', { count: honors.length })}
+                </p>
                 {honorsLoading ? (
-                  <div className="py-8 text-center text-xs text-gray-400">加载中...</div>
+                  <div className="py-8 text-center text-xs text-gray-400">{t('加载中...')}</div>
                 ) : (
                   <div className="space-y-2">
                     {honors.map((item) => (
@@ -298,7 +312,9 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
                           <p className="text-xs text-gray-500 truncate">
                             {item.issuer}
                             {item.honorDate ? ` · ${item.honorDate}` : ''}
-                            {item.fileName ? ` · 附件：${item.fileName}` : ''}
+                            {item.fileName
+                              ? ` · ${t('附件：{fileName}', { fileName: item.fileName })}`
+                              : ''}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -328,7 +344,7 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
                     ))}
                     {honors.length === 0 && (
                       <div className="py-8 text-center text-xs text-gray-400">
-                        暂无荣誉记录，点击上方按钮配置
+                        {t('暂无荣誉记录，点击上方按钮配置')}
                       </div>
                     )}
                   </div>
@@ -339,10 +355,10 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
         )}
 
         <TabsContent value="security" className="mt-0">
-          <SectionCard title="账号安全" icon={Shield} iconColor="rose">
+          <SectionCard title={t('账号安全')} icon={Shield} iconColor="rose">
             <div className="space-y-5">
               <div className="p-4 rounded-xl border border-gray-100 bg-white">
-                <p className="text-sm font-medium text-gray-900 mb-3">修改密码</p>
+                <p className="text-sm font-medium text-gray-900 mb-3">{t('修改密码')}</p>
                 <ChangePasswordForm />
               </div>
               <div className="space-y-3">
@@ -358,7 +374,7 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
                           <Icon className="w-5 h-5 text-gray-500" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                          <p className="text-sm font-medium text-gray-900">{t(item.label)}</p>
                           <p
                             className={`text-xs ${
                               item.status === 'strong' || item.status === 'bound'
@@ -366,11 +382,11 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
                                 : 'text-gray-400'
                             }`}
                           >
-                            {item.statusText}
+                            {t(item.statusText)}
                           </p>
                         </div>
                       </div>
-                      <span className="text-xs text-gray-400">{item.action}</span>
+                      <span className="text-xs text-gray-400">{t(item.action)}</span>
                     </div>
                   )
                 })}
@@ -378,10 +394,10 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
               <div className="p-4 rounded-xl bg-rose-50 border border-rose-100">
                 <p className="text-sm text-gray-900 flex items-center gap-2">
                   <Shield className="w-4 h-4 text-rose-500" />
-                  <strong>安全建议</strong>
+                  <strong>{t('安全建议')}</strong>
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  建议定期修改登录密码，开启二次验证，不要在公共设备上保存登录状态。
+                  {t('建议定期修改登录密码，开启二次验证，不要在公共设备上保存登录状态。')}
                 </p>
               </div>
             </div>
@@ -389,31 +405,31 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-0">
-          <SectionCard title="通知偏好" icon={Bell} iconColor="amber">
+          <SectionCard title={t('通知偏好')} icon={Bell} iconColor="amber">
             <div className="space-y-6">
               <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">学习通知</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">{t('学习通知')}</h4>
                 <div className="space-y-3">
                   {[
                     {
                       key: 'course',
-                      label: '课程任务提醒',
-                      desc: '当有新的课程任务或作业截止时通知我',
+                      label: t('课程任务提醒'),
+                      desc: t('当有新的课程任务或作业截止时通知我'),
                     },
                     {
                       key: 'exam',
-                      label: '考试测评提醒',
-                      desc: '当有新的考试安排或成绩发布时通知我',
+                      label: t('考试测评提醒'),
+                      desc: t('当有新的考试安排或成绩发布时通知我'),
                     },
                     {
                       key: 'scene',
-                      label: '场景任务提醒',
-                      desc: '当有新的场景任务或评分反馈时通知我',
+                      label: t('场景任务提醒'),
+                      desc: t('当有新的场景任务或评分反馈时通知我'),
                     },
                     {
                       key: 'position',
-                      label: '岗位推荐通知',
-                      desc: '当有匹配岗位或招聘活动上线时通知我',
+                      label: t('岗位推荐通知'),
+                      desc: t('当有匹配岗位或招聘活动上线时通知我'),
                     },
                   ].map((item) => (
                     <div
@@ -434,12 +450,12 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
               </div>
 
               <div className="border-t border-gray-100 pt-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">通知渠道</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">{t('通知渠道')}</h4>
                 <div className="space-y-3">
                   {[
-                    { key: 'system', label: '站内消息', desc: '在工作台消息中心接收通知' },
-                    { key: 'email', label: '邮件通知', desc: '发送通知到绑定邮箱' },
-                    { key: 'sms', label: '短信通知', desc: '发送通知到绑定手机' },
+                    { key: 'system', label: t('站内消息'), desc: t('在工作台消息中心接收通知') },
+                    { key: 'email', label: t('邮件通知'), desc: t('发送通知到绑定邮箱') },
+                    { key: 'sms', label: t('短信通知'), desc: t('发送通知到绑定手机') },
                   ].map((item) => (
                     <div
                       key={item.key}
@@ -466,36 +482,38 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
       <Dialog open={honorDialogOpen} onOpenChange={setHonorDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? '编辑荣誉' : '添加荣誉'}</DialogTitle>
-            <DialogDescription>荣誉名称与颁发机构为必填项，可上传证书附件。</DialogDescription>
+            <DialogTitle>{editingId ? t('编辑荣誉') : t('添加荣誉')}</DialogTitle>
+            <DialogDescription>
+              {t('荣誉名称与颁发机构为必填项，可上传证书附件。')}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-sm">荣誉名称 *</Label>
+              <Label className="text-sm">{t('荣誉名称 *')}</Label>
               <Input
                 value={form.name}
-                placeholder="如：国家励志奖学金"
+                placeholder={t('如：国家励志奖学金')}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm">颁发机构</Label>
+              <Label className="text-sm">{t('颁发机构')}</Label>
               <Input
                 value={form.issuer}
-                placeholder="如：教育部"
+                placeholder={t('如：教育部')}
                 onChange={(e) => setForm((f) => ({ ...f, issuer: e.target.value }))}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm">获得日期</Label>
+              <Label className="text-sm">{t('获得日期')}</Label>
               <Input
                 value={form.honorDate}
-                placeholder="如：2025-11"
+                placeholder={t('如：2025-11')}
                 onChange={(e) => setForm((f) => ({ ...f, honorDate: e.target.value }))}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm">证书附件</Label>
+              <Label className="text-sm">{t('证书附件')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="file"
@@ -506,16 +524,18 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
                 {uploading && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
               </div>
               {form.fileName && (
-                <p className="text-xs text-gray-400 truncate">已上传：{form.fileName}</p>
+                <p className="text-xs text-gray-400 truncate">
+                  {t('已上传：{fileName}', { fileName: form.fileName })}
+                </p>
               )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setHonorDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving || !form.name.trim()}>
-              {saving ? '保存中...' : '保存'}
+              {saving ? t('保存中...') : t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>

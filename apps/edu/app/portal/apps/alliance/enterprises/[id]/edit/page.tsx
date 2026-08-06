@@ -57,7 +57,7 @@ export default function AllianceEnterpriseEditPage() {
       .then((data) => setItem(data))
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
-  }, [tenantId, id, toast])
+  }, [tenantId, id, toast, t])
 
   const handleSave = async () => {
     if (!item) return
@@ -197,16 +197,16 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业形象</CardTitle>
+              <CardTitle>{t('企业形象')}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SingleImageUpload
-                label="企业 Logo"
+                label={t('企业 Logo')}
                 value={(item as any).logoUrl || ''}
                 onChange={(v) => setField('logoUrl', v)}
               />
               <SingleImageUpload
-                label="企业主页封面"
+                label={t('企业主页封面')}
                 value={(item as any).coverImage || ''}
                 onChange={(v) => setField('coverImage', v)}
               />
@@ -215,21 +215,21 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业证照</CardTitle>
+              <CardTitle>{t('企业证照')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <ImageListUpload
-                label="企业营业执照"
+                label={t('企业营业执照')}
                 value={bizPhotos}
                 onChange={(v) => setField('businessLicensePhotos', v)}
               />
               <ImageListUpload
-                label="企业知识产权"
+                label={t('企业知识产权')}
                 value={ipPhotos}
                 onChange={(v) => setField('intellectualPropertyPhotos', v)}
               />
               <ImageListUpload
-                label="企业荣誉资质"
+                label={t('企业荣誉资质')}
                 value={qualPhotos}
                 onChange={(v) => setField('qualificationPhotos', v)}
               />
@@ -238,29 +238,29 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>联系信息</CardTitle>
+              <CardTitle>{t('联系信息')}</CardTitle>
             </CardHeader>
             <CardContent>
               <FormFieldGrid>
-                <FormFieldRow label="联系人">
+                <FormFieldRow label={t('联系人')}>
                   <Input
                     value={item.contactPerson || ''}
                     onChange={(e) => setField('contactPerson', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="联系电话">
+                <FormFieldRow label={t('联系电话')}>
                   <Input
                     value={item.contactPhone || ''}
                     onChange={(e) => setField('contactPhone', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="联系邮箱">
+                <FormFieldRow label={t('联系邮箱')}>
                   <Input
                     value={item.contactEmail || ''}
                     onChange={(e) => setField('contactEmail', e.target.value)}
                   />
                 </FormFieldRow>
-                <FormFieldRow label="详细地址">
+                <FormFieldRow label={t('详细地址')}>
                   <Input
                     value={item.address || ''}
                     onChange={(e) => setField('address', e.target.value)}
@@ -272,7 +272,7 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>企业简介</CardTitle>
+              <CardTitle>{t('企业简介')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -287,25 +287,25 @@ export default function AllianceEnterpriseEditPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>二级学院</CardTitle>
+              <CardTitle>{t('二级学院')}</CardTitle>
             </CardHeader>
             <CardContent>
               <MultiSelect
                 options={SECONDARY_COLLEGES}
                 value={secondaryColleges}
                 onChange={(v) => setField('secondaryColleges', v)}
-                placeholder="选择归属学院"
+                placeholder={t('选择归属学院')}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>设置</CardTitle>
+              <CardTitle>{t('设置')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>前台展示</Label>
+                <Label>{t('前台展示')}</Label>
                 <Switch
                   checked={item.isPublic || false}
                   onCheckedChange={(v) => setField('isPublic', v)}
@@ -317,10 +317,11 @@ export default function AllianceEnterpriseEditPage() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}保存
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {t('保存')}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
-                取消
+                {t('取消')}
               </Button>
             </CardContent>
           </Card>

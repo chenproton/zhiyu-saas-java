@@ -245,7 +245,7 @@ export default function AllianceEnterpriseDetailPage() {
                   <img
                     key={i}
                     src={u}
-                    alt={t('营业执照 {n}', { n: i + 1 })}
+                    alt={t('营业执照 {index}', { index: i + 1 })}
                     className="w-24 h-16 object-cover rounded border"
                   />
                 ))}
@@ -264,7 +264,7 @@ export default function AllianceEnterpriseDetailPage() {
                     <img
                       key={i}
                       src={u}
-                      alt={t('知识产权 {n}', { n: i + 1 })}
+                      alt={t('知识产权 {index}', { index: i + 1 })}
                       className="w-24 h-16 object-cover rounded border"
                     />
                   ),
@@ -283,7 +283,7 @@ export default function AllianceEnterpriseDetailPage() {
                   <img
                     key={i}
                     src={u}
-                    alt={t('荣誉资质 {n}', { n: i + 1 })}
+                    alt={t('荣誉资质 {index}', { index: i + 1 })}
                     className="w-24 h-16 object-cover rounded border"
                   />
                 ))}

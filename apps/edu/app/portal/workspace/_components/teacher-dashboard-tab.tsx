@@ -37,6 +37,7 @@ import { portalApi, courseApi } from '@/lib/api'
 import { SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type { WorkspaceDashboard, WorkspaceScheduleEvent } from '@/lib/types'
 import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { formatDate } from '@/lib/format-utils'
 import {
@@ -49,13 +50,6 @@ const typeIconMap: Record<string, LucideIcon> = {
   approve: ClipboardList,
   homework: BookOpen,
   review: CheckSquare,
-}
-
-const typeLabelMap: Record<string, string> = {
-  grade: '成绩',
-  approve: '审批',
-  homework: '作业',
-  review: '审核',
 }
 
 interface TeacherDashboardTabProps {
@@ -71,6 +65,15 @@ export function TeacherDashboardTab({
   prepAssociations = {},
   onAssociate,
 }: TeacherDashboardTabProps) {
+  const t = useT()
+
+  const typeLabelMap: Record<string, string> = {
+    grade: t('成绩'),
+    approve: t('审批'),
+    homework: t('作业'),
+    review: t('审核'),
+  }
+
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   useEffect(() => {
@@ -134,15 +137,15 @@ export function TeacherDashboardTab({
         <div className="space-y-3">
           {/* 今日待办 */}
           <SectionCard
-            title="待办事项"
+            title={t('待办事项')}
             icon={CheckSquare}
             iconColor="rose"
-            action={{ label: '全部待办', onClick: () => onTabChange('courses') }}
+            action={{ label: t('全部待办'), onClick: () => onTabChange('courses') }}
           >
             <ScrollArea className="h-[260px]">
               <div className="space-y-2 pr-2">
                 {todos.length === 0 && (
-                  <div className="py-8 text-center text-xs text-gray-400">暂无待办事项</div>
+                  <div className="py-8 text-center text-xs text-gray-400">{t('暂无待办事项')}</div>
                 )}
                 {todos.map((item) => {
                   const Icon = typeIconMap[item.type]
@@ -160,7 +163,10 @@ export function TeacherDashboardTab({
                           {item.deadline && (
                             <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                               <Clock className="w-3 h-3" />
-                              截止 {item.deadline} · {typeLabelMap[item.type]}
+                              {t('截止 {deadline} · {type}', {
+                                deadline: item.deadline,
+                                type: typeLabelMap[item.type],
+                              })}
                             </p>
                           )}
                         </div>
@@ -182,11 +188,16 @@ export function TeacherDashboardTab({
           </SectionCard>
 
           {/* 通知公告 */}
-          <SectionCard title="通知公告" icon={Bell} iconColor="blue" action={{ label: '全部通知' }}>
+          <SectionCard
+            title={t('通知公告')}
+            icon={Bell}
+            iconColor="blue"
+            action={{ label: t('全部通知') }}
+          >
             <ScrollArea className="h-[240px]">
               <div className="space-y-2 pr-2">
                 {announcements.length === 0 && (
-                  <div className="py-8 text-center text-xs text-gray-400">暂无通知公告</div>
+                  <div className="py-8 text-center text-xs text-gray-400">{t('暂无通知公告')}</div>
                 )}
                 {announcements.map((item) => (
                   <div
@@ -258,48 +269,6 @@ const allPeriods = [
 ]
 const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
-const scheduleTypeConfig: Record<
-  string,
-  { bg: string; border: string; badge: string; label: string }
-> = {
-  course: {
-    bg: 'bg-primary/5',
-    border: 'border-primary/15',
-    badge: 'border-primary/30 text-primary',
-    label: '课程',
-  },
-  scene: {
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    badge: 'border-emerald-300 text-emerald-600',
-    label: '实践场景',
-  },
-  meeting: {
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    badge: 'border-amber-300 text-amber-600',
-    label: '会议',
-  },
-  training: {
-    bg: 'bg-cyan-50',
-    border: 'border-cyan-200',
-    badge: 'border-cyan-300 text-cyan-600',
-    label: '培训',
-  },
-  exam: {
-    bg: 'bg-purple-50',
-    border: 'border-purple-200',
-    badge: 'border-purple-300 text-purple-600',
-    label: '考试',
-  },
-  todo: {
-    bg: 'bg-gray-50',
-    border: 'border-gray-200',
-    badge: 'border-gray-300 text-gray-600',
-    label: '待办',
-  },
-}
-
 interface DashboardSelectedCourse {
   id: string
   name: string
@@ -367,6 +336,50 @@ function CourseScheduleTable({
   onGradeRequest,
 }: CourseScheduleTableProps = {}) {
   const router = useRouter()
+  const t = useT()
+
+  const scheduleTypeConfig: Record<
+    string,
+    { bg: string; border: string; badge: string; label: string }
+  > = {
+    course: {
+      bg: 'bg-primary/5',
+      border: 'border-primary/15',
+      badge: 'border-primary/30 text-primary',
+      label: t('课程'),
+    },
+    scene: {
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      badge: 'border-emerald-300 text-emerald-600',
+      label: t('实践场景'),
+    },
+    meeting: {
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      badge: 'border-amber-300 text-amber-600',
+      label: t('会议'),
+    },
+    training: {
+      bg: 'bg-cyan-50',
+      border: 'border-cyan-200',
+      badge: 'border-cyan-300 text-cyan-600',
+      label: t('培训'),
+    },
+    exam: {
+      bg: 'bg-purple-50',
+      border: 'border-purple-200',
+      badge: 'border-purple-300 text-purple-600',
+      label: t('考试'),
+    },
+    todo: {
+      bg: 'bg-gray-50',
+      border: 'border-gray-200',
+      badge: 'border-gray-300 text-gray-600',
+      label: t('待办'),
+    },
+  }
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<DashboardSelectedCourse | null>(null)
   const [dialogTab, setDialogTab] = useState('tracking')
@@ -435,7 +448,7 @@ function CourseScheduleTable({
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold text-gray-900">
-                {year}年{month}月 · 第{weekIndex}周
+                {t('{year}年{month}月 · 第{weekIndex}周', { year, month, weekIndex })}
               </span>
               <span className="text-xs text-gray-500">
                 {formatDate(weekStart)} - {formatDate(weekEnd)}
@@ -449,7 +462,7 @@ function CourseScheduleTable({
                 <SelectContent>
                   {[2025, 2026, 2027].map((y) => (
                     <SelectItem key={y} value={String(y)} className="text-xs">
-                      {y}年
+                      {t('{year}年', { year: y })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -461,7 +474,7 @@ function CourseScheduleTable({
                 <SelectContent>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                     <SelectItem key={m} value={String(m)} className="text-xs">
-                      {m}月
+                      {t('{month}月', { month: m })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -473,7 +486,7 @@ function CourseScheduleTable({
                 <SelectContent>
                   {Array.from({ length: weeksInMonth }, (_, i) => i + 1).map((w) => (
                     <SelectItem key={w} value={String(w)} className="text-xs">
-                      第{w}周
+                      {t('第{week}周', { week: w })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -502,14 +515,14 @@ function CourseScheduleTable({
                 className="h-8 text-[11px] px-2"
                 onClick={goToday}
               >
-                今天
+                {t('今天')}
               </Button>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-8 min-w-[760px] bg-gray-50 border-b border-gray-200">
           <div className="p-3 text-sm font-semibold text-gray-700 border-r border-gray-200 flex items-center justify-center">
-            节次 / 星期
+            {t('节次 / 星期')}
           </div>
           {days.map((d) => (
             <div
@@ -582,7 +595,7 @@ function CourseScheduleTable({
                           <div
                             className={`text-[10px] font-medium mt-0.5 ${urls.isHybrid ? 'text-primary' : 'text-emerald-600'}`}
                           >
-                            点击查看操作
+                            {t('点击查看操作')}
                           </div>
                         </div>
                       </div>
@@ -613,7 +626,7 @@ function CourseScheduleTable({
                                 <span
                                   className={`text-[10px] font-medium block ${urls.isHybrid ? 'text-primary' : 'text-emerald-600'}`}
                                 >
-                                  {urls.isHybrid ? '已关联节次' : '已关联任务'}（
+                                  {t(urls.isHybrid ? '已关联节次' : '已关联任务')}（
                                   {existingAssoc.subItems.length}）
                                 </span>
                                 <div className="space-y-0.5 max-h-[100px] overflow-y-auto">
@@ -642,14 +655,14 @@ function CourseScheduleTable({
                                       )
                                   }}
                                 >
-                                  修改关联
+                                  {t('修改关联')}
                                 </Button>
                               </div>
                             )
                           }
                           return null
                         })()}
-                        <span className="text-[10px] text-gray-400 block">操作</span>
+                        <span className="text-[10px] text-gray-400 block">{t('操作')}</span>
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
@@ -668,7 +681,7 @@ function CourseScheduleTable({
                             }}
                           >
                             <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                            {urls.isHybrid ? '前往备课' : '导学准备'}
+                            {t(urls.isHybrid ? '前往备课' : '导学准备')}
                           </Button>
                           <Button
                             size="sm"
@@ -680,7 +693,7 @@ function CourseScheduleTable({
                             }}
                           >
                             <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                            {urls.isHybrid ? '前往上课' : '前往导学'}
+                            {t(urls.isHybrid ? '前往上课' : '前往导学')}
                           </Button>
                           <Button
                             size="sm"
@@ -717,11 +730,13 @@ function CourseScheduleTable({
                             }}
                           >
                             <GraduationCap className="h-3.5 w-3.5 mr-1" />
-                            前往评分
+                            {t('前往评分')}
                           </Button>
                         </div>
                         <div className="pt-2 mt-1 border-t border-dashed border-gray-200">
-                          <span className="text-[10px] text-gray-400 block mb-1.5">数据查看</span>
+                          <span className="text-[10px] text-gray-400 block mb-1.5">
+                            {t('数据查看')}
+                          </span>
                           <div className="flex items-center gap-2">
                             <Button
                               size="sm"
@@ -730,7 +745,7 @@ function CourseScheduleTable({
                               onClick={() => openActionDialog(event, 'tracking')}
                             >
                               <TrendingUp className="h-3.5 w-3.5 mr-1" />
-                              教学进展
+                              {t('教学进展')}
                             </Button>
                             <Button
                               size="sm"
@@ -739,7 +754,7 @@ function CourseScheduleTable({
                               onClick={() => openActionDialog(event, 'assessment')}
                             >
                               <FileCheck className="h-3.5 w-3.5 mr-1" />
-                              测评进展
+                              {t('测评进展')}
                             </Button>
                           </div>
                         </div>

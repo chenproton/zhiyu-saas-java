@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { portalApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface HybridGradingDialogProps {
   open: boolean
@@ -71,6 +72,7 @@ interface CourseGroup {
 function buildCourseGroups(
   classPlans: WorkspaceClassPlan[],
   classSessions: WorkspaceClassSession[],
+  sessionLabelBuilder: (sess: WorkspaceClassSession) => string,
 ): CourseGroup[] {
   return classPlans.map((plan) => {
     const sessions = classSessions
@@ -78,7 +80,7 @@ function buildCourseGroups(
       .sort((a, b) => a.week - b.week)
     const sessionGroups: SessionGroup[] = sessions.map((sess) => ({
       sessionId: sess.id,
-      sessionLabel: `第 ${sess.week} 周 · ${sess.weekday} ${sess.period}`,
+      sessionLabel: sessionLabelBuilder(sess),
       venue: sess.venue,
       students: [],
       pendingCount: 0,
@@ -102,6 +104,7 @@ export function HybridGradingDialog({
   sessionTitle,
   className,
 }: HybridGradingDialogProps) {
+  const t = useT()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
@@ -119,8 +122,15 @@ export function HybridGradingDialog({
   }, [])
 
   const courseGroups = useMemo(
-    () => buildCourseGroups(classPlans, classSessions),
-    [classPlans, classSessions],
+    () =>
+      buildCourseGroups(classPlans, classSessions, (sess) =>
+        t('第 {week} 周 · {weekday} {period}', {
+          week: sess.week,
+          weekday: sess.weekday,
+          period: sess.period,
+        }),
+      ),
+    [classPlans, classSessions, t],
   )
 
   const filteredGroups = useMemo(() => {
@@ -159,10 +169,10 @@ export function HybridGradingDialog({
         <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <GraduationCap className="h-5 w-5 text-amber-600" />
-            混合课程评分
+            {t('混合课程评分')}
           </DialogTitle>
           <DialogDescription>
-            {sessionTitle} · {className || '全部学生'}
+            {sessionTitle} · {className || t('全部学生')}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -172,7 +182,7 @@ export function HybridGradingDialog({
               <div className="relative w-full">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="搜索课程..."
+                  placeholder={t('搜索课程...')}
                   className="pl-9 text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -211,17 +221,20 @@ export function HybridGradingDialog({
                         {group.courseName}
                       </p>
                       <p className="text-[11px] text-gray-400 mt-0.5">
-                        {group.className} · {group.studentCount}人
+                        {t('{className} · {count}人', {
+                          className: group.className,
+                          count: group.studentCount,
+                        })}
                       </p>
                       <div className="flex items-center gap-2 mt-1.5">
                         {group.pendingCount > 0 && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
-                            待评 {group.pendingCount}
+                            {t('待评 {count}', { count: group.pendingCount })}
                           </span>
                         )}
                         {group.gradedCount > 0 && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">
-                            已评 {group.gradedCount}
+                            {t('已评 {count}', { count: group.gradedCount })}
                           </span>
                         )}
                       </div>
@@ -245,7 +258,7 @@ export function HybridGradingDialog({
                       {selectedCourse.className}
                     </Badge>
                     <Badge variant="secondary" className="text-xs font-normal">
-                      {selectedCourse.studentCount}人
+                      {t('{count}人', { count: selectedCourse.studentCount })}
                     </Badge>
                   </div>
                 </div>
@@ -254,7 +267,7 @@ export function HybridGradingDialog({
                   <Card>
                     <CardContent className="py-12 text-center text-gray-400">
                       <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">该课程暂无节次数据</p>
+                      <p className="text-sm">{t('该课程暂无节次数据')}</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -289,16 +302,16 @@ export function HybridGradingDialog({
                                     <div className="flex items-center gap-3 mt-1">
                                       <span className="text-xs text-gray-500">{session.venue}</span>
                                       <span className="text-xs text-gray-400">
-                                        {session.students.length} 位学生
+                                        {t('{count} 位学生', { count: session.students.length })}
                                       </span>
                                       {session.pendingCount > 0 && (
                                         <span className="text-xs text-amber-600 font-medium">
-                                          待评分 {session.pendingCount}
+                                          {t('待评分 {count}', { count: session.pendingCount })}
                                         </span>
                                       )}
                                       {session.gradedCount > 0 && (
                                         <span className="text-xs text-green-600 font-medium">
-                                          已评分 {session.gradedCount}
+                                          {t('已评分 {count}', { count: session.gradedCount })}
                                         </span>
                                       )}
                                     </div>
@@ -322,7 +335,7 @@ export function HybridGradingDialog({
                                         <Users className="h-3 w-3 text-gray-400" />
                                         <span className="text-xs text-gray-500">{cls}</span>
                                         <span className="text-[10px] text-gray-400">
-                                          ({students.length}人)
+                                          {t('({count}人)', { count: students.length })}
                                         </span>
                                       </div>
                                       <div className="rounded-lg border border-slate-200 divide-y divide-slate-100">
@@ -351,8 +364,8 @@ export function HybridGradingDialog({
                                                     }
                                                     label={
                                                       item.status === 'pending'
-                                                        ? '待评分'
-                                                        : '已评分'
+                                                        ? t('待评分')
+                                                        : t('已评分')
                                                     }
                                                     className="text-[10px] border"
                                                   />
@@ -370,12 +383,12 @@ export function HybridGradingDialog({
                                                 className="h-7 text-xs"
                                               >
                                                 <Eye className="mr-1 h-3 w-3" />
-                                                查看
+                                                {t('查看')}
                                               </Button>
                                               {item.status === 'pending' ? (
                                                 <Button size="sm" className="h-7 text-xs">
                                                   <PenLine className="mr-1 h-3 w-3" />
-                                                  评分
+                                                  {t('评分')}
                                                 </Button>
                                               ) : (
                                                 <Button
@@ -385,7 +398,7 @@ export function HybridGradingDialog({
                                                   disabled
                                                 >
                                                   <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                  已评分
+                                                  {t('已评分')}
                                                 </Button>
                                               )}
                                             </div>
@@ -407,7 +420,7 @@ export function HybridGradingDialog({
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-gray-400">
                 <GraduationCap className="h-12 w-12 mb-3 opacity-50" />
-                <p className="text-sm">请在左侧选择一个课程</p>
+                <p className="text-sm">{t('请在左侧选择一个课程')}</p>
               </div>
             )}
           </div>

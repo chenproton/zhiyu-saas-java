@@ -253,7 +253,9 @@ export default function AllianceSchoolPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-foreground">{t('学校信息管理')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t('配置学校基本信息，与租户信息同步')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t('配置学校基本信息，与租户信息同步')}
+          </p>
         </div>
         {tenant && (
           <Button
@@ -358,12 +360,12 @@ export default function AllianceSchoolPage() {
                         <SelectValue placeholder={t('请选择')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="普通本科院校">普通本科院校</SelectItem>
-                        <SelectItem value="职业本科院校">职业本科院校</SelectItem>
-                        <SelectItem value="高职院校">高职院校</SelectItem>
-                        <SelectItem value="中等专业学校">中等专业学校</SelectItem>
-                        <SelectItem value="职业高中">职业高中</SelectItem>
-                        <SelectItem value="技工学校">技工学校</SelectItem>
+                        <SelectItem value="普通本科院校">{t('普通本科院校')}</SelectItem>
+                        <SelectItem value="职业本科院校">{t('职业本科院校')}</SelectItem>
+                        <SelectItem value="高职院校">{t('高职院校')}</SelectItem>
+                        <SelectItem value="中等专业学校">{t('中等专业学校')}</SelectItem>
+                        <SelectItem value="职业高中">{t('职业高中')}</SelectItem>
+                        <SelectItem value="技工学校">{t('技工学校')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
@@ -376,8 +378,8 @@ export default function AllianceSchoolPage() {
                         <SelectValue placeholder={t('请选择')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="公办">公办</SelectItem>
-                        <SelectItem value="民办">民办</SelectItem>
+                        <SelectItem value="公办">{t('公办')}</SelectItem>
+                        <SelectItem value="民办">{t('民办')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
@@ -543,7 +545,8 @@ export default function AllianceSchoolPage() {
               {t('取消')}
             </Button>
             <Button onClick={handleUpdate} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}{t('保存')}
+              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>

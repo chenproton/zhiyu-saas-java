@@ -18,6 +18,7 @@ import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { Plus, Trash2 } from 'lucide-react'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceAchievement } from '@/lib/types'
 
 interface RelatedRef {
@@ -29,6 +30,7 @@ export default function AllianceAchievementDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const [achievement, setAchievement] = useState<AllianceAchievement | null>(null)
   const [positions, setPositions] = useState<RelatedRef[]>([])
   const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
@@ -54,7 +56,7 @@ export default function AllianceAchievementDetailPage() {
         setPositions(pos.items || [])
         setAchievements(ach.items || [])
       })
-      .catch((e) => toast({ title: '加载失败', description: e.message, variant: 'destructive' }))
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
   }
   useEffect(() => {
@@ -71,9 +73,9 @@ export default function AllianceAchievementDetailPage() {
       const updated = { ...achievement, [key]: items } as AllianceAchievement
       await allianceAchievementApi.update(id, updated)
       setAchievement(updated)
-      toast({ title: '已保存' })
+      toast({ title: t('已保存') })
     } catch (e: any) {
-      toast({ title: '保存失败', description: e.message, variant: 'destructive' })
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -149,11 +151,13 @@ export default function AllianceAchievementDetailPage() {
             disabled={optionsFor(kind).length === 0}
           >
             <Plus className="h-4 w-4 mr-1" />
-            添加{label}
+            {t('添加{label}', { label })}
           </Button>
         </div>
         {items.length === 0 ? (
-          <p className="text-center py-8 text-muted-foreground">暂无关联{label}</p>
+          <p className="text-center py-8 text-muted-foreground">
+            {t('暂无关联{label}', { label })}
+          </p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {items.map((ref) => (
@@ -179,52 +183,52 @@ export default function AllianceAchievementDetailPage() {
   const tabs = [
     {
       key: 'info',
-      label: '基本信息',
+      label: t('基本信息'),
       content: (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>基础信息</CardTitle>
+              <CardTitle>{t('基础信息')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">成果类型：</span>
+                <span className="text-muted-foreground">{t('成果类型：')}</span>
                 {allianceLabel('achievementType', achievement?.type)}
               </p>
               <p>
-                <span className="text-muted-foreground">成果日期：</span>
+                <span className="text-muted-foreground">{t('成果日期：')}</span>
                 {achievement?.achievementDate || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">状态：</span>
+                <span className="text-muted-foreground">{t('状态：')}</span>
                 {allianceLabel('achievementStatus', achievement?.status)}
               </p>
               <p>
-                <span className="text-muted-foreground">前台展示：</span>
-                {achievement?.isPublic ? '是' : '否'}
+                <span className="text-muted-foreground">{t('前台展示：')}</span>
+                {achievement?.isPublic ? t('是') : t('否')}
               </p>
               <p>
-                <span className="text-muted-foreground">浏览量：</span>
+                <span className="text-muted-foreground">{t('浏览量：')}</span>
                 {achievement?.viewCount || 0}
               </p>
               <p>
-                <span className="text-muted-foreground">创建人：</span>
+                <span className="text-muted-foreground">{t('创建人：')}</span>
                 {achievement?.createdBy || '-'}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>引用来源</CardTitle>
+              <CardTitle>{t('引用来源')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">引用理由：</span>
+                <span className="text-muted-foreground">{t('引用理由：')}</span>
                 {achievement?.citationReason || '-'}
               </p>
               {achievement?.ownerPersons && (achievement.ownerPersons as any[])?.length > 0 && (
                 <p>
-                  <span className="text-muted-foreground">成果归属人：</span>
+                  <span className="text-muted-foreground">{t('成果归属人：')}</span>
                   {(achievement.ownerPersons as any[]).map((p: any) => (
                     <Badge key={p} variant="secondary" className="mr-1">
                       {p.name || p}
@@ -234,7 +238,7 @@ export default function AllianceAchievementDetailPage() {
               )}
               {achievement?.coBuilders && (achievement.coBuilders as any[])?.length > 0 && (
                 <p>
-                  <span className="text-muted-foreground">成果共建人：</span>
+                  <span className="text-muted-foreground">{t('成果共建人：')}</span>
                   {(achievement.coBuilders as any[]).map((p: any) => (
                     <Badge key={p} variant="secondary" className="mr-1">
                       {p.name || p}
@@ -247,7 +251,7 @@ export default function AllianceAchievementDetailPage() {
           {achievement?.coverImage && (
             <Card>
               <CardHeader>
-                <CardTitle>成果封面</CardTitle>
+                <CardTitle>{t('成果封面')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -262,7 +266,7 @@ export default function AllianceAchievementDetailPage() {
           {achievement?.description && (
             <Card className="col-span-2">
               <CardHeader>
-                <CardTitle>成果简介</CardTitle>
+                <CardTitle>{t('成果简介')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{achievement.description}</p>
@@ -274,17 +278,17 @@ export default function AllianceAchievementDetailPage() {
     },
     {
       key: 'attachments',
-      label: '成果佐证材料',
+      label: t('成果佐证材料'),
       badge: (achievement?.attachments || []).length,
       content: (
         <div className="space-y-2">
           {(achievement?.attachments || []).length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">暂无佐证材料</p>
+            <p className="text-center py-8 text-muted-foreground">{t('暂无佐证材料')}</p>
           ) : (
             (achievement?.attachments || []).map((f, i) => (
               <div key={i} className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
                 <span className="text-muted-foreground">📄</span>
-                <span>{typeof f === 'string' ? f : (f as any)?.name || '附件'}</span>
+                <span>{typeof f === 'string' ? f : (f as any)?.name || t('附件')}</span>
               </div>
             ))
           )}
@@ -293,33 +297,36 @@ export default function AllianceAchievementDetailPage() {
     },
     {
       key: 'positions',
-      label: '关联职业岗位',
+      label: t('关联职业岗位'),
       badge: ((achievement as any)?.relatedPositions || []).length,
-      content: renderRelated('relatedPositions', 'positions', '岗位'),
+      content: renderRelated('relatedPositions', 'positions', t('岗位')),
     },
     {
       key: 'scenes',
-      label: '关联实践场景',
+      label: t('关联实践场景'),
       badge: ((achievement as any)?.relatedScenes || []).length,
-      content: renderRelated('relatedScenes', 'scenes', '场景'),
+      content: renderRelated('relatedScenes', 'scenes', t('场景')),
     },
     {
       key: 'courses',
-      label: '关联数字课程',
+      label: t('关联数字课程'),
       badge: ((achievement as any)?.relatedCourses || []).length,
-      content: renderRelated('relatedCourses', 'courses', '课程'),
+      content: renderRelated('relatedCourses', 'courses', t('课程')),
     },
   ]
 
-  const pickLabel =
-    pickDialog.kind === 'positions' ? '岗位' : pickDialog.kind === 'scenes' ? '场景' : '课程'
+  const pickLabel = t(
+    pickDialog.kind === 'positions' ? '岗位' : pickDialog.kind === 'scenes' ? '场景' : '课程',
+  )
   const pickOptions = optionsFor(pickDialog.kind)
 
   return (
     <>
       <AllianceDetailShell
         title={achievement?.title || ''}
-        subtitle={`${allianceLabel('achievementType', achievement?.type)}成果`}
+        subtitle={t('{type}成果', {
+          type: allianceLabel('achievementType', achievement?.type),
+        })}
         statusBadge={
           achievement ? (
             <span className="text-xs px-2 py-0.5 rounded-full bg-primary/5 text-primary">
@@ -340,7 +347,7 @@ export default function AllianceAchievementDetailPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>添加关联{pickLabel}</DialogTitle>
+            <DialogTitle>{t('添加关联{pickLabel}', { pickLabel })}</DialogTitle>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto space-y-1">
             {pickOptions.map((opt) => (
@@ -354,7 +361,9 @@ export default function AllianceAchievementDetailPage() {
               </button>
             ))}
             {pickOptions.length === 0 && (
-              <p className="text-center py-6 text-sm text-muted-foreground">暂无可选{pickLabel}</p>
+              <p className="text-center py-6 text-sm text-muted-foreground">
+                {t('暂无可选{pickLabel}', { pickLabel })}
+              </p>
             )}
           </div>
           <DialogFooter>
@@ -362,10 +371,10 @@ export default function AllianceAchievementDetailPage() {
               variant="outline"
               onClick={() => setPickDialog({ open: false, kind: pickDialog.kind })}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={addItem} disabled={saving || !pickDialog.selected}>
-              {saving ? '保存中...' : '添加'}
+              {saving ? t('保存中...') : t('添加')}
             </Button>
           </DialogFooter>
         </DialogContent>

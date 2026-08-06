@@ -22,11 +22,13 @@ import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
 import { Switch } from '@/components/ui/switch'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceAchievement } from '@/lib/types'
 
 export default function AllianceAchievementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return { items: [], enterprises: [], projects: [] }
@@ -48,11 +50,11 @@ export default function AllianceAchievementsPage() {
 
   return (
     <PortalCrudPage
-      title="合作成果管理"
-      description="管理校企合作产出的各类成果"
-      entityLabel="合作成果"
-      searchPlaceholder="搜索成果名称..."
-      createButtonLabel="新建成果"
+      title={t('合作成果管理')}
+      description={t('管理校企合作产出的各类成果')}
+      entityLabel={t('合作成果')}
+      searchPlaceholder={t('搜索成果名称...')}
+      createButtonLabel={t('新建成果')}
       items={items ?? []}
       loading={loading}
       error={error?.message ?? null}
@@ -62,21 +64,21 @@ export default function AllianceAchievementsPage() {
       }
       importConfig={{
         importType: 'alliance-achievements',
-        entityLabel: '合作成果',
-        templateFileName: '合作成果批量导入模板.xlsx',
+        entityLabel: t('合作成果'),
+        templateFileName: t('合作成果批量导入模板.xlsx'),
       }}
       createHref="/portal/apps/alliance/achievements/new"
       colSpan={8}
       renderTableHeader={() => (
         <>
-          <TableHead>成果名称</TableHead>
-          <TableHead>前台展示</TableHead>
-          <TableHead>合作企业</TableHead>
-          <TableHead>关联项目</TableHead>
-          <TableHead>类型</TableHead>
-          <TableHead>发布时间</TableHead>
-          <TableHead>创建人</TableHead>
-          <TableHead>操作</TableHead>
+          <TableHead>{t('成果名称')}</TableHead>
+          <TableHead>{t('前台展示')}</TableHead>
+          <TableHead>{t('合作企业')}</TableHead>
+          <TableHead>{t('关联项目')}</TableHead>
+          <TableHead>{t('类型')}</TableHead>
+          <TableHead>{t('发布时间')}</TableHead>
+          <TableHead>{t('创建人')}</TableHead>
+          <TableHead>{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(item: any, actions: any) => {
@@ -110,18 +112,18 @@ export default function AllianceAchievementsPage() {
               <Link href={`/portal/apps/alliance/achievements/${item.id}`}>
                 <Button variant="ghost" size="sm">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                  查看
+                  {t('查看')}
                 </Button>
               </Link>
               <Link href={`/portal/apps/alliance/achievements/${item.id}/edit`}>
                 <Button variant="ghost" size="sm">
                   <Pencil className="h-3.5 w-3.5 mr-1" />
-                  编辑
+                  {t('编辑')}
                 </Button>
               </Link>
               <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                删除
+                {t('删除')}
               </Button>
             </TableRowActions>
           </>
@@ -144,13 +146,13 @@ export default function AllianceAchievementsPage() {
       }
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <FormFieldRow label="成果标题" required>
+          <FormFieldRow label={t('成果标题')} required>
             <Input
               value={item.title || ''}
               onChange={(e: any) => setItem({ ...item, title: e.target.value })}
             />
           </FormFieldRow>
-          <FormFieldRow label="成果类型">
+          <FormFieldRow label={t('成果类型')}>
             <Select
               value={item.type || 'custom'}
               onValueChange={(v: any) => setItem({ ...item, type: v })}
@@ -159,14 +161,14 @@ export default function AllianceAchievementsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="job">岗位成果</SelectItem>
-                <SelectItem value="scene">场景成果</SelectItem>
-                <SelectItem value="course">课程成果</SelectItem>
-                <SelectItem value="custom">自定义</SelectItem>
+                <SelectItem value="job">{t('岗位成果')}</SelectItem>
+                <SelectItem value="scene">{t('场景成果')}</SelectItem>
+                <SelectItem value="course">{t('课程成果')}</SelectItem>
+                <SelectItem value="custom">{t('自定义')}</SelectItem>
               </SelectContent>
             </Select>
           </FormFieldRow>
-          <FormFieldRow label="状态">
+          <FormFieldRow label={t('状态')}>
             <Select
               value={item.status || 'draft'}
               onValueChange={(v: any) => setItem({ ...item, status: v })}
@@ -175,20 +177,20 @@ export default function AllianceAchievementsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">草稿</SelectItem>
-                <SelectItem value="published">已发布</SelectItem>
-                <SelectItem value="archived">已归档</SelectItem>
+                <SelectItem value="draft">{t('草稿')}</SelectItem>
+                <SelectItem value="published">{t('已发布')}</SelectItem>
+                <SelectItem value="archived">{t('已归档')}</SelectItem>
               </SelectContent>
             </Select>
           </FormFieldRow>
-          <FormFieldRow label="描述">
+          <FormFieldRow label={t('描述')}>
             <Textarea
               value={item.description || ''}
               onChange={(e: any) => setItem({ ...item, description: e.target.value })}
               rows={4}
             />
           </FormFieldRow>
-          <FormFieldRow label="封面图 URL">
+          <FormFieldRow label={t('封面图 URL')}>
             <Input
               value={item.coverImage || ''}
               onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })}
@@ -197,25 +199,27 @@ export default function AllianceAchievementsPage() {
           </FormFieldRow>
         </div>
       )}
-      getDeleteDescription={(item: any) => <>确定要删除成果「{item.title}」吗？</>}
+      getDeleteDescription={(item: any) => (
+        <>{t('确定要删除成果「{title}」吗？', { title: item.title })}</>
+      )}
       onSave={async (item: any, isEdit: boolean) => {
         if (isEdit) {
           await allianceAchievementApi.update(item.id, item)
         } else {
           await allianceAchievementApi.create(item)
         }
-        toast({ title: `成果已${isEdit ? '更新' : '创建'}` })
+        toast({ title: t('成果已{action}', { action: isEdit ? t('更新') : t('创建') }) })
         await refresh()
       }}
       onDelete={async (item: any) => {
         await allianceAchievementApi.delete(item.id)
-        toast({ title: '成果已删除' })
+        toast({ title: t('成果已删除') })
         await refresh()
       }}
       onToggleEnabled={async (item: any) => {
         // 全量回传：后端 PUT 为全列覆盖，避免部分字段被清空
         await allianceAchievementApi.update(item.id, { ...item, isPublic: !item.isPublic })
-        toast({ title: item.isPublic ? '已取消前台展示' : '已开启前台展示' })
+        toast({ title: item.isPublic ? t('已取消前台展示') : t('已开启前台展示') })
       }}
     />
   )

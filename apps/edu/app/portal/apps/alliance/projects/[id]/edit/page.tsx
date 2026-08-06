@@ -72,7 +72,7 @@ export default function AllianceProjectEditPage() {
       })
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
-  }, [tenantId, id, toast])
+  }, [tenantId, id, toast, t])
 
   const handleSave = async (publish = false) => {
     if (!item) return
@@ -132,9 +132,9 @@ export default function AllianceProjectEditPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROJECT_TYPES.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
+                      {PROJECT_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {t(type)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -256,7 +256,8 @@ export default function AllianceProjectEditPage() {
                 onClick={() => handleSave(false)}
                 disabled={saving}
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{t('保存草稿')}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {t('保存草稿')}
               </Button>
               {item.publishStatus !== 'published' && (
                 <Button className="w-full" onClick={() => handleSave(true)} disabled={saving}>

@@ -82,7 +82,7 @@ export default function AllianceProjectNewPage() {
           variant: 'destructive',
         })
       })
-  }, [toast])
+  }, [toast, t])
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
@@ -130,9 +130,9 @@ export default function AllianceProjectNewPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROJECT_TYPES.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
+                      {PROJECT_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {t(type)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -247,7 +247,8 @@ export default function AllianceProjectNewPage() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{t('创建')}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {t('创建')}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
                 {t('取消')}

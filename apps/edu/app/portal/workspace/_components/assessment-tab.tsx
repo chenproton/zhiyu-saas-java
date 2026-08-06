@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const typeIconMap: Record<string, typeof GraduationCap> = {
   随堂测: FileCheck,
@@ -36,6 +37,7 @@ const typeIconMap: Record<string, typeof GraduationCap> = {
 }
 
 export function AssessmentTab() {
+  const t = useT()
   const [exams, setExams] = useState<WorkspaceExam[]>([])
   const [loading, setLoading] = useState(true)
   const [examFilter, setExamFilter] = useState('all')
@@ -101,27 +103,27 @@ export function AssessmentTab() {
   return (
     <div className="space-y-5">
       {/* ===== 岗位能力认定结果 ===== */}
-      <SectionCard title="岗位能力认定结果" icon={Award} iconColor="amber">
+      <SectionCard title={t('岗位能力认定结果')} icon={Award} iconColor="amber">
         <div className="rounded-xl border border-gray-200 overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead className="text-xs">岗位名称</TableHead>
-                <TableHead className="text-xs">姓名</TableHead>
-                <TableHead className="text-xs">学号</TableHead>
-                <TableHead className="text-xs">所属院系</TableHead>
-                <TableHead className="text-xs">班级</TableHead>
-                <TableHead className="text-xs">岗位能力达成率</TableHead>
-                <TableHead className="text-xs">岗位胜任度</TableHead>
-                <TableHead className="text-xs">能力认知得分</TableHead>
-                <TableHead className="text-xs text-right w-20">操作</TableHead>
+                <TableHead className="text-xs">{t('岗位名称')}</TableHead>
+                <TableHead className="text-xs">{t('姓名')}</TableHead>
+                <TableHead className="text-xs">{t('学号')}</TableHead>
+                <TableHead className="text-xs">{t('所属院系')}</TableHead>
+                <TableHead className="text-xs">{t('班级')}</TableHead>
+                <TableHead className="text-xs">{t('岗位能力达成率')}</TableHead>
+                <TableHead className="text-xs">{t('岗位胜任度')}</TableHead>
+                <TableHead className="text-xs">{t('能力认知得分')}</TableHead>
+                <TableHead className="text-xs text-right w-20">{t('操作')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {resultsLoading && (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-xs text-gray-400 py-10">
-                    加载中...
+                    {t('加载中...')}
                   </TableCell>
                 </TableRow>
               )}
@@ -160,7 +162,7 @@ export function AssessmentTab() {
                         onClick={() => openDetail(result.id)}
                       >
                         <Eye className="mr-1 w-3 h-3" />
-                        查看明细
+                        {t('查看明细')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -168,13 +170,15 @@ export function AssessmentTab() {
             </TableBody>
           </Table>
           {!resultsLoading && results.length === 0 && (
-            <div className="py-10 text-center text-xs text-gray-400">暂无岗位能力认定结果</div>
+            <div className="py-10 text-center text-xs text-gray-400">
+              {t('暂无岗位能力认定结果')}
+            </div>
           )}
         </div>
       </SectionCard>
 
       {/* ===== 参与的考试/测评清单 ===== */}
-      <SectionCard title="参与的日常考试与期末测评" icon={FileCheck} iconColor="blue">
+      <SectionCard title={t('参与的日常考试与期末测评')} icon={FileCheck} iconColor="blue">
         {/* 状态筛选 */}
         <Tabs value={examFilter} onValueChange={setExamFilter}>
           <TabsList className="h-8 bg-gray-100 mb-4">
@@ -182,25 +186,25 @@ export function AssessmentTab() {
               value="all"
               className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
             >
-              全部
+              {t('全部')}
             </TabsTrigger>
             <TabsTrigger
               value="待考"
               className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
             >
-              待考
+              {t('待考')}
             </TabsTrigger>
             <TabsTrigger
               value="进行中"
               className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
             >
-              进行中
+              {t('进行中')}
             </TabsTrigger>
             <TabsTrigger
               value="已完成"
               className="text-xs px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
             >
-              已完成
+              {t('已完成')}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -209,21 +213,21 @@ export function AssessmentTab() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead className="text-xs w-8">序号</TableHead>
-                <TableHead className="text-xs">考试名称</TableHead>
-                <TableHead className="text-xs">类型</TableHead>
-                <TableHead className="text-xs">状态</TableHead>
-                <TableHead className="text-xs">时间</TableHead>
-                <TableHead className="text-xs">时长</TableHead>
-                <TableHead className="text-xs text-right">结果</TableHead>
-                <TableHead className="text-xs text-right w-20">操作</TableHead>
+                <TableHead className="text-xs w-8">{t('序号')}</TableHead>
+                <TableHead className="text-xs">{t('考试名称')}</TableHead>
+                <TableHead className="text-xs">{t('类型')}</TableHead>
+                <TableHead className="text-xs">{t('状态')}</TableHead>
+                <TableHead className="text-xs">{t('时间')}</TableHead>
+                <TableHead className="text-xs">{t('时长')}</TableHead>
+                <TableHead className="text-xs text-right">{t('结果')}</TableHead>
+                <TableHead className="text-xs text-right w-20">{t('操作')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-xs text-gray-400 py-10">
-                    加载中...
+                    {t('加载中...')}
                   </TableCell>
                 </TableRow>
               )}
@@ -256,7 +260,9 @@ export function AssessmentTab() {
                           '-'
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-gray-500">{exam.duration}分钟</TableCell>
+                      <TableCell className="text-xs text-gray-500">
+                        {t('{count}分钟', { count: exam.duration })}
+                      </TableCell>
                       <TableCell className="text-xs text-right font-semibold">
                         {exam.score !== undefined ? (
                           <span className="text-emerald-600">
@@ -267,12 +273,7 @@ export function AssessmentTab() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-[10px] h-7 px-2"
-                          asChild
-                        >
+                        <Button size="sm" variant="ghost" className="text-[10px] h-7 px-2" asChild>
                           <Link
                             href={
                               exam.examId
@@ -280,7 +281,7 @@ export function AssessmentTab() {
                                 : '#'
                             }
                           >
-                            {exam.status === '已完成' ? '查看' : '进入'}
+                            {exam.status === '已完成' ? t('查看') : t('进入')}
                           </Link>
                         </Button>
                       </TableCell>
@@ -290,7 +291,7 @@ export function AssessmentTab() {
             </TableBody>
           </Table>
           {!loading && filteredExams.length === 0 && (
-            <div className="py-10 text-center text-xs text-gray-400">暂无记录</div>
+            <div className="py-10 text-center text-xs text-gray-400">{t('暂无记录')}</div>
           )}
         </div>
       </SectionCard>
@@ -299,26 +300,29 @@ export function AssessmentTab() {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>能力点认定明细</DialogTitle>
+            <DialogTitle>{t('能力点认定明细')}</DialogTitle>
             <DialogDescription>
               {detail
                 ? `${detail.studentName}（${detail.studentId}）· ${detail.positionName}`
-                : '加载中...'}
+                : t('加载中...')}
             </DialogDescription>
           </DialogHeader>
           {detailLoading ? (
-            <div className="py-10 text-center text-sm text-gray-400">加载中...</div>
+            <div className="py-10 text-center text-sm text-gray-400">{t('加载中...')}</div>
           ) : detail ? (
             <div className="space-y-4">
               <div className="flex items-center gap-4 text-sm">
                 <span className="text-gray-500">
-                  能力点达成 {detail.achievedAbilityPoints}/{detail.totalAbilityPoints}
+                  {t('能力点达成 {achieved}/{total}', {
+                    achieved: detail.achievedAbilityPoints,
+                    total: detail.totalAbilityPoints,
+                  })}
                 </span>
                 <span className="text-gray-500">
-                  达标率 {(detail.achievementRate ?? 0).toFixed(1)}%
+                  {t('达标率 {rate}%', { rate: (detail.achievementRate ?? 0).toFixed(1) })}
                 </span>
                 <span className="text-gray-500">
-                  认定时间 {formatDateTime(detail.evaluationTime)}
+                  {t('认定时间 {time}', { time: formatDateTime(detail.evaluationTime) })}
                 </span>
               </div>
               {detail.abilityPointDetails && detail.abilityPointDetails.length > 0 ? (
@@ -326,11 +330,11 @@ export function AssessmentTab() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>能力点</TableHead>
-                        <TableHead className="w-[100px]">得分</TableHead>
-                        <TableHead className="w-[110px]">档位</TableHead>
-                        <TableHead className="w-[100px]">权重</TableHead>
-                        <TableHead className="w-[100px]">是否达成</TableHead>
+                        <TableHead>{t('能力点')}</TableHead>
+                        <TableHead className="w-[100px]">{t('得分')}</TableHead>
+                        <TableHead className="w-[110px]">{t('档位')}</TableHead>
+                        <TableHead className="w-[100px]">{t('权重')}</TableHead>
+                        <TableHead className="w-[100px]">{t('是否达成')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -372,7 +376,7 @@ export function AssessmentTab() {
                                   : 'bg-red-50 text-red-600 border-red-200',
                               )}
                             >
-                              {point.achieved ? '已达成' : '未达成'}
+                              {point.achieved ? t('已达成') : t('未达成')}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -381,11 +385,11 @@ export function AssessmentTab() {
                   </Table>
                 </div>
               ) : (
-                <div className="py-8 text-center text-sm text-gray-400">暂无能力点明细</div>
+                <div className="py-8 text-center text-sm text-gray-400">{t('暂无能力点明细')}</div>
               )}
             </div>
           ) : (
-            <div className="py-10 text-center text-sm text-gray-400">未找到结果明细</div>
+            <div className="py-10 text-center text-sm text-gray-400">{t('未找到结果明细')}</div>
           )}
         </DialogContent>
       </Dialog>

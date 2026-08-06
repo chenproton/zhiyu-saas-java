@@ -36,13 +36,13 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { Plus, Pencil, Trash2, Loader2, Link2 } from 'lucide-react'
 import Link from 'next/link'
 import { Checkbox } from '@/components/ui/checkbox'
-import { useT } from '@/lib/i18n/locale-provider'
 import type {
   AllianceProject,
   AllianceProjectMilestone,
   AllianceAgreement,
   AllianceAchievement,
 } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AllianceProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -93,9 +93,7 @@ export default function AllianceProjectDetailPage() {
         setAllAgreements(agr.items || [])
         setAchievements(ach.items || [])
       })
-      .catch((e) =>
-        toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }),
-      )
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
   }
   useEffect(() => {
@@ -490,8 +488,7 @@ export default function AllianceProjectDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {milestoneDialog.edit ? t('编辑') : t('新增')}
-              {t('里程碑')}
+              {t('{action}里程碑', { action: milestoneDialog.edit ? t('编辑') : t('新增') })}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -534,7 +531,8 @@ export default function AllianceProjectDetailPage() {
               {t('取消')}
             </Button>
             <Button onClick={saveMilestone} disabled={savingM}>
-              {savingM ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{t('保存')}
+              {savingM ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>

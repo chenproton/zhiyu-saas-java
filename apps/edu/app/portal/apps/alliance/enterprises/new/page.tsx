@@ -114,7 +114,7 @@ export default function AllianceEnterpriseNewPage() {
                 <Input
                   value={item.unifiedSocialCreditCode}
                   onChange={(e) => setField('unifiedSocialCreditCode', e.target.value)}
-                  placeholder="如：91320594MA1P7XXXX1"
+                  placeholder={t('如：91320594MA1P7XXXX1')}
                 />
               </FormFieldRow>
               <FormFieldRow label={t('企业类型')}>
@@ -307,7 +307,8 @@ export default function AllianceEnterpriseNewPage() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{t('创建')}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                {t('创建')}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
                 {t('取消')}

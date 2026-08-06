@@ -33,6 +33,7 @@ import { StatCard } from './stat-card'
 import { portalCommunityApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { formatDateTime } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { CommunityReply, CommunityTopic, CommunityTopicSort } from '@/lib/types'
 
 // 右侧学习小组/导师保持演示数据（需求明确保留 mock）
@@ -49,12 +50,6 @@ const mentors = [
   { id: 'm3', name: '张老师', role: 'Linux系统管理教师', avatar: '张' },
 ]
 
-const SORTS: { id: CommunityTopicSort; label: string }[] = [
-  { id: 'hot', label: '热门话题' },
-  { id: 'latest', label: '最新发布' },
-  { id: 'mine', label: '我的提问' },
-]
-
 function avatarChar(name: string, url?: string) {
   if (url) return null
   return name ? name.charAt(0) : '?'
@@ -62,6 +57,13 @@ function avatarChar(name: string, url?: string) {
 
 export function CommunityTab() {
   const { toast } = useToast()
+  const t = useT()
+
+  const SORTS: { id: CommunityTopicSort; label: string }[] = [
+    { id: 'hot', label: t('热门话题') },
+    { id: 'latest', label: t('最新发布') },
+    { id: 'mine', label: t('我的提问') },
+  ]
 
   const [sort, setSort] = useState<CommunityTopicSort>('latest')
   const [topics, setTopics] = useState<CommunityTopic[]>([])
@@ -141,17 +143,17 @@ export function CommunityTab() {
     const title = postTitle.trim()
     const content = postContent.trim()
     if (!title) {
-      toast({ title: '请填写标题', variant: 'destructive' })
+      toast({ title: t('请填写标题'), variant: 'destructive' })
       return
     }
     if (!content) {
-      toast({ title: '请填写内容', variant: 'destructive' })
+      toast({ title: t('请填写内容'), variant: 'destructive' })
       return
     }
     setPostSubmitting(true)
     try {
       await portalCommunityApi.createTopic({ title, content, tag: postTag.trim() || undefined })
-      toast({ title: '发布成功' })
+      toast({ title: t('发布成功') })
       setPostOpen(false)
       setPostTitle('')
       setPostTag('')
@@ -173,7 +175,7 @@ export function CommunityTab() {
         content,
         parentId: replyingTo?.id,
       })
-      toast({ title: '回复成功' })
+      toast({ title: t('回复成功') })
       setReplyText('')
       setReplyingTo(null)
       const [topicDetail, replyRes] = await Promise.all([
@@ -196,31 +198,31 @@ export function CommunityTab() {
       {/* 统计 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="热门话题"
+          title={t('热门话题')}
           value={totalTopics}
           icon={Flame}
-          trend="按阅读热度排序"
+          trend={t('按阅读热度排序')}
           color="rose"
         />
         <StatCard
-          title="我的提问"
+          title={t('我的提问')}
           value={mineTotal}
           icon={MessageSquare}
-          trend={mineTotal > 0 ? `${mineTotal} 个提问` : '暂未发起'}
+          trend={mineTotal > 0 ? t('{count} 个提问', { count: mineTotal }) : t('暂未发起')}
           color="blue"
         />
         <StatCard
-          title="学习小组"
+          title={t('学习小组')}
           value={studyGroups.length}
           icon={Users}
-          trend="3 个可加入"
+          trend={t('3 个可加入')}
           color="green"
         />
         <StatCard
-          title="我的导师"
+          title={t('我的导师')}
           value={mentors.length}
           icon={ThumbsUp}
-          trend="可在线咨询"
+          trend={t('可在线咨询')}
           color="amber"
         />
       </div>
@@ -232,7 +234,7 @@ export function CommunityTab() {
           disabled={!!detail}
         >
           <Plus className="w-4 h-4 mr-1" />
-          发起提问
+          {t('发起提问')}
         </Button>
       </div>
 
@@ -246,13 +248,13 @@ export function CommunityTab() {
                 onClick={closeDetail}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                返回列表
+                {t('返回列表')}
               </button>
 
               {detailLoading ? (
                 <div className="flex items-center justify-center py-16 text-gray-400">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  加载中...
+                  {t('加载中...')}
                 </div>
               ) : (
                 <>
@@ -278,7 +280,7 @@ export function CommunityTab() {
                         {detail.viewCount >= 50 && (
                           <Badge className="text-xs bg-rose-50 text-rose-600 hover:bg-rose-50 border-rose-100">
                             <Flame className="w-3 h-3 mr-0.5" />
-                            热门
+                            {t('热门')}
                           </Badge>
                         )}
                       </div>
@@ -295,9 +297,9 @@ export function CommunityTab() {
                         <span>{formatDateTime(detail.createdAt)}</span>
                         <span className="flex items-center gap-1">
                           <MessageSquare className="w-3.5 h-3.5" />
-                          {detail.replyCount} 回复
+                          {t('{count} 回复', { count: detail.replyCount })}
                         </span>
-                        <span>{detail.viewCount} 浏览</span>
+                        <span>{t('{count} 浏览', { count: detail.viewCount })}</span>
                       </div>
                     </div>
                   </div>
@@ -308,12 +310,12 @@ export function CommunityTab() {
 
                   {/* 回复流 */}
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                    全部回复（{replies.length}）
+                    {t('全部回复（{count}）', { count: replies.length })}
                   </h3>
                   <div className="space-y-4 mb-5">
                     {replies.length === 0 && (
                       <div className="py-6 text-center text-xs text-gray-400">
-                        暂无回复，快来抢沙发～
+                        {t('暂无回复，快来抢沙发～')}
                       </div>
                     )}
                     {replies.map((reply) => (
@@ -337,7 +339,9 @@ export function CommunityTab() {
                           <div className="flex items-center gap-2 text-xs text-gray-500 mb-0.5">
                             <span className="font-medium text-gray-700">{reply.authorName}</span>
                             {reply.parentAuthorName && (
-                              <span className="text-gray-400">回复 @{reply.parentAuthorName}</span>
+                              <span className="text-gray-400">
+                                {t('回复 @{name}', { name: reply.parentAuthorName })}
+                              </span>
                             )}
                             <span>{formatDateTime(reply.createdAt)}</span>
                           </div>
@@ -349,7 +353,7 @@ export function CommunityTab() {
                             onClick={() => setReplyingTo(reply)}
                           >
                             <Reply className="w-3 h-3" />
-                            回复
+                            {t('回复')}
                           </button>
                         </div>
                       </div>
@@ -360,24 +364,18 @@ export function CommunityTab() {
                   <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
                     {replyingTo && (
                       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                        <span>
-                          回复{' '}
-                          <span className="font-medium text-gray-700">
-                            @{replyingTo.authorName}
-                          </span>
-                          的评论
-                        </span>
+                        <span>{t('回复 @{name} 的评论', { name: replyingTo.authorName })}</span>
                         <button
                           className="text-gray-400 hover:text-gray-600"
                           onClick={() => setReplyingTo(null)}
                         >
-                          取消
+                          {t('取消')}
                         </button>
                       </div>
                     )}
                     <div className="flex items-end gap-2">
                       <Textarea
-                        placeholder="写下你的回复..."
+                        placeholder={t('写下你的回复...')}
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         className="min-h-[60px] bg-white text-sm resize-none"
@@ -394,7 +392,7 @@ export function CommunityTab() {
                         ) : (
                           <Send className="w-3.5 h-3.5" />
                         )}
-                        回复
+                        {t('回复')}
                       </Button>
                     </div>
                   </div>
@@ -423,7 +421,7 @@ export function CommunityTab() {
                 {loading ? (
                   <div className="flex items-center justify-center py-16 text-gray-400">
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    加载中...
+                    {t('加载中...')}
                   </div>
                 ) : topics.length === 0 ? (
                   <div className="p-8 rounded-xl border border-gray-100 bg-white text-center text-gray-400">
@@ -432,14 +430,14 @@ export function CommunityTab() {
                     ) : (
                       <Flame className="w-12 h-12 mx-auto mb-3 opacity-40" />
                     )}
-                    <p>{sort === 'mine' ? '你还没有发起过提问' : '暂无话题，来发第一帖吧'}</p>
+                    <p>{t(sort === 'mine' ? '你还没有发起过提问' : '暂无话题，来发第一帖吧')}</p>
                     <Button
                       className="mt-4 bg-primary hover:bg-primary/90"
                       size="sm"
                       onClick={() => setPostOpen(true)}
                     >
                       <Plus className="w-4 h-4 mr-1" />
-                      {sort === 'mine' ? '去提问' : '发起提问'}
+                      {t(sort === 'mine' ? '去提问' : '发起提问')}
                     </Button>
                   </div>
                 ) : (
@@ -474,7 +472,7 @@ export function CommunityTab() {
                               {topic.viewCount >= 50 && (
                                 <Badge className="text-xs bg-rose-50 text-rose-600 hover:bg-rose-50 border-rose-100 shrink-0">
                                   <Flame className="w-3 h-3 mr-0.5" />
-                                  热门
+                                  {t('热门')}
                                 </Badge>
                               )}
                             </div>
@@ -492,9 +490,9 @@ export function CommunityTab() {
                             <div className="flex items-center gap-4 text-xs text-gray-400">
                               <span className="flex items-center gap-1">
                                 <MessageSquare className="w-3.5 h-3.5" />
-                                {topic.replyCount} 回复
+                                {t('{count} 回复', { count: topic.replyCount })}
                               </span>
-                              <span>{topic.viewCount} 浏览</span>
+                              <span>{t('{count} 浏览', { count: topic.viewCount })}</span>
                               <span>{formatDateTime(topic.createdAt)}</span>
                             </div>
                           </div>
@@ -511,7 +509,7 @@ export function CommunityTab() {
         {/* 侧边栏 */}
         <div className="space-y-5">
           {/* 学习小组 */}
-          <SectionCard title="学习小组" icon={Users} iconColor="blue">
+          <SectionCard title={t('学习小组')} icon={Users} iconColor="blue">
             <div className="space-y-2">
               {studyGroups.map((group) => (
                 <div
@@ -520,7 +518,9 @@ export function CommunityTab() {
                 >
                   <div>
                     <p className="text-sm font-medium text-gray-900">{group.name}</p>
-                    <p className="text-xs text-gray-500">{group.members} 人</p>
+                    <p className="text-xs text-gray-500">
+                      {t('{count} 人', { count: group.members })}
+                    </p>
                   </div>
                   <Button
                     size="sm"
@@ -531,7 +531,7 @@ export function CommunityTab() {
                         : 'text-xs border-gray-200 text-gray-600'
                     }
                   >
-                    {group.active ? '加入' : '已满'}
+                    {t(group.active ? '加入' : '已满')}
                   </Button>
                 </div>
               ))}
@@ -539,7 +539,7 @@ export function CommunityTab() {
           </SectionCard>
 
           {/* 导师/教师 */}
-          <SectionCard title="我的导师" icon={ThumbsUp} iconColor="amber">
+          <SectionCard title={t('我的导师')} icon={ThumbsUp} iconColor="amber">
             <div className="space-y-3">
               {mentors.map((mentor) => (
                 <div key={mentor.id} className="flex items-center gap-3">
@@ -557,7 +557,7 @@ export function CommunityTab() {
                     size="sm"
                     className="text-xs border-gray-200 text-gray-700 hover:bg-gray-50 shrink-0"
                   >
-                    咨询
+                    {t('咨询')}
                   </Button>
                 </div>
               ))}
@@ -565,12 +565,12 @@ export function CommunityTab() {
           </SectionCard>
 
           {/* 社区公告 */}
-          <SectionCard title="社区规范" icon={MessageCircle} iconColor="green">
+          <SectionCard title={t('社区规范')} icon={MessageCircle} iconColor="green">
             <ul className="space-y-2 text-xs text-gray-500">
-              <li>• 请友善交流，尊重他人观点</li>
-              <li>• 提问前建议先搜索已有话题</li>
-              <li>• 鼓励分享学习笔记与实践经验</li>
-              <li>• 禁止发布与教学无关的内容</li>
+              <li>• {t('请友善交流，尊重他人观点')}</li>
+              <li>• {t('提问前建议先搜索已有话题')}</li>
+              <li>• {t('鼓励分享学习笔记与实践经验')}</li>
+              <li>• {t('禁止发布与教学无关的内容')}</li>
             </ul>
           </SectionCard>
         </div>
@@ -580,32 +580,32 @@ export function CommunityTab() {
       <Dialog open={postOpen} onOpenChange={setPostOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>发起提问</DialogTitle>
-            <DialogDescription>分享你的学习问题或经验，和同学们一起交流。</DialogDescription>
+            <DialogTitle>{t('发起提问')}</DialogTitle>
+            <DialogDescription>{t('分享你的学习问题或经验，和同学们一起交流。')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-600">标题</label>
+              <label className="text-xs font-medium text-gray-600">{t('标题')}</label>
               <Input
-                placeholder="一句话说清你的问题"
+                placeholder={t('一句话说清你的问题')}
                 value={postTitle}
                 maxLength={128}
                 onChange={(e) => setPostTitle(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-600">标签（选填）</label>
+              <label className="text-xs font-medium text-gray-600">{t('标签（选填）')}</label>
               <Input
-                placeholder="如：网络技术"
+                placeholder={t('如：网络技术')}
                 value={postTag}
                 maxLength={32}
                 onChange={(e) => setPostTag(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-600">内容</label>
+              <label className="text-xs font-medium text-gray-600">{t('内容')}</label>
               <Textarea
-                placeholder="补充详细描述，便于同学们解答"
+                placeholder={t('补充详细描述，便于同学们解答')}
                 value={postContent}
                 rows={5}
                 onChange={(e) => setPostContent(e.target.value)}
@@ -613,7 +613,7 @@ export function CommunityTab() {
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setPostOpen(false)}>
-                取消
+                {t('取消')}
               </Button>
               <Button
                 className="bg-primary hover:bg-primary/90"
@@ -621,7 +621,7 @@ export function CommunityTab() {
                 onClick={submitPost}
               >
                 {postSubmitting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-                发布
+                {t('发布')}
               </Button>
             </div>
           </div>
