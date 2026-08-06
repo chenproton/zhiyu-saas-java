@@ -48,10 +48,8 @@ for (const k of [...keys].sort()) {
     missing.push(k)
   }
 }
-// 清理代码中已不存在的 key（避免死条目）
-for (const k of Object.keys(en)) {
-  if (!keys.has(k)) delete en[k]
-}
+// 注意：只增不删。字典中还存在大量「渲染处 t(变量)」的 key（如导航菜单 label、
+// 平台卡片 title/desc 等），无法从 t('字面量') 提取，删除会导致翻译丢失。
 
 writeFileSync(enPath, JSON.stringify(en, null, 2) + '\n')
 console.log(`keys: ${keys.size}, missing (blank): ${missing.length}`)
