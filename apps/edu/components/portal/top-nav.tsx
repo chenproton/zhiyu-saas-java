@@ -15,6 +15,7 @@ import {
   LogIn,
   Check,
   UserCog,
+  Languages,
   AArrowDown,
   AArrowUp,
   Type,
@@ -233,46 +234,48 @@ export function TopNav() {
                 )}
                 <DropdownMenuItem asChild>
                   <Link href="/portal/workspace">
-                    <User className="w-4 h-4 mr-2" />
+                    <User className="w-4 h-4" />
                     {t('个人中心')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/portal/workspace?tab=profile">
-                    <Settings className="w-4 h-4 mr-2" />
+                    <Settings className="w-4 h-4" />
                     {t('账号设置')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setMobileAccessOpen(true)}>
-                  <QrCode className="w-4 h-4 mr-2" />
+                  <QrCode className="w-4 h-4" />
                   {t('移动端访问')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <div className="flex items-center gap-2 px-2 py-1.5">
-                  <Type className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-foreground whitespace-nowrap">{t('语言')}</span>
+                <DropdownMenuItem className="cursor-default" onSelect={(e) => e.preventDefault()}>
+                  <Languages className="w-4 h-4" />
+                  <span className="text-sm whitespace-nowrap">{t('语言')}</span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-sm hover:bg-muted"
+                    className={`h-7 px-2 text-sm ${
+                      locale === 'zh' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                     onClick={() => setLocale('zh')}
                   >
                     中文
-                    {locale === 'zh' && <Check className="w-4 h-4 text-primary" />}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-sm hover:bg-muted"
+                    className={`h-7 px-2 text-sm ${
+                      locale === 'en' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                     onClick={() => setLocale('en')}
                   >
                     English
-                    {locale === 'en' && <Check className="w-4 h-4 text-primary" />}
                   </Button>
-                </div>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <div className="flex items-center gap-2 px-2 py-1.5">
-                  <Type className="w-4 h-4 text-muted-foreground" />
+                <DropdownMenuItem className="cursor-default" onSelect={(e) => e.preventDefault()}>
+                  <Type className="w-4 h-4" />
                   <span className="text-sm text-foreground whitespace-nowrap">{t('字号大小')}</span>
                   <Button
                     variant="ghost"
@@ -304,10 +307,10 @@ export function TopNav() {
                   >
                     <RotateCcw className="w-4 h-4" />
                   </Button>
-                </div>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className="w-4 h-4" />
                   {t('退出登录')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
