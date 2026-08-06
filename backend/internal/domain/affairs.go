@@ -55,20 +55,27 @@ type TrainingProgramCourse struct {
 	SortOrder    int     `json:"sortOrder"`
 }
 
-// TeachingPlan 教学计划（从人培方案按学期生成）。
+// TeachingPlan 教学计划（从人培方案按学期生成；status: draft/pending/approved/rejected/published/archived）。
 type TeachingPlan struct {
-	ID          string     `json:"id"`
-	ProgramID   string     `json:"programId"`
-	ProgramName string     `json:"programName,omitempty"`
-	TermID      string     `json:"termId"`
-	TermName    string     `json:"termName,omitempty"`
-	MajorID     *string    `json:"majorId,omitempty"`
-	MajorName   string     `json:"majorName,omitempty"`
-	EntryYear   int        `json:"entryYear"`
-	Status      string     `json:"status"`
-	EntryCount  int        `json:"entryCount"`
-	GeneratedAt time.Time  `json:"generatedAt"`
-	ConfirmedAt *time.Time `json:"confirmedAt,omitempty"`
+	ID                string     `json:"id"`
+	ProgramID         string     `json:"programId"`
+	ProgramName       string     `json:"programName,omitempty"`
+	TermID            string     `json:"termId"`
+	TermName          string     `json:"termName,omitempty"`
+	MajorID           *string    `json:"majorId,omitempty"`
+	MajorName         string     `json:"majorName,omitempty"`
+	EntryYear         int        `json:"entryYear"`
+	Status            string     `json:"status"`
+	EntryCount        int        `json:"entryCount"`
+	GeneratedAt       time.Time  `json:"generatedAt"`
+	ConfirmedAt       *time.Time `json:"confirmedAt,omitempty"`
+	CreatedBy         *string    `json:"createdBy,omitempty"`
+	CreatedByName     string     `json:"createdByName,omitempty"`
+	Collaborators     []string   `json:"collaborators,omitempty"`
+	CollaboratorNames []string   `json:"collaboratorNames,omitempty"`
+	BatchID           *string    `json:"batchId,omitempty"`
+	BatchName         string     `json:"batchName,omitempty"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
 }
 
 // TeachingPlanEntry 教学计划条目（排课的待排来源）。

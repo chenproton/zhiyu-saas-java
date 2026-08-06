@@ -1,84 +1,37 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarPlus, Search, ClipboardList, FileEdit, CheckCircle2, Eye, Download } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { useToast, useAsync } from '@zhiyu/ui'
-import { PageHeaderCard } from '@/components/shared/page-header-card'
+import { ContentListPage } from '@/components/shared/content-list-page'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { TableRowActions } from '@/components/shared/table-row-actions'
-import { teachingPlanApi } from '@/lib/api'
-import type { TeachingPlan } from '@/lib/types'
+import { StatusActionBar } from '@/components/shared/status-action-bar'
+import { teachingPlanApi, affairsBatchApi, approvalApi, importExportApi } from '@/lib/api'
+import type { TeachingPlan, AffairsBatch } from '@/lib/types'
+import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
 import { GeneratePlanDialog } from './_components/generate-plan-dialog'
-import { formatDateTime } from '@/lib/format-utils'
+import { useToast } from '@zhiyu/ui'
 
-type FilterStatus = 'all' | 'draft' | 'confirmed'
+// ContentListItem 需要 name/creatorId/coCreatorIds：教学计划无独立名称，以 方案+学期+专业 拼装（同时作为搜索串）
+function mapPlan(backend: any, currentUserId: string) {
+  return {
+    ...backend,
+    name: `${backend.programName || '教学计划'} · ${backend.termName || ''} · ${backend.majorName || ''}`,
+    // 历史数据 created_by 为空时兜底归属当前用户，避免旧计划在「我的」页签中消失
+    creatorId: backend.createdBy || currentUserId,
+    coCreatorIds: backend.collaborators || [],
+  }
+}
+function mapBatch(backend: any) {
+  return { id: backend.id, name: backend.name, workflowId: backend.workflowId }
+}
 
 export default function TeachingPlansPage() {
   const router = useRouter()
   const { toast } = useToast()
-
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [generateOpen, setGenerateOpen] = useState(false)
   const [exportingId, setExportingId] = useState<string | null>(null)
-
-  const { data, loading, refresh } = useAsync(async () => {
-    const res = await teachingPlanApi.list({ limit: 500 })
-    return res.items
-  })
-  const items = useMemo(() => data ?? [], [data])
-
-  const filteredItems = useMemo(() => {
-    return items.filter((p) => {
-      const matchSearch =
-        !search ||
-        (p.programName || '').toLowerCase().includes(search.toLowerCase()) ||
-        (p.termName || '').toLowerCase().includes(search.toLowerCase()) ||
-        (p.majorName || '').toLowerCase().includes(search.toLowerCase())
-      const matchStatus = statusFilter === 'all' || p.status === statusFilter
-      return matchSearch && matchStatus
-    })
-  }, [items, search, statusFilter])
-
-  const stats = useMemo(() => {
-    return {
-      total: items.length,
-      draft: items.filter((p) => p.status === 'draft').length,
-      confirmed: items.filter((p) => p.status === 'confirmed').length,
-    }
-  }, [items])
-
-  const handleConfirm = async (p: TeachingPlan) => {
-    try {
-      await teachingPlanApi.confirm(p.id)
-      toast({ title: '教学计划已确认' })
-      await refresh()
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: '确认失败',
-        description: err.message || '确认教学计划失败',
-      })
-    }
-  }
 
   const handleExport = async (p: TeachingPlan) => {
     setExportingId(p.id)
@@ -97,163 +50,166 @@ export default function TeachingPlansPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeaderCard
-        title="教学计划"
-        description="从已发布的人培方案按学期生成教学计划，确认后进入排课"
-        actions={
-          <Button onClick={() => setGenerateOpen(true)}>
-            <CalendarPlus className="mr-2 size-4" />
-            从人培方案生成
-          </Button>
-        }
-        stats={[
-          {
-            label: '计划总数',
-            value: stats.total,
-            icon: <ClipboardList className="size-4 text-blue-500" />,
-            iconClassName: 'bg-blue-50',
-          },
-          {
-            label: '草稿',
-            value: stats.draft,
-            icon: <FileEdit className="size-4 text-gray-500" />,
-            iconClassName: 'bg-gray-50',
-          },
-          {
-            label: '已确认',
-            value: stats.confirmed,
-            icon: <CheckCircle2 className="size-4 text-green-500" />,
-            iconClassName: 'bg-green-50',
-          },
-        ]}
-      />
-
-      {/* 筛选栏 */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="搜索方案、学期或专业..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as FilterStatus)}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="全部状态" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="draft">草稿</SelectItem>
-            <SelectItem value="confirmed">已确认</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* 计划列表 */}
-      <div className="rounded-lg border bg-white px-4 py-3">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[240px]">人培方案</TableHead>
-                <TableHead className="w-[130px]">学期</TableHead>
-                <TableHead className="w-[140px]">专业</TableHead>
-                <TableHead className="w-[80px]">年级</TableHead>
-                <TableHead className="w-[80px]">条目数</TableHead>
-                <TableHead className="w-[100px]">状态</TableHead>
-                <TableHead className="w-[160px]">生成时间</TableHead>
-                <TableHead className="sticky right-0 w-[220px] bg-white text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    加载中...
-                  </TableCell>
-                </TableRow>
-              ) : filteredItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    暂无教学计划，点击「从人培方案生成」创建
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredItems.map((p) => (
-                  <TableRow key={p.id} className="group">
-                    <TableCell className="font-medium">{p.programName || '-'}</TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.termName || '-'}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.majorName || '-'}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.entryYear} 级</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.entryCount}</span>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={p.status} />
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(p.generatedAt)}
-                      </span>
-                    </TableCell>
-                    <TableRowActions className="sticky right-0 bg-white">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => router.push(`/affairs/teaching-plans/${p.id}`)}
-                      >
-                        <Eye className="mr-1 h-3 w-3" />
-                        详情
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => handleExport(p)}
-                        disabled={exportingId === p.id}
-                      >
-                        <Download className="mr-1 h-3 w-3" />
-                        {exportingId === p.id ? '导出中...' : '导出教学计划'}
-                      </Button>
-                      {p.status === 'draft' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-green-600 hover:text-green-700"
-                          onClick={() => handleConfirm(p)}
-                        >
-                          <CheckCircle2 className="mr-1 h-3 w-3" />
-                          确认
-                        </Button>
-                      )}
-                    </TableRowActions>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* 生成教学计划弹窗 */}
+    <ContentListPage<
+      TeachingPlan & { name: string; creatorId: string; coCreatorIds: string[] },
+      TeachingPlan,
+      AffairsBatch
+    >
+      title="教学计划"
+      subtitle="从已发布的人培方案按学期生成教学计划，审批发布后进入排课"
+      entityLabel="教学计划"
+      addHref="/affairs/teaching-plans"
+      permissionModule="affairs"
+      permissionResource="teaching-plans"
+      itemApi={teachingPlanApi}
+      batchApi={affairsBatchApi}
+      approvalApi={approvalApi}
+      importExportApi={importExportApi}
+      approvalTargetType="teaching_plan"
+      coBuilderField="collaborators"
+      createRedirectUrl={(id) => `/affairs/teaching-plans/${id}?new=true`}
+      statusFilterOptions={STATUS_FILTER_OPTIONS}
+      mapItem={mapPlan}
+      mapBatch={mapBatch}
+      createPayload={() => ({ programId: '', termId: '' })}
+      enableClone={false}
+      enableBatchExport={false}
+      // 新增流程保持现状：先选择人培方案+学期生成草稿，再进入详情编辑表单
+      onCreate={() => setGenerateOpen(true)}
+      renderList={(props: any) => {
+        const {
+          activeTab,
+          items,
+          selectedIds,
+          onSelectId,
+          onSelectAll,
+          onDelete,
+          onSubmitApproval,
+          onWithdrawApproval,
+          onViewRejectReason,
+          onPublish,
+          onUnpublish,
+          onArchive,
+          onInviteCoBuild,
+          batchMap,
+        } = props
+        return (
+          <div className="rounded-lg border bg-white px-4 py-3">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px]">
+                <thead>
+                  <tr className="border-b">
+                    <th className="w-8 px-2 py-2">
+                      <input type="checkbox" onChange={(e) => onSelectAll(e.target.checked)} />
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                      人培方案
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                      学期
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                      专业
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                      年级
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                      条目数
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                      批次
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                      状态
+                    </th>
+                    <th className="sticky right-0 w-[260px] bg-white px-2 py-2 text-right text-xs font-medium text-muted-foreground">
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="h-24 text-center text-sm text-muted-foreground">
+                        暂无教学计划
+                      </td>
+                    </tr>
+                  ) : (
+                    items.map((item: any) => (
+                      <tr key={item.id} className="border-t hover:bg-muted/30 group">
+                        <td className="px-2 py-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds?.includes(item.id)}
+                            onChange={() => onSelectId?.(item.id)}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="font-medium text-sm">{item.programName || '-'}</div>
+                        </td>
+                        <td className="px-2 py-2 text-sm">{item.termName || '-'}</td>
+                        <td className="px-2 py-2 text-sm text-muted-foreground">
+                          {item.majorName || '-'}
+                        </td>
+                        <td className="px-2 py-2 text-sm">{item.entryYear}级</td>
+                        <td className="px-2 py-2 text-sm">{item.entryCount}</td>
+                        <td className="px-2 py-2 text-sm text-muted-foreground">
+                          {item.batchId ? batchMap?.get(item.batchId) || '-' : '-'}
+                        </td>
+                        <td className="px-2 py-2">
+                          <StatusBadge status={item.status} />
+                        </td>
+                        <td className="sticky right-0 bg-white px-2 py-2">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => handleExport(item)}
+                              disabled={exportingId === item.id}
+                            >
+                              <Download className="mr-1 h-3 w-3" />
+                              {exportingId === item.id ? '导出中...' : '导出'}
+                            </Button>
+                            <StatusActionBar
+                              status={item.status}
+                              isPublicPool={activeTab === 'public'}
+                              onView={() => router.push(`/affairs/teaching-plans/${item.id}`)}
+                              onEdit={() => router.push(`/affairs/teaching-plans/${item.id}`)}
+                              onSubmit={onSubmitApproval ? () => onSubmitApproval(item) : undefined}
+                              onWithdraw={
+                                onWithdrawApproval ? () => onWithdrawApproval(item) : undefined
+                              }
+                              onViewRejectReason={
+                                onViewRejectReason ? () => onViewRejectReason(item) : undefined
+                              }
+                              onPublish={onPublish ? () => onPublish(item) : undefined}
+                              onUnpublish={onUnpublish ? () => onUnpublish(item) : undefined}
+                              onArchive={onArchive ? () => onArchive(item) : undefined}
+                              onDelete={onDelete ? () => onDelete(item) : undefined}
+                              onInvite={onInviteCoBuild ? () => onInviteCoBuild(item) : undefined}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      }}
+    >
       <GeneratePlanDialog
         open={generateOpen}
         onOpenChange={setGenerateOpen}
         onGenerated={(plan) => {
-          refresh()
-          router.push(`/affairs/teaching-plans/${plan.id}`)
+          setGenerateOpen(false)
+          router.push(`/affairs/teaching-plans/${plan.id}?new=true`)
         }}
       />
-    </div>
+    </ContentListPage>
   )
 }

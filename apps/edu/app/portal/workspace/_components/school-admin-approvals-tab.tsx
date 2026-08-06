@@ -17,6 +17,7 @@ const approvalHrefMap: Record<string, string> = {
   'pending-question_bank': '/evaluation/approvals',
   'pending-exam': '/evaluation/approvals',
   'pending-training_program': '/affairs/approvals',
+  'pending-teaching_plan': '/affairs/approvals',
 }
 
 const typeHrefMap: Record<string, string> = {
@@ -26,6 +27,7 @@ const typeHrefMap: Record<string, string> = {
   question_bank: '/evaluation/approvals',
   exam: '/evaluation/approvals',
   training_program: '/affairs/approvals',
+  teaching_plan: '/affairs/approvals',
 }
 
 export function SchoolAdminApprovalsTab() {

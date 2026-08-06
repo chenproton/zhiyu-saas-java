@@ -185,6 +185,11 @@ export interface ContentListPageConfig<
 
   coBuilderField?: string
 
+  /** 是否展示克隆能力（行内+批量按钮），默认 true；教学计划等按业务语义禁用的资源可关闭 */
+  enableClone?: boolean
+  /** 是否展示批量导出按钮，默认 true */
+  enableBatchExport?: boolean
+
   renderList: (props: ListRenderProps<T>) => ReactNode
 
   onCreate?: () => void
@@ -248,6 +253,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     afterLoad,
     coBuilderField = 'coCreatorIds',
     importExcelEntity,
+    enableClone = true,
+    enableBatchExport = true,
   } = config
 
   const router = useRouter()
@@ -1531,16 +1538,18 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   {t('删除')}
                 </Button>
               )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              disabled={!hasSelected}
-              onClick={handleBatchClone}
-            >
-              <Copy className="mr-1 h-3 w-3" />
-              {t('克隆')}
-            </Button>
+            {enableClone && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!hasSelected}
+                onClick={handleBatchClone}
+              >
+                <Copy className="mr-1 h-3 w-3" />
+                {t('克隆')}
+              </Button>
+            )}
             {activeTab !== 'public' && (
               <Button
                 variant="outline"
@@ -1553,45 +1562,47 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 {t('调整批次分组')}
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              disabled={!hasSelected}
-              onClick={async () => {
-                const exportFn =
-                  importExcelEntity === 'scenarios'
-                    ? importExportApi.exportScenariosExcel
-                    : importExcelEntity === 'positions'
-                      ? importExportApi.exportPositionsExcel
-                      : importExcelEntity === 'courses'
-                        ? importExportApi.exportCoursesExcel
-                        : importExcelEntity === 'granular-courses'
-                          ? importExportApi.exportGranularCoursesExcel
-                          : importExcelEntity === 'question-banks'
-                            ? importExportApi.exportQuestionBanksExcel
-                            : importExcelEntity === 'exams'
-                              ? importExportApi.exportExamsExcel
-                              : null
-                if (exportFn) {
-                  try {
-                    const res = await exportFn(selectedIds)
-                    downloadBlob(await res.blob(), `${entityLabel}导出.xlsx`)
-                  } catch (err: any) {
-                    toast({
-                      variant: 'destructive',
-                      title: t('导出失败'),
-                      description: err.message || t('导出失败'),
-                    })
+            {enableBatchExport && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!hasSelected}
+                onClick={async () => {
+                  const exportFn =
+                    importExcelEntity === 'scenarios'
+                      ? importExportApi.exportScenariosExcel
+                      : importExcelEntity === 'positions'
+                        ? importExportApi.exportPositionsExcel
+                        : importExcelEntity === 'courses'
+                          ? importExportApi.exportCoursesExcel
+                          : importExcelEntity === 'granular-courses'
+                            ? importExportApi.exportGranularCoursesExcel
+                            : importExcelEntity === 'question-banks'
+                              ? importExportApi.exportQuestionBanksExcel
+                              : importExcelEntity === 'exams'
+                                ? importExportApi.exportExamsExcel
+                                : null
+                  if (exportFn) {
+                    try {
+                      const res = await exportFn(selectedIds)
+                      downloadBlob(await res.blob(), `${entityLabel}导出.xlsx`)
+                    } catch (err: any) {
+                      toast({
+                        variant: 'destructive',
+                        title: t('导出失败'),
+                        description: err.message || t('导出失败'),
+                      })
+                    }
+                  } else {
+                    handleBatchExport()
                   }
-                } else {
-                  handleBatchExport()
-                }
-              }}
-            >
-              <Download className="mr-1 h-3 w-3" />
-              {t('导出')}
-            </Button>
+                }}
+              >
+                <Download className="mr-1 h-3 w-3" />
+                {t('导出')}
+              </Button>
+            )}
           </div>
         </CardContent>
 

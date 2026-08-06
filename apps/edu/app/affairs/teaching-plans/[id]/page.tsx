@@ -25,7 +25,7 @@ import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { UserSelector } from '@/components/shared/user-selector'
 import { MultiOrgNodePicker } from '@/components/shared/multi-org-node-picker'
-import { teachingPlanApi } from '@/lib/api'
+import { teachingPlanApi, approvalApi, affairsBatchApi } from '@/lib/api'
 import type { TeachingPlanDetail, TeachingPlanEntry } from '@/lib/types'
 import { EntryTypeBadge } from './_components/entry-type-badge'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -159,16 +159,59 @@ export default function TeachingPlanDetailPage() {
     toast({ title: `保存完成：${success}/${toSave.length} 项` })
   }
 
-  const handleConfirm = async () => {
+  const handleSubmitApproval = async () => {
+    if (!plan) return
     try {
-      await teachingPlanApi.confirm(id)
-      toast({ title: '教学计划已确认' })
+      if (!plan.batchId) {
+        toast({
+          variant: 'destructive',
+          title: '提示',
+          description: '该教学计划未关联批次分组，请在列表页绑定批次后提交审批',
+        })
+        return
+      }
+      const batch = await affairsBatchApi.get(plan.batchId)
+      await teachingPlanApi.submit(plan.id)
+      await approvalApi.create({
+        targetType: 'teaching_plan',
+        targetId: plan.id,
+        workflowId: batch.workflowId,
+      })
+      toast({ title: '已提交审批' })
       await loadPlan()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '确认失败',
-        description: err.message || '确认教学计划失败',
+        title: '提交失败',
+        description: err.message || '提交审批失败，请稍后重试',
+      })
+    }
+  }
+
+  const handleWithdrawApproval = async () => {
+    try {
+      await teachingPlanApi.withdraw(id)
+      toast({ title: '已撤回审批' })
+      await loadPlan()
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: '撤回失败',
+        description: err.message || '撤回审批失败，请稍后重试',
+      })
+    }
+  }
+
+  const handlePublish = async () => {
+    try {
+      await teachingPlanApi.publish(id)
+      toast({ title: '教学计划已发布' })
+      await loadPlan()
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: '发布失败',
+        description: err.message || '发布教学计划失败',
       })
     }
   }
@@ -185,17 +228,29 @@ export default function TeachingPlanDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             {plan && <StatusBadge status={plan.status} />}
-            {plan?.status === 'draft' && !isEditing && (
+            {plan && ['draft', 'rejected'].includes(plan.status) && !isEditing && (
               <>
                 <Button variant="outline" onClick={startEdit}>
                   <FileEdit className="mr-2 size-4" />
                   编辑
                 </Button>
-                <Button variant="outline" onClick={handleConfirm}>
+                <Button variant="outline" onClick={handleSubmitApproval}>
                   <CheckCircle2 className="mr-2 size-4" />
-                  确认计划
+                  提交审批
                 </Button>
               </>
+            )}
+            {plan?.status === 'pending' && !isEditing && (
+              <Button variant="outline" onClick={handleWithdrawApproval}>
+                <X className="mr-2 size-4" />
+                撤回审批
+              </Button>
+            )}
+            {plan?.status === 'approved' && !isEditing && (
+              <Button variant="outline" onClick={handlePublish}>
+                <CheckCircle2 className="mr-2 size-4" />
+                发布
+              </Button>
             )}
             {isEditing && (
               <>

@@ -156,8 +156,16 @@ func teachingPlanStatusLabel(s string) string {
 	switch s {
 	case "draft":
 		return "草稿"
-	case "confirmed":
-		return "已确认"
+	case "pending":
+		return "审批中"
+	case "approved":
+		return "已通过"
+	case "rejected":
+		return "已驳回"
+	case "published":
+		return "已发布"
+	case "archived":
+		return "已归档"
 	case "planned":
 		return "待排课"
 	case "scheduled":

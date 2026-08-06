@@ -607,7 +607,7 @@ func (s *SchedulingStore) ListPendingPlanEntries(ctx context.Context, tenantID, 
 			COALESCE(e.scenario_id::text, ''), COALESCE(e.course_id::text, '')
 		FROM teaching_plan_entries e
 		JOIN teaching_plans p ON p.id = e.plan_id
-		WHERE p.tenant_id = $1 AND p.term_id = $2 AND p.status = 'confirmed' AND e.status = 'planned'`+planFilter+`
+		WHERE p.tenant_id = $1 AND p.term_id = $2 AND p.status = 'published' AND e.status = 'planned'`+planFilter+`
 		ORDER BY e.start_week, e.course_name
 	`, args...)
 	if err != nil {

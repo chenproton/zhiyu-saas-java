@@ -25,10 +25,8 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	r.Put("/affairs/workflows/{id}", h.workflowHandler.Update)
 	r.Delete("/affairs/workflows/{id}", h.workflowHandler.Delete)
 
-	// 教学计划
-	r.Get("/affairs/teaching-plans", h.teachingPlanHandler.List)
-	r.Post("/affairs/teaching-plans", h.teachingPlanHandler.Generate)
-	r.Get("/affairs/teaching-plans/{id}", h.teachingPlanHandler.Get)
+	// 教学计划（接入内容管理通用架构；生成仍走 POST /affairs/teaching-plans）
+	registerContentRoutes(r, "/affairs/teaching-plans", h.teachingPlanHandler)
 	r.Put("/affairs/teaching-plans/entries/{id}", h.teachingPlanHandler.UpdateEntry)
 	r.Delete("/affairs/teaching-plans/entries/{id}", h.teachingPlanHandler.DeleteEntry)
 	r.Post("/affairs/teaching-plans/{id}/confirm", h.teachingPlanHandler.Confirm)

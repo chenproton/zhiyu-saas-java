@@ -23,7 +23,7 @@ func TestTeachingPlanLabelMappings(t *testing.T) {
 		{"week odd", teachingPlanWeekPatternLabel("odd"), "单周"},
 		{"week even", teachingPlanWeekPatternLabel("even"), "双周"},
 		{"status draft", teachingPlanStatusLabel("draft"), "草稿"},
-		{"status confirmed", teachingPlanStatusLabel("confirmed"), "已确认"},
+		{"status published", teachingPlanStatusLabel("published"), "已发布"},
 		{"status planned", teachingPlanStatusLabel("planned"), "待排课"},
 		{"status scheduled", teachingPlanStatusLabel("scheduled"), "已排课"},
 	}
@@ -42,7 +42,7 @@ func TestBuildTeachingPlanExcel(t *testing.T) {
 		TermName:    "2026春",
 		MajorName:   "计算机应用技术",
 		EntryYear:   2025,
-		Status:      "confirmed",
+		Status:      "published",
 		EntryCount:  2,
 		GeneratedAt: time.Date(2026, 6, 1, 9, 30, 0, 0, time.Local),
 		ConfirmedAt: &confirmedAt,
@@ -87,8 +87,8 @@ func TestBuildTeachingPlanExcel(t *testing.T) {
 	if v, _ := f.GetCellValue("计划信息", "B1"); v != "计算机应用技术人培方案" {
 		t.Errorf("计划信息 B1 = %q, want 人培方案名称", v)
 	}
-	if v, _ := f.GetCellValue("计划信息", "B5"); v != "已确认" {
-		t.Errorf("计划信息 B5 = %q, want 已确认", v)
+	if v, _ := f.GetCellValue("计划信息", "B5"); v != "已发布" {
+		t.Errorf("计划信息 B5 = %q, want 已发布", v)
 	}
 
 	// 教学计划条目 Sheet：表头与数据

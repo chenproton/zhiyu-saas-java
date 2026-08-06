@@ -133,9 +133,9 @@ func (s *TeachingPlanStore) GeneratePlan(ctx context.Context, tx Queryer, p *Gen
 		return "", err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO teaching_plans (id, tenant_id, program_id, term_id, major_id, entry_year, status)
-		VALUES ($1, $2, $3, $4, $5, $6, 'draft')
-	`, planID, p.TenantID, p.ProgramID, p.TermID, p.MajorID, p.EntryYear); err != nil {
+		INSERT INTO teaching_plans (id, tenant_id, program_id, term_id, major_id, entry_year, status, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7)
+	`, planID, p.TenantID, p.ProgramID, p.TermID, p.MajorID, p.EntryYear, p.CreatedBy); err != nil {
 		return "", err
 	}
 
@@ -178,6 +178,7 @@ type GeneratePlanParams struct {
 	TermID    string
 	MajorID   *string
 	EntryYear *int
+	CreatedBy *string
 }
 
 // List 查询教学计划列表。
@@ -188,8 +189,8 @@ func (s *TeachingPlanStore) List(ctx context.Context, p ListParams, cfg ListQuer
 // ListConfig 返回教学计划列表查询配置，SQL 片段沉淀在 store 层。
 func (s *TeachingPlanStore) ListConfig() ListQueryConfig[domain.TeachingPlan] {
 	return ListQueryConfig[domain.TeachingPlan]{
-		Table:         "teaching_plans p LEFT JOIN training_programs tp ON tp.id = p.program_id LEFT JOIN terms t ON t.id = p.term_id LEFT JOIN majors m ON m.id = p.major_id",
-		SelectColumns: "p.id, p.program_id, COALESCE(tp.name, '') AS program_name, p.term_id, COALESCE(t.name, '') AS term_name, p.major_id, COALESCE(m.name, '') AS major_name, p.entry_year, p.status, (SELECT COUNT(*) FROM teaching_plan_entries e WHERE e.plan_id = p.id) AS entry_count, p.generated_at, p.confirmed_at",
+		Table:         "teaching_plans p LEFT JOIN training_programs tp ON tp.id = p.program_id LEFT JOIN terms t ON t.id = p.term_id LEFT JOIN majors m ON m.id = p.major_id LEFT JOIN users cu ON cu.id = p.created_by LEFT JOIN affairs_batches ab ON ab.id = p.batch_id",
+		SelectColumns: "p.id, p.program_id, COALESCE(tp.name, '') AS program_name, p.term_id, COALESCE(t.name, '') AS term_name, p.major_id, COALESCE(m.name, '') AS major_name, p.entry_year, p.status, (SELECT COUNT(*) FROM teaching_plan_entries e WHERE e.plan_id = p.id) AS entry_count, p.generated_at, p.confirmed_at, p.created_by, COALESCE(cu.name, '') AS created_by_name, p.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(p.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, p.batch_id, COALESCE(ab.name, '') AS batch_name, p.updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "p.tenant_id",
 		OrderBy:       "p.generated_at DESC",
@@ -213,7 +214,23 @@ func (s *TeachingPlanStore) Get(ctx context.Context, id, tenantID string) (*doma
 	var plan domain.TeachingPlan
 	err := s.q.QueryRow(ctx, teachingPlanSelectSQL+` WHERE p.id = $1 AND p.tenant_id = $2`, id, tenantID).
 		Scan(&plan.ID, &plan.ProgramID, &plan.ProgramName, &plan.TermID, &plan.TermName, &plan.MajorID, &plan.MajorName,
-			&plan.EntryYear, &plan.Status, &plan.EntryCount, &plan.GeneratedAt, &plan.ConfirmedAt)
+			&plan.EntryYear, &plan.Status, &plan.EntryCount, &plan.GeneratedAt, &plan.ConfirmedAt,
+			&plan.CreatedBy, &plan.CreatedByName, &plan.Collaborators, &plan.CollaboratorNames,
+			&plan.BatchID, &plan.BatchName, &plan.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &plan, nil
+}
+
+// GetByID 按 ID 查询单个教学计划（不限定租户，供内容动作流转后回查使用）。
+func (s *TeachingPlanStore) GetByID(ctx context.Context, id string) (*domain.TeachingPlan, error) {
+	var plan domain.TeachingPlan
+	err := s.q.QueryRow(ctx, teachingPlanSelectSQL+` WHERE p.id = $1`, id).
+		Scan(&plan.ID, &plan.ProgramID, &plan.ProgramName, &plan.TermID, &plan.TermName, &plan.MajorID, &plan.MajorName,
+			&plan.EntryYear, &plan.Status, &plan.EntryCount, &plan.GeneratedAt, &plan.ConfirmedAt,
+			&plan.CreatedBy, &plan.CreatedByName, &plan.Collaborators, &plan.CollaboratorNames,
+			&plan.BatchID, &plan.BatchName, &plan.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -224,11 +241,17 @@ const teachingPlanSelectSQL = `
 	SELECT p.id, p.program_id, COALESCE(tp.name, ''), p.term_id, COALESCE(t.name, ''), p.major_id, COALESCE(m.name, ''),
 		p.entry_year, p.status,
 		(SELECT COUNT(*) FROM teaching_plan_entries e2 WHERE e2.plan_id = p.id) AS entry_count,
-		p.generated_at, p.confirmed_at
+		p.generated_at, p.confirmed_at,
+		p.created_by, COALESCE(cu.name, ''), p.collaborators,
+		COALESCE((SELECT array_agg(u2.name ORDER BY ord) FROM unnest(p.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u2 ON u2.id = c.id), '{}') AS collaborator_names,
+		p.batch_id, COALESCE(ab.name, ''),
+		p.updated_at
 	FROM teaching_plans p
 	LEFT JOIN training_programs tp ON tp.id = p.program_id
 	LEFT JOIN terms t ON t.id = p.term_id
 	LEFT JOIN majors m ON m.id = p.major_id
+	LEFT JOIN users cu ON cu.id = p.created_by
+	LEFT JOIN affairs_batches ab ON ab.id = p.batch_id
 `
 
 // ListPlanEntries 查询计划条目列表。
@@ -332,12 +355,49 @@ func (s *TeachingPlanStore) DeletePlanEntry(ctx context.Context, id, tenantID st
 	return err
 }
 
-// ConfirmPlan 确认计划。
+// ConfirmPlan 确认计划（draft → published，兼容旧确认语义）。
 func (s *TeachingPlanStore) ConfirmPlan(ctx context.Context, id, tenantID string) error {
 	_, err := s.q.Exec(ctx, `
-		UPDATE teaching_plans SET status = 'confirmed', confirmed_at = NOW() WHERE id = $1 AND tenant_id = $2
+		UPDATE teaching_plans SET status = 'published', confirmed_at = NOW(), updated_at = NOW() WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID)
 	return err
+}
+
+// MarkConfirmed 发布流转成功后记录确认时间（与状态流转同一事务）。
+func (s *TeachingPlanStore) MarkConfirmed(ctx context.Context, tx Queryer, id string) error {
+	_, err := tx.Exec(ctx, `
+		UPDATE teaching_plans SET confirmed_at = NOW() WHERE id = $1
+	`, id)
+	return err
+}
+
+// DeletePlan 删除计划（条目级联删除；被排课引用时由外键拒绝）。
+func (s *TeachingPlanStore) DeletePlan(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM teaching_plans WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	return err
+}
+
+// UpdatePlanMeta 更新计划元数据（批次绑定 / 共建人）。
+func (s *TeachingPlanStore) UpdatePlanMeta(ctx context.Context, id, tenantID string, batchID *string, collaborators *[]string) error {
+	if batchID != nil {
+		var bid *string
+		if *batchID != "" {
+			bid = batchID
+		}
+		if _, err := s.q.Exec(ctx, `
+			UPDATE teaching_plans SET batch_id = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3
+		`, bid, id, tenantID); err != nil {
+			return err
+		}
+	}
+	if collaborators != nil {
+		if _, err := s.q.Exec(ctx, `
+			UPDATE teaching_plans SET collaborators = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3
+		`, *collaborators, id, tenantID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ScanTeachingPlanRows 扫描教学计划行。
@@ -346,7 +406,9 @@ func ScanTeachingPlanRows(rows pgx.Rows) ([]domain.TeachingPlan, error) {
 	for rows.Next() {
 		var p domain.TeachingPlan
 		if err := rows.Scan(&p.ID, &p.ProgramID, &p.ProgramName, &p.TermID, &p.TermName, &p.MajorID, &p.MajorName,
-			&p.EntryYear, &p.Status, &p.EntryCount, &p.GeneratedAt, &p.ConfirmedAt); err != nil {
+			&p.EntryYear, &p.Status, &p.EntryCount, &p.GeneratedAt, &p.ConfirmedAt,
+			&p.CreatedBy, &p.CreatedByName, &p.Collaborators, &p.CollaboratorNames,
+			&p.BatchID, &p.BatchName, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, p)

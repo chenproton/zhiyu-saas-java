@@ -41,6 +41,26 @@ func (s *AffairsPlanService) ConfirmTeachingPlan(ctx context.Context, id, tenant
 	return s.st.TeachingPlans().ConfirmPlan(ctx, id, tenantID)
 }
 
+// GetTeachingPlanByID 按 ID 查询单个教学计划（contentActions 流转后回查用）。
+func (s *AffairsPlanService) GetTeachingPlanByID(ctx context.Context, id string) (*domain.TeachingPlan, error) {
+	return s.st.TeachingPlans().GetByID(ctx, id)
+}
+
+// TeachingPlanStoreRef 返回 store（contentActions pool 用）。
+func (s *AffairsPlanService) TeachingPlanStoreRef() *store.Store {
+	return s.st
+}
+
+// DeleteTeachingPlan 删除计划。
+func (s *AffairsPlanService) DeleteTeachingPlan(ctx context.Context, id, tenantID string) error {
+	return s.st.TeachingPlans().DeletePlan(ctx, id, tenantID)
+}
+
+// UpdateTeachingPlanMeta 更新计划元数据（批次绑定 / 共建人）。
+func (s *AffairsPlanService) UpdateTeachingPlanMeta(ctx context.Context, id, tenantID string, batchID *string, collaborators *[]string) error {
+	return s.st.TeachingPlans().UpdatePlanMeta(ctx, id, tenantID, batchID, collaborators)
+}
+
 // GenerateTeachingPlan 生成教学计划（事务）。
 func (s *AffairsPlanService) GenerateTeachingPlan(ctx context.Context, p *store.GeneratePlanParams, courses []store.PlanCourse, posScenMap map[string][]store.ScenarioBrief, weeksCount int) (string, error) {
 	var planID string

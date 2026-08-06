@@ -30,6 +30,7 @@ var allowedApprovalTables = []string{
 	"question_banks",
 	"exams",
 	"training_programs",
+	"teaching_plans",
 }
 
 // approvalTargetTypeToTable 审批目标类型（记录中存储的单数形式）→ 实体表名映射。
@@ -40,6 +41,7 @@ var approvalTargetTypeToTable = map[string]string{
 	"question_bank":    "question_banks",
 	"exam":             "exams",
 	"training_program": "training_programs",
+	"teaching_plan":    "teaching_plans",
 }
 
 // List 查询审批记录列表。

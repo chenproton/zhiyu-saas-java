@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { StatusBadge } from '@/components/shared/status-badge'
-import { programApi, batchApi } from '@/lib/api'
-import type { TrainingProgram } from '@/lib/types'
+import { useCallback, useEffect, useState, useMemo } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { programApi, teachingPlanApi, batchApi, affairsBatchApi, approvalApi } from '@/lib/api'
+import type { TrainingProgram, TeachingPlan } from '@/lib/types'
 import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
 import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/approval-list-page'
@@ -11,11 +11,18 @@ import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { reportError } from '@/lib/error-handling'
 import { formatDate } from '@/lib/format-utils'
 import { useToast } from '@zhiyu/ui'
+import { StatusBadge } from '@/components/shared/status-badge'
+
+const TYPE_LABELS: Record<string, string> = {
+  training_program: '人培方案',
+  teaching_plan: '教学计划',
+}
 
 interface ApprovalView {
   id: string
-  programId: string
-  programName: string
+  targetType: 'training_program' | 'teaching_plan'
+  targetId: string
+  targetName: string
   batchId?: string
   batchName?: string
   submitterId: string
@@ -26,32 +33,78 @@ interface ApprovalView {
 }
 
 export default function AffairsApprovalsPage() {
-  const targetType = 'training_program'
-  const { records, loading, approve, reject, batchApprove, batchReject, getStepInfo } =
-    useApprovals({ targetType })
+  const {
+    records: programRecords,
+    loading: programLoading,
+    getStepInfo: getProgramStepInfo,
+    approve: approveProgram,
+    reject: rejectProgram,
+    refresh: refreshProgram,
+  } = useApprovals({ targetType: 'training_program' })
+  const {
+    records: planRecords,
+    loading: planLoading,
+    getStepInfo: getPlanStepInfo,
+    approve: approvePlan,
+    reject: rejectPlan,
+    refresh: refreshPlan,
+  } = useApprovals({ targetType: 'teaching_plan' })
   const { getName } = useSubmitterNames()
   const { toast } = useToast()
   const [programMap, setProgramMap] = useState<Map<string, TrainingProgram>>(new Map())
+  const [planMap, setPlanMap] = useState<Map<string, TeachingPlan>>(new Map())
   const [batchMap, setBatchMap] = useState<Map<string, any>>(new Map())
+  const [affairsBatchMap, setAffairsBatchMap] = useState<Map<string, any>>(new Map())
 
   useEffect(() => {
-    Promise.all([programApi.list({ limit: 1000 }), batchApi.list({ limit: 1000 })])
-      .then(([pres, bres]) => {
+    Promise.all([
+      programApi.list({ limit: 1000 }),
+      teachingPlanApi.list({ limit: 1000 }),
+      batchApi.list({ limit: 1000 }),
+      affairsBatchApi.list({ limit: 1000 }),
+    ])
+      .then(([pres, plres, bres, abres]) => {
         setProgramMap(new Map(pres.items.map((p) => [p.id, p])))
+        setPlanMap(new Map(plres.items.map((p) => [p.id, p])))
         setBatchMap(new Map(bres.items.map((b) => [b.id, b])))
+        setAffairsBatchMap(new Map(abres.items.map((b) => [b.id, b])))
       })
       .catch((err) => {
-        reportError(err, { source: '加载培养方案/批次列表' })
+        reportError(err, { source: '加载培养方案/教学计划/批次列表' })
         toast({
           variant: 'destructive',
           title: '加载失败',
-          description: err instanceof Error ? err.message : '加载培养方案/批次列表失败',
+          description: err instanceof Error ? err.message : '加载培养方案/教学计划/批次列表失败',
         })
       })
   }, [toast])
 
+  const loading = programLoading || planLoading
+
+  const allRecords = useMemo(
+    () => [...programRecords, ...planRecords],
+    [programRecords, planRecords],
+  )
+
+  const getStepInfoFn = useCallback(
+    (a: any) => {
+      if (programRecords.includes(a)) return getProgramStepInfo(a)
+      return getPlanStepInfo(a)
+    },
+    [programRecords, getProgramStepInfo, getPlanStepInfo],
+  )
+
   const columns: ApprovalColumn<ApprovalView>[] = [
-    { header: '方案名称', cell: (i) => <span className="font-medium">{i.programName}</span> },
+    {
+      header: '类型',
+      className: 'text-center',
+      cell: (i) => (
+        <Badge variant="outline" className="text-xs">
+          {TYPE_LABELS[i.targetType] || i.targetType}
+        </Badge>
+      ),
+    },
+    { header: '名称', cell: (i) => <span className="font-medium">{i.targetName}</span> },
     {
       header: '所属批次组',
       cell: (i) => <span className="text-sm text-gray-600">{i.batchName || '-'}</span>,
@@ -62,43 +115,115 @@ export default function AffairsApprovalsPage() {
       cell: (i) => <span className="text-sm text-gray-600">{i.submittedAt}</span>,
     },
     { header: '状态', className: 'text-center', cell: (i) => <StatusBadge status={i.status} /> },
+    {
+      header: '当前步骤',
+      className: 'text-center',
+      cell: (i) =>
+        i.stepInfo ? (
+          <Badge variant="outline" className="text-xs">
+            {i.stepInfo.currentStepName}
+            {i.stepInfo.totalSteps > 1 && (
+              <span className="ml-1 text-gray-400">
+                ({i.stepInfo.currentStepIndex + 1}/{i.stepInfo.totalSteps})
+              </span>
+            )}
+          </Badge>
+        ) : (
+          <span className="text-xs text-gray-400">-</span>
+        ),
+    },
   ]
 
   const mapRecord = useCallback(
     (a: any): ApprovalView => {
-      const program = programMap.get(a.targetId)
-      const batch = program?.batchId ? batchMap.get(program.batchId) : undefined
+      const isProgram = programRecords.includes(a)
+      const targetType = isProgram ? ('training_program' as const) : ('teaching_plan' as const)
+      const target = (isProgram ? programMap : planMap).get(a.targetId)
+      const batchId = target?.batchId
+      const targetName = isProgram
+        ? (target as TrainingProgram | undefined)?.name || a.targetId
+        : `${(target as TeachingPlan | undefined)?.programName || ''} ${(target as TeachingPlan | undefined)?.termName || ''}`.trim() || a.targetId
       return {
         id: a.id,
-        programId: a.targetId,
-        programName: program?.name || a.targetId,
-        batchId: program?.batchId,
-        batchName: batch?.name,
+        targetType,
+        targetId: a.targetId,
+        targetName,
+        batchId,
+        batchName: batchId
+          ? (isProgram ? batchMap : affairsBatchMap).get(batchId)?.name
+          : undefined,
         submitterId: a.submitterId,
         status: a.status,
         submittedAt: formatDate(a.createdAt),
-        stepInfo: getStepInfo(a),
+        stepInfo: getStepInfoFn(a),
         history: a.history,
       }
     },
-    [programMap, batchMap, getStepInfo],
+    [programRecords, programMap, planMap, batchMap, affairsBatchMap, getStepInfoFn],
   )
+
+  const handleApprove = async (id: string, comment: string) => {
+    const record = allRecords.find((r) => r.id === id)
+    if (!record) return
+    if (programRecords.includes(record)) await approveProgram(id, comment)
+    else await approvePlan(id, comment)
+  }
+
+  const handleReject = async (id: string, comment: string) => {
+    const record = allRecords.find((r) => r.id === id)
+    if (!record) return
+    if (programRecords.includes(record)) await rejectProgram(id, comment)
+    else await rejectPlan(id, comment)
+  }
+
+  const handleBatchReview = async (
+    ids: string[],
+    status: 'approved' | 'rejected',
+    comment?: string,
+  ) => {
+    if (ids.length === 0) return
+    const label = status === 'approved' ? '通过' : '驳回'
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) => approvalApi.review(id, { status, comment })),
+      )
+      const success = results.filter((r) => r.status === 'fulfilled').length
+      const failed = results.length - success
+      if (failed === 0) {
+        toast({ title: `批量${label}成功，共 ${success} 条` })
+      } else {
+        toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
+      }
+      await Promise.all([refreshProgram(), refreshPlan()])
+    } catch (err: any) {
+      toast({ title: err.message || `批量${label}失败`, variant: 'destructive' })
+    }
+  }
 
   return (
     <ApprovalListPage<ApprovalView>
-      entityLabel="人培方案"
-      pageDescription="审核人培方案提交申请"
+      entityLabel="教务资源"
+      pageDescription="审核人培方案与教学计划提交申请"
       emptyPendingText="所有提交都已处理完毕"
-      records={records}
+      records={allRecords}
       loading={loading}
-      onApprove={approve}
-      onReject={reject}
-      onBatchApprove={batchApprove}
-      onBatchReject={batchReject}
+      onApprove={handleApprove}
+      onReject={handleReject}
+      onBatchApprove={(ids, comment) => handleBatchReview(ids, 'approved', comment)}
+      onBatchReject={(ids, comment) => handleBatchReview(ids, 'rejected', comment)}
       mapRecord={mapRecord}
+      detailHref={(item) =>
+        item.targetType === 'teaching_plan'
+          ? `/affairs/teaching-plans/${item.targetId}`
+          : `/affairs/programs/${item.targetId}`
+      }
       columns={columns}
       groupOf={(item) => item.batchId}
-      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
+      groupLabelOf={(key) =>
+        key
+          ? affairsBatchMap.get(key)?.name || batchMap.get(key)?.name || key
+          : '未关联批次'
+      }
     />
   )
 }

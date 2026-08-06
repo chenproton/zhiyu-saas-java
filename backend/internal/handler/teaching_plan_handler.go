@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -56,6 +57,11 @@ func (h *TeachingPlanHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, ListResponse[domain.TeachingPlan]{Items: items, Total: total})
+}
+
+// Create 内容管理通用入口：生成教学计划（选择人培方案+学期后生成草稿）。
+func (h *TeachingPlanHandler) Create(w http.ResponseWriter, r *http.Request) {
+	h.Generate(w, r)
 }
 
 func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +124,7 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 
 	planID, err := h.Service.GenerateTeachingPlan(ctx, &store.GeneratePlanParams{
 		TenantID: tenantID, ProgramID: req.ProgramID, TermID: req.TermID,
-		MajorID: program.MajorID, EntryYear: program.EntryYear,
+		MajorID: program.MajorID, EntryYear: program.EntryYear, CreatedBy: &claims.UserID,
 	}, courses, posScenMap, weeksCount)
 	if err != nil {
 		respondServerError(w, r, err, "生成教学计划失败")
@@ -276,4 +282,116 @@ func (h *TeachingPlanHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	}
 	plan, _ := h.Service.GetTeachingPlan(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusOK, plan)
+}
+
+// Update 更新计划元数据（批次绑定 / 共建人）。
+func (h *TeachingPlanHandler) Update(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		BatchID       *string  `json:"batchId"`
+		Collaborators []string `json:"collaborators"`
+	}
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if _, err := h.Service.GetTeachingPlan(r.Context(), id, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "教学计划不存在")
+		return
+	}
+	var collaborators *[]string
+	if req.Collaborators != nil {
+		collaborators = &req.Collaborators
+	}
+	if err := h.Service.UpdateTeachingPlanMeta(r.Context(), id, tenantID, req.BatchID, collaborators); err != nil {
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusBadRequest, "批次不存在")
+			return
+		}
+		respondServerError(w, r, err, "更新教学计划失败")
+		return
+	}
+	plan, err := h.Service.GetTeachingPlan(r.Context(), id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询教学计划失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, plan)
+}
+
+// Delete 删除计划（已被排课引用的计划由外键拒绝）。
+func (h *TeachingPlanHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.Service.GetTeachingPlan(r.Context(), id, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "教学计划不存在")
+		return
+	}
+	if err := h.Service.DeleteTeachingPlan(r.Context(), id, tenantID); err != nil {
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusBadRequest, "该计划已有排课记录，无法删除")
+			return
+		}
+		respondServerError(w, r, err, "删除教学计划失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+func (h *TeachingPlanHandler) actions() contentActions {
+	return contentActions{
+		st:         h.Service.TeachingPlanStoreRef(),
+		table:      "teaching_plans",
+		entityName: "teaching_plan",
+		targetType: "teaching_plan",
+		inviteCol:  "collaborators",
+		fetch: func(ctx context.Context, id string) (interface{}, error) {
+			return h.Service.GetTeachingPlanByID(ctx, id)
+		},
+	}
+}
+
+func (h *TeachingPlanHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusPending)
+}
+func (h *TeachingPlanHandler) Review(w http.ResponseWriter, r *http.Request) {
+	h.actions().review(w, r)
+}
+func (h *TeachingPlanHandler) Archive(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusArchived)
+}
+func (h *TeachingPlanHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+func (h *TeachingPlanHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+func (h *TeachingPlanHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	h.actions().saveDraft(w, r)
+}
+func (h *TeachingPlanHandler) Invite(w http.ResponseWriter, r *http.Request) {
+	h.actions().invite(w, r)
+}
+
+// Publish 发布（approved → published），同时记录确认时间。
+func (h *TeachingPlanHandler) Publish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transitionWithHook(w, r, domain.StatusPublished, func(txStore *store.Store, id string) error {
+		return txStore.TeachingPlans().MarkConfirmed(r.Context(), txStore.Q(), id)
+	})
 }

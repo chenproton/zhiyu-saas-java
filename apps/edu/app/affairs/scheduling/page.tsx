@@ -38,7 +38,7 @@ function SchedulingPageInner() {
 
   const loadPlans = useCallback(async () => {
     try {
-      const res = await teachingPlanApi.list({ status: 'confirmed', limit: 200 })
+      const res = await teachingPlanApi.list({ status: 'published', limit: 200 })
       setPlans(res.items)
       const targetId = planIdParam || (res.items[0]?.id ?? '')
       setPlanId((prev) => prev || targetId)

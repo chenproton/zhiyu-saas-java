@@ -111,6 +111,35 @@ export const teachingPlanApi = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
+  /** 内容管理通用入口：generate 的别名，供 ContentListPage create 使用 */
+  create: (req: { programId: string; termId: string }) =>
+    request<TeachingPlanDetail>('/affairs/teaching-plans', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  /** 更新计划元数据（批次绑定 / 共建人） */
+  update: (id: string, req: { batchId?: string; collaborators?: string[] }) =>
+    request<TeachingPlan>(`/affairs/teaching-plans/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(req),
+    }),
+  delete: (id: string) =>
+    request<{ id: string }>(`/affairs/teaching-plans/${id}`, { method: 'DELETE' }),
+  submit: (id: string) =>
+    request<TeachingPlan>(`/affairs/teaching-plans/${id}/submit`, { method: 'POST' }),
+  withdraw: (id: string) =>
+    request<TeachingPlan>(`/affairs/teaching-plans/${id}/withdraw`, { method: 'POST' }),
+  publish: (id: string) =>
+    request<TeachingPlan>(`/affairs/teaching-plans/${id}/publish`, { method: 'POST' }),
+  unpublish: (id: string) =>
+    request<TeachingPlan>(`/affairs/teaching-plans/${id}/unpublish`, { method: 'POST' }),
+  archive: (id: string) =>
+    request<TeachingPlan>(`/affairs/teaching-plans/${id}/archive`, { method: 'POST' }),
+  invite: (id: string, userId: string) =>
+    request<TeachingPlan>(`/affairs/teaching-plans/${id}/invite`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
   confirm: (id: string) =>
     request<TeachingPlan>(`/affairs/teaching-plans/${id}/confirm`, { method: 'POST' }),
   updateEntry: (id: string, req: TeachingPlanEntryUpdatePayload) =>

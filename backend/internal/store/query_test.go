@@ -139,7 +139,7 @@ func TestWhitelistCoversHandlerConfigs(t *testing.T) {
 		"exams e",
 		"exam_results er LEFT JOIN majors m ON m.id = er.major_id",
 		"training_programs tp LEFT JOIN majors m ON m.id = tp.major_id LEFT JOIN users cu ON cu.id = tp.created_by LEFT JOIN batches lb ON lb.id = tp.batch_id",
-		"teaching_plans p LEFT JOIN training_programs tp ON tp.id = p.program_id LEFT JOIN terms t ON t.id = p.term_id LEFT JOIN majors m ON m.id = p.major_id",
+		"teaching_plans p LEFT JOIN training_programs tp ON tp.id = p.program_id LEFT JOIN terms t ON t.id = p.term_id LEFT JOIN majors m ON m.id = p.major_id LEFT JOIN users cu ON cu.id = p.created_by LEFT JOIN affairs_batches ab ON ab.id = p.batch_id",
 		"banner_configs",
 		"terms",
 		"workflows",

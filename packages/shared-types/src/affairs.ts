@@ -85,7 +85,7 @@ export interface TrainingProgramCoursePayload {
   sortOrder: number
 }
 
-/** 教学计划（status: draft/confirmed） */
+/** 教学计划（status: draft/pending/approved/rejected/published/archived） */
 export interface TeachingPlan {
   id: string
   programId: string
@@ -99,6 +99,14 @@ export interface TeachingPlan {
   entryCount: number
   generatedAt: string
   confirmedAt?: string
+  createdBy?: string
+  createdByName?: string
+  collaborators?: string[]
+  collaboratorNames?: string[]
+  batchId?: string
+  batchName?: string
+  updatedAt?: string
+  rejectReason?: string
 }
 
 /** 教学计划条目（type: theory/practice/scene；status: planned/scheduled） */

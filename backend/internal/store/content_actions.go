@@ -14,7 +14,7 @@ type txBeginner interface {
 }
 
 // AllowedContentTables 内容动作允许操作的表白名单（handler 侧校验共用，单一真相）。
-var AllowedContentTables = []string{"career_positions", "courses", "exams", "question_banks", "scenarios", "training_programs"}
+var AllowedContentTables = []string{"career_positions", "courses", "exams", "question_banks", "scenarios", "training_programs", "teaching_plans"}
 
 // AllowedInviteColumns 内容动作允许更新的协作者列白名单（handler 侧校验共用，单一真相）。
 var AllowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_creator_ids", "collaborators"}
