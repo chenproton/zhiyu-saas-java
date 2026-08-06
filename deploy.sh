@@ -591,22 +591,26 @@ update_env_var "$ENV_FILE" "KK_BASE_URL" "$KK_BASE_URL"
 
 # 移动端访问二维码站点地址：未手动设置时，根据 nginx 配置自动推导协议、域名和端口
 if [[ -z "${NEXT_PUBLIC_SITE_URL:-}" ]]; then
-  if [[ -n "${NGINX_SSL_DOMAIN:-}" ]] || [[ -f /etc/nginx/conf.d/zhiyu-saas-ssl.conf ]] || [[ -f /etc/nginx/conf.d/ai-zhiyu-https.conf ]] || [[ -n "${NGINX_SSL_CERT:-}" ]] || [[ "${NGINX_PORT:-80}" == "443" ]]; then
-    site_scheme="https"
-  else
-    site_scheme="http"
-  fi
+  site_scheme="http"
+  site_host=""
   if [[ -n "${NGINX_SSL_DOMAIN:-}" ]]; then
+    site_scheme="https"
     site_host="$NGINX_SSL_DOMAIN"
   else
-    site_host="${NGINX_SERVER_NAME:-_}"
-    [[ "$site_host" == "_" ]] && site_host="localhost"
+    # 从现有 https 配置（含手动维护的 ssl conf）中提取域名
+    site_host=$(grep -h "server_name" /etc/nginx/conf.d/zhiyu-saas-ssl.conf /etc/nginx/conf.d/ai-zhiyu-https.conf 2>/dev/null | sed 's/.*server_name[[:space:]]*//; s/[[:space:]]*;.*//' | grep -v "^_" | awk '{print $1}' | head -1)
+    if [[ -n "$site_host" ]]; then
+      site_scheme="https"
+    elif [[ -n "${NGINX_SERVER_NAME:-}" && "${NGINX_SERVER_NAME:-_}" != "_" ]]; then
+      site_host="$NGINX_SERVER_NAME"
+    fi
   fi
   site_port=""
   if [[ "$site_scheme" == "http" && "${NGINX_PORT:-80}" != "80" ]]; then
     site_port=":${NGINX_PORT}"
   fi
-  NEXT_PUBLIC_SITE_URL="${site_scheme}://${site_host}${site_port}"
+  # 未推导出域名时留空，前端回退使用当前访问地址（window.location.origin）
+  [[ -n "$site_host" ]] && NEXT_PUBLIC_SITE_URL="${site_scheme}://${site_host}${site_port}"
 fi
 update_env_var "$ENV_FILE" "NEXT_PUBLIC_SITE_URL" "$NEXT_PUBLIC_SITE_URL"
 
