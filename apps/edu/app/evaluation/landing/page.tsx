@@ -248,7 +248,7 @@ export default function LandingHomePage() {
     <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* Hero Banner */}
       <div className="relative w-full pt-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a3d91] via-[#1677ff] to-[#5aa2ff]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a3d91] via-[#0049ae] to-[#2f6fdf]" />
         <div
           className="absolute inset-0 opacity-[0.08]"
           style={{

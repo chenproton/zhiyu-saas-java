@@ -5,7 +5,7 @@ import { MALL_URL } from '@/lib/external-links'
 export function Footer() {
   return (
     <footer className="relative mt-20 bg-[#141a2e]">
-      <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#1677FF]" />
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#0049AE]" />
 
       <div className="max-w-6xl mx-auto px-10 pt-12 pb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">

@@ -61,7 +61,7 @@ export default function ExamCenterPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* 页头 */}
-      <div className="bg-gradient-to-br from-[#0a3d91] via-[#1677ff] to-[#5aa2ff]">
+      <div className="bg-gradient-to-br from-[#0a3d91] via-[#0049ae] to-[#2f6fdf]">
         <div className="max-w-[1400px] mx-auto px-8 py-8">
           <Link
             href="/evaluation/landing"
