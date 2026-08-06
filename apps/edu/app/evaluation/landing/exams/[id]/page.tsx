@@ -217,9 +217,9 @@ export default function ExamDetailPage() {
         <div style={{ textAlign: 'center', padding: '80px 0', color: '#8f959e' }}>
           <AlertCircle style={{ width: 48, height: 48, margin: '0 auto 12px', opacity: 0.3 }} />
           <p>考试不存在或已删除</p>
-          <Link href="/evaluation/landing/exams">
+          <Link href="/evaluation/landing/exam-center">
             <Button variant="outline" size="sm" style={{ marginTop: 16 }}>
-              返回考试列表
+              返回考试中心
             </Button>
           </Link>
         </div>
@@ -266,9 +266,9 @@ export default function ExamDetailPage() {
     return (
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: 24 }}>
         <div style={{ marginBottom: 24 }}>
-          <Link href="/evaluation/landing/exams">
+          <Link href="/evaluation/landing/exam-center">
             <Button variant="ghost" size="sm" style={{ gap: 6 }}>
-              <ArrowLeft style={{ width: 16, height: 16 }} /> 返回考试列表
+              <ArrowLeft style={{ width: 16, height: 16 }} /> 返回考试中心
             </Button>
           </Link>
         </div>
@@ -297,8 +297,8 @@ export default function ExamDetailPage() {
                 <Button variant="outline">返回课程学习页</Button>
               </Link>
             )}
-            <Link href="/evaluation/landing/exams">
-              <Button variant="outline">返回考试列表</Button>
+            <Link href="/evaluation/landing/exam-center">
+              <Button variant="outline">返回考试中心</Button>
             </Link>
           </div>
         </div>
@@ -559,9 +559,9 @@ export default function ExamDetailPage() {
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: 24 }}>
       <div style={{ marginBottom: 24 }}>
-        <Link href="/evaluation/landing/exams">
+        <Link href="/evaluation/landing/exam-center">
           <Button variant="ghost" size="sm" style={{ gap: 6 }}>
-            <ArrowLeft style={{ width: 16, height: 16 }} /> 返回考试列表
+            <ArrowLeft style={{ width: 16, height: 16 }} /> 返回考试中心
           </Button>
         </Link>
       </div>
