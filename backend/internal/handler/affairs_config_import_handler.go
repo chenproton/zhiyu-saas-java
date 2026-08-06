@@ -116,6 +116,13 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 				continue
 			}
 			sortOrder, _ := strconv.Atoi(sortStr)
+			// 导入无时段类型列，按排序位置推断（与迁移回填/旧标签约定一致：0-3 上午、4-7 下午、8+ 晚自习）
+			slotType := "morning"
+			if sortOrder >= 4 && sortOrder < 8 {
+				slotType = "afternoon"
+			} else if sortOrder >= 8 {
+				slotType = "evening"
+			}
 			var st, et *string
 			if startTime != "" {
 				st = &startTime
@@ -129,8 +136,8 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 				skipped++
 				continue
 			}
-			h.DB.Exec(ctx, `INSERT INTO period_slots (id, tenant_id, name, start_time, end_time, sort_order) VALUES ($1,$2,$3,$4,$5,$6)`,
-				uuid.NewString(), tenantID, name, st, et, sortOrder)
+			h.DB.Exec(ctx, `INSERT INTO period_slots (id, tenant_id, name, slot_type, start_time, end_time, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+				uuid.NewString(), tenantID, name, slotType, st, et, sortOrder)
 			created++
 		}
 		result["periodSlotsCreated"] = created
@@ -184,7 +191,7 @@ func (h *AffairsConfigImportHandler) ServeTemplate(w http.ResponseWriter, r *htt
 		"填写说明：\n类型：教室/机房/实训室/实验室/校外基地\n容量：整数，选填")
 	makeSheet("节次", []string{"名称 *", "开始时间", "结束时间", "排序"},
 		[]float64{16, 10, 10, 8},
-		"填写说明：\n名称：如 上午1-2\n时间：HH:MM 格式\n排序：整数，用于课表行顺序")
+		"填写说明：\n名称：如 上午1-2\n时间：HH:MM 格式\n排序：整数，用于课表行顺序；时段类型按排序自动识别（0-3 上午、4-7 下午、8+ 晚自习）")
 
 	if _, err := f.NewSheet("Sheet1"); err == nil {
 		f.DeleteSheet("Sheet1")
