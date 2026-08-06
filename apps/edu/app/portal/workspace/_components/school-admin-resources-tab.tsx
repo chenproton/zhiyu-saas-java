@@ -65,7 +65,7 @@ export function SchoolAdminResourcesTab() {
             >
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                  <div className="w-10 h-10 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>

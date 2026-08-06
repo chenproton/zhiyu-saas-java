@@ -202,7 +202,7 @@ export function TeacherPortraitsTab() {
     return (
       <SectionCard title="我的学生" icon={User} iconColor="blue">
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="ml-3 text-sm text-gray-500">正在加载学生数据...</span>
         </div>
       </SectionCard>
@@ -213,22 +213,22 @@ export function TeacherPortraitsTab() {
     <>
       <SectionCard title="我的学生" icon={User} iconColor="blue">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-          <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 p-3.5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+          <div className="rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/15 p-3.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm">
               <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-[11px] text-blue-500 font-medium">总学生数</p>
-              <p className="text-lg font-bold text-blue-700">{students.length}</p>
+              <p className="text-[11px] text-primary font-medium">总学生数</p>
+              <p className="text-lg font-bold text-primary">{students.length}</p>
             </div>
           </div>
-          <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 p-3.5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+          <div className="rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/15 p-3.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-[11px] text-blue-500 font-medium">当前筛选</p>
-              <p className="text-lg font-bold text-blue-700">{selectedClassName}</p>
+              <p className="text-[11px] text-primary font-medium">当前筛选</p>
+              <p className="text-lg font-bold text-primary">{selectedClassName}</p>
             </div>
           </div>
           <div className="rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 p-3.5 flex items-center gap-3">
@@ -252,7 +252,7 @@ export function TeacherPortraitsTab() {
                     placeholder="搜索姓名或学号..."
                     value={navSearch}
                     onChange={(e) => setNavSearch(e.target.value)}
-                    className="h-9 pl-8 text-xs border-gray-200 bg-white focus:border-blue-300"
+                    className="h-9 pl-8 text-xs border-gray-200 bg-white focus:border-primary/30"
                   />
                 </div>
               </div>
@@ -261,16 +261,16 @@ export function TeacherPortraitsTab() {
                   onClick={() => setSelectedClass('all')}
                   className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-all ${
                     selectedClass === 'all'
-                      ? 'bg-gradient-to-r from-blue-50 to-blue-100/50 text-blue-700 font-semibold shadow-sm border border-blue-200'
+                      ? 'bg-gradient-to-r from-primary/5 to-primary/10 text-primary font-semibold shadow-sm border border-primary/15'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   <div
-                    className={`w-1.5 h-1.5 rounded-full mr-2.5 ${selectedClass === 'all' ? 'bg-blue-500' : 'bg-gray-300'}`}
+                    className={`w-1.5 h-1.5 rounded-full mr-2.5 ${selectedClass === 'all' ? 'bg-primary' : 'bg-gray-300'}`}
                   />
                   <span>全部班级</span>
                   <span
-                    className={`ml-auto text-xs font-medium ${selectedClass === 'all' ? 'text-blue-500' : 'text-gray-400'}`}
+                    className={`ml-auto text-xs font-medium ${selectedClass === 'all' ? 'text-primary' : 'text-gray-400'}`}
                   >
                     {students.length}
                   </span>
@@ -290,18 +290,18 @@ export function TeacherPortraitsTab() {
                               onClick={() => setSelectedClass(className)}
                               className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-all ${
                                 isActive
-                                  ? 'bg-gradient-to-r from-blue-50 to-blue-100/50 text-blue-700 font-semibold border border-blue-200 shadow-sm'
+                                  ? 'bg-gradient-to-r from-primary/5 to-primary/10 text-primary font-semibold border border-primary/15 shadow-sm'
                                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                               }`}
                             >
                               <div className="flex items-center gap-2.5">
                                 <div
-                                  className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-blue-500' : 'bg-gray-300'}`}
+                                  className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-primary' : 'bg-gray-300'}`}
                                 />
                                 <span>{className}</span>
                               </div>
                               <span
-                                className={`text-xs font-medium ${isActive ? 'text-blue-500' : 'text-gray-400'}`}
+                                className={`text-xs font-medium ${isActive ? 'text-primary' : 'text-gray-400'}`}
                               >
                                 {count}
                               </span>
@@ -323,7 +323,7 @@ export function TeacherPortraitsTab() {
                 placeholder="搜索姓名或学号..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-10 text-sm border-gray-200 bg-white focus:border-blue-300 rounded-xl"
+                className="pl-9 h-10 text-sm border-gray-200 bg-white focus:border-primary/30 rounded-xl"
               />
             </div>
 
@@ -340,7 +340,7 @@ export function TeacherPortraitsTab() {
                   return (
                     <div
                       key={student.userId}
-                      className="group relative rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-md transition-all cursor-pointer overflow-hidden"
+                      className="group relative rounded-xl border border-gray-100 bg-white hover:border-primary/25 hover:shadow-md transition-all cursor-pointer overflow-hidden"
                     >
                       <div
                         className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${getGradeBg(student.grade)}`}
@@ -348,7 +348,7 @@ export function TeacherPortraitsTab() {
                       <div className="p-4 pl-5">
                         <div className="flex items-center gap-4">
                           <Avatar className="w-11 h-11 ring-2 ring-white shadow-sm">
-                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-bold">
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white text-sm font-bold">
                               {student.name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
@@ -369,7 +369,7 @@ export function TeacherPortraitsTab() {
                               <div className="flex items-center gap-1.5">
                                 <Button
                                   size="sm"
-                                  className="h-8 gap-1.5 text-xs bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm"
+                                  className="h-8 gap-1.5 text-xs bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-white shadow-sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     setSelectedUserId(student.userId)
@@ -394,7 +394,7 @@ export function TeacherPortraitsTab() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 gap-1.5 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                                  className="h-8 gap-1.5 text-xs border-primary/15 text-primary hover:bg-primary/5"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     setActiveStudent(student)
@@ -482,7 +482,7 @@ export function TeacherPortraitsTab() {
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-blue-600" />
+              <Target className="h-5 w-5 text-primary" />
               查看学生能力报告
             </DialogTitle>
             <DialogDescription>

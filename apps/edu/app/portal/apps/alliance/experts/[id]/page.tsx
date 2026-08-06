@@ -193,7 +193,7 @@ export default function AllianceExpertDetailPage() {
       subtitle={[expert?.title, expert?.position].filter(Boolean).join(' · ')}
       statusBadge={
         expert ? (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/5 text-primary">
             {allianceLabel('expertStatus', expert.status)}
           </span>
         ) : undefined

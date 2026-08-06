@@ -337,7 +337,7 @@ export default function ExamComposerPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-blue-600 hover:text-blue-700"
+                      className="text-primary hover:text-primary/90"
                       onClick={() => updateExamStatus(examId, 'publish')}
                     >
                       <Rocket className="mr-1 size-4" />

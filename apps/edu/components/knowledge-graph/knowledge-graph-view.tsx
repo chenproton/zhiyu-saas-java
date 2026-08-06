@@ -41,8 +41,8 @@ const TYPE_META: Record<
 > = {
   position: {
     label: '岗位',
-    color: '#1d4ed8',
-    bg: '#dbeafe',
+    color: 'var(--primary)',
+    bg: 'color-mix(in srgb, var(--primary) 10%, white)',
     icon: <Briefcase className="size-5" />,
   },
   domain: {

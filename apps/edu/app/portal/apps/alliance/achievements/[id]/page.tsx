@@ -322,7 +322,7 @@ export default function AllianceAchievementDetailPage() {
         subtitle={`${allianceLabel('achievementType', achievement?.type)}成果`}
         statusBadge={
           achievement ? (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/5 text-primary">
               {allianceLabel('achievementStatus', achievement.status)}
             </span>
           ) : undefined

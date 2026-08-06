@@ -557,7 +557,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                     }}
                     onMouseEnter={() => setHoveredRespId(resp.id)}
                     onMouseLeave={() => setHoveredRespId(null)}
-                    className={`${isSelectedGroup ? 'bg-blue-50/40 rounded-2xl' : ''} px-4 py-3`}
+                    className={`${isSelectedGroup ? 'bg-primary/5 rounded-2xl' : ''} px-4 py-3`}
                   >
                     <div className="flex items-center gap-2 mb-3 px-1">
                       <div className={`w-2 h-2 rounded-full shrink-0 ${getRespColor(resp.id)}`} />
@@ -617,7 +617,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                           return (
                             <div
                               key={binding.id}
-                              className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-blue-200 hover:shadow-md transition-all duration-200 group"
+                              className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-primary/25 hover:shadow-md transition-all duration-200 group"
                             >
                               <div className="flex items-start justify-between mb-4 relative">
                                 <div className="flex items-center gap-2.5 min-w-0 pr-1">
@@ -665,10 +665,10 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                         }
                                         className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
                                           idx === levelIdx
-                                            ? 'border-blue-500 bg-white ring-2 ring-blue-200 scale-110'
+                                            ? 'border-primary bg-white ring-2 ring-primary/20 scale-110'
                                             : isReached
-                                              ? 'border-blue-300 bg-blue-200'
-                                              : 'border-gray-300 bg-white hover:border-blue-400'
+                                              ? 'border-primary/30 bg-primary/15'
+                                              : 'border-gray-300 bg-white hover:border-primary/40'
                                         }`}
                                         title={level.description}
                                       />
@@ -684,9 +684,9 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                       key={level.value}
                                       className={`text-[10px] font-medium transition-colors ${
                                         idx === levelIdx
-                                          ? 'text-blue-600'
+                                          ? 'text-primary'
                                           : idx <= levelIdx
-                                            ? 'text-blue-400'
+                                            ? 'text-primary/70'
                                             : 'text-gray-300'
                                       }`}
                                     >
@@ -705,7 +705,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                     })
                                   }
                                   placeholder="胜任标准描述..."
-                                  className="text-[11px] min-h-[40px] resize-none border-gray-100 focus:border-blue-300 bg-gray-50/50 rounded-xl placeholder:text-gray-300"
+                                  className="text-[11px] min-h-[40px] resize-none border-gray-100 focus:border-primary/30 bg-gray-50/50 rounded-xl placeholder:text-gray-300"
                                   rows={2}
                                 />
                               </div>
@@ -996,7 +996,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                 <p className="text-sm">暂无匹配的能力点</p>
                 {abilityPoolSearch.trim() && (
                   <button
-                    className="mt-3 text-xs text-blue-500 hover:text-blue-600 font-medium"
+                    className="mt-3 text-xs text-primary hover:text-primary font-medium"
                     onClick={() => {
                       setNewAbilityName(abilityPoolSearch.trim())
                       setNewAbilityAttributes([])
@@ -1039,7 +1039,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                         )
                       if (isEditing) {
                         return (
-                          <tr key={ability.id} className="bg-blue-50/40">
+                          <tr key={ability.id} className="bg-primary/5">
                             <td colSpan={4} className="px-4 py-3">
                               <div className="flex items-start gap-4">
                                 <div className="flex-1 space-y-2">

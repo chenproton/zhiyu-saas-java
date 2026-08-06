@@ -250,16 +250,16 @@ export function LearningTab() {
             {filteredCourses.map((course) => (
               <div
                 key={course.id}
-                className="group p-4 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+                className="group p-4 rounded-xl border border-gray-100 bg-white hover:border-primary/25 hover:shadow-sm transition-all cursor-pointer"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 flex items-center justify-center text-xl font-bold shrink-0">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 text-primary flex items-center justify-center text-xl font-bold shrink-0">
                     {course.cover}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <div>
-                        <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <h3 className="text-base font-semibold text-gray-900 group-hover:text-primary transition-colors">
                           {course.name}
                         </h3>
                         <p className="text-xs text-gray-500">
@@ -269,13 +269,13 @@ export function LearningTab() {
                       </div>
                       <Badge
                         variant="outline"
-                        className="text-xs shrink-0 border-blue-200 text-blue-600 bg-blue-50/50"
+                        className="text-xs shrink-0 border-primary/15 text-primary bg-primary/5"
                       >
                         {course.type}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-medium">
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-primary/5 text-primary font-medium">
                         {course.progress}% 完成
                       </span>
                     </div>
@@ -292,7 +292,7 @@ export function LearningTab() {
                   </div>
                   <Button
                     size="sm"
-                    className="shrink-0 bg-blue-600 hover:bg-blue-700"
+                    className="shrink-0 bg-primary hover:bg-primary/90"
                     onClick={() => router.push(`/lesson/landing/${course.id}`)}
                   >
                     <Play className="w-3.5 h-3.5 mr-1" />

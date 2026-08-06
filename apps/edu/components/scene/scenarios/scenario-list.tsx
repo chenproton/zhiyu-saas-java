@@ -151,7 +151,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                   <TableCell className="text-center">
                     <Link
                       href={`${basePath}/${scenario.id}/edit/tasks`}
-                      className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                      className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
                     >
                       {scenario.taskCount ?? scenario.tasks?.length ?? 0}
                     </Link>

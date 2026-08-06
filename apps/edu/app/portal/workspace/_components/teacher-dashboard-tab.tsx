@@ -152,7 +152,7 @@ export function TeacherDashboardTab({
                       className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-gray-500 group-hover:text-blue-600 transition-colors">
+                        <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors">
                           <Icon className="w-4 h-4" />
                         </div>
                         <div>
@@ -200,7 +200,7 @@ export function TeacherDashboardTab({
                       {item.type}
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                      <p className="text-sm text-gray-900 truncate group-hover:text-primary transition-colors">
                         {item.title}
                       </p>
                       <p className="text-xs text-gray-500">{item.date}</p>
@@ -263,9 +263,9 @@ const scheduleTypeConfig: Record<
   { bg: string; border: string; badge: string; label: string }
 > = {
   course: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    badge: 'border-blue-300 text-blue-600',
+    bg: 'bg-primary/5',
+    border: 'border-primary/15',
+    badge: 'border-primary/30 text-primary',
     label: '课程',
   },
   scene: {
@@ -433,7 +433,7 @@ function CourseScheduleTable({
         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-600" />
+              <Calendar className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold text-gray-900">
                 {year}年{month}月 · 第{weekIndex}周
               </span>
@@ -552,7 +552,7 @@ function CourseScheduleTable({
                     <PopoverTrigger asChild>
                       <div className="p-1.5 border-r border-gray-200 last:border-r-0 min-h-[80px]">
                         <div
-                          className={`w-full h-full rounded-lg p-2 text-xs space-y-1 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer ring-1 ring-transparent ${urls.isHybrid ? 'hover:ring-blue-300/50' : 'hover:ring-emerald-300/50'} ${config.bg} border ${config.border}`}
+                          className={`w-full h-full rounded-lg p-2 text-xs space-y-1 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer ring-1 ring-transparent ${urls.isHybrid ? 'hover:ring-primary/30' : 'hover:ring-emerald-300/50'} ${config.bg} border ${config.border}`}
                         >
                           <div className="flex items-center gap-1">
                             <Badge
@@ -580,7 +580,7 @@ function CourseScheduleTable({
                             </div>
                           )}
                           <div
-                            className={`text-[10px] font-medium mt-0.5 ${urls.isHybrid ? 'text-blue-500' : 'text-emerald-600'}`}
+                            className={`text-[10px] font-medium mt-0.5 ${urls.isHybrid ? 'text-primary' : 'text-emerald-600'}`}
                           >
                             点击查看操作
                           </div>
@@ -608,10 +608,10 @@ function CourseScheduleTable({
                           if (existingAssoc && existingAssoc.subItems.length > 0) {
                             return (
                               <div
-                                className={`rounded-lg border p-2 space-y-1 ${urls.isHybrid ? 'border-blue-100 bg-blue-50/50' : 'border-emerald-100 bg-emerald-50/50'}`}
+                                className={`rounded-lg border p-2 space-y-1 ${urls.isHybrid ? 'border-primary/10 bg-primary/5' : 'border-emerald-100 bg-emerald-50/50'}`}
                               >
                                 <span
-                                  className={`text-[10px] font-medium block ${urls.isHybrid ? 'text-blue-500' : 'text-emerald-600'}`}
+                                  className={`text-[10px] font-medium block ${urls.isHybrid ? 'text-primary' : 'text-emerald-600'}`}
                                 >
                                   {urls.isHybrid ? '已关联节次' : '已关联任务'}（
                                   {existingAssoc.subItems.length}）
@@ -620,7 +620,7 @@ function CourseScheduleTable({
                                   {existingAssoc.subItems.map((si) => (
                                     <div
                                       key={si.id}
-                                      className={`text-xs text-gray-700 pl-2 border-l-2 ${urls.isHybrid ? 'border-blue-200' : 'border-emerald-200'}`}
+                                      className={`text-xs text-gray-700 pl-2 border-l-2 ${urls.isHybrid ? 'border-primary/15' : 'border-emerald-200'}`}
                                     >
                                       {si.name}
                                     </div>
@@ -629,7 +629,7 @@ function CourseScheduleTable({
                                 <Button
                                   size="sm"
                                   variant="link"
-                                  className={`text-[10px] h-5 p-0 ${urls.isHybrid ? 'text-blue-600' : 'text-emerald-600'}`}
+                                  className={`text-[10px] h-5 p-0 ${urls.isHybrid ? 'text-primary' : 'text-emerald-600'}`}
                                   onClick={() => {
                                     if (onPrepRequest)
                                       onPrepRequest(
@@ -654,7 +654,7 @@ function CourseScheduleTable({
                           <Button
                             size="sm"
                             variant="outline"
-                            className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                            className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'border-primary/15 text-primary hover:bg-primary/5' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
                             onClick={() => {
                               if (onPrepRequest)
                                 onPrepRequest(
@@ -673,7 +673,7 @@ function CourseScheduleTable({
                           <Button
                             size="sm"
                             variant="outline"
-                            className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                            className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'border-primary/15 text-primary hover:bg-primary/5' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
                             disabled={!urls.learnUrl}
                             onClick={() => {
                               if (urls.learnUrl) router.push(urls.learnUrl)
@@ -726,7 +726,7 @@ function CourseScheduleTable({
                             <Button
                               size="sm"
                               variant="ghost"
-                              className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'text-blue-600 hover:bg-blue-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                              className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'text-primary hover:bg-primary/5' : 'text-emerald-600 hover:bg-emerald-50'}`}
                               onClick={() => openActionDialog(event, 'tracking')}
                             >
                               <TrendingUp className="h-3.5 w-3.5 mr-1" />
@@ -735,7 +735,7 @@ function CourseScheduleTable({
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="flex-1 justify-center text-[11px] h-7 px-2 text-blue-600 hover:bg-blue-50"
+                              className="flex-1 justify-center text-[11px] h-7 px-2 text-primary hover:bg-primary/5"
                               onClick={() => openActionDialog(event, 'assessment')}
                             >
                               <FileCheck className="h-3.5 w-3.5 mr-1" />

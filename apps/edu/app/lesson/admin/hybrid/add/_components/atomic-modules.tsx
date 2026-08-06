@@ -834,16 +834,16 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                   })
                   resetDialog()
                 }}
-                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors"
               >
-                <PenTool className="h-8 w-8 text-blue-500" />
+                <PenTool className="h-8 w-8 text-primary" />
                 <span className="text-sm font-medium">手动新增提问</span>
               </button>
               <button
                 onClick={() => setAddMode('bank')}
-                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors"
               >
-                <Database className="h-8 w-8 text-blue-500" />
+                <Database className="h-8 w-8 text-primary" />
                 <span className="text-sm font-medium">从题库中引用</span>
               </button>
             </div>
@@ -872,7 +872,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                       onClick={() => setSelectedQuestionId(q.id)}
                       className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
                         selectedQuestionId === q.id
-                          ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-500'
+                          ? 'bg-primary/5 text-primary border-l-2 border-primary'
                           : 'hover:bg-gray-50 border-l-2 border-transparent'
                       }`}
                     >
@@ -1050,16 +1050,16 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                   })
                   resetDialog()
                 }}
-                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors"
               >
-                <PenTool className="h-8 w-8 text-blue-500" />
+                <PenTool className="h-8 w-8 text-primary" />
                 <span className="text-sm font-medium">手动新增任务</span>
               </button>
               <button
                 onClick={() => setAddMode('scenario')}
-                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors"
               >
-                <Database className="h-8 w-8 text-blue-500" />
+                <Database className="h-8 w-8 text-primary" />
                 <span className="text-sm font-medium">从实践场景库引用</span>
               </button>
             </div>

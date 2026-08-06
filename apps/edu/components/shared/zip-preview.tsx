@@ -176,7 +176,7 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
                   href={url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block mt-1 text-blue-600 underline"
+                  className="block mt-1 text-primary underline"
                 >
                   下载原文件
                 </a>
@@ -198,7 +198,7 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
                       onClick={() => selectEntry(e)}
                       className={cn(
                         'w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-gray-100',
-                        isSelected && 'bg-blue-50 text-blue-700',
+                        isSelected && 'bg-primary/5 text-primary',
                       )}
                     >
                       {dir ? (
@@ -249,7 +249,7 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
               <button
                 type="button"
                 onClick={() => downloadEntry(selected)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90"
               >
                 <Download className="size-4" />
                 下载该文件
@@ -262,7 +262,7 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
               <button
                 type="button"
                 onClick={() => downloadEntry(selected)}
-                className="text-blue-600 hover:underline shrink-0 ml-2"
+                className="text-primary hover:underline shrink-0 ml-2"
               >
                 下载
               </button>

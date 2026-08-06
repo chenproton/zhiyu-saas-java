@@ -885,12 +885,12 @@ export function KnowledgeSelector({
                 'px-2.5 py-1 text-xs font-normal hover:cursor-pointer',
                 isReferenceKp(kp)
                   ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+                  : 'bg-primary/5 text-primary hover:bg-primary/10',
               )}
             >
               {kp.name}
               <button
-                className="ml-1 text-blue-400 hover:text-blue-700"
+                className="ml-1 text-primary/70 hover:text-primary"
                 onClick={() => handleRemoveKp(kp.id)}
               >
                 <X className="h-3 w-3" />

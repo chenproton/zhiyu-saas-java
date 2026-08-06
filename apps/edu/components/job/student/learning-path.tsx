@@ -158,7 +158,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
     <div>
       <div className="text-center mb-6">
         <h2 className="text-xl font-semibold text-[#1f2937] mb-2 flex items-center justify-center gap-2">
-          <Route className="w-5 h-5 text-blue-500" />
+          <Route className="w-5 h-5 text-primary" />
           {road ? road.name : '岗位学习路径'}
         </h2>
         <p className="text-[13px] text-[#64748b]">
@@ -170,14 +170,14 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
         <button
           onClick={() => navigate(-1)}
           disabled={activeIndex === 0}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-[#e0e0e0] flex items-center justify-center text-[#64748b] hover:border-blue-500 hover:text-blue-500 disabled:opacity-30 shadow-sm"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-[#e0e0e0] flex items-center justify-center text-[#64748b] hover:border-primary hover:text-primary disabled:opacity-30 shadow-sm"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
         <button
           onClick={() => navigate(1)}
           disabled={activeIndex === steps.length - 1}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-[#e0e0e0] flex items-center justify-center text-[#64748b] hover:border-blue-500 hover:text-blue-500 disabled:opacity-30 shadow-sm"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-[#e0e0e0] flex items-center justify-center text-[#64748b] hover:border-primary hover:text-primary disabled:opacity-30 shadow-sm"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -250,7 +250,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                     </div>
                   )}
                   <div
-                    className={`text-[15px] font-semibold text-center whitespace-nowrap mb-1 ${isActive ? 'text-blue-500' : 'text-[#1f2937]'}`}
+                    className={`text-[15px] font-semibold text-center whitespace-nowrap mb-1 ${isActive ? 'text-primary' : 'text-[#1f2937]'}`}
                   >
                     {scenario.name}
                   </div>
@@ -266,7 +266,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
           <div className="w-10 h-1 bg-[#e0e0e0] rounded mx-auto overflow-hidden">
             <div
               data-thumb
-              className="w-5 h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded transition-transform"
+              className="w-5 h-full bg-gradient-to-r from-primary to-primary/80 rounded transition-transform"
             />
           </div>
         </div>
@@ -296,7 +296,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                 className="flex items-center justify-between py-2 border-t border-[#f1f5f9] first:border-t-0"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-[#eff6ff] text-blue-600 flex items-center justify-center text-xs font-bold">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
                     {idx + 1}
                   </div>
                   <div>
@@ -311,7 +311,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-[#94a3b8]">{task.estimatedHours}课时</span>
                   <button
-                    className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1"
+                    className="text-xs px-3 py-1.5 rounded-md bg-primary text-white hover:bg-primary/90 flex items-center gap-1"
                     onClick={() =>
                       activeScenarioId &&
                       router.push(`/scene/landing/${activeScenarioId}/learn?task=${task.id}`)

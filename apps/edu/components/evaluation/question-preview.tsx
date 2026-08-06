@@ -79,7 +79,7 @@ export function QuestionPreview({ open, onOpenChange, question }: QuestionPrevie
 
           {question.analysis && (
             <div>
-              <h4 className="mb-2 font-medium text-blue-600">答案解析</h4>
+              <h4 className="mb-2 font-medium text-primary">答案解析</h4>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {question.analysis}
               </p>

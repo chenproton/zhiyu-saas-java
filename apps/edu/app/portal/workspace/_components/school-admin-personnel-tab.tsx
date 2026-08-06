@@ -78,11 +78,11 @@ export function SchoolAdminPersonnelTab() {
           return (
             <Card
               key={item.label}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0"
+              className="bg-gradient-to-r from-primary to-primary/70 text-white border-0"
             >
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm">{item.label}</p>
+                  <p className="text-primary-foreground/80 text-sm">{item.label}</p>
                   <p className="text-2xl font-bold">{item.value}</p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
@@ -100,9 +100,9 @@ export function SchoolAdminPersonnelTab() {
             <a
               key={entry.label}
               href={entry.href}
-              className="group flex items-start gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+              className="group flex items-start gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/25 hover:shadow-sm transition-all"
             >
-              <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-primary group-hover:bg-primary/5 group-hover:border-primary/25 transition-colors">
                 <entry.icon className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
@@ -112,7 +112,7 @@ export function SchoolAdminPersonnelTab() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+                className="h-8 w-8 text-gray-300 group-hover:text-primary group-hover:bg-primary/5"
                 aria-label="查看详情"
               >
                 <ChevronRight className="w-4 h-4" />

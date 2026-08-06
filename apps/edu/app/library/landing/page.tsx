@@ -50,7 +50,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
             transform: 'translateY(-50%)',
             width: 4,
             height: 20,
-            background: 'linear-gradient(180deg, #2563eb, #3b82f6)',
+            background: 'linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 80%, white))',
             borderRadius: 2,
           }}
         />
@@ -324,7 +324,7 @@ export default function LibraryLandingPage() {
                 document.getElementById('resource-list')?.scrollIntoView({ behavior: 'smooth' })
               }
               style={{
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 80%, white))',
                 color: '#fff',
                 border: 'none',
                 padding: '11px 32px',
@@ -385,7 +385,7 @@ export default function LibraryLandingPage() {
                     transform: 'translateY(-50%)',
                     width: 4,
                     height: 20,
-                    background: 'linear-gradient(180deg, #2563eb, #3b82f6)',
+                    background: 'linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 80%, white))',
                     borderRadius: 2,
                   }}
                 />
@@ -524,7 +524,7 @@ export default function LibraryLandingPage() {
                       border: 'none',
                       fontWeight: 500,
                       transition: 'all 0.2s',
-                      background: typeFilter === item.value ? '#2563eb' : '#f1f5f9',
+                      background: typeFilter === item.value ? 'var(--primary)' : '#f1f5f9',
                       color: typeFilter === item.value ? '#fff' : '#64748b',
                       whiteSpace: 'nowrap',
                     }}
@@ -571,8 +571,8 @@ export default function LibraryLandingPage() {
                       padding: '4px 14px',
                       borderRadius: 4,
                       cursor: 'pointer',
-                      color: timeFilter === range.value ? '#2563eb' : '#64748b',
-                      background: timeFilter === range.value ? '#eff6ff' : 'transparent',
+                      color: timeFilter === range.value ? 'var(--primary)' : '#64748b',
+                      background: timeFilter === range.value ? 'color-mix(in srgb, var(--primary) 8%, white)' : 'transparent',
                       fontWeight: timeFilter === range.value ? 500 : 400,
                       transition: 'all 0.3s',
                     }}
@@ -616,8 +616,8 @@ export default function LibraryLandingPage() {
                       padding: '4px 14px',
                       borderRadius: 4,
                       cursor: 'pointer',
-                      color: orgFilter === name ? '#2563eb' : '#64748b',
-                      background: orgFilter === name ? '#eff6ff' : 'transparent',
+                      color: orgFilter === name ? 'var(--primary)' : '#64748b',
+                      background: orgFilter === name ? 'color-mix(in srgb, var(--primary) 8%, white)' : 'transparent',
                       fontWeight: orgFilter === name ? 500 : 400,
                       transition: 'all 0.3s',
                     }}
@@ -650,8 +650,8 @@ export default function LibraryLandingPage() {
                       padding: '4px 14px',
                       borderRadius: 4,
                       cursor: orgFilter === '全部' ? 'not-allowed' : 'pointer',
-                      color: majorFilter === name ? '#2563eb' : '#64748b',
-                      background: majorFilter === name ? '#eff6ff' : 'transparent',
+                      color: majorFilter === name ? 'var(--primary)' : '#64748b',
+                      background: majorFilter === name ? 'color-mix(in srgb, var(--primary) 8%, white)' : 'transparent',
                       fontWeight: majorFilter === name ? 500 : 400,
                       opacity: orgFilter === '全部' ? 0.4 : 1,
                       transition: 'all 0.3s',
@@ -679,7 +679,7 @@ export default function LibraryLandingPage() {
                 }}
               >
                 <span style={{ fontSize: 13, color: '#64748b' }}>
-                  已筛选到 <strong style={{ color: '#2563eb' }}>{filteredResources.length}</strong>{' '}
+                  已筛选到 <strong style={{ color: 'var(--primary)' }}>{filteredResources.length}</strong>{' '}
                   个资源
                 </span>
                 <button
@@ -749,7 +749,7 @@ export default function LibraryLandingPage() {
                   transform: 'translateY(-50%)',
                   width: 4,
                   height: 20,
-                  background: 'linear-gradient(180deg, #2563eb, #3b82f6)',
+                  background: 'linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 80%, white))',
                   borderRadius: 2,
                 }}
               />
@@ -766,7 +766,7 @@ export default function LibraryLandingPage() {
                     cursor: 'pointer',
                     border: 'none',
                     fontWeight: 500,
-                    background: sortBy === 'newest' ? '#2563eb' : '#f1f5f9',
+                    background: sortBy === 'newest' ? 'var(--primary)' : '#f1f5f9',
                     color: sortBy === 'newest' ? '#fff' : '#64748b',
                     transition: 'all 0.2s',
                     display: 'inline-flex',
@@ -786,7 +786,7 @@ export default function LibraryLandingPage() {
                     cursor: 'pointer',
                     border: 'none',
                     fontWeight: 500,
-                    background: sortBy === 'popular' ? '#2563eb' : '#f1f5f9',
+                    background: sortBy === 'popular' ? 'var(--primary)' : '#f1f5f9',
                     color: sortBy === 'popular' ? '#fff' : '#64748b',
                     transition: 'all 0.2s',
                     display: 'inline-flex',
@@ -1058,7 +1058,7 @@ export default function LibraryLandingPage() {
                   rel="noreferrer"
                   style={{
                     fontSize: 12,
-                    color: '#2563eb',
+                    color: 'var(--primary)',
                     textDecoration: 'none',
                     fontWeight: 500,
                     display: 'flex',
@@ -1066,7 +1066,7 @@ export default function LibraryLandingPage() {
                     gap: 4,
                     padding: '6px 12px',
                     borderRadius: 8,
-                    background: '#eff6ff',
+                    background: 'color-mix(in srgb, var(--primary) 8%, white)',
                   }}
                 >
                   <ExternalLink style={{ width: 14, height: 14 }} />
@@ -1109,7 +1109,7 @@ export default function LibraryLandingPage() {
       {/* ═══ Footer ═══ */}
       <footer style={{ background: '#141a2e', width: '100%' }}>
         <div
-          style={{ height: 3, background: 'linear-gradient(90deg, #0049ae, #2f6fdf, #22d3ee)' }}
+          style={{ height: 3, background: 'linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 65%, white), #22d3ee)' }}
         />
         <div style={{ padding: '48px 5% 32px' }}>
           <div style={{ maxWidth: 1280, margin: '0 auto' }}>

@@ -154,11 +154,11 @@ export default function KnowledgePointsPage() {
         title="知识点管理"
         statLabel="知识点总数"
         statIcon={
-          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <BookOpen className="size-5 text-blue-600" />
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <BookOpen className="size-5 text-primary" />
           </div>
         }
-        statGradient="from-blue-50 to-blue-100"
+        statGradient="from-primary/5 to-primary/10"
         statCount={total}
         searchPlaceholder="搜索知识点..."
         searchQuery={searchQuery}
@@ -194,7 +194,7 @@ export default function KnowledgePointsPage() {
           <TableRow key={item.id} className="hover:bg-slate-50/50">
             <TableCell className="p-3">
               <div className="flex items-center gap-2">
-                <BookOpen className="size-4 text-blue-500" />
+                <BookOpen className="size-4 text-primary" />
                 <span className="text-sm font-medium text-slate-700">{item.name}</span>
               </div>
             </TableCell>

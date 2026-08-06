@@ -205,7 +205,7 @@ export function TaskDescriptionCard({
             </div>
           </div>
           {description.includes('<img') || description.includes('<video') ? (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700 flex items-center gap-2 mt-2">
+            <div className="p-3 bg-primary/5 rounded-lg border border-primary/10 text-sm text-primary flex items-center gap-2 mt-2">
               <Image className="h-4 w-4" aria-label="图片" />
               检测到已插入多媒体内容
             </div>

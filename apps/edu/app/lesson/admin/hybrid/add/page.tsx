@@ -595,7 +595,7 @@ function HybridCourseAddForm() {
       <Card key={key} className="overflow-visible">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Icon className="h-4 w-4 text-blue-500" />
+            <Icon className="h-4 w-4 text-primary" />
             {meta.label}
           </CardTitle>
           <div className="flex items-center gap-3">
@@ -863,7 +863,7 @@ function HybridCourseAddForm() {
                     <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
                       <div className="space-y-1">
                         <CardTitle className="text-base flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-blue-500" />
+                          <BookOpen className="h-4 w-4 text-primary" />
                           教学设计
                         </CardTitle>
                         {relatedDesignNodeIds.length > 0 && (
@@ -930,7 +930,7 @@ function HybridCourseAddForm() {
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
-                        <ClipboardList className="h-4 w-4 text-blue-500" />
+                        <ClipboardList className="h-4 w-4 text-primary" />
                         课后复盘
                       </CardTitle>
                     </CardHeader>
@@ -982,9 +982,9 @@ function HybridCourseAddForm() {
                   <button
                     key={m.key}
                     onClick={() => addModule(m.key)}
-                    className="flex items-center gap-2 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-left"
+                    className="flex items-center gap-2 p-3 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors text-left"
                   >
-                    <Icon className="h-4 w-4 text-blue-500 shrink-0" />
+                    <Icon className="h-4 w-4 text-primary shrink-0" />
                     <span className="text-sm">{m.label}</span>
                   </button>
                 )
@@ -1016,13 +1016,13 @@ function HybridCourseAddForm() {
                   <label
                     key={n.id}
                     onClick={() => toggleShareNode(n.id)}
-                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${checked ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${checked ? 'bg-primary/5 border-primary/30' : 'hover:bg-gray-50'}`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleShareNode(n.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <span className="text-sm">{n.name}</span>
                   </label>

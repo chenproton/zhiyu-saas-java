@@ -177,12 +177,12 @@ function ExamResultsContent() {
             <div className="text-2xl font-bold text-emerald-600">{stats.avgScore}</div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-blue-50 to-white">
+        <Card className="bg-gradient-to-br from-primary/5 to-white">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">最高分</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.maxScore}</div>
+            <div className="text-2xl font-bold text-primary">{stats.maxScore}</div>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-amber-50 to-white">
@@ -292,7 +292,7 @@ function ExamResultsContent() {
                         <span className="inline-flex w-6 items-center justify-center text-xs font-semibold text-muted-foreground">
                           {result.rank}
                         </span>
-                        <User className="size-3.5 text-blue-500" />
+                        <User className="size-3.5 text-primary" />
                         <span className="text-sm">{result.studentName}</span>
                       </div>
                     </TableCell>

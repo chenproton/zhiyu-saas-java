@@ -189,7 +189,7 @@ export default function DailyExamGradingPage() {
               <AvatarFallback
                 className={cn(
                   'text-sm font-medium',
-                  saved ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700',
+                  saved ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary',
                 )}
               >
                 {getInitials(studentName)}
@@ -250,8 +250,8 @@ export default function DailyExamGradingPage() {
           <div className="px-4 py-3 bg-white border-b shrink-0">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-blue-500" />
+                <div className="h-10 w-10 rounded-lg bg-primary/5 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold text-gray-800">试卷评分</h2>
@@ -270,7 +270,7 @@ export default function DailyExamGradingPage() {
                   max={examMaxScore}
                   value={examTotal}
                   disabled
-                  className="w-20 text-right h-9 text-lg font-bold text-blue-600 border-transparent bg-transparent focus-visible:ring-0 px-0"
+                  className="w-20 text-right h-9 text-lg font-bold text-primary border-transparent bg-transparent focus-visible:ring-0 px-0"
                 />
                 <span className="text-lg text-gray-400 font-medium">/ {examMaxScore}</span>
               </div>

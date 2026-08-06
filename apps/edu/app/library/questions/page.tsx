@@ -120,11 +120,11 @@ export default function QuestionsPage() {
       title="现场问答题库"
       statLabel="题目总数"
       statIcon={
-        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-          <MessageSquare className="size-5 text-blue-600" />
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <MessageSquare className="size-5 text-primary" />
         </div>
       }
-      statGradient="from-blue-50 to-blue-100"
+      statGradient="from-primary/5 to-primary/10"
       statCount={items.length}
       searchPlaceholder="搜索题目名称..."
       searchQuery={searchQuery}

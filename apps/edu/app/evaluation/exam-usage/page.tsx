@@ -406,7 +406,7 @@ export default function ExamUsagePage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                            className="h-7 px-2 text-xs text-primary hover:text-primary/90"
                             onClick={() => handlePublish(usage.id)}
                           >
                             <Send className="mr-1 h-3 w-3" />

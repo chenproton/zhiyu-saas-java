@@ -321,7 +321,7 @@ export default function PostRecommendPage() {
                             className={cn(
                               rec.positionType === 'teaching'
                                 ? 'bg-amber-50 text-amber-600 hover:bg-amber-50'
-                                : 'bg-blue-50 text-blue-600 hover:bg-blue-50',
+                                : 'bg-primary/5 text-primary hover:bg-primary/5',
                             )}
                           >
                             {POSITION_TYPE_LABELS[rec.positionType]}

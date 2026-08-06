@@ -172,7 +172,7 @@ export default function CertificatesPage() {
                 href={item.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80"
               >
                 <ExternalLink className="size-3" />
                 访问

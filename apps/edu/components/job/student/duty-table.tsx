@@ -57,9 +57,9 @@ export function DutyTable({
     <div className="space-y-6">
       <div>
         <h4 className="text-base font-medium text-[#1f2937] mb-4 flex items-center gap-2">
-          <ListChecks className="w-5 h-5 text-blue-500" />
+          <ListChecks className="w-5 h-5 text-primary" />
           岗位职责(
-          <strong className="text-blue-500 mx-1">
+          <strong className="text-primary mx-1">
             {responsibilities.length || requirements.length}
           </strong>
           项)
@@ -90,7 +90,7 @@ export function DutyTable({
                       </td>
                       <td className="p-4 text-sm text-[#475569]">{resp.name}</td>
                       <td className="p-4">
-                        <span className="text-sm font-medium text-blue-500">{items.length} 个</span>
+                        <span className="text-sm font-medium text-primary">{items.length} 个</span>
                         <Button
                           variant="outline"
                           size="sm"
@@ -116,8 +116,8 @@ export function DutyTable({
 
       <div>
         <h4 className="text-base font-medium text-[#1f2937] mb-4 flex items-center gap-2">
-          <ListChecks className="w-5 h-5 text-blue-500" />
-          任职要求(<strong className="text-blue-500 mx-1">{requirements.length}</strong>项)
+          <ListChecks className="w-5 h-5 text-primary" />
+          任职要求(<strong className="text-primary mx-1">{requirements.length}</strong>项)
         </h4>
         <div className="bg-white border border-[#f5f5f4] rounded-2xl p-6">
           <ul className="list-none p-0 m-0">
@@ -192,7 +192,7 @@ export function DutyTable({
                   {totalPages > 1 && (
                     <div className="flex items-center justify-center gap-2 mt-6">
                       <button
-                        className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-blue-500 hover:text-blue-500"
+                        className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-primary hover:text-primary"
                         disabled={page <= 0}
                         onClick={() => setPage(page - 1)}
                         aria-label="上一页"
@@ -203,11 +203,11 @@ export function DutyTable({
                         <button
                           key={i}
                           onClick={() => setPage(i)}
-                          className={`w-2 h-2 rounded-full transition-all ${page === i ? 'bg-blue-500 w-5' : 'bg-[#e2e8f0]'}`}
+                          className={`w-2 h-2 rounded-full transition-all ${page === i ? 'bg-primary w-5' : 'bg-[#e2e8f0]'}`}
                         />
                       ))}
                       <button
-                        className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-blue-500 hover:text-blue-500"
+                        className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-primary hover:text-primary"
                         disabled={page >= totalPages - 1}
                         onClick={() => setPage(page + 1)}
                         aria-label="下一页"

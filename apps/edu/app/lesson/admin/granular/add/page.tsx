@@ -541,11 +541,11 @@ function AddGranularPageInner() {
                       <Badge
                         key={rid}
                         variant="secondary"
-                        className="px-2 py-0.5 text-xs gap-1 bg-blue-50 text-blue-600"
+                        className="px-2 py-0.5 text-xs gap-1 bg-primary/5 text-primary"
                       >
                         {r?.name || rid.slice(0, 8)}
                         <button
-                          className="text-blue-400 hover:text-blue-700"
+                          className="text-primary/70 hover:text-primary"
                           onClick={() =>
                             setSelectedResourceIds((prev) => prev.filter((id) => id !== rid))
                           }

@@ -71,12 +71,12 @@ export default function ExamListPage() {
   )
 
   const stats = [
-    { label: '全部考试', value: exams.length, icon: BarChart3, color: '#2563eb' },
+    { label: '全部考试', value: exams.length, icon: BarChart3, color: 'var(--primary)' },
     {
       label: '进行中',
       value: exams.filter((e) => e.status === '进行中').length,
       icon: PlayCircle,
-      color: '#2563eb',
+      color: 'var(--primary)',
     },
     {
       label: '未开始',
@@ -97,7 +97,7 @@ export default function ExamListPage() {
       {/* Hero */}
       <div
         className="relative overflow-hidden px-6 py-10 text-white"
-        style={{ background: 'linear-gradient(135deg, #1e3a8a, #2563eb, #3b82f6)' }}
+        style={{ background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 75%, white), color-mix(in srgb, var(--primary) 85%, white))' }}
       >
         <div className="mx-auto max-w-7xl">
           <div className="mb-4 flex items-center gap-3">
@@ -148,7 +148,7 @@ export default function ExamListPage() {
                 className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
                 style={
                   tab === t
-                    ? { background: '#2563eb', color: '#fff' }
+                    ? { background: 'var(--primary)', color: '#fff' }
                     : { background: '#fff', color: '#666', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }
                 }
               >
@@ -230,7 +230,7 @@ export default function ExamListPage() {
                   <div className="mb-3 flex items-start justify-between">
                     <div
                       className="flex h-10 w-10 items-center justify-center rounded-lg"
-                      style={{ background: '#eff6ff', color: '#2563eb' }}
+                      style={{ background: 'color-mix(in srgb, var(--primary) 8%, white)', color: 'var(--primary)' }}
                     >
                       <ClipboardList className="h-5 w-5" />
                     </div>
@@ -261,7 +261,7 @@ export default function ExamListPage() {
                       <Button
                         size="sm"
                         className="w-full gap-1 rounded-lg"
-                        style={{ background: '#2563eb' }}
+                        style={{ background: 'var(--primary)' }}
                       >
                         <PlayCircle className="h-4 w-4" />
                         开始考试

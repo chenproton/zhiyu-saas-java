@@ -96,7 +96,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                       className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-gray-500 group-hover:text-blue-600 transition-colors">
+                        <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors">
                           <Icon className="w-4 h-4" />
                         </div>
                         <div>
@@ -144,7 +144,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                       {item.type}
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                      <p className="text-sm text-gray-900 truncate group-hover:text-primary transition-colors">
                         {item.title}
                       </p>
                       <p className="text-xs text-gray-500">{item.date}</p>

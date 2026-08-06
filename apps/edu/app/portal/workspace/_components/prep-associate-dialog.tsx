@@ -88,7 +88,7 @@ export function PrepAssociateDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-blue-600" />
+            <BookOpen className="h-5 w-5 text-primary" />
             关联备课内容
           </DialogTitle>
           <DialogDescription>
@@ -103,7 +103,7 @@ export function PrepAssociateDialog({
               <Badge
                 variant="outline"
                 className={
-                  isHybrid ? 'border-blue-200 text-blue-600' : 'border-emerald-200 text-emerald-600'
+                  isHybrid ? 'border-primary/15 text-primary' : 'border-emerald-200 text-emerald-600'
                 }
               >
                 {level1Label}
@@ -134,7 +134,7 @@ export function PrepAssociateDialog({
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${
                         isSelected
                           ? isHybrid
-                            ? 'border-blue-300 bg-blue-50'
+                            ? 'border-primary/30 bg-primary/5'
                             : 'border-emerald-300 bg-emerald-50'
                           : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
                       }`}
@@ -147,13 +147,13 @@ export function PrepAssociateDialog({
                       </span>
                       {isSelected && confirmed ? (
                         <span
-                          className={`text-[10px] shrink-0 px-1.5 py-0.5 rounded border ${isHybrid ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}
+                          className={`text-[10px] shrink-0 px-1.5 py-0.5 rounded border ${isHybrid ? 'text-primary bg-primary/5 border-primary/15' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}
                         >
                           已关联
                         </span>
                       ) : isSelected ? (
                         <Check
-                          className={`h-4 w-4 shrink-0 ${isHybrid ? 'text-blue-600' : 'text-emerald-600'}`}
+                          className={`h-4 w-4 shrink-0 ${isHybrid ? 'text-primary' : 'text-emerald-600'}`}
                         />
                       ) : null}
                     </div>
@@ -180,7 +180,7 @@ export function PrepAssociateDialog({
                 size="sm"
                 disabled={selectedIds.size === 0}
                 className={
-                  isHybrid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                  isHybrid ? 'bg-primary hover:bg-primary/90' : 'bg-emerald-600 hover:bg-emerald-700'
                 }
                 onClick={handleConfirm}
               >
@@ -191,7 +191,7 @@ export function PrepAssociateDialog({
                   size="sm"
                   className={
                     isHybrid
-                      ? 'bg-blue-600 hover:bg-blue-700'
+                      ? 'bg-primary hover:bg-primary/90'
                       : 'bg-emerald-600 hover:bg-emerald-700'
                   }
                   onClick={handleNavigate}

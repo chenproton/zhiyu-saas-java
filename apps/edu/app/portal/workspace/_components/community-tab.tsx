@@ -227,7 +227,7 @@ export function CommunityTab() {
 
       <div className="flex justify-end">
         <Button
-          className="bg-blue-600 hover:bg-blue-700"
+          className="bg-primary hover:bg-primary/90"
           onClick={() => setPostOpen(true)}
           disabled={!!detail}
         >
@@ -242,7 +242,7 @@ export function CommunityTab() {
           {detail ? (
             <div className="p-5 rounded-xl border border-gray-100 bg-white shadow-sm">
               <button
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors mb-4"
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary transition-colors mb-4"
                 onClick={closeDetail}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -267,7 +267,7 @@ export function CommunityTab() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <AvatarFallback className="bg-blue-50 text-blue-600 text-sm font-medium">
+                        <AvatarFallback className="bg-primary/5 text-primary text-sm font-medium">
                           {avatarChar(detail.authorName)}
                         </AvatarFallback>
                       )}
@@ -345,7 +345,7 @@ export function CommunityTab() {
                             {reply.content}
                           </p>
                           <button
-                            className="flex items-center gap-1 mt-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                            className="flex items-center gap-1 mt-1 text-xs text-gray-400 hover:text-primary transition-colors"
                             onClick={() => setReplyingTo(reply)}
                           >
                             <Reply className="w-3 h-3" />
@@ -384,7 +384,7 @@ export function CommunityTab() {
                         rows={2}
                       />
                       <Button
-                        className="bg-blue-600 hover:bg-blue-700 shrink-0"
+                        className="bg-primary hover:bg-primary/90 shrink-0"
                         size="sm"
                         disabled={!replyText.trim() || replySubmitting}
                         onClick={submitReply}
@@ -412,7 +412,7 @@ export function CommunityTab() {
                   <TabsTrigger
                     key={s.id}
                     value={s.id}
-                    className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                    className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
                   >
                     {s.label}
                   </TabsTrigger>
@@ -434,7 +434,7 @@ export function CommunityTab() {
                     )}
                     <p>{sort === 'mine' ? '你还没有发起过提问' : '暂无话题，来发第一帖吧'}</p>
                     <Button
-                      className="mt-4 bg-blue-600 hover:bg-blue-700"
+                      className="mt-4 bg-primary hover:bg-primary/90"
                       size="sm"
                       onClick={() => setPostOpen(true)}
                     >
@@ -447,7 +447,7 @@ export function CommunityTab() {
                     {topics.map((topic) => (
                       <div
                         key={topic.id}
-                        className="p-4 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+                        className="p-4 rounded-xl border border-gray-100 bg-white hover:border-primary/25 hover:shadow-sm transition-all cursor-pointer"
                         onClick={() => openDetail(topic)}
                       >
                         <div className="flex items-start gap-3">
@@ -461,14 +461,14 @@ export function CommunityTab() {
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <AvatarFallback className="bg-blue-50 text-blue-600 text-sm font-medium">
+                              <AvatarFallback className="bg-primary/5 text-primary text-sm font-medium">
                                 {avatarChar(topic.authorName)}
                               </AvatarFallback>
                             )}
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors truncate">
+                              <h3 className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors truncate">
                                 {topic.title}
                               </h3>
                               {topic.viewCount >= 50 && (
@@ -527,7 +527,7 @@ export function CommunityTab() {
                     variant={group.active ? 'default' : 'outline'}
                     className={
                       group.active
-                        ? 'bg-blue-600 hover:bg-blue-700 text-xs'
+                        ? 'bg-primary hover:bg-primary/90 text-xs'
                         : 'text-xs border-gray-200 text-gray-600'
                     }
                   >
@@ -616,7 +616,7 @@ export function CommunityTab() {
                 取消
               </Button>
               <Button
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary/90"
                 disabled={postSubmitting}
                 onClick={submitPost}
               >

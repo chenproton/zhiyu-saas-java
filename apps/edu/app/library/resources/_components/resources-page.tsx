@@ -164,27 +164,27 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
   return (
     <div className="p-6 space-y-5">
       {isTypeView ? (
-        <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
+        <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
           <CardContent className="p-4 flex items-center gap-3">
             <div className={`w-10 h-10 rounded-lg ${typeBg} flex items-center justify-center`}>
               <span style={{ color: typeColor }}>{typeIcon}</span>
             </div>
             <div>
-              <div className="text-2xl font-bold text-blue-700">{statCount}</div>
-              <div className="text-xs text-blue-500">{typeLabel}总数</div>
+              <div className="text-2xl font-bold text-primary">{statCount}</div>
+              <div className="text-xs text-primary">{typeLabel}总数</div>
             </div>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
+          <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <HelpCircle className="size-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <HelpCircle className="size-5 text-primary" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-blue-700">{statCount}</div>
-                <div className="text-xs text-blue-500">资源总数</div>
+                <div className="text-2xl font-bold text-primary">{statCount}</div>
+                <div className="text-xs text-primary">资源总数</div>
               </div>
             </CardContent>
           </Card>
@@ -367,7 +367,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                             href={item.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80"
                           >
                             <ExternalLink className="size-3" />
                             访问

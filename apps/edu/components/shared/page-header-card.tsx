@@ -50,7 +50,7 @@ export function PageHeaderCard({
                   <div
                     className={cn(
                       'h-6 w-6 rounded-full flex items-center justify-center',
-                      stat.iconClassName || 'bg-blue-50',
+                      stat.iconClassName || 'bg-primary/5',
                     )}
                   >
                     {stat.icon}

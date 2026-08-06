@@ -88,9 +88,9 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
                 <a
                   key={entry.label}
                   href={entry.href}
-                  className="group flex items-start gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+                  className="group flex items-start gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/25 hover:shadow-sm transition-all"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-primary group-hover:bg-primary/5 group-hover:border-primary/25 transition-colors">
                     <entry.icon className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -100,7 +100,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+                    className="h-8 w-8 text-gray-300 group-hover:text-primary group-hover:bg-primary/5"
                     aria-label="查看详情"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -150,7 +150,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
                     className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-gray-500 group-hover:text-blue-600 transition-colors">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors">
                         <ClipboardList className="w-4 h-4" />
                       </div>
                       <div>
@@ -194,7 +194,7 @@ export function SchoolAdminOverviewTab({ onTabChange }: SchoolAdminOverviewTabPr
                       {item.type}
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                      <p className="text-sm text-gray-900 truncate group-hover:text-primary transition-colors">
                         {item.title}
                       </p>
                       <p className="text-xs text-gray-500">{item.date}</p>
@@ -218,9 +218,9 @@ function ResourceCard({ item }: { item: WorkspaceResourceStat }) {
   return (
     <a
       href={item.href || '#'}
-      className="group flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+      className="group flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/25 hover:shadow-sm transition-all"
     >
-      <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors">
+      <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-primary group-hover:bg-primary/5 group-hover:border-primary/25 transition-colors">
         <Icon className="w-6 h-6" />
       </div>
       <div className="flex-1 min-w-0">
@@ -230,7 +230,7 @@ function ResourceCard({ item }: { item: WorkspaceResourceStat }) {
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+        className="h-8 w-8 text-gray-300 group-hover:text-primary group-hover:bg-primary/5"
         aria-label="查看详情"
       >
         <ChevronRight className="w-4 h-4" />

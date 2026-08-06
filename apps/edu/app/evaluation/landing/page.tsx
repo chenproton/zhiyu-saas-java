@@ -45,7 +45,7 @@ function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
       href={`/evaluation/landing/banks/${bank.id}`}
       className="group block no-underline text-inherit"
     >
-      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-blue-200 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-primary/25 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
         <div
           className="h-[110px] flex items-center justify-center shrink-0 relative"
           style={{ background: coverGradients[index % coverGradients.length] }}
@@ -67,7 +67,7 @@ function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" /> {formatDate(bank.createdAt)}
             </span>
-            <span className="text-blue-500 group-hover:text-blue-600 font-medium">
+            <span className="text-primary group-hover:text-primary font-medium">
               查看详情 →
             </span>
           </div>
@@ -83,7 +83,7 @@ function ExamCard({ exam, index }: { exam: Exam; index: number }) {
       href={`/evaluation/landing/exams/${exam.id}`}
       className="group block no-underline text-inherit"
     >
-      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-blue-200 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-primary/25 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
         <div
           className="h-[110px] flex items-center justify-center shrink-0 relative"
           style={{ background: coverGradients[(index + 3) % coverGradients.length] }}
@@ -106,7 +106,7 @@ function ExamCard({ exam, index }: { exam: Exam; index: number }) {
               <Clock className="w-3 h-3" /> {exam.duration} 分钟
             </span>
           </div>
-          <Button className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all">
+          <Button className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all">
             <PlayCircle className="w-3.5 h-3.5 mr-1" /> 去考试
           </Button>
         </div>
@@ -248,7 +248,7 @@ export default function LandingHomePage() {
     <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* Hero Banner */}
       <div className="relative w-full pt-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a3d91] via-[#0049ae] to-[#2f6fdf]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/75 to-primary/40" />
         <div
           className="absolute inset-0 opacity-[0.08]"
           style={{
@@ -256,9 +256,9 @@ export default function LandingHomePage() {
             backgroundSize: '52px 52px',
           }}
         />
-        <div className="absolute top-[-120px] right-[-5%] w-[500px] h-[500px] rounded-full bg-blue-300/20 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-blue-400/15 blur-[100px] pointer-events-none" />
-        <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-blue-400/10 blur-[80px] pointer-events-none" />
+        <div className="absolute top-[-120px] right-[-5%] w-[500px] h-[500px] rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-primary/15 blur-[100px] pointer-events-none" />
+        <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-primary/10 blur-[80px] pointer-events-none" />
 
         <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
           <div className="flex-1 pt-4">
@@ -269,13 +269,13 @@ export default function LandingHomePage() {
             <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
               测评资源平台
               <br />
-              <span className="text-blue-200">海量题库与试卷，助力教学测评</span>
+              <span className="text-primary/60">海量题库与试卷，助力教学测评</span>
             </h1>
             <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
               丰富题库资源与智能组卷工具，支持在线考试与自动评分，让教学测评更高效
             </p>
             <Button
-              className="inline-flex items-center gap-2 bg-white text-blue-600 hover:bg-blue-50 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
+              className="inline-flex items-center gap-2 bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
               onClick={() =>
                 listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }
@@ -363,7 +363,7 @@ export default function LandingHomePage() {
 
       <main ref={listRef} className="max-w-[1400px] mx-auto px-8 py-8 w-full flex-1">
         {/* 考试中心入口 */}
-        <div className="bg-gradient-to-r from-blue-500 via-blue-500 to-blue-400 rounded-2xl p-6 mb-6 shadow-[0_8px_24px_rgba(22,119,255,0.25)] relative overflow-hidden">
+        <div className="bg-gradient-to-r from-primary via-primary to-primary/80 rounded-2xl p-6 mb-6 shadow-[0_8px_24px_rgba(22,119,255,0.25)] relative overflow-hidden">
           <div className="absolute inset-0 opacity-[0.1] pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)`, backgroundSize: '36px 36px' }} />
           <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-4">
@@ -379,7 +379,7 @@ export default function LandingHomePage() {
             </div>
             <Button
               asChild
-              className="bg-white text-blue-600 hover:bg-blue-50 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg transition-all shrink-0"
+              className="bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg transition-all shrink-0"
             >
               <Link href="/evaluation/landing/exam-center">
                 进入考试中心 <ChevronRight className="w-4 h-4" />
@@ -391,8 +391,8 @@ export default function LandingHomePage() {
         {/* Filter */}
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-6">
           <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
-            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
-            <Filter className="w-4 h-4 text-blue-500" />
+            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
+            <Filter className="w-4 h-4 text-primary" />
             资源筛选
           </div>
           <div className="space-y-0">
@@ -411,7 +411,7 @@ export default function LandingHomePage() {
             <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-dashed border-[#cbd5e1]">
               <span className="text-[13px] text-[#64748b]">已选条件：</span>
               {keyword.trim() && (
-                <span className="inline-flex items-center gap-1.5 bg-[#eff4ff] text-blue-600 text-xs px-2.5 py-1 rounded-full border border-blue-100">
+                <span className="inline-flex items-center gap-1.5 bg-[#eff4ff] text-primary text-xs px-2.5 py-1 rounded-full border border-primary/10">
                   关键词：{keyword.trim()}
                   <X
                     className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors"
@@ -420,7 +420,7 @@ export default function LandingHomePage() {
                 </span>
               )}
               {selectedBatch !== '全部' && (
-                <span className="inline-flex items-center gap-1.5 bg-[#eff4ff] text-blue-600 text-xs px-2.5 py-1 rounded-full border border-blue-100">
+                <span className="inline-flex items-center gap-1.5 bg-[#eff4ff] text-primary text-xs px-2.5 py-1 rounded-full border border-primary/10">
                   批次：{selectedBatch}
                   <X
                     className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors"
@@ -430,7 +430,7 @@ export default function LandingHomePage() {
               )}
               <button
                 onClick={clearFilters}
-                className="text-[13px] text-blue-600 hover:text-blue-700 font-medium"
+                className="text-[13px] text-primary hover:text-primary font-medium"
               >
                 清空筛选
               </button>
@@ -445,7 +445,7 @@ export default function LandingHomePage() {
               <button
                 key={s.value}
                 onClick={() => handleSortChange(s.value)}
-                className={`px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium ${sort === s.value ? 'bg-blue-500 text-white shadow-md' : 'text-[#475569] hover:text-blue-600 hover:bg-[#eff4ff]'}`}
+                className={`px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium ${sort === s.value ? 'bg-primary text-white shadow-md' : 'text-[#475569] hover:text-primary hover:bg-[#eff4ff]'}`}
               >
                 {s.label}
               </button>
@@ -460,10 +460,10 @@ export default function LandingHomePage() {
                 if (e.key === 'Enter') executeSearch()
               }}
               placeholder="搜索题库、试卷名称"
-              className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all"
+              className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 focus:bg-white transition-all"
             />
             <Button
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
               onClick={executeSearch}
             >
               搜索
@@ -473,9 +473,9 @@ export default function LandingHomePage() {
 
         <div className="text-[13px] text-[#64748b] mb-6">
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             当前共展示{' '}
-            <b className="text-blue-600">{filteredBanks.length + filteredExams.length}</b> 个资源
+            <b className="text-primary">{filteredBanks.length + filteredExams.length}</b> 个资源
           </span>
         </div>
 
@@ -502,7 +502,7 @@ export default function LandingHomePage() {
               <div className="mb-10">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
-                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
                     题库
                     <span className="text-[13px] text-[#64748b] font-normal ml-1">
                       ({filteredBanks.length})
@@ -529,7 +529,7 @@ export default function LandingHomePage() {
               <div>
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
-                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
                     试卷
                     <span className="text-[13px] text-[#64748b] font-normal ml-1">
                       ({filteredExams.length})

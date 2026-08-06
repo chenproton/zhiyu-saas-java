@@ -55,9 +55,9 @@ export default function ResourceCodesPage() {
       hideCreate
       emptyContent="暂无资源编码"
       beforeTable={
-        <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-100 flex items-center gap-2">
-          <Info className="w-4 h-4 text-blue-500 shrink-0" />
-          <span className="text-sm text-blue-700">
+        <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/10 flex items-center gap-2">
+          <Info className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-sm text-primary">
             仅可通过租户 License 导入资源编码，不支持手动新增、编辑或删除
           </span>
         </div>

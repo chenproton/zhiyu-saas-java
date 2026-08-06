@@ -12,10 +12,10 @@ const ACCENT_CLASSES: Record<
   }
 > = {
   purple: {
-    selected: 'bg-blue-500 text-white border-blue-500 shadow-sm',
+    selected: 'bg-primary text-white border-primary shadow-sm',
     unselected:
-      'bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50',
-    expand: 'text-blue-500 hover:text-blue-600',
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5',
+    expand: 'text-primary hover:text-primary',
     border: 'border-b border-dashed border-[#cbd5e1]',
   },
   emerald: {
@@ -26,10 +26,10 @@ const ACCENT_CLASSES: Record<
     border: 'border-b border-dashed border-[#cbd5e1]',
   },
   blue: {
-    selected: 'bg-blue-500 text-white border-blue-500 shadow-sm',
+    selected: 'bg-primary text-white border-primary shadow-sm',
     unselected:
-      'bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50',
-    expand: 'text-blue-500 hover:text-blue-600',
+      'bg-slate-50 text-[#475569] border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5',
+    expand: 'text-primary hover:text-primary',
     border: 'border-b border-dashed border-[#cbd5e1]',
   },
 }

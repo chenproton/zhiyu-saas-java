@@ -39,19 +39,19 @@ export function TeacherProfileTab() {
         <TabsList className="h-9 bg-white border border-gray-100 shadow-sm mb-4 p-1">
           <TabsTrigger
             value="profile"
-            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             个人资料
           </TabsTrigger>
           <TabsTrigger
             value="security"
-            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             账号安全
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
-            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             通知偏好
           </TabsTrigger>
@@ -61,7 +61,7 @@ export function TeacherProfileTab() {
           <SectionCard title="个人资料" icon={User} iconColor="blue">
             <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-100">
               <Avatar className="w-20 h-20 ring-4 ring-white shadow-md">
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-2xl font-bold">
+                <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white text-2xl font-bold">
                   {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>

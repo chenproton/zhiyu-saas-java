@@ -156,12 +156,12 @@ export function PositionList({
                     {position.collaborators.length > 0 ? `${position.collaborators.length}人` : '-'}
                   </TableCell>
                   <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-primary/5 text-primary">
                       {position.responsibilities.length}
                     </span>
                   </TableCell>
                   <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-primary/5 text-primary">
                       {position.abilityBindings.length}
                     </span>
                   </TableCell>

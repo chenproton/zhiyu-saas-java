@@ -1281,8 +1281,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 {
                   label: `${entityLabel}总数`,
                   value: stats.total,
-                  icon: <SlidersHorizontal className="h-3 w-3 text-blue-500" />,
-                  iconClassName: 'bg-blue-50',
+                  icon: <SlidersHorizontal className="h-3 w-3 text-primary" />,
+                  iconClassName: 'bg-primary/5',
                 },
                 {
                   label: '未提交',
@@ -1469,7 +1469,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs text-blue-600 hover:text-blue-700"
+                className="h-8 text-xs text-primary hover:text-primary"
                 disabled={!hasSelected || !canBatchArchive}
                 onClick={handleBatchArchive}
               >

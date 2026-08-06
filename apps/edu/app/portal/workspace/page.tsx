@@ -179,7 +179,7 @@ function StudentWorkspace({ userId }: { userId?: string }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'bg-primary text-white shadow-sm'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
@@ -253,7 +253,7 @@ function TeacherWorkspace() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'bg-primary text-white shadow-sm'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
@@ -307,7 +307,7 @@ function SchoolAdminWorkspace() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'bg-primary text-white shadow-sm'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
@@ -381,7 +381,7 @@ export default function WorkspacePage() {
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
-            <BookOpen className="w-5 h-5 text-blue-600" />
+            <BookOpen className="w-5 h-5 text-primary" />
             <span className="text-sm font-medium text-gray-700">
               当前角色：{activeRole?.name || '学生'}
             </span>
@@ -404,7 +404,7 @@ export default function WorkspacePage() {
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
-            <GraduationCap className="w-5 h-5 text-blue-600" />
+            <GraduationCap className="w-5 h-5 text-primary" />
             <span className="text-sm font-medium text-gray-700">
               当前角色：{activeRole?.name || '教职工'}
             </span>
@@ -427,7 +427,7 @@ export default function WorkspacePage() {
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
-            <Building2 className="w-5 h-5 text-blue-600" />
+            <Building2 className="w-5 h-5 text-primary" />
             <span className="text-sm font-medium text-gray-700">
               当前角色：{activeRole?.name || '学校管理员'}
             </span>
@@ -473,7 +473,7 @@ export default function WorkspacePage() {
           </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
-          <RoleIcon className="w-5 h-5 text-blue-600" />
+          <RoleIcon className="w-5 h-5 text-primary" />
           <span className="text-sm font-medium text-gray-700">
             当前角色：{activeRole?.name || '教职工'}
           </span>
@@ -482,10 +482,10 @@ export default function WorkspacePage() {
 
       {/* 快捷统计 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5">
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+        <Card className="bg-gradient-to-r from-primary to-primary/70 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm">{stats.label1}</p>
+              <p className="text-primary-foreground/80 text-sm">{stats.label1}</p>
               <p className="text-2xl font-bold">{stats.value1}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
@@ -515,10 +515,10 @@ export default function WorkspacePage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+        <Card className="bg-gradient-to-r from-primary to-primary/70 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm">消息通知</p>
+              <p className="text-primary-foreground/80 text-sm">消息通知</p>
               <p className="text-2xl font-bold">{announcements.filter((a) => a.isNew).length}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
@@ -694,8 +694,8 @@ export default function WorkspacePage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-blue-500" />
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-primary" />
                 </div>
                 账号安全中心
               </CardTitle>
@@ -733,8 +733,8 @@ export default function WorkspacePage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-blue-500" />
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-primary" />
                 </div>
                 本周活跃度
               </CardTitle>
@@ -748,8 +748,8 @@ export default function WorkspacePage() {
               <AreaChart data={weeklyData}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -759,7 +759,7 @@ export default function WorkspacePage() {
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#3b82f6"
+                  stroke="var(--primary)"
                   strokeWidth={2}
                   fill="url(#colorValue)"
                 />
@@ -773,8 +773,8 @@ export default function WorkspacePage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-blue-500" />
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-primary" />
                 </div>
                 学习数据统计
               </CardTitle>

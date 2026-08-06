@@ -53,7 +53,7 @@ export function SceneCard({
 
   return (
     <Link href={`/scene/landing/${scenario.id}`}>
-      <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-blue-200 cursor-pointer h-full flex flex-col">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/25 cursor-pointer h-full flex flex-col">
         <div
           className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4 text-white"
           style={coverStyle}
@@ -70,7 +70,7 @@ export function SceneCard({
             </div>
           </div>
           <div className="relative z-10">
-            <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-blue-100 transition-colors">
+            <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-white/90 transition-colors">
               {displayTitle}
             </div>
             <div className="text-xs text-white/80">

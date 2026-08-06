@@ -12,7 +12,7 @@ export function OverviewTab({ position }: OverviewTabProps) {
     <div className="space-y-8">
       <div>
         <h3 className="text-base font-medium text-[#1f2937] mb-4 flex items-center gap-2">
-          <Info className="w-5 h-5 text-blue-500" />
+          <Info className="w-5 h-5 text-primary" />
           岗位简介
         </h3>
         <p className="text-[14px] text-[#1f2937] leading-[1.8] whitespace-pre-line">
@@ -23,7 +23,7 @@ export function OverviewTab({ position }: OverviewTabProps) {
       {position.careerPath && (
         <div>
           <h3 className="text-base font-medium text-[#1f2937] mb-4 flex items-center gap-2">
-            <Route className="w-5 h-5 text-blue-500" />
+            <Route className="w-5 h-5 text-primary" />
             职业发展路线
           </h3>
           <div className="bg-[#f8fafc] border border-[#e7e5e4] rounded-xl p-5 text-[14px] text-[#1f2937] leading-[1.8] whitespace-pre-line">

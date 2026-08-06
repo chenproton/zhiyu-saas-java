@@ -167,7 +167,7 @@ export function StatusActionBar({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+          className="h-7 px-2 text-xs text-primary hover:text-primary"
           onClick={(e) => {
             e.stopPropagation()
             onSubmit()
@@ -209,7 +209,7 @@ export function StatusActionBar({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+          className="h-7 px-2 text-xs text-primary hover:text-primary"
           onClick={(e) => {
             e.stopPropagation()
             onPublish()
@@ -237,7 +237,7 @@ export function StatusActionBar({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+          className="h-7 px-2 text-xs text-primary hover:text-primary"
           onClick={(e) => {
             e.stopPropagation()
             onArchive()
@@ -251,7 +251,7 @@ export function StatusActionBar({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+          className="h-7 px-2 text-xs text-primary hover:text-primary"
           onClick={(e) => {
             e.stopPropagation()
             onInvite()

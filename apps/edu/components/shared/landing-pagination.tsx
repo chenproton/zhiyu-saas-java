@@ -10,16 +10,16 @@ const ACCENT_CLASSES: Record<
   }
 > = {
   purple: {
-    active: 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20',
-    hover: 'hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50',
+    active: 'bg-primary border-primary text-white shadow-md shadow-primary/20',
+    hover: 'hover:border-primary/30 hover:text-primary hover:bg-primary/5',
   },
   emerald: {
     active: 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20',
     hover: 'hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/50',
   },
   blue: {
-    active: 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20',
-    hover: 'hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50',
+    active: 'bg-primary border-primary text-white shadow-md shadow-primary/20',
+    hover: 'hover:border-primary/30 hover:text-primary hover:bg-primary/5',
   },
 }
 

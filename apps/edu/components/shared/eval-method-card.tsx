@@ -341,8 +341,8 @@ export function EvalMethodSubmitDialog({
   const headerGradient = isManualSubmit
     ? 'from-amber-50 via-orange-50 to-white'
     : isTeacherLed
-      ? 'from-blue-50 via-blue-50 to-white'
-      : 'from-blue-50 via-blue-100 to-white'
+      ? 'from-primary/5 via-primary/5 to-white'
+      : 'from-primary/5 via-primary/10 to-white'
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -507,8 +507,8 @@ export function EvalMethodSubmitDialog({
               )}
 
               {isTeacherLed && (
-                <div className="rounded-lg bg-blue-50/60 border border-blue-100 p-3">
-                  <p className="text-sm text-blue-700 leading-relaxed">
+                <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
+                  <p className="text-sm text-primary leading-relaxed">
                     {method.methodKey === 'random_draw'
                       ? '请确认参加本次现场问答，具体题目由教师在评分时抽取。'
                       : '请确认参加本次现场评审，具体评价步骤由教师选择执行。'}

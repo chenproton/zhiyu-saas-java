@@ -140,7 +140,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
                 className={cn(
                   'rounded-md px-3 py-1.5 text-sm font-medium transition-all',
                   viewMode === mode
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary text-white'
                     : 'text-gray-500 hover:text-gray-900',
                 )}
               >
@@ -157,7 +157,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
                 onClick={() => setViewStatus(s)}
                 className={cn(
                   'rounded-md px-3 py-1.5 text-sm font-medium transition-all',
-                  viewStatus === s ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-900',
+                  viewStatus === s ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-900',
                 )}
               >
                 {s === 'draft' ? '草稿' : '已发布'}

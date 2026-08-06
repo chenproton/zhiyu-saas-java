@@ -401,7 +401,7 @@ export function KnowledgeGraphD3View({
           if (!selectedId) return '#c8d8f0'
           const link = d as SimLink
           return connectedIds.has(link.source.id) && connectedIds.has(link.target.id)
-            ? '#93c5fd'
+            ? 'color-mix(in srgb, var(--primary) 45%, white)'
             : '#e5e7eb'
         })
         .attr('opacity', (d: any) => {
@@ -477,7 +477,7 @@ export function KnowledgeGraphD3View({
         if (!activeIds) return '#c8d8f0'
         const link = d as SimLink
         return activeIds.has(link.source.id) && activeIds.has(link.target.id)
-          ? '#93c5fd'
+          ? 'color-mix(in srgb, var(--primary) 45%, white)'
           : '#e5e7eb'
       })
       .attr('opacity', (d: any) => {
@@ -604,21 +604,21 @@ export function KnowledgeGraphD3View({
           <div className="absolute top-3 left-3 flex gap-1 z-10">
             <button
               onClick={handleZoomIn}
-              className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-blue-400 hover:text-blue-500"
+              className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-primary/40 hover:text-primary"
               title="放大"
             >
               <ZoomIn className="size-3.5" />
             </button>
             <button
               onClick={handleZoomOut}
-              className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-blue-400 hover:text-blue-500"
+              className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-primary/40 hover:text-primary"
               title="缩小"
             >
               <ZoomOut className="size-3.5" />
             </button>
             <button
               onClick={handleReset}
-              className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-blue-400 hover:text-blue-500"
+              className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-primary/40 hover:text-primary"
               title="重置"
             >
               <RotateCcw className="size-3.5" />

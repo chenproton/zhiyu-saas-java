@@ -76,10 +76,10 @@ export function SchoolAdminApprovalsTab() {
             <a
               key={item.id}
               href={approvalHrefMap[item.id] || typeHrefMap[item.id.replace('pending-', '')] || '#'}
-              className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all group"
+              className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/25 hover:shadow-sm transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-primary group-hover:bg-primary/5 group-hover:border-primary/25 transition-colors">
                   <ClipboardList className="w-5 h-5" />
                 </div>
                 <div>
@@ -94,7 +94,7 @@ export function SchoolAdminApprovalsTab() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-gray-300 group-hover:text-blue-600 group-hover:bg-blue-50"
+                  className="h-8 w-8 text-gray-300 group-hover:text-primary group-hover:bg-primary/5"
                   aria-label="查看详情"
                 >
                   <ChevronRight className="w-4 h-4" />

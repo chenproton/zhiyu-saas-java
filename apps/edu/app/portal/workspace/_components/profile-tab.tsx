@@ -205,27 +205,27 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
         <TabsList className="h-9 bg-white border border-gray-100 shadow-sm mb-4 p-1">
           <TabsTrigger
             value="profile"
-            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             个人资料
           </TabsTrigger>
           {!isStaff && (
             <TabsTrigger
               value="archive"
-              className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+              className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
             >
               我的荣誉奖励
             </TabsTrigger>
           )}
           <TabsTrigger
             value="security"
-            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             账号安全
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
-            className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            className="text-sm px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             通知偏好
           </TabsTrigger>
@@ -235,7 +235,7 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
           <SectionCard title="个人资料" icon={User} iconColor="blue">
             <div className="flex items-center gap-4 mb-6">
               <Avatar className="w-20 h-20">
-                <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold">
+                <AvatarFallback className="bg-primary text-white text-2xl font-bold">
                   {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
@@ -499,11 +499,11 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
               <div className="flex items-center gap-2">
                 <input
                   type="file"
-                  className="text-xs text-gray-500 file:mr-2 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-blue-600 hover:file:bg-blue-100"
+                  className="text-xs text-gray-500 file:mr-2 file:rounded-md file:border-0 file:bg-primary/5 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-primary hover:file:bg-primary/10"
                   onChange={handleUpload}
                   disabled={uploading}
                 />
-                {uploading && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+                {uploading && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
               </div>
               {form.fileName && (
                 <p className="text-xs text-gray-400 truncate">已上传：{form.fileName}</p>

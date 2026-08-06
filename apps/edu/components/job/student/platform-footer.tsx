@@ -3,7 +3,7 @@
 export function PlatformFooter() {
   return (
     <footer className="bg-[#141a2e] mt-auto w-full">
-      <div className="h-[3px] bg-gradient-to-r from-[#0049ae] via-[#2f6fdf] to-[#22d3ee]" />
+      <div className="h-[3px] bg-gradient-to-r from-primary via-primary/60 to-[#22d3ee]" />
       <div className="max-w-[1600px] mx-auto px-8 py-12 pb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>

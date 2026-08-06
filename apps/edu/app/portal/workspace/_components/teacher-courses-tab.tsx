@@ -74,7 +74,7 @@ import {
 
 const gradeColorMap: Record<string, string> = {
   A: 'bg-emerald-100 text-emerald-700',
-  B: 'bg-blue-100 text-blue-700',
+  B: 'bg-primary/10 text-primary',
   C: 'bg-amber-100 text-amber-700',
   D: 'bg-red-100 text-red-700',
   E: 'bg-gray-100 text-gray-700',
@@ -91,9 +91,9 @@ function TrackingView() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+        <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-600" />
+            <Users className="h-4 w-4 text-primary" />
             <div>
               <p className="text-xs text-gray-500">应到人数</p>
               <p className="text-lg font-bold">{mockSignInData.total}</p>
@@ -171,7 +171,7 @@ function TrackingView() {
               <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" />
               <YAxis domain={[80, 100]} tick={{ fontSize: 11 }} stroke="#94a3b8" />
               <Tooltip />
-              <Bar dataKey="rate" fill="#3b82f6" radius={[4, 4, 0, 0]} name="出勤率%" />
+              <Bar dataKey="rate" fill="var(--primary)" radius={[4, 4, 0, 0]} name="出勤率%" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -338,7 +338,7 @@ function AssessmentView() {
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">平均分</span>
-                    <span className="font-semibold text-blue-600">{hw.avgScore}/100</span>
+                    <span className="font-semibold text-primary">{hw.avgScore}/100</span>
                   </div>
                 </div>
                 <div className="mt-2 space-y-1">
@@ -368,9 +368,9 @@ function AssessmentView() {
       <div className="border rounded-xl p-4">
         <h4 className="text-sm font-semibold mb-3">互评互判统计</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="text-xl font-bold text-blue-700">{mockPeerReviewStats.totalGroups}</div>
-            <div className="text-[10px] text-blue-500">总小组数</div>
+          <div className="text-center p-3 bg-primary/5 rounded-lg border border-primary/10">
+            <div className="text-xl font-bold text-primary">{mockPeerReviewStats.totalGroups}</div>
+            <div className="text-[10px] text-primary">总小组数</div>
           </div>
           <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
             <div className="text-xl font-bold text-green-700">
@@ -448,9 +448,9 @@ function FinalView() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="p-3 rounded-lg bg-blue-50 border border-blue-100 text-center">
-          <div className="text-lg font-bold text-blue-700">{mockSemesterSummary.totalSessions}</div>
-          <div className="text-[10px] text-blue-500">课程节次</div>
+        <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 text-center">
+          <div className="text-lg font-bold text-primary">{mockSemesterSummary.totalSessions}</div>
+          <div className="text-[10px] text-primary">课程节次</div>
         </div>
         <div className="p-3 rounded-lg bg-green-50 border border-green-100 text-center">
           <div className="text-lg font-bold text-green-700">
@@ -541,7 +541,7 @@ function FinalView() {
                 <TableCell className="text-sm">{student.homework}</TableCell>
                 <TableCell className="text-sm">{student.peerReview}</TableCell>
                 <TableCell className="text-sm">{student.report}</TableCell>
-                <TableCell className="text-sm font-bold text-blue-600">{student.total}</TableCell>
+                <TableCell className="text-sm font-bold text-primary">{student.total}</TableCell>
                 <TableCell>
                   <Badge
                     className={`text-xs font-bold ${gradeColorMap[student.grade] || 'bg-gray-100 text-gray-700'}`}
@@ -593,11 +593,11 @@ export function CourseDetailDialog({
       <DialogContent className="sm:max-w-none max-w-[65vw] w-[65vw] max-h-[92vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <BookOpen className="h-5 w-5 text-blue-600" />
+            <BookOpen className="h-5 w-5 text-primary" />
             {course?.name}
             <Badge variant="outline">{course?.className}</Badge>
             <Badge variant="secondary">{course?.students}人</Badge>
-            <Badge className="bg-blue-100 text-blue-700">{titleMap[initialTab] || ''}</Badge>
+            <Badge className="bg-primary/10 text-primary">{titleMap[initialTab] || ''}</Badge>
           </DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-2 mt-2">{renderContent()}</ScrollArea>
@@ -693,7 +693,7 @@ export function TeacherCoursesTab({
               <TabsTrigger
                 key={term}
                 value={term}
-                className="text-xs px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                className="text-xs px-3 data-[state=active]:bg-primary data-[state=active]:text-white"
               >
                 <Calendar className="h-3.5 w-3.5 mr-1" />
                 {term}
@@ -723,19 +723,19 @@ export function TeacherCoursesTab({
                     onClick={() => setSelectedPlanId(plan.id)}
                     className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all mb-1 ${
                       isActive
-                        ? 'bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-200 shadow-sm'
+                        ? 'bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/15 shadow-sm'
                         : 'hover:bg-gray-50'
                     }`}
                   >
                     <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0 ${isHybrid ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0 ${isHybrid ? 'bg-gradient-to-br from-primary to-primary/70' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}
                     >
                       {plan.course.charAt(0)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span
-                          className={`text-sm font-medium truncate ${isActive ? 'text-blue-700' : 'text-gray-900'}`}
+                          className={`text-sm font-medium truncate ${isActive ? 'text-primary' : 'text-gray-900'}`}
                         >
                           {plan.course}
                         </span>
@@ -745,13 +745,13 @@ export function TeacherCoursesTab({
                           {plan.name}
                         </Badge>
                         <Badge
-                          className={`text-[10px] h-4 px-1 border-0 text-white ${isHybrid ? 'bg-gradient-to-r from-blue-500 to-blue-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}
+                          className={`text-[10px] h-4 px-1 border-0 text-white ${isHybrid ? 'bg-gradient-to-r from-primary to-primary/70' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}
                         >
                           {courseTypeTag}
                         </Badge>
                       </div>
                       <p
-                        className={`text-xs mt-0.5 ${isActive ? 'text-blue-500' : 'text-gray-400'}`}
+                        className={`text-xs mt-0.5 ${isActive ? 'text-primary' : 'text-gray-400'}`}
                       >
                         {sessions.length} 个节次
                       </p>
@@ -782,10 +782,10 @@ export function TeacherCoursesTab({
                   const courseTypeTag = isHybrid ? '混合课程' : '实践场景'
                   const accentColors = isHybrid
                     ? {
-                        bg: 'from-blue-50 to-blue-100',
-                        border: 'border-blue-100 hover:border-blue-300',
-                        iconBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
-                        badgeBg: 'bg-gradient-to-r from-blue-500 to-blue-500',
+                        bg: 'from-primary/5 to-primary/10',
+                        border: 'border-primary/10 hover:border-primary/30',
+                        iconBg: 'bg-gradient-to-br from-primary to-primary/70',
+                        badgeBg: 'bg-gradient-to-r from-primary to-primary/70',
                         prepUrl: '/lesson/admin/hybrid/add?id=hybrid-1',
                         learnUrl: plan.courseId ? `/lesson/landing/${plan.courseId}` : '',
                       }
@@ -836,7 +836,7 @@ export function TeacherCoursesTab({
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Button
                             size="sm"
-                            className={`text-white text-xs h-7 shadow-sm ${isHybrid ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800' : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800'}`}
+                            className={`text-white text-xs h-7 shadow-sm ${isHybrid ? 'bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60' : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800'}`}
                             onClick={() => openSessionDialog(plan, 'final')}
                           >
                             <TrendingUp className="h-3 w-3 mr-1" />
@@ -849,7 +849,7 @@ export function TeacherCoursesTab({
                         <div className="px-4 pb-5 pt-2">
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-xs text-gray-400">
-                              <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1 align-middle" />
+                              <span className="inline-block w-2 h-2 rounded-full bg-primary mr-1 align-middle" />
                               已上 {sessions.filter((s) => s.status === 'associated').length} 节
                               <span className="inline-block w-2 h-2 rounded-full bg-gray-300 ml-3 mr-1 align-middle" />
                               未上 {sessions.filter((s) => s.status === 'pending').length} 节
@@ -862,21 +862,21 @@ export function TeacherCoursesTab({
                               const isDone = session.status === 'associated'
                               const sessionBg = isHybrid
                                 ? isDone
-                                  ? 'bg-blue-50'
+                                  ? 'bg-primary/5'
                                   : 'bg-white'
                                 : isDone
                                   ? 'bg-emerald-50'
                                   : 'bg-white'
                               const sessionBorder = isHybrid
                                 ? isDone
-                                  ? 'border-blue-200'
+                                  ? 'border-primary/15'
                                   : 'border-gray-200'
                                 : isDone
                                   ? 'border-emerald-200'
                                   : 'border-gray-200'
                               const sessionBadge = isHybrid
                                 ? isDone
-                                  ? 'border-blue-300 text-blue-600'
+                                  ? 'border-primary/30 text-primary'
                                   : 'border-gray-300 text-gray-500'
                                 : isDone
                                   ? 'border-emerald-300 text-emerald-600'
@@ -885,7 +885,7 @@ export function TeacherCoursesTab({
                                 <Popover key={session.id}>
                                   <PopoverTrigger asChild>
                                     <div
-                                      className={`rounded-lg p-2.5 text-xs space-y-1.5 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer ring-1 ring-transparent hover:ring-blue-300/50 border ${sessionBorder} ${sessionBg}`}
+                                      className={`rounded-lg p-2.5 text-xs space-y-1.5 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer ring-1 ring-transparent hover:ring-primary/30 border ${sessionBorder} ${sessionBg}`}
                                     >
                                       <div className="flex items-center gap-1">
                                         <Badge
@@ -912,7 +912,7 @@ export function TeacherCoursesTab({
                                           {session.venue}
                                         </div>
                                       )}
-                                      <div className="text-[10px] text-blue-500 font-medium">
+                                      <div className="text-[10px] text-primary font-medium">
                                         点击查看操作
                                       </div>
                                     </div>
@@ -943,8 +943,8 @@ export function TeacherCoursesTab({
                                         const existing = prepAssociations[session.id]
                                         if (existing && existing.subItems.length > 0) {
                                           return (
-                                            <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-2 space-y-1">
-                                              <span className="text-[10px] text-blue-500 font-medium block">
+                                            <div className="rounded-lg border border-primary/10 bg-primary/5 p-2 space-y-1">
+                                              <span className="text-[10px] text-primary font-medium block">
                                                 {isHybrid ? '已关联节次' : '已关联任务'}（
                                                 {existing.subItems.length}）
                                               </span>
@@ -952,7 +952,7 @@ export function TeacherCoursesTab({
                                                 {existing.subItems.map((si) => (
                                                   <div
                                                     key={si.id}
-                                                    className="text-xs text-gray-700 pl-2 border-l-2 border-blue-200"
+                                                    className="text-xs text-gray-700 pl-2 border-l-2 border-primary/15"
                                                   >
                                                     {si.name}
                                                   </div>
@@ -961,7 +961,7 @@ export function TeacherCoursesTab({
                                               <Button
                                                 size="sm"
                                                 variant="link"
-                                                className="text-[10px] h-5 p-0 text-blue-600"
+                                                className="text-[10px] h-5 p-0 text-primary"
                                                 onClick={() => {
                                                   setPrepPlanId(plan.id)
                                                   setPrepSessionId(session.id)
@@ -987,7 +987,7 @@ export function TeacherCoursesTab({
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className={`flex-1 justify-center text-[10px] h-7 px-1.5 ${isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                                          className={`flex-1 justify-center text-[10px] h-7 px-1.5 ${isHybrid ? 'border-primary/15 text-primary hover:bg-primary/5' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
                                           onClick={() => {
                                             setPrepPlanId(plan.id)
                                             setPrepSessionId(session.id)
@@ -1007,7 +1007,7 @@ export function TeacherCoursesTab({
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className={`flex-1 justify-center text-[10px] h-7 px-1.5 ${isHybrid ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                                          className={`flex-1 justify-center text-[10px] h-7 px-1.5 ${isHybrid ? 'border-primary/15 text-primary hover:bg-primary/5' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
                                           disabled={!accentColors.learnUrl}
                                           onClick={() => {
                                             if (accentColors.learnUrl)
@@ -1062,7 +1062,7 @@ export function TeacherCoursesTab({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            className={`flex-1 justify-center text-[10px] h-6 px-1.5 ${isHybrid ? 'text-blue-600 hover:bg-blue-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                                            className={`flex-1 justify-center text-[10px] h-6 px-1.5 ${isHybrid ? 'text-primary hover:bg-primary/5' : 'text-emerald-600 hover:bg-emerald-50'}`}
                                             onClick={() => {
                                               openSessionDialog(plan, 'tracking')
                                             }}
@@ -1073,7 +1073,7 @@ export function TeacherCoursesTab({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="flex-1 justify-center text-[10px] h-6 px-1.5 text-blue-600 hover:bg-blue-50"
+                                            className="flex-1 justify-center text-[10px] h-6 px-1.5 text-primary hover:bg-primary/5"
                                             onClick={() => {
                                               openSessionDialog(plan, 'assessment')
                                             }}

@@ -381,7 +381,7 @@ function GradientTile({
       className={`group rounded-2xl p-4 sm:p-6 relative overflow-hidden flex border flex-col ${placementClass} ${
         isLocked
           ? 'border-dashed border-[#d7dce6] bg-[#fafbfc]'
-          : 'cursor-pointer bg-white border-[#e8ecf3] shadow-[0_0_30px_rgba(0,73,174,0.08)] hover:-translate-y-2 hover:border-[#0049AE40] hover:shadow-[0_10px_32px_rgba(0,73,174,0.15)] transition-all duration-[400ms]'
+          : 'cursor-pointer bg-white border-[#e8ecf3] shadow-[0_0_30px] shadow-primary/10 hover:-translate-y-2 hover:border-primary/25 hover:shadow-[0_10px_32px] hover:shadow-primary/15 transition-all duration-[400ms]'
       }`}
     >
       {isLocked && (
@@ -420,7 +420,7 @@ function GradientTile({
 
       {!isLocked && (
         <div
-          className="absolute bottom-3 right-4 flex items-center gap-1 text-xs font-medium text-[#0049AE] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          className="absolute bottom-3 right-4 flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{ zIndex: 2 }}
         >
           进入
@@ -444,7 +444,7 @@ function SectionLabel({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3 mb-[18px] mt-5">
       <h3 className="text-lg font-bold text-[#333] flex items-center gap-2.5">
-        <span className="w-1 h-[18px] rounded-sm bg-[#0049AE] inline-block" />
+        <span className="w-1 h-[18px] rounded-sm bg-primary inline-block" />
         {title}
       </h3>
       <span className="flex-1 h-px bg-[#e9edf4]" />
@@ -464,7 +464,7 @@ export default function PortalHomePage() {
         style={{
           zIndex: -2,
           background: `
-            radial-gradient(circle at 50% -10%, rgba(0,73,174,0.06), transparent 45%),
+            radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--primary) 6%, transparent), transparent 45%),
             #f7f9fc
           `,
         }}
@@ -476,22 +476,22 @@ export default function PortalHomePage() {
           className="relative max-w-[1312px] mx-auto rounded-2xl overflow-hidden px-6 py-12 sm:px-16 sm:py-14 text-center"
           style={{
             background: 'linear-gradient(120deg,#eef5ff 0%,#f8fbff 55%,#f2f8ff 100%)',
-            boxShadow: '0 0 30px rgba(0,73,174,0.06)',
+            boxShadow: '0 0 30px color-mix(in srgb, var(--primary) 6%, transparent)',
           }}
         >
           {/* geometric decorations */}
-          <div className="absolute -right-16 -top-20 w-64 h-64 rounded-full border border-[#0049AE]/10 pointer-events-none" />
-          <div className="absolute -right-4 -top-8 w-36 h-36 rounded-full border border-[#0049AE]/10 pointer-events-none" />
+          <div className="absolute -right-16 -top-20 w-64 h-64 rounded-full border border-primary/10 pointer-events-none" />
+          <div className="absolute -right-4 -top-8 w-36 h-36 rounded-full border border-primary/10 pointer-events-none" />
           <div
-            className="absolute -left-24 -bottom-28 w-80 h-80 border border-[#0049AE]/[0.07] rounded-2xl pointer-events-none"
+            className="absolute -left-24 -bottom-28 w-80 h-80 border border-primary/[0.07] rounded-2xl pointer-events-none"
             style={{ transform: 'rotate(45deg)' }}
           />
-          <div className="absolute left-16 top-8 w-3 h-3 rounded-full bg-[#0049AE]/10 pointer-events-none" />
-          <div className="absolute right-24 bottom-10 w-2 h-2 rounded-full bg-[#0049AE]/10 pointer-events-none" />
+          <div className="absolute left-16 top-8 w-3 h-3 rounded-full bg-primary/10 pointer-events-none" />
+          <div className="absolute right-24 bottom-10 w-2 h-2 rounded-full bg-primary/10 pointer-events-none" />
 
           <div className="relative" style={{ zIndex: 2 }}>
             <h1 className="text-[28px] sm:text-4xl lg:text-[40px] font-extrabold text-[#333] tracking-[1px] leading-tight mb-5">
-              <span className="text-[#0049AE]">场景化数智</span>
+              <span className="text-primary">场景化数智</span>
               教学服务体系
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-2.5">
