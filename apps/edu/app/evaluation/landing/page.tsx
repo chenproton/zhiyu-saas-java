@@ -12,21 +12,13 @@ import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
 import { ExamCenterCard } from '@/components/evaluation/exam-center-card'
+import { COVER_GRADIENTS } from '@/lib/cover-gradients'
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
   { value: 'default', label: '默认排序' },
   { value: 'recent', label: '最近收录' },
   { value: 'update', label: '最近更新' },
-]
-
-const coverGradients = [
-  'linear-gradient(135deg,#7c3aed,#8b5cf6)',
-  'linear-gradient(135deg,#a855f7,#c084fc)',
-  'linear-gradient(135deg,#6366f1,#818cf8)',
-  'linear-gradient(135deg,#ec4899,#f472b6)',
-  'linear-gradient(135deg,#f43f5e,#fb7185)',
-  'linear-gradient(135deg,#8b5cf6,#a78bfa)',
 ]
 
 function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
@@ -45,7 +37,7 @@ function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                 }
-              : { background: coverGradients[index % coverGradients.length] }
+              : { background: COVER_GRADIENTS[index % COVER_GRADIENTS.length] }
           }
         >
           {!bank.coverImage && <Library className="w-12 h-12 text-white/80" />}
@@ -89,7 +81,7 @@ function ExamCard({ exam, index }: { exam: Exam; index: number }) {
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                 }
-              : { background: coverGradients[(index + 3) % coverGradients.length] }
+              : { background: COVER_GRADIENTS[(index + 3) % COVER_GRADIENTS.length] }
           }
         >
           {!exam.coverImage && <ClipboardList className="w-12 h-12 text-white/80" />}
