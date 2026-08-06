@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FileUp, Clock3, CheckCircle2, X, MapPin, Users } from 'lucide-react'
+import { Clock3, CheckCircle2, X, MapPin, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -29,7 +29,7 @@ import { periodSlotApi, scheduleApi, venueApi } from '@/lib/api'
 import type { PeriodSlot, ScheduleEntry, TeachingPlan, TeachingPlanEntry, Venue } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ScheduleEditDialog } from './schedule-edit-dialog'
-import { ScheduleImportDialog } from './schedule-import-dialog'
+import { ScheduleImportBar } from './schedule-import-bar'
 import { reportError } from '@/lib/error-handling'
 
 interface ScheduleGridTabProps {
@@ -47,7 +47,6 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const [venues, setVenues] = useState<Venue[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<ScheduleEntry | null>(null)
-  const [importOpen, setImportOpen] = useState(false)
   const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null)
   const [savingQuick] = useState(false)
   const [venueFilter, setVenueFilter] = useState<string>('__all')
@@ -255,10 +254,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-            <FileUp className="mr-1 size-4" />
-            导入批量排课结果
-          </Button>
+          <ScheduleImportBar termId={plan.termId} onImported={reloadAll} />
         </div>
       </div>
 
@@ -482,13 +478,6 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <ScheduleImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        termId={plan.termId}
-        onImported={reloadAll}
-      />
     </div>
   )
 }

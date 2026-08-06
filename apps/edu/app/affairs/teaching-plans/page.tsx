@@ -69,6 +69,10 @@ export default function TeachingPlansPage() {
       coBuilderField="collaborators"
       createRedirectUrl={(id) => `/affairs/teaching-plans/${id}?new=true`}
       statusFilterOptions={STATUS_FILTER_OPTIONS}
+      groupStatusFilterOptions={[
+        { value: 'unplanned', label: '未排课', statuses: ['draft', 'pending', 'approved', 'rejected'] },
+        { value: 'published', label: '已排课', statuses: ['published'] },
+      ]}
       mapItem={mapPlan}
       mapBatch={mapBatch}
       createPayload={() => ({ programId: '', termId: '' })}

@@ -175,6 +175,10 @@ export interface ContentListPageConfig<
 
   statusFilterOptions: { value: string; label: string }[]
 
+  /** 分组状态筛选（与 statusFilterOptions 并存，独立生效且叠加过滤）。
+   *  存在时在筛选栏额外渲染一个分组下拉，如教学计划的「未排课/已排课」 */
+  groupStatusFilterOptions?: { value: string; label: string; statuses: string[] }[]
+
   mapItem: (backend: B, currentUserId: string) => T
   mapBatch: (backend: Batch) => ContentBatch
   afterLoad?: (items: T[], batches: ContentBatch[]) => Promise<T[]>
@@ -241,6 +245,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     importEntityName = '',
     exportEntityName = '',
     statusFilterOptions,
+    groupStatusFilterOptions,
     mapItem,
     mapBatch,
     createPayload,
@@ -276,6 +281,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
+  const [selectedGroupStatus, setSelectedGroupStatus] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [expandedBatches, setExpandedBatches] = useState<string[]>([])
 
@@ -487,8 +493,14 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     } else {
       result = result.filter((i) => i.status !== 'archived')
     }
+    if (selectedGroupStatus) {
+      const group = groupStatusFilterOptions?.find((o) => o.value === selectedGroupStatus)
+      if (group) {
+        result = result.filter((i) => group.statuses.includes(i.status))
+      }
+    }
     return result
-  }, [tabFiltered, searchQuery, selectedBatchId, selectedStatus])
+  }, [tabFiltered, searchQuery, selectedBatchId, selectedStatus, selectedGroupStatus, groupStatusFilterOptions])
 
   const stats = useMemo(() => {
     const total = filtered.length
@@ -1080,6 +1092,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     setSearchQuery('')
     setSelectedBatchId(null)
     setSelectedStatus(null)
+    setSelectedGroupStatus(null)
   }
 
   const handleImportFileSelect = (files: FileList | null) => {
@@ -1443,6 +1456,24 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   ))}
                 </SelectContent>
               </Select>
+              {groupStatusFilterOptions && groupStatusFilterOptions.length > 0 && (
+                <Select
+                  value={selectedGroupStatus || '__all__'}
+                  onValueChange={(v) => setSelectedGroupStatus(v === '__all__' ? null : v)}
+                >
+                  <SelectTrigger className="h-9 text-sm w-36">
+                    <SelectValue placeholder={t('按排课状态筛选')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">{t('全部排课状态')}</SelectItem>
+                    {groupStatusFilterOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <Button variant="outline" size="sm" className="h-9" onClick={handleResetFilters}>
               <RotateCcw className="mr-1 h-3.5 w-3.5" />
