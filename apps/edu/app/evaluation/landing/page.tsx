@@ -269,7 +269,7 @@ export default function LandingHomePage() {
             <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
               测评资源平台
               <br />
-              <span className="text-primary/60">海量题库与试卷，助力教学测评</span>
+              <span className="text-white/80">海量题库与试卷，助力教学测评</span>
             </h1>
             <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
               丰富题库资源与智能组卷工具，支持在线考试与自动评分，让教学测评更高效
