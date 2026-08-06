@@ -70,7 +70,7 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 		goAsync(&wg, func() { dash.Stats = h.schoolAdminStats(r.Context(), claims.TenantID) })
 		goAsync(&wg, func() { dash.ResourceStats = h.schoolAdminResourceStats(r.Context(), claims.TenantID) })
 		goAsync(&wg, func() { dash.PersonnelStats = h.schoolAdminPersonnelStats(r.Context(), claims.TenantID) })
-		goAsync(&wg, func() { dash.ResourceGrowth = h.schoolAdminResourceGrowth(r.Context(), claims.TenantID, 12) })
+		goAsync(&wg, func() { dash.ResourceGrowth = h.schoolAdminResourceGrowth(r.Context(), claims.TenantID, 14) })
 		goAsync(&wg, func() { dash.Todos = h.schoolAdminTodos(r.Context(), claims.TenantID) })
 		wg.Wait()
 		dash.Schedule = []domain.WorkspaceScheduleEvent{}
@@ -236,8 +236,8 @@ func (h *PortalHandler) schoolAdminResourceStats(ctx context.Context, tenantID *
 	}
 }
 
-func (h *PortalHandler) schoolAdminResourceGrowth(ctx context.Context, tenantID *string, months int) []domain.WorkspaceResourceGrowth {
-	return h.Service.SchoolAdminResourceGrowth(ctx, tenantID, months)
+func (h *PortalHandler) schoolAdminResourceGrowth(ctx context.Context, tenantID *string, days int) []domain.WorkspaceResourceGrowth {
+	return h.Service.SchoolAdminResourceGrowth(ctx, tenantID, days)
 }
 
 func (h *PortalHandler) schoolAdminPersonnelStats(ctx context.Context, tenantID *string) []domain.WorkspacePersonnelStat {
