@@ -1165,6 +1165,7 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   'ability-result-center': '查看场景任务评价与认证结果',
   'resource-my-resource-center': '管理个人教学资源',
   'resource-resource-center': '管理知识点、能力点与教学资源',
+  'resource-tag-center': '管理资源标签，支撑资源分类与检索筛选',
   'affairs-affairs-mgmt': '维护组织架构、专业、师生与职位数据，配置学期场地等教务基础数据',
   'affairs-teaching-mgmt': '维护培养方案、教学计划与排课',
   'affairs-teaching-approval': '维护审批流程与批次管理',
