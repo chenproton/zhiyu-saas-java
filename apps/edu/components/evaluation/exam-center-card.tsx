@@ -56,7 +56,7 @@ export function ExamCenterCard({
   return (
     <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
       <div
-        className="h-[110px] flex items-center justify-center shrink-0 relative"
+        className="h-24 flex items-center justify-center shrink-0 relative"
         style={
           coverImage
             ? {
@@ -67,7 +67,7 @@ export function ExamCenterCard({
             : { background: gradientFor(item.id) }
         }
       >
-        {!coverImage && <ClipboardList className="w-12 h-12 text-white/80" />}
+        {!coverImage && <ClipboardList className="w-10 h-10 text-white/80" />}
         <Badge
           variant="outline"
           className={cn(
@@ -79,10 +79,10 @@ export function ExamCenterCard({
           {status.label}
         </Badge>
       </div>
-      <div className="p-5 flex-1 flex flex-col">
+      <div className="p-4 flex-1 flex flex-col">
         <h3 className="text-[15px] font-semibold text-slate-800 truncate">{item.usageName}</h3>
         <p className="text-xs text-slate-400 mt-1 truncate">试卷：{item.examName}</p>
-        <div className="flex items-center gap-4 text-[11px] text-slate-400 py-3 mt-2 border-b border-slate-50 whitespace-nowrap">
+        <div className="flex items-center gap-4 text-[11px] text-slate-400 py-2.5 mt-1.5 border-b border-slate-50 whitespace-nowrap">
           <span className="flex items-center gap-1 shrink-0">
             <FileText className="w-3 h-3" /> {item.questionCount} 题
           </span>
@@ -98,7 +98,7 @@ export function ExamCenterCard({
             </span>
           </span>
         </div>
-        <div className="pt-3 flex-1 flex flex-col justify-between gap-3">
+        <div className="pt-2.5 flex-1 flex flex-col justify-between gap-2">
           {item.submitted && (
             <div className="flex items-center gap-2 text-xs">
               <span className="text-slate-500">已交卷</span>
@@ -107,18 +107,6 @@ export function ExamCenterCard({
                   {item.score}/{item.totalScore} 分
                 </span>
               )}
-            </div>
-          )}
-          {!item.participatable && item.studentView && (
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Lock className="w-3 h-3" />
-              仅限指定班级参加
-            </div>
-          )}
-          {!item.participatable && !item.studentView && (
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Lock className="w-3 h-3" />
-              仅学生可参加
             </div>
           )}
           <div>
@@ -146,7 +134,14 @@ export function ExamCenterCard({
                 disabled
                 className="w-full rounded-[10px] h-9 text-xs bg-slate-100 text-slate-400 cursor-not-allowed"
               >
-                {finished ? '考试已结束' : '不可参加'}
+                <Lock className="w-3 h-3 mr-1" />
+                {finished
+                  ? '考试已结束'
+                  : !item.participatable && item.studentView
+                    ? '仅指定班级可参加'
+                    : !item.participatable && !item.studentView
+                      ? '仅学生可参加'
+                      : '不可参加'}
               </Button>
             )}
           </div>

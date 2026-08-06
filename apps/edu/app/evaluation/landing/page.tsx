@@ -390,22 +390,22 @@ export default function LandingHomePage() {
                 </Link>
               </Button>
             </div>
-            <div className="p-6">
-              <div className="flex flex-col lg:flex-row gap-6">
+            <div className="p-5">
+              <div className="flex flex-col lg:flex-row gap-5">
                 <div className="lg:w-[250px] shrink-0">
-                  <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-5 h-full">
-                    <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2 mb-4">
+                  <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-4 h-full">
+                    <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2 mb-3">
                       <BarChart3 className="w-4 h-4 text-primary" /> 状态分布
                     </div>
                     <div className="relative">
-                      <ResponsiveContainer width="100%" height={170}>
+                      <ResponsiveContainer width="100%" height={140}>
                         <PieChart>
                           <Pie
                             data={statusPieData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={48}
-                            outerRadius={68}
+                            innerRadius={40}
+                            outerRadius={58}
                             paddingAngle={3}
                             dataKey="value"
                             strokeWidth={0}
@@ -420,13 +420,13 @@ export default function LandingHomePage() {
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <div className="text-[22px] font-bold text-[#0f172a] leading-none">
+                        <div className="text-[20px] font-bold text-[#0f172a] leading-none">
                           {centerStats.total}
                         </div>
                         <div className="text-[11px] text-[#64748b] mt-1">全部考试</div>
                       </div>
                     </div>
-                    <div className="space-y-2.5 mt-5">
+                    <div className="space-y-2 mt-4">
                       {statusPieData.map((d) => (
                         <div key={d.name} className="flex items-center justify-between text-xs">
                           <span className="flex items-center gap-2 text-[#475569]">
