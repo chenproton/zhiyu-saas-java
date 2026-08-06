@@ -51,12 +51,12 @@ interface LandingData {
 }
 
 const BRAND_CATEGORIES = [
-  { id: 'talent', title: '人才品牌', icon: Users, href: '/portal/alliance/brands/talent' },
-  { id: 'employer', title: '雇主品牌', icon: Building2, href: '/portal/alliance/brands/employer' },
-  { id: 'job', title: '岗位品牌', icon: Briefcase, href: '/portal/alliance/brands/job' },
-  { id: 'major', title: '专业品牌', icon: GraduationCap, href: '/portal/alliance/brands/major' },
-  { id: 'teacher', title: '师资品牌', icon: UserCircle, href: '/portal/alliance/brands/teacher' },
-  { id: 'culture', title: '文化品牌', icon: Heart, href: '/portal/alliance/brands/culture' },
+  { id: 'talent', title: '人才品牌', icon: Users, href: '/portal/alliance/brands?type=talent' },
+  { id: 'employer', title: '雇主品牌', icon: Building2, href: '/portal/alliance/brands?type=employer' },
+  { id: 'job', title: '岗位品牌', icon: Briefcase, href: '/portal/alliance/brands?type=job' },
+  { id: 'major', title: '专业品牌', icon: GraduationCap, href: '/portal/alliance/brands?type=major' },
+  { id: 'teacher', title: '师资品牌', icon: UserCircle, href: '/portal/alliance/brands?type=teacher' },
+  { id: 'culture', title: '文化品牌', icon: Heart, href: '/portal/alliance/brands?type=culture' },
 ]
 
 const STAT_GRADIENTS = [

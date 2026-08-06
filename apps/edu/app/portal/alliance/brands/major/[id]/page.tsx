@@ -35,7 +35,7 @@ export default function AlliancePublicMajorBrandDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/portal/alliance/brands/major"
+          href="/portal/alliance/brands?type=major"
           className="text-sm text-primary hover:underline inline-flex items-center gap-1"
         >
           <ArrowLeft className="h-4 w-4" /> 返回
