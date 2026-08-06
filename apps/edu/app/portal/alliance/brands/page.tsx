@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Sparkles } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
@@ -11,10 +12,14 @@ import { PublicListShell } from '@/components/alliance/public-list-shell'
 
 const BRAND_TYPES = ['talent', 'employer', 'job', 'major', 'teacher', 'culture']
 
-export default function AlliancePublicBrandsPage() {
+function AlliancePublicBrandsList() {
+  const searchParams = useSearchParams()
   const [items, setItems] = useState<AllianceBrand[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('all')
+  const [tab, setTab] = useState<string>(() => {
+    const type = searchParams.get('type')
+    return type && BRAND_TYPES.includes(type) ? type : 'all'
+  })
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
@@ -82,5 +87,13 @@ export default function AlliancePublicBrandsPage() {
         </div>
       )}
     </PublicListShell>
+  )
+}
+
+export default function AlliancePublicBrandsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AlliancePublicBrandsList />
+    </Suspense>
   )
 }
