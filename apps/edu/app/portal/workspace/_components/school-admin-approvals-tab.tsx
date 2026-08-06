@@ -43,10 +43,10 @@ export function SchoolAdminApprovalsTab() {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-gradient-to-r from-amber-500 to-amber-600 text-white border-0">
+        <Card className="bg-gradient-to-r from-primary to-primary/70 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-amber-100 text-sm">待审批总数</p>
+              <p className="text-primary-foreground/80 text-sm">待审批总数</p>
               <p className="text-2xl font-bold">{total}</p>
             </div>
             <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
