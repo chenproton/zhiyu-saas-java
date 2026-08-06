@@ -244,6 +244,7 @@ export function TopNav() {
                     {t('账号设置')}
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setMobileAccessOpen(true)}>
                   <QrCode className="w-4 h-4" />
                   {t('移动端访问')}
@@ -273,7 +274,6 @@ export function TopNav() {
                     English
                   </Button>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem className="cursor-default" onSelect={(e) => e.preventDefault()}>
                   <Type className="w-4 h-4" />
                   <span className="text-sm text-foreground whitespace-nowrap">{t('字号大小')}</span>
