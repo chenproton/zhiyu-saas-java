@@ -214,8 +214,10 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.download = filename
   document.body.appendChild(a)
   a.click()
-  a.remove()
-  window.URL.revokeObjectURL(url)
+  window.setTimeout(() => {
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  }, 1000)
 }
 
 async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
