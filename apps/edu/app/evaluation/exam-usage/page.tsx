@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye, Send } from 'lucide-react'
+import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye, Send, PencilLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -45,10 +45,10 @@ import { formatDate } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
 
 const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage['targetType']>, string> = {
-  class: '班级',
-  major: '专业',
-  department: '部门',
-  public: '公开',
+  class: '手动创建',
+  major: '手动创建',
+  department: '手动创建',
+  public: '手动创建',
   task: '场景任务',
   node: '课程节点',
   course: '课程',
@@ -78,6 +78,7 @@ export default function ExamUsagePage() {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createSubmitting, setCreateSubmitting] = useState(false)
+  const [editingUsage, setEditingUsage] = useState<ExamUsage | null>(null)
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [deletingUsageId, setDeletingUsageId] = useState<string | null>(null)
@@ -161,31 +162,64 @@ export default function ExamUsagePage() {
   }
 
   const openCreateDialog = () => {
+    setEditingUsage(null)
     resetForm()
     setCreateDialogOpen(true)
   }
 
+  // RFC3339 → datetime-local 值（UTC，与创建时提交格式一致）
+  const toDatetimeLocal = (iso?: string) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ''
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+  }
+
+  const openEditDialog = (usage: ExamUsage) => {
+    setEditingUsage(usage)
+    setFormExamId(usage.examId)
+    setFormName(usage.name)
+    setFormDescription(usage.description || '')
+    setFormDuration(usage.duration != null ? String(usage.duration) : '')
+    setFormStartTime(toDatetimeLocal(usage.startTime))
+    setFormEndTime(toDatetimeLocal(usage.endTime))
+    setFormClassIds(usage.targetIds || [])
+    setFormActivationMode(
+      (usage.activationMode as 'manual' | 'scheduled' | 'always') || 'manual',
+    )
+    setCreateDialogOpen(true)
+  }
+
   const handleCreate = async () => {
-    if (!formExamId || !formName) return
+    if (!formName || (!editingUsage && !formExamId)) return
     setCreateSubmitting(true)
     try {
-      await examUsageApi.create({
-        examId: formExamId,
+      const payload = {
         name: formName,
         description: formDescription || undefined,
         duration: formDuration ? Number(formDuration) : undefined,
         startTime: formActivationMode === 'scheduled' ? formStartTime || undefined : undefined,
         endTime: formActivationMode === 'scheduled' ? formEndTime || undefined : undefined,
-        targetType: 'class',
+        targetType: 'class' as const,
         targetIds: formClassIds,
         activationMode: formActivationMode,
-        status: formActivationMode === 'always' ? 'published' : 'draft',
-      })
+      }
+      if (editingUsage) {
+        await examUsageApi.update(editingUsage.id, payload)
+      } else {
+        await examUsageApi.create({
+          ...payload,
+          examId: formExamId,
+          status: formActivationMode === 'always' ? 'published' : 'draft',
+        })
+      }
       setCreateDialogOpen(false)
       resetForm()
+      setEditingUsage(null)
       await loadUsages()
     } catch (err) {
-      reportError(err, '创建考试安排')
+      reportError(err, editingUsage ? '编辑考试安排' : '创建考试安排')
     } finally {
       setCreateSubmitting(false)
     }
@@ -234,8 +268,12 @@ export default function ExamUsagePage() {
   const canDelete = (usage: ExamUsage) =>
     (usage.status === 'draft' || usage.status === 'finished') &&
     (!usage.targetType || MANUAL_TARGET_TYPES.includes(usage.targetType))
+  // 仅未开启的手动创建考试允许编辑（场景任务/课程节点跟随测评方式配置，不允许修改）
+  const canEdit = (usage: ExamUsage) =>
+    (usage.status === 'draft' || usage.status === 'pending') &&
+    (!usage.targetType || MANUAL_TARGET_TYPES.includes(usage.targetType))
 
-  const isFormValid = formExamId && formName && formClassIds.length > 0
+  const isFormValid = (editingUsage ? formName : formExamId && formName) && formClassIds.length > 0
 
   return (
     <div className="space-y-6">
@@ -308,8 +346,6 @@ export default function ExamUsagePage() {
               <TableRow>
                 <TableHead className="w-[180px]">考试名称</TableHead>
                 <TableHead className="w-[180px]">关联试卷</TableHead>
-                <TableHead className="w-[200px]">描述</TableHead>
-                <TableHead className="w-[90px]">时长</TableHead>
                 <TableHead className="w-[180px]">开放时间</TableHead>
                 <TableHead className="w-[100px]">状态</TableHead>
                 <TableHead className="w-[120px]">目标类型</TableHead>
@@ -319,13 +355,13 @@ export default function ExamUsagePage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     加载中...
                   </TableCell>
                 </TableRow>
               ) : filteredUsages.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     暂无使用记录
                   </TableCell>
                 </TableRow>
@@ -336,16 +372,6 @@ export default function ExamUsagePage() {
                     <TableRow key={usage.id} className="group">
                       <TableCell className="font-medium">{usage.name}</TableCell>
                       <TableCell>{exam?.name || '-'}</TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground line-clamp-2">
-                          {usage.description || '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">
-                          {usage.duration ? `${usage.duration} 分钟` : '-'}
-                        </span>
-                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {usage.startTime || usage.endTime ? (
                           <div className="text-xs">
@@ -365,6 +391,17 @@ export default function ExamUsagePage() {
                         </span>
                       </TableCell>
                       <TableRowActions className="sticky right-0 bg-white">
+                        {canEdit(usage) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-gray-600 hover:text-gray-800"
+                            onClick={() => openEditDialog(usage)}
+                          >
+                            <PencilLine className="mr-1 h-3 w-3" />
+                            编辑
+                          </Button>
+                        )}
                         {canPublish(usage.status) && (
                           <Button
                             variant="ghost"
@@ -421,31 +458,41 @@ export default function ExamUsagePage() {
         </div>
       </div>
 
-      {/* 创建考试使用弹窗 */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      {/* 创建/编辑考试使用弹窗 */}
+      <Dialog
+        open={createDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open)
+          if (!open) setEditingUsage(null)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>创建考试使用</DialogTitle>
-            <DialogDescription>选择试卷并配置考试使用信息</DialogDescription>
+            <DialogTitle>{editingUsage ? '编辑考试' : '创建考试使用'}</DialogTitle>
+            <DialogDescription>
+              {editingUsage ? '修改考试信息，保存后立即生效' : '选择试卷并配置考试使用信息'}
+            </DialogDescription>
           </DialogHeader>
           <FieldGroup className="py-4">
-            <Field>
-              <FieldLabel>选择试卷 *</FieldLabel>
-              <Select value={formExamId} onValueChange={setFormExamId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择一份试卷" />
-                </SelectTrigger>
-                <SelectContent>
-                  {exams
-                    .filter((exam) => exam.status === 'published')
-                    .map((exam) => (
-                      <SelectItem key={exam.id} value={exam.id}>
-                        {exam.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            {!editingUsage && (
+              <Field>
+                <FieldLabel>选择试卷 *</FieldLabel>
+                <Select value={formExamId} onValueChange={setFormExamId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择一份试卷" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {exams
+                      .filter((exam) => exam.status === 'published')
+                      .map((exam) => (
+                        <SelectItem key={exam.id} value={exam.id}>
+                          {exam.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
 
             <Field>
               <FieldLabel>考试名称 *</FieldLabel>
@@ -522,7 +569,7 @@ export default function ExamUsagePage() {
               取消
             </Button>
             <Button onClick={handleCreate} disabled={!isFormValid || createSubmitting}>
-              {createSubmitting ? '提交中...' : '创建'}
+              {createSubmitting ? '提交中...' : editingUsage ? '保存' : '创建'}
             </Button>
           </DialogFooter>
         </DialogContent>
