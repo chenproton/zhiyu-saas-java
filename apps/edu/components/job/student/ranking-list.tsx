@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { Trophy, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,14 @@ interface RankingListProps {
 
 const ROWS_PER_PAGE = 5
 
+const subscribeMobile = (callback: () => void) => {
+  const mql = window.matchMedia('(max-width: 639px)')
+  mql.addEventListener('change', callback)
+  return () => mql.removeEventListener('change', callback)
+}
+
+const getIsMobile = () => window.matchMedia('(max-width: 639px)').matches
+
 const cardPalette = {
   bg: 'bg-primary/5',
   hover: 'hover:bg-primary/10',
@@ -21,6 +29,7 @@ const cardPalette = {
 
 export function RankingList({ positions = [], industryMap }: RankingListProps) {
   const [page, setPage] = useState(0)
+  const isMobile = useSyncExternalStore(subscribeMobile, getIsMobile, () => false)
 
   const ranked = useMemo(() => {
     return [...positions]
@@ -33,14 +42,15 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
       })
   }, [positions])
 
-  const totalPages = Math.max(1, Math.ceil(ranked.length / (ROWS_PER_PAGE * 2)))
+  // 移动端单列每页 5 行，桌面端双列每页 10 行
+  const rowsPerPage = isMobile ? ROWS_PER_PAGE : ROWS_PER_PAGE * 2
+  const totalPages = Math.max(1, Math.ceil(ranked.length / rowsPerPage))
+  // 视口切换导致每页行数变化时，在渲染期夹紧页码，避免空页
+  const activePage = Math.min(page, totalPages - 1)
   const pageItems = useMemo(() => {
-    const start = page * ROWS_PER_PAGE * 2
-    return ranked.slice(start, start + ROWS_PER_PAGE * 2)
-  }, [ranked, page])
-
-  const col1 = pageItems.filter((_, i) => i % 2 === 0)
-  const col2 = pageItems.filter((_, i) => i % 2 === 1)
+    const start = activePage * rowsPerPage
+    return ranked.slice(start, start + rowsPerPage)
+  }, [ranked, activePage, rowsPerPage])
 
   const getRankStyle = (rank: number) => {
     if (rank === 1)
@@ -64,7 +74,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
   }
 
   const renderItem = (pos: CareerPosition, idx: number) => {
-    const globalRank = page * ROWS_PER_PAGE * 2 + idx + 1
+    const globalRank = activePage * rowsPerPage + idx + 1
     const display = pos.shortName || pos.name
     const count = pos.favoriteCount ?? 0
     const palette = cardPalette
@@ -139,33 +149,28 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
             variant="outline"
             size="icon"
             className="h-7 w-7 rounded-lg border-slate-200 bg-white text-slate-500 hover:border-primary/30 hover:text-primary hover:bg-primary/5 disabled:opacity-30 transition-all"
-            disabled={page <= 0}
-            onClick={() => setPage(page - 1)}
+            disabled={activePage <= 0}
+            onClick={() => setPage(activePage - 1)}
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </Button>
           <span className="text-xs text-slate-400 min-w-[40px] text-center font-medium">
-            {page + 1} / {totalPages}
+            {activePage + 1} / {totalPages}
           </span>
           <Button
             variant="outline"
             size="icon"
             className="h-7 w-7 rounded-lg border-slate-200 bg-white text-slate-500 hover:border-primary/30 hover:text-primary hover:bg-primary/5 disabled:opacity-30 transition-all"
-            disabled={page >= totalPages - 1}
-            onClick={() => setPage(page + 1)}
+            disabled={activePage >= totalPages - 1}
+            onClick={() => setPage(activePage + 1)}
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="flex-1 flex flex-col gap-1">
-          {col1.map((pos, i) => renderItem(pos, i * 2))}
-        </div>
-        <div className="flex-1 flex flex-col gap-1">
-          {col2.map((pos, i) => renderItem(pos, i * 2 + 1))}
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+        {pageItems.map((pos, i) => renderItem(pos, i))}
       </div>
     </div>
   )
