@@ -260,7 +260,7 @@ export default function PortalLoginPage() {
          </Card>
 
         <p className="mt-6 text-center text-xs text-slate-400">
-          © {new Date().getFullYear()} {t('场景化数智教学服务平台')} All Rights Reserved
+          {t('版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1')}
         </p>
       </div>
 
