@@ -13,8 +13,10 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useIndustryMap, useMajorMap } from '@/lib/use-resource-maps'
 import { formatDate } from '@/lib/format-utils'
 import { ArchiveListPage, type ArchiveColumn } from '@/components/shared/archive-list-page'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function PositionArchivePage() {
+  const t = useT()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
@@ -75,12 +77,12 @@ export default function PositionArchivePage() {
     try {
       await positionApi.saveDraft(position.id)
       await refresh()
-      toast({ title: '已恢复' })
+      toast({ title: t('已恢复') })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '恢复失败',
-        description: err.message || '请稍后重试',
+        title: t('恢复失败'),
+        description: err.message || t('请稍后重试'),
       })
     }
   }
@@ -89,12 +91,12 @@ export default function PositionArchivePage() {
     try {
       await positionApi.delete(position.id)
       await refresh()
-      toast({ title: '已删除' })
+      toast({ title: t('已删除') })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err.message || '请稍后重试',
+        title: t('删除失败'),
+        description: err.message || t('请稍后重试'),
       })
     }
   }
@@ -104,12 +106,12 @@ export default function PositionArchivePage() {
     const failed = results.filter((r) => r.status === 'rejected').length
     await refresh()
     if (failed === 0) {
-      toast({ title: `已批量恢复 ${ids.length} 个岗位` })
+      toast({ title: t('已批量恢复 {n} 个岗位', { n: ids.length }) })
     } else {
       toast({
         variant: 'destructive',
-        title: '批量恢复部分失败',
-        description: `成功 ${ids.length - failed} 个，失败 ${failed} 个`,
+        title: t('批量恢复部分失败'),
+        description: t('成功 {ok} 个，失败 {fail} 个', { ok: ids.length - failed, fail: failed }),
       })
     }
   }
@@ -123,12 +125,12 @@ export default function PositionArchivePage() {
     try {
       await Promise.all(batchDeleteTarget.map((id) => positionApi.delete(id)))
       await refresh()
-      toast({ title: `已批量删除 ${batchDeleteTarget.length} 个岗位` })
+      toast({ title: t('已批量删除 {n} 个岗位', { n: batchDeleteTarget.length }) })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '批量删除失败',
-        description: err.message || '请稍后重试',
+        title: t('批量删除失败'),
+        description: err.message || t('请稍后重试'),
       })
     } finally {
       setBatchDeleteTarget(null)
@@ -137,7 +139,7 @@ export default function PositionArchivePage() {
 
   const columns: ArchiveColumn<Position>[] = [
     {
-      header: '岗位名称',
+      header: t('岗位名称'),
       className: 'w-44',
       cell: (entry) => (
         <div className="max-w-44">
@@ -149,7 +151,7 @@ export default function PositionArchivePage() {
       ),
     },
     {
-      header: '简称',
+      header: t('简称'),
       className: 'w-24',
       cell: (entry) => (
         <span className="text-sm text-muted-foreground max-w-24 truncate">
@@ -158,26 +160,26 @@ export default function PositionArchivePage() {
       ),
     },
     {
-      header: '版本',
+      header: t('版本'),
       className: 'w-20',
       cell: (entry) => <span className="text-sm">{entry.version}</span>,
     },
     {
-      header: '所属行业',
+      header: t('所属行业'),
       className: 'w-24',
       cell: (entry) => (
         <span className="text-sm max-w-24 truncate">{industryMap.get(entry.industry) || '-'}</span>
       ),
     },
     {
-      header: '适用专业',
+      header: t('适用专业'),
       className: 'w-32',
       cell: (entry) => (
         <span className="text-sm max-w-32 truncate">{getMajorNames(entry.majors)}</span>
       ),
     },
     {
-      header: '所属批次分组',
+      header: t('所属批次分组'),
       className: 'w-28',
       cell: (entry) => (
         <span className="text-sm max-w-28 truncate">
@@ -186,7 +188,7 @@ export default function PositionArchivePage() {
       ),
     },
     {
-      header: '归档时间',
+      header: t('归档时间'),
       className: 'w-24',
       cell: (entry) => (
         <span className="text-sm text-muted-foreground whitespace-nowrap">
@@ -199,10 +201,10 @@ export default function PositionArchivePage() {
   return (
     <>
       <ArchiveListPage
-        entityLabel="岗位"
-        pageTitle="岗位历史档案库"
-        pageDescription="查看已归档的岗位记录，支持恢复为草稿继续编辑"
-        sidebarTitle="按专业归档"
+        entityLabel={t('岗位')}
+        pageTitle={t('岗位历史档案库')}
+        pageDescription={t('查看已归档的岗位记录，支持恢复为草稿继续编辑')}
+        sidebarTitle={t('按专业归档')}
         sidebarItems={majors.map((m) => ({ id: m, name: m }))}
         sidebarSelectedId={selectedMajor}
         onSidebarSelect={setSelectedMajor}
@@ -213,7 +215,7 @@ export default function PositionArchivePage() {
         onBatchRestore={handleBatchRestore}
         onBatchDelete={handleBatchDelete}
         detailHref={(item) => `/job/positions/${item.id}/edit`}
-        searchPlaceholder="搜索岗位名称 / 简称 / 行业 / 专业"
+        searchPlaceholder={t('搜索岗位名称 / 简称 / 行业 / 专业')}
         searchValue={search}
         onSearchChange={setSearch}
         columns={columns}
@@ -223,8 +225,10 @@ export default function PositionArchivePage() {
         onOpenChange={(open) => {
           if (!open) setBatchDeleteTarget(null)
         }}
-        title="确认批量删除"
-        description={`确定删除选中的 ${batchDeleteTarget?.length || 0} 个岗位吗？删除后不可恢复。`}
+        title={t('确认批量删除')}
+        description={t('确定删除选中的 {n} 个岗位吗？删除后不可恢复。', {
+          n: batchDeleteTarget?.length || 0,
+        })}
         variant="destructive"
         onConfirm={confirmBatchDelete}
       />

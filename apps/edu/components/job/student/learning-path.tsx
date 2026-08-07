@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import type { LearnRoad } from '@/lib/types'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface LearningPathProps {
   roads: LearnRoad[]
@@ -26,13 +27,13 @@ interface LearningPathProps {
   tasks?: ScenarioTask[]
 }
 
-const DEFAULT_STEPS = [
-  { name: '基础认知', description: '了解岗位核心职责与行业背景' },
-  { name: '工具掌握', description: '掌握岗位必备的专业工具与技术栈' },
-  { name: '场景实战', description: '在真实业务场景中完成项目任务' },
-  { name: '综合进阶', description: '独立承担复杂任务并输出成果' },
-  { name: '岗位认证', description: '通过能力评估获得岗位能力认证' },
-]
+const DEFAULT_STEP_DESCRIPTIONS: Record<string, string> = {
+  基础认知: '了解岗位核心职责与行业背景',
+  工具掌握: '掌握岗位必备的专业工具与技术栈',
+  场景实战: '在真实业务场景中完成项目任务',
+  综合进阶: '独立承担复杂任务并输出成果',
+  岗位认证: '通过能力评估获得岗位能力认证',
+}
 
 const ICONS = [Flag, ShoppingCart, Smartphone, LineChart, GitBranch, Users, Trophy]
 const COLORS = [
@@ -46,7 +47,12 @@ const COLORS = [
 ]
 
 export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPathProps) {
+  const t = useT()
   const router = useRouter()
+  const defaultSteps = Object.entries(DEFAULT_STEP_DESCRIPTIONS).map(([name, desc]) => ({
+    name: t(name),
+    description: t(desc),
+  }))
   const [activeIndex, setActiveIndex] = useState(0)
   const trackRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -106,9 +112,9 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
         scenarioId: s.id,
       }))
     }
-    if (!road || !road.steps || road.steps.length === 0) return DEFAULT_STEPS
+    if (!road || !road.steps || road.steps.length === 0) return defaultSteps
     return road.steps.map((s) => ({ name: s.name, description: s.description || '' }))
-  }, [road, orderedScenarios])
+  }, [road, orderedScenarios, defaultSteps])
 
   useEffect(() => {
     ;(async () => {
@@ -149,7 +155,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
     return (
       <div className="text-center py-12 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4]">
         <Layers className="w-12 h-12 mx-auto mb-3 opacity-40" />
-        <div>暂无关联实践场景</div>
+        <div>{t('暂无关联实践场景')}</div>
       </div>
     )
   }
@@ -159,10 +165,10 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
       <div className="text-center mb-6">
         <h2 className="text-xl font-semibold text-[#1f2937] mb-2 flex items-center justify-center gap-2">
           <Route className="w-5 h-5 text-primary" />
-          {road ? road.name : '岗位学习路径'}
+          {road ? road.name : t('岗位学习路径')}
         </h2>
         <p className="text-[13px] text-[#64748b]">
-          {road?.description || '沿着学习路线，从起点站出发，逐步通关实践场景，抵达能力认证终点站'}
+          {road?.description || t('沿着学习路线，从起点站出发，逐步通关实践场景，抵达能力认证终点站')}
         </p>
       </div>
 
@@ -197,7 +203,11 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
               const isEnd = i === orderedScenarios.length - 1
               const isActive = i === activeIndex
               const Icon = ICONS[i % ICONS.length]
-              const label = isStart ? 'START · 起点' : isEnd ? 'GOAL · 终点' : `第${i}站`
+              const label = isStart
+                ? t('START · 起点')
+                : isEnd
+                  ? t('GOAL · 终点')
+                  : t('第{n}站', { n: i })
               const scenarioTasks = getScenarioTasks(scenario.id)
               const hours = getScenarioHours(scenario.id)
 
@@ -256,7 +266,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                     {scenario.name}
                   </div>
                   <div className="text-[13px] text-[#94a3b8] text-center whitespace-nowrap">
-                    {scenarioTasks.length} 任务 · {hours} 课时
+                    {t('{n} 任务 · {h} 课时', { n: scenarioTasks.length, h: hours })}
                   </div>
                 </div>
               )
@@ -278,17 +288,20 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
           <div className="text-sm font-semibold text-[#1f2937]">
             {orderedScenarios[activeIndex]?.name}{' '}
             {activeIndex === 0
-              ? '（起点）'
+              ? t('（起点）')
               : activeIndex === orderedScenarios.length - 1
-                ? '（终点）'
+                ? t('（终点）')
                 : ''}
           </div>
           <div className="text-xs text-[#64748b]">
-            {activeTasks.length} 任务 · {getScenarioHours(activeScenarioId || '')} 课时
+            {t('{n} 任务 · {h} 课时', {
+              n: activeTasks.length,
+              h: getScenarioHours(activeScenarioId || ''),
+            })}
           </div>
         </div>
         {activeTasks.length === 0 ? (
-          <p className="text-sm text-[#64748b]">该场景暂无任务</p>
+          <p className="text-sm text-[#64748b]">{t('该场景暂无任务')}</p>
         ) : (
           <div className="space-y-2">
             {activeTasks.map((task, idx) => (
@@ -304,13 +317,15 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                     <div className="text-sm font-medium text-[#1f2937]">{task.name}</div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
-                        {task.taskType === 'assessment' ? '测评任务' : '训练任务'}
+                        {task.taskType === 'assessment' ? t('测评任务') : t('训练任务')}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-[#94a3b8]">{task.estimatedHours}课时</span>
+                  <span className="text-xs text-[#94a3b8]">
+                    {t('{n}课时', { n: task.estimatedHours })}
+                  </span>
                   <button
                     className="text-xs px-3 py-1.5 rounded-md bg-primary text-white hover:bg-purple-600 flex items-center gap-1"
                     onClick={() =>
@@ -318,7 +333,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                       router.push(`/scene/landing/${activeScenarioId}/learn?task=${task.id}`)
                     }
                   >
-                    <Play className="w-3 h-3" /> 去学习
+                    <Play className="w-3 h-3" /> {t('去学习')}
                   </button>
                 </div>
               </div>

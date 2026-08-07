@@ -5,6 +5,7 @@ import { Briefcase, MapPin, Flame } from 'lucide-react'
 import type { CareerPosition } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface JobCardProps {
   position: CareerPosition
@@ -22,12 +23,13 @@ export function JobCard({
   abilityCount = 0,
   industryName,
 }: JobCardProps) {
+  const t = useT()
   const displayTitle = position.name
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
     : { background: coverGradientFor(position.id) }
 
-  const majorName = position.majorNames?.[0] || '未分类'
+  const majorName = position.majorNames?.[0] || t('未分类')
   const viewCount = position.viewCount ?? 0
   const relatedScenes = scenarioCount
   const creatorName = position.createdByName || position.createdBy?.slice(0, 8) || '-'
@@ -49,7 +51,7 @@ export function JobCard({
           )}
           {isHot && (
             <div className="absolute top-3 right-3 z-10 bg-gradient-to-br from-red-500 to-rose-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg shadow-red-500/25">
-              <Flame className="w-3 h-3 fill-current" /> 热门
+              <Flame className="w-3 h-3 fill-current" /> {t('热门')}
             </div>
           )}
           <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
@@ -58,7 +60,7 @@ export function JobCard({
                 {position.version || 'v1.0'}
               </span>
               <span className="bg-[#0f172a]/40 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/20">
-                创建人：{creatorName}
+                {t('创建人：{name}', { name: creatorName })}
               </span>
             </div>
           </div>
@@ -67,7 +69,7 @@ export function JobCard({
               {displayTitle}
             </div>
             <div className="text-xs text-white/85 text-shadow-sm">
-              岗位编码：{position.code || position.id.slice(0, 8)}
+              {t('岗位编码：{code}', { code: position.code || position.id.slice(0, 8) })}
             </div>
           </div>
         </div>
@@ -75,28 +77,32 @@ export function JobCard({
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
               <div className="text-lg font-bold text-slate-800">{viewCount}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">浏览次数</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">{t('浏览次数')}</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
               <div className="text-lg font-bold text-slate-800">{relatedScenes}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">关联场景</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">{t('关联场景')}</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
               <div className="text-lg font-bold text-slate-800">{abilityCount || '-'}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">关联能力点</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">{t('关联能力点')}</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 font-medium">
-              面向行业：{industryName || '未分类'}
+              {t('面向行业：{name}', { name: industryName || t('未分类') })}
             </span>
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-primary/5 text-primary border border-primary/10 font-medium flex items-center gap-1">
-              <MapPin className="w-3 h-3" /> 适用专业：{majorName}
+              <MapPin className="w-3 h-3" /> {t('适用专业：{name}', { name: majorName })}
             </span>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500">收录：{formatDate(position.createdAt)}</span>
-            <span className="text-xs text-slate-500">更新：{formatDate(position.updatedAt)}</span>
+            <span className="text-xs text-slate-500">
+              {t('收录：{date}', { date: formatDate(position.createdAt) })}
+            </span>
+            <span className="text-xs text-slate-500">
+              {t('更新：{date}', { date: formatDate(position.updatedAt) })}
+            </span>
           </div>
         </div>
       </div>

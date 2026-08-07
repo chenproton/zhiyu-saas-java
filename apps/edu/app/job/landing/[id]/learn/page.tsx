@@ -12,8 +12,10 @@ import { LearningPath } from '@/components/job/student/learning-path'
 import { Footer } from '@/components/portal/footer'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, Briefcase } from 'lucide-react'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function JobStudentLearnPage() {
+  const t = useT()
   const params = useParams()
   const id = params.id as string
   const { toast } = useToast()
@@ -77,9 +79,9 @@ export default function JobStudentLearnPage() {
       })
       .catch((err) => {
         reportError(err, '加载学习路径数据')
-        toast({ title: '部分数据加载失败', variant: 'destructive' })
+        toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
-  }, [id, position, user, toast])
+  }, [id, position, user, toast, t])
 
   if (loading) {
     return (
@@ -98,9 +100,9 @@ export default function JobStudentLearnPage() {
       <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
         <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
           <Briefcase className="w-16 h-16 mb-4 opacity-40" />
-          <div className="text-lg font-semibold text-[#475569]">岗位不存在或暂未公开</div>
+          <div className="text-lg font-semibold text-[#475569]">{t('岗位不存在或暂未公开')}</div>
           <Link href="/job/landing" className="text-primary hover:underline mt-2">
-            返回岗位列表
+            {t('返回岗位列表')}
           </Link>
         </div>
         <Footer className="mt-auto" />
@@ -116,14 +118,14 @@ export default function JobStudentLearnPage() {
           href={`/job/landing/${id}`}
           className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-primary mb-4"
         >
-          <ArrowLeft className="w-4 h-4" /> 返回岗位详情
+          <ArrowLeft className="w-4 h-4" /> {t('返回岗位详情')}
         </Link>
 
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] p-4 sm:p-6 min-h-[500px]">
           {user ? (
             <LearningPath roads={roads} scenarios={scenarios} tasks={scenarioTasks} />
           ) : (
-            <LoginPrompt text="学习路径需登录后查看" desc="登录账号后可查看岗位关联的学习路径" />
+            <LoginPrompt text={t('学习路径需登录后查看')} desc={t('登录账号后可查看岗位关联的学习路径')} />
           )}
         </div>
       </main>

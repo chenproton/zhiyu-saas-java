@@ -2,6 +2,7 @@
 
 import { Layers, ClipboardList, Lightbulb, Eye, Heart } from 'lucide-react'
 import type { CareerPosition } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface StatsBoxProps {
   position: CareerPosition
@@ -16,12 +17,13 @@ export function StatsBox({
   taskCount = 0,
   abilityPointCount = 0,
 }: StatsBoxProps) {
+  const t = useT()
   const stats = [
-    { icon: Layers, value: scenarioCount, label: '关联场景数' },
-    { icon: ClipboardList, value: taskCount, label: '涉及任务数' },
-    { icon: Lightbulb, value: abilityPointCount, label: '能力点数' },
-    { icon: Eye, value: position.viewCount ?? 0, label: '岗位浏览量' },
-    { icon: Heart, value: position.favoriteCount ?? 0, label: '岗位收藏量' },
+    { icon: Layers, value: scenarioCount, label: t('关联场景数') },
+    { icon: ClipboardList, value: taskCount, label: t('涉及任务数') },
+    { icon: Lightbulb, value: abilityPointCount, label: t('能力点数') },
+    { icon: Eye, value: position.viewCount ?? 0, label: t('岗位浏览量') },
+    { icon: Heart, value: position.favoriteCount ?? 0, label: t('岗位收藏量') },
   ]
 
   return (

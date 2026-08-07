@@ -14,6 +14,7 @@ import { useAuth } from '@/components/auth-provider'
 import { ContentListPage, type ContentBatch } from '@/components/shared/content-list-page'
 import { draftSuffix } from '@/lib/format-utils'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 function mapPosition(
   backend: any,
@@ -29,6 +30,7 @@ function mapPositionBatch(backend: any): ContentBatch {
 }
 
 export default function PositionsPage() {
+  const t = useT()
   const { user } = useAuth()
   const currentUserId = user?.id ?? ''
   const industryMap = useIndustryMap()
@@ -36,9 +38,9 @@ export default function PositionsPage() {
 
   return (
     <ContentListPage<Position, CareerPosition, JobBatch>
-      title="岗位资源管理"
-      subtitle="维护岗位信息、能力模型等岗位资源管理功能"
-      entityLabel="岗位"
+      title={t('岗位资源管理')}
+      subtitle={t('维护岗位信息、能力模型等岗位资源管理功能')}
+      entityLabel={t('岗位')}
       addHref="/job/positions"
       permissionModule="job"
       permissionResource="positions"
@@ -58,8 +60,8 @@ export default function PositionsPage() {
       createPayload={(uid, _label) =>
         positionToCreateRequest({
           batchId: '',
-          name: `新建岗位_${draftSuffix()}`,
-          shortName: '新岗位',
+          name: `${t('新建岗位')}_${draftSuffix()}`,
+          shortName: t('新岗位'),
           industry: '',
           majors: [] as string[],
           positionType: 'enterprise',

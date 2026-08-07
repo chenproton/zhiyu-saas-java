@@ -37,6 +37,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { industryApi, majorApi, certificateLibraryApi, fileApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { Position, PositionResponsibility } from '@/lib/types/job-source'
 
 interface StepBasicInfoProps {
@@ -66,6 +67,7 @@ export function StepBasicInfo({
   aiMode = false,
   variant = 'default',
 }: StepBasicInfoProps) {
+  const t = useT()
   const isCreate = variant === 'create'
   const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
   const [majors, setMajors] = useState<{ id: string; name: string }[]>([])
@@ -163,7 +165,7 @@ export function StepBasicInfo({
 
   const handleAIGenerate = async (field: AiSuggestionField, _direction?: string) => {
     setIsGenerating(field)
-    setAiNotice('AI 生成服务暂未接入，请手动填写')
+    setAiNotice(t('AI 生成服务暂未接入，请手动填写'))
     await new Promise((resolve) => setTimeout(resolve, 300))
     setIsGenerating(null)
   }
@@ -286,7 +288,7 @@ export function StepBasicInfo({
       setCertImageFile(null)
       setIsNewCertDialogOpen(false)
     } catch {
-      setAiNotice('新增证书失败，请稍后重试')
+      setAiNotice(t('新增证书失败，请稍后重试'))
     }
   }
 
@@ -321,48 +323,48 @@ export function StepBasicInfo({
       {/* Merged Basic Info Card */}
       <Card>
         <CardHeader>
-          <CardTitle>基本信息</CardTitle>
+          <CardTitle>{t('基本信息')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Row 1: Name + Short Name */}
           <FormFieldGrid cols={2}>
-            <FormFieldRow label="岗位名称" htmlFor="name">
+            <FormFieldRow label={t('岗位名称')} htmlFor="name">
               <Input
                 id="name"
                 value={position.name}
                 onChange={(e) => onUpdate({ name: e.target.value })}
-                placeholder="例如：Java 后端开发工程师"
+                placeholder={t('例如：Java 后端开发工程师')}
               />
             </FormFieldRow>
-            <FormFieldRow label="岗位简称" htmlFor="shortName">
+            <FormFieldRow label={t('岗位简称')} htmlFor="shortName">
               <Input
                 id="shortName"
                 value={position.shortName}
                 onChange={(e) => onUpdate({ shortName: e.target.value })}
-                placeholder="例如：Java开发"
+                placeholder={t('例如：Java开发')}
               />
             </FormFieldRow>
           </FormFieldGrid>
 
           {/* Row 2: Industry + Major + Position Type */}
           <FormFieldGrid cols={3}>
-            <FormFieldRow label="面向行业" htmlFor="industry">
+            <FormFieldRow label={t('面向行业')} htmlFor="industry">
               <MultiSelect
                 options={industries.map((i) => ({ label: i.name, value: i.id }))}
                 value={position.industry ? [position.industry] : []}
                 onChange={(values) => onUpdate({ industry: values[values.length - 1] || '' })}
-                placeholder={optionsLoading ? '加载中...' : '选择行业'}
+                placeholder={optionsLoading ? t('加载中...') : t('选择行业')}
               />
             </FormFieldRow>
-            <FormFieldRow label="适用专业" htmlFor="major">
+            <FormFieldRow label={t('适用专业')} htmlFor="major">
               <MultiSelect
                 options={majors.map((m) => ({ label: m.name, value: m.id }))}
                 value={position.majors}
                 onChange={(values) => onUpdate({ majors: values })}
-                placeholder={optionsLoading ? '加载中...' : '选择专业'}
+                placeholder={optionsLoading ? t('加载中...') : t('选择专业')}
               />
             </FormFieldRow>
-            <FormFieldRow label="岗位类型" htmlFor="positionType">
+            <FormFieldRow label={t('岗位类型')} htmlFor="positionType">
               <Select
                 value={position.positionType}
                 onValueChange={(v) => onUpdate({ positionType: v as Position['positionType'] })}
@@ -371,8 +373,8 @@ export function StepBasicInfo({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="enterprise">企业岗位</SelectItem>
-                  <SelectItem value="teaching">教学岗位</SelectItem>
+                  <SelectItem value="enterprise">{t('企业岗位')}</SelectItem>
+                  <SelectItem value="teaching">{t('教学岗位')}</SelectItem>
                 </SelectContent>
               </Select>
             </FormFieldRow>
@@ -380,7 +382,7 @@ export function StepBasicInfo({
 
           {/* Row 3: Salary Range */}
           <div className="grid gap-2">
-            <Label>薪资范围（元/月）</Label>
+            <Label>{t('薪资范围（元/月）')}</Label>
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Input
@@ -391,7 +393,7 @@ export function StepBasicInfo({
                       salaryRange: [Number(e.target.value), position.salaryRange[1]],
                     })
                   }
-                  placeholder="最低"
+                  placeholder={t('最低')}
                   className={`${isCreate ? 'w-40' : 'w-32'} pr-8`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -408,7 +410,7 @@ export function StepBasicInfo({
                       salaryRange: [position.salaryRange[0], Number(e.target.value)],
                     })
                   }
-                  placeholder="最高"
+                  placeholder={t('最高')}
                   className={`${isCreate ? 'w-40' : 'w-32'} pr-8`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -421,14 +423,14 @@ export function StepBasicInfo({
           {/* Description */}
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="description">岗位背景介绍</Label>
-              {aiMode && renderAIButton('description', 'AI 生成')}
+              <Label htmlFor="description">{t('岗位背景介绍')}</Label>
+              {aiMode && renderAIButton('description', t('AI 生成'))}
             </div>
             <Textarea
               id="description"
               value={position.description}
               onChange={(e) => onUpdate({ description: e.target.value })}
-              placeholder="描述该岗位的主要工作内容和特点..."
+              placeholder={t('描述该岗位的主要工作内容和特点...')}
               rows={isCreate ? 6 : 4}
             />
           </div>
@@ -445,8 +447,8 @@ export function StepBasicInfo({
       {/* Responsibilities */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base">工作职责</CardTitle>
-          {aiMode && renderAIButton('responsibilities', 'AI 生成')}
+          <CardTitle className="text-base">{t('工作职责')}</CardTitle>
+          {aiMode && renderAIButton('responsibilities', t('AI 生成'))}
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -492,7 +494,7 @@ export function StepBasicInfo({
                 onClick={() => addResponsibility()}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                添加工作职责
+                {t('添加工作职责')}
               </Button>
               <span />
             </div>
@@ -503,8 +505,8 @@ export function StepBasicInfo({
       {/* Requirements */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base">任职要求</CardTitle>
-          {aiMode && renderAIButton('requirements', 'AI 生成')}
+          <CardTitle className="text-base">{t('任职要求')}</CardTitle>
+          {aiMode && renderAIButton('requirements', t('AI 生成'))}
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -550,7 +552,7 @@ export function StepBasicInfo({
                 onClick={() => addRequirement()}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                添加任职要求
+                {t('添加任职要求')}
               </Button>
               <span />
             </div>
@@ -561,14 +563,14 @@ export function StepBasicInfo({
       {/* Career Path */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base">发展路径</CardTitle>
-          {aiMode && renderAIButton('careerPath', 'AI 生成')}
+          <CardTitle className="text-base">{t('发展路径')}</CardTitle>
+          {aiMode && renderAIButton('careerPath', t('AI 生成'))}
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
             value={position.careerPath}
             onChange={(e) => onUpdate({ careerPath: e.target.value })}
-            placeholder="请描述该岗位的职业发展路径，如横向发展和纵向晋升方向..."
+            placeholder={t('请描述该岗位的职业发展路径，如横向发展和纵向晋升方向...')}
             rows={6}
           />
         </CardContent>
@@ -577,14 +579,14 @@ export function StepBasicInfo({
       {/* Certificates */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base">相关证书</CardTitle>
+          <CardTitle className="text-base">{t('相关证书')}</CardTitle>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={openCertDialog}>
-              从证书库选择
+              {t('从证书库选择')}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setIsNewCertDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              新增证书
+              {t('新增证书')}
             </Button>
           </div>
         </CardHeader>
@@ -592,7 +594,7 @@ export function StepBasicInfo({
           {!position.certificates || position.certificates.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Award className="h-10 w-10 mx-auto mb-2 opacity-50" />
-              <p>暂无相关证书</p>
+              <p>{t('暂无相关证书')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-stretch">
@@ -620,12 +622,12 @@ export function StepBasicInfo({
                   )}
                   <div className="p-3 space-y-1.5 flex-1">
                     <div className="flex items-start gap-1">
-                      <p className="text-xs text-muted-foreground shrink-0">证书名称：</p>
+                      <p className="text-xs text-muted-foreground shrink-0">{t('证书名称：')}</p>
                       <p className="text-sm font-semibold text-gray-900 break-words">{cert.name}</p>
                     </div>
                     {cert.url && (
                       <div className="flex items-start gap-1">
-                        <span className="text-xs text-muted-foreground shrink-0">相关网站：</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{t('相关网站：')}</span>
                         <a
                           href={cert.url}
                           target="_blank"
@@ -639,7 +641,7 @@ export function StepBasicInfo({
                     )}
                     {cert.description && (
                       <div className="flex items-start gap-1">
-                        <span className="text-xs text-muted-foreground shrink-0">证书介绍：</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{t('证书介绍：')}</span>
                         <p className="text-xs text-muted-foreground line-clamp-1">
                           {cert.description}
                         </p>
@@ -657,19 +659,19 @@ export function StepBasicInfo({
       <Dialog open={isCertDialogOpen} onOpenChange={setIsCertDialogOpen}>
         <DialogContent size="xl" className="!h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>从证书库选择证书</DialogTitle>
-            <DialogDescription>选择与该岗位相关的职业资格证书</DialogDescription>
+            <DialogTitle>{t('从证书库选择证书')}</DialogTitle>
+            <DialogDescription>{t('选择与该岗位相关的职业资格证书')}</DialogDescription>
           </DialogHeader>
           <div className="flex-1 flex flex-col min-h-0">
             <Input
-              placeholder="搜索证书名称或描述..."
+              placeholder={t('搜索证书名称或描述...')}
               value={certSearchQuery}
               onChange={(e) => setCertSearchQuery(e.target.value)}
               className="mb-4"
             />
             <div className="flex-1 overflow-y-auto">
               {filteredCertificates.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">未找到匹配证书</p>
+                <p className="py-12 text-center text-sm text-muted-foreground">{t('未找到匹配证书')}</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pr-1">
                   {filteredCertificates.map((cert) => {
@@ -710,7 +712,7 @@ export function StepBasicInfo({
                         <div className="p-3 space-y-1.5">
                           <div className="flex items-start gap-1">
                             <span className="text-[11px] text-muted-foreground shrink-0">
-                              证书名称：
+                              {t('证书名称：')}
                             </span>
                             <span className="text-sm font-semibold text-gray-900 break-words">
                               {cert.name}
@@ -719,7 +721,7 @@ export function StepBasicInfo({
                           {cert.url && (
                             <div className="flex items-start gap-1">
                               <span className="text-[11px] text-muted-foreground shrink-0">
-                                相关网站：
+                                {t('相关网站：')}
                               </span>
                               <a
                                 href={cert.url}
@@ -736,7 +738,7 @@ export function StepBasicInfo({
                           {cert.description && (
                             <div className="flex items-start gap-1">
                               <span className="text-[11px] text-muted-foreground shrink-0">
-                                证书介绍：
+                                {t('证书介绍：')}
                               </span>
                               <p className="text-xs text-muted-foreground line-clamp-1">
                                 {cert.description}
@@ -753,9 +755,9 @@ export function StepBasicInfo({
           </div>
           <DialogFooter className="pt-4 border-t">
             <Button variant="outline" onClick={() => setIsCertDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
-            <Button onClick={handleConfirmCertificates}>确认选择</Button>
+            <Button onClick={handleConfirmCertificates}>{t('确认选择')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -764,34 +766,34 @@ export function StepBasicInfo({
       <Dialog open={isNewCertDialogOpen} onOpenChange={setIsNewCertDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新增证书</DialogTitle>
-            <DialogDescription>添加一个新的职业资格证书</DialogDescription>
+            <DialogTitle>{t('新增证书')}</DialogTitle>
+            <DialogDescription>{t('添加一个新的职业资格证书')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <FormFieldRow label="证书名称">
+            <FormFieldRow label={t('证书名称')}>
               <Input
                 value={newCert.name}
                 onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
-                placeholder="例如：AWS 云从业者认证"
+                placeholder={t('例如：AWS 云从业者认证')}
               />
             </FormFieldRow>
-            <FormFieldRow label="相关网址">
+            <FormFieldRow label={t('相关网址')}>
               <Input
                 value={newCert.url}
                 onChange={(e) => setNewCert({ ...newCert, url: e.target.value })}
                 placeholder="https://..."
               />
             </FormFieldRow>
-            <FormFieldRow label="证书介绍">
+            <FormFieldRow label={t('证书介绍')}>
               <Textarea
                 value={newCert.description}
                 onChange={(e) => setNewCert({ ...newCert, description: e.target.value })}
-                placeholder="简要描述该证书..."
+                placeholder={t('简要描述该证书...')}
                 rows={3}
               />
             </FormFieldRow>
             <div className="grid gap-2">
-              <Label>证书图片</Label>
+              <Label>{t('证书图片')}</Label>
               <div
                 className="relative flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-input bg-background text-muted-foreground transition-colors hover:bg-accent"
                 onClick={() => {
@@ -811,14 +813,14 @@ export function StepBasicInfo({
                 {newCert.image ? (
                   <Image
                     src={newCert.image}
-                    alt="证书预览"
+                    alt={t('证书预览')}
                     fill
                     className="rounded-lg object-contain"
                   />
                 ) : (
                   <>
                     <ImageIcon className="mb-2 h-6 w-6" />
-                    <span className="text-xs">点击上传证书图片</span>
+                    <span className="text-xs">{t('点击上传证书图片')}</span>
                   </>
                 )}
               </div>
@@ -826,10 +828,10 @@ export function StepBasicInfo({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewCertDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleAddNewCertificate} disabled={!newCert.name}>
-              添加
+              {t('添加')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,7 @@
 'use client'
 
 import type { PositionAbilityBinding, AbilityPoint } from '@/lib/types/job'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface AbilityPointCardProps {
   binding: PositionAbilityBinding
@@ -33,11 +34,13 @@ const LEVEL_COLORS: Record<string, string> = {
 }
 
 export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointCardProps) {
+  const t = useT()
   const attributes = binding.attributes?.length
     ? binding.attributes
     : abilityPoint?.attributes || []
-  const domainColors = DOMAIN_COLORS[binding.domain || '专业工具'] || DOMAIN_COLORS['专业工具']
-  const levelLabel = LEVEL_LABELS[binding.requiredLevel] || binding.requiredLevel
+  const domainColors =
+    DOMAIN_COLORS[binding.domain || '专业工具'] || DOMAIN_COLORS['专业工具']
+  const levelLabel = t(LEVEL_LABELS[binding.requiredLevel] || binding.requiredLevel)
   const levelColor = LEVEL_COLORS[levelLabel] || '#94a3b8'
 
   return (
@@ -57,24 +60,24 @@ export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointC
         )}
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-[#1f2937] leading-snug">
-            {abilityPoint?.name || binding.abilityName || binding.domain || '未命名能力'}
+            {abilityPoint?.name || binding.abilityName || binding.domain || t('未命名能力')}
           </div>
         </div>
       </div>
 
       <div className="flex-1 space-y-2 text-xs">
         <div>
-          <span className="font-medium text-[#94a3b8]">能力领域：</span>
-          <span className="text-[#475569]">{binding.domain || '专业工具'}</span>
+          <span className="font-medium text-[#94a3b8]">{t('能力领域：')}</span>
+          <span className="text-[#475569]">{binding.domain || t('专业工具')}</span>
         </div>
         <div>
-          <span className="font-medium text-[#94a3b8]">能力属性：</span>
+          <span className="font-medium text-[#94a3b8]">{t('能力属性：')}</span>
           <span className="text-[#475569]">
-            {attributes.length ? attributes.join('、') : '未配置属性'}
+            {attributes.length ? attributes.join('、') : t('未配置属性')}
           </span>
         </div>
         <div className="flex items-start gap-1">
-          <span className="font-medium text-[#94a3b8] shrink-0">胜任要求：</span>
+          <span className="font-medium text-[#94a3b8] shrink-0">{t('胜任要求：')}</span>
           <span
             className="px-1.5 py-0.5 rounded border text-[11px]"
             style={{
@@ -87,9 +90,9 @@ export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointC
           </span>
         </div>
         <div>
-          <div className="font-medium text-[#94a3b8] mb-1">胜任要求描述：</div>
+          <div className="font-medium text-[#94a3b8] mb-1">{t('胜任要求描述：')}</div>
           <div className="text-[#64748b] leading-relaxed line-clamp-4">
-            {binding.rubricDescription || '暂无胜任标准描述'}
+            {binding.rubricDescription || t('暂无胜任标准描述')}
           </div>
         </div>
       </div>

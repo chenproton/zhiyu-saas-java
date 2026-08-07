@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Trophy, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CareerPosition } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface RankingListProps {
   positions?: CareerPosition[]
@@ -28,6 +29,7 @@ const cardPalette = {
 }
 
 export function RankingList({ positions = [], industryMap }: RankingListProps) {
+  const t = useT()
   const [page, setPage] = useState(0)
   const isMobile = useSyncExternalStore(subscribeMobile, getIsMobile, () => false)
 
@@ -70,7 +72,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
 
   const categoryFor = (pos: CareerPosition) => {
     if (pos.industryId && industryMap?.get(pos.industryId)) return industryMap.get(pos.industryId)!
-    return pos.positionType === 'enterprise' ? '企业' : '教学'
+    return pos.positionType === 'enterprise' ? t('企业') : t('教学')
   }
 
   const renderItem = (pos: CareerPosition, idx: number) => {
@@ -104,7 +106,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
               </span>
               {(pos.majorNames?.filter(Boolean) || []).length === 0 ? (
                 <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0">
-                  未分类
+                  {t('未分类')}
                 </span>
               ) : (
                 pos.majorNames?.filter(Boolean).map((m: string) => (
@@ -129,9 +131,9 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
         <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800 mb-3">
           <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
           <Trophy className="w-4 h-4 text-primary" />
-          收藏岗位排行榜
+          {t('收藏岗位排行榜')}
         </div>
-        <div className="text-center py-6 text-slate-400 text-sm">暂无岗位数据</div>
+        <div className="text-center py-6 text-slate-400 text-sm">{t('暂无岗位数据')}</div>
       </div>
     )
   }
@@ -142,7 +144,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
         <div className="flex items-center gap-2.5 text-[15px] font-bold text-slate-800">
           <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
           <Trophy className="w-4 h-4 text-primary" />
-          收藏岗位排行榜
+          {t('收藏岗位排行榜')}
         </div>
         <div className="flex items-center gap-2">
           <Button

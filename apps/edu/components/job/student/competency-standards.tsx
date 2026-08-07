@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { Target } from 'lucide-react'
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from '@/lib/types/job'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface CompetencyStandardsProps {
   responsibilities: PositionResponsibility[]
@@ -30,6 +31,7 @@ export function CompetencyStandards({
   bindings,
   abilityPoints,
 }: CompetencyStandardsProps) {
+  const t = useT()
   const contentRef = useRef<HTMLDivElement>(null)
   const [activeId, setActiveId] = useState<string>('')
 
@@ -46,15 +48,18 @@ export function CompetencyStandards({
     responsibilities.forEach((r) => map.set(r.name, []))
     bindings.forEach((b) => {
       const resp = responsibilities.find((r) => r.id === b.responsibilityId)
-      const key = resp?.name || b.domain || '其他'
+      const key = resp?.name || b.domain || t('其他')
       const list = map.get(key) || []
-      list.push({ ...b, name: abilityNameMap[b.abilityPointId] || b.abilityName || '未命名能力' })
+      list.push({
+        ...b,
+        name: abilityNameMap[b.abilityPointId] || b.abilityName || t('未命名能力'),
+      })
       map.set(key, list)
     })
     return Array.from(map.entries())
       .map(([duty, items]) => ({ duty, items }))
       .filter((g) => g.items.length > 0)
-  }, [responsibilities, bindings, abilityNameMap])
+  }, [responsibilities, bindings, abilityNameMap, t])
 
   useEffect(() => {
     if (groups.length > 0 && !activeId) {
@@ -92,7 +97,7 @@ export function CompetencyStandards({
     return (
       <div className="text-center py-12 text-[#94a3b8]">
         <Target className="w-12 h-12 mx-auto mb-3 opacity-40" />
-        <div>暂无胜任标准数据</div>
+        <div>{t('暂无胜任标准数据')}</div>
       </div>
     )
   }
@@ -101,7 +106,7 @@ export function CompetencyStandards({
     <div>
       <div className="flex items-center justify-between mb-4">
         <span className="text-sm text-[#64748b]">
-          全览岗位 <strong className="text-primary">{bindings.length}</strong> 个关键能力点胜任标准
+          {t('全览岗位 {n} 个关键能力点胜任标准', { n: bindings.length })}
         </span>
       </div>
 
@@ -210,7 +215,7 @@ export function CompetencyStandards({
                                     : 'text-[#cbd5e1]'
                               }`}
                             >
-                              {level.label}
+                              {t(level.label)}
                             </span>
                           ))}
                         </div>
@@ -218,9 +223,9 @@ export function CompetencyStandards({
 
                       <div className="flex items-center gap-2 text-xs text-[#64748b] mb-2">
                         <Target className="w-3 h-3" />
-                        目标等级：
+                        {t('目标等级：')}
                         <span className="px-2 py-0.5 rounded bg-primary/5 text-primary font-medium">
-                          {targetLabel}
+                          {t(targetLabel)}
                         </span>
                       </div>
 

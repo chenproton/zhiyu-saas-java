@@ -54,6 +54,7 @@ import type { LearnRoad, LearnRoadStep } from '@/lib/types/job'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface Task {
   id: string
@@ -197,6 +198,7 @@ function EditView({
   setSaved,
   moveScene,
 }: EditViewProps) {
+  const t = useT()
   const timelineRef = useRef<HTMLDivElement>(null)
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -249,18 +251,18 @@ function EditView({
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={onBack} disabled={editLoading}>
             <ArrowLeft className="mr-1 h-4 w-4" />
-            返回岗位列表
+            {t('返回岗位列表')}
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{editingPosition.name}</h1>
             <p className="text-muted-foreground mt-1">
-              {batch ? batch.name : '未关联批次'} · {editingPosition.shortName}
+              {batch ? batch.name : t('未关联批次')} · {editingPosition.shortName}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              已加载 {positionScenarios.length} 个场景，{positionTasks.length} 个任务
+              {t('已加载 {s} 个场景，{task} 个任务', { s: positionScenarios.length, task: positionTasks.length })}
               {scenes.length === 0 &&
                 positionScenarios.length > 0 &&
-                ' · 点击下方“保存顺序”生成学习路径'}
+                t(' · 点击下方“保存顺序”生成学习路径')}
             </p>
           </div>
         </div>
@@ -271,7 +273,7 @@ function EditView({
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            {saved ? '已保存' : '保存顺序'}
+            {saved ? t('已保存') : t('保存顺序')}
           </Button>
         </div>
       </div>
@@ -279,10 +281,10 @@ function EditView({
       <div className="space-y-6">
         <div className="rounded-2xl bg-[#f8f5f0] p-6 sm:p-8 relative overflow-hidden">
           <h2 className="text-center text-xl sm:text-2xl font-bold text-slate-800">
-            {editingPosition.name}学习路径
+            {t('{name}学习路径', { name: editingPosition.name })}
           </h2>
           <p className="text-center text-sm text-slate-500 mt-2">
-            点击上方阶段图标，查看该阶段的学习任务
+            {t('点击上方阶段图标，查看该阶段的学习任务')}
           </p>
           <div className="relative mt-8">
             <button
@@ -311,7 +313,7 @@ function EditView({
                       className="relative z-10 flex flex-col items-center min-w-[150px] mx-3 first:ml-4 last:mr-4"
                     >
                       <div className="h-5 text-xs text-slate-400">
-                        {idx === 0 ? 'START · 第1站' : `第${idx + 1}站`}
+                        {idx === 0 ? t('START · 第1站') : t('第{n}站', { n: idx + 1 })}
                       </div>
                       {scene.coverImage ? (
                         <div
@@ -347,7 +349,7 @@ function EditView({
                         {scene.name}
                       </div>
                       <div className="text-xs text-slate-500 mt-1">
-                        {scene.tasks.length} 任务 · {scene.hours} 课时
+                        {t('{n} 任务 · {h} 课时', { n: scene.tasks.length, h: scene.hours })}
                       </div>
                     </button>
                   )
@@ -358,15 +360,15 @@ function EditView({
           {scenes.length === 0 && !editLoading && (
             <div className="text-center py-10 text-slate-500">
               <Layers className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              <p>该岗位下暂无已发布场景，请先创建并发布场景</p>
+              <p>{t('该岗位下暂无已发布场景，请先创建并发布场景')}</p>
             </div>
           )}
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">场景顺序</CardTitle>
-            <CardDescription>拖拽场景卡片可调整顺序，点击场景查看任务</CardDescription>
+            <CardTitle className="text-base">{t('场景顺序')}</CardTitle>
+            <CardDescription>{t('拖拽场景卡片可调整顺序，点击场景查看任务')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {scenes.map((scene, index) => {
@@ -429,7 +431,7 @@ function EditView({
                         {scene.name}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {scene.tasks.length} 任务 · {scene.hours} 课时
+                        {t('{n} 任务 · {h} 课时', { n: scene.tasks.length, h: scene.hours })}
                       </div>
                     </div>
                   </div>
@@ -466,7 +468,7 @@ function EditView({
             {scenes.length === 0 && !editLoading && (
               <div className="text-center py-8 text-slate-500">
                 <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p>暂无可排序的场景</p>
+                <p>{t('暂无可排序的场景')}</p>
               </div>
             )}
           </CardContent>
@@ -477,6 +479,7 @@ function EditView({
 }
 
 export default function LearnRoadsPage() {
+  const t = useT()
   const { toast } = useToast()
 
   const [positions, setPositions] = useState<Position[]>([])
@@ -513,13 +516,13 @@ export default function LearnRoadsPage() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err?.message || '请稍后重试',
+        title: t('加载失败'),
+        description: err?.message || t('请稍后重试'),
       })
     } finally {
       setDataLoading(false)
     }
-  }, [toast])
+  }, [toast, t])
 
   useEffect(() => {
     ;(async () => {
@@ -536,8 +539,8 @@ export default function LearnRoadsPage() {
         if (!cancelled) setLearnRoads(res.items || [])
       } catch (err) {
         toast({
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '无法获取学习路径数据',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('无法获取学习路径数据'),
           variant: 'destructive',
         })
       } finally {
@@ -547,7 +550,7 @@ export default function LearnRoadsPage() {
     return () => {
       cancelled = true
     }
-  }, [toast])
+  }, [toast, t])
 
   const getRoadForPosition = (positionId: string) =>
     learnRoads.find((r) => r.positionIds?.includes(positionId))
@@ -584,8 +587,8 @@ export default function LearnRoadsPage() {
       } catch (err) {
         reportError(err, '加载岗位学习路径场景')
         toast({
-          title: '加载场景失败',
-          description: err instanceof Error ? err.message : '请稍后重试',
+          title: t('加载场景失败'),
+          description: err instanceof Error ? err.message : t('请稍后重试'),
           variant: 'destructive',
         })
         setPositionScenarios([])
@@ -593,7 +596,7 @@ export default function LearnRoadsPage() {
         return { scenarios: [] as Scenario[], tasks: [] as ScenarioTask[] }
       }
     },
-    [toast],
+    [toast, t],
   )
 
   const handleEdit = useCallback(
@@ -624,8 +627,8 @@ export default function LearnRoadsPage() {
         setSelectedSceneId(loadedScenes[0]?.id || null)
       } catch (err) {
         toast({
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '请稍后重试',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('请稍后重试'),
           variant: 'destructive',
         })
         setLearnRoadId(null)
@@ -637,7 +640,7 @@ export default function LearnRoadsPage() {
         setEditLoading(false)
       }
     },
-    [loadPositionScenes, toast],
+    [loadPositionScenes, toast, t],
   )
 
   const handleBack = () => {
@@ -670,7 +673,7 @@ export default function LearnRoadsPage() {
       // 本地编辑态下尚无路径记录，先创建再更新
       if (!id) {
         const created = await learnRoadApi.create({
-          name: `${editingPosition.name}学习路径`,
+          name: t('{name}学习路径', { name: editingPosition.name }),
           positionIds: [editingPosition.id],
           steps,
         })
@@ -679,18 +682,18 @@ export default function LearnRoadsPage() {
         setLearnRoadId(id)
       }
       const updated = await learnRoadApi.update(id, {
-        name: `${editingPosition.name}学习路径`,
+        name: t('{name}学习路径', { name: editingPosition.name }),
         positionIds: [editingPosition.id],
         steps,
       })
       setLearnRoads((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-      toast({ title: '保存成功', description: '学习路径顺序已更新' })
+      toast({ title: t('保存成功'), description: t('学习路径顺序已更新') })
     } catch (err) {
       toast({
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '请稍后重试',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('请稍后重试'),
         variant: 'destructive',
       })
     } finally {
@@ -701,8 +704,8 @@ export default function LearnRoadsPage() {
   const ListView = () => (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">岗位学习路径管理</h1>
-        <p className="text-muted-foreground mt-1">按岗位管理学习路径中场景与任务的展示顺序</p>
+        <h1 className="text-xl font-semibold text-foreground">{t('岗位学习路径管理')}</h1>
+        <p className="text-muted-foreground mt-1">{t('按岗位管理学习路径中场景与任务的展示顺序')}</p>
       </div>
 
       <Card>
@@ -711,7 +714,7 @@ export default function LearnRoadsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索岗位名称、简称..."
+                placeholder={t('搜索岗位名称、简称...')}
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -725,12 +728,12 @@ export default function LearnRoadsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部状态</SelectItem>
-                <SelectItem value="draft">草稿</SelectItem>
-                <SelectItem value="pending">审批中</SelectItem>
-                <SelectItem value="approved">已通过</SelectItem>
-                <SelectItem value="rejected">已驳回</SelectItem>
-                <SelectItem value="published">已发布</SelectItem>
+                <SelectItem value="all">{t('全部状态')}</SelectItem>
+                <SelectItem value="draft">{t('草稿')}</SelectItem>
+                <SelectItem value="pending">{t('审批中')}</SelectItem>
+                <SelectItem value="approved">{t('已通过')}</SelectItem>
+                <SelectItem value="rejected">{t('已驳回')}</SelectItem>
+                <SelectItem value="published">{t('已发布')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -740,21 +743,21 @@ export default function LearnRoadsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <CardTitle>岗位列表</CardTitle>
+            <CardTitle>{t('岗位列表')}</CardTitle>
             {(listLoading || dataLoading) && (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             )}
           </div>
-          <CardDescription>共 {filteredPositions.length} 个岗位</CardDescription>
+          <CardDescription>{t('共 {n} 个岗位', { n: filteredPositions.length })}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>岗位名称</TableHead>
-                <TableHead>场景数</TableHead>
-                <TableHead>任务数</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead>{t('岗位名称')}</TableHead>
+                <TableHead>{t('场景数')}</TableHead>
+                <TableHead>{t('任务数')}</TableHead>
+                <TableHead className="text-right">{t('操作')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -763,7 +766,7 @@ export default function LearnRoadsPage() {
                   <TableCell colSpan={4} className="h-32 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <FolderOpen className="h-10 w-10 mb-2" />
-                      <p>暂无岗位数据</p>
+                      <p>{t('暂无岗位数据')}</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -804,7 +807,7 @@ export default function LearnRoadsPage() {
                           disabled={editLoading}
                         >
                           <Pencil className="mr-1 h-3 w-3" />
-                          编辑学习路径
+                          {t('编辑学习路径')}
                         </Button>
                       </TableRowActions>
                     </TableRow>
