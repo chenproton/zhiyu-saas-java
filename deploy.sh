@@ -457,13 +457,16 @@ ensure_pnpm() {
     warn "pnpm 版本不匹配（当前 ${current}，需要 ${PNPM_VERSION}），安装指定版本..."
   fi
   local local_pnpm_tgz=""
-  for f in "$OFFLINE_DIR"/pnpm-*.tgz; do
+  for f in "$OFFLINE_DIR"/pnpm-${PNPM_VERSION}.tgz; do
     [[ -f "$f" ]] && { local_pnpm_tgz="$f"; break; }
   done
   if [[ -n "$local_pnpm_tgz" ]]; then
     log "  使用本地 pnpm 安装包: $local_pnpm_tgz"
     npm install -g "$local_pnpm_tgz" 2>/dev/null || die "本地 pnpm 安装失败"
   else
+    if ls "$OFFLINE_DIR"/pnpm-*.tgz >/dev/null 2>&1; then
+      warn "offline 中存在 pnpm 离线包但与所需版本 ${PNPM_VERSION} 不匹配，尝试联网安装"
+    fi
     npm install -g "pnpm@${PNPM_VERSION}" 2>/dev/null || corepack enable pnpm 2>/dev/null || true
   fi
   current=$(pnpm --version 2>/dev/null || true)
