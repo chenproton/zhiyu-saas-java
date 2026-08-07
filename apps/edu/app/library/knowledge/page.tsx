@@ -93,7 +93,6 @@ export default function KnowledgePointsPage() {
   const handleTagFilterChange = (tagIds: string[]) => {
     setSelectedTagIds(tagIds)
     setPage(1)
-    void loadItems()
   }
   const confirmDelete = async () => {
     if (!deleteTarget) return

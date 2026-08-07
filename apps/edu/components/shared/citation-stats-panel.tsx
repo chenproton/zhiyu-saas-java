@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { BarChart3, FileX2 } from 'lucide-react'
+import { BarChart3, FileX2, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { CitationStats, UncitedItem } from '@/lib/types/library'
@@ -95,7 +95,7 @@ export function CitationStatsPanel({
           type="button"
           onClick={() => setDialogOpen(true)}
           title={`点击查看并批量删除从未被引用的${entityLabel}`}
-          className="text-left cursor-pointer rounded-xl border-0 shadow-sm bg-gradient-to-br from-rose-50 to-orange-50 hover:from-rose-100 hover:to-orange-100 transition-colors p-4 flex-1 min-h-0"
+          className="text-left cursor-pointer rounded-xl border-0 shadow-sm bg-gradient-to-br from-rose-50 to-orange-50 hover:from-rose-100 hover:to-orange-100 transition-colors p-4 flex-1 min-h-0 flex flex-col justify-between"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
@@ -105,6 +105,10 @@ export function CitationStatsPanel({
               <div className="text-2xl font-bold text-rose-500">{stats?.zeroCount ?? '-'}</div>
               <div className="text-xs text-rose-400 truncate">零引用{entityLabel}</div>
             </div>
+          </div>
+          <div className="flex items-center gap-0.5 text-[11px] font-medium text-rose-500/80">
+            去管理
+            <ChevronRight className="size-3.5" />
           </div>
         </button>
       </div>

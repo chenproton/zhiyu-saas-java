@@ -102,7 +102,6 @@ export default function QuestionsPage() {
   }
   const handleTagFilterChange = (ids: string[]) => {
     setSelectedTagIds(ids)
-    void loadItems()
   }
   const confirmDelete = async () => {
     if (!deleteTarget) return
