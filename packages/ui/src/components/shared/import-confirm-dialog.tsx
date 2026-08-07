@@ -108,15 +108,15 @@ export function ImportConfirmDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button variant="secondary" onClick={onConfirmSkip}>
+          <Button variant="default" onClick={onConfirmSkip}>
             仅导入新数据
           </Button>
           {onConfirmNew && (
-            <Button variant="secondary" onClick={onConfirmNew}>
+            <Button variant="default" onClick={onConfirmNew}>
               新增并导入
             </Button>
           )}
