@@ -26,6 +26,11 @@ import {
   EvalMethodResultModel,
   EvalMethodViewModel,
 } from '@/components/shared/eval-method-card'
+import {
+  ResourcePreviewModal,
+  usePreviewResources,
+} from '@/components/shared/resource-preview-modal'
+import type { TaskResource } from '@/lib/types'
 
 export const HYBRID_EVAL_MODULE_KEYS = ['preQuizzes', 'inClassQuizzes', 'homeworks'] as const
 export const HYBRID_EVAL_MODULE_LABELS: Record<string, string> = {
@@ -80,22 +85,27 @@ const MODULE_ICONS: Record<string, React.ElementType> = {
   trainingReports: FileCheck2,
 }
 
-function AttachmentList({ items }: { items?: { name?: string; file?: string }[] }) {
+function AttachmentList({
+  items,
+  onPreview,
+}: {
+  items?: { name?: string; file?: string }[]
+  onPreview: (url: string, name: string) => void
+}) {
   if (!items || items.length === 0) return null
   return (
     <div className="flex flex-wrap gap-2 mt-3">
       {items.map((att, i) =>
         att.file ? (
-          <a
+          <button
             key={i}
-            href={att.file}
-            target="_blank"
-            rel="noreferrer"
+            type="button"
+            onClick={() => onPreview(att.file!, att.name || '附件')}
             className="inline-flex items-center gap-1.5 text-xs text-primary bg-primary/5 border border-primary/15 rounded-lg px-3 py-1.5 hover:bg-primary/10 transition-colors"
           >
             <FileText className="h-3.5 w-3.5" />
             {att.name || '附件'}
-          </a>
+          </button>
         ) : (
           <Badge key={i} variant="secondary" className="text-xs font-normal">
             {att.name || '附件'}
@@ -106,23 +116,28 @@ function AttachmentList({ items }: { items?: { name?: string; file?: string }[] 
   )
 }
 
-function ResourceList({ items }: { items?: { name?: string; url?: string; type?: string }[] }) {
+function ResourceList({
+  items,
+  onPreview,
+}: {
+  items?: { name?: string; url?: string; type?: string }[]
+  onPreview: (url: string, name: string, type?: string) => void
+}) {
   if (!items || items.length === 0) return null
   return (
     <div className="flex flex-wrap gap-2 mt-3">
       {items.map((r, i) =>
         r.url ? (
-          <a
+          <button
             key={i}
-            href={r.url}
-            target="_blank"
-            rel="noreferrer"
+            type="button"
+            onClick={() => onPreview(r.url!, r.name || '资源', r.type)}
             className="inline-flex items-center gap-1.5 text-xs text-primary bg-primary/5 border border-primary/15 rounded-lg px-3 py-1.5 hover:bg-primary/10 transition-colors"
           >
             <FolderOpen className="h-3.5 w-3.5" />
             {r.name || '资源'}
             {r.type ? <span className="text-gray-400">({r.type})</span> : null}
-          </a>
+          </button>
         ) : (
           <Badge key={i} variant="secondary" className="text-xs font-normal">
             {r.name || '资源'}
@@ -244,6 +259,7 @@ function renderModuleContent(
   myResults: NodeEvaluationResult[],
   submittedKeys: Set<string>,
   onEvalAction: (moduleKey: string, method: EvalMethodViewModel) => void,
+  onPreview: (url: string, name: string, type?: string) => void,
 ) {
   const data = m.data || {}
   const label = HYBRID_EVAL_MODULE_LABELS[m.moduleKey]
@@ -266,10 +282,12 @@ function renderModuleContent(
       {m.moduleKey === 'prePreview' && (
         <>
           {data.content && <p>{data.content}</p>}
-          <AttachmentList items={data.attachments} />
+          <AttachmentList items={data.attachments} onPreview={onPreview} />
         </>
       )}
-      {m.moduleKey === 'preResources' && <ResourceList items={data.resources} />}
+      {m.moduleKey === 'preResources' && (
+        <ResourceList items={data.resources} onPreview={onPreview} />
+      )}
       {m.moduleKey === 'preTasks' && <TaskList items={data.tasks} />}
       {m.moduleKey === 'lecture' && (
         <>
@@ -284,10 +302,10 @@ function renderModuleContent(
                   {s.content}
                 </p>
               )}
-              <AttachmentList items={s.attachments} />
+              <AttachmentList items={s.attachments} onPreview={onPreview} />
             </div>
           ))}
-          <ResourceList items={data.resources} />
+          <ResourceList items={data.resources} onPreview={onPreview} />
         </>
       )}
       {m.moduleKey === 'inClassTasks' && <TaskList items={data.tasks} />}
@@ -307,7 +325,9 @@ function renderModuleContent(
         </div>
       )}
       {m.moduleKey === 'practiceTasks' && <TaskList items={data.tasks} />}
-      {m.moduleKey === 'extensionMaterials' && <ResourceList items={data.resources} />}
+      {m.moduleKey === 'extensionMaterials' && (
+        <ResourceList items={data.resources} onPreview={onPreview} />
+      )}
       {m.moduleKey === 'trainingReports' && (
         <div className="space-y-3">
           {data.reports?.map((r: any, i: number) => (
@@ -329,7 +349,7 @@ function renderModuleContent(
               {r.requirement && (
                 <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{r.requirement}</p>
               )}
-              <AttachmentList items={r.attachments} />
+              <AttachmentList items={r.attachments} onPreview={onPreview} />
             </div>
           ))}
         </div>
@@ -360,11 +380,21 @@ export function HybridModulesView({
   submittedKeys,
   onEvalAction,
 }: HybridModulesViewProps) {
+  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const designModule = modules.find((m) => m.moduleKey === 'teachingDesign')
   const reviewModule = modules.find((m) => m.moduleKey === 'postLessonReview')
   const activityModules = modules
     .filter((m) => ACTIVITY_ORDER.includes(m.moduleKey))
     .sort((a, b) => ACTIVITY_ORDER.indexOf(a.moduleKey) - ACTIVITY_ORDER.indexOf(b.moduleKey))
+
+  const handlePreview = (url: string, name: string, type?: string) => {
+    addPreviewResource({
+      id: `attachment-${url}`,
+      name,
+      url,
+      type: type || 'file',
+    } as TaskResource)
+  }
 
   return (
     <div className="space-y-5">
@@ -434,6 +464,7 @@ export function HybridModulesView({
                         myResults,
                         submittedKeys,
                         onEvalAction,
+                        handlePreview,
                       )}
                     </div>
                   </div>
@@ -471,6 +502,17 @@ export function HybridModulesView({
       >
         返回课程详情
       </Link>
+
+      {previewResources.map((r, i) => (
+        <ResourcePreviewModal
+          key={r.id}
+          resource={r}
+          open
+          index={i}
+          backdrop={false}
+          onOpenChange={() => removePreviewResource(r.id)}
+        />
+      ))}
     </div>
   )
 }
