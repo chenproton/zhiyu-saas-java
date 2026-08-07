@@ -15,20 +15,9 @@ import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { RankingList } from './ranking-list'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const CARDS_PER_PAGE = 12
-const SORT_OPTIONS = [
-  { value: 'default', label: '默认排序' },
-  { value: 'hot', label: '最多收藏' },
-  { value: 'recent', label: '最近收录' },
-  { value: 'update', label: '最近更新' },
-]
-const SCENE_SORT_OPTIONS = [
-  { value: 'default', label: '默认排序' },
-  { value: 'recent', label: '最近收录' },
-  { value: 'update', label: '最近更新' },
-  { value: 'tasks', label: '最多任务' },
-]
 
 interface JobHomeProps {
   mode?: 'job' | 'scene'
@@ -43,6 +32,7 @@ function PositionSideLists({
   favoritePositions: CareerPosition[]
   linkToLearn: boolean
 }) {
+  const t = useT()
   const [activeTab, setActiveTab] = useState<'recommended' | 'favorite'>('recommended')
   const [tick, setTick] = useState(0)
 
@@ -60,7 +50,7 @@ function PositionSideLists({
 
   const isRec = activeTab === 'recommended'
   const positions = isRec ? targetPositions : favoritePositions
-  const emptyText = isRec ? '暂无目标岗位' : '快去收藏岗位吧！'
+  const emptyText = isRec ? t('暂无目标岗位') : t('快去收藏岗位吧！')
   const EmptyIcon = isRec ? Flag : Heart
   const activeClass = isRec
     ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white border border-transparent shadow-sm'
@@ -77,7 +67,7 @@ function PositionSideLists({
             }`}
           >
             <Flag className="w-3.5 h-3.5" />
-            目标岗位
+            {t('目标岗位')}
           </button>
           <button
             onClick={() => switchTab('favorite')}
@@ -86,11 +76,11 @@ function PositionSideLists({
             }`}
           >
             <Heart className="w-3.5 h-3.5" />
-            收藏岗位
+            {t('收藏岗位')}
           </button>
         </div>
         <span className="text-[12px] text-[#94a3b8] ml-auto shrink-0">
-          {positions.length} 个岗位
+          {t('{n} 个岗位', { n: positions.length })}
         </span>
       </div>
 
@@ -113,8 +103,10 @@ function PositionSideLists({
                     {pos.shortName || pos.name}
                   </span>
                   <span className="text-[11px] text-[#94a3b8] truncate">
-                    适用专业：{pos.majorNames?.filter(Boolean)[0] || '未分类'} · 更新：
-                    {formatDate(pos.updatedAt)}
+                    {t('适用专业：{major} · 更新：{date}', {
+                      major: pos.majorNames?.filter(Boolean)[0] || t('未分类'),
+                      date: formatDate(pos.updatedAt),
+                    })}
                   </span>
                 </div>
               </div>
@@ -140,6 +132,7 @@ function PositionSideLists({
 
 
 export function JobHome({ mode = 'job' }: JobHomeProps) {
+  const t = useT()
   const { user } = useAuth()
   const industryMap = useIndustryMap()
   const listRef = useRef<HTMLDivElement>(null)
@@ -493,16 +486,17 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []
     if (selectedIndustry !== '全部')
-      filters.push({ type: 'industry', label: `行业：${selectedIndustry}` })
+      filters.push({ type: 'industry', label: t('行业：{name}', { name: selectedIndustry }) })
     if (!isScene && selectedMajor !== '全部')
-      filters.push({ type: 'major', label: `专业：${selectedMajor}` })
+      filters.push({ type: 'major', label: t('专业：{name}', { name: selectedMajor }) })
     if (isScene && selectedPosition !== '全部')
-      filters.push({ type: 'position', label: `岗位：${selectedPosition}` })
+      filters.push({ type: 'position', label: t('岗位：{name}', { name: selectedPosition }) })
     if (isScene && selectedProfession !== '全部')
-      filters.push({ type: 'profession', label: `专业：${selectedProfession}` })
+      filters.push({ type: 'profession', label: t('专业：{name}', { name: selectedProfession }) })
     if (isScene && selectedDifficulty !== '全部')
-      filters.push({ type: 'difficulty', label: `难度：${selectedDifficulty}` })
-    if (keyword.trim()) filters.push({ type: `keyword`, label: `关键词：${keyword.trim()}` })
+      filters.push({ type: 'difficulty', label: t('难度：{name}', { name: selectedDifficulty }) })
+    if (keyword.trim())
+      filters.push({ type: `keyword`, label: t('关键词：{name}', { name: keyword.trim() }) })
     return filters
   }, [
     selectedIndustry,
@@ -512,6 +506,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     selectedDifficulty,
     keyword,
     isScene,
+    t,
   ])
 
   const stats = useMemo(() => {
@@ -560,7 +555,19 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     }, 50)
   }
 
-  const sortOptions = isScene ? SCENE_SORT_OPTIONS : SORT_OPTIONS
+  const sortOptions = isScene
+    ? [
+        { value: 'default', label: t('默认排序') },
+        { value: 'recent', label: t('最近收录') },
+        { value: 'update', label: t('最近更新') },
+        { value: 'tasks', label: t('最多任务') },
+      ]
+    : [
+        { value: 'default', label: t('默认排序') },
+        { value: 'hot', label: t('最多收藏') },
+        { value: 'recent', label: t('最近收录') },
+        { value: 'update', label: t('最近更新') },
+      ]
 
   const removeFilter = (type: string) => {
     if (type === 'industry') setSelectedIndustry('全部')
@@ -584,25 +591,25 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     {
       icon: Layers,
       value: stats.total,
-      label: '实践场景',
+      label: t('实践场景'),
       gradient: 'from-primary to-primary/80',
     },
     {
       icon: ListChecks,
       value: stats.taskCount,
-      label: '任务总数',
+      label: t('任务总数'),
       gradient: 'from-primary/90 to-primary/70',
     },
     {
       icon: Factory,
       value: stats.industryCount,
-      label: '覆盖行业',
+      label: t('覆盖行业'),
       gradient: 'from-primary/80 to-primary/60',
     },
     {
       icon: Building2,
       value: stats.favoriteTotal,
-      label: '关联岗位',
+      label: t('关联岗位'),
       gradient: 'from-primary/90 to-primary/70',
     },
   ]
@@ -611,25 +618,25 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     {
       icon: Briefcase,
       value: stats.total,
-      label: '岗位总数',
+      label: t('岗位总数'),
       gradient: 'from-primary to-primary/80',
     },
     {
       icon: Layers,
       value: scenarios.length,
-      label: '实践场景',
+      label: t('实践场景'),
       gradient: 'from-primary/90 to-primary/70',
     },
     {
       icon: Factory,
       value: stats.industryCount,
-      label: '覆盖行业',
+      label: t('覆盖行业'),
       gradient: 'from-primary/80 to-primary/60',
     },
     {
       icon: GraduationCap,
       value: stats.majorCount,
-      label: '覆盖专业',
+      label: t('覆盖专业'),
       gradient: 'from-primary/90 to-primary/70',
     },
   ]
@@ -637,24 +644,24 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
   return (
     <LandingShell
       hero={{
-        badge: isScene ? '场景化实践 · 任务驱动教学' : '对接产业前沿 · 赋能岗位能力学习',
+        badge: isScene ? t('场景化实践 · 任务驱动教学') : t('对接产业前沿 · 赋能岗位能力学习'),
         title: isScene ? (
           <>
-            场景化实践教学
+            {t('场景化实践教学')}
             <br />
-            <span className="text-white/80">以真实场景驱动能力成长</span>
+            <span className="text-white/80">{t('以真实场景驱动能力成长')}</span>
           </>
         ) : (
           <>
-            对接产业前沿
+            {t('对接产业前沿')}
             <br />
-            <span className="text-white/80">开启岗位能力学习新征程</span>
+            <span className="text-white/80">{t('开启岗位能力学习新征程')}</span>
           </>
         ),
         description: isScene
-          ? '基于真实业务场景的任务化训练，从入门到专家，系统提升综合实战能力'
-          : '链接真实岗位场景，构建从认知到胜任的能力进阶闭环',
-        ctaLabel: isScene ? '浏览场景' : '浏览岗位',
+          ? t('基于真实业务场景的任务化训练，从入门到专家，系统提升综合实战能力')
+          : t('链接真实岗位场景，构建从认知到胜任的能力进阶闭环'),
+        ctaLabel: isScene ? t('浏览场景') : t('浏览岗位'),
         right: (
           <PositionSideLists
             targetPositions={targetPositions}
@@ -671,33 +678,33 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
           </div>
         ) : undefined
       }
-      filterTitle={isScene ? '场景筛选' : '岗位筛选'}
+      filterTitle={isScene ? t('场景筛选') : t('岗位筛选')}
       filterRows={
         isScene ? (
           <>
             <LandingFilterRow
-              label="行业"
+              label={t('行业')}
               items={industries}
               selected={selectedIndustry}
               onSelect={setSelectedIndustry}
               accentColor="primary"
             />
             <LandingFilterRow
-              label="岗位"
+              label={t('岗位')}
               items={positionNames}
               selected={selectedPosition}
               onSelect={setSelectedPosition}
               accentColor="primary"
             />
             <LandingFilterRow
-              label="专业"
+              label={t('专业')}
               items={professionNames}
               selected={selectedProfession}
               onSelect={setSelectedProfession}
               accentColor="primary"
             />
             <LandingFilterRow
-              label="难度"
+              label={t('难度')}
               items={difficulties}
               selected={selectedDifficulty}
               onSelect={setSelectedDifficulty}
@@ -708,14 +715,14 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
         ) : (
           <>
             <LandingFilterRow
-              label="行业"
+              label={t('行业')}
               items={industries}
               selected={selectedIndustry}
               onSelect={setSelectedIndustry}
               accentColor="primary"
             />
             <LandingFilterRow
-              label="专业"
+              label={t('专业')}
               items={majors}
               selected={selectedMajor}
               onSelect={setSelectedMajor}
@@ -734,17 +741,19 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
       keyword={keyword}
       onKeywordChange={setKeyword}
       onSearch={executeSearch}
-      searchPlaceholder={isScene ? '搜索场景名称、编码或关键词' : '搜索岗位名称、岗位编码或关键词'}
+      searchPlaceholder={
+        isScene ? t('搜索场景名称、编码或关键词') : t('搜索岗位名称、岗位编码或关键词')
+      }
       totalCount={filtered.length}
-      countLabel={isScene ? '个场景查看入口' : '个岗位查看入口'}
+      countLabel={isScene ? t('个场景查看入口') : t('个岗位查看入口')}
       listRef={listRef}
     >
       {loading ? (
         <LandingSkeleton />
       ) : filtered.length === 0 ? (
         <LandingEmpty
-          title={isScene ? '暂无匹配的场景' : '暂无匹配的岗位'}
-          hint="试试调整筛选条件或搜索关键词"
+          title={isScene ? t('暂无匹配的场景') : t('暂无匹配的岗位')}
+          hint={t('试试调整筛选条件或搜索关键词')}
         />
       ) : (
         <>

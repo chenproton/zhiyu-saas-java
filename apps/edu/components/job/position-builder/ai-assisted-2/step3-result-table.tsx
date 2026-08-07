@@ -21,6 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, AlertCircle } from 'lucide-react'
 import type { Position, PositionAbilityBinding, CompetencyLevel } from '@/lib/types/job-source'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
   { value: 'understand', label: '了解' },
@@ -30,7 +31,7 @@ const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
   { value: 'expert', label: '精通' },
 ]
 
-// 字典保存值保持以下 5 个不变，hint 仅在下拉列表中展示说明文案
+// 字典保存值保持以下 5 个不变，hint 仅在下拉列表中展示说明文案（hint 在组件内用 t() 翻译）
 const ABILITY_DOMAINS: { value: string; hint: string }[] = [
   { value: '岗位与行业认知', hint: '如行业常识、岗位职责、发展趋势类能力点' },
   { value: '专业知识', hint: '如专业理论、概念、原理、标准、规范、法规等知识类能力点' },
@@ -45,6 +46,7 @@ interface Step3ResultTableProps {
 }
 
 export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) {
+  const t = useT()
   const bindings = position.abilityBindings
   const [aiNotice] = useState<string | null>(null)
 
@@ -58,7 +60,7 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
 
   const groups = new Map<string, typeof bindings>()
   for (const b of bindings) {
-    const key = b.domain || '未分类'
+    const key = b.domain || t('未分类')
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(b)
   }
@@ -80,7 +82,7 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="py-4 text-center">
-            <p className="text-xs text-gray-500">工作职责</p>
+            <p className="text-xs text-gray-500">{t('工作职责')}</p>
             <p className="text-2xl font-semibold text-gray-900 mt-1">
               {position.responsibilities.length}
             </p>
@@ -88,13 +90,13 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
         </Card>
         <Card>
           <CardContent className="py-4 text-center">
-            <p className="text-xs text-gray-500">能力点</p>
+            <p className="text-xs text-gray-500">{t('能力点')}</p>
             <p className="text-2xl font-semibold text-gray-900 mt-1">{bindings.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="py-4 text-center">
-            <p className="text-xs text-gray-500">能力域</p>
+            <p className="text-xs text-gray-500">{t('能力域')}</p>
             <p className="text-2xl font-semibold text-gray-900 mt-1">{domainCount}</p>
           </CardContent>
         </Card>
@@ -103,26 +105,26 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">能力模型明细表</CardTitle>
+          <CardTitle className="text-base">{t('能力模型明细表')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {bindings.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
               <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p>暂无能力点数据</p>
-              <p className="text-xs text-gray-400 mt-1">请返回步骤二进行拆解</p>
+              <p>{t('暂无能力点数据')}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('请返回步骤二进行拆解')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50">
-                    <TableHead className="w-[120px]">所属能力领域</TableHead>
-                    <TableHead className="w-[140px]">能力点名称</TableHead>
-                    <TableHead className="w-[80px]">能力属性</TableHead>
-                    <TableHead className="w-[120px]">能力领域</TableHead>
-                    <TableHead className="w-[120px]">掌握程度</TableHead>
-                    <TableHead>胜任标准描述</TableHead>
+                    <TableHead className="w-[120px]">{t('所属能力领域')}</TableHead>
+                    <TableHead className="w-[140px]">{t('能力点名称')}</TableHead>
+                    <TableHead className="w-[80px]">{t('能力属性')}</TableHead>
+                    <TableHead className="w-[120px]">{t('能力领域')}</TableHead>
+                    <TableHead className="w-[120px]">{t('掌握程度')}</TableHead>
+                    <TableHead>{t('胜任标准描述')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -153,11 +155,11 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
                                 }
                               >
                                 <SelectTrigger className="h-7 text-[11px] w-[110px]">
-                                  <SelectValue placeholder="选择领域" />
+                                  <SelectValue placeholder={t('选择领域')} />
                                 </SelectTrigger>
                                 <SelectContent className="min-w-[320px]">
                                   {ABILITY_DOMAINS.map((d) => (
-                                    <SelectItem key={d.value} value={d.value} hint={`（${d.hint}）`}>
+                                    <SelectItem key={d.value} value={d.value} hint={`（${t(d.hint)}）`}>
                                       {d.value}
                                     </SelectItem>
                                   ))}
@@ -172,12 +174,12 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
                                 }
                               >
                                 <SelectTrigger className="h-7 text-xs w-[100px]">
-                                  <SelectValue placeholder="请选择" />
+                                  <SelectValue placeholder={t('请选择')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {COMPETENCY_LEVELS.map((l) => (
                                     <SelectItem key={l.value} value={l.value}>
-                                      {l.label}
+                                      {t(l.label)}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -191,7 +193,7 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
                                     rubricDescription: e.target.value,
                                   })
                                 }
-                                placeholder="请输入胜任标准描述..."
+                                placeholder={t('请输入胜任标准描述...')}
                                 className="h-7 text-xs"
                               />
                             </TableCell>

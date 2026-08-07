@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { StatusActionBar } from '@/components/shared/status-action-bar'
 import type { Position } from '@/lib/types/job-source'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface PositionListProps {
   activeTab?: 'my' | 'collab' | 'public'
@@ -64,6 +65,7 @@ export function PositionList({
   batchMap,
 }: PositionListProps) {
   const router = useRouter()
+  const t = useT()
   const getIndustryName = (id?: string) => {
     if (!id) return '-'
     return industryMap?.get(id) || '-'
@@ -87,27 +89,27 @@ export function PositionList({
                 <Checkbox
                   checked={someSelected ? 'indeterminate' : allSelected}
                   onCheckedChange={(checked) => onSelectAll?.(checked === true)}
-                  aria-label="全选"
+                  aria-label={t('全选')}
                 />
               </TableHead>
-              <TableHead className="w-40 text-xs font-medium text-slate-500">岗位名称</TableHead>
-              <TableHead className="w-24 text-xs font-medium text-slate-500">岗位编码</TableHead>
-              <TableHead className="w-28 text-xs font-medium text-slate-500">所属行业</TableHead>
-              <TableHead className="w-32 text-xs font-medium text-slate-500">所属专业</TableHead>
+              <TableHead className="w-40 text-xs font-medium text-slate-500">{t('岗位名称')}</TableHead>
+              <TableHead className="w-24 text-xs font-medium text-slate-500">{t('岗位编码')}</TableHead>
+              <TableHead className="w-28 text-xs font-medium text-slate-500">{t('所属行业')}</TableHead>
+              <TableHead className="w-32 text-xs font-medium text-slate-500">{t('所属专业')}</TableHead>
               <TableHead className="w-32 text-xs font-medium text-slate-500">
-                所属批次分组
+                {t('所属批次分组')}
               </TableHead>
-              <TableHead className="w-20 text-xs font-medium text-slate-500">共建人员</TableHead>
+              <TableHead className="w-20 text-xs font-medium text-slate-500">{t('共建人员')}</TableHead>
               <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
-                职责数
-              </TableHead>
-              <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
-                能力绑定
+                {t('职责数')}
               </TableHead>
               <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
-                收藏
+                {t('能力绑定')}
               </TableHead>
-              <TableHead className="text-right text-xs font-medium text-slate-500">操作</TableHead>
+              <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
+                {t('收藏')}
+              </TableHead>
+              <TableHead className="text-right text-xs font-medium text-slate-500">{t('操作')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -126,7 +128,7 @@ export function PositionList({
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={(checked) => onSelectId?.(position.id, checked === true)}
-                      aria-label={`选择 ${position.name}`}
+                      aria-label={t('选择 {name}', { name: position.name })}
                     />
                   </TableCell>
                   <TableCell>
@@ -153,7 +155,9 @@ export function PositionList({
                     {batchMap?.get(position.batchId) || position.batchId || '-'}
                   </TableCell>
                   <TableCell className="text-xs text-slate-500">
-                    {position.collaborators.length > 0 ? `${position.collaborators.length}人` : '-'}
+                    {position.collaborators.length > 0
+                      ? t('{n}人', { n: position.collaborators.length })
+                      : '-'}
                   </TableCell>
                   <TableCell className="text-center">
                     <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-primary/5 text-primary">
@@ -191,7 +195,7 @@ export function PositionList({
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                           <Link href={`${basePath}/${position.id}/edit?step=${configureStepParam}`}>
                             <GitBranch className="mr-1 h-3 w-3" />
-                            配置能力
+                            {t('配置能力')}
                           </Link>
                         </Button>
                       }

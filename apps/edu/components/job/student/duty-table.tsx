@@ -5,6 +5,7 @@ import { ListChecks, ChevronLeft, ChevronRight, X, Star } from 'lucide-react'
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from '@/lib/types/job'
 import { Button } from '@/components/ui/button'
 import { AbilityPointCard } from './ability-point-card'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface DutyTableProps {
   responsibilities: PositionResponsibility[]
@@ -19,6 +20,7 @@ export function DutyTable({
   abilityPoints,
   requirements,
 }: DutyTableProps) {
+  const t = useT()
   const [modalDuty, setModalDuty] = useState<PositionResponsibility | null>(null)
   const [page, setPage] = useState(0)
 
@@ -58,11 +60,11 @@ export function DutyTable({
       <div>
         <h4 className="text-base font-medium text-[#1f2937] mb-4 flex items-center gap-2">
           <ListChecks className="w-5 h-5 text-primary" />
-          岗位职责(
+          {t('岗位职责')}(
           <strong className="text-primary mx-1">
             {responsibilities.length || requirements.length}
           </strong>
-          项)
+          {t('项)')}
         </h4>
 
         {responsibilities.length > 0 ? (
@@ -70,10 +72,14 @@ export function DutyTable({
             <table className="w-full border-collapse min-w-[560px]">
               <thead>
                 <tr className="bg-[#fafafa]">
-                  <th className="text-left p-4 text-sm font-medium text-[#64748b] w-24">编号</th>
-                  <th className="text-left p-4 text-sm font-medium text-[#64748b]">职责描述</th>
+                  <th className="text-left p-4 text-sm font-medium text-[#64748b] w-24">
+                    {t('编号')}
+                  </th>
+                  <th className="text-left p-4 text-sm font-medium text-[#64748b]">
+                    {t('职责描述')}
+                  </th>
                   <th className="text-left p-4 text-sm font-medium text-[#64748b] w-40">
-                    关联能力点
+                    {t('关联能力点')}
                   </th>
                 </tr>
               </thead>
@@ -90,7 +96,9 @@ export function DutyTable({
                       </td>
                       <td className="p-4 text-sm text-[#475569]">{resp.name}</td>
                       <td className="p-4">
-                        <span className="text-sm font-medium text-primary">{items.length} 个</span>
+                        <span className="text-sm font-medium text-primary">
+                          {t('{n} 个', { n: items.length })}
+                        </span>
                         <Button
                           variant="outline"
                           size="sm"
@@ -100,7 +108,7 @@ export function DutyTable({
                             setPage(0)
                           }}
                         >
-                          查看详情
+                          {t('查看详情')}
                         </Button>
                       </td>
                     </tr>
@@ -110,14 +118,16 @@ export function DutyTable({
             </table>
           </div>
         ) : (
-          <div className="text-sm text-[#94a3b8] py-4">暂无岗位职责数据</div>
+          <div className="text-sm text-[#94a3b8] py-4">{t('暂无岗位职责数据')}</div>
         )}
       </div>
 
       <div>
         <h4 className="text-base font-medium text-[#1f2937] mb-4 flex items-center gap-2">
           <ListChecks className="w-5 h-5 text-primary" />
-          任职要求(<strong className="text-primary mx-1">{requirements.length}</strong>项)
+          {t('任职要求')}(
+          <strong className="text-primary mx-1">{requirements.length}</strong>
+          {t('项)')}
         </h4>
         <div className="bg-white border border-[#f5f5f4] rounded-2xl p-6">
           <ul className="list-none p-0 m-0">
@@ -147,8 +157,12 @@ export function DutyTable({
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#f1f5f9]">
               <div>
-                <div className="text-lg font-semibold text-[#1f2937]">职责关联能力点</div>
-                <div className="text-xs text-[#64748b] mt-1">正在查看：{modalDuty.name}</div>
+                <div className="text-lg font-semibold text-[#1f2937]">
+                  {t('职责关联能力点')}
+                </div>
+                <div className="text-xs text-[#64748b] mt-1">
+                  {t('正在查看：{name}', { name: modalDuty.name })}
+                </div>
               </div>
               <button
                 className="text-[#94a3b8] hover:text-[#1f2937] p-1"
@@ -174,7 +188,7 @@ export function DutyTable({
                       d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25m-2.25 2.25V4.5m-6 0h12"
                     />
                   </svg>
-                  该职责暂无关联能力点
+                  {t('该职责暂无关联能力点')}
                 </div>
               ) : (
                 <>
@@ -195,7 +209,7 @@ export function DutyTable({
                         className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-primary/40 hover:text-primary"
                         disabled={page <= 0}
                         onClick={() => setPage(page - 1)}
-                        aria-label="上一页"
+                        aria-label={t('上一页')}
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -210,7 +224,7 @@ export function DutyTable({
                         className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-primary/40 hover:text-primary"
                         disabled={page >= totalPages - 1}
                         onClick={() => setPage(page + 1)}
-                        aria-label="下一页"
+                        aria-label={t('下一页')}
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -218,7 +232,8 @@ export function DutyTable({
                   )}
 
                   <p className="text-xs text-[#94a3b8] text-center mt-3">
-                    <Star className="w-3 h-3 inline mr-1" />共 {modalAbilities.length} 个能力点
+                    <Star className="w-3 h-3 inline mr-1" />
+                    {t('共 {n} 个能力点', { n: modalAbilities.length })}
                   </p>
                 </>
               )}

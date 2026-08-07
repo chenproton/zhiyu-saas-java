@@ -2313,5 +2313,6 @@
   "题目答案": "Question Answer",
   "颜色": "Color",
   "，{n} 个资源非本人创建，已跳过覆盖": "; {n} resources were not created by you and were skipped",
-  "，跳过 {n} 个同名资源": "; skipped {n} resources with the same name"
+  "，跳过 {n} 个同名资源": "; skipped {n} resources with the same name",
+  "+ 库中不存在，点击新建「{name}」": "+ Not in library, click to create \"{name}\""
 }

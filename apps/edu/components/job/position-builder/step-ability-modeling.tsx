@@ -27,19 +27,12 @@ import type {
   Ability,
 } from '@/lib/types/job-source'
 import { toast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface StepAbilityModelingProps {
   position: Position
   onUpdate: (data: Partial<Position>) => void
 }
-
-const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string; description: string }[] = [
-  { value: 'understand', label: '了解', description: '了解基本概念，能在指导下完成简单任务' },
-  { value: 'comprehend', label: '理解', description: '理解原理和方法，能独立完成基本任务' },
-  { value: 'master', label: '掌握', description: '能独立完成常规任务，处理一般问题' },
-  { value: 'proficient', label: '熟练', description: '能处理复杂任务，指导他人，优化流程' },
-  { value: 'expert', label: '精通', description: '行业专家水平，能创新和引领发展方向' },
-]
 
 const ABILITY_ATTRIBUTES = ['知识', '素养', '技能']
 
@@ -70,6 +63,14 @@ function arrayEquals(a: string[], b: string[]): boolean {
 }
 
 export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingProps) {
+  const t = useT()
+  const competencyLevels: { value: CompetencyLevel; label: string; description: string }[] = [
+    { value: 'understand', label: t('了解'), description: t('了解基本概念，能在指导下完成简单任务') },
+    { value: 'comprehend', label: t('理解'), description: t('理解原理和方法，能独立完成基本任务') },
+    { value: 'master', label: t('掌握'), description: t('能独立完成常规任务，处理一般问题') },
+    { value: 'proficient', label: t('熟练'), description: t('能处理复杂任务，指导他人，优化流程') },
+    { value: 'expert', label: t('精通'), description: t('行业专家水平，能创新和引领发展方向') },
+  ]
   const [abilities, setAbilities] = useState<Ability[]>([])
   const [selectedRespId, setSelectedRespId] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -194,7 +195,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       (b) => b.responsibilityId === selectedRespId && b.publicAbilityId === ability.id,
     )
     if (exists) {
-      toast({ title: '该能力点已添加到当前职责', variant: 'destructive' })
+      toast({ title: t('该能力点已添加到当前职责'), variant: 'destructive' })
       return
     }
 
@@ -226,7 +227,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
         b.responsibilityId === selectedRespId && b.name.toLowerCase() === trimmed.toLowerCase(),
     )
     if (existsInBindings) {
-      toast({ title: '当前职责已存在同名能力点', variant: 'destructive' })
+      toast({ title: t('当前职责已存在同名能力点'), variant: 'destructive' })
       return
     }
 
@@ -301,7 +302,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
     setSelectedRespId(newResps[newResps.length - 1].id)
     setShowAddRespDialog(false)
     setNewRespNames([''])
-    toast({ title: `已添加 ${newResps.length} 条工作职责` })
+    toast({ title: t('已添加 {n} 条工作职责', { n: newResps.length }) })
   }
 
   const handleRemoveResponsibility = (respId: string) => {
@@ -371,9 +372,9 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
           a.id === abilityId ? { ...a, name: trimmed, attributes: editAbilityAttributes } : a,
         ),
       )
-      toast({ title: '能力点已更新' })
+      toast({ title: t('能力点已更新') })
     } catch (err: any) {
-      toast({ title: err?.message || '更新失败', variant: 'destructive' })
+      toast({ title: err?.message || t('更新失败'), variant: 'destructive' })
     }
     setEditingAbilityId(null)
     setEditAbilityName('')
@@ -384,9 +385,9 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
     try {
       await abilityApi.delete(abilityId)
       setAbilities((prev) => prev.filter((a) => a.id !== abilityId))
-      toast({ title: '能力点已删除' })
+      toast({ title: t('能力点已删除') })
     } catch (err: any) {
-      toast({ title: err?.message || '删除失败', variant: 'destructive' })
+      toast({ title: err?.message || t('删除失败'), variant: 'destructive' })
     }
   }
 
@@ -408,9 +409,9 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
         <div className="shrink-0 px-5 py-4 border-b border-gray-100 bg-white">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-gray-800">工作职责</h3>
+              <h3 className="text-sm font-semibold text-gray-800">{t('工作职责')}</h3>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                {totalResponsibilities} 项职责，{totalBindings} 个能力点
+                {t('{n} 项职责，{m} 个能力点', { n: totalResponsibilities, m: totalBindings })}
               </p>
             </div>
             <Button
@@ -419,7 +420,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
               onClick={openAddResponsibilityDialog}
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
-              添加
+              {t('添加')}
             </Button>
           </div>
         </div>
@@ -427,7 +428,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
           {position.responsibilities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
               <AlertCircle className="h-6 w-6 mb-2 opacity-30" />
-              <p className="text-xs">暂无工作职责</p>
+              <p className="text-xs">{t('暂无工作职责')}</p>
             </div>
           ) : (
             position.responsibilities.map((resp) => {
@@ -452,7 +453,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                           if (e.key === 'Escape') handleSaveEditResp()
                         }}
                         onBlur={handleSaveEditResp}
-                        placeholder="输入职责名称..."
+                        placeholder={t('输入职责名称...')}
                         className="h-7 text-xs border-gray-200"
                         autoFocus
                       />
@@ -476,7 +477,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                       <span
                         className={`flex-1 truncate ${isSelected ? 'font-medium text-gray-900' : 'text-gray-700'}`}
                       >
-                        {resp.name || <span className="text-gray-400 italic">未命名</span>}
+                        {resp.name || <span className="text-gray-400 italic">{t('未命名')}</span>}
                       </span>
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -487,7 +488,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                       </span>
                       {bindingCount === 0 && (
                         <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-600 border border-amber-200">
-                          未配置
+                          {t('未配置')}
                         </span>
                       )}
                       <HoverActionBar>
@@ -523,8 +524,8 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       <div className="w-[64%] flex flex-col overflow-hidden bg-gray-50/30">
         <div className="shrink-0 px-5 py-3 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
-            <h3 className="text-sm font-semibold text-gray-800">能力点列表</h3>
-            <span className="text-[11px] text-gray-400">共 {totalBindings} 个能力点</span>
+            <h3 className="text-sm font-semibold text-gray-800">{t('能力点列表')}</h3>
+            <span className="text-[11px] text-gray-400">{t('共 {n} 个能力点', { n: totalBindings })}</span>
           </div>
         </div>
 
@@ -539,8 +540,8 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
           {position.responsibilities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-300">
               <Brain className="h-10 w-10 mb-3 opacity-20" />
-              <p className="text-sm">暂无工作职责和能力点</p>
-              <p className="text-xs mt-1">请先在左侧添加工作职责</p>
+              <p className="text-sm">{t('暂无工作职责和能力点')}</p>
+              <p className="text-xs mt-1">{t('请先在左侧添加工作职责')}</p>
             </div>
           ) : (
             <div className="py-5 space-y-6 px-5">
@@ -562,7 +563,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                     <div className="flex items-center gap-2 mb-3 px-1">
                       <div className={`w-2 h-2 rounded-full shrink-0 ${getRespColor(resp.id)}`} />
                       <h4 className="text-sm font-semibold text-gray-700 truncate max-w-[140px]">
-                        {resp.name || '未命名职责'}
+                        {resp.name || t('未命名职责')}
                       </h4>
                       {respBindings.length > 0 && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium shrink-0">
@@ -584,7 +585,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                             }}
                           >
                             <Library className="mr-1 h-3.5 w-3.5" />
-                            从能力点库添加
+                            {t('从能力点库添加')}
                           </Button>
                           <Button
                             variant="outline"
@@ -597,20 +598,20 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                             }}
                           >
                             <Plus className="mr-1 h-3.5 w-3.5" />
-                            新建能力点
+                            {t('新建能力点')}
                           </Button>
                         </div>
                       )}
                     </div>
                     {respBindings.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 py-8 flex flex-col items-center justify-center">
-                        <p className="text-xs text-gray-400">暂无能力点</p>
-                        <p className="text-[10px] text-gray-300 mt-1">点击上方按钮添加</p>
+                        <p className="text-xs text-gray-400">{t('暂无能力点')}</p>
+                        <p className="text-[10px] text-gray-300 mt-1">{t('点击上方按钮添加')}</p>
                       </div>
                     ) : (
                       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
                         {respBindings.map((binding) => {
-                          const levelIdx = COMPETENCY_LEVELS.findIndex(
+                          const levelIdx = competencyLevels.findIndex(
                             (l) => l.value === binding.level,
                           )
                           const colorClass = getRespColor(binding.responsibilityId)
@@ -630,7 +631,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                   <button
                                     onClick={() => handleRemoveBinding(binding.id)}
                                     className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                    title="移除"
+                                    title={t('移除')}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -645,7 +646,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                 <div
                                   className="absolute top-2 left-0 h-2 rounded-full transition-all duration-300"
                                   style={{
-                                    width: `calc(${Math.max(0, (levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100)}% - 10px)`,
+                                    width: `calc(${Math.max(0, (levelIdx / (competencyLevels.length - 1)) * 100)}% - 10px)`,
                                     background: 'linear-gradient(90deg, #6366f1, #a78bfa)',
                                     marginLeft: 5,
                                   }}
@@ -654,7 +655,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                   className="absolute top-[4px] left-0 right-0 flex justify-between"
                                   style={{ padding: '0 5px' }}
                                 >
-                                  {COMPETENCY_LEVELS.map((level, idx) => {
+                                  {competencyLevels.map((level, idx) => {
                                     const isReached = idx <= levelIdx
                                     return (
                                       <button
@@ -679,7 +680,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                   className="absolute bottom-0 left-0 right-0 flex justify-between"
                                   style={{ padding: '0 5px' }}
                                 >
-                                  {COMPETENCY_LEVELS.map((level, idx) => (
+                                  {competencyLevels.map((level, idx) => (
                                     <span
                                       key={level.value}
                                       className={`text-[10px] font-medium transition-colors ${
@@ -704,7 +705,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                       rubricDescription: e.target.value,
                                     })
                                   }
-                                  placeholder="胜任标准描述..."
+                                  placeholder={t('胜任标准描述...')}
                                   className="text-[11px] min-h-[40px] resize-none border-gray-100 focus:border-primary/30 bg-gray-50/50 rounded-xl placeholder:text-gray-300"
                                   rows={2}
                                 />
@@ -734,9 +735,9 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-gray-800">添加工作职责</DialogTitle>
+            <DialogTitle className="text-gray-800">{t('添加工作职责')}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              输入职责名称，回车可继续添加，保存后批量插入
+              {t('输入职责名称，回车可继续添加，保存后批量插入')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2 max-h-[50vh] overflow-y-auto pr-1">
@@ -754,7 +755,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                     }
                   }}
                   data-focus-id={`new-resp-${index}`}
-                  placeholder={`工作职责 ${index + 1}`}
+                  placeholder={t('工作职责 {n}', { n: index + 1 })}
                   className="text-sm min-h-8 py-1"
                 />
                 <Button
@@ -775,14 +776,14 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
               className="border-gray-200 hover:bg-gray-50"
               onClick={() => setShowAddRespDialog(false)}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={handleConfirmAddResponsibilities}
               disabled={!newRespNames.some((n) => n.trim())}
               className="bg-gray-900 hover:bg-gray-800 text-white"
             >
-              保存
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -802,9 +803,11 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-gray-800">新建能力点</DialogTitle>
+            <DialogTitle className="text-gray-800">{t('新建能力点')}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              {selectedResp ? `为「${selectedResp.name}」新建岗位能力点` : '请先选择一项工作职责'}
+              {selectedResp
+                ? t('为「{name}」新建岗位能力点', { name: selectedResp.name })
+                : t('请先选择一项工作职责')}
             </DialogDescription>
           </DialogHeader>
           {duplicateName ? (
@@ -813,10 +816,9 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-amber-800">能力点已存在</p>
+                    <p className="text-sm font-medium text-amber-800">{t('能力点已存在')}</p>
                     <p className="text-sm text-amber-700 mt-1">
-                      公共能力点库中已存在「<span className="font-medium">{duplicateName}</span>
-                      」，建议直接从库中引用，无需重复创建。
+                      {t('公共能力点库中已存在「{name}」，建议直接从库中引用，无需重复创建。', { name: duplicateName })}
                     </p>
                   </div>
                 </div>
@@ -830,36 +832,36 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                     setNewAbilityName('')
                   }}
                 >
-                  取消
+                  {t('取消')}
                 </Button>
                 <Button
                   onClick={handleAddExistingFromPool}
                   className="bg-primary hover:bg-primary/90 text-white"
                 >
-                  从库中引用
+                  {t('从库中引用')}
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={() => setDuplicateName(null)}
                   className="text-gray-500"
                 >
-                  仍要新建
+                  {t('仍要新建')}
                 </Button>
               </DialogFooter>
             </div>
           ) : (
             <>
               <div className="space-y-4 py-4">
-                <FormFieldRow label="能力点名称" required labelClassName="text-sm text-gray-600">
+                <FormFieldRow label={t('能力点名称')} required labelClassName="text-sm text-gray-600">
                   <Input
                     value={newAbilityName}
                     onChange={(e) => setNewAbilityName(e.target.value)}
-                    placeholder="例如：微服务架构设计"
+                    placeholder={t('例如：微服务架构设计')}
                     className="border-gray-200 focus:border-gray-400"
                   />
                 </FormFieldRow>
                 <div className="space-y-2">
-                  <Label className="text-sm text-gray-600">能力属性</Label>
+                  <Label className="text-sm text-gray-600">{t('能力属性')}</Label>
                   <div className="flex gap-2">
                     {ABILITY_ATTRIBUTES.map((attr) => {
                       const isSelected = newAbilityAttributes.includes(attr)
@@ -893,14 +895,14 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                   className="border-gray-200 hover:bg-gray-50"
                   onClick={() => setShowCreateDialog(false)}
                 >
-                  取消
+                  {t('取消')}
                 </Button>
                 <Button
                   onClick={handleCreateCustom}
                   disabled={!newAbilityName.trim() || !selectedRespId}
                   className="bg-gray-900 hover:bg-gray-800 text-white"
                 >
-                  创建并关联
+                  {t('创建并关联')}
                 </Button>
               </DialogFooter>
             </>
@@ -922,9 +924,9 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       >
         <DialogContent size="xl" className="!h-[85vh] flex flex-col">
           <DialogHeader className="pb-0">
-            <DialogTitle className="text-gray-800">从能力点库添加</DialogTitle>
+            <DialogTitle className="text-gray-800">{t('从能力点库添加')}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              搜索能力点，添加到当前岗位的工作职责中
+              {t('搜索能力点，添加到当前岗位的工作职责中')}
             </DialogDescription>
           </DialogHeader>
 
@@ -932,7 +934,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="输入名称搜索能力点..."
+                placeholder={t('输入名称搜索能力点...')}
                 className="pl-9 h-9 text-sm bg-white border-gray-200"
                 value={abilityPoolSearch}
                 onChange={(e) => setAbilityPoolSearch(e.target.value)}
@@ -941,7 +943,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] font-medium text-gray-500 mr-1">能力属性</span>
+              <span className="text-[11px] font-medium text-gray-500 mr-1">{t('能力属性')}</span>
               {ABILITY_ATTRIBUTES.map((attr) => (
                 <button
                   key={attr}
@@ -962,20 +964,20 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                   onClick={() => setAbilityPoolFilterAttr(null)}
                   className="text-[11px] text-gray-400 hover:text-gray-600 ml-2"
                 >
-                  清空
+                  {t('清空')}
                 </button>
               )}
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] font-medium text-gray-500 mr-1">关联岗位</span>
+              <span className="text-[11px] font-medium text-gray-500 mr-1">{t('关联岗位')}</span>
               <ComboboxSelect
                 value={abilityPoolFilterPosition || ''}
                 onChange={(v) => setAbilityPoolFilterPosition(v || null)}
                 options={abilityPoolPositions.map((p) => ({ value: p.id, label: p.name }))}
-                placeholder="选择岗位"
-                searchPlaceholder="搜索岗位..."
-                emptyText="暂无匹配岗位"
+                placeholder={t('选择岗位')}
+                searchPlaceholder={t('搜索岗位...')}
+                emptyText={t('暂无匹配岗位')}
                 className="h-7 text-[11px]"
               />
               {abilityPoolFilterPosition && (
@@ -983,7 +985,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                   onClick={() => setAbilityPoolFilterPosition(null)}
                   className="text-[11px] text-gray-400 hover:text-gray-600 ml-1"
                 >
-                  清空
+                  {t('清空')}
                 </button>
               )}
             </div>
@@ -993,7 +995,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
             {abilityPoolResults.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-300">
                 <Search className="h-8 w-8 mb-2 opacity-25" />
-                <p className="text-sm">暂无匹配的能力点</p>
+                <p className="text-sm">{t('暂无匹配的能力点')}</p>
                 {abilityPoolSearch.trim() && (
                   <button
                     className="mt-3 text-xs text-primary hover:text-primary font-medium"
@@ -1004,7 +1006,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                       setShowCreateDialog(true)
                     }}
                   >
-                    + 库中不存在，点击新建「{abilityPoolSearch.trim()}」
+                    {t('+ 库中不存在，点击新建「{name}」', { name: abilityPoolSearch.trim() })}
                   </button>
                 )}
               </div>
@@ -1014,16 +1016,16 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                   <thead>
                     <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
                       <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
-                        能力点名称
+                        {t('能力点名称')}
                       </th>
                       <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[15%]">
-                        能力点编码
+                        {t('能力点编码')}
                       </th>
                       <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[25%]">
-                        能力属性
+                        {t('能力属性')}
                       </th>
                       <th className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
-                        操作
+                        {t('操作')}
                       </th>
                     </tr>
                   </thead>
@@ -1047,12 +1049,12 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                     value={editAbilityName}
                                     onChange={(e) => setEditAbilityName(e.target.value)}
                                     onKeyDown={(e) => handleSaveEditAbilityKeyDown(e, ability.id)}
-                                    placeholder="能力点名称"
+                                    placeholder={t('能力点名称')}
                                     className="h-8 text-sm bg-white"
                                     autoFocus
                                   />
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[11px] text-gray-400 shrink-0">属性</span>
+                                    <span className="text-[11px] text-gray-400 shrink-0">{t('属性')}</span>
                                     {ABILITY_ATTRIBUTES.map((attr) => {
                                       const isSel = editAbilityAttributes.includes(attr)
                                       return (
@@ -1085,7 +1087,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                     onClick={() => handleSaveEditAbility(ability.id)}
                                   >
                                     <Check className="mr-1 h-3 w-3" />
-                                    保存
+                                    {t('保存')}
                                   </Button>
                                   <Button
                                     size="sm"
@@ -1097,7 +1099,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                       setEditAbilityAttributes([])
                                     }}
                                   >
-                                    取消
+                                    {t('取消')}
                                   </Button>
                                 </div>
                               </div>
@@ -1134,7 +1136,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                 (alreadyAdded ? (
                                   <span className="inline-flex items-center gap-1 text-[11px] text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
                                     <Check className="h-3 w-3" />
-                                    已添加
+                                    {t('已添加')}
                                   </span>
                                 ) : (
                                   <Button
@@ -1144,21 +1146,21 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                     onClick={() => handleAddFromPool(ability)}
                                   >
                                     <Plus className="mr-1 h-3 w-3" />
-                                    添加
+                                    {t('添加')}
                                   </Button>
                                 ))}
                               <div className="flex items-center gap-0.5 border border-gray-200 rounded-full overflow-hidden">
                                 <button
                                   onClick={() => handleStartEditAbility(ability)}
                                   className="px-2.5 py-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                                  title="编辑"
+                                  title={t('编辑')}
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteAbility(ability.id)}
                                   className="px-2.5 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors border-l border-gray-200"
-                                  title="删除"
+                                  title={t('删除')}
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </button>

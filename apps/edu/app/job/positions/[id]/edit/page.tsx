@@ -36,12 +36,14 @@ import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 function PositionEditPageContent({ params }: PageProps) {
+  const t = useT()
   const { id } = use(params)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -83,7 +85,7 @@ function PositionEditPageContent({ params }: PageProps) {
         setPositions(posList)
         setBatches(batchRes.items.map(convertJobBatchToBatch))
       } catch (err: any) {
-        if (!cancelled) toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
+        if (!cancelled) toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -91,7 +93,7 @@ function PositionEditPageContent({ params }: PageProps) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     ;(async () => {
@@ -156,14 +158,14 @@ function PositionEditPageContent({ params }: PageProps) {
         setDetailsLoading(false)
         if (!cancelled) {
           reportError(err, '加载岗位详情')
-          toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
+          toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
         }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [position, detailsLoaded])
+  }, [position, detailsLoaded, t])
 
   useEffect(() => {
     ;(async () => {
@@ -200,7 +202,7 @@ function PositionEditPageContent({ params }: PageProps) {
   if (!position) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">岗位不存在</p>
+        <p className="text-muted-foreground">{t('岗位不存在')}</p>
       </div>
     )
   }
@@ -235,10 +237,10 @@ function PositionEditPageContent({ params }: PageProps) {
       const savedPosition = { ...position, status: 'draft' as const }
       setPosition(savedPosition)
       setPositions((prev) => prev.map((p) => (p.id === position.id ? savedPosition : p)))
-      toast({ title: '草稿已保存' })
+      toast({ title: t('草稿已保存') })
     } catch (err: any) {
       reportError(err, '保存岗位')
-      toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
+      toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
     } finally {
       setIsSaving(false)
     }
@@ -254,10 +256,10 @@ function PositionEditPageContent({ params }: PageProps) {
     try {
       const res = await fileApi.upload(file)
       updatePositionData({ coverImage: res.url })
-      toast({ title: '封面上传成功' })
+      toast({ title: t('封面上传成功') })
     } catch (err: any) {
       reportError(err, '上传封面')
-      toast({ title: err?.message || '请稍后重试', variant: 'destructive' })
+      toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
     } finally {
       setCoverUploading(false)
     }
@@ -268,9 +270,9 @@ function PositionEditPageContent({ params }: PageProps) {
   }
 
   const steps = [
-    { id: 'basic', label: '基础信息', description: '填写岗位基本信息' },
-    { id: 'ability', label: '能力建模', description: '构建能力图谱' },
-    { id: 'competency', label: '能力模型汇总', description: '设置达标要求' },
+    { id: 'basic', label: t('基础信息'), description: t('填写岗位基本信息') },
+    { id: 'ability', label: t('能力建模'), description: t('构建能力图谱') },
+    { id: 'competency', label: t('能力模型汇总'), description: t('设置达标要求') },
   ]
 
   const currentStepIndex = steps.findIndex((s) => s.id === activeStep)
@@ -292,7 +294,7 @@ function PositionEditPageContent({ params }: PageProps) {
   return (
     <EditorShell
       mode="fullscreen"
-      backText="取消"
+      backText={t('取消')}
       onBack={async () => {
         if (isNewPosition && !hasSavedRef.current) {
           try {
@@ -311,8 +313,8 @@ function PositionEditPageContent({ params }: PageProps) {
       onPrev={canGoPrev ? handlePrev : undefined}
       onNext={canGoNext ? handleNext : undefined}
       onSubmit={!canGoNext ? handleFinish : undefined}
-      submitText="完成配置"
-      loadingText={detailsLoading ? '加载详情中' : undefined}
+      submitText={t('完成配置')}
+      loadingText={detailsLoading ? t('加载详情中') : undefined}
       title={position.name}
     >
       {activeStep === 'basic' ? (
@@ -327,8 +329,8 @@ function PositionEditPageContent({ params }: PageProps) {
                 <CoverImageUpload
                   imageUrl={position.coverImage || ''}
                   uploading={coverUploading}
-                  label="岗位封面"
-                  alt="岗位封面"
+                  label={t('岗位封面')}
+                  alt={t('岗位封面')}
                   onUpload={handleCoverUpload}
                   onRemove={() => updatePositionData({ coverImage: '' })}
                 />
@@ -341,15 +343,15 @@ function PositionEditPageContent({ params }: PageProps) {
                   value={position.batchId || ''}
                   onChange={(v) => updatePositionData({ batchId: v })}
                   batchApi={batchApi}
-                  emptyLabel="未选择批次"
+                  emptyLabel={t('未选择批次')}
                 />
                 <div>
-                  <Label className="text-gray-500 text-xs">创建人</Label>
+                  <Label className="text-gray-500 text-xs">{t('创建人')}</Label>
                   <p className="font-medium text-gray-800 mt-1">{currentUser.name}</p>
                 </div>
 
                 <div>
-                  <Label className="text-gray-500 text-xs">共建人</Label>
+                  <Label className="text-gray-500 text-xs">{t('共建人')}</Label>
                   <UserSelector
                     value={collaboratorIds}
                     onChange={(ids) =>
@@ -358,14 +360,14 @@ function PositionEditPageContent({ params }: PageProps) {
                       })
                     }
                     multiple
-                    placeholder="点击选择共建人"
+                    placeholder={t('点击选择共建人')}
                     tenantId={tenantId}
                     excludeUserIds={position.createdBy ? [position.createdBy] : undefined}
                   />
                 </div>
 
                 <div className="pt-3 border-t border-gray-100">
-                  <Label className="text-gray-500 text-xs">当前版本号</Label>
+                  <Label className="text-gray-500 text-xs">{t('当前版本号')}</Label>
                   <p className="font-medium text-gray-800 mt-1">{position.version}</p>
                 </div>
               </CardContent>
@@ -386,10 +388,10 @@ function PositionEditPageContent({ params }: PageProps) {
       <ConfirmDialog
         open={isPreviewConfirmOpen}
         onOpenChange={setIsPreviewConfirmOpen}
-        title="即将离开当前页面"
-        description="请确认是否已经保存数据"
-        confirmText="跳转预览"
-        cancelText="取消"
+        title={t('即将离开当前页面')}
+        description={t('请确认是否已经保存数据')}
+        confirmText={t('跳转预览')}
+        cancelText={t('取消')}
         onConfirm={() => router.push(`/job/landing/${id}`)}
       />
     </EditorShell>

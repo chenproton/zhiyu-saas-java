@@ -12,6 +12,7 @@ import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { reportError } from '@/lib/error-handling'
 import { formatDate } from '@/lib/format-utils'
 import { useToast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ApprovalView {
   id: string
@@ -29,6 +30,7 @@ interface ApprovalView {
 }
 
 export default function JobApprovalsPage() {
+  const t = useT()
   const { records, loading, approve, reject, batchApprove, batchReject, getStepInfo } =
     useApprovals({ targetType: 'career_position' })
   const { getName } = useSubmitterNames()
@@ -46,41 +48,41 @@ export default function JobApprovalsPage() {
         reportError(err, { source: '加载岗位/批次列表' })
         toast({
           variant: 'destructive',
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '加载岗位/批次列表失败',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('加载岗位/批次列表失败'),
         })
       })
-  }, [toast])
+  }, [toast, t])
 
   const submitterCol: ApprovalColumn<ApprovalView> = {
-    header: '创建人',
+    header: t('创建人'),
     className: 'text-sm text-gray-600 whitespace-nowrap',
     cell: (i) => getName(i.submitterId),
   }
 
   const columns: ApprovalColumn<ApprovalView>[] = [
-    { header: '岗位名称', cell: (i) => <span className="font-medium">{i.positionName}</span> },
+    { header: t('岗位名称'), cell: (i) => <span className="font-medium">{i.positionName}</span> },
     {
-      header: '岗位简称',
+      header: t('岗位简称'),
       cell: (i) => <span className="text-sm text-gray-600">{i.shortName}</span>,
     },
-    { header: '版本', className: 'text-center text-sm text-gray-600', cell: (i) => i.version },
+    { header: t('版本'), className: 'text-center text-sm text-gray-600', cell: (i) => i.version },
     {
-      header: '所属批次分组',
+      header: t('所属批次分组'),
       cell: (i) => <span className="text-sm text-gray-600">{i.batchName || '-'}</span>,
     },
     submitterCol,
     {
-      header: '提交审批日期',
+      header: t('提交审批日期'),
       cell: (i) => <span className="text-sm text-gray-600">{i.submittedAt}</span>,
     },
     {
-      header: '状态',
+      header: t('状态'),
       className: 'text-center',
       cell: (i) => <StatusBadge status={i.status} />,
     },
     {
-      header: '当前步骤',
+      header: t('当前步骤'),
       className: 'text-center',
       cell: (i) =>
         i.stepInfo ? (
@@ -122,9 +124,9 @@ export default function JobApprovalsPage() {
 
   return (
     <ApprovalListPage<ApprovalView>
-      entityLabel="岗位"
-      pageDescription="审核岗位提交申请，管理审批流程"
-      emptyPendingText="所有提交的岗位都已处理完毕"
+      entityLabel={t('岗位')}
+      pageDescription={t('审核岗位提交申请，管理审批流程')}
+      emptyPendingText={t('所有提交的岗位都已处理完毕')}
       records={records}
       loading={loading}
       onApprove={approve}
@@ -135,7 +137,7 @@ export default function JobApprovalsPage() {
       detailHref={(item) => `/job/landing/${item.positionId}`}
       columns={columns}
       groupOf={(item) => item.batchId}
-      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
+      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : t('未关联批次'))}
     />
   )
 }

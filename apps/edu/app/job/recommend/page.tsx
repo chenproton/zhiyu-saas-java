@@ -46,8 +46,10 @@ import type { PositionRecommendation as ApiPositionRecommendation } from '@/lib/
 import { useToast, useAsync } from '@zhiyu/ui'
 import { ConfirmDialog } from '@zhiyu/ui'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function PostRecommendPage() {
+  const t = useT()
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -111,8 +113,8 @@ export default function PostRecommendPage() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '排序失败',
-        description: err?.message || '请稍后重试',
+        title: t('排序失败'),
+        description: err?.message || t('请稍后重试'),
       })
     }
   }
@@ -124,8 +126,8 @@ export default function PostRecommendPage() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err?.message || '请稍后重试',
+        title: t('删除失败'),
+        description: err?.message || t('请稍后重试'),
       })
     } finally {
       setDeleteTargetId(null)
@@ -150,8 +152,8 @@ export default function PostRecommendPage() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '添加失败',
-        description: err?.message || '请稍后重试',
+        title: t('添加失败'),
+        description: err?.message || t('请稍后重试'),
       })
     }
   }
@@ -176,10 +178,10 @@ export default function PostRecommendPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            岗位目标推荐管理
+            {t('岗位目标推荐管理')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            配置前台&quot;为你推荐&quot;模块展示的岗位及顺序，支持企业岗位与教学岗位混合推荐
+            {t('配置前台"为你推荐"模块展示的岗位及顺序，支持企业岗位与教学岗位混合推荐')}
           </p>
         </div>
       </div>
@@ -187,8 +189,7 @@ export default function PostRecommendPage() {
       <Card>
         <CardContent className="p-4">
           <p className="text-sm text-muted-foreground">
-            已配置 <span className="font-medium text-foreground">{allRecommendations.length}</span>{' '}
-            个推荐岗位
+            {t('已配置 {n} 个推荐岗位', { n: allRecommendations.length })}
           </p>
         </CardContent>
       </Card>
@@ -197,24 +198,24 @@ export default function PostRecommendPage() {
         <Card>
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>推荐岗位列表</CardTitle>
-              <CardDescription>前台推荐顺序，数字越小越靠前</CardDescription>
+              <CardTitle>{t('推荐岗位列表')}</CardTitle>
+              <CardDescription>{t('前台推荐顺序，数字越小越靠前')}</CardDescription>
             </div>
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  添加推荐
+                  {t('添加推荐')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>添加岗位目标推荐</DialogTitle>
-                  <DialogDescription>选择一个岗位加入前台推荐列表</DialogDescription>
+                  <DialogTitle>{t('添加岗位目标推荐')}</DialogTitle>
+                  <DialogDescription>{t('选择一个岗位加入前台推荐列表')}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">推荐岗位</label>
+                    <label className="text-sm font-medium">{t('推荐岗位')}</label>
                     <ComboboxSelect
                       value={selectedPositionId}
                       onChange={setSelectedPositionId}
@@ -223,10 +224,10 @@ export default function PostRecommendPage() {
                         label: `${p.name}（${p.shortName}）`,
                       }))}
                       placeholder={
-                        availablePositions.length === 0 ? '暂无可添加的岗位' : '搜索或选择岗位'
+                        availablePositions.length === 0 ? t('暂无可添加的岗位') : t('搜索或选择岗位')
                       }
-                      searchPlaceholder="搜索岗位名称、简称、行业..."
-                      emptyText="未找到匹配岗位"
+                      searchPlaceholder={t('搜索岗位名称、简称、行业...')}
+                      emptyText={t('未找到匹配岗位')}
                       disabled={availablePositions.length === 0}
                       className="w-full h-10"
                       renderOption={(o) => {
@@ -254,24 +255,26 @@ export default function PostRecommendPage() {
                         <Link href={`/explore/${selectedPosition.id}`} target="_blank">
                           <Button variant="ghost" size="sm" className="h-7 gap-1 text-primary">
                             <ExternalLink className="h-3.5 w-3.5" />
-                            查看岗位
+                            {t('查看岗位')}
                           </Button>
                         </Link>
                       </div>
                       <div className="text-muted-foreground">
-                        行业：{getIndustryName(selectedPosition.industry)} · 能力点：
-                        {selectedPosition.abilityModel?.nodes.length || 0} 个 · 上架时间：
-                        {formatDate(selectedPosition.createdAt)}
+                        {t('行业：{ind} · 能力点：{n} 个 · 上架时间：{date}', {
+                          ind: getIndustryName(selectedPosition.industry),
+                          n: selectedPosition.abilityModel?.nodes.length || 0,
+                          date: formatDate(selectedPosition.createdAt),
+                        })}
                       </div>
                     </div>
                   )}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddOpen(false)}>
-                    取消
+                    {t('取消')}
                   </Button>
                   <Button onClick={handleAdd} disabled={!selectedPositionId}>
-                    确认添加
+                    {t('确认添加')}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -281,11 +284,11 @@ export default function PostRecommendPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">顺序</TableHead>
-                  <TableHead>岗位名称</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>上架时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  <TableHead className="w-16">{t('顺序')}</TableHead>
+                  <TableHead>{t('岗位名称')}</TableHead>
+                  <TableHead>{t('类型')}</TableHead>
+                  <TableHead>{t('上架时间')}</TableHead>
+                  <TableHead className="text-right">{t('操作')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -294,8 +297,8 @@ export default function PostRecommendPage() {
                     <TableCell colSpan={5} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Sparkles className="h-10 w-10 mb-2" />
-                        <p>暂无配置的推荐岗位</p>
-                        <p className="text-xs mt-1">添加后将在前台&quot;为你推荐&quot;按顺序展示</p>
+                        <p>{t('暂无配置的推荐岗位')}</p>
+                        <p className="text-xs mt-1">{t('添加后将在前台"为你推荐"按顺序展示')}</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -310,7 +313,7 @@ export default function PostRecommendPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{position?.name || '未知岗位'}</div>
+                          <div className="font-medium">{position?.name || t('未知岗位')}</div>
                           <div className="text-xs text-muted-foreground">
                             {position?.shortName || '-'} · {getIndustryName(position?.industry)}
                           </div>
@@ -374,8 +377,8 @@ export default function PostRecommendPage() {
         onOpenChange={(open) => {
           if (!open) setDeleteTargetId(null)
         }}
-        title="确认删除"
-        description="确定要删除该推荐吗？此操作不可撤销。"
+        title={t('确认删除')}
+        description={t('确定要删除该推荐吗？此操作不可撤销。')}
         variant="destructive"
         onConfirm={() => {
           if (deleteTargetId) handleDelete(deleteTargetId)

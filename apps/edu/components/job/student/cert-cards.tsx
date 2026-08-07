@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Award, Building2, ExternalLink, ChevronDown, ChevronUp, ZoomIn, X } from 'lucide-react'
 import type { PositionCertificate } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface CertCardsProps {
   certificates: PositionCertificate[]
@@ -15,6 +16,7 @@ const GRADIENTS = [
 ]
 
 export function CertCards({ certificates }: CertCardsProps) {
+  const t = useT()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
@@ -22,7 +24,7 @@ export function CertCards({ certificates }: CertCardsProps) {
     return (
       <div className="text-center py-12 text-[#94a3b8]">
         <Award className="w-12 h-12 mx-auto mb-3 opacity-40" />
-        <div>暂无相关证书</div>
+        <div>{t('暂无相关证书')}</div>
       </div>
     )
   }
@@ -30,7 +32,7 @@ export function CertCards({ certificates }: CertCardsProps) {
   return (
     <div>
       <div className="text-sm text-[#64748b] mb-5">
-        共涉及 <strong className="text-primary">{certificates.length}</strong> 个相关证书
+        {t('共涉及 {n} 个相关证书', { n: certificates.length })}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {certificates.map((cert, i) => {
@@ -51,7 +53,7 @@ export function CertCards({ certificates }: CertCardsProps) {
               >
                 {cert.imageUrl && (
                   <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/40 text-white rounded text-xs pointer-events-none">
-                    <ZoomIn className="w-3 h-3" /> 点击放大
+                    <ZoomIn className="w-3 h-3" /> {t('点击放大')}
                   </div>
                 )}
                 {!cert.imageUrl && <Award className="w-14 h-14 opacity-40" />}
@@ -60,7 +62,7 @@ export function CertCards({ certificates }: CertCardsProps) {
                 <div className="text-base font-semibold text-[#1f2937] mb-2">{cert.name}</div>
                 <div className="flex items-center gap-2 text-[13px] text-[#64748b] mb-3">
                   <Building2 className="w-4 h-4 text-[#94a3b8]" />
-                  {cert.description ? cert.description.slice(0, 20) : '官方认证'}
+                  {cert.description ? cert.description.slice(0, 20) : t('官方认证')}
                 </div>
                 {cert.description && (
                   <div className="relative mb-3">
@@ -77,11 +79,11 @@ export function CertCards({ certificates }: CertCardsProps) {
                     >
                       {isExpanded ? (
                         <>
-                          <ChevronUp className="w-3 h-3" /> 收起
+                          <ChevronUp className="w-3 h-3" /> {t('收起')}
                         </>
                       ) : (
                         <>
-                          <ChevronDown className="w-3 h-3" /> 展示
+                          <ChevronDown className="w-3 h-3" /> {t('展示')}
                         </>
                       )}
                     </button>
@@ -94,11 +96,11 @@ export function CertCards({ certificates }: CertCardsProps) {
                     rel="noreferrer"
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary/5 text-primary text-[13px] hover:bg-primary hover:text-white transition-colors"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" /> 查看证书详情
+                    <ExternalLink className="w-3.5 h-3.5" /> {t('查看证书详情')}
                   </a>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[#f5f5f5] text-[#bfbfbf] text-[13px] cursor-not-allowed">
-                    <ExternalLink className="w-3.5 h-3.5" /> 暂无详情链接
+                    <ExternalLink className="w-3.5 h-3.5" /> {t('暂无详情链接')}
                   </span>
                 )}
               </div>
@@ -121,7 +123,7 @@ export function CertCards({ certificates }: CertCardsProps) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selectedImage}
-            alt="证书放大图"
+            alt={t('证书放大图')}
             className="max-w-full max-h-full object-contain"
             onClick={(e) => e.stopPropagation()}
           />

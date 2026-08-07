@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Layers, Sparkles, Target, X } from 'lucide-react'
 import type { PositionAbilityBinding, AbilityPoint, AbilityDomain } from '@/lib/types/job'
 import { AbilityPointCard } from './ability-point-card'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
   知识: ['#3b82f6', '#60a5fa'],
@@ -18,6 +19,7 @@ interface AbilityTreeProps {
 }
 
 export function AbilityTree({ bindings, abilityPoints, abilityDomains }: AbilityTreeProps) {
+  const t = useT()
   const [selectedAbility, setSelectedAbility] = useState<{
     binding: PositionAbilityBinding
     abilityPoint?: AbilityPoint
@@ -38,14 +40,14 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
       abilityDomains.forEach((d) => groups.set(d.name, []))
       bindings.forEach((b) => {
         const domain =
-          abilityDomains.find((d) => d.bindingIds.includes(b.id))?.name || b.domain || '其他'
+          abilityDomains.find((d) => d.bindingIds.includes(b.id))?.name || b.domain || t('其他')
         const list = groups.get(domain) || []
         list.push(b)
         groups.set(domain, list)
       })
     } else {
       bindings.forEach((b) => {
-        const domain = b.domain || '综合能力'
+        const domain = b.domain || t('综合能力')
         const list = groups.get(domain) || []
         list.push(b)
         groups.set(domain, list)
@@ -55,13 +57,13 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
     return Array.from(groups.entries())
       .map(([domain, items]) => ({ domain, items }))
       .filter((g) => g.items.length > 0)
-  }, [bindings, abilityDomains])
+  }, [bindings, abilityDomains, t])
 
   if (groupedByDomain.length === 0) {
     return (
       <div className="text-center py-12 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4]">
         <Layers className="w-12 h-12 mx-auto mb-3 opacity-40" />
-        <div>暂无能力模型数据</div>
+        <div>{t('暂无能力模型数据')}</div>
       </div>
     )
   }
@@ -71,16 +73,18 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
       <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-5 border border-primary/10">
         <div className="flex items-center gap-2 text-primary font-bold mb-2">
           <Sparkles className="w-5 h-5" />
-          能力模型说明
+          {t('能力模型说明')}
         </div>
         <p className="text-sm text-[#475569]">
-          本岗位基于真实企业岗位标准，拆解为若干能力领域，每个领域下关联对应的能力点与胜任等级，帮助学生明确学习目标。
+          {t('本岗位基于真实企业岗位标准，拆解为若干能力领域，每个领域下关联对应的能力点与胜任等级，帮助学生明确学习目标。')}
         </p>
       </div>
 
       <div className="text-sm text-[#64748b] mb-2">
-        共 <strong className="text-primary">{groupedByDomain.length}</strong> 个能力领域，
-        <strong className="text-primary">{bindings.length}</strong> 个能力点
+        {t('共 {d} 个能力领域，{b} 个能力点', {
+          d: groupedByDomain.length,
+          b: bindings.length,
+        })}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -110,7 +114,7 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
                     <div className="flex flex-col min-w-0 gap-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm text-[#1f2937] truncate">
-                          {info?.name || ab.abilityName || ab.domain || '未命名能力'}
+                          {info?.name || ab.abilityName || ab.domain || t('未命名能力')}
                         </span>
                         {(info?.attributes?.length ?? 0) > 0 && (
                           <div className="flex flex-wrap gap-1 min-w-0 max-w-full">
@@ -134,7 +138,7 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
                       </div>
                       {info?.code && (
                         <span className="text-[10px] text-[#94a3b8] truncate font-mono">
-                          编码：{info.code}
+                          {t('编码：{code}', { code: info.code })}
                         </span>
                       )}
                     </div>
@@ -156,7 +160,7 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-4">
-              <div className="text-base font-semibold text-[#1f2937]">能力点详情</div>
+              <div className="text-base font-semibold text-[#1f2937]">{t('能力点详情')}</div>
               <button
                 className="text-[#94a3b8] hover:text-[#1f2937]"
                 onClick={() => setSelectedAbility(null)}

@@ -36,6 +36,7 @@ import { KnowledgeGraph } from '@/components/job/student/knowledge-graph'
 import { SceneList } from '@/components/job/student/scene-list'
 import { Footer } from '@/components/portal/footer'
 import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
+import { useT } from '@/lib/i18n/locale-provider'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Briefcase,
@@ -63,6 +64,7 @@ export default function JobStudentDetailPage() {
   const id = params.id as string
   const router = useRouter()
   const { toast } = useToast()
+  const t = useT()
   const { user } = useAuth()
   const industryMap = useIndustryMap()
 
@@ -129,7 +131,7 @@ export default function JobStudentDetailPage() {
       .catch((err) => {
         // 场景列表本身加载失败时保留已加载部分，不清空整体
         reportError(err, '加载场景列表')
-        toast({ title: '部分数据加载失败', variant: 'destructive' })
+        toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
 
     if (!user) return
@@ -150,9 +152,9 @@ export default function JobStudentDetailPage() {
       })
       .catch((err) => {
         reportError(err, '加载岗位详情数据')
-        toast({ title: '部分数据加载失败', variant: 'destructive' })
+        toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
-  }, [id, position, user, toast])
+  }, [id, position, user, toast, t])
 
   const industryName = useMemo(() => {
     if (!position?.industryId) return undefined
@@ -183,9 +185,9 @@ export default function JobStudentDetailPage() {
       <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
         <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
           <Briefcase className="w-16 h-16 mb-4 opacity-40" />
-          <div className="text-lg font-semibold text-[#475569]">岗位不存在或暂未公开</div>
+          <div className="text-lg font-semibold text-[#475569]">{t('岗位不存在或暂未公开')}</div>
           <Link href="/job/landing" className="text-primary hover:underline mt-2">
-            返回岗位列表
+            {t('返回岗位列表')}
           </Link>
         </div>
         <Footer className="mt-auto" />
@@ -216,7 +218,7 @@ export default function JobStudentDetailPage() {
             abilityDomains={abilityDomains}
           />
         ) : (
-          <LoginPrompt text="能力模型需登录后查看" desc="登录账号后可查看岗位的职责与能力点要求" />
+          <LoginPrompt text={t('能力模型需登录后查看')} desc={t('登录账号后可查看岗位的职责与能力点要求')} />
         )
       case 'competency':
         return user ? (
@@ -226,7 +228,7 @@ export default function JobStudentDetailPage() {
             abilityPoints={abilityPoints}
           />
         ) : (
-          <LoginPrompt text="胜任标准需登录后查看" desc="登录账号后可查看岗位能力点的目标等级" />
+          <LoginPrompt text={t('胜任标准需登录后查看')} desc={t('登录账号后可查看岗位能力点的目标等级')} />
         )
       case 'graph':
         return user ? (
@@ -239,7 +241,7 @@ export default function JobStudentDetailPage() {
             tasks={scenarioTasks}
           />
         ) : (
-          <LoginPrompt text="知识图谱需登录后查看" desc="登录账号后可查看岗位知识图谱" />
+          <LoginPrompt text={t('知识图谱需登录后查看')} desc={t('登录账号后可查看岗位知识图谱')} />
         )
       case 'scenes':
         return <SceneList scenarios={scenarios} tasks={scenarioTasks} />
@@ -270,24 +272,24 @@ export default function JobStudentDetailPage() {
         >
           {/* Tabs */}
           <MobileTabDropdown
-            items={TABS}
+            items={TABS.map((tab) => ({ ...tab, label: t(tab.label) }))}
             value={activeTab}
             onValueChange={setActiveTab}
             className="md:hidden m-4"
           />
           <div className="hidden md:flex gap-4 sm:gap-8 border-b border-[#f5f5f4] px-4 sm:px-6 overflow-x-auto">
-            {TABS.map((t) => (
+            {TABS.map((tab) => (
               <button
-                key={t.value}
-                onClick={() => setActiveTab(t.value)}
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
                 className={`
                   py-4 text-[15px] whitespace-nowrap relative transition-colors cursor-pointer
-                  ${activeTab === t.value ? 'text-primary font-semibold' : 'text-[#64748b] hover:text-primary'}
+                  ${activeTab === tab.value ? 'text-primary font-semibold' : 'text-[#64748b] hover:text-primary'}
                 `}
               >
-                <t.icon className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-                {t.label}
-                {activeTab === t.value && (
+                <tab.icon className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+                {t(tab.label)}
+                {activeTab === tab.value && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t" />
                 )}
               </button>

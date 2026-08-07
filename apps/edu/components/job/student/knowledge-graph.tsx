@@ -14,6 +14,7 @@ import { knowledgeApi, courseApi } from '@/lib/api'
 import { GraphDataProvider } from '@/components/knowledge-graph/graph-data-context'
 import type { GraphNode, GraphEdge } from '@/components/knowledge-graph/types'
 import { KnowledgeGraphShell } from '@/components/knowledge-graph/knowledge-graph-shell'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface KnowledgeGraphProps {
   position: CareerPosition
@@ -31,6 +32,7 @@ export function KnowledgeGraph({
   abilityDomains,
   tasks,
 }: KnowledgeGraphProps) {
+  const t = useT()
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [courseMap, setCourseMap] = useState<Map<string, Course>>(new Map())
 
@@ -89,7 +91,7 @@ export function KnowledgeGraph({
     const fallbackDomains: AbilityDomain[] = []
     bindings.forEach((b) => {
       if (coveredBindingIds.has(b.id)) return
-      const name = b.domain || '综合能力'
+      const name = b.domain || t('综合能力')
       if (!domainByName.has(name)) {
         domainByName.set(name, {
           id: `domain-fallback-${name}`,
@@ -118,12 +120,12 @@ export function KnowledgeGraph({
       bindings
         .filter((b) => {
           if (hasExplicitBindings) return domainBindingIds.has(b.id)
-          return (b.domain || '综合能力') === domain.name
+          return (b.domain || t('综合能力')) === domain.name
         })
         .forEach((b) => {
           const abilityPoint = abilityPointMap.get(b.abilityPointId)
           const unitId = abilityPoint?.id || b.abilityPointId
-          const unitLabel = abilityPoint?.name || b.abilityName || b.domain || '未命名能力'
+          const unitLabel = abilityPoint?.name || b.abilityName || b.domain || t('未命名能力')
           if (!unitNodeIds.has(unitId)) {
             unitNodeIds.add(unitId)
             graphNodes.push({ id: unitId, label: unitLabel, type: 'unit' })
@@ -176,7 +178,7 @@ export function KnowledgeGraph({
     })
 
     return { nodes: graphNodes, edges: graphEdges, allDomains }
-  }, [position, abilityDomains, bindings, abilityPointMap, tasks, knowledgeMap, courseMap])
+  }, [position, abilityDomains, bindings, abilityPointMap, tasks, knowledgeMap, courseMap, t])
 
   const graphData = useMemo(
     () => ({
@@ -196,8 +198,8 @@ export function KnowledgeGraph({
       <KnowledgeGraphShell
         nodes={nodes}
         edges={edges}
-        title="知识图谱"
-        description="岗位→能力领域→能力点→知识点→颗粒课的完整关联网络（知识点经任务绑定关联能力点，颗粒课经知识点绑定关联）"
+        title={t('知识图谱')}
+        description={t('岗位→能力领域→能力点→知识点→颗粒课的完整关联网络（知识点经任务绑定关联能力点，颗粒课经知识点绑定关联）')}
       />
     </GraphDataProvider>
   )
