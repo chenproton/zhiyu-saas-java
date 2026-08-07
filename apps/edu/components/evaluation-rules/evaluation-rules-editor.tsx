@@ -24,6 +24,7 @@ import {
   X,
   Award,
   BookOpen,
+  Loader2,
 } from 'lucide-react'
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
@@ -58,7 +59,7 @@ import type { EvalRuleConfig } from '@/lib/types/evaluation'
 import { useEvalRuleStore } from '@/lib/evaluation-rule-store'
 import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
 import { BankQuestionSelectorPanel } from '@/components/evaluation-rules/bank-question-selector-panel'
-import { examApi, randomDrawQuestionApi, majorApi, taskEvaluationApi } from '@/lib/api'
+import { examApi, randomDrawQuestionApi, majorApi, taskEvaluationApi, knowledgeApi, abilityApi } from '@/lib/api'
 import {
   getLoadedExams,
   setLoadedExams,
@@ -212,10 +213,16 @@ export function EvaluationRulesEditor({
   const [rubricKpTargetPointId, setRubricKpTargetPointId] = useState<string | null>(null)
   const [rubricKpTargetField, setRubricKpTargetField] = useState<string | null>(null)
   const [rubricKpSearch, setRubricKpSearch] = useState('')
+  const [rubricKpResults, setRubricKpResults] = useState<KnowledgePointItem[] | null>(null)
+  const [rubricKpSearchLoading, setRubricKpSearchLoading] = useState(false)
+  const rubricKpSearchSeqRef = useRef(0)
   const [rubricAbDialogOpen, setRubricAbDialogOpen] = useState(false)
   const [rubricAbTargetPointId, setRubricAbTargetPointId] = useState<string | null>(null)
   const [rubricAbTargetField, setRubricAbTargetField] = useState<string | null>(null)
   const [rubricAbSearch, setRubricAbSearch] = useState('')
+  const [rubricAbResults, setRubricAbResults] = useState<AbilityPointItem[] | null>(null)
+  const [rubricAbSearchLoading, setRubricAbSearchLoading] = useState(false)
+  const rubricAbSearchSeqRef = useRef(0)
 
   const [newPointName, setNewPointName] = useState('')
   const [methodDialogViews, setMethodDialogViews] = useState<
@@ -246,6 +253,58 @@ export function EvaluationRulesEditor({
   })
 
   const lastSyncedReviewStepsRef = useRef<EvalRuleReviewStepInput[] | null>(null)
+
+  // 评价量规「关联考查知识点/能力点」搜索走后端接口（name/code/描述模糊匹配），
+  // 可命中全部知识点/能力点，不受初始 pool（200 条钳制）限制
+  const rubricKpSearchTerm = rubricKpSearch.trim()
+  useEffect(() => {
+    const seq = ++rubricKpSearchSeqRef.current
+    if (!rubricKpSearchTerm) return
+    const timer = setTimeout(() => {
+      setRubricKpSearchLoading(true)
+      knowledgeApi
+        .list({ search: rubricKpSearchTerm, limit: 200 })
+        .then((res) => {
+          if (seq !== rubricKpSearchSeqRef.current) return
+          setRubricKpResults(
+            (res.items || []).map((k) => ({
+              ...k,
+              granularLessons: (k as any).granularLessonIds || [],
+            })),
+          )
+          setRubricKpSearchLoading(false)
+        })
+        .catch(() => {
+          if (seq !== rubricKpSearchSeqRef.current) return
+          setRubricKpResults([])
+          setRubricKpSearchLoading(false)
+        })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [rubricKpSearchTerm])
+
+  const rubricAbSearchTerm = rubricAbSearch.trim()
+  useEffect(() => {
+    const seq = ++rubricAbSearchSeqRef.current
+    if (!rubricAbSearchTerm) return
+    const timer = setTimeout(() => {
+      setRubricAbSearchLoading(true)
+      abilityApi
+        .list({ search: rubricAbSearchTerm, limit: 200 })
+        .then((res) => {
+          if (seq !== rubricAbSearchSeqRef.current) return
+          setRubricAbResults(res.items || [])
+          setRubricAbSearchLoading(false)
+        })
+        .catch(() => {
+          if (seq !== rubricAbSearchSeqRef.current) return
+          setRubricAbResults([])
+          setRubricAbSearchLoading(false)
+        })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [rubricAbSearchTerm])
+
   useEffect(() => {
     const incoming = configProp.reviewSteps || []
     const lastSynced = lastSyncedReviewStepsRef.current
@@ -4377,13 +4436,8 @@ export function EvaluationRulesEditor({
             const pointId = rubricKpTargetPointId
             const ep = field && pointId ? getEvalPoints(field).find((p) => p.id === pointId) : null
             const selectedIds = ep?.knowledgePointIds || []
-            const filteredKp = knowledgePoints.filter(
-              (k) =>
-                !rubricKpSearch ||
-                k.name.includes(rubricKpSearch) ||
-                k.description?.includes(rubricKpSearch) ||
-                (k.code && k.code.includes(rubricKpSearch)),
-            )
+            const isKpSearching = !!rubricKpSearchTerm
+            const filteredKp = isKpSearching ? rubricKpResults || [] : knowledgePoints
             const toggleKp = (kpId: string) => {
               if (!field || !pointId) return
               const newIds = selectedIds.includes(kpId)
@@ -4404,99 +4458,113 @@ export function EvaluationRulesEditor({
                     />
                   </div>
                   <div className="flex-1 overflow-y-auto">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[560px]">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                              知识点名称
-                            </th>
-                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
-                              编码
-                            </th>
-                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
-                              描述
-                            </th>
-                            <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
-                              操作
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {filteredKp.map((kp) => {
-                            const isSelected = selectedIds.includes(kp.id)
-                            return (
-                              <tr
-                                key={kp.id}
-                                className={cn(
-                                  'hover:bg-gray-50 cursor-pointer',
-                                  isSelected ? 'bg-primary/[0.03]' : '',
-                                )}
-                                onClick={() => toggleKp(kp.id)}
-                              >
-                                <td className="px-3 py-2">
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className={cn(
-                                        'w-4 h-4 rounded border flex items-center justify-center shrink-0',
-                                        isSelected
-                                          ? 'bg-primary border-primary'
-                                          : 'border-gray-300',
-                                      )}
-                                    >
-                                      {isSelected && <Check className="h-3 w-3 text-white" />}
+                    {isKpSearching && rubricKpSearchLoading && (
+                      <div className="text-center text-gray-400 py-8">
+                        <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin" />
+                        <p className="text-sm">搜索中...</p>
+                      </div>
+                    )}
+                    {isKpSearching && !rubricKpSearchLoading && filteredKp.length === 0 && (
+                      <div className="text-center text-gray-400 py-8">
+                        <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">未找到相关知识点</p>
+                      </div>
+                    )}
+                    {filteredKp.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm min-w-[560px]">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
+                                知识点名称
+                              </th>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
+                                编码
+                              </th>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
+                                描述
+                              </th>
+                              <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
+                                操作
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {filteredKp.map((kp) => {
+                              const isSelected = selectedIds.includes(kp.id)
+                              return (
+                                <tr
+                                  key={kp.id}
+                                  className={cn(
+                                    'hover:bg-gray-50 cursor-pointer',
+                                    isSelected ? 'bg-primary/[0.03]' : '',
+                                  )}
+                                  onClick={() => toggleKp(kp.id)}
+                                >
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={cn(
+                                          'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                                          isSelected
+                                            ? 'bg-primary border-primary'
+                                            : 'border-gray-300',
+                                        )}
+                                      >
+                                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                                      </div>
+                                      <span className="text-sm font-medium text-gray-800">
+                                        {kp.name}
+                                      </span>
                                     </div>
-                                    <span className="text-sm font-medium text-gray-800">
-                                      {kp.name}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-3 py-2">
-                                  {kp.code ? (
-                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                                      {kp.code}
-                                    </Badge>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">-</span>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2">
-                                  <p className="text-xs text-gray-500 line-clamp-1">
-                                    {kp.description}
-                                  </p>
-                                </td>
-                                <td className="px-3 py-2 text-right">
-                                  {isSelected ? (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 text-[11px] px-2"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        toggleKp(kp.id)
-                                      }}
-                                    >
-                                      取消
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      className="h-6 text-[11px] px-2"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        toggleKp(kp.id)
-                                      }}
-                                    >
-                                      选择
-                                    </Button>
-                                  )}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {kp.code ? (
+                                      <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                                        {kp.code}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-xs text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <p className="text-xs text-gray-500 line-clamp-1">
+                                      {kp.description}
+                                    </p>
+                                  </td>
+                                  <td className="px-3 py-2 text-right">
+                                    {isSelected ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-6 text-[11px] px-2"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          toggleKp(kp.id)
+                                        }}
+                                      >
+                                        取消
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        className="h-6 text-[11px] px-2"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          toggleKp(kp.id)
+                                        }}
+                                      >
+                                        选择
+                                      </Button>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
@@ -4511,7 +4579,9 @@ export function EvaluationRulesEditor({
                       </div>
                     )}
                     {selectedIds.map((kpId) => {
-                      const kp = knowledgePoints.find((k) => k.id === kpId)
+                      const kp =
+                        knowledgePoints.find((k) => k.id === kpId) ||
+                        (rubricKpResults || []).find((k) => k.id === kpId)
                       if (!kp) return null
                       return (
                         <div
@@ -4562,13 +4632,8 @@ export function EvaluationRulesEditor({
             const pointId = rubricAbTargetPointId
             const ep = field && pointId ? getEvalPoints(field).find((p) => p.id === pointId) : null
             const selectedIds = ep?.abilityPointIds || []
-            const filteredAb = abilityPoints.filter(
-              (a) =>
-                !rubricAbSearch ||
-                a.name.includes(rubricAbSearch) ||
-                a.description?.includes(rubricAbSearch) ||
-                (a.code && a.code.includes(rubricAbSearch)),
-            )
+            const isAbSearching = !!rubricAbSearchTerm
+            const filteredAb = isAbSearching ? rubricAbResults || [] : abilityPoints
             const toggleAb = (abId: string) => {
               if (!field || !pointId) return
               const newIds = selectedIds.includes(abId)
@@ -4589,59 +4654,72 @@ export function EvaluationRulesEditor({
                     />
                   </div>
                   <div className="flex-1 overflow-y-auto">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[560px]">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                              能力点名称
-                            </th>
-                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
-                              编码
-                            </th>
-                            <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
-                              描述
-                            </th>
-                            <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
-                              操作
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {filteredAb.map((ab) => {
-                            const isSelected = selectedIds.includes(ab.id)
-                            return (
-                              <tr
-                                key={ab.id}
-                                className={cn(
-                                  'hover:bg-gray-50 cursor-pointer',
-                                  isSelected ? 'bg-primary/[0.03]' : '',
-                                )}
-                                onClick={() => toggleAb(ab.id)}
-                              >
-                                <td className="px-3 py-2">
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className={cn(
-                                        'w-4 h-4 rounded border flex items-center justify-center shrink-0',
-                                        isSelected
-                                          ? 'bg-primary border-primary'
-                                          : 'border-gray-300',
-                                      )}
-                                    >
-                                      {isSelected && <Check className="h-3 w-3 text-white" />}
+                    {isAbSearching && rubricAbSearchLoading && (
+                      <div className="text-center text-gray-400 py-8">
+                        <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin" />
+                        <p className="text-sm">搜索中...</p>
+                      </div>
+                    )}
+                    {isAbSearching && !rubricAbSearchLoading && filteredAb.length === 0 && (
+                      <div className="text-center text-gray-400 py-8">
+                        <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">未找到相关能力点</p>
+                      </div>
+                    )}
+                    {filteredAb.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm min-w-[560px]">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
+                                能力点名称
+                              </th>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
+                                编码
+                              </th>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
+                                描述
+                              </th>
+                              <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
+                                操作
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {filteredAb.map((ab) => {
+                              const isSelected = selectedIds.includes(ab.id)
+                              return (
+                                <tr
+                                  key={ab.id}
+                                  className={cn(
+                                    'hover:bg-gray-50 cursor-pointer',
+                                    isSelected ? 'bg-primary/[0.03]' : '',
+                                  )}
+                                  onClick={() => toggleAb(ab.id)}
+                                >
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={cn(
+                                          'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                                          isSelected
+                                            ? 'bg-primary border-primary'
+                                            : 'border-gray-300',
+                                        )}
+                                      >
+                                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                                      </div>
+                                      <span className="text-sm font-medium text-gray-800">
+                                        {ab.name}
+                                      </span>
                                     </div>
-                                    <span className="text-sm font-medium text-gray-800">
-                                      {ab.name}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-3 py-2">
-                                  {ab.code ? (
-                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                                      {ab.code}
-                                    </Badge>
-                                  ) : (
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {ab.code ? (
+                                      <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                                        {ab.code}
+                                      </Badge>
+                                    ) : (
                                     <span className="text-xs text-gray-400">-</span>
                                   )}
                                 </td>
@@ -4682,6 +4760,7 @@ export function EvaluationRulesEditor({
                         </tbody>
                       </table>
                     </div>
+                    )}
                   </div>
                 </div>
                 <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
@@ -4696,7 +4775,9 @@ export function EvaluationRulesEditor({
                       </div>
                     )}
                     {selectedIds.map((abId) => {
-                      const ab = abilityPoints.find((a) => a.id === abId)
+                      const ab =
+                        abilityPoints.find((a) => a.id === abId) ||
+                        (rubricAbResults || []).find((a) => a.id === abId)
                       if (!ab) return null
                       return (
                         <div
