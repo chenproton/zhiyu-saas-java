@@ -26,6 +26,7 @@ import type { Course } from '@/lib/types'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
+import { getHybridMethodLabel, hybridMethodCompare } from '@/lib/hybrid-eval'
 
 interface NodeStudent {
   studentId: string
@@ -165,7 +166,7 @@ function LessonResultsPageContent() {
     const nodeNameMap = new Map(nodes.map((n) => [n.id, n.name]))
     nodeMap.forEach((g) => {
       g.nodeName = nodeNameMap.get(g.nodeId) || g.nodeId
-      g.methods.sort((a, b) => a.methodKey.localeCompare(b.methodKey))
+      g.methods.sort((a, b) => hybridMethodCompare(a.methodKey, b.methodKey))
     })
     return Array.from(nodeMap.values()).sort((a, b) =>
       a.nodeName.localeCompare(b.nodeName, 'zh-CN'),
@@ -329,7 +330,10 @@ function LessonResultsPageContent() {
                                         variant="outline"
                                         className="text-[10px] font-normal bg-gray-50 text-gray-600 border-gray-200"
                                       >
-                                        {EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey}
+                                        {getHybridMethodLabel(
+                                          m.methodKey,
+                                          (k) => EVAL_METHOD_LABELS_GRADING[k] || k,
+                                        )}
                                       </Badge>
                                     ))}
                                   </div>
@@ -380,8 +384,10 @@ function LessonResultsPageContent() {
                                   >
                                     <div className="flex items-center gap-2 mb-3">
                                       <Badge className="text-[10px] font-normal bg-primary/10 text-primary border-primary/20">
-                                        {EVAL_METHOD_LABELS_GRADING[method.methodKey] ||
-                                          method.methodKey}
+                                        {getHybridMethodLabel(
+                                          method.methodKey,
+                                          (k) => EVAL_METHOD_LABELS_GRADING[k] || k,
+                                        )}
                                       </Badge>
                                       {method.pendingCount > 0 && (
                                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium border border-amber-100">

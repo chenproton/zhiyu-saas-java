@@ -25,7 +25,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
-import { evalRuleConfigToMethods } from '@/lib/types'
+import { evalRuleConfigToMethods, type EvalRuleConfig } from '@/lib/types'
+import { HYBRID_EVAL_MODULE_LABELS } from '@/components/lesson/student/hybrid-modules-view'
 import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
@@ -212,6 +213,46 @@ export default function LessonLearnPage() {
       totalMethods: evalMethods.length,
     }
   }, [evalMethods, myResults])
+
+  // 混合课节点综合分：聚合课前测验/随堂测验/课后作业的加权得分（复合 methodKey）
+  const hybridAggregate = useMemo(() => {
+    const activeModules = activeNodeId ? hybridModulesByNode.get(activeNodeId) || [] : []
+    const items: { compositeKey: string; weight: number }[] = []
+    for (const m of activeModules) {
+      if (!HYBRID_EVAL_MODULE_LABELS[m.moduleKey]) continue
+      const cfg = (m.data?.evalRules || {}) as EvalRuleConfig
+      let methods: any[] = []
+      try {
+        methods = evalRuleConfigToMethods(cfg).filter((x) => x.isEnabled !== false)
+      } catch {
+        methods = []
+      }
+      for (const mt of methods) {
+        items.push({ compositeKey: `${m.moduleKey}:${mt.methodKey}`, weight: mt.weight || 0 })
+      }
+    }
+    let totalScore = 0
+    let totalWeight = 0
+    let evaluatedCount = 0
+    let pendingCount = 0
+    for (const it of items) {
+      totalWeight += it.weight
+      const r = myResults.find((x) => x.methodKey === it.compositeKey)
+      if (r?.status === 'evaluated' && r.maxScore > 0) {
+        totalScore += ((r.totalScore || 0) / r.maxScore) * it.weight
+        evaluatedCount++
+      } else if (r) {
+        pendingCount++
+      }
+    }
+    return {
+      score: totalWeight > 0 ? Math.round(totalScore * 100) / 100 : 0,
+      maxScore: totalWeight,
+      evaluatedCount,
+      pendingCount,
+      totalMethods: items.length,
+    }
+  }, [activeNodeId, hybridModulesByNode, myResults])
 
   const selectNode = useCallback((nodeId: string) => {
     setActiveNodeId(nodeId)
@@ -572,6 +613,24 @@ export default function LessonLearnPage() {
               <div className="flex flex-1 gap-4 p-4">
                 {course.type === 'hybrid' ? (
                   <div className="flex-1 space-y-4">
+                    {hybridAggregate.totalMethods > 0 && (
+                      <div className="flex items-center gap-3 px-1">
+                        <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
+                          <ClipboardList className="h-4 w-4" />
+                        </div>
+                        <h3 className="text-base font-semibold text-gray-800">节点测评</h3>
+                        <div className="ml-auto flex items-center gap-3">
+                          <span className="text-xs text-gray-500">
+                            已评分 {hybridAggregate.evaluatedCount}/{hybridAggregate.totalMethods}
+                          </span>
+                          {hybridAggregate.evaluatedCount > 0 && (
+                            <span className="text-sm font-semibold text-primary">
+                              综合 {hybridAggregate.score}/{hybridAggregate.maxScore}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <HybridModulesView
                       node={activeNode}
                       modules={hybridModulesByNode.get(activeNode.id) || []}

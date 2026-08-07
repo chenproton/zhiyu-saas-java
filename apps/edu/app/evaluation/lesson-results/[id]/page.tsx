@@ -21,6 +21,9 @@ import { toast } from '@zhiyu/ui'
 import { courseNodeApi, nodeEvaluationResultApi, userManagementApi } from '@/lib/api'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
+import { getHybridMethodLabel } from '@/lib/hybrid-eval'
+
+const methodLabel = (key: string) => getHybridMethodLabel(key, (k) => EVAL_METHOD_LABELS_GRADING[k] || k)
 
 export default function LessonResultDetailPage() {
   const params = useParams()
@@ -133,7 +136,7 @@ export default function LessonResultDetailPage() {
             <div>
               <h1 className="text-lg font-semibold text-foreground">节点测评评分</h1>
               <p className="text-xs text-gray-500 mt-0.5">
-                {nodeName} · {EVAL_METHOD_LABELS_GRADING[result.methodKey] || result.methodKey}
+                {nodeName} · {methodLabel(result.methodKey)}
               </p>
             </div>
           </div>
@@ -167,7 +170,7 @@ export default function LessonResultDetailPage() {
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <FileText className="h-3.5 w-3.5" />
-                方式：{EVAL_METHOD_LABELS_GRADING[result.methodKey] || result.methodKey}
+                方式：{methodLabel(result.methodKey)}
               </div>
               {result.gradedAt && (
                 <div className="flex items-center gap-2 text-xs text-gray-500">
