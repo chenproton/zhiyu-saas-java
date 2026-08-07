@@ -21,7 +21,9 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@zhiyu/ui'
 import { fileApi, resourceLibraryApi } from '@/lib/api'
-import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
+import { RESOURCE_TYPE_LABELS, type ResourceLibraryItem } from '@/lib/types/library'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
+import { useAuth } from '@/components/auth-provider'
 import {
   fileTypesWithUpload,
   resourceTypeAccept,
@@ -43,11 +45,14 @@ export function ResourceBatchImportDialog({
   onImported,
 }: ResourceBatchImportDialogProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
+  const currentUserId = user?.id ?? ''
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [files, setFiles] = useState<File[]>([])
   const [selectType, setSelectType] = useState('document')
   const [uploading, setUploading] = useState(false)
   const [uploadedCount, setUploadedCount] = useState(0)
+  const [duplicateItems, setDuplicateItems] = useState<ResourceLibraryItem[] | null>(null)
 
   const submitType = resourceType || selectType
 
@@ -87,6 +92,7 @@ export function ResourceBatchImportDialog({
   const reset = () => {
     setFiles([])
     setUploadedCount(0)
+    setDuplicateItems(null)
   }
 
   const handleClose = (v: boolean) => {
@@ -95,25 +101,46 @@ export function ResourceBatchImportDialog({
     if (!v) reset()
   }
 
-  const handleImport = async () => {
-    if (files.length === 0) return
-    if (!fileTypesWithUpload.includes(submitType)) return
+  const runImport = async (mode: 'skip' | 'overwrite' | 'new', existing: ResourceLibraryItem[]) => {
+    const existingByName = new Map(existing.map((item) => [item.name, item]))
+    setDuplicateItems(null)
     setUploading(true)
     setUploadedCount(0)
     let success = 0
     let failed = 0
+    let skipped = 0
+    let permissionSkipped = 0
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
+      const existingItem = existingByName.get(file.name)
+      if (existingItem && mode === 'skip') {
+        skipped += 1
+        setUploadedCount(i + 1)
+        continue
+      }
+      if (existingItem && mode === 'overwrite' && existingItem.uploadedBy !== currentUserId) {
+        permissionSkipped += 1
+        setUploadedCount(i + 1)
+        continue
+      }
       try {
         const res = await fileApi.upload(file)
-        await resourceLibraryApi.create({
+        const payload = {
           name: file.name,
           resourceType: submitType as any,
           url: res.url,
           thumbnail: submitType === 'image' ? res.url : undefined,
           fileSize: res.size,
           description: undefined,
-        })
+        }
+        if (existingItem && mode === 'overwrite') {
+          await resourceLibraryApi.update(existingItem.id, payload as any)
+        } else {
+          if (existingItem) {
+            payload.name = `${file.name}-${Math.floor(1000 + Math.random() * 9000)}`
+          }
+          await resourceLibraryApi.create(payload as any)
+        }
         success += 1
       } catch {
         failed += 1
@@ -121,18 +148,46 @@ export function ResourceBatchImportDialog({
       setUploadedCount(i + 1)
     }
     setUploading(false)
+    const skippedMsg = skipped > 0 ? `，跳过 ${skipped} 个同名资源` : ''
+    const permissionMsg =
+      permissionSkipped > 0
+        ? `，${permissionSkipped} 个资源非本人创建，已跳过覆盖`
+        : ''
     if (failed > 0) {
       toast({
         variant: 'destructive',
         title: '批量导入完成',
-        description: `成功 ${success} 个，失败 ${failed} 个`,
+        description: `成功 ${success} 个，失败 ${failed} 个${skippedMsg}${permissionMsg}`,
       })
     } else {
-      toast({ title: '批量导入成功', description: `成功导入 ${success} 个资源` })
+      toast({
+        title: '批量导入成功',
+        description: `成功导入 ${success} 个资源${skippedMsg}${permissionMsg}`,
+      })
     }
     onImported()
     onOpenChange(false)
     reset()
+  }
+
+  const handleImport = async () => {
+    if (files.length === 0) return
+    if (!fileTypesWithUpload.includes(submitType)) return
+    let existing: ResourceLibraryItem[] = []
+    try {
+      const res = await resourceLibraryApi.previewImport(
+        files.map((f) => f.name),
+        submitType,
+      )
+      existing = res.items || []
+    } catch {
+      // 重名校验失败时按普通导入执行，容忍小概率异常
+    }
+    if (existing.length > 0) {
+      setDuplicateItems(existing)
+      return
+    }
+    await runImport('skip', [])
   }
 
   return (
@@ -241,6 +296,20 @@ export function ResourceBatchImportDialog({
           )}
         </DialogFooter>
       </DialogContent>
+      <ImportConfirmDialog
+        open={duplicateItems !== null}
+        onOpenChange={(open) => {
+          if (!open) setDuplicateItems(null)
+        }}
+        entityLabel="资源"
+        created={files.length - (duplicateItems?.length || 0)}
+        duplicates={duplicateItems?.length || 0}
+        failed={0}
+        duplicateItems={(duplicateItems || []).map((item) => ({ key: item.id, name: item.name }))}
+        onConfirmOverwrite={() => duplicateItems && runImport('overwrite', duplicateItems)}
+        onConfirmSkip={() => duplicateItems && runImport('skip', duplicateItems)}
+        onConfirmNew={() => duplicateItems && runImport('new', duplicateItems)}
+      />
     </Dialog>
   )
 }

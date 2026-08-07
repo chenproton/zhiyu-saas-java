@@ -308,6 +308,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	}
 
 	overwrite := importOverwriteParam(r)
+	rename := importRenameParam(r)
 
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		respondError(w, http.StatusBadRequest, "表单无效")
@@ -350,9 +351,34 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				created++
-			} else {
-				skipped++
+				continue
 			}
+			if rename {
+				// 追加 4 位随机后缀生成新的唯一键，按新对象导入
+				name, code := row.name, row.code
+				for i := 0; i < 20; i++ {
+					if meta.keyCol == "code" {
+						code = suffixedName(row.code)
+						if _, again := h.findExistingByKey(r.Context(), entity, tenantID, meta.keyCol, code); !again {
+							break
+						}
+					} else {
+						name = suffixedName(row.name)
+						if _, again := h.findExistingByKey(r.Context(), entity, tenantID, meta.keyCol, name); !again {
+							break
+						}
+					}
+				}
+				id := uuid.NewString()
+				_, execErr := h.DB.Exec(r.Context(), meta.insertSQL, id, tenantID, name, code, claims.UserID)
+				if execErr != nil {
+					failed++
+					continue
+				}
+				created++
+				continue
+			}
+			skipped++
 			continue
 		}
 

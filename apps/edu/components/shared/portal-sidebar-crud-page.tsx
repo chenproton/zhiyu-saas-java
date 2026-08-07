@@ -284,8 +284,8 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
     }
   }
 
-  const doImport = async (overwrite = false) => {
-    const ok = await executeImport(overwrite)
+  const doImport = async (mode: 'skip' | 'overwrite' | 'new' = 'skip') => {
+    const ok = await executeImport(mode)
     if (ok) {
       setIsImportDialogOpen(false)
       setIsImportConfirmOpen(false)
@@ -546,8 +546,9 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           duplicates={importPreview.duplicates}
           failed={importPreview.failed}
           duplicateItems={importPreview.duplicateItems}
-          onConfirmOverwrite={() => doImport(true)}
-          onConfirmSkip={() => doImport(false)}
+          onConfirmOverwrite={() => doImport('overwrite')}
+          onConfirmSkip={() => doImport('skip')}
+          onConfirmNew={() => doImport('new')}
         />
       )}
 

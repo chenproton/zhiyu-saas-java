@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -112,16 +113,54 @@ type ImportPreviewResult struct {
 
 // ImportExecuteResult 导入执行接口的基础返回结构，各 handler 可在此基础上扩展。
 type ImportExecuteResult struct {
-	Created int      `json:"created"`
-	Failed  int      `json:"failed"`
-	Skipped int      `json:"skipped"`
-	Entity  string   `json:"entity"`
-	Errors  []string `json:"errors"`
+	Created int `json:"created"`
+	Failed  int `json:"failed"`
+	Skipped int `json:"skipped"`
+	// PermissionSkipped 无权限覆盖（非本人创建且未参与共建）而跳过的条数。
+	PermissionSkipped int      `json:"permissionSkipped,omitempty"`
+	Entity            string   `json:"entity"`
+	Errors            []string `json:"errors"`
 }
 
 // importOverwriteParam 从请求中获取是否覆盖已存在数据的标识。
 func importOverwriteParam(r *http.Request) bool {
 	return r.URL.Query().Get("overwrite") == "true"
+}
+
+// importRenameParam 从请求中获取是否对重名数据追加随机后缀后按新对象导入的标识。
+func importRenameParam(r *http.Request) bool {
+	return r.URL.Query().Get("rename") == "true"
+}
+
+// suffixedName 为名称追加 4 位随机数字后缀，如 "报告-3927"。
+func suffixedName(base string) string {
+	return fmt.Sprintf("%s-%04d", base, rand.IntN(10000))
+}
+
+// uniqueSuffixed 生成不与现有记录冲突的候选名称/代码：追加 4 位随机数字后缀，
+// 由 exists 回调校验是否已被占用，至多重试 20 次。
+func uniqueSuffixed(base string, exists func(candidate string) bool) string {
+	for i := 0; i < 20; i++ {
+		candidate := suffixedName(base)
+		if !exists(candidate) {
+			return candidate
+		}
+	}
+	return suffixedName(base)
+}
+
+// canOverwriteContent 判断当前用户是否可以覆盖目标内容：
+// 创建者本人或参与共建（协作者数组包含当前用户）才允许覆盖，否则覆盖时跳过并提示。
+func canOverwriteContent(creatorID string, collaboratorIDs []string, userID string) bool {
+	if creatorID != "" && creatorID == userID {
+		return true
+	}
+	for _, id := range collaboratorIDs {
+		if id == userID {
+			return true
+		}
+	}
+	return false
 }
 
 // col 安全读取 Excel 行中的列值，越界时返回空字符串。
@@ -394,6 +433,7 @@ type importRequestContext struct {
 	TenantID  string
 	UserID    string
 	Overwrite bool
+	Rename    bool
 	MFU       *MultiFileUpload
 }
 
@@ -420,6 +460,7 @@ func parseMultiImportRequest(w http.ResponseWriter, r *http.Request, requirePort
 		TenantID:  tenantID,
 		UserID:    claims.UserID,
 		Overwrite: importOverwriteParam(r),
+		Rename:    importRenameParam(r),
 		MFU:       mfu,
 	}
 }

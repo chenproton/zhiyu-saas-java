@@ -53,7 +53,7 @@ func (h *QuestionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 	aggregated := ImportPreviewResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
-		previewRes, _ := h.importQuestions(ctx, xlsx, tenantID, userID, bankID, true, false)
+		previewRes, _ := h.importQuestions(ctx, xlsx, tenantID, userID, bankID, true, false, false)
 		aggregated.Created += previewRes.Created
 		aggregated.Failed += previewRes.Failed
 		aggregated.Duplicates += previewRes.Duplicates
@@ -94,27 +94,30 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	overwrite := importOverwriteParam(r)
+	rename := importRenameParam(r)
 
 	ctx := r.Context()
 	aggregated := ImportExecuteResult{Entity: "题目"}
 	mfu.ForEach(func(xlsx *excelize.File) {
-		_, res := h.importQuestions(ctx, xlsx, tenantID, userID, bankID, false, overwrite)
+		_, res := h.importQuestions(ctx, xlsx, tenantID, userID, bankID, false, overwrite, rename)
 		aggregated.Created += res.Created
 		aggregated.Failed += res.Failed
 		aggregated.Skipped += res.Skipped
+		aggregated.PermissionSkipped += res.PermissionSkipped
 		aggregated.Errors = append(aggregated.Errors, res.Errors...)
 	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": aggregated.Created,
-		"failed":  aggregated.Failed,
-		"skipped": aggregated.Skipped,
-		"entity":  "题目",
-		"errors":  aggregated.Errors,
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "题目",
+		"errors":            aggregated.Errors,
 	})
 }
 
-func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excelize.File, tenantID, userID, bankID string, preview, overwrite bool) (ImportPreviewResult, ImportExecuteResult) {
+func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excelize.File, tenantID, userID, bankID string, preview, overwrite, rename bool) (ImportPreviewResult, ImportExecuteResult) {
 	var previewRes ImportPreviewResult
 	var execRes ImportExecuteResult
 
@@ -186,9 +189,9 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 		}
 		seen[key] = true
 
-		var existingID string
-		err = h.DB.QueryRow(ctx, `SELECT id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID)
-		found := err == nil
+		var existingID, existingCreator string
+		err = h.DB.QueryRow(ctx, `SELECT id, creator_id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID, &existingCreator)
+		found := err == nil && existingID != ""
 
 		if preview {
 			if found {
@@ -208,6 +211,10 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 
 		if found {
 			if overwrite {
+				if !canOverwriteContent(existingCreator, nil, userID) {
+					execRes.PermissionSkipped++
+					continue
+				}
 				knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
 				_, err = h.DB.Exec(ctx, `
 					UPDATE questions SET type=$1, options=$2, answer=$3, analysis=$4, score=$5, difficulty=$6, knowledge_point_ids=$7
@@ -221,10 +228,19 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 					continue
 				}
 				execRes.Created++
+				continue
+			}
+			if rename {
+				// rename 模式：追加随机后缀生成新题干，按新对象导入
+				content = uniqueSuffixed(content, func(c string) bool {
+					var eid string
+					_ = h.DB.QueryRow(ctx, `SELECT id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, c).Scan(&eid)
+					return eid != ""
+				})
 			} else {
 				execRes.Skipped++
+				continue
 			}
-			continue
 		}
 
 		knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)

@@ -22,13 +22,14 @@ type ScenarioImportHandler struct {
 }
 
 type scenarioImportResult struct {
-	Created         int
-	Failed          int
-	Skipped         int
-	ScenarioCreated int
-	TaskCreated     int
-	Errors          []string
-	DuplicateItems  []ImportPreviewItem
+	Created           int
+	Failed            int
+	Skipped           int
+	PermissionSkipped int
+	ScenarioCreated   int
+	TaskCreated       int
+	Errors            []string
+	DuplicateItems    []ImportPreviewItem
 }
 
 func (h *ScenarioImportHandler) processImport(r *http.Request, w http.ResponseWriter, preview bool) {
@@ -42,9 +43,9 @@ func (h *ScenarioImportHandler) processImport(r *http.Request, w http.ResponseWr
 
 	irc.MFU.ForEach(func(xlsx *excelize.File) {
 		scenarioMap := make(map[string]string)
-		h.importScenarios(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, scenarioMap, aggregated)
+		h.importScenarios(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, irc.Rename, scenarioMap, aggregated)
 		if preview || len(scenarioMap) > 0 {
-			h.importTasks(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, scenarioMap, aggregated)
+			h.importTasks(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, irc.Rename, scenarioMap, aggregated)
 		}
 	})
 
@@ -74,14 +75,15 @@ func (h *ScenarioImportHandler) processImport(r *http.Request, w http.ResponseWr
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created":         aggregated.Created,
-		"failed":          aggregated.Failed,
-		"skipped":         aggregated.Skipped,
-		"entity":          "场景",
-		"scenarioCreated": aggregated.ScenarioCreated,
-		"taskCreated":     aggregated.TaskCreated,
-		"errors":          aggregated.Errors,
-		"sheets":          irc.MFU.FirstSheets(),
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "场景",
+		"scenarioCreated":   aggregated.ScenarioCreated,
+		"taskCreated":       aggregated.TaskCreated,
+		"errors":            aggregated.Errors,
+		"sheets":            irc.MFU.FirstSheets(),
 	})
 }
 
@@ -93,7 +95,7 @@ func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	h.processImport(r, w, false)
 }
 
-func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, scenarioMap map[string]string, result *scenarioImportResult) {
+func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, scenarioMap map[string]string, result *scenarioImportResult) {
 	rows, err := xlsx.GetRows("场景基本信息")
 	if err != nil {
 		return
@@ -118,10 +120,12 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 		professionIDs := h.lookupProfessions(ctx, tenantID, professionNames)
 		batchID := lookupBatchID(ctx, h.DB, "scene_batches", tenantID, batchName)
 
-		var existingID string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		var existingID, existingCreator string
+		var existingBuilders []string
+		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, co_builder_ids FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingBuilders)
 		exists := err == nil && existingID != ""
 
+		origName := ""
 		if exists {
 			if preview {
 				if len(result.DuplicateItems) < 100 {
@@ -134,27 +138,40 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 				result.Skipped++
 				continue
 			}
-			if !overwrite {
+			if !overwrite && !rename {
 				result.Skipped++
 				continue
 			}
-			_, err := h.DB.Exec(ctx, `
-				UPDATE scenarios
-				SET name=$3, career_position_id=$4, industry_ids=$5, profession_ids=$6,
-				    batch_id=$7, difficulty=$8, background=$9
-				WHERE id=$1 AND tenant_id=$2
-			`, existingID, tenantID, name, careerPositionID, industryIDs, professionIDs,
-				batchID, difficulty, background)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("场景[%s]更新失败: %v", name, err))
+			if overwrite {
+				if !canOverwriteContent(existingCreator, existingBuilders, userID) {
+					result.PermissionSkipped++
+					continue
+				}
+				_, err := h.DB.Exec(ctx, `
+					UPDATE scenarios
+					SET name=$3, career_position_id=$4, industry_ids=$5, profession_ids=$6,
+					    batch_id=$7, difficulty=$8, background=$9
+					WHERE id=$1 AND tenant_id=$2
+				`, existingID, tenantID, name, careerPositionID, industryIDs, professionIDs,
+					batchID, difficulty, background)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("场景[%s]更新失败: %v", name, err))
+					continue
+				}
+				// 覆盖时清空原有任务及任务相关数据，随后根据新文件内容重新写入
+				h.DB.Exec(ctx, `DELETE FROM task_evaluation_methods WHERE task_id IN (SELECT id FROM scenario_tasks WHERE scenario_id=$1)`, existingID)
+				h.DB.Exec(ctx, `DELETE FROM scenario_tasks WHERE scenario_id=$1`, existingID)
+				scenarioMap[name] = existingID
 				continue
 			}
-			// 覆盖时清空原有任务及任务相关数据，随后根据新文件内容重新写入
-			h.DB.Exec(ctx, `DELETE FROM task_evaluation_methods WHERE task_id IN (SELECT id FROM scenario_tasks WHERE scenario_id=$1)`, existingID)
-			h.DB.Exec(ctx, `DELETE FROM scenario_tasks WHERE scenario_id=$1`, existingID)
-			scenarioMap[name] = existingID
-			continue
+			// rename 模式：追加随机后缀生成新名称，按新对象导入
+			origName = name
+			name = uniqueSuffixed(name, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		if preview {
@@ -176,12 +193,15 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 			continue
 		}
 		scenarioMap[name] = scenarioID
+		if origName != "" {
+			scenarioMap[origName] = scenarioID
+		}
 		result.ScenarioCreated++
 		result.Created++
 	}
 }
 
-func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, scenarioMap map[string]string, result *scenarioImportResult) {
+func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, scenarioMap map[string]string, result *scenarioImportResult) {
 	if preview {
 		return
 	}

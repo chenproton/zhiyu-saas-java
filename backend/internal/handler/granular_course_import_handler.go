@@ -19,11 +19,12 @@ type GranularCourseImportHandler struct {
 }
 
 type granularCourseImportResult struct {
-	Created        int
-	Failed         int
-	Skipped        int
-	Errors         []string
-	DuplicateItems []ImportPreviewItem
+	Created           int
+	Failed            int
+	Skipped           int
+	PermissionSkipped int
+	Errors            []string
+	DuplicateItems    []ImportPreviewItem
 }
 
 func (h *GranularCourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +50,7 @@ func (h *GranularCourseImportHandler) PreviewExcel(w http.ResponseWriter, r *htt
 	aggregated := ImportPreviewResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
 		result := &granularCourseImportResult{}
-		h.importCourses(ctx, xlsx, tenantID, claims.UserID, true, false, result)
+		h.importCourses(ctx, xlsx, tenantID, claims.UserID, true, false, false, result)
 		aggregated.Created += result.Created
 		aggregated.Failed += result.Failed
 		aggregated.Duplicates += len(result.DuplicateItems)
@@ -73,6 +74,7 @@ func (h *GranularCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http
 	}
 	userID := claims.UserID
 	overwrite := importOverwriteParam(r)
+	rename := importRenameParam(r)
 
 	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
@@ -84,20 +86,21 @@ func (h *GranularCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http
 	ctx := r.Context()
 	aggregated := &granularCourseImportResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
-		h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, aggregated)
+		h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, rename, aggregated)
 	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": aggregated.Created,
-		"failed":  aggregated.Failed,
-		"skipped": aggregated.Skipped,
-		"entity":  "颗粒课",
-		"errors":  aggregated.Errors,
-		"sheets":  mfu.FirstSheets(),
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "颗粒课",
+		"errors":            aggregated.Errors,
+		"sheets":            mfu.FirstSheets(),
 	})
 }
 
-func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, result *granularCourseImportResult) {
+func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, result *granularCourseImportResult) {
 	rows, err := xlsx.GetRows("课程基本信息")
 	if err != nil {
 		return
@@ -134,8 +137,9 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			durPtr = &duration
 		}
 
-		var existingID string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID)
+		var existingID, existingCreator string
+		var existingCoCreators []string
+		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
 		exists := err == nil && existingID != ""
 
 		if exists && preview {
@@ -149,7 +153,7 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			result.Skipped++
 			continue
 		}
-		if exists && !overwrite {
+		if exists && !overwrite && !rename {
 			result.Skipped++
 			continue
 		}
@@ -158,7 +162,11 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
 		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
 
-		if exists {
+		if exists && overwrite {
+			if !canOverwriteContent(existingCreator, existingCoCreators, userID) {
+				result.PermissionSkipped++
+				continue
+			}
 			_, err := h.DB.Exec(ctx, `
 				UPDATE courses
 				SET major_id=$3, batch_id=$4, difficulty=$5, description=$6, online_hours=$7,
@@ -172,6 +180,14 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			}
 			h.replaceCourseBindings(ctx, existingID, tenantID, userID, knowledgePointIDs, resourceIDs)
 			continue
+		}
+		if exists {
+			// rename 模式：追加随机后缀生成新名称，按新对象导入
+			name = uniqueSuffixed(name, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		if preview {

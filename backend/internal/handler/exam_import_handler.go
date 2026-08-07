@@ -18,11 +18,12 @@ type ExamImportHandler struct {
 }
 
 type examImportResult struct {
-	Created        int
-	Failed         int
-	Skipped        int
-	Errors         []string
-	DuplicateItems []ImportPreviewItem
+	Created           int
+	Failed            int
+	Skipped           int
+	PermissionSkipped int
+	Errors            []string
+	DuplicateItems    []ImportPreviewItem
 }
 
 func (h *ExamImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +49,7 @@ func (h *ExamImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request)
 	aggregated := ImportPreviewResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
 		result := &examImportResult{}
-		h.importExams(ctx, xlsx, tenantID, claims.UserID, true, false, nil, result)
+		h.importExams(ctx, xlsx, tenantID, claims.UserID, true, false, false, nil, result)
 		aggregated.Created += result.Created
 		aggregated.Failed += result.Failed
 		aggregated.Duplicates += len(result.DuplicateItems)
@@ -71,6 +72,7 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	overwrite := importOverwriteParam(r)
+	rename := importRenameParam(r)
 
 	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
@@ -83,22 +85,23 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 	aggregated := &examImportResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
 		examMap := make(map[string]string)
-		h.importExams(ctx, xlsx, tenantID, claims.UserID, false, overwrite, examMap, aggregated)
+		h.importExams(ctx, xlsx, tenantID, claims.UserID, false, overwrite, rename, examMap, aggregated)
 		if len(examMap) > 0 {
 			h.importExamQuestions(ctx, xlsx, tenantID, examMap, aggregated)
 		}
 	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": aggregated.Created,
-		"failed":  aggregated.Failed,
-		"skipped": aggregated.Skipped,
-		"entity":  "试卷",
-		"errors":  aggregated.Errors,
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "试卷",
+		"errors":            aggregated.Errors,
 	})
 }
 
-func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, examMap map[string]string, result *examImportResult) {
+func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, examMap map[string]string, result *examImportResult) {
 	rows, err := xlsx.GetRows("试卷基本信息")
 	if err != nil {
 		slog.Info(fmt.Sprintf("[import/exams] sheet '试卷基本信息' not found: %v", err))
@@ -133,8 +136,9 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 		}
 		seen[name] = true
 
-		var existingID string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		var existingID, existingCreator string
+		var existingCollaborators []string
+		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, collaborator_ids FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
 		exists := err == nil && existingID != ""
 
 		if preview {
@@ -150,8 +154,13 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 			continue
 		}
 
+		origName := ""
 		if exists {
 			if overwrite {
+				if !canOverwriteContent(existingCreator, existingCollaborators, userID) {
+					result.PermissionSkipped++
+					continue
+				}
 				_, err := h.DB.Exec(ctx, `
 					UPDATE exams SET name=$1, description=$2, batch_id=$3, updated_at=NOW()
 					WHERE id=$4 AND tenant_id=$5
@@ -170,10 +179,20 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 				}
 				result.Created++
 				slog.Info(fmt.Sprintf("[import/exams] updated exam %s (id=%s)", name, existingID))
+				continue
+			}
+			if rename {
+				// rename 模式：追加随机后缀生成新名称，按新对象导入
+				origName = name
+				name = uniqueSuffixed(name, func(c string) bool {
+					var eid string
+					_ = h.DB.QueryRow(ctx, `SELECT id FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+					return eid != ""
+				})
 			} else {
 				result.Skipped++
+				continue
 			}
-			continue
 		}
 
 		examID := uuid.NewString()
@@ -193,6 +212,9 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 
 		if examMap != nil {
 			examMap[name] = examID
+			if origName != "" {
+				examMap[origName] = examID
+			}
 		}
 		result.Created++
 		slog.Info(fmt.Sprintf("[import/exams] created exam %s (id=%s)", name, examID))

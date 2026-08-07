@@ -194,7 +194,7 @@ export default function QuestionBankDetailPage() {
     setIsImportConfirmOpen(false)
   }
 
-  const executeImport = async (overwrite = false) => {
+  const executeImport = async (mode: 'skip' | 'overwrite' | 'new' = 'skip') => {
     const file = importFiles[0]
     if (!file) return
     setIsImporting(true)
@@ -202,15 +202,20 @@ export default function QuestionBankDetailPage() {
       const result = await importExportApi.importExcel(
         `question-banks/${bankId}/questions`,
         file,
-        overwrite,
+        mode === 'overwrite',
+        mode === 'new',
       )
       const errorHint =
         result.errors && result.errors.length > 0
           ? `，错误：${result.errors.slice(0, 3).join(';')}`
           : ''
+      const permissionHint =
+        result.permissionSkipped && result.permissionSkipped > 0
+          ? `，${result.permissionSkipped} 个题目非本人创建，已跳过覆盖`
+          : ''
       toast({
         title: '导入完成',
-        description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`,
+        description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${permissionHint}${errorHint}`,
       })
       resetImport()
       setIsImportDialogOpen(false)
@@ -237,7 +242,7 @@ export default function QuestionBankDetailPage() {
         setIsImporting(false)
         return false
       }
-      return await executeImport(false).then(() => true)
+      return await executeImport('skip').then(() => true)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
       setIsImporting(false)
@@ -764,8 +769,9 @@ export default function QuestionBankDetailPage() {
           duplicates={importPreview.duplicates}
           failed={importPreview.failed}
           duplicateItems={importPreview.duplicateItems}
-          onConfirmOverwrite={() => executeImport(true)}
-          onConfirmSkip={() => executeImport(false)}
+          onConfirmOverwrite={() => executeImport('overwrite')}
+          onConfirmSkip={() => executeImport('skip')}
+          onConfirmNew={() => executeImport('new')}
         />
       )}
 

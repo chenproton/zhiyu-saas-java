@@ -26,6 +26,11 @@ export const resourceLibraryApi = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
+  previewImport: (names: string[], resourceType: string) =>
+    request<ListResponse<ResourceLibraryItem>>('/library/resources/import/preview', {
+      method: 'POST',
+      body: JSON.stringify({ names, resourceType }),
+    }),
   update: (
     id: string,
     req: Partial<Omit<ResourceLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>>,

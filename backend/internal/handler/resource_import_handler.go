@@ -73,7 +73,7 @@ func (h *ResourceImportHandler) ImportTeachers(w http.ResponseWriter, r *http.Re
 	h.importExcel(w, r, "teachers", h.doImportTeachers, false)
 }
 
-type importFunc func(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult)
+type importFunc func(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult)
 
 func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Request, entity string, fn importFunc, preview bool) {
 	claims := middleware.CurrentUser(r)
@@ -94,6 +94,7 @@ func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Reque
 	}
 	userID := claims.UserID
 	overwrite := importOverwriteParam(r)
+	rename := importRenameParam(r)
 
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		respondError(w, http.StatusBadRequest, "表单无效")
@@ -113,7 +114,7 @@ func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Reque
 	}
 	defer xlsx.Close()
 
-	previewRes, execRes := fn(r.Context(), xlsx, tenantID, userID, preview, overwrite)
+	previewRes, execRes := fn(r.Context(), xlsx, tenantID, userID, preview, overwrite, rename)
 
 	if preview {
 		slog.Info(fmt.Sprintf("[import/preview/%s] result: created=%d duplicates=%d failed=%d duplicateItems=%d errors=%d",
@@ -157,7 +158,7 @@ func appendDuplicate(previewRes *ImportPreviewResult, rowNum int, key, name stri
 
 // Sheet: 行业列表
 // Columns: 行业代码*, 行业名称*, 上级行业代码, 排序, 是否启用
-func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -187,28 +188,38 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND code=$2`, tenantID, code).Scan(&existingID)
 
+		origCode := ""
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, code, name)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE industries SET name=$1, enabled=$2, sort_order=$3, updated_at=NOW()
-					WHERE id=$4 AND tenant_id=$5
-				`, name, enabled, sortOrder, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]更新失败: %v", code, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE industries SET name=$1, enabled=$2, sort_order=$3, updated_at=NOW()
+						WHERE id=$4 AND tenant_id=$5
+					`, name, enabled, sortOrder, existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]更新失败: %v", code, err))
+						continue
+					}
 				}
+				codeToID[code] = existingID
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			codeToID[code] = existingID
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新代码，按新对象导入
+			origCode = code
+			code = uniqueSuffixed(code, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND code=$2`, tenantID, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		id := uuid.NewString()
@@ -225,6 +236,9 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 			result.IndustryCreated++
 		}
 		codeToID[code] = id
+		if origCode != "" {
+			codeToID[origCode] = id
+		}
 		result.Created++
 		previewRes.Created++
 	}
@@ -275,7 +289,7 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 
 // Sheet: 专业列表
 // Columns: 专业代码*, 专业名称*, 别名, 是否启用
-func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -304,26 +318,34 @@ func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *exceli
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND code=$2`, tenantID, code).Scan(&existingID)
 
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, code, name)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE majors SET name=$1, alias=$2, enabled=$3, updated_at=NOW()
-					WHERE id=$4 AND tenant_id=$5
-				`, name, alias, enabled, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]更新失败: %v", code, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE majors SET name=$1, alias=$2, enabled=$3, updated_at=NOW()
+						WHERE id=$4 AND tenant_id=$5
+					`, name, alias, enabled, existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]更新失败: %v", code, err))
+						continue
+					}
 				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新代码，按新对象导入
+			code = uniqueSuffixed(code, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND code=$2`, tenantID, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		if !preview {
@@ -348,7 +370,7 @@ func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *exceli
 
 // Sheet: 组织架构
 // Columns: 组织名称*, 组织类型*, 父组织名称, 排序
-func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -411,28 +433,38 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 AND type_id=$3`, tenantID, name, typeID).Scan(&existingID)
+		origName := ""
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, fmt.Sprintf("%s|%s", name, typeName), name)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE organizations SET name=$1, type_id=$2, parent_id=$3, sort_order=$4, updated_at=NOW()
-					WHERE id=$5 AND tenant_id=$6
-				`, name, typeID, parentID, sortOrder, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("组织[%s]更新失败: %v", name, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE organizations SET name=$1, type_id=$2, parent_id=$3, sort_order=$4, updated_at=NOW()
+						WHERE id=$5 AND tenant_id=$6
+					`, name, typeID, parentID, sortOrder, existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("组织[%s]更新失败: %v", name, err))
+						continue
+					}
 				}
+				nameToID[name] = existingID
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			nameToID[name] = existingID
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
+			origName = name
+			name = uniqueSuffixed(name, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 AND type_id=$3`, tenantID, c, typeID).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		id := uuid.NewString()
@@ -449,6 +481,9 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 			result.OrgCreated++
 		}
 		nameToID[name] = id
+		if origName != "" {
+			nameToID[origName] = id
+		}
 		result.Created++
 		previewRes.Created++
 	}
@@ -459,7 +494,7 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 // Sheet: 学生列表
 // Columns: 登录账号(学号)*, 姓名*, 密码*, 班级(组织节点路径)*, 状态
 // 班级路径示例：学校-学院-班级 或 学校/学院/班级
-func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -515,32 +550,38 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 
 		existingID := h.getUserID(ctx, tenantID, username)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, username, name)
 				continue
 			}
-			if !preview {
-				hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]密码加密失败: %v", username, err))
-					continue
+			if overwrite {
+				if !preview {
+					hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]密码加密失败: %v", username, err))
+						continue
+					}
+					_, err = h.DB.Exec(ctx, `
+						UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, updated_at=NOW()
+						WHERE id=$5 AND tenant_id=$6
+					`, name, string(hash), status, orgNodeID, existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]更新失败: %v", username, err))
+						continue
+					}
 				}
-				_, err = h.DB.Exec(ctx, `
-					UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, updated_at=NOW()
-					WHERE id=$5 AND tenant_id=$6
-				`, name, string(hash), status, orgNodeID, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]更新失败: %v", username, err))
-					continue
-				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新登录账号，按新对象导入
+			username = uniqueSuffixed(username, func(c string) bool {
+				return h.getUserID(ctx, tenantID, c) != ""
+			})
 		}
 
 		if !preview {
@@ -562,7 +603,7 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 // Sheet: 教师列表
 // Columns: 登录账号(工号)*, 姓名*, 密码*, 所属组织节点(路径), 职位(逗号分隔), 状态
 // 组织节点路径示例：学校-学院 或 学校/学院
-func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -635,32 +676,38 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 
 		existingID := h.getUserID(ctx, tenantID, username)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, username, name)
 				continue
 			}
-			if !preview {
-				hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]密码加密失败: %v", username, err))
-					continue
+			if overwrite {
+				if !preview {
+					hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]密码加密失败: %v", username, err))
+						continue
+					}
+					_, err = h.DB.Exec(ctx, `
+						UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, title_ids=$5, updated_at=NOW()
+						WHERE id=$6 AND tenant_id=$7
+					`, name, string(hash), status, orgNodeID, titleIDs, existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]更新失败: %v", username, err))
+						continue
+					}
 				}
-				_, err = h.DB.Exec(ctx, `
-					UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, title_ids=$5, updated_at=NOW()
-					WHERE id=$6 AND tenant_id=$7
-				`, name, string(hash), status, orgNodeID, titleIDs, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]更新失败: %v", username, err))
-					continue
-				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新登录账号，按新对象导入
+			username = uniqueSuffixed(username, func(c string) bool {
+				return h.getUserID(ctx, tenantID, c) != ""
+			})
 		}
 
 		if !preview {
@@ -961,7 +1008,7 @@ func (h *ResourceImportHandler) ImportBrands(w http.ResponseWriter, r *http.Requ
 
 // Sheet: 合作企业
 // Columns: 企业名称*, 企业类型, 所属行业, 所在地区, 合作状态, 合作评级, 联系人, 联系电话, 联系邮箱, 企业地址
-func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -1004,30 +1051,37 @@ func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *e
 
 		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_enterprises", tenantID, name)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, name, name)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_enterprises SET enterprise_type=$1, industry=$2, region=$3,
-						status=$4, rating=$5, contact_person=$6, contact_phone=$7,
-						contact_email=$8, address=$9, unified_social_credit_code=$10,
-						established_year=$11, employee_count=$12, description=$13, updated_at=NOW()
-					WHERE id=$14 AND tenant_id=$15
-				`, entType, industry, region, status, rating, contactPerson, contactPhone, contactEmail, address,
-					creditCode, establishedYear, employeeCount, description, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("企业[%s]更新失败: %v", name, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE alliance_enterprises SET enterprise_type=$1, industry=$2, region=$3,
+							status=$4, rating=$5, contact_person=$6, contact_phone=$7,
+							contact_email=$8, address=$9, unified_social_credit_code=$10,
+							established_year=$11, employee_count=$12, description=$13, updated_at=NOW()
+						WHERE id=$14 AND tenant_id=$15
+					`, entType, industry, region, status, rating, contactPerson, contactPhone, contactEmail, address,
+						creditCode, establishedYear, employeeCount, description, existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("企业[%s]更新失败: %v", name, err))
+						continue
+					}
 				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
+			name = uniqueSuffixed(name, func(c string) bool {
+				eid, _ := lookupIDByName(ctx, h.DB, "alliance_enterprises", tenantID, c)
+				return eid != ""
+			})
 		}
 
 		if !preview {
@@ -1058,7 +1112,7 @@ func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *e
 
 // Sheet: 合作项目
 // Columns: 项目名称*, 项目类型, 项目阶段, 开始日期, 结束日期, 描述, 预算, 关联合作企业
-func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -1092,27 +1146,34 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 
 		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_projects", tenantID, name)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, name, name)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_projects SET type=$1, phase=$2, start_date=$3, end_date=$4,
-						description=$5, budget=$6, enterprise_ids=$7, updated_at=NOW()
-					WHERE id=$8 AND tenant_id=$9
-				`, projType, phase, startDate, endDate, description, budget, jsonBytes(enterpriseIDs), existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("项目[%s]更新失败: %v", name, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE alliance_projects SET type=$1, phase=$2, start_date=$3, end_date=$4,
+							description=$5, budget=$6, enterprise_ids=$7, updated_at=NOW()
+						WHERE id=$8 AND tenant_id=$9
+					`, projType, phase, startDate, endDate, description, budget, jsonBytes(enterpriseIDs), existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("项目[%s]更新失败: %v", name, err))
+						continue
+					}
 				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
+			name = uniqueSuffixed(name, func(c string) bool {
+				eid, _ := lookupIDByName(ctx, h.DB, "alliance_projects", tenantID, c)
+				return eid != ""
+			})
 		}
 
 		if !preview {
@@ -1140,7 +1201,7 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 
 // Sheet: 合作成果
 // Columns: 成果名称*, 成果类型, 描述, 成果日期, 关联归属项目, 关联合作企业
-func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -1173,27 +1234,35 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_achievements WHERE tenant_id=$1 AND title=$2 LIMIT 1`, tenantID, title).Scan(&existingID)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, title, title)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_achievements SET type=$1, description=$2, achievement_date=$3,
-						project_ids=$4, enterprise_ids=$5, updated_at=NOW()
-					WHERE id=$6 AND tenant_id=$7
-				`, achType, description, achievementDate, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("成果[%s]更新失败: %v", title, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE alliance_achievements SET type=$1, description=$2, achievement_date=$3,
+							project_ids=$4, enterprise_ids=$5, updated_at=NOW()
+						WHERE id=$6 AND tenant_id=$7
+					`, achType, description, achievementDate, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("成果[%s]更新失败: %v", title, err))
+						continue
+					}
 				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新标题，按新对象导入
+			title = uniqueSuffixed(title, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_achievements WHERE tenant_id=$1 AND title=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		if !preview {
@@ -1224,7 +1293,7 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 
 // Sheet: 专家资源
 // Columns: 姓名*, 头衔, 职位, 行业, 城市, 简介, 年龄, 从业年限, 关联合作企业, 擅长领域, 从业经历
-func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -1258,29 +1327,36 @@ func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excel
 
 		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_experts", tenantID, name)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, name, name)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_experts SET title=$1, position=$2, industry=$3, city=$4,
-						introduction=$5, age=$6, experience_years=$7, enterprise_id=$8,
-						specialties=$9, work_experience=$10, updated_at=NOW()
-					WHERE id=$11 AND tenant_id=$12
-				`, title, position, industry, city, introduction, age, experienceYears,
-					enterpriseID, specialties, workExperience, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("专家[%s]更新失败: %v", name, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE alliance_experts SET title=$1, position=$2, industry=$3, city=$4,
+							introduction=$5, age=$6, experience_years=$7, enterprise_id=$8,
+							specialties=$9, work_experience=$10, updated_at=NOW()
+						WHERE id=$11 AND tenant_id=$12
+					`, title, position, industry, city, introduction, age, experienceYears,
+						enterpriseID, specialties, workExperience, existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("专家[%s]更新失败: %v", name, err))
+						continue
+					}
 				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
+			name = uniqueSuffixed(name, func(c string) bool {
+				eid, _ := lookupIDByName(ctx, h.DB, "alliance_experts", tenantID, c)
+				return eid != ""
+			})
 		}
 
 		if !preview {
@@ -1310,7 +1386,7 @@ func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excel
 
 // Sheet: 合作协议
 // Columns: 协议名称*, 协议类型, 开始日期, 结束日期, 状态, 内容, 关联归属项目, 关联合作企业
-func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -1344,27 +1420,34 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 
 		existingID, _ := lookupIDByName(ctx, h.DB, "alliance_agreements", tenantID, name)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, name, name)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_agreements SET type=$1, start_date=$2, end_date=$3,
-						status=$4, content=$5, project_ids=$6, enterprise_ids=$7, updated_at=NOW()
-					WHERE id=$8 AND tenant_id=$9
-				`, agmtType, startDate, endDate, status, content, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]更新失败: %v", name, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE alliance_agreements SET type=$1, start_date=$2, end_date=$3,
+							status=$4, content=$5, project_ids=$6, enterprise_ids=$7, updated_at=NOW()
+						WHERE id=$8 AND tenant_id=$9
+					`, agmtType, startDate, endDate, status, content, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]更新失败: %v", name, err))
+						continue
+					}
 				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
+			name = uniqueSuffixed(name, func(c string) bool {
+				eid, _ := lookupIDByName(ctx, h.DB, "alliance_agreements", tenantID, c)
+				return eid != ""
+			})
 		}
 
 		if !preview {
@@ -1390,7 +1473,7 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 
 // Sheet: 合作权限
 // Columns: 账号名称*, 账号类型, 是否启用
-func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -1420,26 +1503,34 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_permissions WHERE tenant_id=$1 AND account_name=$2 LIMIT 1`, tenantID, accountName).Scan(&existingID)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, accountName, accountName)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_permissions SET account_type=$1, is_enabled=$2, updated_at=NOW()
-					WHERE id=$3 AND tenant_id=$4
-				`, accountType, isEnabled, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("权限[%s]更新失败: %v", accountName, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE alliance_permissions SET account_type=$1, is_enabled=$2, updated_at=NOW()
+						WHERE id=$3 AND tenant_id=$4
+					`, accountType, isEnabled, existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("权限[%s]更新失败: %v", accountName, err))
+						continue
+					}
 				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新账号名，按新对象导入
+			accountName = uniqueSuffixed(accountName, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_permissions WHERE tenant_id=$1 AND account_name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		if !preview {
@@ -1466,7 +1557,7 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 // Columns: 品牌类型*, 名称*, 描述, 状态, 是否公开, 是否推荐, 封面图URL,
 //
 //	关联学生名称, 关联企业名称, 关联岗位名称, 关联专业名称, 关联教师名称, 关联专家名称
-func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -1512,30 +1603,38 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_brands WHERE tenant_id=$1 AND brand_type=$2 AND name=$3 LIMIT 1`, tenantID, brandType, name).Scan(&existingID)
 		if existingID != "" {
-			if !overwrite {
+			if !overwrite && !(rename && !preview) {
 				result.Skipped++
 				previewRes.Duplicates++
 				appendDuplicate(previewRes, rowNum, brandType+"|"+name, name)
 				continue
 			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_brands SET description=$1, status=$2, is_public=$3, is_featured=$4,
-						cover_image=$5, student_id=$6, enterprise_id=$7, position_id=$8, major_id=$9,
-						teacher_id=$10, expert_id=$11, updated_at=NOW()
-					WHERE id=$12 AND tenant_id=$13
-				`, description, status, isPublic, isFeatured, coverImage,
-					studentID, enterpriseID, positionID, majorID, teacherID, expertID,
-					existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]更新失败: %v", brandType, name, err))
-					continue
+			if overwrite {
+				if !preview {
+					_, err := h.DB.Exec(ctx, `
+						UPDATE alliance_brands SET description=$1, status=$2, is_public=$3, is_featured=$4,
+							cover_image=$5, student_id=$6, enterprise_id=$7, position_id=$8, major_id=$9,
+							teacher_id=$10, expert_id=$11, updated_at=NOW()
+						WHERE id=$12 AND tenant_id=$13
+					`, description, status, isPublic, isFeatured, coverImage,
+						studentID, enterpriseID, positionID, majorID, teacherID, expertID,
+						existingID, tenantID)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]更新失败: %v", brandType, name, err))
+						continue
+					}
 				}
+				result.Created++
+				previewRes.Created++
+				continue
 			}
-			result.Created++
-			previewRes.Created++
-			continue
+			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
+			name = uniqueSuffixed(name, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_brands WHERE tenant_id=$1 AND brand_type=$2 AND name=$3 LIMIT 1`, tenantID, brandType, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		if !preview {
