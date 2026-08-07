@@ -13,6 +13,7 @@ import type {
   StatusAction,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { isPublicPage } from '@/lib/public-routes'
 import { questionBankApi, questionApi, examApi, evaluationBatchApi, approvalApi } from '@/lib/api'
 
 // ==================== Date parsing helpers ====================
@@ -103,7 +104,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/superadmin')
 
   useEffect(() => {
-    if (isPortal) return
+    if (isPortal || isPublicPage(pathname)) return
 
     const tasks: (() => Promise<void>)[] = [loadQuestionBanks, loadExams]
     if (tasks.length === 0) return
@@ -125,7 +126,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isPortal, loadQuestionBanks, loadExams])
+  }, [isPortal, pathname, loadQuestionBanks, loadExams])
 
   // ==================== Question bank actions ====================
   const getQuestionBank = useCallback(

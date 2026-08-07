@@ -153,9 +153,8 @@ export default function ChangelogPage() {
   return (
     <main className="min-h-screen bg-[var(--background)] pb-16">
       <div className="mx-auto max-w-3xl px-6 pt-10">
-        <div className="flex items-center justify-between">
+        <div className="mb-6">
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Changelog</p>
-          <p className="text-xs text-slate-400">静态页面 · 无需登录 · 手动维护</p>
         </div>
         {renderLines(lines)}
       </div>

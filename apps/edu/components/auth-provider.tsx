@@ -1,11 +1,13 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import { authApi, getToken, removeToken, type MeResponse } from '@/lib/api'
 import type { Organization, Major, Role } from '@/lib/types/backend'
 import { checkMenuPermission } from '@/lib/menu-permissions'
 import { useSubscriptionModules } from '@/hooks/use-subscription-modules'
 import { persistActiveRole, resolveActiveRole } from '@/lib/active-role'
+import { isPublicPage } from '@/lib/public-routes'
 
 export type UserRole = 'school' | 'enterprise' | 'operator'
 
@@ -51,6 +53,7 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
   const [state, setState] = useState<{
     me?: MeResponse
     loading: boolean
@@ -58,6 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }>({ loading: true })
 
   const fetchMe = useCallback(async () => {
+    // 公共页面（如 /changelog）不获取登录态：未登录不触发请求，失效 token 也不会被 401 跳转
+    if (isPublicPage(pathname)) {
+      setState({ loading: false })
+      return
+    }
     // edu 应用（管理后台）所有页面都面向 portal 用户（学校/教师/学生），
     // 因此统一使用 portal token，避免 /portal 登录后跳转到 /job、/scene 等模块时因 token 不一致被踢回登录页。
     const token = getToken('portal')
@@ -80,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: err instanceof Error ? err.message : '获取用户信息失败',
       })
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     ;(async () => {
