@@ -16,8 +16,6 @@ import {
   Wrench,
   FolderOpen,
   Award,
-  PenTool,
-  Search,
   Loader2,
 } from 'lucide-react'
 import { CardContent } from '@/components/ui/card'
@@ -27,23 +25,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { toast } from '@zhiyu/ui'
-import { fileApi, questionBankApi, questionApi, scenarioApi, resourceLibraryApi } from '@/lib/api'
-import { useAuth } from '@/components/auth-provider'
+import { fileApi, resourceLibraryApi } from '@/lib/api'
 import { ResourceSelector } from '@/components/shared/resource-selector'
 import { EvaluationMethodSelector } from '../../../_components/assessment/evaluation-method-selector'
 import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluation-rules-dialog'
@@ -817,96 +800,17 @@ function InClassQuizzesModule({ data, onChange }: AtomicModuleProps) {
 
 function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
   const questions = data.classQuestions || []
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [addMode, setAddMode] = useState<'manual' | 'bank' | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedQuestionId, setSelectedQuestionId] = useState('')
-  const [bankId, setBankId] = useState('')
-  const [banks, setBanks] = useState<{ id: string; name: string }[]>([])
-  const [bankQuestions, setBankQuestions] = useState<{
-    id: string
-    content: string
-    type: string
-  }[]>([])
-  const [loadingBanks, setLoadingBanks] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    questionBankApi
-      .list({ limit: 200 })
-      .then((res) => {
-        if (!cancelled) {
-          setBanks((res.items || []).map((b) => ({ id: b.id, name: b.name })))
-          if ((res.items || []).length > 0) setBankId(res.items[0].id)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setBanks([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingBanks(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!bankId) return
-    let cancelled = false
-    questionApi
-      .list({ bankId, limit: 500 } as any)
-      .then((res) => {
-        if (!cancelled) {
-          setBankQuestions(
-            (res.items || []).map((q) => ({ id: q.id, content: q.content, type: q.type })),
-          )
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setBankQuestions([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [bankId])
-
-  const filteredQuestions = bankQuestions.filter(
-    (q) =>
-      q.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.type.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
-  const resetDialog = () => {
-    setDialogOpen(false)
-    setAddMode(null)
-    setSearchQuery('')
-    setSelectedQuestionId('')
-  }
-
-  const handleAddBankQuestion = () => {
-    const question = bankQuestions.find((q) => q.id === selectedQuestionId)
-    if (!question) return
-    onChange({
-      classQuestions: [
-        ...questions,
-        {
-          id: uid('bank-q'),
-          stem: question.content,
-          answer: '',
-          source: 'bank',
-          bankId: question.id,
-          bankTitle: question.content,
-        },
-      ],
-    })
-    resetDialog()
-  }
 
   const updateQuestion = (idx: number, patch: Partial<ClassroomQuestion>) => {
     const next = [...questions]
     next[idx] = { ...next[idx], ...patch }
     onChange({ classQuestions: next })
+  }
+
+  const addQuestion = () => {
+    onChange({
+      classQuestions: [...questions, { id: uid('q'), stem: '', answer: '', source: 'manual' }],
+    })
   }
 
   return (
@@ -957,211 +861,30 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
           )}
         </div>
       ))}
-      <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+      <Button size="sm" variant="outline" onClick={addQuestion}>
         <Plus className="h-4 w-4 mr-1" />
         添加提问
       </Button>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent size="lg" className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{addMode === 'bank' ? '从题库引用' : '添加提问'}</DialogTitle>
-          </DialogHeader>
-          {!addMode ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-              <button
-                onClick={() => {
-                  onChange({
-                    classQuestions: [
-                      ...questions,
-                      { id: uid('q'), stem: '', answer: '', source: 'manual' },
-                    ],
-                  })
-                  resetDialog()
-                }}
-                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors"
-              >
-                <PenTool className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium">手动新增提问</span>
-              </button>
-              <button
-                onClick={() => setAddMode('bank')}
-                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors"
-              >
-                <Database className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium">从题库中引用</span>
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4 py-2">
-              <div>
-                <Label className="text-xs text-muted-foreground">选择题库</Label>
-                <Select value={bankId} onValueChange={(v) => { setBankId(v); setSelectedQuestionId('') }}>
-                  <SelectTrigger className="h-9 text-sm w-full mt-1">
-                    <SelectValue placeholder="请选择题库" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {banks.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    setSelectedQuestionId('')
-                  }}
-                  placeholder="搜索题目内容、题型..."
-                  className="pl-9 text-sm h-9"
-                />
-              </div>
-              <div className="border rounded-lg overflow-hidden max-h-[320px] overflow-y-auto">
-                {loadingBanks ? (
-                  <div className="p-6 text-sm text-gray-400 text-center flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> 加载题库中...
-                  </div>
-                ) : filteredQuestions.length === 0 ? (
-                  <div className="p-3 text-sm text-gray-400 text-center">无匹配题目</div>
-                ) : (
-                  filteredQuestions.map((q) => (
-                    <button
-                      key={q.id}
-                      type="button"
-                      onClick={() => setSelectedQuestionId(q.id)}
-                      className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
-                        selectedQuestionId === q.id
-                          ? 'bg-primary/5 text-primary border-l-2 border-primary'
-                          : 'hover:bg-gray-50 border-l-2 border-transparent'
-                      }`}
-                    >
-                      <span className="font-medium">{q.content}</span>
-                      <span className="ml-2 text-xs text-gray-400">{q.type}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAddMode(null)}>
-                  返回
-                </Button>
-                <Button onClick={handleAddBankQuestion} disabled={!selectedQuestionId}>
-                  确认引用
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </CardContent>
   )
 }
 
 function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
   const tasks = data.practiceTasks || []
-  const { user } = useAuth()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [addMode, setAddMode] = useState<'manual' | 'scenario' | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedScenarioId, setSelectedScenarioId] = useState('')
-  const [scenarioScope, setScenarioScope] = useState<'mine' | 'shared' | 'public'>('mine')
-  const [scenarioPost, setScenarioPost] = useState('全部')
-  const [scenarioBatch, setScenarioBatch] = useState('全部')
-  const [scenarios, setScenarios] = useState<
-    {
-      id: string
-      title: string
-      desc: string
-      post: string
-      batch: string
-      scope: 'mine' | 'shared' | 'public'
-    }[]
-  >([])
-  const [loadingScenarios, setLoadingScenarios] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    scenarioApi
-      .list({ status: 'published', limit: 500 })
-      .then((res) => {
-        if (cancelled) return
-        const list = (res.items || []).map((s) => ({
-          id: s.id,
-          title: s.name,
-          desc: s.background || s.deliveryGoal || '',
-          post: (s.professionNames && s.professionNames[0]) || '',
-          batch: s.batchId || '',
-          scope: (s.coBuilderIds || []).includes(user?.id || '')
-            ? ('shared' as const)
-            : s.creatorId === user?.id
-              ? ('mine' as const)
-              : ('public' as const),
-        }))
-        setScenarios(list)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarios([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingScenarios(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [user?.id])
-
-  const uniquePosts = Array.from(new Set(scenarios.map((s) => s.post).filter(Boolean)))
-  const uniqueBatches = Array.from(new Set(scenarios.map((s) => s.batch).filter(Boolean)))
-
-  const filteredScenarios = scenarios.filter((s) => {
-    const matchScope = s.scope === scenarioScope
-    const matchPost = scenarioPost === '全部' || s.post === scenarioPost
-    const matchBatch = scenarioBatch === '全部' || s.batch === scenarioBatch
-    const matchSearch =
-      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.desc.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchScope && matchPost && matchBatch && matchSearch
-  })
-
-  const resetDialog = () => {
-    setDialogOpen(false)
-    setAddMode(null)
-    setSearchQuery('')
-    setSelectedScenarioId('')
-    setScenarioScope('mine')
-    setScenarioPost('全部')
-    setScenarioBatch('全部')
-  }
-
-  const handleAddScenario = () => {
-    const scenario = scenarios.find((s) => s.id === selectedScenarioId)
-    if (!scenario) return
-    onChange({
-      practiceTasks: [
-        ...tasks,
-        {
-          id: uid('scenario-task'),
-          name: scenario.title,
-          requirement: scenario.desc,
-          attachments: [],
-          source: 'scenario',
-          scenarioId: scenario.id,
-          scenarioTitle: scenario.title,
-        },
-      ],
-    })
-    resetDialog()
-  }
 
   const updateTask = (idx: number, patch: Partial<TaskItem>) => {
     const next = [...tasks]
     next[idx] = { ...next[idx], ...patch }
     onChange({ practiceTasks: next })
+  }
+
+  const addTask = () => {
+    onChange({
+      practiceTasks: [
+        ...tasks,
+        { id: uid('task'), name: '', requirement: '', attachments: [], source: 'manual' },
+      ],
+    })
   }
 
   return (
@@ -1218,203 +941,10 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
           )}
         </div>
       ))}
-      <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+      <Button size="sm" variant="outline" onClick={addTask}>
         <Plus className="h-4 w-4 mr-1" />
         添加实践任务
       </Button>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent size="xl" className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {addMode === 'scenario' ? '从实践场景库引用' : '添加实践任务'}
-            </DialogTitle>
-          </DialogHeader>
-          {!addMode ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-              <button
-                onClick={() => {
-                  onChange({
-                    practiceTasks: [
-                      ...tasks,
-                      {
-                        id: uid('task'),
-                        name: '',
-                        requirement: '',
-                        attachments: [],
-                        source: 'manual',
-                      },
-                    ],
-                  })
-                  resetDialog()
-                }}
-                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors"
-              >
-                <PenTool className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium">手动新增任务</span>
-              </button>
-              <button
-                onClick={() => setAddMode('scenario')}
-                className="flex flex-col items-center gap-2 p-6 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors"
-              >
-                <Database className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium">从实践场景库引用</span>
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4 py-2">
-              {/* Scope tabs */}
-              <div className="flex gap-2">
-                {[
-                  { key: 'mine' as const, label: '我的' },
-                  { key: 'shared' as const, label: '共建' },
-                  { key: 'public' as const, label: '公共' },
-                ].map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => {
-                      setScenarioScope(t.key)
-                      setSelectedScenarioId('')
-                    }}
-                    className={`px-4 py-1.5 rounded-md text-sm transition-colors ${
-                      scenarioScope === t.key
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    setSelectedScenarioId('')
-                  }}
-                  placeholder="搜索场景名称、描述..."
-                  className="pl-9 text-sm h-9"
-                />
-              </div>
-
-              {/* Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>所属岗位</Label>
-                  <Select
-                    value={scenarioPost}
-                    onValueChange={(v) => {
-                      setScenarioPost(v)
-                      setSelectedScenarioId('')
-                    }}
-                  >
-                    <SelectTrigger className="h-9 text-sm w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="全部">全部</SelectItem>
-                      {uniquePosts.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label>所属批次</Label>
-                  <Select
-                    value={scenarioBatch}
-                    onValueChange={(v) => {
-                      setScenarioBatch(v)
-                      setSelectedScenarioId('')
-                    }}
-                  >
-                    <SelectTrigger className="h-9 text-sm w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="全部">全部</SelectItem>
-                      {uniqueBatches.map((b) => (
-                        <SelectItem key={b} value={b}>
-                          {b}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Scenario list */}
-              <div className="border-t pt-3">
-                <p className="text-xs text-gray-400 mb-2">
-                  共 {filteredScenarios.length} 个场景
-                  {selectedScenarioId && <span className="text-primary ml-2">已选择 1 个</span>}
-                </p>
-                <div className="space-y-2 max-h-[320px] overflow-y-auto">
-                  {loadingScenarios ? (
-                    <p className="text-sm text-gray-400 text-center py-6 flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" /> 加载场景库中...
-                    </p>
-                  ) : filteredScenarios.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center py-6">未找到匹配的场景</p>
-                  ) : (
-                    filteredScenarios.map((s) => {
-                      const selected = selectedScenarioId === s.id
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => setSelectedScenarioId(selected ? '' : s.id)}
-                          className={`w-full text-left p-3 rounded-lg border transition-all ${
-                            selected
-                              ? 'border-primary bg-primary/5 ring-1 ring-primary/10'
-                              : 'border-gray-200 hover:border-gray-300 bg-white'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
-                                selected ? 'bg-primary border-primary' : 'border-gray-300'
-                              }`}
-                            >
-                              {selected && <CheckCircle2 className="w-3 h-3 text-white" />}
-                            </div>
-                            <span className="text-sm font-medium text-gray-800 truncate flex-1">
-                              {s.title}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1.5 pl-7 text-xs text-gray-500">
-                            {s.post && <span>{s.post}</span>}
-                            {s.post && s.batch && <span className="text-gray-300">|</span>}
-                            {s.batch && <span>{s.batch}</span>}
-                          </div>
-                          <div className="pl-7 mt-1 text-xs text-gray-400 line-clamp-2">
-                            {s.desc}
-                          </div>
-                        </button>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddMode(null)}>
-              返回
-            </Button>
-            <Button onClick={handleAddScenario} disabled={!selectedScenarioId}>
-              确认引用
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </CardContent>
   )
 }
@@ -1431,7 +961,6 @@ function HomeworksModule({ data, onChange }: AtomicModuleProps) {
         <EvaluationMethodSelector
           selectedKeys={methods}
           onChange={(keys) => onChange({ homeworkEvalMethods: keys })}
-          allowedKeys={['exam']}
         />
       </div>
       <div className="border-t pt-4">
