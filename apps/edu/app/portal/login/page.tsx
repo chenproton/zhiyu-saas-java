@@ -139,9 +139,6 @@ export default function PortalLoginPage() {
             <h1 className="bg-gradient-to-r from-primary via-primary to-primary/60 bg-clip-text text-2xl sm:text-[26px] font-bold tracking-wide text-transparent">
               {t('场景化数智教学服务平台')}
             </h1>
-            <p className="text-sm tracking-[0.35em] text-[#98a2b3] pl-[0.35em]">
-              {t('数智融合 · 精准教学')}
-            </p>
           </div>
         </div>
 
