@@ -1,22 +1,22 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   BookOpen,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock,
   Eye,
   FileText,
   GraduationCap,
   PenLine,
   Search,
   Users,
+  Loader2,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@zhiyu/ui'
 import { Card, CardContent } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -28,9 +28,13 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { portalApi } from '@/lib/api'
+import { portalApi, courseNodeApi, nodeEvaluationResultApi, userManagementApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
-import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
+import type { WorkspaceClassPlan } from '@/lib/types'
+import type { SystemCourseNode } from '@/lib/types/lesson-source'
+import type { NodeEvaluationResult } from '@zhiyu/api-client'
+import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
+import { getHybridMethodLabel } from '@/lib/hybrid-eval'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface HybridGradingDialogProps {
@@ -38,64 +42,28 @@ interface HybridGradingDialogProps {
   onOpenChange: (open: boolean) => void
   sessionTitle: string
   className?: string
+  courseId?: string
 }
 
-interface CourseStudent {
+interface StudentInfo {
   studentId: string
   studentName: string
   studentNumber: string
   className: string
   enrollmentYear: number
-  status: 'pending' | 'graded'
-  submittedAt: string
 }
 
-interface SessionGroup {
-  sessionId: string
-  sessionLabel: string
-  venue: string
-  students: CourseStudent[]
+interface StudentEvalGroup {
+  student: StudentInfo
+  results: NodeEvaluationResult[]
+}
+
+interface NodeEvalGroup {
+  nodeId: string
+  nodeName: string
   pendingCount: number
   gradedCount: number
-}
-
-interface CourseGroup {
-  planId: string
-  courseName: string
-  className: string
-  studentCount: number
-  sessions: SessionGroup[]
-  pendingCount: number
-  gradedCount: number
-}
-
-function buildCourseGroups(
-  classPlans: WorkspaceClassPlan[],
-  classSessions: WorkspaceClassSession[],
-  sessionLabelBuilder: (sess: WorkspaceClassSession) => string,
-): CourseGroup[] {
-  return classPlans.map((plan) => {
-    const sessions = classSessions
-      .filter((s) => s.courseId === plan.id)
-      .sort((a, b) => a.week - b.week)
-    const sessionGroups: SessionGroup[] = sessions.map((sess) => ({
-      sessionId: sess.id,
-      sessionLabel: sessionLabelBuilder(sess),
-      venue: sess.venue,
-      students: [],
-      pendingCount: 0,
-      gradedCount: 0,
-    }))
-    return {
-      planId: plan.id,
-      courseName: plan.course,
-      className: plan.name,
-      studentCount: plan.students,
-      sessions: sessionGroups,
-      pendingCount: 0,
-      gradedCount: 0,
-    }
-  })
+  students: StudentEvalGroup[]
 }
 
 export function HybridGradingDialog({
@@ -103,65 +71,131 @@ export function HybridGradingDialog({
   onOpenChange,
   sessionTitle,
   className,
+  courseId,
 }: HybridGradingDialogProps) {
   const t = useT()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
-  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [classPlans, setClassPlans] = useState<WorkspaceClassPlan[]>([])
-  const [classSessions, setClassSessions] = useState<WorkspaceClassSession[]>([])
+  const [nodes, setNodes] = useState<SystemCourseNode[]>([])
+  const [results, setResults] = useState<NodeEvaluationResult[]>([])
+  const [userMap, setUserMap] = useState<Map<string, any>>(new Map())
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!open) return
     portalApi
       .workspaceDashboard({ role: 'teacher' })
       .then((res) => {
-        setClassPlans(res.classPlans || [])
-        setClassSessions(res.classSessions || [])
+        setClassPlans((res.classPlans || []).filter((p) => p.courseId))
+        if (courseId && (res.classPlans || []).some((p) => p.courseId === courseId)) {
+          setSelectedPlanId((prev) => prev || courseId)
+        }
       })
       .catch((err) => reportError(err, '加载工作台班级/课时数据'))
-  }, [])
+    if (courseId) {
+      Promise.all([
+        courseNodeApi
+          .list({ courseId, limit: 1000 })
+          .catch(() => ({ items: [] as any[] })),
+        nodeEvaluationResultApi.listByCourse(courseId).catch(() => ({ items: [] })),
+        userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
+      ])
+        .then(([nodeRes, resRes, userRes]) => {
+          setNodes((nodeRes.items || []) as SystemCourseNode[])
+          setResults(resRes.items || [])
+          const uMap = new Map<string, any>()
+          ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
+          setUserMap(uMap)
+        })
+        .catch(() => reportError(new Error('加载混合课测评数据失败'), '加载混合课测评数据'))
+        .finally(() => setLoading(false))
+    }
+  }, [open, courseId])
 
-  const courseGroups = useMemo(
-    () =>
-      buildCourseGroups(classPlans, classSessions, (sess) =>
-        t('第 {week} 周 · {weekday} {period}', {
-          week: sess.week,
-          weekday: sess.weekday,
-          period: sess.period,
-        }),
-      ),
-    [classPlans, classSessions, t],
-  )
-
-  const filteredGroups = useMemo(() => {
-    if (!searchQuery.trim()) return courseGroups
+  // 左侧课程列表（有 courseId 的排课计划）
+  const filteredPlans = useMemo(() => {
+    if (!searchQuery.trim()) return classPlans
     const q = searchQuery.trim().toLowerCase()
-    return courseGroups.filter(
-      (g) => g.courseName.toLowerCase().includes(q) || g.className.toLowerCase().includes(q),
+    return classPlans.filter(
+      (p) => p.course.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
     )
-  }, [courseGroups, searchQuery])
+  }, [classPlans, searchQuery])
 
-  const selectedCourse = useMemo(
-    () => courseGroups.find((g) => g.planId === selectedPlanId),
-    [courseGroups, selectedPlanId],
+  const selectedPlan = useMemo(
+    () =>
+      classPlans.find((p) => p.id === selectedPlanId) ||
+      classPlans.find((p) => p.courseId === selectedPlanId),
+    [classPlans, selectedPlanId],
   )
 
-  const toggleSession = (sessionId: string) => {
-    setExpandedSessions((prev) => {
+  // 右侧：节点（节次）→ 班级 → 学生 → 测评结果
+  const nodeGroups = useMemo<NodeEvalGroup[]>(() => {
+    const nodeNameMap = new Map(nodes.map((n) => [n.id, n.name]))
+    const byNode = new Map<string, StudentEvalGroup[]>()
+    for (const r of results) {
+      const user = userMap.get(r.evaluateeId)
+      const student: StudentInfo = {
+        studentId: r.evaluateeId,
+        studentName: user?.name || '未知',
+        studentNumber: user?.studentNo || '-',
+        className: user?.className || '-',
+        enrollmentYear: user?.enrollmentYear || 0,
+      }
+      const list = byNode.get(r.nodeId) || []
+      const existing = list.find((g) => g.student.studentId === r.evaluateeId)
+      if (existing) {
+        existing.results.push(r)
+      } else {
+        list.push({ student, results: [r] })
+      }
+      byNode.set(r.nodeId, list)
+    }
+    const groups: NodeEvalGroup[] = []
+    byNode.forEach((students, nodeId) => {
+      let pendingCount = 0
+      let gradedCount = 0
+      students.forEach((g) => {
+        g.results.forEach((r) => {
+          if (r.status === 'pending') pendingCount++
+          else gradedCount++
+        })
+      })
+      groups.push({
+        nodeId,
+        nodeName: nodeNameMap.get(nodeId) || nodeId,
+        pendingCount,
+        gradedCount,
+        students: students.sort((a, b) =>
+          (a.student.enrollmentYear || 0) !== (b.student.enrollmentYear || 0)
+            ? (b.student.enrollmentYear || 0) - (a.student.enrollmentYear || 0)
+            : a.student.className.localeCompare(b.student.className, 'zh-CN'),
+        ),
+      })
+    })
+    return groups.sort((a, b) => a.nodeName.localeCompare(b.nodeName, 'zh-CN'))
+  }, [nodes, results, userMap])
+
+  const toggleNode = (nodeId: string) => {
+    setCollapsedNodes((prev) => {
       const next = new Set(prev)
-      if (next.has(sessionId)) next.delete(sessionId)
-      else next.add(sessionId)
+      if (next.has(nodeId)) next.delete(nodeId)
+      else next.add(nodeId)
       return next
     })
   }
 
   const innerOpenChange = (v: boolean) => {
     if (v) {
-      setSelectedPlanId(courseGroups[0]?.planId || null)
-      setExpandedSessions(new Set())
+      setSelectedPlanId(courseId || classPlans[0]?.courseId || null)
+      setCollapsedNodes(new Set())
     }
     onOpenChange(v)
   }
+
+  const methodLabel = (key: string) =>
+    getHybridMethodLabel(key, (k) => EVAL_METHOD_LABELS_GRADING[k] || k)
 
   return (
     <Dialog open={open} onOpenChange={innerOpenChange}>
@@ -190,134 +224,148 @@ export function HybridGradingDialog({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              {filteredGroups.map((group) => (
-                <button
-                  key={group.planId}
-                  onClick={() => {
-                    setSelectedPlanId(group.planId)
-                    setExpandedSessions(new Set())
-                  }}
-                  className={cn(
-                    'w-full text-left rounded-lg p-2.5 transition-all border',
-                    selectedPlanId === group.planId
-                      ? 'bg-amber-50 border-amber-300 shadow-sm'
-                      : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200',
-                  )}
-                >
-                  <div className="flex items-start gap-2">
-                    <BookOpen
-                      className={cn(
-                        'h-4 w-4 mt-0.5 shrink-0',
-                        selectedPlanId === group.planId ? 'text-amber-600' : 'text-gray-400',
-                      )}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p
+              {filteredPlans.map((plan) => {
+                const active =
+                  selectedPlanId === plan.courseId || selectedPlanId === plan.id
+                return (
+                  <button
+                    key={plan.courseId || plan.id}
+                    onClick={() => {
+                      setSelectedPlanId(plan.courseId || plan.id)
+                      setCollapsedNodes(new Set())
+                    }}
+                    className={cn(
+                      'w-full text-left rounded-lg p-2.5 transition-all border',
+                      active
+                        ? 'bg-amber-50 border-amber-300 shadow-sm'
+                        : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200',
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <BookOpen
                         className={cn(
-                          'text-sm font-medium truncate',
-                          selectedPlanId === group.planId ? 'text-amber-700' : 'text-gray-700',
+                          'h-4 w-4 mt-0.5 shrink-0',
+                          active ? 'text-amber-600' : 'text-gray-400',
                         )}
-                      >
-                        {group.courseName}
-                      </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
-                        {t('{className} · {count}人', {
-                          className: group.className,
-                          count: group.studentCount,
-                        })}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        {group.pendingCount > 0 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
-                            {t('待评 {count}', { count: group.pendingCount })}
-                          </span>
-                        )}
-                        {group.gradedCount > 0 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">
-                            {t('已评 {count}', { count: group.gradedCount })}
-                          </span>
-                        )}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={cn(
+                            'text-sm font-medium truncate',
+                            active ? 'text-amber-700' : 'text-gray-700',
+                          )}
+                        >
+                          {plan.course}
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {t('{className} · {count}人', {
+                            className: plan.name,
+                            count: plan.students,
+                          })}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                )
+              })}
+              {filteredPlans.length === 0 && (
+                <p className="text-center text-xs text-gray-400 py-8">
+                  {t('暂无混合课程计划')}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Right content — Session list with students */}
+          {/* Right content — nodes with student eval results */}
           <div className="flex-1 overflow-y-auto bg-gray-50">
-            {selectedCourse ? (
+            {loading ? (
+              <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <p className="text-sm">{t('加载测评数据中...')}</p>
+              </div>
+            ) : (
               <div className="p-6 space-y-4">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800">
-                    {selectedCourse.courseName}
+                    {selectedPlan?.course || courseId}
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs font-normal text-gray-500">
-                      {selectedCourse.className}
-                    </Badge>
+                    {selectedPlan && (
+                      <Badge variant="outline" className="text-xs font-normal text-gray-500">
+                        {selectedPlan.name}
+                      </Badge>
+                    )}
                     <Badge variant="secondary" className="text-xs font-normal">
-                      {t('{count}人', { count: selectedCourse.studentCount })}
+                      {t('{count} 条提交', { count: results.length })}
                     </Badge>
                   </div>
                 </div>
 
-                {selectedCourse.sessions.length === 0 ? (
+                {nodeGroups.length === 0 ? (
                   <Card>
                     <CardContent className="py-12 text-center text-gray-400">
                       <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">{t('该课程暂无节次数据')}</p>
+                      <p className="text-sm">{t('该课程暂无学生测评提交记录')}</p>
+                      <Link
+                        href={
+                          courseId
+                            ? `/evaluation/lesson-results?courseId=${courseId}`
+                            : '/evaluation/lesson-results'
+                        }
+                        className="inline-block mt-4 text-xs text-primary hover:text-primary/80 transition-colors"
+                      >
+                        {t('前往课程节点评价页面 →')}
+                      </Link>
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="space-y-3">
-                    {selectedCourse.sessions.map((session) => {
-                      const isExpanded = expandedSessions.has(session.sessionId)
-                      const groupedByClass = session.students.reduce<
-                        Record<string, CourseStudent[]>
-                      >((acc, s) => {
-                        if (!acc[s.className]) acc[s.className] = []
-                        acc[s.className].push(s)
+                    {nodeGroups.map((node) => {
+                      const isExpanded = !collapsedNodes.has(node.nodeId)
+                      const groupedByClass = node.students.reduce<
+                        Record<string, StudentEvalGroup[]>
+                      >((acc, g) => {
+                        const key = g.student.className || '-'
+                        if (!acc[key]) acc[key] = []
+                        acc[key].push(g)
                         return acc
                       }, {})
 
                       return (
                         <Collapsible
-                          key={session.sessionId}
-                          open={isExpanded}
-                          onOpenChange={() => toggleSession(session.sessionId)}
+                          key={node.nodeId}
+                          open={!collapsedNodes.has(node.nodeId)}
+                          onOpenChange={() => toggleNode(node.nodeId)}
                         >
                           <Card className="overflow-hidden">
                             <CollapsibleTrigger asChild>
                               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50/50 transition-colors">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 shrink-0">
                                     <FileText className="h-4 w-4 text-amber-600" />
                                   </div>
-                                  <div>
-                                    <p className="text-sm font-semibold text-gray-800">
-                                      {session.sessionLabel}
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-gray-800 truncate">
+                                      {node.nodeName}
                                     </p>
-                                    <div className="flex items-center gap-3 mt-1">
-                                      <span className="text-xs text-gray-500">{session.venue}</span>
+                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                                       <span className="text-xs text-gray-400">
-                                        {t('{count} 位学生', { count: session.students.length })}
+                                        {t('{count} 位学生', { count: node.students.length })}
                                       </span>
-                                      {session.pendingCount > 0 && (
+                                      {node.pendingCount > 0 && (
                                         <span className="text-xs text-amber-600 font-medium">
-                                          {t('待评分 {count}', { count: session.pendingCount })}
+                                          {t('待评分 {count}', { count: node.pendingCount })}
                                         </span>
                                       )}
-                                      {session.gradedCount > 0 && (
+                                      {node.gradedCount > 0 && (
                                         <span className="text-xs text-green-600 font-medium">
-                                          {t('已评分 {count}', { count: session.gradedCount })}
+                                          {t('已评分 {count}', { count: node.gradedCount })}
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 shrink-0">
                                   {isExpanded ? (
                                     <ChevronUp className="h-4 w-4 text-gray-400" />
                                   ) : (
@@ -329,78 +377,78 @@ export function HybridGradingDialog({
                             <CollapsibleContent>
                               <div className="px-4 pb-4 border-t border-gray-100">
                                 <div className="space-y-4 pt-3">
-                                  {Object.entries(groupedByClass).map(([cls, students]) => (
+                                  {Object.entries(groupedByClass).map(([cls, studentGroups]) => (
                                     <div key={cls}>
                                       <div className="flex items-center gap-1.5 mb-1.5 px-1">
                                         <Users className="h-3 w-3 text-gray-400" />
                                         <span className="text-xs text-gray-500">{cls}</span>
                                         <span className="text-[10px] text-gray-400">
-                                          {t('({count}人)', { count: students.length })}
+                                          {t('({count}人)', { count: studentGroups.length })}
                                         </span>
                                       </div>
                                       <div className="rounded-lg border border-slate-200 divide-y divide-slate-100">
-                                        {students.map((item) => (
+                                        {studentGroups.map((group) => (
                                           <div
-                                            key={item.studentId}
-                                            className="flex items-center justify-between p-2.5 hover:bg-slate-50/50 transition-colors"
+                                            key={group.student.studentId}
+                                            className="flex items-center justify-between p-2.5 hover:bg-slate-50/50 transition-colors flex-wrap gap-2"
                                           >
-                                            <div className="flex items-center gap-3">
-                                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-medium">
-                                                {item.studentName.charAt(0)}
+                                            <div className="flex items-center gap-3 min-w-0">
+                                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-medium shrink-0">
+                                                {group.student.studentName.charAt(0)}
                                               </div>
-                                              <div>
+                                              <div className="min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                  <span className="font-medium text-gray-800 text-sm">
-                                                    {item.studentName}
+                                                  <span className="font-medium text-gray-800 text-sm truncate">
+                                                    {group.student.studentName}
                                                   </span>
                                                   <span className="text-xs text-gray-400">
-                                                    {item.studentNumber}
+                                                    {group.student.studentNumber}
                                                   </span>
-                                                  <StatusBadge
-                                                    status={
-                                                      item.status === 'pending'
-                                                        ? 'pending'
-                                                        : 'graded'
-                                                    }
-                                                    label={
-                                                      item.status === 'pending'
-                                                        ? t('待评分')
-                                                        : t('已评分')
-                                                    }
-                                                    className="text-[10px] border"
-                                                  />
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
-                                                  <Clock className="h-3 w-3" />
-                                                  {item.submittedAt}
                                                 </div>
                                               </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              {group.results.map((r) => {
+                                                const pending = r.status === 'pending'
+                                                return (
+                                                  <Link
+                                                    key={r.id}
+                                                    href={`/evaluation/lesson-results/${r.id}`}
+                                                    className={cn(
+                                                      'inline-flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border font-medium transition-colors',
+                                                      pending
+                                                        ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                                                        : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100',
+                                                    )}
+                                                  >
+                                                    {pending ? (
+                                                      <PenLine className="h-3 w-3" />
+                                                    ) : (
+                                                      <CheckCircle2 className="h-3 w-3" />
+                                                    )}
+                                                    {methodLabel(r.methodKey)} ·{' '}
+                                                    {pending
+                                                      ? t('待评分')
+                                                      : t('已评 {score}/{max}', {
+                                                          score: r.totalScore ?? 0,
+                                                          max: r.maxScore ?? 100,
+                                                        })}
+                                                  </Link>
+                                                )
+                                              })}
                                               <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="h-7 text-xs"
+                                                className="h-7 text-xs px-2"
+                                                asChild
                                               >
-                                                <Eye className="mr-1 h-3 w-3" />
-                                                {t('查看')}
-                                              </Button>
-                                              {item.status === 'pending' ? (
-                                                <Button size="sm" className="h-7 text-xs">
-                                                  <PenLine className="mr-1 h-3 w-3" />
-                                                  {t('评分')}
-                                                </Button>
-                                              ) : (
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="h-7 text-xs text-green-600"
-                                                  disabled
+                                                <Link
+                                                  href={`/evaluation/lesson-results/${group.results[0].id}`}
                                                 >
-                                                  <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                  {t('已评分')}
-                                                </Button>
-                                              )}
+                                                  <Eye className="mr-1 h-3 w-3" />
+                                                  {t('查看')}
+                                                </Link>
+                                              </Button>
                                             </div>
                                           </div>
                                         ))}
@@ -416,11 +464,6 @@ export function HybridGradingDialog({
                     })}
                   </div>
                 )}
-              </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                <GraduationCap className="h-12 w-12 mb-3 opacity-50" />
-                <p className="text-sm">{t('请在左侧选择一个课程')}</p>
               </div>
             )}
           </div>

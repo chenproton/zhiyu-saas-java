@@ -659,6 +659,7 @@ export function TeacherCoursesTab({
   const [hybridGradeDialogOpen, setHybridGradeDialogOpen] = useState(false)
   const [hybridGradeSessionTitle, setHybridGradeSessionTitle] = useState('')
   const [hybridGradeClassName, setHybridGradeClassName] = useState('')
+  const [hybridGradeCourseId, setHybridGradeCourseId] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     portalApi
@@ -1079,6 +1080,7 @@ export function TeacherCoursesTab({
                                                     }),
                                                   )
                                                   setHybridGradeClassName(plan.name)
+                                                  setHybridGradeCourseId(plan.courseId)
                                                   setHybridGradeDialogOpen(true)
                                                   return
                                                 }
@@ -1174,6 +1176,7 @@ export function TeacherCoursesTab({
         onOpenChange={setHybridGradeDialogOpen}
         sessionTitle={hybridGradeSessionTitle}
         className={hybridGradeClassName}
+        courseId={hybridGradeCourseId}
       />
     </div>
   )
