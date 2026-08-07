@@ -51,6 +51,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useToast, MixedTagEditor } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 import { reportError } from '@/lib/error-handling'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { ExamActivationConfig } from '@/components/evaluation-rules/exam-activation-config'
@@ -156,6 +157,7 @@ export function EvaluationRulesEditor({
   title = '配置评价规则',
   onPersistStandard,
 }: EvaluationRulesEditorProps) {
+  const t = useT()
   const { toast } = useToast()
   const knowledgePoints = useMemo(() => kpProp || [], [kpProp])
   const abilityPoints = useMemo(() => abProp || [], [abProp])
@@ -508,11 +510,11 @@ export function EvaluationRulesEditor({
       await loadRdqQuestions()
     } catch (err) {
       reportError(err, { source: '保存现场问答题' })
-      toast({ variant: 'destructive', title: '保存失败', description: '现场问答题保存失败' })
+      toast({ variant: 'destructive', title: t('保存失败'), description: t('现场问答题保存失败') })
     }
     setRdqActionOpen(false)
     setRdqSearch('')
-  }, [newRdqForm, rdqActionMode, rdqActionTarget, loadRdqQuestions, toast])
+  }, [newRdqForm, rdqActionMode, rdqActionTarget, loadRdqQuestions, toast, t])
 
   const handleDeleteRdq = useCallback(
     async (id: string) => {
@@ -524,10 +526,10 @@ export function EvaluationRulesEditor({
         await loadRdqQuestions()
       } catch (err) {
         reportError(err, { source: '删除现场问答题' })
-        toast({ variant: 'destructive', title: '删除失败', description: '现场问答题删除失败' })
+        toast({ variant: 'destructive', title: t('删除失败'), description: t('现场问答题删除失败') })
       }
     },
-    [config.randomDrawSelectedIds, updateConfig, loadRdqQuestions, toast],
+    [config.randomDrawSelectedIds, updateConfig, loadRdqQuestions, toast, t],
   )
 
   const loadPapers = useCallback(async () => {
@@ -573,10 +575,10 @@ export function EvaluationRulesEditor({
         updateConfig({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
       } catch (err) {
         reportError(err, { source: '创建试卷' })
-        toast({ variant: 'destructive', title: '创建失败', description: '创建试卷失败' })
+        toast({ variant: 'destructive', title: t('创建失败'), description: t('创建试卷失败') })
       }
     },
-    [updateConfig, toast],
+    [updateConfig, toast, t],
   )
 
   const mockResReview = getResourceConfig('review', {
@@ -718,7 +720,7 @@ export function EvaluationRulesEditor({
     })()
     return {
       title: titleMap[methodKey] || '',
-      summary: configured ? '已配置' : '未配置',
+      summary: configured ? t('已配置') : t('未配置'),
       configured,
     }
   }
@@ -993,13 +995,13 @@ export function EvaluationRulesEditor({
                   <Input
                     value={rdqSearch}
                     onChange={(e) => setRdqSearch(e.target.value)}
-                    placeholder="搜索现场问答题名称、描述或适用专业..."
+                    placeholder={t('搜索现场问答题名称、描述或适用专业...')}
                     className="pl-9"
                   />
                 </div>
                 <Button onClick={handleAddRdqLocal}>
                   <Plus className="h-4 w-4 mr-1" />
-                  新增现场问答题
+                  {t('新增现场问答题')}
                 </Button>
               </div>
               <div className="flex gap-4 max-lg:flex-col">
@@ -1016,29 +1018,29 @@ export function EvaluationRulesEditor({
                             : 'text-gray-500 hover:bg-gray-100',
                         )}
                       >
-                        {opt.name}
+                        {t(opt.name)}
                       </button>
                     ))}
                   </div>
                   <p className="text-sm font-medium mb-2 text-gray-700">
                     {rdqSearch
-                      ? `搜索结果 (${filteredRdq.length})`
+                      ? t('搜索结果 ({n})', { n: filteredRdq.length })
                       : rdqMajorTab === '全部'
-                        ? '全部现场问答题'
-                        : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`}
+                        ? t('全部现场问答题')
+                        : t('{name}相关现场问答题', { name: majorNameMap[rdqMajorTab] || rdqMajorTab })}
                   </p>
                   <div className="min-h-[200px] max-h-[400px] overflow-y-auto pr-1">
                     {loadingRdq ? (
                       <div className="text-center text-gray-400 py-8">
-                        <p className="text-sm">加载中...</p>
+                        <p className="text-sm">{t('加载中...')}</p>
                       </div>
                     ) : filteredRdq.length === 0 ? (
                       <div className="text-center text-gray-400 py-8">
                         <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">
                           {rdqSearch
-                            ? '未找到匹配的现场问答题'
-                            : '暂无现场问答题，请点击上方按钮新增'}
+                            ? t('未找到匹配的现场问答题')
+                            : t('暂无现场问答题，请点击上方按钮新增')}
                         </p>
                       </div>
                     ) : (
@@ -1047,16 +1049,16 @@ export function EvaluationRulesEditor({
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">
-                                题目名称
+                                {t('题目名称')}
                               </th>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                                题目描述
+                                {t('题目描述')}
                               </th>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[14%]">
-                                适用专业
+                                {t('适用专业')}
                               </th>
                               <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                                操作
+                                {t('操作')}
                               </th>
                             </tr>
                           </thead>
@@ -1100,7 +1102,7 @@ export function EvaluationRulesEditor({
                                           setRdqDetailOpen(true)
                                         }}
                                       >
-                                        详情
+                                        {t('详情')}
                                       </Button>
                                       <Button
                                         variant="ghost"
@@ -1108,7 +1110,7 @@ export function EvaluationRulesEditor({
                                         className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
                                         onClick={() => handleEditRdqLocal(q)}
                                       >
-                                        编辑
+                                        {t('编辑')}
                                       </Button>
                                       {isSelected ? (
                                         <Button
@@ -1117,7 +1119,7 @@ export function EvaluationRulesEditor({
                                           className="h-6 text-[11px] px-2"
                                           onClick={() => handleToggleSelect(q.id)}
                                         >
-                                          取消
+                                          {t('取消')}
                                         </Button>
                                       ) : (
                                         <Button
@@ -1125,7 +1127,7 @@ export function EvaluationRulesEditor({
                                           className="h-6 text-[11px] px-2"
                                           onClick={() => handleToggleSelect(q.id)}
                                         >
-                                          选择
+                                          {t('选择')}
                                         </Button>
                                       )}
                                       <Button
@@ -1134,7 +1136,7 @@ export function EvaluationRulesEditor({
                                         className="h-6 text-[11px] px-1.5 text-red-400 hover:text-red-600"
                                         onClick={() => handleDeleteRdq(q.id)}
                                       >
-                                        删除
+                                        {t('删除')}
                                       </Button>
                                     </div>
                                   </td>
@@ -1149,13 +1151,13 @@ export function EvaluationRulesEditor({
                 </div>
                 <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col">
                   <p className="text-sm font-medium mb-3 text-gray-700">
-                    已配置现场问答题 ({selectedRdqList.length})
+                    {t('已配置现场问答题 ({n})', { n: selectedRdqList.length })}
                   </p>
                   <div className="min-h-[200px] max-h-[400px] overflow-y-auto">
                     {selectedRdqList.length === 0 ? (
                       <div className="text-center text-gray-400 py-8">
                         <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs">请从左侧选择现场问答题</p>
+                        <p className="text-xs">{t('请从左侧选择现场问答题')}</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1176,13 +1178,13 @@ export function EvaluationRulesEditor({
                               </Button>
                             </div>
                             <p className="text-[11px] text-gray-500 line-clamp-1">
-                              {q.description || '暂无描述'}
+                              {q.description || t('暂无描述')}
                             </p>
                             <Badge
                               variant="outline"
                               className="text-[9px] mt-1 font-normal px-1 py-0 h-4"
                             >
-                              {q.majorName || '通用'}
+                              {q.majorName || t('通用')}
                             </Badge>
                           </div>
                         ))}
@@ -1192,9 +1194,9 @@ export function EvaluationRulesEditor({
                 </div>
               </div>
               <div className="border rounded-xl p-4 mt-4">
-                <p className="text-sm font-medium mb-3">抽题规则</p>
+                <p className="text-sm font-medium mb-3">{t('抽题规则')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormFieldRow label="抽题方式" labelClassName="text-xs text-gray-500">
+                  <FormFieldRow label={t('抽题方式')} labelClassName="text-xs text-gray-500">
                     <Select
                       value={(getResourceConfig('random_draw', {}) as any).drawMode ?? 'random'}
                       onValueChange={(v) => updateResourceConfig('random_draw', { drawMode: v })}
@@ -1203,12 +1205,12 @@ export function EvaluationRulesEditor({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="random">系统随机分配</SelectItem>
-                        <SelectItem value="manual">老师手动选择</SelectItem>
+                        <SelectItem value="random">{t('系统随机分配')}</SelectItem>
+                        <SelectItem value="manual">{t('老师手动选择')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
-                  <FormFieldRow label="抽题数量" labelClassName="text-xs text-gray-500">
+                  <FormFieldRow label={t('抽题数量')} labelClassName="text-xs text-gray-500">
                     <Input
                       type="number"
                       value={(getResourceConfig('random_draw', {}) as any).drawCount ?? 5}
@@ -1224,21 +1226,21 @@ export function EvaluationRulesEditor({
                 </div>
               </div>
               <div className="border rounded-xl p-4 mt-4">
-                <p className="text-sm font-medium mb-3">现场要求</p>
+                <p className="text-sm font-medium mb-3">{t('现场要求')}</p>
                 <div className="space-y-3">
-                  <FormFieldRow label="提交材料要求" labelClassName="text-xs text-gray-500">
+                  <FormFieldRow label={t('提交材料要求')} labelClassName="text-xs text-gray-500">
                     <Textarea
                       value={submitFormatDesc}
                       onChange={(e) =>
                         updateResourceConfig('random_draw', { submitFormatDesc: e.target.value })
                       }
-                      placeholder="请用一句话说明学生需要准备的材料要求..."
+                      placeholder={t('请用一句话说明学生需要准备的材料要求...')}
                       rows={4}
                       className="text-sm"
                     />
                   </FormFieldRow>
                   <FormFieldRow
-                    label="现场场地/环境资源准备"
+                    label={t('现场场地/环境资源准备')}
                     labelClassName="text-xs text-gray-500"
                   >
                     <Textarea
@@ -1246,7 +1248,7 @@ export function EvaluationRulesEditor({
                       onChange={(e) =>
                         updateResourceConfig('random_draw', { venueResources: e.target.value })
                       }
-                      placeholder="请描述现场问答所需的场地、设备及环境资源准备要求..."
+                      placeholder={t('请描述现场问答所需的场地、设备及环境资源准备要求...')}
                       rows={4}
                       className="text-sm"
                     />
@@ -1257,27 +1259,27 @@ export function EvaluationRulesEditor({
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
                     <DialogTitle>
-                      {rdqActionMode === 'add' ? '新增现场问答题' : '编辑现场问答题'}
+                      {rdqActionMode === 'add' ? t('新增现场问答题') : t('编辑现场问答题')}
                     </DialogTitle>
                     <DialogDescription>
-                      {rdqActionMode === 'add' ? '创建一个新的现场问答题' : '修改现场问答题信息'}
+                      {rdqActionMode === 'add' ? t('创建一个新的现场问答题') : t('修改现场问答题信息')}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <FormFieldRow label="题目名称">
+                    <FormFieldRow label={t('题目名称')}>
                       <Input
                         value={newRdqForm.name}
                         onChange={(e) => setNewRdqForm({ ...newRdqForm, name: e.target.value })}
-                        placeholder="输入题目名称"
+                        placeholder={t('输入题目名称')}
                       />
                     </FormFieldRow>
-                    <FormFieldRow label="适用专业">
+                    <FormFieldRow label={t('适用专业')}>
                       <Select
                         value={newRdqForm.majorId}
                         onValueChange={(v) => setNewRdqForm({ ...newRdqForm, majorId: v })}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="选择适用专业" />
+                          <SelectValue placeholder={t('选择适用专业')} />
                         </SelectTrigger>
                         <SelectContent>
                           {majors.map((m: any) => (
@@ -1288,31 +1290,31 @@ export function EvaluationRulesEditor({
                         </SelectContent>
                       </Select>
                     </FormFieldRow>
-                    <FormFieldRow label="题目描述">
+                    <FormFieldRow label={t('题目描述')}>
                       <Textarea
                         value={newRdqForm.description}
                         onChange={(e) =>
                           setNewRdqForm({ ...newRdqForm, description: e.target.value })
                         }
-                        placeholder="输入题目描述"
+                        placeholder={t('输入题目描述')}
                         rows={3}
                       />
                     </FormFieldRow>
-                    <FormFieldRow label="题目答案">
+                    <FormFieldRow label={t('题目答案')}>
                       <Textarea
                         value={newRdqForm.answer}
                         onChange={(e) => setNewRdqForm({ ...newRdqForm, answer: e.target.value })}
-                        placeholder="输入题目答案"
+                        placeholder={t('输入题目答案')}
                         rows={3}
                       />
                     </FormFieldRow>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setRdqActionOpen(false)}>
-                      取消
+                      {t('取消')}
                     </Button>
                     <Button onClick={handleCreateRdq} disabled={!newRdqForm.name.trim()}>
-                      {rdqActionMode === 'add' ? '新增' : '保存修改'}
+                      {rdqActionMode === 'add' ? t('新增') : t('保存修改')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1320,7 +1322,7 @@ export function EvaluationRulesEditor({
               <Dialog open={rdqDetailOpen} onOpenChange={setRdqDetailOpen}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>现场问答题详情</DialogTitle>
+                    <DialogTitle>{t('现场问答题详情')}</DialogTitle>
                   </DialogHeader>
                   {(() => {
                     const q = rdqApiQuestions.find((x) => x.id === selectedRdqForDetail)
@@ -1328,23 +1330,23 @@ export function EvaluationRulesEditor({
                     return (
                       <div className="space-y-4 py-2">
                         <div>
-                          <Label className="text-xs text-gray-500">题目名称</Label>
+                          <Label className="text-xs text-gray-500">{t('题目名称')}</Label>
                           <p className="text-sm font-medium mt-1">{q.name}</p>
                         </div>
                         <div>
-                          <Label className="text-xs text-gray-500">适用专业</Label>
+                          <Label className="text-xs text-gray-500">{t('适用专业')}</Label>
                           <Badge variant="secondary" className="text-[10px] mt-1">
-                            {q.majorName || '通用'}
+                            {q.majorName || t('通用')}
                           </Badge>
                         </div>
                         <div>
-                          <Label className="text-xs text-gray-500">题目描述</Label>
+                          <Label className="text-xs text-gray-500">{t('题目描述')}</Label>
                           <p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">
                             {q.description || '-'}
                           </p>
                         </div>
                         <div>
-                          <Label className="text-xs text-gray-500">题目答案</Label>
+                          <Label className="text-xs text-gray-500">{t('题目答案')}</Label>
                           <p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">
                             {q.answer || '-'}
                           </p>
@@ -1354,7 +1356,7 @@ export function EvaluationRulesEditor({
                   })()}
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setRdqDetailOpen(false)}>
-                      关闭
+                      {t('关闭')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1368,15 +1370,15 @@ export function EvaluationRulesEditor({
               <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 text-sm text-amber-700">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="h-4 w-4" />
-                  <span className="font-medium">评审说明</span>
+                  <span className="font-medium">{t('评审说明')}</span>
                 </div>
                 <p>
-                  评审时教师根据学生现场表现或提交的材料进行打分。评价点配置请在「评价标准配置」卡片中设置。
+                  {t('评审时教师根据学生现场表现或提交的材料进行打分。评价点配置请在「评价标准配置」卡片中设置。')}
                 </p>
               </div>
               <div className="border rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium">评审材料要求</p>
+                  <p className="text-sm font-medium">{t('评审材料要求')}</p>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={mockResReview.requiresMaterial}
@@ -1384,13 +1386,13 @@ export function EvaluationRulesEditor({
                         setMockResReview({ ...mockResReview, requiresMaterial: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">是否需要提交评审材料</span>
+                    <span className="text-xs text-gray-600">{t('是否需要提交评审材料')}</span>
                   </div>
                 </div>
                 {mockResReview.requiresMaterial && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <FormFieldRow label="预估提交天数" labelClassName="text-xs text-gray-500">
+                      <FormFieldRow label={t('预估提交天数')} labelClassName="text-xs text-gray-500">
                         <Input
                           type="number"
                           value={mockResReview.deadlineDays}
@@ -1406,7 +1408,7 @@ export function EvaluationRulesEditor({
                       </FormFieldRow>
                     </div>
                     <FormFieldRow
-                      label="提交材料要求"
+                      label={t('提交材料要求')}
                       labelClassName="text-xs text-gray-500"
                       className="mt-3"
                     >
@@ -1415,7 +1417,7 @@ export function EvaluationRulesEditor({
                         onChange={(e) =>
                           setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })
                         }
-                        placeholder="请用一句话说明学生需要提交的材料要求..."
+                        placeholder={t('请用一句话说明学生需要提交的材料要求...')}
                         rows={2}
                         className="text-sm"
                       />
@@ -1423,7 +1425,7 @@ export function EvaluationRulesEditor({
                   </>
                 )}
                 <FormFieldRow
-                  label="评审场地/环境资源准备"
+                  label={t('评审场地/环境资源准备')}
                   labelClassName="text-xs text-gray-500"
                   className="mt-3"
                 >
@@ -1432,7 +1434,7 @@ export function EvaluationRulesEditor({
                     onChange={(e) =>
                       setMockResReview({ ...mockResReview, venueResources: e.target.value })
                     }
-                    placeholder="请描述评审所需的场地、设备及环境资源准备要求..."
+                    placeholder={t('请描述评审所需的场地、设备及环境资源准备要求...')}
                     rows={2}
                     className="text-sm"
                   />
@@ -1445,14 +1447,14 @@ export function EvaluationRulesEditor({
                         setMockResReview({ ...mockResReview, allowResubmit: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">允许重新提交</span>
+                    <span className="text-xs text-gray-600">{t('允许重新提交')}</span>
                   </div>
                 </div>
               </div>
               <div className="border rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <p className="text-sm font-medium">评审流程设置</p>
+                    <p className="text-sm font-medium">{t('评审流程设置')}</p>
                     {(() => {
                       const enabledSteps = reviewSteps.filter((s) => s.enabled)
                       const totalWeight = enabledSteps.reduce((sum, s) => sum + (s.weight || 0), 0)
@@ -1466,9 +1468,9 @@ export function EvaluationRulesEditor({
                                 : 'bg-red-50 text-red-600',
                             )}
                           >
-                            <span>权重合计 {totalWeight}%</span>
+                            <span>{t('权重合计 {n}%', { n: totalWeight })}</span>
                             {totalWeight !== 100 && (
-                              <span className="text-[10px]">(需等于100%)</span>
+                              <span className="text-[10px]">{t('(需等于100%)')}</span>
                             )}
                           </div>
                         )
@@ -1500,7 +1502,7 @@ export function EvaluationRulesEditor({
                       }}
                     >
                       <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                      一键平均权重
+                      {t('一键平均权重')}
                     </Button>
                     <Button
                       variant="outline"
@@ -1513,7 +1515,7 @@ export function EvaluationRulesEditor({
                       }}
                     >
                       <Plus className="h-3.5 w-3.5 mr-1" />
-                      新增步骤
+                      {t('新增步骤')}
                     </Button>
                   </div>
                 </div>
@@ -1526,7 +1528,7 @@ export function EvaluationRulesEditor({
                             <Input
                               value={editingStepLabel}
                               onChange={(e) => setEditingStepLabel(e.target.value)}
-                              placeholder="步骤名称"
+                              placeholder={t('步骤名称')}
                               className="text-sm h-8"
                             />
                             <Select
@@ -1540,12 +1542,12 @@ export function EvaluationRulesEditor({
                               }
                             >
                               <SelectTrigger className="text-sm h-8">
-                                <SelectValue placeholder="请选择评价主体" />
+                                <SelectValue placeholder={t('请选择评价主体')} />
                               </SelectTrigger>
                               <SelectContent>
                                 {Object.entries(subjectLabels).map(([k, label]) => (
                                   <SelectItem key={k} value={k}>
-                                    {label}
+                                    {t(label)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -1554,7 +1556,7 @@ export function EvaluationRulesEditor({
                           <Input
                             value={editingStepDesc}
                             onChange={(e) => setEditingStepDesc(e.target.value)}
-                            placeholder="步骤描述"
+                            placeholder={t('步骤描述')}
                             className="text-sm h-8"
                           />
                           <div className="flex items-center gap-2">
@@ -1576,7 +1578,7 @@ export function EvaluationRulesEditor({
                                 setEditingReviewStepId(null)
                               }}
                             >
-                              保存
+                              {t('保存')}
                             </Button>
                             <Button
                               size="sm"
@@ -1584,7 +1586,7 @@ export function EvaluationRulesEditor({
                               className="h-7 text-xs"
                               onClick={() => setEditingReviewStepId(null)}
                             >
-                              取消
+                              {t('取消')}
                             </Button>
                           </div>
                         </div>
@@ -1612,8 +1614,8 @@ export function EvaluationRulesEditor({
                                 }}
                               />
                               <div>
-                                <p className="text-sm font-medium">{step.label}</p>
-                                <p className="text-xs text-gray-400">{step.desc}</p>
+                                <p className="text-sm font-medium">{t(step.label)}</p>
+                                <p className="text-xs text-gray-400">{t(step.desc)}</p>
                               </div>
                             </div>
                             <Badge
@@ -1621,8 +1623,8 @@ export function EvaluationRulesEditor({
                               className="text-[10px]"
                             >
                               {step.subjectType
-                                ? subjectLabels[step.subjectType] || step.subjectType
-                                : '未绑定'}
+                                ? t(subjectLabels[step.subjectType]) || step.subjectType
+                                : t('未绑定')}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1689,7 +1691,7 @@ export function EvaluationRulesEditor({
                       <Input
                         value={newStepLabel}
                         onChange={(e) => setNewStepLabel(e.target.value)}
-                        placeholder="步骤名称"
+                        placeholder={t('步骤名称')}
                         className="text-sm h-8"
                       />
                       <Select
@@ -1697,12 +1699,12 @@ export function EvaluationRulesEditor({
                         onValueChange={(v) => setNewStepSubjectType(v)}
                       >
                         <SelectTrigger className="text-sm h-8">
-                          <SelectValue placeholder="请选择评价主体" />
+                          <SelectValue placeholder={t('请选择评价主体')} />
                         </SelectTrigger>
                         <SelectContent>
                           {Object.entries(subjectLabels).map(([k, label]) => (
                             <SelectItem key={k} value={k}>
-                              {label}
+                              {t(label)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1711,7 +1713,7 @@ export function EvaluationRulesEditor({
                     <Input
                       value={newStepDesc}
                       onChange={(e) => setNewStepDesc(e.target.value)}
-                      placeholder="步骤描述"
+                      placeholder={t('步骤描述')}
                       className="text-sm h-8"
                     />
                     <div className="flex items-center gap-2">
@@ -1737,7 +1739,7 @@ export function EvaluationRulesEditor({
                           setNewStepSubjectType('')
                         }}
                       >
-                        添加
+                        {t('添加')}
                       </Button>
                       <Button
                         size="sm"
@@ -1750,7 +1752,7 @@ export function EvaluationRulesEditor({
                           setNewStepSubjectType('')
                         }}
                       >
-                        取消
+                        {t('取消')}
                       </Button>
                     </div>
                   </div>
@@ -1777,14 +1779,14 @@ export function EvaluationRulesEditor({
           return (
             <div className="space-y-4">
               <div className="border rounded-xl p-4">
-                <p className="text-sm font-medium mb-3">选择已有试卷</p>
+                <p className="text-sm font-medium mb-3">{t('选择已有试卷')}</p>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       value={paperSearch}
                       onChange={(e) => setPaperSearch(e.target.value)}
-                      placeholder="搜索试卷..."
+                      placeholder={t('搜索试卷...')}
                       className="pl-9"
                     />
                   </div>
@@ -1797,11 +1799,11 @@ export function EvaluationRulesEditor({
                     }}
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" />
-                    新建试卷
+                    {t('新建试卷')}
                   </Button>
                 </div>
                 {loadingPapers ? (
-                  <div className="text-center py-8 text-gray-400">加载中...</div>
+                  <div className="text-center py-8 text-gray-400">{t('加载中...')}</div>
                 ) : (
                   <div className="space-y-2">
                     {getLoadedExams()
@@ -1831,10 +1833,10 @@ export function EvaluationRulesEditor({
                               {paper.name}
                             </p>
                             <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50 shrink-0">
-                              {questionCount} 题
+                              {t('{n} 题', { n: questionCount })}
                             </Badge>
                             <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50 shrink-0">
-                              总分 {totalScore}
+                              {t('总分 {n}', { n: totalScore })}
                             </Badge>
                             <Button
                               variant="ghost"
@@ -1846,7 +1848,7 @@ export function EvaluationRulesEditor({
                                 setPaperDetailOpenLocal(true)
                               }}
                             >
-                              查看详情
+                              {t('查看详情')}
                             </Button>
                           </div>
                         )
@@ -1856,8 +1858,8 @@ export function EvaluationRulesEditor({
                       !paperSearch && (
                         <div className="text-center py-8 text-gray-400">
                           <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">暂无可选试卷</p>
-                          <p className="text-xs mt-1">请点击「新建试卷」创建试卷</p>
+                          <p className="text-sm">{t('暂无可选试卷')}</p>
+                          <p className="text-xs mt-1">{t('请点击「新建试卷」创建试卷')}</p>
                         </div>
                       )}
                     {getLoadedExams().length > 0 &&
@@ -1865,16 +1867,16 @@ export function EvaluationRulesEditor({
                         .length === 0 && (
                         <div className="text-center py-8 text-gray-400">
                           <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">未找到匹配的试卷</p>
+                          <p className="text-sm">{t('未找到匹配的试卷')}</p>
                         </div>
                       )}
                   </div>
                 )}
               </div>
               <div className="border rounded-xl p-4">
-                <p className="text-sm font-medium mb-3">考卷设置</p>
+                <p className="text-sm font-medium mb-3">{t('考卷设置')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormFieldRow label="考试时长（分钟）" labelClassName="text-xs text-gray-500">
+                  <FormFieldRow label={t('考试时长（分钟）')} labelClassName="text-xs text-gray-500">
                     <Input
                       type="number"
                       value={paperCfg.duration ?? 60}
@@ -1886,19 +1888,19 @@ export function EvaluationRulesEditor({
                     />
                   </FormFieldRow>
                   <div>
-                    <Label className="text-xs text-gray-500">允许重考</Label>
+                    <Label className="text-xs text-gray-500">{t('允许重考')}</Label>
                     <div className="mt-2 flex items-center gap-2">
                       <Switch
                         checked={paperCfg.allowRetake ?? false}
                         onCheckedChange={(v) => setPaperCfg({ allowRetake: v })}
                       />
                       <span className="text-xs text-gray-600">
-                        {(paperCfg.allowRetake ?? false) ? '是' : '否'}
+                        {(paperCfg.allowRetake ?? false) ? t('是') : t('否')}
                       </span>
                     </div>
                   </div>
                   {(paperCfg.allowRetake ?? false) && (
-                    <FormFieldRow label="最多重考次数" labelClassName="text-xs text-gray-500">
+                    <FormFieldRow label={t('最多重考次数')} labelClassName="text-xs text-gray-500">
                       <Input
                         type="number"
                         value={paperCfg.retakeCount ?? 1}
@@ -1917,14 +1919,14 @@ export function EvaluationRulesEditor({
                       checked={paperCfg.shuffleQuestions ?? true}
                       onCheckedChange={(v) => setPaperCfg({ shuffleQuestions: v })}
                     />
-                    <span className="text-xs text-gray-600">题目乱序</span>
+                    <span className="text-xs text-gray-600">{t('题目乱序')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={paperCfg.showResult ?? true}
                       onCheckedChange={(v) => setPaperCfg({ showResult: v })}
                     />
-                    <span className="text-xs text-gray-600">交卷后显示成绩</span>
+                    <span className="text-xs text-gray-600">{t('交卷后显示成绩')}</span>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t">
@@ -1942,7 +1944,7 @@ export function EvaluationRulesEditor({
               <Dialog open={paperDetailOpenLocal} onOpenChange={setPaperDetailOpenLocal}>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>试卷详情</DialogTitle>
+                    <DialogTitle>{t('试卷详情')}</DialogTitle>
                   </DialogHeader>
                   {(() => {
                     const paper = getLoadedExams().find((e) => e.id === selectedPaperForDetailLocal)
@@ -1950,19 +1952,19 @@ export function EvaluationRulesEditor({
                     return (
                       <div className="space-y-3 py-2">
                         <div>
-                          <Label className="text-xs text-gray-500">试卷名称</Label>
+                          <Label className="text-xs text-gray-500">{t('试卷名称')}</Label>
                           <p className="text-sm font-medium mt-1">{paper.name}</p>
                         </div>
                         <div className="flex items-center gap-4">
                           <div>
-                            <Label className="text-xs text-gray-500">题目数量</Label>
+                            <Label className="text-xs text-gray-500">{t('题目数量')}</Label>
                             <p className="text-sm mt-1">
-                              {paper.questions?.length ?? paper.questionCount ?? 0} 题
+                              {t('{n} 题', { n: paper.questions?.length ?? paper.questionCount ?? 0 })}
                             </p>
                           </div>
                           <div>
-                            <Label className="text-xs text-gray-500">总分</Label>
-                            <p className="text-sm mt-1">{paper.totalScore ?? 100} 分</p>
+                            <Label className="text-xs text-gray-500">{t('总分')}</Label>
+                            <p className="text-sm mt-1">{t('{n} 分', { n: paper.totalScore ?? 100 })}</p>
                           </div>
                         </div>
                       </div>
@@ -1970,7 +1972,7 @@ export function EvaluationRulesEditor({
                   })()}
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setPaperDetailOpen(false)}>
-                      关闭
+                      {t('关闭')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -2006,9 +2008,9 @@ export function EvaluationRulesEditor({
                 }
               />
               <div className="border rounded-xl p-4">
-                <p className="text-sm font-medium mb-3">答题规则</p>
+                <p className="text-sm font-medium mb-3">{t('答题规则')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormFieldRow label="答题方式" labelClassName="text-xs text-gray-500">
+                  <FormFieldRow label={t('答题方式')} labelClassName="text-xs text-gray-500">
                     <Select
                       value={qbDrawMode}
                       onValueChange={(v) => setQbDrawMode(v as 'all' | 'practice')}
@@ -2017,16 +2019,16 @@ export function EvaluationRulesEditor({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">全部作答</SelectItem>
-                        <SelectItem value="practice">自由刷题</SelectItem>
+                        <SelectItem value="all">{t('全部作答')}</SelectItem>
+                        <SelectItem value="practice">{t('自由刷题')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
                   {qbDrawMode === 'practice' && (
                     <FormFieldRow
-                      label="正确率（%）"
+                      label={t('正确率（%）')}
                       labelClassName="text-xs text-gray-500"
-                      hint="超过正确率则得分 100，低于正确率得分 0"
+                      hint={t('超过正确率则得分 100，低于正确率得分 0')}
                     >
                       <Input
                         type="number"
@@ -2040,7 +2042,7 @@ export function EvaluationRulesEditor({
                       />
                     </FormFieldRow>
                   )}
-                  <FormFieldRow label="时间限制（分钟）" labelClassName="text-xs text-gray-500">
+                  <FormFieldRow label={t('时间限制（分钟）')} labelClassName="text-xs text-gray-500">
                     <Input
                       type="number"
                       value={mockResQuestionBank.timeLimit}
@@ -2063,7 +2065,7 @@ export function EvaluationRulesEditor({
                         setMockResQuestionBank({ ...mockResQuestionBank, allowRetake: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">允许重复测评</span>
+                    <span className="text-xs text-gray-600">{t('允许重复测评')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -2072,7 +2074,7 @@ export function EvaluationRulesEditor({
                         setMockResQuestionBank({ ...mockResQuestionBank, shuffleQuestions: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">题目乱序</span>
+                    <span className="text-xs text-gray-600">{t('题目乱序')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -2081,12 +2083,12 @@ export function EvaluationRulesEditor({
                         setMockResQuestionBank({ ...mockResQuestionBank, showResult: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">提交后展示成绩</span>
+                    <span className="text-xs text-gray-600">{t('提交后展示成绩')}</span>
                   </div>
                 </div>
                 {mockResQuestionBank.allowRetake && (
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <FormFieldRow label="最多重考次数" labelClassName="text-xs text-gray-500">
+                    <FormFieldRow label={t('最多重考次数')} labelClassName="text-xs text-gray-500">
                       <Input
                         type="number"
                         value={mockResQuestionBank.retakeCount}
@@ -2116,15 +2118,15 @@ export function EvaluationRulesEditor({
               <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-100 text-sm text-cyan-700">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="h-4 w-4" />
-                  <span className="font-medium">成果评价说明</span>
+                  <span className="font-medium">{t('成果评价说明')}</span>
                 </div>
                 <p>
-                  成果评价时教师根据学生提交的成果材料进行打分。评价点配置请在「评价标准配置」卡片中设置。
+                  {t('成果评价时教师根据学生提交的成果材料进行打分。评价点配置请在「评价标准配置」卡片中设置。')}
                 </p>
               </div>
               <div className="border rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium">成果材料要求</p>
+                  <p className="text-sm font-medium">{t('成果材料要求')}</p>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={mockResOutcome.requiresMaterial}
@@ -2132,13 +2134,13 @@ export function EvaluationRulesEditor({
                         setMockResOutcome({ ...mockResOutcome, requiresMaterial: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">是否需要提交成果材料</span>
+                    <span className="text-xs text-gray-600">{t('是否需要提交成果材料')}</span>
                   </div>
                 </div>
                 {mockResOutcome.requiresMaterial && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <FormFieldRow label="预估提交天数" labelClassName="text-xs text-gray-500">
+                      <FormFieldRow label={t('预估提交天数')} labelClassName="text-xs text-gray-500">
                         <Input
                           type="number"
                           value={mockResOutcome.deadlineDays}
@@ -2154,7 +2156,7 @@ export function EvaluationRulesEditor({
                       </FormFieldRow>
                     </div>
                     <FormFieldRow
-                      label="提交材料要求"
+                      label={t('提交材料要求')}
                       labelClassName="text-xs text-gray-500"
                       className="mt-3"
                     >
@@ -2163,7 +2165,7 @@ export function EvaluationRulesEditor({
                         onChange={(e) =>
                           setMockResOutcome({ ...mockResOutcome, submitFormatDesc: e.target.value })
                         }
-                        placeholder="请用一句话说明学生需要提交的成果材料要求..."
+                        placeholder={t('请用一句话说明学生需要提交的成果材料要求...')}
                         rows={2}
                         className="text-sm"
                       />
@@ -2171,7 +2173,7 @@ export function EvaluationRulesEditor({
                   </>
                 )}
                 <FormFieldRow
-                  label="评价场地/环境资源准备"
+                  label={t('评价场地/环境资源准备')}
                   labelClassName="text-xs text-gray-500"
                   className="mt-3"
                 >
@@ -2180,7 +2182,7 @@ export function EvaluationRulesEditor({
                     onChange={(e) =>
                       setMockResOutcome({ ...mockResOutcome, venueResources: e.target.value })
                     }
-                    placeholder="请描述评价所需的场地、设备及环境资源准备要求..."
+                    placeholder={t('请描述评价所需的场地、设备及环境资源准备要求...')}
                     rows={2}
                     className="text-sm"
                   />
@@ -2193,7 +2195,7 @@ export function EvaluationRulesEditor({
                         setMockResOutcome({ ...mockResOutcome, allowResubmit: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">允许重新提交</span>
+                    <span className="text-xs text-gray-600">{t('允许重新提交')}</span>
                   </div>
                 </div>
               </div>
@@ -2206,15 +2208,15 @@ export function EvaluationRulesEditor({
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="h-4 w-4" />
-                  <span className="font-medium">作业说明</span>
+                  <span className="font-medium">{t('作业说明')}</span>
                 </div>
                 <p>
-                  学生提交作业后，教师按评分规则进行打分。评价点配置请在「评价标准配置」卡片中设置。
+                  {t('学生提交作业后，教师按评分规则进行打分。评价点配置请在「评价标准配置」卡片中设置。')}
                 </p>
               </div>
               <div className="border rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium">作业提交要求</p>
+                  <p className="text-sm font-medium">{t('作业提交要求')}</p>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={mockResHomework.requiresMaterial}
@@ -2222,13 +2224,13 @@ export function EvaluationRulesEditor({
                         setMockResHomework({ ...mockResHomework, requiresMaterial: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">是否需要提交作业材料</span>
+                    <span className="text-xs text-gray-600">{t('是否需要提交作业材料')}</span>
                   </div>
                 </div>
                 {mockResHomework.requiresMaterial && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <FormFieldRow label="预估提交天数" labelClassName="text-xs text-gray-500">
+                      <FormFieldRow label={t('预估提交天数')} labelClassName="text-xs text-gray-500">
                         <Input
                           type="number"
                           value={mockResHomework.deadlineDays}
@@ -2244,7 +2246,7 @@ export function EvaluationRulesEditor({
                       </FormFieldRow>
                     </div>
                     <FormFieldRow
-                      label="作业格式要求"
+                      label={t('作业格式要求')}
                       labelClassName="text-xs text-gray-500"
                       className="mt-3"
                     >
@@ -2256,7 +2258,7 @@ export function EvaluationRulesEditor({
                             submitFormatDesc: e.target.value,
                           })
                         }
-                        placeholder="请用一句话说明学生需要提交的作业格式要求..."
+                        placeholder={t('请用一句话说明学生需要提交的作业格式要求...')}
                         rows={2}
                         className="text-sm"
                       />
@@ -2271,7 +2273,7 @@ export function EvaluationRulesEditor({
                         setMockResHomework({ ...mockResHomework, allowResubmit: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">允许重新提交</span>
+                    <span className="text-xs text-gray-600">{t('允许重新提交')}</span>
                   </div>
                 </div>
               </div>
@@ -2307,10 +2309,10 @@ export function EvaluationRulesEditor({
                 }
               />
               <div className="border rounded-xl p-4">
-                <p className="text-sm font-medium mb-3">答题规则</p>
+                <p className="text-sm font-medium mb-3">{t('答题规则')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-gray-500">时间限制</Label>
+                    <Label className="text-xs text-gray-500">{t('时间限制')}</Label>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {quizPresetTimes.map((min) => (
                         <button
@@ -2323,7 +2325,7 @@ export function EvaluationRulesEditor({
                               : 'border-gray-200 text-gray-600 hover:border-gray-300',
                           )}
                         >
-                          {min} 分钟
+                          {t('{n} 分钟', { n: min })}
                         </button>
                       ))}
                       <button
@@ -2340,7 +2342,7 @@ export function EvaluationRulesEditor({
                             : 'border-gray-200 text-gray-600 hover:border-gray-300',
                         )}
                       >
-                        自定义
+                        {t('自定义')}
                       </button>
                     </div>
                     {!quizIsPreset && (
@@ -2356,7 +2358,7 @@ export function EvaluationRulesEditor({
                           }
                           className="w-32 text-sm"
                           min={1}
-                          placeholder="输入分钟数"
+                          placeholder={t('输入分钟数')}
                         />
                       </div>
                     )}
@@ -2368,7 +2370,7 @@ export function EvaluationRulesEditor({
                       checked={mockResQuiz.allowRetake}
                       onCheckedChange={(v) => setMockResQuiz({ ...mockResQuiz, allowRetake: v })}
                     />
-                    <span className="text-xs text-gray-600">允许重复测评</span>
+                    <span className="text-xs text-gray-600">{t('允许重复测评')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -2377,14 +2379,14 @@ export function EvaluationRulesEditor({
                         setMockResQuiz({ ...mockResQuiz, shuffleQuestions: v })
                       }
                     />
-                    <span className="text-xs text-gray-600">题目乱序</span>
+                    <span className="text-xs text-gray-600">{t('题目乱序')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={mockResQuiz.showResult}
                       onCheckedChange={(v) => setMockResQuiz({ ...mockResQuiz, showResult: v })}
                     />
-                    <span className="text-xs text-gray-600">提交后展示成绩</span>
+                    <span className="text-xs text-gray-600">{t('提交后展示成绩')}</span>
                   </div>
                 </div>
                 <ExamActivationConfig
@@ -2521,9 +2523,9 @@ export function EvaluationRulesEditor({
               [standardNameField]: stdDraft.name,
               [standardModeField]: stdDraft.mode,
             } as EvalRuleConfig)
-            toast({ title: '评价标准已保存' })
+            toast({ title: t('评价标准已保存') })
           } catch (err: any) {
-            toast({ variant: 'destructive', title: '保存失败', description: err.message })
+            toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
           } finally {
             setIsSavingStandard(false)
           }
@@ -2562,10 +2564,10 @@ export function EvaluationRulesEditor({
                 ),
               )
             }
-            toast({ title: '模板已保存' })
+            toast({ title: t('模板已保存') })
             setSaveTemplateDialogOpen(false)
           } catch (err: any) {
-            toast({ variant: 'destructive', title: '模板保存失败', description: err.message })
+            toast({ variant: 'destructive', title: t('模板保存失败'), description: err.message })
           }
         }
 
@@ -2582,7 +2584,7 @@ export function EvaluationRulesEditor({
                   }}
                 >
                   <BookOpen className="h-3.5 w-3.5 mr-1" />
-                  从模板库选择
+                  {t('从模板库选择')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -2599,22 +2601,22 @@ export function EvaluationRulesEditor({
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1" />
-                  清除评价标准
+                  {t('清除评价标准')}
                 </Button>
               </div>
               <div className="border rounded-xl p-4 bg-gray-50/50">
-                <p className="text-sm font-medium mb-3">评价标准信息</p>
+                <p className="text-sm font-medium mb-3">{t('评价标准信息')}</p>
                 <div className="space-y-3">
-                  <FormFieldRow label="评价标准名称" labelClassName="text-xs text-gray-500">
+                  <FormFieldRow label={t('评价标准名称')} labelClassName="text-xs text-gray-500">
                     <Input
                       value={stdDraft.name}
                       onChange={(e) => setStdDraft((prev) => ({ ...prev, name: e.target.value }))}
                       className="text-sm"
-                      placeholder="输入评价标准名称"
+                      placeholder={t('输入评价标准名称')}
                     />
                   </FormFieldRow>
                   <div>
-                    <Label className="text-xs text-gray-500">评价标准类型</Label>
+                    <Label className="text-xs text-gray-500">{t('评价标准类型')}</Label>
                     <div className="flex gap-3 mt-1">
                       <button
                         onClick={() => setStdDraft((prev) => ({ ...prev, mode: 'rubric' }))}
@@ -2635,7 +2637,7 @@ export function EvaluationRulesEditor({
                             <div className="w-2 h-2 rounded-full bg-primary" />
                           )}
                         </div>
-                        评价量规
+                        {t('评价量规')}
                       </button>
                       <button
                         onClick={() => {
@@ -2662,7 +2664,7 @@ export function EvaluationRulesEditor({
                             <div className="w-2 h-2 rounded-full bg-primary" />
                           )}
                         </div>
-                        评分规则
+                        {t('评分规则')}
                       </button>
                     </div>
                   </div>
@@ -2671,7 +2673,7 @@ export function EvaluationRulesEditor({
               {stdDraft.mode === 'rubric' ? (
                 <div className="border rounded-xl p-4 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium">评价量规配置表</p>
+                    <p className="text-sm font-medium">{t('评价量规配置表')}</p>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
@@ -2690,7 +2692,7 @@ export function EvaluationRulesEditor({
                         }}
                       >
                         <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                        一键均分
+                        {t('一键均分')}
                       </Button>
                       <Button
                         variant="outline"
@@ -2704,7 +2706,7 @@ export function EvaluationRulesEditor({
                         }
                       >
                         <Plus className="h-3.5 w-3.5 mr-1" />
-                        添加评价维度
+                        {t('添加评价维度')}
                       </Button>
                     </div>
                   </div>
@@ -2712,13 +2714,13 @@ export function EvaluationRulesEditor({
                     <table className="w-full text-sm border-collapse min-w-[720px]">
                       <thead>
                         <tr className="border-b bg-gray-50 text-gray-500 text-xs">
-                          <th className="py-2.5 px-2 text-left w-12">序号</th>
+                          <th className="py-2.5 px-2 text-left w-12">{t('序号')}</th>
                           <th className="py-2.5 px-2 text-left min-w-[280px]">
-                            评价维度名称/关联知识点/能力点
+                            {t('评价维度名称/关联知识点/能力点')}
                           </th>
-                          <th className="py-2.5 px-2 text-left min-w-[320px]">评价等级</th>
-                          <th className="py-2.5 px-2 text-center w-20">权重(%)</th>
-                          <th className="py-2.5 px-2 text-center w-14">操作</th>
+                          <th className="py-2.5 px-2 text-left min-w-[320px]">{t('评价等级')}</th>
+                          <th className="py-2.5 px-2 text-center w-20">{t('权重(%)')}</th>
+                          <th className="py-2.5 px-2 text-center w-14">{t('操作')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2754,12 +2756,12 @@ export function EvaluationRulesEditor({
                                   <div
                                     key={gm.id}
                                     className="truncate leading-relaxed"
-                                    title={`${gm.grade} (${gm.minScore}-${gm.maxScore}分) ${gm.remark}`}
+                                    title={t('{grade} ({min}-{max}分) {remark}', { grade: gm.grade ?? '', min: gm.minScore, max: gm.maxScore, remark: gm.remark ?? '' })}
                                   >
-                                    {gm.grade} ({gm.minScore}-{gm.maxScore}分) {gm.remark}
+                                    {t('{grade} ({min}-{max}分) {remark}', { grade: gm.grade ?? '', min: gm.minScore, max: gm.maxScore, remark: gm.remark ?? '' })}
                                   </div>
                                 ))}
-                                {!ep.gradeMapping?.length && '点击配置评价等级'}
+                                {!ep.gradeMapping?.length && t('点击配置评价等级')}
                               </button>
                             </td>
                             <td className="py-3 px-2">
@@ -2782,7 +2784,7 @@ export function EvaluationRulesEditor({
                                 className="text-red-500 hover:text-red-600 text-xs"
                                 onClick={() => removeEvalPoint(info.field, ep.id)}
                               >
-                                删除
+                                {t('删除')}
                               </button>
                             </td>
                           </tr>
@@ -2801,11 +2803,11 @@ export function EvaluationRulesEditor({
                       className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1"
                     >
                       <Plus className="h-4 w-4" />
-                      添加评价维度
+                      {t('添加评价维度')}
                     </button>
                     {info.points.length > 0 && (
                       <div className="flex justify-end text-xs items-center gap-1">
-                        <span className="text-gray-500">维度权重合计：</span>
+                        <span className="text-gray-500">{t('维度权重合计：')}</span>
                         <span
                           className={cn(
                             'font-semibold',
@@ -2817,7 +2819,7 @@ export function EvaluationRulesEditor({
                           {info.points.reduce((sum, p) => sum + (p.weight || 0), 0)}%
                         </span>
                         {info.points.reduce((sum, p) => sum + (p.weight || 0), 0) !== 100 && (
-                          <span className="text-red-500">⚠️（需等于100%）</span>
+                          <span className="text-red-500">{t('⚠️（需等于100%）')}</span>
                         )}
                       </div>
                     )}
@@ -2825,15 +2827,15 @@ export function EvaluationRulesEditor({
                   {info.points.length === 0 && (
                     <div className="text-center text-gray-400 py-8">
                       <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">尚未添加评价点</p>
-                      <p className="text-xs mt-1">点击上方按钮添加第一个评价点</p>
+                      <p className="text-sm">{t('尚未添加评价点')}</p>
+                      <p className="text-xs mt-1">{t('点击上方按钮添加第一个评价点')}</p>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="border rounded-xl p-4 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium">评分规则配置表</p>
+                    <p className="text-sm font-medium">{t('评分规则配置表')}</p>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
@@ -2853,7 +2855,7 @@ export function EvaluationRulesEditor({
                         }}
                       >
                         <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                        一键均分
+                        {t('一键均分')}
                       </Button>
                       <Button
                         variant="outline"
@@ -2871,7 +2873,7 @@ export function EvaluationRulesEditor({
                         }}
                       >
                         <Plus className="h-3.5 w-3.5 mr-1" />
-                        添加评价项
+                        {t('添加评价项')}
                       </Button>
                     </div>
                   </div>
@@ -2879,13 +2881,13 @@ export function EvaluationRulesEditor({
                     <table className="w-full text-sm border-collapse min-w-[560px]">
                       <thead>
                         <tr className="border-b bg-gray-50 text-gray-500 text-xs">
-                          <th className="py-2.5 px-2 text-left w-16">序号</th>
+                          <th className="py-2.5 px-2 text-left w-16">{t('序号')}</th>
                           <th className="py-2.5 px-2 text-left min-w-[240px]">
-                            评价项/评分标准描述
+                            {t('评价项/评分标准描述')}
                           </th>
-                          <th className="py-2.5 px-2 text-left min-w-[160px]">加减分规则</th>
-                          <th className="py-2.5 px-2 text-center w-20">分值</th>
-                          <th className="py-2.5 px-2 text-center w-16">操作</th>
+                          <th className="py-2.5 px-2 text-left min-w-[160px]">{t('加减分规则')}</th>
+                          <th className="py-2.5 px-2 text-center w-20">{t('分值')}</th>
+                          <th className="py-2.5 px-2 text-center w-16">{t('操作')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2913,7 +2915,7 @@ export function EvaluationRulesEditor({
                                   )
                                 }}
                                 className="text-sm min-h-[60px]"
-                                placeholder="请输入评分描述"
+                                placeholder={t('请输入评分描述')}
                                 rows={2}
                               />
                             </td>
@@ -2928,7 +2930,7 @@ export function EvaluationRulesEditor({
                                   )
                                 }
                                 className="text-sm min-h-[60px]"
-                                placeholder="输入加减分规则"
+                                placeholder={t('输入加减分规则')}
                                 rows={2}
                               />
                             </td>
@@ -2959,7 +2961,7 @@ export function EvaluationRulesEditor({
                                   )
                                 }
                               >
-                                删除
+                                {t('删除')}
                               </button>
                             </td>
                           </tr>
@@ -2982,11 +2984,11 @@ export function EvaluationRulesEditor({
                       className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1"
                     >
                       <Plus className="h-4 w-4" />
-                      添加评价项
+                      {t('添加评价项')}
                     </button>
                     {taskScoreRules.length > 0 && (
                       <div className="flex justify-end text-xs items-center gap-1">
-                        <span className="text-gray-500">分值合计：</span>
+                        <span className="text-gray-500">{t('分值合计：')}</span>
                         <span
                           className={cn(
                             'font-semibold',
@@ -2998,7 +3000,7 @@ export function EvaluationRulesEditor({
                           {taskScoreRules.reduce((sum, it) => sum + (it.weight || 0), 0)}%
                         </span>
                         {taskScoreRules.reduce((sum, it) => sum + (it.weight || 0), 0) !== 100 && (
-                          <span className="text-red-500">⚠️（需等于100%）</span>
+                          <span className="text-red-500">{t('⚠️（需等于100%）')}</span>
                         )}
                       </div>
                     )}
@@ -3006,8 +3008,8 @@ export function EvaluationRulesEditor({
                   {taskScoreRules.length === 0 && (
                     <div className="text-center text-gray-400 py-8">
                       <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">尚未添加评价项</p>
-                      <p className="text-xs mt-1">点击上方按钮添加第一个评价项</p>
+                      <p className="text-sm">{t('尚未添加评价项')}</p>
+                      <p className="text-xs mt-1">{t('点击上方按钮添加第一个评价项')}</p>
                     </div>
                   )}
                 </div>
@@ -3019,7 +3021,7 @@ export function EvaluationRulesEditor({
                   onClick={() => void handleSaveStandard()}
                   disabled={isSavingStandard}
                 >
-                  {isSavingStandard ? '保存中…' : '保存'}
+                  {isSavingStandard ? t('保存中…') : t('保存')}
                 </Button>
                 <Button
                   size="sm"
@@ -3031,13 +3033,13 @@ export function EvaluationRulesEditor({
                     setSelectedReplaceTemplateId(null)
                   }}
                 >
-                  保存到模板
+                  {t('保存到模板')}
                 </Button>
               </div>
               <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>保存到模板</DialogTitle>
+                    <DialogTitle>{t('保存到模板')}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     <div className="flex items-center gap-2">
@@ -3050,7 +3052,7 @@ export function EvaluationRulesEditor({
                             : 'border-gray-200 text-gray-500 hover:border-gray-300',
                         )}
                       >
-                        新增模板
+                        {t('新增模板')}
                       </button>
                       <button
                         onClick={() => setSaveTemplateMode('replace')}
@@ -3061,23 +3063,23 @@ export function EvaluationRulesEditor({
                             : 'border-gray-200 text-gray-500 hover:border-gray-300',
                         )}
                       >
-                        替换现有模板
+                        {t('替换现有模板')}
                       </button>
                     </div>
                     {saveTemplateMode === 'new' ? (
-                      <FormFieldRow label="模板名称" labelClassName="text-xs text-gray-500">
+                      <FormFieldRow label={t('模板名称')} labelClassName="text-xs text-gray-500">
                         <Input
                           value={stdDraft.name}
                           onChange={(e) =>
                             setStdDraft((prev) => ({ ...prev, name: e.target.value }))
                           }
                           className="text-sm"
-                          placeholder="输入模板名称"
+                          placeholder={t('输入模板名称')}
                         />
                       </FormFieldRow>
                     ) : (
                       <div className="space-y-2">
-                        <Label className="text-xs text-gray-500">选择要替换的模板</Label>
+                        <Label className="text-xs text-gray-500">{t('选择要替换的模板')}</Label>
                         <div className="space-y-2 max-h-[200px] overflow-y-auto">
                           {rubricLibrary.map((scheme) => (
                             <div
@@ -3092,7 +3094,7 @@ export function EvaluationRulesEditor({
                             >
                               <p className="text-sm font-medium">{scheme.name}</p>
                               <p className="text-xs text-gray-400 mt-0.5">
-                                {scheme.mode === 'rubric' ? '评价量规' : '评分规则'}
+                                {scheme.mode === 'rubric' ? t('评价量规') : t('评分规则')}
                               </p>
                             </div>
                           ))}
@@ -3107,7 +3109,7 @@ export function EvaluationRulesEditor({
                       className="text-xs"
                       onClick={() => setSaveTemplateDialogOpen(false)}
                     >
-                      取消
+                      {t('取消')}
                     </Button>
                     <Button
                       size="sm"
@@ -3115,7 +3117,7 @@ export function EvaluationRulesEditor({
                       onClick={() => void handleSaveTemplate()}
                       disabled={saveTemplateMode === 'replace' && !selectedReplaceTemplateId}
                     >
-                      确认保存
+                      {t('确认保存')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -3126,7 +3128,7 @@ export function EvaluationRulesEditor({
               >
                 <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>编辑评分等级</DialogTitle>
+                    <DialogTitle>{t('编辑评分等级')}</DialogTitle>
                   </DialogHeader>
                   {(() => {
                     const ep = info.points.find((p) => p.id === editingGradeMappingPointId)
@@ -3150,7 +3152,7 @@ export function EvaluationRulesEditor({
                                     updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
                                   }}
                                   className="w-14 h-7 text-center text-xs font-semibold"
-                                  placeholder="等级"
+                                  placeholder={t('等级')}
                                 />
                                 <Input
                                   type="number"
@@ -3183,7 +3185,7 @@ export function EvaluationRulesEditor({
                                   min={0}
                                   max={100}
                                 />
-                                <span className="text-xs text-gray-500">分</span>
+                                <span className="text-xs text-gray-500">{t('分')}</span>
                               </div>
                               <Input
                                 value={g.remark || ''}
@@ -3194,7 +3196,7 @@ export function EvaluationRulesEditor({
                                   updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
                                 }}
                                 className="h-7 text-xs"
-                                placeholder="等级描述"
+                                placeholder={t('等级描述')}
                               />
                             </div>
                             <Button
@@ -3238,7 +3240,7 @@ export function EvaluationRulesEditor({
                           }}
                         >
                           <Plus className="h-3.5 w-3.5 mr-1" />
-                          新增等级
+                          {t('新增等级')}
                         </Button>
                       </div>
                     )
@@ -3249,7 +3251,7 @@ export function EvaluationRulesEditor({
                       size="sm"
                       onClick={() => setGradeMappingDialogOpen(false)}
                     >
-                      关闭
+                      {t('关闭')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -3269,10 +3271,10 @@ export function EvaluationRulesEditor({
                   onClick={() => setView('edit')}
                 >
                   <ChevronLeft className="h-3.5 w-3.5 mr-1" />
-                  返回评价标准编辑
+                  {t('返回评价标准编辑')}
                 </Button>
               </div>
-              <p className="text-sm font-medium">选择评价标准模板进行覆盖</p>
+              <p className="text-sm font-medium">{t('选择评价标准模板进行覆盖')}</p>
               <div className="grid grid-cols-1 gap-3">
                 {rubricLibrary.map((scheme) => (
                   <div
@@ -3296,7 +3298,7 @@ export function EvaluationRulesEditor({
                                 : 'bg-blue-50 text-blue-600 border-blue-200',
                             )}
                           >
-                            {scheme.mode === 'rubric' ? '评价量规' : '评分规则'}
+                            {scheme.mode === 'rubric' ? t('评价量规') : t('评分规则')}
                           </Badge>
                         </div>
                         <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
@@ -3307,14 +3309,14 @@ export function EvaluationRulesEditor({
                               variant="outline"
                               className={cn('text-[10px]', evalSubTypeColors[type])}
                             >
-                              {evalSubTypeLabels[type]}
+                              {t(evalSubTypeLabels[type])}
                             </Badge>
                           ))}
                         </div>
                         <p className="text-xs text-gray-400 mt-1.5">
                           {scheme.mode === 'rubric'
-                            ? `${scheme.points.length} 个评价点`
-                            : `${scheme.scoreRuleItems?.length || 0} 个评价项`}
+                            ? t('{n} 个评价点', { n: scheme.points.length })
+                            : t('{n} 个评价项', { n: scheme.scoreRuleItems?.length || 0 })}
                         </p>
                       </div>
                       <Button
@@ -3326,7 +3328,7 @@ export function EvaluationRulesEditor({
                           setView('edit')
                         }}
                       >
-                        使用此模板
+                        {t('使用此模板')}
                       </Button>
                     </div>
                   </div>
@@ -3424,10 +3426,10 @@ export function EvaluationRulesEditor({
     return (
       <StepCard
         step={1}
-        title="测评对象"
+        title={t('测评对象')}
         icon={<Users className="h-4 w-4" />}
-        summary={labels[currentObject] || '未选择'}
-        description={descs[currentObject] || '点击配置'}
+        summary={t(labels[currentObject] || '未选择')}
+        description={t(descs[currentObject] || '点击配置')}
         configured={!!labels[currentObject]}
         onClick={onClick}
       />
@@ -3441,15 +3443,15 @@ export function EvaluationRulesEditor({
     return (
       <StepCard
         step={2}
-        title="评价主体"
+        title={t('评价主体')}
         icon={<UserCheck className="h-4 w-4" />}
         summary={
           enabledSubjects.length === 0
-            ? '未配置'
-            : enabledSubjects.map((s) => subjectLabels[s.type]).join('、')
+            ? t('未配置')
+            : enabledSubjects.map((s) => t(subjectLabels[s.type])).join('、')
         }
-        description={enabledSubjects.length === 0 ? '点击配置' : `总权重 ${totalWeight}%`}
-        badge={enabledSubjects.length > 0 ? `${enabledSubjects.length} 类` : undefined}
+        description={enabledSubjects.length === 0 ? t('点击配置') : t('总权重 {n}%', { n: totalWeight })}
+        badge={enabledSubjects.length > 0 ? t('{n} 类', { n: enabledSubjects.length }) : undefined}
         onClick={onClick}
       />
     )
@@ -3460,10 +3462,10 @@ export function EvaluationRulesEditor({
     return (
       <StepCard
         step={3}
-        title="测评资源"
+        title={t('测评资源')}
         icon={<Database className="h-4 w-4" />}
-        summary={summary.summary || '未配置'}
-        description={summary.configured ? '点击修改测评资源' : '点击配置测评资源'}
+        summary={summary.summary || t('未配置')}
+        description={summary.configured ? t('点击修改测评资源') : t('点击配置测评资源')}
         configured={summary.configured}
         onClick={onClick}
       />
@@ -3506,9 +3508,9 @@ export function EvaluationRulesEditor({
     let configured: boolean
 
     if (standardMode === 'score_rule') {
-      summary = scoreRules.length === 0 ? '未配置评分项' : `${scoreRules.length} 个评分项`
-      description = standardName ? `${standardName} · 评分规则` : '评分规则'
-      badge = scoreRules.length > 0 ? `${scoreRules.length} 项` : undefined
+      summary = scoreRules.length === 0 ? t('未配置评分项') : t('{n} 个评分项', { n: scoreRules.length })
+      description = standardName ? t('{name} · 评分规则', { name: standardName }) : t('评分规则')
+      badge = scoreRules.length > 0 ? t('{n} 项', { n: scoreRules.length }) : undefined
       configured = scoreRules.length > 0
     } else {
       const subTypeCount = Object.entries(
@@ -3519,21 +3521,21 @@ export function EvaluationRulesEditor({
           },
           {} as Record<string, number>,
         ),
-      ).map(([k, v]) => `${evalSubTypeLabels[k as EvalSubType]}${v}`)
-      summary = info.points.length === 0 ? '未配置评价点' : `${info.points.length} 个评价点`
+      ).map(([k, v]) => `${t(evalSubTypeLabels[k as EvalSubType])}${v}`)
+      summary = info.points.length === 0 ? t('未配置评价点') : t('{n} 个评价点', { n: info.points.length })
       description = standardName
         ? standardName
         : subTypeCount.length === 0
-          ? '点击配置评价标准'
+          ? t('点击配置评价标准')
           : subTypeCount.join(' · ')
-      badge = info.points.length > 0 ? `${info.points.length} 点` : undefined
+      badge = info.points.length > 0 ? t('{n} 点', { n: info.points.length }) : undefined
       configured = info.points.length > 0
     }
 
     return (
       <StepCard
         step={4}
-        title="评价标准配置"
+        title={t('评价标准配置')}
         icon={<Target className="h-4 w-4" />}
         summary={summary}
         description={description}
@@ -3548,7 +3550,7 @@ export function EvaluationRulesEditor({
     const currentObject = config.methodEvalObjects[methodKey] || config.evalObject
     return (
       <div className="space-y-4">
-        <p className="text-sm text-gray-500 mb-4">选择本评价方式的测评对象类型</p>
+        <p className="text-sm text-gray-500 mb-4">{t('选择本评价方式的测评对象类型')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             {
@@ -3592,8 +3594,8 @@ export function EvaluationRulesEditor({
                 {opt.icon}
               </div>
               <div>
-                <p className="text-sm font-semibold mb-1">{opt.label}</p>
-                <p className="text-xs text-gray-400">{opt.desc}</p>
+                <p className="text-sm font-semibold mb-1">{t(opt.label)}</p>
+                <p className="text-xs text-gray-400">{t(opt.desc)}</p>
               </div>
             </button>
           ))}
@@ -3628,7 +3630,7 @@ export function EvaluationRulesEditor({
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">配置参与评价的主体及其参数</p>
+          <p className="text-sm text-gray-500">{t('配置参与评价的主体及其参数')}</p>
           <Button
             variant="outline"
             size="sm"
@@ -3636,7 +3638,7 @@ export function EvaluationRulesEditor({
             onClick={handleDistributeWeights}
           >
             <Scale className="h-3.5 w-3.5 mr-1" />
-            一键平均权重
+            {t('一键平均权重')}
           </Button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3662,11 +3664,11 @@ export function EvaluationRulesEditor({
                           updateMethodEvalSubject(methodKey, originalIdx, { enabled: v })
                         }
                       />
-                      <span className="text-xs font-medium">{subjectLabels[subject.type]}</span>
+                      <span className="text-xs font-medium">{t(subjectLabels[subject.type])}</span>
                     </div>
                     {subject.enabled && subject.params?.weightPercent !== undefined && (
                       <Badge variant="outline" className="text-[10px]">
-                        权重 {subject.params.weightPercent}%
+                        {t('权重 {n}%', { n: subject.params.weightPercent })}
                       </Badge>
                     )}
                   </div>
@@ -3675,7 +3677,7 @@ export function EvaluationRulesEditor({
                       {subject.type === 'teacher' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <FormFieldRow
-                            label="专业背景要求"
+                            label={t('专业背景要求')}
                             labelClassName="text-[11px] text-gray-500"
                           >
                             <Input
@@ -3685,11 +3687,11 @@ export function EvaluationRulesEditor({
                                   params: { ...subject.params, teacherBackground: e.target.value },
                                 })
                               }
-                              placeholder="计算机/软件工程相关专业"
+                              placeholder={t('计算机/软件工程相关专业')}
                               className="text-xs h-8"
                             />
                           </FormFieldRow>
-                          <FormFieldRow label="评分人数" labelClassName="text-[11px] text-gray-500">
+                          <FormFieldRow label={t('评分人数')} labelClassName="text-[11px] text-gray-500">
                             <Input
                               type="number"
                               value={subject.params?.scorerCount || 1}
@@ -3706,7 +3708,7 @@ export function EvaluationRulesEditor({
                             />
                             {(subject.params?.scorerCount || 1) > 1 && (
                               <FormFieldRow
-                                label="统计规则"
+                                label={t('统计规则')}
                                 labelClassName="text-[11px] text-gray-500"
                                 className="mt-1"
                               >
@@ -3722,20 +3724,20 @@ export function EvaluationRulesEditor({
                                   }
                                 >
                                   <SelectTrigger className="text-xs h-8">
-                                    <SelectValue placeholder="选择统计规则" />
+                                    <SelectValue placeholder={t('选择统计规则')} />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="average">平均值</SelectItem>
-                                    <SelectItem value="median">中位数</SelectItem>
-                                    <SelectItem value="max">最高分</SelectItem>
-                                    <SelectItem value="min">最低分</SelectItem>
+                                    <SelectItem value="average">{t('平均值')}</SelectItem>
+                                    <SelectItem value="median">{t('中位数')}</SelectItem>
+                                    <SelectItem value="max">{t('最高分')}</SelectItem>
+                                    <SelectItem value="min">{t('最低分')}</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </FormFieldRow>
                             )}
                           </FormFieldRow>
                           <FormFieldRow
-                            label="评分权重 (%)"
+                            label={t('评分权重 (%)')}
                             labelClassName="text-[11px] text-gray-500"
                           >
                             <Input
@@ -3758,7 +3760,7 @@ export function EvaluationRulesEditor({
                             />
                           </FormFieldRow>
                           <FormFieldRow
-                            label="最低教龄 (年)"
+                            label={t('最低教龄 (年)')}
                             labelClassName="text-[11px] text-gray-500"
                           >
                             <Input
@@ -3782,7 +3784,7 @@ export function EvaluationRulesEditor({
                         <>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <FormFieldRow
-                              label="专业领域"
+                              label={t('专业领域')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Input
@@ -3792,12 +3794,12 @@ export function EvaluationRulesEditor({
                                     params: { ...subject.params, expertise: e.target.value },
                                   })
                                 }
-                                placeholder="网络安全 / 渗透测试"
+                                placeholder={t('网络安全 / 渗透测试')}
                                 className="text-xs h-8"
                               />
                             </FormFieldRow>
                             <FormFieldRow
-                              label="工作年限要求 (年)"
+                              label={t('工作年限要求 (年)')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Input
@@ -3816,7 +3818,7 @@ export function EvaluationRulesEditor({
                               />
                             </FormFieldRow>
                             <FormFieldRow
-                              label="评分人数"
+                              label={t('评分人数')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Input
@@ -3835,7 +3837,7 @@ export function EvaluationRulesEditor({
                               />
                               {(subject.params?.scorerCount || 1) > 1 && (
                                 <FormFieldRow
-                                  label="统计规则"
+                                  label={t('统计规则')}
                                   labelClassName="text-[11px] text-gray-500"
                                   className="mt-1"
                                 >
@@ -3852,20 +3854,20 @@ export function EvaluationRulesEditor({
                                     }
                                   >
                                     <SelectTrigger className="text-xs h-8">
-                                      <SelectValue placeholder="选择统计规则" />
+                                      <SelectValue placeholder={t('选择统计规则')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="average">平均值</SelectItem>
-                                      <SelectItem value="median">中位数</SelectItem>
-                                      <SelectItem value="max">最高分</SelectItem>
-                                      <SelectItem value="min">最低分</SelectItem>
+                                      <SelectItem value="average">{t('平均值')}</SelectItem>
+                                      <SelectItem value="median">{t('中位数')}</SelectItem>
+                                      <SelectItem value="max">{t('最高分')}</SelectItem>
+                                      <SelectItem value="min">{t('最低分')}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </FormFieldRow>
                               )}
                             </FormFieldRow>
                             <FormFieldRow
-                              label="评分权重 (%)"
+                              label={t('评分权重 (%)')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Input
@@ -3889,7 +3891,7 @@ export function EvaluationRulesEditor({
                             </FormFieldRow>
                           </div>
                           <FormFieldRow
-                            label="岗位工作经历"
+                            label={t('岗位工作经历')}
                             labelClassName="text-[11px] text-gray-500"
                           >
                             <Input
@@ -3899,7 +3901,7 @@ export function EvaluationRulesEditor({
                                   params: { ...subject.params, jobExperience: e.target.value },
                                 })
                               }
-                              placeholder="请填写岗位工作经历要求"
+                              placeholder={t('请填写岗位工作经历要求')}
                               className="text-xs h-8"
                             />
                           </FormFieldRow>
@@ -3909,7 +3911,7 @@ export function EvaluationRulesEditor({
                         <>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <FormFieldRow
-                              label="互评人数"
+                              label={t('互评人数')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Input
@@ -3928,7 +3930,7 @@ export function EvaluationRulesEditor({
                               />
                               {(subject.params?.peerCount || 3) > 1 && (
                                 <FormFieldRow
-                                  label="统计规则"
+                                  label={t('统计规则')}
                                   labelClassName="text-[11px] text-gray-500"
                                   className="mt-1"
                                 >
@@ -3945,20 +3947,20 @@ export function EvaluationRulesEditor({
                                     }
                                   >
                                     <SelectTrigger className="text-xs h-8">
-                                      <SelectValue placeholder="选择统计规则" />
+                                      <SelectValue placeholder={t('选择统计规则')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="average">平均值</SelectItem>
-                                      <SelectItem value="median">中位数</SelectItem>
-                                      <SelectItem value="max">最高分</SelectItem>
-                                      <SelectItem value="min">最低分</SelectItem>
+                                      <SelectItem value="average">{t('平均值')}</SelectItem>
+                                      <SelectItem value="median">{t('中位数')}</SelectItem>
+                                      <SelectItem value="max">{t('最高分')}</SelectItem>
+                                      <SelectItem value="min">{t('最低分')}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </FormFieldRow>
                               )}
                             </FormFieldRow>
                             <FormFieldRow
-                              label="评分权重 (%)"
+                              label={t('评分权重 (%)')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Input
@@ -3983,7 +3985,7 @@ export function EvaluationRulesEditor({
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <FormFieldRow
-                              label="互评规则"
+                              label={t('互评规则')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Select
@@ -3995,13 +3997,13 @@ export function EvaluationRulesEditor({
                                 }
                               >
                                 <SelectTrigger className="text-xs h-8">
-                                  <SelectValue placeholder="选择互评规则" />
+                                  <SelectValue placeholder={t('选择互评规则')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="随机分配">随机分配</SelectItem>
-                                  <SelectItem value="相邻座位">相邻座位</SelectItem>
-                                  <SelectItem value="自由组合">自由组合</SelectItem>
-                                  <SelectItem value="指定分组">指定分组</SelectItem>
+                                  <SelectItem value="随机分配">{t('随机分配')}</SelectItem>
+                                  <SelectItem value="相邻座位">{t('相邻座位')}</SelectItem>
+                                  <SelectItem value="自由组合">{t('自由组合')}</SelectItem>
+                                  <SelectItem value="指定分组">{t('指定分组')}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </FormFieldRow>
@@ -4015,7 +4017,7 @@ export function EvaluationRulesEditor({
                                     })
                                   }
                                 />
-                                <span className="text-[11px] text-gray-600">匿名评价</span>
+                                <span className="text-[11px] text-gray-600">{t('匿名评价')}</span>
                               </div>
                             </div>
                           </div>
@@ -4025,7 +4027,7 @@ export function EvaluationRulesEditor({
                         <>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <FormFieldRow
-                              label="评分权重 (%)"
+                              label={t('评分权重 (%)')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Input
@@ -4057,13 +4059,13 @@ export function EvaluationRulesEditor({
                                     })
                                   }
                                 />
-                                <span className="text-[11px] text-gray-600">需要提交反思报告</span>
+                                <span className="text-[11px] text-gray-600">{t('需要提交反思报告')}</span>
                               </div>
                             </div>
                           </div>
                           {subject.params?.requiresReflection && (
                             <FormFieldRow
-                              label="反思报告最少字数"
+                              label={t('反思报告最少字数')}
                               labelClassName="text-[11px] text-gray-500"
                             >
                               <Input
@@ -4102,8 +4104,8 @@ export function EvaluationRulesEditor({
       {config.evaluationMethods.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-gray-400 py-12">
           <Target className="h-12 w-12 mb-3 opacity-50" />
-          <p className="text-sm">尚未配置评价方式</p>
-          <p className="text-xs mt-1">请先在「配置课程测评方式」中选择评价类型</p>
+          <p className="text-sm">{t('尚未配置评价方式')}</p>
+          <p className="text-xs mt-1">{t('请先在「配置课程测评方式」中选择评价类型')}</p>
         </div>
       ) : (
         <div className="space-y-5 p-1">
@@ -4115,7 +4117,7 @@ export function EvaluationRulesEditor({
               onClick={() => setIsOrderConfigOpen(true)}
             >
               <ListOrdered className="h-3.5 w-3.5 mr-1.5" />
-              配置评价顺序
+              {t('配置评价顺序')}
             </Button>
             <Button
               variant="outline"
@@ -4124,7 +4126,7 @@ export function EvaluationRulesEditor({
               onClick={() => setIsWeightConfigOpen(true)}
             >
               <Scale className="h-3.5 w-3.5 mr-1.5" />
-              配置评价权重
+              {t('配置评价权重')}
               <span
                 className={cn(
                   'ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium',
@@ -4141,8 +4143,8 @@ export function EvaluationRulesEditor({
           <Dialog open={isOrderConfigOpen} onOpenChange={setIsOrderConfigOpen}>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>评价方式顺序配置</DialogTitle>
-                <DialogDescription>点击箭头调整评价方式的执行顺序</DialogDescription>
+                <DialogTitle>{t('评价方式顺序配置')}</DialogTitle>
+                <DialogDescription>{t('点击箭头调整评价方式的执行顺序')}</DialogDescription>
               </DialogHeader>
               <div className="space-y-1.5 py-4">
                 {getMethodInstances().map(({ methodKey, instanceIndex }, index) => {
@@ -4150,7 +4152,7 @@ export function EvaluationRulesEditor({
                   if (!method) return null
                   const instanceCount = methodInstanceCounts[methodKey] || 1
                   const displayLabel =
-                    instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
+                    instanceCount > 1 ? `${t(method.label)} ${instanceIndex + 1}` : t(method.label)
                   return (
                     <div
                       key={`${methodKey}-${instanceIndex}`}
@@ -4182,7 +4184,7 @@ export function EvaluationRulesEditor({
                 })}
               </div>
               <DialogFooter>
-                <Button onClick={() => setIsOrderConfigOpen(false)}>完成</Button>
+                <Button onClick={() => setIsOrderConfigOpen(false)}>{t('完成')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -4190,8 +4192,8 @@ export function EvaluationRulesEditor({
           <Dialog open={isWeightConfigOpen} onOpenChange={setIsWeightConfigOpen}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>评价方式权重配置</DialogTitle>
-                <DialogDescription>配置各评价方式的权重占比，合计需等于 100%</DialogDescription>
+                <DialogTitle>{t('评价方式权重配置')}</DialogTitle>
+                <DialogDescription>{t('配置各评价方式的权重占比，合计需等于 100%')}</DialogDescription>
               </DialogHeader>
               <div className="py-4 space-y-4">
                 <div className="flex items-center justify-between">
@@ -4203,9 +4205,9 @@ export function EvaluationRulesEditor({
                         : 'bg-red-50 text-red-600',
                     )}
                   >
-                    <span>合计</span>
+                    <span>{t('合计')}</span>
                     <span>{methodWeightTotal}%</span>
-                    {methodWeightTotal !== 100 && <span className="text-[10px]">(需等于100%)</span>}
+                    {methodWeightTotal !== 100 && <span className="text-[10px]">{t('(需等于100%)')}</span>}
                   </div>
                   <Button
                     variant="outline"
@@ -4214,7 +4216,7 @@ export function EvaluationRulesEditor({
                     onClick={distributeMethodWeights}
                   >
                     <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                    一键平均
+                    {t('一键平均')}
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -4223,7 +4225,7 @@ export function EvaluationRulesEditor({
                     if (!method) return null
                     const instanceCount = methodInstanceCounts[methodKey] || 1
                     const displayLabel =
-                      instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
+                      instanceCount > 1 ? `${t(method.label)} ${instanceIndex + 1}` : t(method.label)
                     const weight = config.methodWeights[methodKey] || 0
                     return (
                       <div
@@ -4257,7 +4259,7 @@ export function EvaluationRulesEditor({
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={() => setIsWeightConfigOpen(false)}>完成</Button>
+                <Button onClick={() => setIsWeightConfigOpen(false)}>{t('完成')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -4267,7 +4269,7 @@ export function EvaluationRulesEditor({
             if (!method) return null
             const instanceCount = methodInstanceCounts[methodKey] || 1
             const displayLabel =
-              instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
+              instanceCount > 1 ? `${t(method.label)} ${instanceIndex + 1}` : t(method.label)
             return (
               <div
                 key={`${methodKey}-${instanceIndex}`}
@@ -4277,7 +4279,7 @@ export function EvaluationRulesEditor({
                   <div className={cn('p-1.5 rounded-md', method.color)}>{method.icon}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">{displayLabel}</p>
-                    <p className="text-xs text-gray-400">{method.desc}</p>
+                    <p className="text-xs text-gray-400">{t(method.desc)}</p>
                   </div>
                 </div>
                 <div className="p-4">
@@ -4300,10 +4302,10 @@ export function EvaluationRulesEditor({
                       <StepCard
                         tone="success"
                         step={4}
-                        title="评价标准配置"
+                        title={t('评价标准配置')}
                         icon={<Target className="h-4 w-4" />}
-                        summary="自动读取得分"
-                        description="系统将自动读取测评资源的得分"
+                        summary={t('自动读取得分')}
+                        description={t('系统将自动读取测评资源的得分')}
                         configured
                       />
                     ) : (
@@ -4327,13 +4329,13 @@ export function EvaluationRulesEditor({
       <Dialog open={erDialogOpen === 'object'} onOpenChange={(v) => !v && setErDialogOpen(null)}>
         <DialogContent size="lg">
           <DialogHeader>
-            <DialogTitle>测评对象配置</DialogTitle>
+            <DialogTitle>{t('测评对象配置')}</DialogTitle>
             <DialogDescription>
-              配置{' '}
+              {t('配置')}{' '}
               {erDialogMethod
-                ? evaluationMethodOptions.find((o) => o.key === erDialogMethod)?.label
+                ? t(evaluationMethodOptions.find((o) => o.key === erDialogMethod)?.label ?? '')
                 : ''}{' '}
-              的测评对象
+              {t('的测评对象')}
             </DialogDescription>
           </DialogHeader>
           {erDialogMethod && renderObjectDialogContent(erDialogMethod)}
@@ -4343,13 +4345,13 @@ export function EvaluationRulesEditor({
       <Dialog open={erDialogOpen === 'subject'} onOpenChange={(v) => !v && setErDialogOpen(null)}>
         <DialogContent size="xl">
           <DialogHeader>
-            <DialogTitle>评价主体配置</DialogTitle>
+            <DialogTitle>{t('评价主体配置')}</DialogTitle>
             <DialogDescription>
-              配置{' '}
+              {t('配置')}{' '}
               {erDialogMethod
-                ? evaluationMethodOptions.find((o) => o.key === erDialogMethod)?.label
+                ? t(evaluationMethodOptions.find((o) => o.key === erDialogMethod)?.label ?? '')
                 : ''}{' '}
-              的评价主体
+              {t('的评价主体')}
             </DialogDescription>
           </DialogHeader>
           {erDialogMethod && renderSubjectDialogContent(erDialogMethod)}
@@ -4359,13 +4361,13 @@ export function EvaluationRulesEditor({
       <Dialog open={erDialogOpen === 'resource'} onOpenChange={(v) => !v && setErDialogOpen(null)}>
         <DialogContent className="sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>测评资源配置</DialogTitle>
+            <DialogTitle>{t('测评资源配置')}</DialogTitle>
             <DialogDescription>
-              配置{' '}
+              {t('配置')}{' '}
               {erDialogMethod
-                ? evaluationMethodOptions.find((o) => o.key === erDialogMethod)?.label
+                ? t(evaluationMethodOptions.find((o) => o.key === erDialogMethod)?.label ?? '')
                 : ''}{' '}
-              的测评资源
+              {t('的测评资源')}
             </DialogDescription>
           </DialogHeader>
           {evalResourceOnlyPanel}
@@ -4375,13 +4377,13 @@ export function EvaluationRulesEditor({
       <Dialog open={erDialogOpen === 'method'} onOpenChange={(v) => !v && setErDialogOpen(null)}>
         <DialogContent className="sm:max-w-6xl">
           <DialogHeader>
-            <DialogTitle>评价标准配置</DialogTitle>
+            <DialogTitle>{t('评价标准配置')}</DialogTitle>
             <DialogDescription>
-              配置{' '}
+              {t('配置')}{' '}
               {erDialogMethod
-                ? evaluationMethodOptions.find((o) => o.key === erDialogMethod)?.label
+                ? t(evaluationMethodOptions.find((o) => o.key === erDialogMethod)?.label ?? '')
                 : ''}{' '}
-              的评价点与评分规则
+              {t('的评价点与评分规则')}
             </DialogDescription>
           </DialogHeader>
           {methodDialogContent}
@@ -4391,12 +4393,12 @@ export function EvaluationRulesEditor({
       <Dialog open={questionDetailOpen} onOpenChange={setQuestionDetailOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>题目详情</DialogTitle>
+            <DialogTitle>{t('题目详情')}</DialogTitle>
           </DialogHeader>
           {null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuestionDetailOpen(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4405,11 +4407,11 @@ export function EvaluationRulesEditor({
       <Dialog open={showAddQuestion} onOpenChange={setShowAddQuestion}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>新增题目</DialogTitle>
+            <DialogTitle>{t('新增题目')}</DialogTitle>
           </DialogHeader>
-          <div className="py-8 text-center text-gray-500">请前往题库管理添加题目</div>
+          <div className="py-8 text-center text-gray-500">{t('请前往题库管理添加题目')}</div>
           <DialogFooter>
-            <Button onClick={() => setShowAddQuestion(false)}>知道了</Button>
+            <Button onClick={() => setShowAddQuestion(false)}>{t('知道了')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -4426,9 +4428,9 @@ export function EvaluationRulesEditor({
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>关联考查知识点</DialogTitle>
+            <DialogTitle>{t('关联考查知识点')}</DialogTitle>
             <DialogDescription>
-              此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。
+              {t('此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。')}
             </DialogDescription>
           </DialogHeader>
           {(() => {
@@ -4453,7 +4455,7 @@ export function EvaluationRulesEditor({
                     <Input
                       value={rubricKpSearch}
                       onChange={(e) => setRubricKpSearch(e.target.value)}
-                      placeholder="搜索知识点名称、描述或编码..."
+                      placeholder={t('搜索知识点名称、描述或编码...')}
                       className="pl-9"
                     />
                   </div>
@@ -4461,13 +4463,13 @@ export function EvaluationRulesEditor({
                     {isKpSearching && rubricKpSearchLoading && (
                       <div className="text-center text-gray-400 py-8">
                         <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin" />
-                        <p className="text-sm">搜索中...</p>
+                        <p className="text-sm">{t('搜索中...')}</p>
                       </div>
                     )}
                     {isKpSearching && !rubricKpSearchLoading && filteredKp.length === 0 && (
                       <div className="text-center text-gray-400 py-8">
                         <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">未找到相关知识点</p>
+                        <p className="text-sm">{t('未找到相关知识点')}</p>
                       </div>
                     )}
                     {filteredKp.length > 0 && (
@@ -4476,16 +4478,16 @@ export function EvaluationRulesEditor({
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                                知识点名称
+                                {t('知识点名称')}
                               </th>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
-                                编码
+                                {t('编码')}
                               </th>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
-                                描述
+                                {t('描述')}
                               </th>
                               <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
-                                操作
+                                {t('操作')}
                               </th>
                             </tr>
                           </thead>
@@ -4543,7 +4545,7 @@ export function EvaluationRulesEditor({
                                           toggleKp(kp.id)
                                         }}
                                       >
-                                        取消
+                                        {t('取消')}
                                       </Button>
                                     ) : (
                                       <Button
@@ -4554,7 +4556,7 @@ export function EvaluationRulesEditor({
                                           toggleKp(kp.id)
                                         }}
                                       >
-                                        选择
+                                        {t('选择')}
                                       </Button>
                                     )}
                                   </td>
@@ -4569,13 +4571,13 @@ export function EvaluationRulesEditor({
                 </div>
                 <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
                   <p className="text-sm font-medium mb-3 text-gray-700">
-                    已选择知识点 ({selectedIds.length})
+                    {t('已选择知识点 ({n})', { n: selectedIds.length })}
                   </p>
                   <div className="flex-1 overflow-y-auto space-y-2">
                     {selectedIds.length === 0 && (
                       <div className="text-center text-gray-400 py-8">
                         <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs">从左侧选择知识点</p>
+                        <p className="text-xs">{t('从左侧选择知识点')}</p>
                       </div>
                     )}
                     {selectedIds.map((kpId) => {
@@ -4609,7 +4611,7 @@ export function EvaluationRulesEditor({
             )
           })()}
           <DialogFooter>
-            <Button onClick={() => setRubricKpDialogOpen(false)}>完成</Button>
+            <Button onClick={() => setRubricKpDialogOpen(false)}>{t('完成')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -4622,9 +4624,9 @@ export function EvaluationRulesEditor({
       >
         <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>关联考查能力点</DialogTitle>
+            <DialogTitle>{t('关联考查能力点')}</DialogTitle>
             <DialogDescription>
-              此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。
+              {t('此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。')}
             </DialogDescription>
           </DialogHeader>
           {(() => {
@@ -4649,7 +4651,7 @@ export function EvaluationRulesEditor({
                     <Input
                       value={rubricAbSearch}
                       onChange={(e) => setRubricAbSearch(e.target.value)}
-                      placeholder="搜索能力点名称、描述或编码..."
+                      placeholder={t('搜索能力点名称、描述或编码...')}
                       className="pl-9"
                     />
                   </div>
@@ -4657,13 +4659,13 @@ export function EvaluationRulesEditor({
                     {isAbSearching && rubricAbSearchLoading && (
                       <div className="text-center text-gray-400 py-8">
                         <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin" />
-                        <p className="text-sm">搜索中...</p>
+                        <p className="text-sm">{t('搜索中...')}</p>
                       </div>
                     )}
                     {isAbSearching && !rubricAbSearchLoading && filteredAb.length === 0 && (
                       <div className="text-center text-gray-400 py-8">
                         <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">未找到相关能力点</p>
+                        <p className="text-sm">{t('未找到相关能力点')}</p>
                       </div>
                     )}
                     {filteredAb.length > 0 && (
@@ -4672,16 +4674,16 @@ export function EvaluationRulesEditor({
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
-                                能力点名称
+                                {t('能力点名称')}
                               </th>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
-                                编码
+                                {t('编码')}
                               </th>
                               <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
-                                描述
+                                {t('描述')}
                               </th>
                               <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
-                                操作
+                                {t('操作')}
                               </th>
                             </tr>
                           </thead>
@@ -4739,7 +4741,7 @@ export function EvaluationRulesEditor({
                                         toggleAb(ab.id)
                                       }}
                                     >
-                                      取消
+                                      {t('取消')}
                                     </Button>
                                   ) : (
                                     <Button
@@ -4750,7 +4752,7 @@ export function EvaluationRulesEditor({
                                         toggleAb(ab.id)
                                       }}
                                     >
-                                      选择
+                                      {t('选择')}
                                     </Button>
                                   )}
                                 </td>
@@ -4765,13 +4767,13 @@ export function EvaluationRulesEditor({
                 </div>
                 <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
                   <p className="text-sm font-medium mb-3 text-gray-700">
-                    已选择能力点 ({selectedIds.length})
+                    {t('已选择能力点 ({n})', { n: selectedIds.length })}
                   </p>
                   <div className="flex-1 overflow-y-auto space-y-2">
                     {selectedIds.length === 0 && (
                       <div className="text-center text-gray-400 py-8">
                         <Award className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs">从左侧选择能力点</p>
+                        <p className="text-xs">{t('从左侧选择能力点')}</p>
                       </div>
                     )}
                     {selectedIds.map((abId) => {
@@ -4805,7 +4807,7 @@ export function EvaluationRulesEditor({
             )
           })()}
           <DialogFooter>
-            <Button onClick={() => setRubricAbDialogOpen(false)}>完成</Button>
+            <Button onClick={() => setRubricAbDialogOpen(false)}>{t('完成')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -4820,9 +4822,9 @@ export function EvaluationRulesEditor({
             <Award className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h3 className="text-base font-semibold">{title}</h3>
+            <h3 className="text-base font-semibold">{t(title)}</h3>
             <p className="text-xs text-gray-500">
-              配置各评价方式的测评对象、评价主体、测评资源与评价标准
+              {t('配置各评价方式的测评对象、评价主体、测评资源与评价标准')}
             </p>
           </div>
         </div>

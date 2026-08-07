@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import type { ContentListItem, ListRenderProps } from '@/components/shared/content-list-page'
 import { formatDate } from '@/lib/format-utils'
 import type { Status } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface EvaluationListTableProps<
   T extends ContentListItem = ContentListItem,
@@ -50,6 +51,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
     onReview,
   } = props
 
+  const t = useT()
   const router = useRouter()
 
   const allSelectable = items.filter((b) => !b.isDraftPool)
@@ -77,20 +79,20 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
             <Checkbox
               checked={someSelected ? 'indeterminate' : allSelected}
               onCheckedChange={(checked) => handleHeaderCheckbox(checked === true)}
-              aria-label="全选"
+              aria-label={t('全选')}
             />
           </TableHead>
-          <TableHead className="w-[160px]">{isBank ? '题库名称' : '试卷名称'}</TableHead>
-          <TableHead className="w-[120px]">{isBank ? '题库编码' : '试卷编码'}</TableHead>
-          <TableHead className="w-[120px]">{isBank ? '题库简介' : '试卷简介'}</TableHead>
-          <TableHead className="w-[80px]">题目数量</TableHead>
-          {!isBank && <TableHead className="w-[80px]">总分</TableHead>}
-          <TableHead className="w-[120px]">所属批次</TableHead>
-          <TableHead className="w-[100px]">创建人</TableHead>
-          <TableHead className="w-[100px]">共建人</TableHead>
-          <TableHead className="w-[70px]">状态</TableHead>
-          <TableHead className="w-[100px]">更新时间</TableHead>
-          <TableHead className="sticky right-0 w-[80px] bg-white text-right">操作</TableHead>
+          <TableHead className="w-[160px]">{isBank ? t('题库名称') : t('试卷名称')}</TableHead>
+          <TableHead className="w-[120px]">{isBank ? t('题库编码') : t('试卷编码')}</TableHead>
+          <TableHead className="w-[120px]">{isBank ? t('题库简介') : t('试卷简介')}</TableHead>
+          <TableHead className="w-[80px]">{t('题目数量')}</TableHead>
+          {!isBank && <TableHead className="w-[80px]">{t('总分')}</TableHead>}
+          <TableHead className="w-[120px]">{t('所属批次')}</TableHead>
+          <TableHead className="w-[100px]">{t('创建人')}</TableHead>
+          <TableHead className="w-[100px]">{t('共建人')}</TableHead>
+          <TableHead className="w-[70px]">{t('状态')}</TableHead>
+          <TableHead className="w-[100px]">{t('更新时间')}</TableHead>
+          <TableHead className="sticky right-0 w-[80px] bg-white text-right">{t('操作')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -104,7 +106,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                 <Checkbox
                   checked={isSelected}
                   onCheckedChange={(checked) => onSelectId(item.id, checked === true)}
-                  aria-label={`选择 ${item.name}`}
+                  aria-label={t('选择 {name}', { name: item.name })}
                   disabled={isDraftPool}
                 />
               </TableCell>
@@ -116,7 +118,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                   {item.name}
                   {isDraftPool && (
                     <span className="ml-2 shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 align-middle">
-                      草稿库
+                      {t('草稿库')}
                     </span>
                   )}
                 </button>
@@ -131,8 +133,8 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                   {item.description || '-'}
                 </span>
               </TableCell>
-              <TableCell>{item.questionCount} 题</TableCell>
-              {!isBank && <TableCell>{item.totalScore ?? 0} 分</TableCell>}
+              <TableCell>{t('{n} 题', { n: Number(item.questionCount) })}</TableCell>
+              {!isBank && <TableCell>{t('{n} 分', { n: Number(item.totalScore ?? 0) })}</TableCell>}
               <TableCell className="text-sm text-muted-foreground">{batchName}</TableCell>
               <TableCell className="text-sm text-muted-foreground truncate">
                 {item.creatorName || item.creatorId || '-'}
@@ -157,7 +159,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                     onClick={() => router.push(detailHref(item.id))}
                   >
                     <Eye className="mr-1 h-3 w-3" />
-                    查看
+                    {t('查看')}
                   </Button>
                 ) : (
                   <StatusActionBar

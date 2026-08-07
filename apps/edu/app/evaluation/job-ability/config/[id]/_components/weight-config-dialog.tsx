@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface WeightConfigItem {
   id: string
@@ -40,13 +41,14 @@ export function WeightConfigDialog({
   items,
   onSave,
 }: WeightConfigDialogProps) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {description ?? '配置各子节点权重，合计必须为 100%'}
+            {description ?? t('配置各子节点权重，合计必须为 100%')}
           </DialogDescription>
         </DialogHeader>
         {/* DialogContent 仅在打开时挂载，表单状态随每次打开重置 */}
@@ -65,6 +67,7 @@ function WeightConfigForm({
   onSave: (weights: Record<string, number>) => void
   onCancel: () => void
 }) {
+  const t = useT()
   const [localWeights, setLocalWeights] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {}
     items.forEach((item) => {
@@ -114,18 +117,18 @@ function WeightConfigForm({
     <>
       <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto">
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">暂无可配置项</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t('暂无可配置项')}</p>
         ) : (
           <>
             <div className="flex items-center justify-between">
               <span
                 className={cn('text-sm font-semibold', isValid ? 'text-green-600' : 'text-red-600')}
               >
-                当前合计：{total}% {isValid ? '✓' : '（必须为 100%）'}
+                {t('当前合计：{total}%', { total })} {isValid ? '✓' : t('（必须为 100%）')}
               </span>
               <Button variant="outline" size="sm" onClick={distribute}>
                 <Scale className="mr-2 h-4 w-4" />
-                一键平均分配
+                {t('一键平均分配')}
               </Button>
             </div>
             {items.map((item, index) => (
@@ -167,10 +170,10 @@ function WeightConfigForm({
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
-          取消
+          {t('取消')}
         </Button>
         <Button onClick={handleSave} disabled={!isValid || items.length === 0}>
-          保存
+          {t('保存')}
         </Button>
       </DialogFooter>
     </>

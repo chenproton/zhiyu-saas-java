@@ -29,6 +29,7 @@ import { jobAbilityResultApi } from '@/lib/api'
 import type { JobAbilityResult, JobAbilitySummaryItem } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { formatDateTime } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const PAGE_SIZE = 20
 
@@ -36,6 +37,7 @@ const AGGREGATE_POLL_INTERVAL_MS = 3000
 const AGGREGATE_POLL_MAX_ATTEMPTS = 15
 
 function JobAbilityResultsContent() {
+  const t = useT()
   const searchParams = useSearchParams()
   const positionIdParam = searchParams.get('positionId')
   const { toast } = useToast()
@@ -99,8 +101,8 @@ function JobAbilityResultsContent() {
       .catch((err) => {
         if (cancelled) return
         toast({
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '获取岗位汇总失败',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('获取岗位汇总失败'),
           variant: 'destructive',
         })
       })
@@ -110,7 +112,7 @@ function JobAbilityResultsContent() {
     return () => {
       cancelled = true
     }
-  }, [positionIdParam, toast])
+  }, [positionIdParam, toast, t])
 
   // 右侧结果列表
   useEffect(() => {
@@ -130,8 +132,8 @@ function JobAbilityResultsContent() {
       } catch (err) {
         if (cancelled) return
         toast({
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '获取认定结果失败',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('获取认定结果失败'),
           variant: 'destructive',
         })
         setResults([])
@@ -144,7 +146,7 @@ function JobAbilityResultsContent() {
     return () => {
       cancelled = true
     }
-  }, [selectedPositionId, debouncedSearch, page, listReloadKey, toast])
+  }, [selectedPositionId, debouncedSearch, page, listReloadKey, toast, t])
 
   const selectedPosition = useMemo(
     () => summary.find((s) => s.positionId === selectedPositionId),
@@ -179,8 +181,8 @@ function JobAbilityResultsContent() {
       triggerLogId = triggered.logId
     } catch (err) {
       toast({
-        title: '触发失败',
-        description: err instanceof Error ? err.message : '汇聚任务提交失败',
+        title: t('触发失败'),
+        description: err instanceof Error ? err.message : t('汇聚任务提交失败'),
         variant: 'destructive',
       })
       setAggregating(false)
@@ -197,11 +199,11 @@ function JobAbilityResultsContent() {
           setAggregating(false)
           const updatedCount = status.updatedCount ?? 0
           toast({
-            title: '汇聚完成',
+            title: t('汇聚完成'),
             description:
               updatedCount > 0
-                ? `汇聚完成，更新 ${updatedCount} 名学生`
-                : '更新 0 条，请确认规则已发布且学生已有评分',
+                ? t('汇聚完成，更新 {n} 名学生', { n: updatedCount })
+                : t('更新 0 条，请确认规则已发布且学生已有评分'),
           })
           setLoading(true)
           setListReloadKey((k) => k + 1)
@@ -211,8 +213,8 @@ function JobAbilityResultsContent() {
         if (status?.status === 'failed') {
           setAggregating(false)
           toast({
-            title: '汇聚失败',
-            description: status.errorMessage || '汇聚任务执行失败',
+            title: t('汇聚失败'),
+            description: status.errorMessage || t('汇聚任务执行失败'),
             variant: 'destructive',
           })
           return
@@ -220,8 +222,8 @@ function JobAbilityResultsContent() {
         if (attempts >= AGGREGATE_POLL_MAX_ATTEMPTS) {
           setAggregating(false)
           toast({
-            title: '汇聚仍在进行',
-            description: '汇聚仍在进行，稍后请手动刷新',
+            title: t('汇聚仍在进行'),
+            description: t('汇聚仍在进行，稍后请手动刷新'),
           })
           return
         }
@@ -229,8 +231,8 @@ function JobAbilityResultsContent() {
       } catch (err) {
         setAggregating(false)
         toast({
-          title: '查询汇聚状态失败',
-          description: err instanceof Error ? err.message : '获取汇聚状态失败',
+          title: t('查询汇聚状态失败'),
+          description: err instanceof Error ? err.message : t('获取汇聚状态失败'),
           variant: 'destructive',
         })
       }
@@ -246,8 +248,8 @@ function JobAbilityResultsContent() {
       setDetail(await jobAbilityResultApi.get(id))
     } catch (err) {
       toast({
-        title: '加载失败',
-        description: err instanceof Error ? err.message : '获取结果明细失败',
+        title: t('加载失败'),
+        description: err instanceof Error ? err.message : t('获取结果明细失败'),
         variant: 'destructive',
       })
     } finally {
@@ -260,14 +262,14 @@ function JobAbilityResultsContent() {
       {/* 左侧岗位导航 */}
       <div className="flex w-full md:w-[260px] shrink-0 flex-col border-r bg-white max-h-[50vh] md:max-h-none">
         <div className="border-b p-4">
-          <h2 className="text-sm font-semibold">岗位列表</h2>
-          <p className="text-xs text-muted-foreground">点击岗位查看认定结果</p>
+          <h2 className="text-sm font-semibold">{t('岗位列表')}</h2>
+          <p className="text-xs text-muted-foreground">{t('点击岗位查看认定结果')}</p>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {summaryLoading ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">加载中...</div>
+            <div className="py-8 text-center text-xs text-muted-foreground">{t('加载中...')}</div>
           ) : summary.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">暂无认定结果</div>
+            <div className="py-8 text-center text-xs text-muted-foreground">{t('暂无认定结果')}</div>
           ) : (
             summary.map((item) => (
               <button
@@ -283,11 +285,11 @@ function JobAbilityResultsContent() {
                 <div className="flex items-center justify-between">
                   <span className="truncate">{item.positionName}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {item.studentCount} 人
+                    {t('{n} 人', { n: item.studentCount })}
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  平均达标率 {(item.avgRate ?? 0).toFixed(1)}%
+                  {t('平均达标率 {rate}%', { rate: (item.avgRate ?? 0).toFixed(1) })}
                 </div>
               </button>
             ))
@@ -298,11 +300,11 @@ function JobAbilityResultsContent() {
       {/* 右侧结果区 */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <PageHeaderCard
-          title="岗位能力认定结果"
+          title={t('岗位能力认定结果')}
           description={
             selectedPosition
-              ? `查看「${selectedPosition.positionName}」的能力认定结果`
-              : '查看各岗位的能力认定结果'
+              ? t('查看「{name}」的能力认定结果', { name: selectedPosition.positionName })
+              : t('查看各岗位的能力认定结果')
           }
           className="mb-4"
           actions={
@@ -313,7 +315,7 @@ function JobAbilityResultsContent() {
               disabled={!selectedPositionId || aggregating}
             >
               <RefreshCw className={cn('mr-1.5 h-4 w-4', aggregating && 'animate-spin')} />
-              手动汇聚
+              {t('手动汇聚')}
             </Button>
           }
         />
@@ -323,7 +325,7 @@ function JobAbilityResultsContent() {
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="搜索姓名或学号..."
+              placeholder={t('搜索姓名或学号...')}
               value={search}
               onChange={(e) => applyFilters({ search: e.target.value })}
               className="pl-9"
@@ -337,16 +339,16 @@ function JobAbilityResultsContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">姓名</TableHead>
-                  <TableHead className="w-[110px]">学号</TableHead>
-                  <TableHead className="w-[130px]">所属院系</TableHead>
-                  <TableHead className="w-[120px]">班级</TableHead>
-                  <TableHead className="w-[120px]">岗位能力达成率</TableHead>
-                  <TableHead className="w-[100px]">岗位胜任度</TableHead>
-                  <TableHead className="w-[110px]">岗位胜任度（新）</TableHead>
-                  <TableHead className="w-[110px]">能力认知得分</TableHead>
+                  <TableHead className="w-[100px]">{t('姓名')}</TableHead>
+                  <TableHead className="w-[110px]">{t('学号')}</TableHead>
+                  <TableHead className="w-[130px]">{t('所属院系')}</TableHead>
+                  <TableHead className="w-[120px]">{t('班级')}</TableHead>
+                  <TableHead className="w-[120px]">{t('岗位能力达成率')}</TableHead>
+                  <TableHead className="w-[100px]">{t('岗位胜任度')}</TableHead>
+                  <TableHead className="w-[110px]">{t('岗位胜任度（新）')}</TableHead>
+                  <TableHead className="w-[110px]">{t('能力认知得分')}</TableHead>
                   <TableHead className="sticky right-0 w-[110px] bg-white text-right">
-                    操作
+                    {t('操作')}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -354,13 +356,13 @@ function JobAbilityResultsContent() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                      加载中...
+                      {t('加载中...')}
                     </TableCell>
                   </TableRow>
                 ) : results.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                      {selectedPositionId ? '暂无符合条件的认定结果' : '请在左侧选择岗位'}
+                      {selectedPositionId ? t('暂无符合条件的认定结果') : t('请在左侧选择岗位')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -412,7 +414,7 @@ function JobAbilityResultsContent() {
                           onClick={() => openDetail(result.id)}
                         >
                           <Eye className="mr-1 h-3 w-3" />
-                          查看明细
+                          {t('查看明细')}
                         </Button>
                       </TableRowActions>
                     </TableRow>
@@ -424,7 +426,9 @@ function JobAbilityResultsContent() {
 
           {total > 0 && (
             <div className="mt-4 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">共 {total} 条记录</span>
+              <span className="text-sm text-muted-foreground">
+                {t('共 {n} 条记录', { n: total })}
+              </span>
               <PaginationBar
                 page={page}
                 totalPages={totalPages}
@@ -439,32 +443,41 @@ function JobAbilityResultsContent() {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>能力点认定明细</DialogTitle>
+            <DialogTitle>{t('能力点认定明细')}</DialogTitle>
             <DialogDescription>
               {detail
-                ? `${detail.studentName}（${detail.studentId}）· ${detail.positionName}`
-                : '加载中...'}
+                ? t('{name}（{id}）· {position}', {
+                    name: detail.studentName,
+                    id: detail.studentId,
+                    position: detail.positionName,
+                  })
+                : t('加载中...')}
             </DialogDescription>
           </DialogHeader>
           {detailLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">加载中...</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">{t('加载中...')}</div>
           ) : detail ? (
             <div className="space-y-4">
               <div className="flex items-center gap-4 text-sm">
                 <span className="text-muted-foreground">
-                  能力点达成 {detail.achievedAbilityPoints}/{detail.totalAbilityPoints}
+                  {t('能力点达成 {a}/{b}', {
+                    a: detail.achievedAbilityPoints,
+                    b: detail.totalAbilityPoints,
+                  })}
                 </span>
                 <span className="text-muted-foreground">
-                  达标率 {(detail.achievementRate ?? 0).toFixed(1)}%
+                  {t('达标率 {rate}%', { rate: (detail.achievementRate ?? 0).toFixed(1) })}
                 </span>
                 <span className="text-muted-foreground">
-                  岗位胜任度（新）{' '}
-                  {detail.positionCompetencyV2 != null
-                    ? `${detail.positionCompetencyV2.toFixed(1)}%`
-                    : '-'}
+                  {t('岗位胜任度（新） {value}', {
+                    value:
+                      detail.positionCompetencyV2 != null
+                        ? `${detail.positionCompetencyV2.toFixed(1)}%`
+                        : '-',
+                  })}
                 </span>
                 <span className="text-muted-foreground">
-                  认定时间 {formatDateTime(detail.evaluationTime)}
+                  {t('认定时间 {time}', { time: formatDateTime(detail.evaluationTime) })}
                 </span>
               </div>
               {detail.abilityPointDetails && detail.abilityPointDetails.length > 0 ? (
@@ -472,12 +485,12 @@ function JobAbilityResultsContent() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>能力点</TableHead>
-                        <TableHead className="w-[100px]">得分</TableHead>
-                        <TableHead className="w-[110px]">档位</TableHead>
-                        <TableHead className="w-[100px]">权重</TableHead>
-                        <TableHead className="w-[100px]">是否达成</TableHead>
-                        <TableHead className="w-[110px]">胜任度（新）</TableHead>
+                        <TableHead>{t('能力点')}</TableHead>
+                        <TableHead className="w-[100px]">{t('得分')}</TableHead>
+                        <TableHead className="w-[110px]">{t('档位')}</TableHead>
+                        <TableHead className="w-[100px]">{t('权重')}</TableHead>
+                        <TableHead className="w-[100px]">{t('是否达成')}</TableHead>
+                        <TableHead className="w-[110px]">{t('胜任度（新）')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -519,7 +532,7 @@ function JobAbilityResultsContent() {
                                   : 'bg-red-50 text-red-600 border-red-200',
                               )}
                             >
-                              {point.achieved ? '已达成' : '未达成'}
+                              {point.achieved ? t('已达成') : t('未达成')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
@@ -531,11 +544,15 @@ function JobAbilityResultsContent() {
                   </Table>
                 </div>
               ) : (
-                <div className="py-8 text-center text-sm text-muted-foreground">暂无能力点明细</div>
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  {t('暂无能力点明细')}
+                </div>
               )}
             </div>
           ) : (
-            <div className="py-10 text-center text-sm text-muted-foreground">未找到结果明细</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              {t('未找到结果明细')}
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -544,11 +561,12 @@ function JobAbilityResultsContent() {
 }
 
 export default function JobAbilityResultsPage() {
+  const t = useT()
   return (
     <Suspense
       fallback={
         <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center text-sm text-gray-400">
-          加载中...
+          {t('加载中...')}
         </div>
       }
     >

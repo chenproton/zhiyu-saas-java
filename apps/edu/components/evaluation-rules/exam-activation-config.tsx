@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface ExamActivationValue {
   activationMode?: string
@@ -21,10 +22,11 @@ interface ExamActivationConfigProps {
  * 场景任务与课程节点的试卷/题库/随堂测测评方式共用，生成考试安排时按此配置落库起止时间窗。
  */
 export function ExamActivationConfig({ value, onChange }: ExamActivationConfigProps) {
+  const t = useT()
   const mode = value.activationMode ?? 'manual'
   return (
     <div className="mt-4 pt-4 border-t">
-      <Label className="text-xs text-gray-500 mb-2">启用条件</Label>
+      <Label className="text-xs text-gray-500 mb-2">{t('启用条件')}</Label>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
         {[
           { key: 'manual', label: '手动启用', desc: '老师手动开启后学生可作答' },
@@ -58,15 +60,15 @@ export function ExamActivationConfig({ value, onChange }: ExamActivationConfigPr
               >
                 {mode === m.key && <div className="w-2 h-2 rounded-full bg-white" />}
               </div>
-              <span className="text-xs font-medium">{m.label}</span>
+              <span className="text-xs font-medium">{t(m.label)}</span>
             </div>
-            <p className="text-[11px] text-gray-400 mt-1 ml-6">{m.desc}</p>
+            <p className="text-[11px] text-gray-400 mt-1 ml-6">{t(m.desc)}</p>
           </button>
         ))}
       </div>
       {mode === 'scheduled' && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormFieldRow label="启用时间" labelClassName="text-xs text-gray-500">
+          <FormFieldRow label={t('启用时间')} labelClassName="text-xs text-gray-500">
             <Input
               type="datetime-local"
               value={value.scheduledTime ?? ''}
@@ -75,7 +77,7 @@ export function ExamActivationConfig({ value, onChange }: ExamActivationConfigPr
               className="text-sm"
             />
           </FormFieldRow>
-          <FormFieldRow label="停用时间" labelClassName="text-xs text-gray-500">
+          <FormFieldRow label={t('停用时间')} labelClassName="text-xs text-gray-500">
             <Input
               type="datetime-local"
               value={value.scheduledEndTime ?? ''}

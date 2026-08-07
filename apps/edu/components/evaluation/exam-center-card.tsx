@@ -16,6 +16,7 @@ import type { ExamCenterItem } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
 import { cn } from '@/lib/utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const STATUS_META: Record<string, { label: string; text: string; dot: string }> = {
   published: { label: '待考', text: 'text-amber-600', dot: 'bg-amber-500' },
@@ -30,6 +31,7 @@ export function ExamCenterCard({
   item: ExamCenterItem
   coverImage?: string
 }) {
+  const t = useT()
   const status = STATUS_META[item.status] || {
     label: item.status,
     text: 'text-gray-500',
@@ -62,35 +64,36 @@ export function ExamCenterCard({
           )}
         >
           <span className={cn('w-1.5 h-1.5 rounded-full', status.dot)} />
-          {status.label}
+          {t(status.label)}
         </Badge>
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <h3 className="text-[15px] font-semibold text-slate-800 truncate">{item.usageName}</h3>
-        <p className="text-xs text-slate-400 mt-1 truncate">试卷：{item.examName}</p>
+        <p className="text-xs text-slate-400 mt-1 truncate">{t('试卷：{name}', { name: item.examName })}</p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 py-2.5 mt-1.5 border-b border-slate-50">
           <span className="flex items-center gap-1 shrink-0">
-            <FileText className="w-3 h-3" /> {item.questionCount} 题
+            <FileText className="w-3 h-3" /> {t('{n} 题', { n: item.questionCount })}
           </span>
           <span className="flex items-center gap-1 shrink-0">
-            <Clock className="w-3 h-3" /> {item.duration ? `${item.duration} 分钟` : '不限时'}
+            <Clock className="w-3 h-3" />{' '}
+            {item.duration ? t('{n} 分钟', { n: item.duration }) : t('不限时')}
           </span>
           <span className="flex items-center gap-1 min-w-0">
             <CalendarClock className="w-3 h-3 shrink-0" />
             <span className="truncate">
               {item.startTime
                 ? `${formatDate(item.startTime)}${item.endTime ? ` ~ ${formatDate(item.endTime)}` : ''}`
-                : '不限时间'}
+                : t('不限时间')}
             </span>
           </span>
         </div>
         <div className="pt-2.5 flex-1 flex flex-col justify-between gap-2">
           {item.submitted && (
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-500">已交卷</span>
+              <span className="text-slate-500">{t('已交卷')}</span>
               {item.score != null && (
                 <span className="font-semibold text-green-600">
-                  {item.score}/{item.totalScore} 分
+                  {t('{score}/{total} 分', { score: item.score, total: item.totalScore })}
                 </span>
               )}
             </div>
@@ -102,7 +105,7 @@ export function ExamCenterCard({
                 className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20"
               >
                 <Link href={entryHref}>
-                  <PlayCircle className="w-3.5 h-3.5 mr-1" /> 开始考试
+                  <PlayCircle className="w-3.5 h-3.5 mr-1" /> {t('开始考试')}
                 </Link>
               </Button>
             ) : item.submitted ? (
@@ -112,7 +115,7 @@ export function ExamCenterCard({
                 className="w-full rounded-[10px] h-9 text-xs text-green-600 border-green-200 hover:bg-green-50"
               >
                 <Link href={entryHref}>
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> 查看结果
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {t('查看结果')}
                 </Link>
               </Button>
             ) : (
@@ -122,12 +125,12 @@ export function ExamCenterCard({
               >
                 <Lock className="w-3 h-3 mr-1" />
                 {finished
-                  ? '考试已结束'
+                  ? t('考试已结束')
                   : !item.participatable && item.studentView
-                    ? '仅指定班级可参加'
+                    ? t('仅指定班级可参加')
                     : !item.participatable && !item.studentView
-                      ? '仅学生可参加'
-                      : '不可参加'}
+                      ? t('仅学生可参加')
+                      : t('不可参加')}
               </Button>
             )}
           </div>

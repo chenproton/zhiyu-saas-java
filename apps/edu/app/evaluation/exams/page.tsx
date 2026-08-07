@@ -12,6 +12,7 @@ import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ExamItem {
   id: string
@@ -56,6 +57,7 @@ function mapBatch(backend: any): ContentBatch {
 }
 
 export default function ExamsPage() {
+  const t = useT()
   const { user } = useAuth()
   const currentUserId = user?.id ?? ''
   const router = useRouter()
@@ -82,10 +84,14 @@ export default function ExamsPage() {
         setRefreshKey((k) => k + 1)
         router.push(`/evaluation/exams/${newItem.id}?new=true`)
       } catch (err: any) {
-        toast({ variant: 'destructive', title: '创建失败', description: err.message || '创建失败' })
+        toast({
+          variant: 'destructive',
+          title: t('创建失败'),
+          description: err.message || t('创建失败'),
+        })
       }
     },
-    [router, toast],
+    [router, toast, t],
   )
 
   const handleReview = useCallback(
@@ -93,26 +99,26 @@ export default function ExamsPage() {
       try {
         const records = await approvalApi.list({ targetType: 'exam', targetId: id, limit: 1 })
         if (records.items.length === 0) {
-          toast({ variant: 'destructive', title: '操作失败', description: '未找到审批记录' })
+          toast({ variant: 'destructive', title: t('操作失败'), description: t('未找到审批记录') })
           return
         }
         await approvalApi.review(records.items[0].id, { status })
         setRefreshKey((k) => k + 1)
       } catch (err) {
         reportError(err, '审批操作')
-        toast({ variant: 'destructive', title: '审批操作失败' })
+        toast({ variant: 'destructive', title: t('审批操作失败') })
       }
     },
-    [toast],
+    [toast, t],
   )
 
   return (
     <>
       <ContentListPage<ExamItem, Exam, EvaluationBatch>
         key={refreshKey}
-        title="试卷资源管理"
-        subtitle="维护试卷资源，支持组卷、审批、发布与批次分组管理"
-        entityLabel="试卷"
+        title={t('试卷资源管理')}
+        subtitle={t('维护试卷资源，支持组卷、审批、发布与批次分组管理')}
+        entityLabel={t('试卷')}
         addHref="/evaluation/exams"
         permissionModule="evaluation"
         permissionResource="exams"

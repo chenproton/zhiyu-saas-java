@@ -27,6 +27,7 @@ import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel, hybridMethodCompare } from '@/lib/hybrid-eval'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface NodeStudent {
   studentId: string
@@ -60,6 +61,7 @@ export default function LessonResultsPage() {
 
 function LessonResultsPageContent() {
   const searchParams = useSearchParams()
+  const t = useT()
   const urlCourseId = searchParams.get('courseId')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
@@ -127,7 +129,7 @@ function LessonResultsPageContent() {
       const user = userMap.get(res.evaluateeId)
       const student: NodeStudent = {
         studentId: res.evaluateeId,
-        studentName: user?.name || '未知',
+        studentName: user?.name || t('未知'),
         studentNumber: user?.studentNo || '-',
         className: user?.className || '-',
         enrollmentYear: user?.enrollmentYear || 0,
@@ -171,7 +173,7 @@ function LessonResultsPageContent() {
     return Array.from(nodeMap.values()).sort((a, b) =>
       a.nodeName.localeCompare(b.nodeName, 'zh-CN'),
     )
-  }, [results, userMap, nodes])
+  }, [results, userMap, nodes, t])
 
   const toggleNode = (nodeId: string) => {
     setExpandedNodes((prev) => {
@@ -204,14 +206,14 @@ function LessonResultsPageContent() {
   }
 
   if (loading)
-    return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
+    return <div className="h-screen flex items-center justify-center text-gray-400">{t('加载中...')}</div>
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <div className="bg-white border-b border-gray-200 shrink-0">
         <div className="max-w-[1600px] mx-auto px-6 py-4">
-          <h1 className="text-xl font-semibold text-foreground">课程节点评价</h1>
-          <p className="text-sm text-gray-500 mt-0.5">选择课程与节点，查看学生提交并进行评分</p>
+          <h1 className="text-xl font-semibold text-foreground">{t('课程节点评价')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('选择课程与节点，查看学生提交并进行评分')}</p>
         </div>
       </div>
 
@@ -221,7 +223,7 @@ function LessonResultsPageContent() {
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="搜索课程..."
+                placeholder={t('搜索课程...')}
                 className="pl-9 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -249,12 +251,15 @@ function LessonResultsPageContent() {
                   {c.name}
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5 truncate">
-                  {c.type === 'system' ? '体系课' : '混合课'} · {c.nodeCount || 0} 节点
+                  {t('{type} · {n} 节点', {
+                    type: c.type === 'system' ? t('体系课') : t('混合课'),
+                    n: c.nodeCount || 0,
+                  })}
                 </p>
               </button>
             ))}
             {filteredCourses.length === 0 && (
-              <p className="text-center text-xs text-gray-400 py-8">暂无已发布课程</p>
+              <p className="text-center text-xs text-gray-400 py-8">{t('暂无已发布课程')}</p>
             )}
           </div>
         </div>
@@ -265,10 +270,12 @@ function LessonResultsPageContent() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-800">
-                    {courses.find((c) => c.id === selectedCourseId)?.name || '课程'}
+                    {courses.find((c) => c.id === selectedCourseId)?.name || t('课程')}
                   </h2>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-xs text-gray-400">{results.length} 条提交记录</span>
+                    <span className="text-xs text-gray-400">
+                      {t('{n} 条提交记录', { n: results.length })}
+                    </span>
                   </div>
                 </div>
                 {nodeGroups.length > 0 && (
@@ -279,7 +286,7 @@ function LessonResultsPageContent() {
                       className="h-8 text-xs"
                       onClick={() => setExpandedNodes(new Set(nodeGroups.map((n) => n.nodeId)))}
                     >
-                      全部展开
+                      {t('全部展开')}
                     </Button>
                     <Button
                       variant="outline"
@@ -287,7 +294,7 @@ function LessonResultsPageContent() {
                       className="h-8 text-xs"
                       onClick={() => setExpandedNodes(new Set())}
                     >
-                      全部收起
+                      {t('全部收起')}
                     </Button>
                   </div>
                 )}
@@ -297,7 +304,7 @@ function LessonResultsPageContent() {
                 <Card className="border-dashed border-gray-200">
                   <CardContent className="py-12 text-center text-gray-400">
                     <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">该课程下暂无学生测评提交记录</p>
+                    <p className="text-sm">{t('该课程下暂无学生测评提交记录')}</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -332,7 +339,7 @@ function LessonResultsPageContent() {
                                       >
                                         {getHybridMethodLabel(
                                           m.methodKey,
-                                          (k) => EVAL_METHOD_LABELS_GRADING[k] || k,
+                                          (k) => t(EVAL_METHOD_LABELS_GRADING[k] || k),
                                         )}
                                       </Badge>
                                     ))}
@@ -345,7 +352,7 @@ function LessonResultsPageContent() {
                                     <p className="font-semibold text-gray-800">
                                       {node.methods.reduce((s, m) => s + m.students.length, 0)}
                                     </p>
-                                    <p className="text-[10px] text-gray-400">提交</p>
+                                    <p className="text-[10px] text-gray-400">{t('提交')}</p>
                                   </div>
                                   <div className="w-px h-6 bg-gray-200" />
                                   <div className="text-center min-w-[48px]">
@@ -357,11 +364,11 @@ function LessonResultsPageContent() {
                                     >
                                       {totalPending}
                                     </p>
-                                    <p className="text-[10px] text-gray-400">待评</p>
+                                    <p className="text-[10px] text-gray-400">{t('待评')}</p>
                                   </div>
                                   <div className="text-center min-w-[48px]">
                                     <p className="font-semibold text-green-600">{totalGraded}</p>
-                                    <p className="text-[10px] text-gray-400">已评</p>
+                                    <p className="text-[10px] text-gray-400">{t('已评')}</p>
                                   </div>
                                 </div>
                                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50">
@@ -386,17 +393,17 @@ function LessonResultsPageContent() {
                                       <Badge className="text-[10px] font-normal bg-primary/10 text-primary border-primary/20">
                                         {getHybridMethodLabel(
                                           method.methodKey,
-                                          (k) => EVAL_METHOD_LABELS_GRADING[k] || k,
+                                          (k) => t(EVAL_METHOD_LABELS_GRADING[k] || k),
                                         )}
                                       </Badge>
                                       {method.pendingCount > 0 && (
                                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium border border-amber-100">
-                                          待评 {method.pendingCount}
+                                          {t('待评 {n}', { n: method.pendingCount })}
                                         </span>
                                       )}
                                       {method.gradedCount > 0 && (
                                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 font-medium border border-green-100">
-                                          已评 {method.gradedCount}
+                                          {t('已评 {n}', { n: method.gradedCount })}
                                         </span>
                                       )}
                                     </div>
@@ -405,14 +412,15 @@ function LessonResultsPageContent() {
                                         <div className="flex items-center gap-2 mb-2">
                                           <GraduationCap className="h-3.5 w-3.5 text-gray-500" />
                                           <span className="text-xs font-semibold text-gray-700">
-                                            {yearGroup.year} 届
+                                            {t('{n} 届', { n: yearGroup.year })}
                                           </span>
                                           <span className="text-[10px] text-gray-400">
-                                            {yearGroup.classes.reduce(
-                                              (s, c) => s + c.students.length,
-                                              0,
-                                            )}{' '}
-                                            人
+                                            {t('{n} 人', {
+                                              n: yearGroup.classes.reduce(
+                                                (s, c) => s + c.students.length,
+                                                0,
+                                              ),
+                                            })}
                                           </span>
                                         </div>
                                         {yearGroup.classes.map((classGroup) => (
@@ -448,12 +456,14 @@ function LessonResultsPageContent() {
                                                       <div className="flex items-center gap-2 mt-0.5">
                                                         {item.result.status === 'pending' ? (
                                                           <span className="text-[10px] text-amber-600 font-medium">
-                                                            待评分
+                                                            {t('待评分')}
                                                           </span>
                                                         ) : item.result.totalScore != null ? (
                                                           <span className="text-[10px] text-gray-500 font-medium">
-                                                            得分 {item.result.totalScore}/
-                                                            {item.result.maxScore}
+                                                            {t('得分 {score}/{max}', {
+                                                              score: item.result.totalScore,
+                                                              max: item.result.maxScore,
+                                                            })}
                                                           </span>
                                                         ) : null}
                                                       </div>
@@ -470,7 +480,7 @@ function LessonResultsPageContent() {
                                                         href={`/evaluation/lesson-results/${item.result.id}`}
                                                       >
                                                         <Eye className="mr-1 h-3 w-3" />
-                                                        查看
+                                                        {t('查看')}
                                                       </Link>
                                                     </Button>
                                                     {item.result.status === 'pending' ? (
@@ -483,7 +493,7 @@ function LessonResultsPageContent() {
                                                           href={`/evaluation/lesson-results/${item.result.id}`}
                                                         >
                                                           <PenLine className="mr-1 h-3 w-3" />
-                                                          评分
+                                                          {t('评分')}
                                                         </Link>
                                                       </Button>
                                                     ) : (
@@ -494,7 +504,7 @@ function LessonResultsPageContent() {
                                                         disabled
                                                       >
                                                         <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                        已评分
+                                                        {t('已评分')}
                                                       </Button>
                                                     )}
                                                   </div>
@@ -520,7 +530,7 @@ function LessonResultsPageContent() {
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
               <BookOpen className="h-12 w-12 mb-3 opacity-50" />
-              <p className="text-sm">请在左侧选择一个课程</p>
+              <p className="text-sm">{t('请在左侧选择一个课程')}</p>
             </div>
           )}
         </div>

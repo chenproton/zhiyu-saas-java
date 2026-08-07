@@ -13,6 +13,7 @@ import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
 import { ExamCenterCard } from '@/components/evaluation/exam-center-card'
 import { coverGradientFor } from '@/lib/cover-gradients'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
@@ -22,6 +23,7 @@ const SORT_OPTIONS = [
 ]
 
 function BankCard({ bank }: { bank: QuestionBank; index: number }) {
+  const t = useT()
   return (
     <Link
       href={`/evaluation/landing/banks/${bank.id}`}
@@ -48,16 +50,18 @@ function BankCard({ bank }: { bank: QuestionBank; index: number }) {
         <div className="p-5 flex-1 flex flex-col">
           <h3 className="text-[15px] font-semibold text-slate-800 mb-1.5 truncate">{bank.name}</h3>
           <p className="text-xs text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
-            {bank.description || '暂无描述'}
+            {bank.description || t('暂无描述')}
           </p>
           <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-3">
             <span className="flex items-center gap-1">
-              <FileText className="w-3 h-3" /> {bank.questionCount} 题
+              <FileText className="w-3 h-3" /> {t('{n} 题', { n: bank.questionCount })}
             </span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" /> {formatDate(bank.createdAt)}
             </span>
-            <span className="text-primary group-hover:text-primary font-medium">查看详情 →</span>
+            <span className="text-primary group-hover:text-primary font-medium">
+              {t('查看详情 →')}
+            </span>
           </div>
         </div>
       </div>
@@ -66,6 +70,7 @@ function BankCard({ bank }: { bank: QuestionBank; index: number }) {
 }
 
 function ExamCard({ exam }: { exam: Exam; index: number }) {
+  const t = useT()
   return (
     <Link
       href={`/evaluation/landing/exams/${exam.id}`}
@@ -86,24 +91,24 @@ function ExamCard({ exam }: { exam: Exam; index: number }) {
         >
           {!exam.coverImage && <ClipboardList className="w-12 h-12 text-white/80" />}
           <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
-            {exam.duration} 分钟
+            {t('{n} 分钟', { n: exam.duration })}
           </span>
         </div>
         <div className="p-5 flex-1 flex flex-col">
           <h3 className="text-[15px] font-semibold text-slate-800 mb-1.5 truncate">{exam.name}</h3>
           <p className="text-xs text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
-            {exam.description || '暂无描述'}
+            {exam.description || t('暂无描述')}
           </p>
           <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-3 mb-3">
             <span className="flex items-center gap-1">
-              <FileText className="w-3 h-3" /> {(exam.questions || []).length} 题
+              <FileText className="w-3 h-3" /> {t('{n} 题', { n: (exam.questions || []).length })}
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {exam.duration} 分钟
+              <Clock className="w-3 h-3" /> {t('{n} 分钟', { n: exam.duration })}
             </span>
           </div>
           <Button className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all">
-            <PlayCircle className="w-3.5 h-3.5 mr-1" /> 去考试
+            <PlayCircle className="w-3.5 h-3.5 mr-1" /> {t('去考试')}
           </Button>
         </div>
       </div>
@@ -112,6 +117,7 @@ function ExamCard({ exam }: { exam: Exam; index: number }) {
 }
 
 export default function LandingHomePage() {
+  const t = useT()
   const listRef = useRef<HTMLDivElement>(null)
   const [banks, setBanks] = useState<QuestionBank[]>([])
   const [exams, setExams] = useState<Exam[]>([])
@@ -168,12 +174,12 @@ export default function LandingHomePage() {
   const statusPieData = useMemo(
     () =>
       [
-        { name: '待考', value: centerStats.pending, color: '#d97706' },
-        { name: '进行中', value: centerStats.inProgress, color: '#16a34a' },
-        { name: '已交卷', value: centerStats.submitted, color: '#2563eb' },
-        { name: '已结束', value: centerStats.finished, color: '#94a3b8' },
+        { name: t('待考'), value: centerStats.pending, color: '#d97706' },
+        { name: t('进行中'), value: centerStats.inProgress, color: '#16a34a' },
+        { name: t('已交卷'), value: centerStats.submitted, color: '#2563eb' },
+        { name: t('已结束'), value: centerStats.finished, color: '#94a3b8' },
       ].filter((d) => d.value > 0),
-    [centerStats],
+    [centerStats, t],
   )
 
   const examCoverMap = useMemo(() => {
@@ -285,48 +291,53 @@ export default function LandingHomePage() {
 
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []
-    if (keyword.trim()) filters.push({ type: 'keyword', label: `关键词：${keyword.trim()}` })
-    if (selectedBatch !== '全部') filters.push({ type: 'batch', label: `批次：${selectedBatch}` })
+    if (keyword.trim())
+      filters.push({ type: 'keyword', label: t('关键词：{kw}', { kw: keyword.trim() }) })
+    if (selectedBatch !== '全部')
+      filters.push({
+        type: 'batch',
+        label: t('批次：{batch}', { batch: selectedBatch }),
+      })
     return filters
-  }, [keyword, selectedBatch])
+  }, [keyword, selectedBatch, t])
 
   return (
     <LandingShell
       hero={{
-        badge: '海量题库 · 智能组卷 · 在线考试',
+        badge: t('海量题库 · 智能组卷 · 在线考试'),
         title: (
           <>
-            测评资源平台
+            {t('测评资源平台')}
             <br />
-            <span className="text-white/80">海量题库与试卷，助力教学测评</span>
+            <span className="text-white/80">{t('海量题库与试卷，助力教学测评')}</span>
           </>
         ),
-        description: '丰富题库资源与智能组卷工具，支持在线考试与自动评分，让教学测评更高效',
-        ctaLabel: '浏览资源',
+        description: t('丰富题库资源与智能组卷工具，支持在线考试与自动评分，让教学测评更高效'),
+        ctaLabel: t('浏览资源'),
       }}
       stats={[
         {
           icon: Library,
           value: banks.length,
-          label: '题库总数',
+          label: t('题库总数'),
           gradient: 'from-primary to-primary/80',
         },
         {
           icon: ClipboardList,
           value: exams.length,
-          label: '试卷总数',
+          label: t('试卷总数'),
           gradient: 'from-primary/90 to-primary/70',
         },
         {
           icon: FileText,
           value: totalQuestions,
-          label: '题目总数',
+          label: t('题目总数'),
           gradient: 'from-primary/80 to-primary/60',
         },
         {
           icon: PlayCircle,
           value: exams.length,
-          label: '可参与考试',
+          label: t('可参与考试'),
           gradient: 'from-primary/90 to-primary/70',
         },
       ]}
@@ -341,9 +352,9 @@ export default function LandingHomePage() {
                   <ClipboardList className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-[#0f172a]">考试中心</h2>
+                  <h2 className="text-lg font-bold text-[#0f172a]">{t('考试中心')}</h2>
                   <p className="text-sm text-slate-500 mt-1 max-w-xl">
-                    查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试
+                    {t('查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试')}
                   </p>
                 </div>
               </div>
@@ -352,7 +363,7 @@ export default function LandingHomePage() {
                 className="bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-primary/20 transition-all shrink-0"
               >
                 <Link href="/evaluation/landing/exam-center">
-                  进入考试中心 <ChevronRight className="w-4 h-4" />
+                  {t('进入考试中心')} <ChevronRight className="w-4 h-4" />
                 </Link>
               </Button>
             </div>
@@ -361,7 +372,7 @@ export default function LandingHomePage() {
                 <div className="lg:w-[250px] shrink-0">
                   <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-4 h-full">
                     <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2 mb-3">
-                      <BarChart3 className="w-4 h-4 text-primary" /> 状态分布
+                      <BarChart3 className="w-4 h-4 text-primary" /> {t('状态分布')}
                     </div>
                     <div className="relative">
                       <ResponsiveContainer width="100%" height={140}>
@@ -381,7 +392,10 @@ export default function LandingHomePage() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(value: number, name: string) => [`${value} 场`, name]}
+                            formatter={(value: number, name: string) => [
+                              t('{n} 场', { n: value }),
+                              name,
+                            ]}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -389,7 +403,7 @@ export default function LandingHomePage() {
                         <div className="text-[20px] font-bold text-[#0f172a] leading-none">
                           {centerStats.total}
                         </div>
-                        <div className="text-[11px] text-[#64748b] mt-1">全部考试</div>
+                        <div className="text-[11px] text-[#64748b] mt-1">{t('全部考试')}</div>
                       </div>
                     </div>
                     <div className="space-y-2 mt-4">
@@ -435,9 +449,9 @@ export default function LandingHomePage() {
                   <ClipboardList className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">考试中心</h2>
+                  <h2 className="text-lg font-bold text-white">{t('考试中心')}</h2>
                   <p className="text-sm text-white/80 mt-1 max-w-xl">
-                    查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试
+                    {t('查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试')}
                   </p>
                 </div>
               </div>
@@ -446,20 +460,20 @@ export default function LandingHomePage() {
                 className="bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg transition-all shrink-0"
               >
                 <Link href="/evaluation/landing/exam-center">
-                  进入考试中心 <ChevronRight className="w-4 h-4" />
+                  {t('进入考试中心')} <ChevronRight className="w-4 h-4" />
                 </Link>
               </Button>
             </div>
           </div>
         )
       }
-      filterTitle="资源筛选"
+      filterTitle={t('资源筛选')}
       filterRows={
         <LandingFilterRow
-          label="批次"
-          items={batches}
-          selected={selectedBatch}
-          onSelect={handleBatchChange}
+          label={t('批次')}
+          items={batches.map((b) => (b === '全部' ? t('全部') : b))}
+          selected={selectedBatch === '全部' ? t('全部') : selectedBatch}
+          onSelect={(v) => handleBatchChange(v === t('全部') ? '全部' : v)}
           showBorder={false}
           accentColor="primary"
         />
@@ -467,21 +481,21 @@ export default function LandingHomePage() {
       activeFilters={activeFilters}
       onRemoveFilter={removeFilter}
       onClearFilters={clearFilters}
-      sortOptions={SORT_OPTIONS}
+      sortOptions={SORT_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
       sort={sort}
       onSortChange={handleSortChange}
       keyword={keyword}
       onKeywordChange={handleKeywordChange}
       onSearch={executeSearch}
-      searchPlaceholder="搜索题库、试卷名称"
+      searchPlaceholder={t('搜索题库、试卷名称')}
       totalCount={filteredBanks.length + filteredExams.length}
-      countLabel="个资源"
+      countLabel={t('个资源')}
       listRef={listRef}
     >
       {loading ? (
         <LandingSkeleton count={8} height="h-[280px] sm:h-[340px]" />
       ) : filteredBanks.length === 0 && filteredExams.length === 0 ? (
-        <LandingEmpty title="暂无匹配的资源" hint="试试调整搜索关键词" />
+        <LandingEmpty title={t('暂无匹配的资源')} hint={t('试试调整搜索关键词')} />
       ) : (
         <>
           {filteredBanks.length > 0 && (
@@ -489,7 +503,7 @@ export default function LandingHomePage() {
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
                   <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-                  题库
+                  {t('题库')}
                   <span className="text-[13px] text-[#64748b] font-normal ml-1">
                     ({filteredBanks.length})
                   </span>
@@ -516,7 +530,7 @@ export default function LandingHomePage() {
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
                   <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-                  试卷
+                  {t('试卷')}
                   <span className="text-[13px] text-[#64748b] font-normal ml-1">
                     ({filteredExams.length})
                   </span>

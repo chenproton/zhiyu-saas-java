@@ -27,6 +27,7 @@ import { UserSelector } from '@/components/shared/user-selector'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 interface BankFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -35,6 +36,7 @@ interface BankFormDialogProps {
 }
 
 export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormDialogProps) {
+  const t = useT()
   const { tenantId } = useAuth()
   const { toast } = useToast()
   const [name, setName] = useState('')
@@ -98,12 +100,12 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
 
   const handleCoverUpload = async (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: '提示', description: '文件大小不能超过 5MB' })
+      toast({ variant: 'destructive', title: t('提示'), description: t('文件大小不能超过 5MB') })
       return
     }
 
     if (!file.type.startsWith('image/')) {
-      toast({ variant: 'destructive', title: '提示', description: '请上传图片文件' })
+      toast({ variant: 'destructive', title: t('提示'), description: t('请上传图片文件') })
       return
     }
 
@@ -114,8 +116,8 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '上传失败',
-        description: err?.message || '封面上传失败',
+        title: t('上传失败'),
+        description: err?.message || t('封面上传失败'),
       })
     } finally {
       setCoverUploading(false)
@@ -130,50 +132,50 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{bank ? '编辑题库' : '新建题库'}</DialogTitle>
+          <DialogTitle>{bank ? t('编辑题库') : t('新建题库')}</DialogTitle>
           <DialogDescription>
-            {bank ? '修改题库的基本信息' : '创建一个新的题库来管理题目'}
+            {bank ? t('修改题库的基本信息') : t('创建一个新的题库来管理题目')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
             <Field>
-              <FieldLabel htmlFor="name">题库名称</FieldLabel>
+              <FieldLabel htmlFor="name">{t('题库名称')}</FieldLabel>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="请输入题库名称"
+                placeholder={t('请输入题库名称')}
                 required
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="description">题库简介</FieldLabel>
+              <FieldLabel htmlFor="description">{t('题库简介')}</FieldLabel>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="请输入题库简介（可选）"
+                placeholder={t('请输入题库简介（可选）')}
                 rows={3}
               />
             </Field>
             <Field>
-              <FieldLabel>封面</FieldLabel>
-              <FieldDescription>支持上传 5MB 以内的图片文件</FieldDescription>
+              <FieldLabel>{t('封面')}</FieldLabel>
+              <FieldDescription>{t('支持上传 5MB 以内的图片文件')}</FieldDescription>
               <div className="mt-2 max-w-[400px]">
                 <CoverImageUpload
                   imageUrl={coverUrl}
                   uploading={coverUploading}
-                  label="封面"
-                  alt="题库封面"
+                  label={t('封面')}
+                  alt={t('题库封面')}
                   onUpload={handleCoverUpload}
                   onRemove={removeCover}
                 />
               </div>
             </Field>
             <Field>
-              <FieldLabel>共建人</FieldLabel>
-              <FieldDescription>选择可以共同维护此题库的用户</FieldDescription>
+              <FieldLabel>{t('共建人')}</FieldLabel>
+              <FieldDescription>{t('选择可以共同维护此题库的用户')}</FieldDescription>
               <div className="mt-2">
                 <UserSelector
                   value={collaboratorIds}
@@ -181,23 +183,23 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
                   multiple
                   tenantId={tenantId}
                   excludeUserIds={bank?.creatorId ? [bank.creatorId] : undefined}
-                  placeholder="点击选择共建人"
+                  placeholder={t('点击选择共建人')}
                 />
               </div>
             </Field>
             <Field>
-              <FieldLabel>所属批次</FieldLabel>
+              <FieldLabel>{t('所属批次')}</FieldLabel>
               <Select
                 value={batchId || 'none'}
                 onValueChange={(v) => setBatchId(v === 'none' ? '' : v)}
                 disabled={loadingBatches}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingBatches ? '加载批次中...' : '选择所属批次'} />
+                  <SelectValue placeholder={loadingBatches ? t('加载批次中...') : t('选择所属批次')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="none">不设置批次</SelectItem>
+                    <SelectItem value="none">{t('不设置批次')}</SelectItem>
                     {batches.map((batch) => (
                       <SelectItem key={batch.id} value={batch.id}>
                         {batch.name}
@@ -209,7 +211,7 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
             </Field>
             {bank && (
               <Field>
-                <FieldLabel>当前版本号</FieldLabel>
+                <FieldLabel>{t('当前版本号')}</FieldLabel>
                 <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm">
                   {bank.version}
                 </div>
@@ -218,10 +220,10 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
           </FieldGroup>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button type="submit" disabled={!name.trim()}>
-              {bank ? '保存' : '创建'}
+              {bank ? t('保存') : t('创建')}
             </Button>
           </DialogFooter>
         </form>

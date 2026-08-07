@@ -28,6 +28,7 @@ import { QUESTION_TYPES, QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_
 import { knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const TYPE_COLORS = QUESTION_TYPE_BADGE_CLASSES
 
@@ -45,6 +46,7 @@ export function ManualQuestionDialog({
   onAddQuestions,
 }: ManualQuestionDialogProps) {
   const { questionBanks, getQuestionsByBank, loadBankQuestions } = useData()
+  const t = useT()
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const [selectedBankId, setSelectedBankId] = useState<string>('')
@@ -150,8 +152,8 @@ export function ManualQuestionDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent size="xl" className="flex h-[85vh] flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-6 py-4">
-          <DialogTitle>手动抽题</DialogTitle>
-          <DialogDescription>从已发布的题库中选择题目添加到试卷</DialogDescription>
+          <DialogTitle>{t('手动抽题')}</DialogTitle>
+          <DialogDescription>{t('从已发布的题库中选择题目添加到试卷')}</DialogDescription>
         </DialogHeader>
 
         <div className="shrink-0 border-b px-6 py-3">
@@ -164,18 +166,18 @@ export function ManualQuestionDialog({
               }}
             >
               <SelectTrigger className="w-64">
-                <SelectValue placeholder="选择题库" />
+                <SelectValue placeholder={t('选择题库')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   {publishedBanks.length === 0 ? (
                     <SelectItem value="none" disabled>
-                      暂无已发布的题库
+                      {t('暂无已发布的题库')}
                     </SelectItem>
                   ) : (
                     publishedBanks.map((bank) => (
                       <SelectItem key={bank.id} value={bank.id}>
-                        {bank.name} ({bank.questionCount} 题)
+                        {t('{name} ({n} 题)', { name: bank.name, n: bank.questionCount })}
                       </SelectItem>
                     ))
                   )}
@@ -188,7 +190,7 @@ export function ManualQuestionDialog({
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="搜索题目内容..."
+                    placeholder={t('搜索题目内容...')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
@@ -199,14 +201,14 @@ export function ManualQuestionDialog({
                   onValueChange={(v) => setTypeFilter(v as QuestionType | 'all')}
                 >
                   <SelectTrigger className="w-32">
-                    <SelectValue placeholder="全部类型" />
+                    <SelectValue placeholder={t('全部类型')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="all">全部类型</SelectItem>
+                      <SelectItem value="all">{t('全部类型')}</SelectItem>
                       {QUESTION_TYPES.map((type) => (
                         <SelectItem key={type} value={type}>
-                          {QUESTION_TYPE_LABELS[type]}
+                          {t(QUESTION_TYPE_LABELS[type])}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -228,14 +230,16 @@ export function ManualQuestionDialog({
                   onCheckedChange={handleSelectAll}
                 />
                 <span className="text-sm text-muted-foreground">
-                  已选 <span className="font-medium text-foreground">{selectedIds.size}</span> /{' '}
-                  {filteredQuestions.length} 题{selectedBank && <span className="mx-1">·</span>}
+                  {t('已选')}{' '}
+                  <span className="font-medium text-foreground">{selectedIds.size}</span> /{' '}
+                  {filteredQuestions.length} {t('题')}
+                  {selectedBank && <span className="mx-1">·</span>}
                   {selectedBank && <span>{selectedBank.name}</span>}
                 </span>
               </div>
               <Button size="sm" disabled={selectedIds.size === 0} onClick={handleAddSelected}>
                 <Plus className="mr-1 size-4" />
-                添加选中题目 ({selectedIds.size})
+                {t('添加选中题目 ({n})', { n: selectedIds.size })}
               </Button>
             </div>
             <ScrollArea className="flex-1">
@@ -245,13 +249,13 @@ export function ManualQuestionDialog({
                     {loadingQuestions ? (
                       <>
                         <div className="size-8 mb-3 animate-spin rounded-full border-2 border-slate-300 border-t-primary" />
-                        <p className="text-sm text-muted-foreground">加载题目中...</p>
+                        <p className="text-sm text-muted-foreground">{t('加载题目中...')}</p>
                       </>
                     ) : (
                       <>
                         <Search className="size-10 text-muted-foreground/30 mb-3" />
                         <p className="text-sm text-muted-foreground">
-                          {questions.length === 0 ? '该题库暂无题目' : '没有找到匹配的题目'}
+                          {questions.length === 0 ? t('该题库暂无题目') : t('没有找到匹配的题目')}
                         </p>
                       </>
                     )}
@@ -285,15 +289,15 @@ export function ManualQuestionDialog({
                             <Badge
                               className={`text-xs text-white hover:opacity-90 ${TYPE_COLORS[question.type]}`}
                             >
-                              {QUESTION_TYPE_LABELS[question.type]}
+                              {t(QUESTION_TYPE_LABELS[question.type])}
                             </Badge>
                             {question.difficulty && (
                               <Badge variant="outline" className="text-xs">
-                                {DIFFICULTY_LABELS[question.difficulty]}
+                                {t(DIFFICULTY_LABELS[question.difficulty])}
                               </Badge>
                             )}
                             <span className="text-xs text-muted-foreground">
-                              {question.score} 分
+                              {t('{n} 分', { n: question.score })}
                             </span>
                             {kpNames.length > 0 && (
                               <span className="text-xs text-muted-foreground truncate max-w-[200px]">
@@ -312,7 +316,7 @@ export function ManualQuestionDialog({
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            请先选择一个题库
+            {t('请先选择一个题库')}
           </div>
         )}
       </DialogContent>

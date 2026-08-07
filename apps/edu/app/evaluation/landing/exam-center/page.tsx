@@ -13,8 +13,10 @@ import { examUsageApi, examApi } from '@/lib/api'
 import type { ExamCenterItem, Exam } from '@/lib/types'
 import { ExamCenterCard } from '@/components/evaluation/exam-center-card'
 import { Footer } from '@/components/portal/footer'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function ExamCenterPage() {
+  const t = useT()
   const [items, setItems] = useState<ExamCenterItem[]>([])
   const [examCovers, setExamCovers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -64,16 +66,16 @@ export default function ExamCenterPage() {
             className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            返回测评资源平台
+            {t('返回测评资源平台')}
           </Link>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center">
               <ClipboardList className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">考试中心</h1>
+              <h1 className="text-2xl font-bold text-white">{t('考试中心')}</h1>
               <p className="text-sm text-white/80 mt-1">
-                查看全部考试与你可参加的考试，按班级开放
+                {t('查看全部考试与你可参加的考试，按班级开放')}
               </p>
             </div>
           </div>
@@ -88,15 +90,14 @@ export default function ExamCenterPage() {
                 value="all"
                 className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
               >
-                全部考试 ({items.length})
+                {t('全部考试 ({n})', { n: items.length })}
               </TabsTrigger>
               {isStudent && (
                 <TabsTrigger
                   value="mine"
                   className="px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
                 >
-                  我可参加 (
-                  {items.filter((i) => i.participatable).length})
+                  {t('我可参加 ({n})', { n: items.filter((i) => i.participatable).length })}
                 </TabsTrigger>
               )}
             </TabsList>
@@ -106,7 +107,7 @@ export default function ExamCenterPage() {
             <Input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="搜索考试名称..."
+              placeholder={t('搜索考试名称...')}
               className="pl-10 h-11 bg-white border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 transition-all"
             />
           </div>
@@ -124,8 +125,8 @@ export default function ExamCenterPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
             <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <div className="text-[15px] font-medium text-[#475569]">暂无考试</div>
-            <div className="text-[13px] mt-1">发布后的考试安排会展示在这里</div>
+            <div className="text-[15px] font-medium text-[#475569]">{t('暂无考试')}</div>
+            <div className="text-[13px] mt-1">{t('发布后的考试安排会展示在这里')}</div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

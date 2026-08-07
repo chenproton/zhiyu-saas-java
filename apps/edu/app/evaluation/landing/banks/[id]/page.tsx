@@ -31,6 +31,7 @@ import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const questionTypeLabels = QUESTION_TYPE_LABELS
 
@@ -62,6 +63,7 @@ const questionTypeColors: Record<string, string> = {
 }
 
 function AnswerPreview({ question }: { question: Question }) {
+  const t = useT()
   const [show, setShow] = useState(false)
   return (
     <div className="mt-2 pt-2 border-t border-slate-100">
@@ -70,17 +72,17 @@ function AnswerPreview({ question }: { question: Question }) {
         className="text-[11px] text-slate-400 hover:text-blue-500 flex items-center gap-1 transition-colors"
       >
         <HelpCircle className="w-3 h-3" />
-        {show ? '隐藏答案' : '查看答案'}
+        {show ? t('隐藏答案') : t('查看答案')}
       </button>
       {show && (
         <div className="mt-1.5 text-xs">
-          <span className="text-slate-400">答案：</span>
+          <span className="text-slate-400">{t('答案：')}</span>
           <span className="text-slate-700 font-medium">
             {Array.isArray(question.answer) ? question.answer.join('；') : question.answer}
           </span>
           {question.analysis && (
             <div className="mt-1 text-slate-400">
-              <span>解析：</span>
+              <span>{t('解析：')}</span>
               <span className="text-slate-500">{question.analysis}</span>
             </div>
           )}
@@ -91,6 +93,7 @@ function AnswerPreview({ question }: { question: Question }) {
 }
 
 export default function BankDetailPage() {
+  const t = useT()
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
@@ -165,11 +168,11 @@ export default function BankDetailPage() {
 
   const pieData = useMemo(() => {
     return Object.entries(typeCounts).map(([type, count]) => ({
-      name: questionTypeLabels[type] || type,
+      name: t(questionTypeLabels[type] || type),
       value: count,
       color: questionTypeChartColors[type] || '#94a3b8',
     }))
-  }, [typeCounts])
+  }, [typeCounts, t])
 
   if (loading) {
     return (
@@ -190,12 +193,12 @@ export default function BankDetailPage() {
           <div className="w-20 h-20 mb-5 rounded-3xl bg-slate-100 flex items-center justify-center">
             <Library className="w-10 h-10 opacity-40" />
           </div>
-          <div className="text-lg font-semibold text-slate-600">题库不存在或暂未公开</div>
+          <div className="text-lg font-semibold text-slate-600">{t('题库不存在或暂未公开')}</div>
           <Link
             href="/evaluation/landing"
             className="text-blue-600 hover:text-blue-700 mt-3 text-sm font-medium"
           >
-            返回测评首页
+            {t('返回测评首页')}
           </Link>
         </div>
         <Footer className="mt-auto" />
@@ -225,14 +228,14 @@ export default function BankDetailPage() {
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">
                 ←
               </span>{' '}
-              返回上一页
+              {t('返回上一页')}
             </button>
             <span className="text-slate-300 shrink-0">/</span>
             <Link
               href="/evaluation/landing"
               className="hover:text-blue-600 transition-colors hidden sm:inline"
             >
-              测评首页
+              {t('测评首页')}
             </Link>
             <span className="text-slate-300 shrink-0 hidden sm:inline">/</span>
             <span className="text-slate-800 font-medium truncate min-w-0">{bank.name}</span>
@@ -269,14 +272,15 @@ export default function BankDetailPage() {
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 mb-3">
                       {bank.creatorName && (
                         <span className="flex items-center gap-1.5">
-                          创建人：{bank.creatorName}
+                          {t('创建人：{name}', { name: bank.creatorName })}
                         </span>
                       )}
                       <span className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> 更新于 {formatDate(bank.updatedAt)}
+                        <Clock className="w-3.5 h-3.5" />{' '}
+                        {t('更新于 {date}', { date: formatDate(bank.updatedAt) })}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5" /> {bank.questionCount} 题
+                        <Layers className="w-3.5 h-3.5" /> {t('{n} 题', { n: bank.questionCount })}
                       </span>
                     </div>
 
@@ -287,23 +291,27 @@ export default function BankDetailPage() {
                     )}
 
                     <div className="flex flex-wrap items-center gap-3 text-xs mt-auto pt-5">
-                      <FavoriteButton targetType="question_bank" targetId={id} label="收藏题库" />
+                      <FavoriteButton
+                        targetType="question_bank"
+                        targetId={id}
+                        label={t('收藏题库')}
+                      />
                       <Button
                         variant="ghost"
                         className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-primary border border-slate-200 hover:bg-primary/5 hover:border-primary/30 transition-all"
-                        aria-label="分享"
+                        aria-label={t('分享')}
                         onClick={() => setMobileAccessOpen(true)}
                       >
                         <Share2 className="w-4 h-4" />
                       </Button>
                       {Object.entries(typeCounts).length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {Object.entries(typeCounts).map(([t, count]) => (
+                          {Object.entries(typeCounts).map(([type, count]) => (
                             <span
-                              key={t}
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${questionTypeColors[t] || 'bg-slate-50 text-slate-500 border-slate-100'}`}
+                              key={type}
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${questionTypeColors[type] || 'bg-slate-50 text-slate-500 border-slate-100'}`}
                             >
-                              {questionTypeLabels[t] || t} ×{count}
+                              {t(questionTypeLabels[type] || type)} ×{count}
                             </span>
                           ))}
                         </div>
@@ -320,11 +328,11 @@ export default function BankDetailPage() {
                   <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
                     <Library className="w-4 h-4 text-blue-500" />
                   </div>
-                  <span className="text-sm font-bold text-slate-800">题库统计</span>
+                  <span className="text-sm font-bold text-slate-800">{t('题库统计')}</span>
                 </div>
                 <div className="p-5">
                   {pieData.length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 text-sm">暂无题目</div>
+                    <div className="text-center py-10 text-slate-400 text-sm">{t('暂无题目')}</div>
                   ) : (
                     <>
                       <div className="relative h-[180px]">
@@ -345,7 +353,10 @@ export default function BankDetailPage() {
                               ))}
                             </Pie>
                             <Tooltip
-                              formatter={(value: number, name: string) => [`${value} 题`, name]}
+                              formatter={(value: number, name: string) => [
+                                t('{n} 题', { n: value }),
+                                name,
+                              ]}
                             />
                           </PieChart>
                         </ResponsiveContainer>
@@ -353,7 +364,7 @@ export default function BankDetailPage() {
                           <div className="text-[20px] font-bold text-slate-800 leading-none">
                             {questions.length}
                           </div>
-                          <div className="text-[11px] text-slate-400 mt-1">总题量</div>
+                          <div className="text-[11px] text-slate-400 mt-1">{t('总题量')}</div>
                         </div>
                       </div>
                       <div className="mt-4 space-y-2.5">
@@ -367,7 +378,7 @@ export default function BankDetailPage() {
                               {entry.name}
                             </span>
                             <span className="text-sm font-bold text-slate-700">
-                              {entry.value} 题
+                              {t('{n} 题', { n: entry.value })}
                             </span>
                           </div>
                         ))}
@@ -388,20 +399,23 @@ export default function BankDetailPage() {
               <div className="flex items-center gap-3">
                 <FileText className="w-5 h-5 text-blue-500" />
                 <span className="text-sm font-semibold text-slate-800">
-                  题目列表（{filteredQuestions.length} / {questions.length} 题）
+                  {t('题目列表（{a} / {b} 题）', {
+                    a: filteredQuestions.length,
+                    b: questions.length,
+                  })}
                 </span>
                 <button
                   onClick={() => setShowAllAnswers(!showAllAnswers)}
                   className="text-[11px] text-slate-400 hover:text-blue-500 transition-colors"
                 >
-                  {showAllAnswers ? '隐藏全部答案' : '显示全部答案'}
+                  {showAllAnswers ? t('隐藏全部答案') : t('显示全部答案')}
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
-                    placeholder="搜索题目内容或知识点"
+                    placeholder={t('搜索题目内容或知识点')}
                     className="h-9 rounded-lg border-slate-200 bg-slate-50 pl-9 text-sm"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -413,9 +427,9 @@ export default function BankDetailPage() {
                     onChange={(e) => setTypeFilter(e.target.value)}
                     className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none cursor-pointer"
                   >
-                    {questionTypes.map((t) => (
-                      <option key={t} value={t}>
-                        {t === '全部' ? '全部题型' : questionTypeLabels[t] || t}
+                    {questionTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type === '全部' ? t('全部题型') : t(questionTypeLabels[type] || type)}
                       </option>
                     ))}
                   </select>
@@ -430,13 +444,13 @@ export default function BankDetailPage() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
                   <FileText className="w-8 h-8 opacity-40" />
                 </div>
-                <div className="text-[15px] font-medium text-slate-600">暂无题目</div>
-                <div className="text-[13px] mt-1">该题库暂未收录题目</div>
+                <div className="text-[15px] font-medium text-slate-600">{t('暂无题目')}</div>
+                <div className="text-[13px] mt-1">{t('该题库暂未收录题目')}</div>
               </div>
             ) : filteredQuestions.length === 0 ? (
               <div className="text-center py-16 text-slate-400">
-                <div className="text-[15px] font-medium text-slate-600">没有匹配的题目</div>
-                <div className="text-[13px] mt-1">请调整搜索条件或筛选</div>
+                <div className="text-[15px] font-medium text-slate-600">{t('没有匹配的题目')}</div>
+                <div className="text-[13px] mt-1">{t('请调整搜索条件或筛选')}</div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -462,7 +476,7 @@ export default function BankDetailPage() {
                                 className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${questionTypeColors[q.type] || 'bg-slate-50 text-slate-500 border-slate-100'}`}
                               >
                                 <IconComp className="w-3 h-3 inline mr-0.5" />
-                                {questionTypeLabels[q.type] || q.type}
+                                {t(questionTypeLabels[q.type] || q.type)}
                               </span>
                               {q.difficulty && (
                                 <span
@@ -473,10 +487,12 @@ export default function BankDetailPage() {
                                     borderColor: diff.color + '30',
                                   }}
                                 >
-                                  {diff.label}
+                                  {t(diff.label)}
                                 </span>
                               )}
-                              <span className="text-[11px] text-slate-400">{q.score} 分</span>
+                              <span className="text-[11px] text-slate-400">
+                                {t('{n} 分', { n: q.score })}
+                              </span>
                             </div>
                             <p className="text-sm text-slate-700 leading-relaxed mb-2">
                               {q.content}

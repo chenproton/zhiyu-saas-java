@@ -43,6 +43,7 @@ import type { ExamUsage } from '@/lib/types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { formatDate } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage['targetType']>, string> = {
   class: '手动创建',
@@ -68,6 +69,7 @@ const MANUAL_TARGET_TYPES = ['class', 'major', 'department', 'public']
 type FilterStatus = ExamUsage['status'] | 'all'
 
 export default function ExamUsagePage() {
+  const t = useT()
   const router = useRouter()
   const { exams } = useData()
   const { user } = useAuth()
@@ -278,35 +280,35 @@ export default function ExamUsagePage() {
   return (
     <div className="space-y-6">
       <PageHeaderCard
-        title="考试管理"
-        description="查看试卷在各模块的使用情况"
+        title={t('考试管理')}
+        description={t('查看试卷在各模块的使用情况')}
         actions={
           <Button onClick={openCreateDialog}>
             <Plus className="mr-2 size-4" />
-            创建考试使用
+            {t('创建考试使用')}
           </Button>
         }
         stats={[
           {
-            label: '考试总数',
+            label: t('考试总数'),
             value: stats.total,
             icon: <Clock className="size-4 text-blue-500" />,
             iconClassName: 'bg-blue-50',
           },
           {
-            label: '未开启',
+            label: t('未开启'),
             value: stats.draft,
             icon: <Clock className="size-4 text-gray-500" />,
             iconClassName: 'bg-gray-50',
           },
           {
-            label: '已开启',
+            label: t('已开启'),
             value: stats.published,
             icon: <PlayCircle className="size-4 text-green-500" />,
             iconClassName: 'bg-green-50',
           },
           {
-            label: '已结束',
+            label: t('已结束'),
             value: stats.finished,
             icon: <CheckCircle2 className="size-4 text-gray-500" />,
             iconClassName: 'bg-gray-50',
@@ -319,7 +321,7 @@ export default function ExamUsagePage() {
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="搜索考试名称或关联试卷..."
+            placeholder={t('搜索考试名称或关联试卷...')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -327,13 +329,13 @@ export default function ExamUsagePage() {
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as FilterStatus)}>
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="全部状态" />
+            <SelectValue placeholder={t('全部状态')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="draft">未开启</SelectItem>
-            <SelectItem value="published">已开启</SelectItem>
-            <SelectItem value="finished">已结束</SelectItem>
+            <SelectItem value="all">{t('全部状态')}</SelectItem>
+            <SelectItem value="draft">{t('未开启')}</SelectItem>
+            <SelectItem value="published">{t('已开启')}</SelectItem>
+            <SelectItem value="finished">{t('已结束')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -344,25 +346,25 @@ export default function ExamUsagePage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[180px]">考试名称</TableHead>
-                <TableHead className="w-[180px]">关联试卷</TableHead>
-                <TableHead className="w-[180px]">开放时间</TableHead>
-                <TableHead className="w-[100px]">状态</TableHead>
-                <TableHead className="w-[120px]">目标类型</TableHead>
-                <TableHead className="sticky right-0 w-[140px] bg-white text-right">操作</TableHead>
+                <TableHead className="w-[180px]">{t('考试名称')}</TableHead>
+                <TableHead className="w-[180px]">{t('关联试卷')}</TableHead>
+                <TableHead className="w-[180px]">{t('开放时间')}</TableHead>
+                <TableHead className="w-[100px]">{t('状态')}</TableHead>
+                <TableHead className="w-[120px]">{t('目标类型')}</TableHead>
+                <TableHead className="sticky right-0 w-[140px] bg-white text-right">{t('操作')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    加载中...
+                    {t('加载中...')}
                   </TableCell>
                 </TableRow>
               ) : filteredUsages.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    暂无使用记录
+                    {t('暂无使用记录')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -376,18 +378,20 @@ export default function ExamUsagePage() {
                         {usage.startTime || usage.endTime ? (
                           <div className="text-xs">
                             <div>{usage.startTime ? formatDate(usage.startTime) : '-'}</div>
-                            <div>至 {usage.endTime ? formatDate(usage.endTime) : '-'}</div>
+                            <div>
+                              {t('至 {date}', { date: usage.endTime ? formatDate(usage.endTime) : '-' })}
+                            </div>
                           </div>
                         ) : (
                           <span className="text-xs">-</span>
                         )}
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={usage.status} label={STATUS_LABELS[usage.status]} />
+                        <StatusBadge status={usage.status} label={t(STATUS_LABELS[usage.status])} />
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
-                          {usage.targetType ? TARGET_TYPE_LABELS[usage.targetType] : '-'}
+                          {usage.targetType ? t(TARGET_TYPE_LABELS[usage.targetType]) : '-'}
                         </span>
                       </TableCell>
                       <TableRowActions className="sticky right-0 bg-white">
@@ -399,7 +403,7 @@ export default function ExamUsagePage() {
                             onClick={() => openEditDialog(usage)}
                           >
                             <PencilLine className="mr-1 h-3 w-3" />
-                            编辑
+                            {t('编辑')}
                           </Button>
                         )}
                         {canPublish(usage.status) && (
@@ -410,7 +414,7 @@ export default function ExamUsagePage() {
                             onClick={() => handlePublish(usage.id)}
                           >
                             <Send className="mr-1 h-3 w-3" />
-                            开启
+                            {t('开启')}
                           </Button>
                         )}
                         {canFinish(usage.status) && (
@@ -421,7 +425,7 @@ export default function ExamUsagePage() {
                             onClick={() => handleFinish(usage.id)}
                           >
                             <CheckCircle2 className="mr-1 h-3 w-3" />
-                            停止
+                            {t('停止')}
                           </Button>
                         )}
                         {usage.status === 'finished' && (
@@ -434,7 +438,7 @@ export default function ExamUsagePage() {
                             }
                           >
                             <Eye className="mr-1 h-3 w-3" />
-                            查看考试结果
+                            {t('查看考试结果')}
                           </Button>
                         )}
                         {canDelete(usage) && (
@@ -445,7 +449,7 @@ export default function ExamUsagePage() {
                             onClick={() => openDeleteDialog(usage.id)}
                           >
                             <Trash2 className="mr-1 h-3 w-3" />
-                            删除
+                            {t('删除')}
                           </Button>
                         )}
                       </TableRowActions>
@@ -468,18 +472,18 @@ export default function ExamUsagePage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingUsage ? '编辑考试' : '创建考试使用'}</DialogTitle>
+            <DialogTitle>{editingUsage ? t('编辑考试') : t('创建考试使用')}</DialogTitle>
             <DialogDescription>
-              {editingUsage ? '修改考试信息，保存后立即生效' : '选择试卷并配置考试使用信息'}
+              {editingUsage ? t('修改考试信息，保存后立即生效') : t('选择试卷并配置考试使用信息')}
             </DialogDescription>
           </DialogHeader>
           <FieldGroup className="py-4">
             {!editingUsage && (
               <Field>
-                <FieldLabel>选择试卷 *</FieldLabel>
+                <FieldLabel>{t('选择试卷 *')}</FieldLabel>
                 <Select value={formExamId} onValueChange={setFormExamId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="请选择一份试卷" />
+                    <SelectValue placeholder={t('请选择一份试卷')} />
                   </SelectTrigger>
                   <SelectContent>
                     {exams
@@ -495,37 +499,37 @@ export default function ExamUsagePage() {
             )}
 
             <Field>
-              <FieldLabel>考试名称 *</FieldLabel>
+              <FieldLabel>{t('考试名称 *')}</FieldLabel>
               <Input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="请输入考试名称"
+                placeholder={t('请输入考试名称')}
               />
             </Field>
 
             <Field>
-              <FieldLabel>描述</FieldLabel>
+              <FieldLabel>{t('描述')}</FieldLabel>
               <Textarea
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="请输入描述（可选）"
+                placeholder={t('请输入描述（可选）')}
                 rows={2}
               />
             </Field>
 
             <Field>
-              <FieldLabel>时长/分钟</FieldLabel>
+              <FieldLabel>{t('时长/分钟')}</FieldLabel>
               <Input
                 type="number"
                 value={formDuration}
                 onChange={(e) => setFormDuration(e.target.value)}
-                placeholder="请输入考试时长"
+                placeholder={t('请输入考试时长')}
                 min={0}
               />
             </Field>
 
             <Field>
-              <FieldLabel>启用条件</FieldLabel>
+              <FieldLabel>{t('启用条件')}</FieldLabel>
               <ExamActivationConfig
                 value={{
                   activationMode: formActivationMode,
@@ -541,22 +545,22 @@ export default function ExamUsagePage() {
                 }}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                随时作答创建后立即开放；定时/手动启停创建为未开启，到时间或手动开启后开放
+                {t('随时作答创建后立即开放；定时/手动启停创建为未开启，到时间或手动开启后开放')}
               </p>
             </Field>
 
             <Field>
-              <FieldLabel>参与班级 *</FieldLabel>
+              <FieldLabel>{t('参与班级 *')}</FieldLabel>
               <MultiOrgNodePicker
                 tenantId={user?.tenantId}
                 value={formClassIds}
                 onChange={setFormClassIds}
                 selectableTypes={['班级']}
-                title="选择参与班级"
+                title={t('选择参与班级')}
                 maxVisible={3}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                仅所选班级的学生可见并可参加该考试
+                {t('仅所选班级的学生可见并可参加该考试')}
               </p>
             </Field>
           </FieldGroup>
@@ -566,10 +570,10 @@ export default function ExamUsagePage() {
               onClick={() => setCreateDialogOpen(false)}
               disabled={createSubmitting}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleCreate} disabled={!isFormValid || createSubmitting}>
-              {createSubmitting ? '提交中...' : editingUsage ? '保存' : '创建'}
+              {createSubmitting ? t('提交中...') : editingUsage ? t('保存') : t('创建')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -579,8 +583,8 @@ export default function ExamUsagePage() {
       <ConfirmDialog
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
-        title="删除考试使用"
-        description="删除后无法恢复，确定要删除吗？"
+        title={t('删除考试使用')}
+        description={t('删除后无法恢复，确定要删除吗？')}
         onConfirm={handleDelete}
       />
     </div>

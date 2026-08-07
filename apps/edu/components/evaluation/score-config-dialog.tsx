@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { QUESTION_TYPE_LABELS } from '@/lib/types'
 import type { ExamQuestion, QuestionType } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ScoreConfigDialogProps {
   open: boolean
@@ -28,6 +29,7 @@ export function ScoreConfigDialog({
   questions,
   onApply,
 }: ScoreConfigDialogProps) {
+  const t = useT()
   const typeQuestionsMap = useMemo(() => {
     const map: Record<string, ExamQuestion[]> = {}
     questions.forEach((q) => {
@@ -79,17 +81,20 @@ export function ScoreConfigDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>题型分配</DialogTitle>
+          <DialogTitle>{t('题型分配')}</DialogTitle>
           <DialogDescription>
-            为每种题型配置总分（合计 100 分），系统自动在每个题型内均匀分配。
-            如有余数，从该题型的第一道题开始额外增加 1 分。
+            {t('为每种题型配置总分（合计 100 分），系统自动在每个题型内均匀分配。')}
+            {t('如有余数，从该题型的第一道题开始额外增加 1 分。')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          {types.map((t) => (
-            <Field key={t}>
+          {types.map((qt) => (
+            <Field key={qt}>
               <FieldLabel>
-                {QUESTION_TYPE_LABELS[t]}（{typeQuestionsMap[t].length} 题）
+                {t('{label}（{n} 题）', {
+                  label: t(QUESTION_TYPE_LABELS[qt]),
+                  n: typeQuestionsMap[qt].length,
+                })}
               </FieldLabel>
               <div className="flex items-center gap-2">
                 <Input
@@ -97,29 +102,29 @@ export function ScoreConfigDialog({
                   min={0}
                   max={100}
                   step={1}
-                  value={typeScores[t] ?? '0'}
-                  onChange={(e) => setTypeScores((prev) => ({ ...prev, [t]: e.target.value }))}
+                  value={typeScores[qt] ?? '0'}
+                  onChange={(e) => setTypeScores((prev) => ({ ...prev, [qt]: e.target.value }))}
                   className="w-24"
                 />
-                <span className="text-sm text-muted-foreground">分</span>
+                <span className="text-sm text-muted-foreground">{t('分')}</span>
               </div>
             </Field>
           ))}
           <div className="text-right text-sm">
             <span className={totalInput === 100 ? 'text-green-600 font-medium' : 'text-red-500'}>
-              合计：{totalInput} 分
+              {t('合计：{n} 分', { n: totalInput })}
             </span>
             {totalInput !== 100 && (
-              <span className="ml-2 text-muted-foreground">（需等于 100 分）</span>
+              <span className="ml-2 text-muted-foreground">{t('（需等于 100 分）')}</span>
             )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            取消
+            {t('取消')}
           </Button>
           <Button onClick={handleApply} disabled={!isValid}>
-            应用配置
+            {t('应用配置')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -51,6 +51,7 @@ import type {
 } from '@/lib/types'
 import { QUESTION_TYPES, QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { knowledgeApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface QuestionFormDialogProps {
   open: boolean
@@ -81,6 +82,7 @@ export function QuestionFormDialog({
   defaultType,
   onSubmit,
 }: QuestionFormDialogProps) {
+  const t = useT()
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const [type, setType] = useState<QuestionType>('single')
   const [content, setContent] = useState('')
@@ -414,7 +416,7 @@ export function QuestionFormDialog({
           icon={isMultiple ? SquareCheck : CircleDot}
           color={isMultiple ? 'bg-indigo-500' : 'bg-blue-500'}
         >
-          选项设置
+          {t('选项设置')}
         </CardTitle>
         <div className="flex flex-col gap-1.5">
           {options.map((option, index) => {
@@ -447,7 +449,7 @@ export function QuestionFormDialog({
                 <Input
                   value={option}
                   onChange={(e) => handleOptionChange(index, e.target.value)}
-                  placeholder={`选项 ${String.fromCharCode(65 + index)}`}
+                  placeholder={t('选项 {label}', { label: String.fromCharCode(65 + index) })}
                   className="h-7 flex-1 border-transparent bg-transparent px-2 text-[13px] shadow-none focus-visible:bg-background focus-visible:ring-1"
                 />
                 <HoverActionBar>
@@ -495,7 +497,7 @@ export function QuestionFormDialog({
             className="h-7 w-fit gap-1 rounded-lg border-dashed px-2.5 text-xs"
           >
             <Plus className="size-3" />
-            添加选项
+            {t('添加选项')}
           </Button>
         )}
       </div>
@@ -516,7 +518,7 @@ export function QuestionFormDialog({
                 variant="default"
                 className="mx-0.5 bg-primary text-primary-foreground hover:bg-primary"
               >
-                空{match[1]}
+                {t('空{n}', { n: match[1] })}
               </Badge>
             )
           }
@@ -532,7 +534,7 @@ export function QuestionFormDialog({
         {/* 题目 */}
         <div className="rounded-xl border border-border/60 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
           <div className="mb-3 flex items-center justify-between">
-            <CardTitle icon={PenLine}>题目</CardTitle>
+            <CardTitle icon={PenLine}>{t('题目')}</CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -541,14 +543,14 @@ export function QuestionFormDialog({
               className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="size-3" />
-              清空
+              {t('清空')}
             </Button>
           </div>
           <Textarea
             ref={contentRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="请输入题目内容..."
+            placeholder={t('请输入题目内容...')}
             className="min-h-[80px] resize-none rounded-lg border-border/60 bg-muted/20 text-[15px] leading-relaxed transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/15"
             required
           />
@@ -563,7 +565,7 @@ export function QuestionFormDialog({
                 className="h-7 gap-1 rounded-lg border-primary/30 px-2.5 text-xs text-primary hover:bg-primary/5"
               >
                 <Plus className="size-3" />
-                插入填空标记
+                {t('插入填空标记')}
               </Button>
             </div>
           )}
@@ -576,7 +578,7 @@ export function QuestionFormDialog({
           {type === 'judge' && (
             <div className="flex flex-col gap-3">
               <CardTitle icon={Scale} color="bg-amber-500">
-                正确答案
+                {t('正确答案')}
               </CardTitle>
               <div className="flex gap-3">
                 <button
@@ -589,7 +591,7 @@ export function QuestionFormDialog({
                   }`}
                 >
                   <Check className="size-6" />
-                  正确
+                  {t('正确')}
                 </button>
                 <button
                   type="button"
@@ -601,7 +603,7 @@ export function QuestionFormDialog({
                   }`}
                 >
                   <X className="size-6" />
-                  错误
+                  {t('错误')}
                 </button>
               </div>
             </div>
@@ -609,12 +611,12 @@ export function QuestionFormDialog({
           {type === 'fill' && (
             <div className="flex flex-col gap-3">
               <CardTitle icon={Braces} color="bg-purple-500">
-                空位答案
+                {t('空位答案')}
               </CardTitle>
               {blankCount === 0 ? (
                 <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
                   <Lightbulb className="size-4 text-amber-500" />
-                  在题目中点击「插入填空标记」来创建空位
+                  {t('在题目中点击「插入填空标记」来创建空位')}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-2">
@@ -627,12 +629,12 @@ export function QuestionFormDialog({
                         variant="default"
                         className="shrink-0 bg-purple-500 px-1.5 py-0 text-[11px] text-white hover:bg-purple-500"
                       >
-                        空位 {idx + 1}
+                        {t('空位 {n}', { n: idx + 1 })}
                       </Badge>
                       <Input
                         value={normalizedFillAnswer[idx] || ''}
                         onChange={(e) => updateBlankAnswer(idx, e.target.value)}
-                        placeholder="标准答案"
+                        placeholder={t('标准答案')}
                         className="h-7 flex-1 border-0 bg-transparent px-1 text-[13px] shadow-none focus-visible:ring-0"
                       />
                     </div>
@@ -644,12 +646,12 @@ export function QuestionFormDialog({
           {(type === 'essay' || type === 'short_answer') && (
             <div className="flex flex-1 flex-col gap-4">
               <CardTitle icon={FileText} color="bg-rose-500">
-                参考答案
+                {t('参考答案')}
               </CardTitle>
               <Textarea
                 value={answer as string}
                 onChange={(e) => setAnswer(e.target.value)}
-                placeholder="请输入参考答案..."
+                placeholder={t('请输入参考答案...')}
                 className="min-h-0 flex-1 resize-none rounded-lg border-border/60 bg-muted/20 text-[15px] leading-relaxed transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/15"
               />
             </div>
@@ -686,7 +688,7 @@ export function QuestionFormDialog({
                     {checked && <Check className="size-3" />}
                   </div>
                   <span className="truncate">
-                    {String.fromCharCode(65 + index)}. {option || '（空选项）'}
+                    {String.fromCharCode(65 + index)}. {option || t('（空选项）')}
                   </span>
                 </label>
               )
@@ -701,7 +703,7 @@ export function QuestionFormDialog({
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <SquareCheck className="size-3.5" />
-            可多选
+            {t('可多选')}
           </div>
           <div className="flex flex-col gap-2">
             {options.map((option, index) => {
@@ -721,7 +723,7 @@ export function QuestionFormDialog({
                     className="size-4 shrink-0 border-2 data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
                   />
                   <span className="truncate">
-                    {String.fromCharCode(65 + index)}. {option || '（空选项）'}
+                    {String.fromCharCode(65 + index)}. {option || t('（空选项）')}
                   </span>
                 </label>
               )
@@ -736,7 +738,7 @@ export function QuestionFormDialog({
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Scale className="size-3.5" />
-            当前判断结果
+            {t('当前判断结果')}
           </div>
           <div
             className={`inline-flex w-fit items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold shadow-sm ${
@@ -746,7 +748,7 @@ export function QuestionFormDialog({
             }`}
           >
             {answer === 'false' ? <X className="size-4" /> : <Check className="size-4" />}
-            {answer === 'false' ? '错误' : '正确'}
+            {answer === 'false' ? t('错误') : t('正确')}
           </div>
         </div>
       )
@@ -757,10 +759,10 @@ export function QuestionFormDialog({
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Braces className="size-3.5" />
-            空位摘要
+            {t('空位摘要')}
           </div>
           {blankCount === 0 ? (
-            <span className="text-sm text-muted-foreground">暂无空位</span>
+            <span className="text-sm text-muted-foreground">{t('暂无空位')}</span>
           ) : (
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: blankCount }).map((_, idx) => (
@@ -768,7 +770,10 @@ export function QuestionFormDialog({
                   key={idx}
                   className="gap-0.5 rounded-md bg-purple-100 px-2 py-0.5 text-[11px] font-medium text-purple-700 hover:bg-purple-100"
                 >
-                  空位{idx + 1}: {normalizedFillAnswer[idx] || '未填写'}
+                  {t('空位{n}: {ans}', {
+                    n: idx + 1,
+                    ans: normalizedFillAnswer[idx] || t('未填写'),
+                  })}
                 </Badge>
               ))}
             </div>
@@ -781,10 +786,10 @@ export function QuestionFormDialog({
       <div className="flex flex-col gap-2.5">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Sparkles className="size-3.5" />
-          评分关键词（可选）
+          {t('评分关键词（可选）')}
         </div>
-        <Input placeholder="用逗号分隔关键词" disabled className="h-10 rounded-lg border-dashed" />
-        <p className="text-xs text-muted-foreground/70">用于后续自动评分扩展，当前仅作记录</p>
+        <Input placeholder={t('用逗号分隔关键词')} disabled className="h-10 rounded-lg border-dashed" />
+        <p className="text-xs text-muted-foreground/70">{t('用于后续自动评分扩展，当前仅作记录')}</p>
       </div>
     )
   }
@@ -795,13 +800,13 @@ export function QuestionFormDialog({
         {/* 合并为一张设置卡片 */}
         <div className="flex flex-col rounded-xl border border-border/60 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
           <CardTitle icon={Settings2} color="bg-slate-500">
-            题目设置
+            {t('题目设置')}
           </CardTitle>
 
           {/* 基础设置 */}
           <div className="mb-4 grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">难度</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('难度')}</label>
               <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
                 <SelectTrigger className="h-8 w-full rounded-lg text-xs">
                   <SelectValue />
@@ -810,7 +815,7 @@ export function QuestionFormDialog({
                   <SelectGroup>
                     {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((d) => (
                       <SelectItem key={d} value={d}>
-                        {DIFFICULTY_LABELS[d]}
+                        {t(DIFFICULTY_LABELS[d])}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -819,7 +824,7 @@ export function QuestionFormDialog({
             </div>
             <div ref={knowledgeRef} className="relative">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                关联知识点
+                {t('关联知识点')}
               </label>
               <button
                 type="button"
@@ -838,8 +843,8 @@ export function QuestionFormDialog({
                   }
                 >
                   {knowledgePointIds.length
-                    ? `已选择 ${knowledgePointIds.length} 项`
-                    : '选择知识点...'}
+                    ? t('已选择 {n} 项', { n: knowledgePointIds.length })
+                    : t('选择知识点...')}
                 </span>
                 <ChevronDown
                   className={`size-3.5 text-muted-foreground transition-transform ${knowledgeOpen ? 'rotate-180' : ''}`}
@@ -848,9 +853,9 @@ export function QuestionFormDialog({
               {knowledgeOpen && (
                 <div className="absolute top-full z-50 mt-1 max-h-44 w-full overflow-auto rounded-xl border bg-white p-1.5 shadow-lg">
                   {loadingKnowledgePoints ? (
-                    <div className="p-3 text-sm text-muted-foreground">加载中...</div>
+                    <div className="p-3 text-sm text-muted-foreground">{t('加载中...')}</div>
                   ) : knowledgePoints.length === 0 ? (
-                    <div className="p-3 text-sm text-muted-foreground">暂无知识点</div>
+                    <div className="p-3 text-sm text-muted-foreground">{t('暂无知识点')}</div>
                   ) : (
                     knowledgePoints.map((kp) => (
                       <label
@@ -898,7 +903,7 @@ export function QuestionFormDialog({
           <div className="border-t border-border/60 pt-3">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Check className="size-3.5" />
-              答案
+              {t('答案')}
             </div>
             {renderRightAnswer()}
           </div>
@@ -907,15 +912,15 @@ export function QuestionFormDialog({
           <div className="mt-4 border-t border-border/60 pt-3">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Lightbulb className="size-3.5" />
-              解析
+              {t('解析')}
               <span className="text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60">
-                (选填)
+                {t('(选填)')}
               </span>
             </div>
             <Textarea
               value={analysis}
               onChange={(e) => setAnalysis(e.target.value)}
-              placeholder="输入解析内容，帮助学生理解..."
+              placeholder={t('输入解析内容，帮助学生理解...')}
               className="h-20 min-h-0 resize-none rounded-lg border-border/60 bg-muted/20 text-[14px] leading-relaxed transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/15"
             />
           </div>
@@ -929,7 +934,7 @@ export function QuestionFormDialog({
                 className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/30"
               >
                 <span className="flex items-center gap-1.5">
-                  <Sparkles className="size-3.5" /> 高级设置
+                  <Sparkles className="size-3.5" /> {t('高级设置')}
                 </span>
                 <ChevronDown
                   className={`size-3.5 text-muted-foreground transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
@@ -938,7 +943,7 @@ export function QuestionFormDialog({
               {advancedOpen && (
                 <div className="px-2 pb-1 pt-1">
                   <label className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">选项随机排序</span>
+                    <span className="text-muted-foreground">{t('选项随机排序')}</span>
                     <Checkbox
                       checked={shuffleOptions}
                       onCheckedChange={(c) => setShuffleOptions(!!c)}
@@ -972,10 +977,10 @@ export function QuestionFormDialog({
               </div>
               <div>
                 <DialogTitle className="text-lg font-bold">
-                  {question ? '编辑题目' : '新建题目'}
+                  {question ? t('编辑题目') : t('新建题目')}
                 </DialogTitle>
                 <DialogDescription className="text-xs">
-                  {question ? '修改题目内容和答案' : '添加新题目到当前题库'}
+                  {question ? t('修改题目内容和答案') : t('添加新题目到当前题库')}
                 </DialogDescription>
               </div>
             </div>
@@ -988,7 +993,7 @@ export function QuestionFormDialog({
               onClick={() => onOpenChange(false)}
               className="text-muted-foreground hover:text-foreground"
             >
-              取消
+              {t('取消')}
             </Button>
             {!question && (
               <Button
@@ -1000,7 +1005,7 @@ export function QuestionFormDialog({
                 className="gap-1.5 rounded-lg border-primary/30 text-primary hover:bg-primary/5"
               >
                 <Save className="size-3.5" />
-                保存并继续添加
+                {t('保存并继续添加')}
               </Button>
             )}
             <Button
@@ -1011,7 +1016,7 @@ export function QuestionFormDialog({
               className="gap-1.5 rounded-lg shadow-sm"
             >
               <Save className="size-3.5" />
-              {question ? '保存' : '保存并关闭'}
+              {question ? t('保存') : t('保存并关闭')}
             </Button>
           </div>
         </div>
@@ -1019,22 +1024,24 @@ export function QuestionFormDialog({
         {/* 题型条 */}
         <div className="flex items-center gap-2 border-b bg-muted/20 px-6 py-2.5">
           <div className="mr-2 flex flex-col justify-center leading-tight">
-            <span className="text-xs font-medium text-muted-foreground">切换题型</span>
-            <span className="text-[10px] text-muted-foreground/60">不影响已输入题目与基础设置</span>
+            <span className="text-xs font-medium text-muted-foreground">{t('切换题型')}</span>
+            <span className="text-[10px] text-muted-foreground/60">
+              {t('不影响已输入题目与基础设置')}
+            </span>
           </div>
-          {QUESTION_TYPES.map((t) => (
+          {QUESTION_TYPES.map((qtype) => (
             <button
-              key={t}
+              key={qtype}
               type="button"
-              onClick={() => handleTypeChange(t)}
+              onClick={() => handleTypeChange(qtype)}
               className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
-                type === t
-                  ? `${TYPE_COLORS[t]} text-white shadow-md scale-[1.02]`
+                type === qtype
+                  ? `${TYPE_COLORS[qtype]} text-white shadow-md scale-[1.02]`
                   : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent'
               }`}
             >
-              {TYPE_ICONS[t]}
-              {QUESTION_TYPE_LABELS[t]}
+              {TYPE_ICONS[qtype]}
+              {t(QUESTION_TYPE_LABELS[qtype])}
             </button>
           ))}
         </div>

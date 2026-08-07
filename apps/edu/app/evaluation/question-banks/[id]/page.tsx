@@ -63,10 +63,12 @@ import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } f
 import { QUESTION_TYPES, QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, DIFFICULTY_LABELS } from '@/lib/types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function QuestionBankDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const t = useT()
   const bankId = params.id as string
   const { toast } = useToast()
 
@@ -163,10 +165,10 @@ export default function QuestionBankDetailPage() {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold">题库不存在</h2>
-          <p className="mb-4 text-muted-foreground">该题库可能已被删除</p>
+          <h2 className="text-lg font-semibold">{t('题库不存在')}</h2>
+          <p className="mb-4 text-muted-foreground">{t('该题库可能已被删除')}</p>
           <Button asChild>
-            <Link href="/evaluation/question-banks">返回题库列表</Link>
+            <Link href="/evaluation/question-banks">{t('返回题库列表')}</Link>
           </Button>
         </div>
       </div>
@@ -207,21 +209,31 @@ export default function QuestionBankDetailPage() {
       )
       const errorHint =
         result.errors && result.errors.length > 0
-          ? `，错误：${result.errors.slice(0, 3).join(';')}`
+          ? t('，错误：{details}', { details: result.errors.slice(0, 3).join(';') })
           : ''
       const permissionHint =
         result.permissionSkipped && result.permissionSkipped > 0
-          ? `，${result.permissionSkipped} 个题目非本人创建，已跳过覆盖`
+          ? t('，{n} 个题目非本人创建，已跳过覆盖', { n: result.permissionSkipped })
           : ''
       toast({
-        title: '导入完成',
-        description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${permissionHint}${errorHint}`,
+        title: t('导入完成'),
+        description: t('成功 {created} 条，失败 {failed} 条，跳过 {skipped} 条{permission}{error}', {
+          created: result.created,
+          failed: result.failed || 0,
+          skipped: result.skipped || 0,
+          permission: permissionHint,
+          error: errorHint,
+        }),
       })
       resetImport()
       setIsImportDialogOpen(false)
       await loadBankQuestions?.(bankId)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
+      toast({
+        variant: 'destructive',
+        title: t('导入失败'),
+        description: err.message || t('导入失败'),
+      })
     } finally {
       setIsImporting(false)
     }
@@ -244,7 +256,11 @@ export default function QuestionBankDetailPage() {
       }
       return await executeImport('skip').then(() => true)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '导入失败', description: err.message || '导入失败' })
+      toast({
+        variant: 'destructive',
+        title: t('导入失败'),
+        description: err.message || t('导入失败'),
+      })
       setIsImporting(false)
       return false
     }
@@ -254,12 +270,12 @@ export default function QuestionBankDetailPage() {
     setIsDownloading(true)
     try {
       const res = await importExportApi.downloadQuestionTemplate(bankId)
-      downloadBlob(await res.blob(), '题目批量导入模板.xlsx')
+      downloadBlob(await res.blob(), t('题目批量导入模板.xlsx'))
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '下载模板失败',
-        description: err.message || '下载模板失败',
+        title: t('下载模板失败'),
+        description: err.message || t('下载模板失败'),
       })
     } finally {
       setIsDownloading(false)
@@ -347,10 +363,14 @@ export default function QuestionBankDetailPage() {
         throw new Error(data.error || `HTTP ${res.status}`)
       }
       const blob = await res.blob()
-      downloadBlob(blob, `题目导出_${bankId}.xlsx`)
-      toast({ title: '导出成功', description: `已导出 ${selectedQuestions.size} 道题目` })
+      downloadBlob(blob, t('题目导出_{id}.xlsx', { id: bankId }))
+      toast({ title: t('导出成功'), description: t('已导出 {n} 道题目', { n: selectedQuestions.size }) })
     } catch (err: any) {
-      toast({ title: '导出失败', description: err.message || '请稍后重试', variant: 'destructive' })
+      toast({
+        title: t('导出失败'),
+        description: err.message || t('请稍后重试'),
+        variant: 'destructive',
+      })
     } finally {
       setIsExporting(false)
     }
@@ -386,7 +406,7 @@ export default function QuestionBankDetailPage() {
       <div className="mb-4">
         <Button variant="ghost" size="sm" onClick={() => router.push('/evaluation/question-banks')}>
           <ArrowLeft />
-          返回题库列表
+          {t('返回题库列表')}
         </Button>
       </div>
 
@@ -410,19 +430,21 @@ export default function QuestionBankDetailPage() {
                   <CardTitle className="text-xl">{bank.name}</CardTitle>
                   {isDraftPool && (
                     <span className="shrink-0 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                      草稿库
+                      {t('草稿库')}
                     </span>
                   )}
                   <Badge variant="outline">{bank.version}</Badge>
                 </div>
-                <CardDescription className="mt-2">{bank.description || '暂无描述'}</CardDescription>
+                <CardDescription className="mt-2">
+                  {bank.description || t('暂无描述')}
+                </CardDescription>
               </div>
             </div>
             <div className="flex items-start gap-2">
               {!isDraftPool && (
                 <Button variant="outline" size="sm" onClick={() => setBankFormOpen(true)}>
                   <Edit className="mr-1 size-3.5" />
-                  编辑信息
+                  {t('编辑信息')}
                 </Button>
               )}
             </div>
@@ -431,18 +453,20 @@ export default function QuestionBankDetailPage() {
         <CardContent>
           <div className="flex flex-wrap gap-6 text-sm">
             <div>
-              <span className="text-muted-foreground">创建人:</span>{' '}
+              <span className="text-muted-foreground">{t('创建人:')}</span>{' '}
               <strong>{bank.creatorName || bank.creatorId || '-'}</strong>
             </div>
             <div>
-              <span className="text-muted-foreground">题目数量:</span>{' '}
+              <span className="text-muted-foreground">{t('题目数量:')}</span>{' '}
               <strong>{bank.questionCount}</strong>
             </div>
             <div>
-              <span className="text-muted-foreground">创建时间:</span> {formatDate(bank.createdAt)}
+              <span className="text-muted-foreground">{t('创建时间:')}</span>{' '}
+              {formatDate(bank.createdAt)}
             </div>
             <div>
-              <span className="text-muted-foreground">更新时间:</span> {formatDate(bank.updatedAt)}
+              <span className="text-muted-foreground">{t('更新时间:')}</span>{' '}
+              {formatDate(bank.updatedAt)}
             </div>
           </div>
           {/* 共建人/共建部门 */}
@@ -451,7 +475,7 @@ export default function QuestionBankDetailPage() {
               {getCollaboratorNames().length > 0 && (
                 <div className="flex items-center gap-2">
                   <Users className="size-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">共建人:</span>
+                  <span className="text-sm text-muted-foreground">{t('共建人:')}</span>
                   <div className="flex flex-wrap gap-1">
                     {getCollaboratorNames().map((name, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">
@@ -464,7 +488,7 @@ export default function QuestionBankDetailPage() {
               {getCollaboratorDeptNames().length > 0 && (
                 <div className="flex items-center gap-2">
                   <Building2 className="size-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">共建部门:</span>
+                  <span className="text-sm text-muted-foreground">{t('共建部门:')}</span>
                   <div className="flex flex-wrap gap-1">
                     {getCollaboratorDeptNames().map((name, i) => (
                       <Badge key={i} variant="outline" className="text-xs">
@@ -482,15 +506,15 @@ export default function QuestionBankDetailPage() {
       {/* 题目管理标题 + Tab + 按钮 */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h2 className="text-lg font-semibold">题目列表</h2>
+          <h2 className="text-lg font-semibold">{t('题目列表')}</h2>
           <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as QuestionType | 'all')}>
             <TabsList className="h-8">
               <TabsTrigger value="all" className="text-xs">
-                全部
+                {t('全部')}
               </TabsTrigger>
               {QUESTION_TYPES.map((type) => (
                 <TabsTrigger key={type} value={type} className="text-xs">
-                  {QUESTION_TYPE_LABELS[type]}
+                  {t(QUESTION_TYPE_LABELS[type])}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -499,13 +523,13 @@ export default function QuestionBankDetailPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="mr-1 size-3.5" />
-            导入题目
+            {t('导入题目')}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm">
                 <Plus className="mr-1 size-3.5" />
-                添加题目
+                {t('添加题目')}
                 <ChevronDown className="ml-1 size-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -519,7 +543,7 @@ export default function QuestionBankDetailPage() {
                     setQuestionFormOpen(true)
                   }}
                 >
-                  {QUESTION_TYPE_LABELS[type]}
+                  {t(QUESTION_TYPE_LABELS[type])}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -533,7 +557,7 @@ export default function QuestionBankDetailPage() {
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="搜索题目内容..."
+              placeholder={t('搜索题目内容...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -542,11 +566,11 @@ export default function QuestionBankDetailPage() {
           {creators.length > 0 && (
             <Select value={creatorFilter} onValueChange={setCreatorFilter}>
               <SelectTrigger className="h-9 w-[140px]">
-                <SelectValue placeholder="全部创建人" />
+                <SelectValue placeholder={t('全部创建人')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="all">全部创建人</SelectItem>
+                  <SelectItem value="all">{t('全部创建人')}</SelectItem>
                   {creators.map((creator) => (
                     <SelectItem key={creator.id} value={creator.id}>
                       {creator.name}
@@ -565,7 +589,7 @@ export default function QuestionBankDetailPage() {
             disabled={selectedQuestions.size === 0 || isExporting}
           >
             <FileDown className="mr-1 size-3" />
-            {isExporting ? '导出中...' : '批量导出'}
+            {isExporting ? t('导出中...') : t('批量导出')}
           </Button>
           <Button
             variant="outline"
@@ -574,7 +598,7 @@ export default function QuestionBankDetailPage() {
             disabled={selectedQuestions.size === 0}
           >
             <Copy className="mr-1 size-3" />
-            批量复制
+            {t('批量复制')}
           </Button>
           <Button
             variant="outline"
@@ -583,7 +607,7 @@ export default function QuestionBankDetailPage() {
             disabled={selectedQuestions.size === 0}
           >
             <FolderInput className="mr-1 size-3" />
-            批量移动
+            {t('批量移动')}
           </Button>
           <Button
             variant="outline"
@@ -593,7 +617,7 @@ export default function QuestionBankDetailPage() {
             disabled={selectedQuestions.size === 0}
           >
             <Trash2 className="mr-1 size-3" />
-            批量删除
+            {t('批量删除')}
           </Button>
         </div>
       </div>
@@ -614,12 +638,12 @@ export default function QuestionBankDetailPage() {
                   />
                 </TableHead>
               )}
-              <TableHead className="w-[40%]">题目内容</TableHead>
-              <TableHead className="w-[100px]">题型</TableHead>
-              <TableHead className="w-[80px]">难度</TableHead>
-              <TableHead className="w-[100px]">添加来源</TableHead>
-              <TableHead className="w-[120px]">创建时间</TableHead>
-              <TableHead className="w-[120px] text-right">操作</TableHead>
+              <TableHead className="w-[40%]">{t('题目内容')}</TableHead>
+              <TableHead className="w-[100px]">{t('题型')}</TableHead>
+              <TableHead className="w-[80px]">{t('难度')}</TableHead>
+              <TableHead className="w-[100px]">{t('添加来源')}</TableHead>
+              <TableHead className="w-[120px]">{t('创建时间')}</TableHead>
+              <TableHead className="w-[120px] text-right">{t('操作')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -629,7 +653,9 @@ export default function QuestionBankDetailPage() {
                   colSpan={canEdit ? 7 : 6}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  {questions.length === 0 ? '暂无题目，点击上方按钮添加' : '没有找到匹配的题目'}
+                  {questions.length === 0
+                    ? t('暂无题目，点击上方按钮添加')
+                    : t('没有找到匹配的题目')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -650,12 +676,14 @@ export default function QuestionBankDetailPage() {
                     <Badge
                       className={`text-xs text-white hover:opacity-90 ${QUESTION_TYPE_BADGE_CLASSES[question.type]}`}
                     >
-                      {QUESTION_TYPE_LABELS[question.type]}
+                      {t(QUESTION_TYPE_LABELS[question.type])}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {question.difficulty && (
-                      <Badge variant="outline">{DIFFICULTY_LABELS[question.difficulty]}</Badge>
+                      <Badge variant="outline">
+                        {t(DIFFICULTY_LABELS[question.difficulty])}
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell>
@@ -672,7 +700,7 @@ export default function QuestionBankDetailPage() {
                       onClick={() => setPreviewQuestion(question)}
                     >
                       <Eye className="mr-1 h-3 w-3" />
-                      预览
+                      {t('预览')}
                     </Button>
                     {canEdit && (
                       <>
@@ -683,7 +711,7 @@ export default function QuestionBankDetailPage() {
                           onClick={() => handleCopyQuestion(question)}
                         >
                           <Copy className="mr-1 h-3 w-3" />
-                          复制
+                          {t('复制')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -692,7 +720,7 @@ export default function QuestionBankDetailPage() {
                           onClick={() => handleQuestionEdit(question)}
                         >
                           <Edit className="mr-1 h-3 w-3" />
-                          编辑
+                          {t('编辑')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -701,7 +729,7 @@ export default function QuestionBankDetailPage() {
                           onClick={() => setDeleteConfirm(question)}
                         >
                           <Trash2 className="mr-1 h-3 w-3" />
-                          删除
+                          {t('删除')}
                         </Button>
                       </>
                     )}
@@ -742,16 +770,16 @@ export default function QuestionBankDetailPage() {
           setIsImportDialogOpen(open)
           if (!open) resetImport()
         }}
-        title="导入题目"
+        title={t('导入题目')}
         guideItems={[
-          <>点击下方按钮下载最新的导入模板（含系统字典数据）</>,
-          <>参照模板中各 Sheet 的填写说明，填入题目数据</>,
-          <>完成后点击&quot;下一步&quot;上传文件</>,
+          <>{t('点击下方按钮下载最新的导入模板（含系统字典数据）')}</>,
+          <>{t('参照模板中各 Sheet 的填写说明，填入题目数据')}</>,
+          <>{t('完成后点击&quot;下一步&quot;上传文件')}</>,
         ]}
-        downloadLabel="下载题目批量导入模板"
+        downloadLabel={t('下载题目批量导入模板')}
         onDownload={handleDownloadTemplate}
-        uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-        importLabel={() => '开始导入'}
+        uploadHint={t('点击选择已填写的 Excel (.xlsx) 文件')}
+        importLabel={() => t('开始导入')}
         onImport={handleImport}
         files={importFiles}
         onAddFiles={handleAddFiles}
@@ -764,7 +792,7 @@ export default function QuestionBankDetailPage() {
         <ImportConfirmDialog
           open={isImportConfirmOpen}
           onOpenChange={setIsImportConfirmOpen}
-          entityLabel="题目"
+          entityLabel={t('题目')}
           created={importPreview.created}
           duplicates={importPreview.duplicates}
           failed={importPreview.failed}
@@ -778,8 +806,8 @@ export default function QuestionBankDetailPage() {
       <ConfirmDialog
         open={!!deleteConfirm}
         onOpenChange={(open) => !open && setDeleteConfirm(null)}
-        title="确认删除"
-        description="删除后将无法恢复。确定要删除这道题目吗？"
+        title={t('确认删除')}
+        description={t('删除后将无法恢复。确定要删除这道题目吗？')}
         variant="destructive"
         onConfirm={handleQuestionDelete}
       />
@@ -787,8 +815,10 @@ export default function QuestionBankDetailPage() {
       <ConfirmDialog
         open={batchDeleteConfirm}
         onOpenChange={setBatchDeleteConfirm}
-        title="批量删除"
-        description={`确定要删除选中的 ${selectedQuestions.size} 道题目吗？此操作不可撤销。`}
+        title={t('批量删除')}
+        description={t('确定要删除选中的 {n} 道题目吗？此操作不可撤销。', {
+          n: selectedQuestions.size,
+        })}
         variant="destructive"
         onConfirm={handleBatchDelete}
       />
@@ -797,14 +827,14 @@ export default function QuestionBankDetailPage() {
       {batchMoveOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg border bg-white p-6 shadow-lg">
-            <h3 className="text-lg font-semibold">批量移动题目</h3>
+            <h3 className="text-lg font-semibold">{t('批量移动题目')}</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              选择目标题库，将选中的 {selectedQuestions.size} 道题目移动过去
+              {t('选择目标题库，将选中的 {n} 道题目移动过去', { n: selectedQuestions.size })}
             </p>
             <div className="relative mt-4">
               <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索题库名称..."
+                placeholder={t('搜索题库名称...')}
                 value={moveSearch}
                 onChange={(e) => setMoveSearch(e.target.value)}
                 className="h-9 pl-9 text-sm"
@@ -827,7 +857,7 @@ export default function QuestionBankDetailPage() {
                     <div>
                       <div className="font-medium">{bank.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {questionCountByBank.get(bank.id) || 0} 题
+                        {t('{n} 题', { n: questionCountByBank.get(bank.id) || 0 })}
                       </div>
                     </div>
                   </button>
@@ -842,7 +872,7 @@ export default function QuestionBankDetailPage() {
                   setMoveSearch('')
                 }}
               >
-                取消
+                {t('取消')}
               </Button>
             </div>
           </div>

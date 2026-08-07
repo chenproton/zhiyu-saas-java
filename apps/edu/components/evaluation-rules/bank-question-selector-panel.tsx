@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import { ScoreConfigDialog } from '@/components/evaluation/score-config-dialog'
 import { questionBankApi, questionApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
@@ -58,6 +59,7 @@ export function BankQuestionSelectorPanel({
   onUpdateQuestionScore,
   onUpdateQuestionScores,
 }: BankQuestionSelectorPanelProps) {
+  const t = useT()
   const [banks, setBanks] = useState<any[]>([])
   const [bankQuestions, setBankQuestions] = useState<any[]>([])
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null)
@@ -239,7 +241,7 @@ export function BankQuestionSelectorPanel({
                   onClick={handleBackToBanks}
                 >
                   <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />
-                  返回题库列表
+                  {t('返回题库列表')}
                 </Button>
                 <span className="text-sm font-medium text-gray-700">{selectedBankName}</span>
               </div>
@@ -248,7 +250,7 @@ export function BankQuestionSelectorPanel({
                 <Input
                   value={questionSearch}
                   onChange={(e) => setQuestionSearch(e.target.value)}
-                  placeholder="搜索题目内容..."
+                  placeholder={t('搜索题目内容...')}
                   className="pl-9"
                 />
               </div>
@@ -256,13 +258,13 @@ export function BankQuestionSelectorPanel({
                 {loadingQuestions ? (
                   <div className="text-center text-gray-400 py-8">
                     <Loader2 className="h-6 w-6 mx-auto animate-spin" />
-                    <p className="text-sm mt-2">加载中...</p>
+                    <p className="text-sm mt-2">{t('加载中...')}</p>
                   </div>
                 ) : filteredQuestions.length === 0 ? (
                   <div className="text-center text-gray-400 py-8">
                     <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">
-                      {bankQuestions.length === 0 ? '该题库暂无题目' : '没有找到匹配的题目'}
+                      {bankQuestions.length === 0 ? t('该题库暂无题目') : t('没有找到匹配的题目')}
                     </p>
                   </div>
                 ) : (
@@ -271,16 +273,16 @@ export function BankQuestionSelectorPanel({
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
                           <th className="text-left text-xs font-medium text-gray-500 px-3 py-2">
-                            题目内容
+                            {t('题目内容')}
                           </th>
                           <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[88px]">
-                            题型
+                            {t('题型')}
                           </th>
                           <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[56px]">
-                            难度
+                            {t('难度')}
                           </th>
                           <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[120px]">
-                            操作
+                            {t('操作')}
                           </th>
                         </tr>
                       </thead>
@@ -307,7 +309,7 @@ export function BankQuestionSelectorPanel({
                                     {isSelected && <Check className="h-3 w-3 text-white" />}
                                   </div>
                                   <span className="text-sm text-gray-800 line-clamp-1">
-                                    {q.content || q.name || '未命名题目'}
+                                    {q.content || q.name || t('未命名题目')}
                                   </span>
                                 </div>
                               </td>
@@ -315,12 +317,12 @@ export function BankQuestionSelectorPanel({
                                 <Badge
                                   className={`text-xs text-white hover:opacity-90 whitespace-nowrap ${typeColorMap[q.type ?? ''] || ''}`}
                                 >
-                                  {questionTypeLabels[q.type ?? ''] || q.type}
+                                  {t(questionTypeLabels[q.type ?? ''] || (q.type ?? ''))}
                                 </Badge>
                               </td>
                               <td className="px-3 py-2">
                                 <span className="text-xs text-gray-500 whitespace-nowrap">
-                                  {difficultyLabels[q.difficulty ?? ''] || q.difficulty}
+                                  {t(difficultyLabels[q.difficulty ?? ''] || (q.difficulty ?? ''))}
                                 </span>
                               </td>
                               <td className="px-3 py-2">
@@ -335,7 +337,7 @@ export function BankQuestionSelectorPanel({
                                         onToggleQuestion(q.id)
                                       }}
                                     >
-                                      取消
+                                      {t('取消')}
                                     </Button>
                                   ) : (
                                     <Button
@@ -346,7 +348,7 @@ export function BankQuestionSelectorPanel({
                                         onToggleQuestion(q.id)
                                       }}
                                     >
-                                      使用
+                                      {t('使用')}
                                     </Button>
                                   )}
                                 </div>
@@ -368,9 +370,9 @@ export function BankQuestionSelectorPanel({
                 className="mb-3"
               >
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="my">我的</TabsTrigger>
-                  <TabsTrigger value="collab">共建</TabsTrigger>
-                  <TabsTrigger value="public">公共题库</TabsTrigger>
+                  <TabsTrigger value="my">{t('我的')}</TabsTrigger>
+                  <TabsTrigger value="collab">{t('共建')}</TabsTrigger>
+                  <TabsTrigger value="public">{t('公共题库')}</TabsTrigger>
                 </TabsList>
               </Tabs>
               <div className="relative mb-3">
@@ -378,7 +380,7 @@ export function BankQuestionSelectorPanel({
                 <Input
                   value={bankSearch}
                   onChange={(e) => setBankSearch(e.target.value)}
-                  placeholder="搜索题库名称..."
+                  placeholder={t('搜索题库名称...')}
                   className="pl-9"
                 />
               </div>
@@ -386,12 +388,12 @@ export function BankQuestionSelectorPanel({
                 {loadingBanks ? (
                   <div className="text-center text-gray-400 py-8">
                     <Loader2 className="h-6 w-6 mx-auto animate-spin" />
-                    <p className="text-sm mt-2">加载中...</p>
+                    <p className="text-sm mt-2">{t('加载中...')}</p>
                   </div>
                 ) : filteredBanks.length === 0 ? (
                   <div className="text-center text-gray-400 py-8">
                     <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">暂无题库</p>
+                    <p className="text-sm">{t('暂无题库')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -406,7 +408,7 @@ export function BankQuestionSelectorPanel({
                             <Database className="h-4 w-4 text-gray-400" />
                             <span className="text-sm font-medium">{bank.name}</span>
                             <Badge variant="outline" className="text-[10px]">
-                              {bank.questionCount ?? 0} 题
+                              {t('{n} 题', { n: bank.questionCount ?? 0 })}
                             </Badge>
                           </div>
                           <ChevronRight className="h-4 w-4 text-gray-400" />
@@ -427,7 +429,7 @@ export function BankQuestionSelectorPanel({
         <div className="w-full lg:w-2/5 border rounded-xl p-3 flex flex-col min-h-0 min-w-0 overflow-hidden">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium text-gray-700">
-              已选择题目 ({selectedIds.length}
+              {t('已选择题目')} ({selectedIds.length}
               {maxCount ? `/${maxCount}` : ''})
             </p>
             {(field === 'questionBankQuestions' || field === 'quizQuestions') &&
@@ -437,15 +439,15 @@ export function BankQuestionSelectorPanel({
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="h-7 text-[11px] px-2">
                       <SlidersHorizontal className="h-3 w-3 mr-1" />
-                      分数配置
+                      {t('分数配置')}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuItem onClick={handleEvenDistribution}>
-                      均匀分配 — 将 100 分均匀分给每道题，余数从第一题起加 1 分
+                      {t('均匀分配 — 将 100 分均匀分给每道题，余数从第一题起加 1 分')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setScoreDialogOpen(true)}>
-                      题型分配 — 为每种题型分配总分（合计 100），各题型内均匀分配
+                      {t('题型分配 — 为每种题型分配总分（合计 100），各题型内均匀分配')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -455,7 +457,7 @@ export function BankQuestionSelectorPanel({
             {selectedIds.length === 0 ? (
               <div className="text-center text-gray-400 py-8">
                 <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">从左侧搜索并选择题目</p>
+                <p className="text-xs">{t('从左侧搜索并选择题目')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -469,7 +471,7 @@ export function BankQuestionSelectorPanel({
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-medium flex-1 truncate">
-                          {q.content || q.name || '未命名题目'}
+                          {q.content || q.name || t('未命名题目')}
                         </span>
                         <Button
                           variant="ghost"
@@ -484,15 +486,15 @@ export function BankQuestionSelectorPanel({
                         <Badge
                           className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type ?? ''] || ''}`}
                         >
-                          {questionTypeLabels[q.type ?? ''] || q.type}
+                          {t(questionTypeLabels[q.type ?? ''] || (q.type ?? ''))}
                         </Badge>
                         <span className="text-[10px] text-gray-400">
-                          {difficultyLabels[q.difficulty ?? ''] || q.difficulty}
+                          {t(difficultyLabels[q.difficulty ?? ''] || (q.difficulty ?? ''))}
                         </span>
                         {(field === 'questionBankQuestions' || field === 'quizQuestions') &&
                         onUpdateQuestionScore ? (
                           <div className="flex items-center gap-1 ml-auto">
-                            <span className="text-[10px] text-gray-400">分值</span>
+                            <span className="text-[10px] text-gray-400">{t('分值')}</span>
                             <Input
                               type="number"
                               value={questionScores?.[qid] ?? q.score ?? 0}
@@ -509,7 +511,7 @@ export function BankQuestionSelectorPanel({
                             />
                           </div>
                         ) : (
-                          <span className="text-[10px] text-gray-400">{q.score ?? 0}分</span>
+                          <span className="text-[10px] text-gray-400">{t('{n}分', { n: q.score ?? 0 })}</span>
                         )}
                       </div>
                     </div>

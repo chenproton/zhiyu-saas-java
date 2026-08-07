@@ -11,6 +11,7 @@ import type { QuestionBankFormData, QuestionBank, EvaluationBatch } from '@/lib/
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface BankItem {
   id: string
@@ -53,6 +54,7 @@ function mapBatch(backend: any): ContentBatch {
 }
 
 export default function QuestionBanksPage() {
+  const t = useT()
   const { user } = useAuth()
   const currentUserId = user?.id ?? ''
   const router = useRouter()
@@ -77,19 +79,23 @@ export default function QuestionBanksPage() {
         setRefreshKey((k) => k + 1)
         router.push(`/evaluation/question-banks/${newItem.id}?new=true`)
       } catch (err: any) {
-        toast({ variant: 'destructive', title: '创建失败', description: err.message || '创建失败' })
+        toast({
+          variant: 'destructive',
+          title: t('创建失败'),
+          description: err.message || t('创建失败'),
+        })
       }
     },
-    [router, toast],
+    [router, toast, t],
   )
 
   return (
     <>
       <ContentListPage<BankItem, QuestionBank, EvaluationBatch>
         key={refreshKey}
-        title="题库资源管理"
-        subtitle="维护题库及题目资源，支持审批、发布与批次分组管理"
-        entityLabel="题库"
+        title={t('题库资源管理')}
+        subtitle={t('维护题库及题目资源，支持审批、发布与批次分组管理')}
+        entityLabel={t('题库')}
         addHref="/evaluation/question-banks"
         permissionModule="evaluation"
         permissionResource="question-banks"

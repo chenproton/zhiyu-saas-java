@@ -30,6 +30,7 @@ import { examUsageApi, examResultApi } from '@/lib/api'
 import { useMajorMap } from '@/lib/use-resource-maps'
 import type { ExamUsage } from '@/lib/types'
 import { formatDateTime } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ExamStudentResult {
   id: string
@@ -47,6 +48,7 @@ interface ExamStudentResult {
 }
 
 function ExamResultsContent() {
+  const t = useT()
   const searchParams = useSearchParams()
   const usageId = searchParams.get('usageId') || ''
   const [usage, setUsage] = useState<ExamUsage | null>(null)
@@ -70,7 +72,7 @@ function ExamResultsContent() {
         setResults(
           items.map((r, idx) => ({
             id: r.id,
-            studentName: r.studentName || '匿名',
+            studentName: r.studentName || t('匿名'),
             studentId: r.userId,
             className: r.className || '-',
             grade: r.grade || '-',
@@ -88,7 +90,7 @@ function ExamResultsContent() {
       }
     }
     fetchData()
-  }, [usageId])
+  }, [usageId, t])
 
   const filteredResults = results.filter((r) => {
     if (passFilter !== 'all') {
@@ -116,7 +118,7 @@ function ExamResultsContent() {
   if (loading) {
     return (
       <div className="flex h-[50vh] items-center justify-center text-muted-foreground">
-        加载中...
+        {t('加载中...')}
       </div>
     )
   }
@@ -125,10 +127,10 @@ function ExamResultsContent() {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold">考试记录不存在</h2>
-          <p className="mb-4 text-muted-foreground">该考试记录可能已被删除</p>
+          <h2 className="text-lg font-semibold">{t('考试记录不存在')}</h2>
+          <p className="mb-4 text-muted-foreground">{t('该考试记录可能已被删除')}</p>
           <Button asChild>
-            <Link href="/evaluation/exam-usage">返回考试管理</Link>
+            <Link href="/evaluation/exam-usage">{t('返回考试管理')}</Link>
           </Button>
         </div>
       </div>
@@ -141,7 +143,7 @@ function ExamResultsContent() {
         <Button variant="ghost" size="sm" asChild className="mb-4">
           <Link href="/evaluation/exam-usage">
             <ArrowLeft className="mr-1 size-4" />
-            返回考试管理
+            {t('返回考试管理')}
           </Link>
         </Button>
         <div className="flex items-center justify-between">
@@ -149,12 +151,12 @@ function ExamResultsContent() {
             <h1 className="text-xl font-semibold text-foreground tracking-tight">{usage.name}</h1>
             <Badge variant="outline" className="gap-1">
               <GraduationCap className="size-4" />
-              在线考试
+              {t('在线考试')}
             </Badge>
           </div>
           <Button variant="outline" disabled>
             <Download className="mr-2 size-4" />
-            导出数据
+            {t('导出数据')}
           </Button>
         </div>
       </div>
@@ -163,7 +165,7 @@ function ExamResultsContent() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
         <Card className="bg-gradient-to-br from-slate-50 to-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">参考人数</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">{t('参考人数')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -171,7 +173,7 @@ function ExamResultsContent() {
         </Card>
         <Card className="bg-gradient-to-br from-emerald-50 to-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">平均分</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">{t('平均分')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">{stats.avgScore}</div>
@@ -179,7 +181,7 @@ function ExamResultsContent() {
         </Card>
         <Card className="bg-gradient-to-br from-primary/5 to-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">最高分</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">{t('最高分')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{stats.maxScore}</div>
@@ -187,7 +189,7 @@ function ExamResultsContent() {
         </Card>
         <Card className="bg-gradient-to-br from-amber-50 to-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">最低分</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">{t('最低分')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">{stats.minScore}</div>
@@ -195,7 +197,7 @@ function ExamResultsContent() {
         </Card>
         <Card className="bg-gradient-to-br from-green-50 to-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">及格人数</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">{t('及格人数')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.pass}</div>
@@ -203,7 +205,7 @@ function ExamResultsContent() {
         </Card>
         <Card className="bg-gradient-to-br from-red-50 to-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">不及格人数</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">{t('不及格人数')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{stats.fail}</div>
@@ -216,7 +218,7 @@ function ExamResultsContent() {
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="搜索学生姓名..."
+            placeholder={t('搜索学生姓名...')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -228,7 +230,7 @@ function ExamResultsContent() {
             size="sm"
             onClick={() => setPassFilter('all')}
           >
-            全部
+            {t('全部')}
           </Button>
           <Button
             variant={passFilter === 'pass' ? 'default' : 'outline'}
@@ -236,7 +238,7 @@ function ExamResultsContent() {
             onClick={() => setPassFilter('pass')}
           >
             <CheckCircle2 className="mr-1 size-3.5 text-emerald-500" />
-            及格
+            {t('及格')}
           </Button>
           <Button
             variant={passFilter === 'fail' ? 'default' : 'outline'}
@@ -244,7 +246,7 @@ function ExamResultsContent() {
             onClick={() => setPassFilter('fail')}
           >
             <XCircle className="mr-1 size-3.5 text-red-500" />
-            不及格
+            {t('不及格')}
           </Button>
         </div>
       </div>
@@ -258,30 +260,30 @@ function ExamResultsContent() {
                 <TableHead className="w-[120px]">
                   <div className="flex items-center gap-1">
                     <User className="size-3.5" />
-                    学生名称
+                    {t('学生名称')}
                   </div>
                 </TableHead>
-                <TableHead className="w-[120px]">学号</TableHead>
-                <TableHead className="w-[120px]">班级</TableHead>
-                <TableHead className="w-[100px]">年级</TableHead>
-                <TableHead className="w-[140px]">专业</TableHead>
-                <TableHead className="w-[160px]">考试时间</TableHead>
+                <TableHead className="w-[120px]">{t('学号')}</TableHead>
+                <TableHead className="w-[120px]">{t('班级')}</TableHead>
+                <TableHead className="w-[100px]">{t('年级')}</TableHead>
+                <TableHead className="w-[140px]">{t('专业')}</TableHead>
+                <TableHead className="w-[160px]">{t('考试时间')}</TableHead>
                 <TableHead className="w-[100px]">
                   <div className="flex items-center gap-1">
                     <Award className="size-3.5" />
-                    考试得分
+                    {t('考试得分')}
                   </div>
                 </TableHead>
-                <TableHead className="w-[100px]">评分状态</TableHead>
-                <TableHead className="w-[100px]">是否及格</TableHead>
-                <TableHead className="sticky right-0 w-[100px] bg-white text-right">操作</TableHead>
+                <TableHead className="w-[100px]">{t('评分状态')}</TableHead>
+                <TableHead className="w-[100px]">{t('是否及格')}</TableHead>
+                <TableHead className="sticky right-0 w-[100px] bg-white text-right">{t('操作')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredResults.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
-                    {results.length === 0 ? '暂无考试结果' : '没有找到匹配的结果'}
+                    {results.length === 0 ? t('暂无考试结果') : t('没有找到匹配的结果')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -327,11 +329,11 @@ function ExamResultsContent() {
                       {result.gradingStatus === 'evaluated' ? (
                         <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-200 bg-emerald-50">
                           <CheckCircle2 className="size-3" />
-                          已评分
+                          {t('已评分')}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="gap-1 text-amber-600 border-amber-200 bg-amber-50">
-                          待评分
+                          {t('待评分')}
                         </Badge>
                       )}
                     </TableCell>
@@ -339,19 +341,19 @@ function ExamResultsContent() {
                       {result.isPass ? (
                         <Badge variant="default" className="gap-1 bg-emerald-500">
                           <CheckCircle2 className="size-3" />
-                          及格
+                          {t('及格')}
                         </Badge>
                       ) : (
                         <Badge variant="destructive" className="gap-1">
                           <XCircle className="size-3" />
-                          不及格
+                          {t('不及格')}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="sticky right-0 bg-white text-right">
                       <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
                         <Eye className="size-3.5" />
-                        查看详情
+                        {t('查看详情')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -366,8 +368,9 @@ function ExamResultsContent() {
 }
 
 export default function ExamResultsPage() {
+  const t = useT()
   return (
-    <Suspense fallback={<div className="p-6 text-center text-muted-foreground">加载中...</div>}>
+    <Suspense fallback={<div className="p-6 text-center text-muted-foreground">{t('加载中...')}</div>}>
       <ExamResultsContent />
     </Suspense>
   )

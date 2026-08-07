@@ -46,6 +46,7 @@ import {
   isAutoQuestion,
   questionTypeLabels,
 } from '@/components/shared/exam-grading/question-grading-card'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const evalMethodColors: Record<string, string> = {
   random_draw: 'bg-purple-50 text-purple-600 border-purple-200',
@@ -85,7 +86,8 @@ function StudentInfoCard({
   maxScore: number
   saved: boolean
 }) {
-  const studentName = user?.name || result.evaluateeId || '未知'
+  const t = useT()
+  const studentName = user?.name || result.evaluateeId || t('未知')
   const classInfo = [user?.grade, user?.className].filter(Boolean).join(' · ')
 
   return (
@@ -117,7 +119,7 @@ function StudentInfoCard({
               variant="outline"
               className={cn('text-[10px] h-5 px-1.5', evalMethodColors[methodKey] || '')}
             >
-              {methodName}
+              {t(methodName)}
             </Badge>
             {saved ? (
               <Badge
@@ -125,7 +127,7 @@ function StudentInfoCard({
                 className="text-[10px] h-5 px-1.5 bg-green-50 text-green-600 border-green-200 gap-1"
               >
                 <CheckCircle2 className="h-3 w-3" />
-                已评分
+                {t('已评分')}
               </Badge>
             ) : (
               <Badge
@@ -133,13 +135,13 @@ function StudentInfoCard({
                 className="text-[10px] h-5 px-1.5 bg-amber-50 text-amber-600 border-amber-200 gap-1"
               >
                 <Star className="h-3 w-3" />
-                待评分
+                {t('待评分')}
               </Badge>
             )}
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-xs text-gray-500 mb-0.5">当前总分</div>
+          <div className="text-xs text-gray-500 mb-0.5">{t('当前总分')}</div>
           <div className="flex items-baseline justify-end gap-1">
             <span
               className={cn(
@@ -175,6 +177,7 @@ function EvalPointGradingCard({
   isGraded: boolean
   onChange: (id: string, score: number, comment: string) => void
 }) {
+  const t = useT()
   const [localScore, setLocalScore] = useState(score.toString())
   const [localComment, setLocalComment] = useState(comment)
 
@@ -215,12 +218,12 @@ function EvalPointGradingCard({
             )}
           </div>
           <Badge variant="outline" className="text-[10px] h-5 px-1.5 shrink-0">
-            {evalPoint.weight || 0} 分
+            {t('{n} 分', { n: evalPoint.weight || 0 })}
           </Badge>
         </div>
         <div className="flex flex-col gap-3 bg-slate-50 rounded-lg border border-slate-100 p-3">
           <div className="flex items-center gap-3">
-            <Label className="text-xs text-slate-600 font-medium shrink-0">评分</Label>
+            <Label className="text-xs text-slate-600 font-medium shrink-0">{t('评分')}</Label>
             <ScoreInput
               value={localScore}
               max={evalPoint.weight || 100}
@@ -230,9 +233,9 @@ function EvalPointGradingCard({
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-600 font-medium">评语</Label>
+            <Label className="text-xs text-slate-600 font-medium">{t('评语')}</Label>
             <Textarea
-              placeholder="请输入评分说明或改进建议..."
+              placeholder={t('请输入评分说明或改进建议...')}
               value={localComment}
               onChange={(e) => setLocalComment(e.target.value)}
               onBlur={() => onChange(evalPoint.id, score, localComment)}
@@ -264,6 +267,7 @@ function ScoreRuleGradingCard({
   isGraded: boolean
   onChange: (id: string, score: number, comment: string) => void
 }) {
+  const t = useT()
   const [localScore, setLocalScore] = useState(score.toString())
   const [localComment, setLocalComment] = useState(comment)
 
@@ -303,17 +307,17 @@ function ScoreRuleGradingCard({
             )}
             {scoreRule.rule && (
               <p className="text-xs text-blue-600 mt-1 leading-relaxed bg-blue-50 border border-blue-100 rounded px-2 py-1">
-                加减分规则：{scoreRule.rule}
+                {t('加减分规则：{rule}', { rule: scoreRule.rule })}
               </p>
             )}
           </div>
           <Badge variant="outline" className="text-[10px] h-5 px-1.5 shrink-0">
-            {scoreRule.weight || 0} 分
+            {t('{n} 分', { n: scoreRule.weight || 0 })}
           </Badge>
         </div>
         <div className="flex flex-col gap-3 bg-slate-50 rounded-lg border border-slate-100 p-3">
           <div className="flex items-center gap-3">
-            <Label className="text-xs text-slate-600 font-medium shrink-0">评分</Label>
+            <Label className="text-xs text-slate-600 font-medium shrink-0">{t('评分')}</Label>
             <ScoreInput
               value={localScore}
               max={scoreRule.weight || 100}
@@ -323,9 +327,9 @@ function ScoreRuleGradingCard({
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-600 font-medium">评语</Label>
+            <Label className="text-xs text-slate-600 font-medium">{t('评语')}</Label>
             <Textarea
-              placeholder="请输入评分说明或改进建议..."
+              placeholder={t('请输入评分说明或改进建议...')}
               value={localComment}
               onChange={(e) => setLocalComment(e.target.value)}
               onBlur={() => onChange(scoreRule.id, score, localComment)}
@@ -357,6 +361,7 @@ function DrawnQuestionCard({
   isGraded: boolean
   onOralAnswerChange: (questionId: string, oralAnswer: string) => void
 }) {
+  const t = useT()
   const [value, setValue] = useState(oralAnswer)
 
   const isSimpleQuestion = !question.content && !!question.name
@@ -365,7 +370,7 @@ function DrawnQuestionCard({
 
   const getAnswerLabel = () => {
     if (question.type === 'judge' || question.type === 'judgment') {
-      return question.answer === 'true' ? '正确' : '错误'
+      return question.answer === 'true' ? t('正确') : t('错误')
     }
     if (Array.isArray(question.answer)) return question.answer.join('、')
     return question.answer || '-'
@@ -379,11 +384,11 @@ function DrawnQuestionCard({
             variant="outline"
             className="text-[10px] h-5 px-1.5 bg-slate-50 text-slate-600 border-slate-200"
           >
-            第 {index + 1} 题
+            {t('第 {n} 题', { n: index + 1 })}
           </Badge>
           {!isSimpleQuestion && (
             <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-              {questionTypeLabels[questionType] || questionType}
+              {t(questionTypeLabels[questionType] || questionType)}
             </Badge>
           )}
         </div>
@@ -425,13 +430,13 @@ function DrawnQuestionCard({
           </div>
         )}
         <div className="bg-green-50 rounded-lg border border-green-100 p-3">
-          <div className="text-xs text-green-700 font-medium mb-1.5">参考答案</div>
+          <div className="text-xs text-green-700 font-medium mb-1.5">{t('参考答案')}</div>
           <p className="text-sm text-green-700 leading-relaxed">{getAnswerLabel()}</p>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-gray-500">学生口头回答记录（教师现场记录）</Label>
+          <Label className="text-xs text-gray-500">{t('学生口头回答记录（教师现场记录）')}</Label>
           <Textarea
-            placeholder="请记录学生现场口头回答的要点..."
+            placeholder={t('请记录学生现场口头回答的要点...')}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onBlur={() => onOralAnswerChange(question.id, value)}
@@ -456,6 +461,7 @@ function AttachmentPreview({
   attachment: { name: string; url: string; type?: string }
   onClose: () => void
 }) {
+  const t = useT()
   return (
     <Dialog open={!!attachment} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] p-0 gap-0 overflow-hidden">
@@ -480,7 +486,7 @@ function AttachmentPreview({
           ) : (
             <div className="text-center py-12 text-gray-400">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">该类型文件暂不支持在线预览</p>
+              <p className="text-sm">{t('该类型文件暂不支持在线预览')}</p>
             </div>
           )}
         </div>
@@ -495,6 +501,7 @@ function AttachmentPreview({
 
 export default function GradingDetailPage() {
   const params = useParams()
+  const t = useT()
   const id = params.id as string
 
   const [result, setResult] = useState<SceneEvaluationResult | null>(null)
@@ -630,12 +637,12 @@ export default function GradingDetailPage() {
         setUser(found || null)
       } catch (e) {
         reportError(e, '加载评分详情')
-        setLoadError(e instanceof Error ? e.message : '加载失败')
+        setLoadError(e instanceof Error ? e.message : t('加载失败'))
       }
       setLoading(false)
     }
     load()
-  }, [id])
+  }, [id, t])
 
   const methodKey = result?.methodKey || ''
   const methodName = EVAL_METHOD_LABELS_GRADING[methodKey] || methodKey
@@ -795,17 +802,19 @@ export default function GradingDetailPage() {
   }
 
   if (loading)
-    return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
+    return (
+      <div className="h-screen flex items-center justify-center text-gray-400">{t('加载中...')}</div>
+    )
   if (!result)
     return (
       <div className="h-screen flex flex-col items-center justify-center text-gray-400">
         {loadError ? (
           <>
-            <p className="mb-2">加载失败</p>
+            <p className="mb-2">{t('加载失败')}</p>
             <p className="text-xs text-red-400">{loadError}</p>
           </>
         ) : (
-          <p>记录不存在</p>
+          <p>{t('记录不存在')}</p>
         )}
       </div>
     )
@@ -819,11 +828,11 @@ export default function GradingDetailPage() {
           <div className="px-4 py-3 border-b flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
             <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
               <FileText className="h-4 w-4 text-purple-500" />
-              现场问答题
+              {t('现场问答题')}
             </h2>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                {rdQuestions.length} 题
+                {t('{n} 题', { n: rdQuestions.length })}
               </Badge>
               {!saved && (
                 <Button
@@ -847,7 +856,7 @@ export default function GradingDetailPage() {
                   }}
                   disabled={!methodConfig?.resourceConfig?.selectedQuestionIds?.length}
                 >
-                  现场抽题
+                  {t('现场抽题')}
                 </Button>
               )}
             </div>
@@ -856,7 +865,7 @@ export default function GradingDetailPage() {
             {rdQuestions.length === 0 && (
               <div className="text-center py-12 text-gray-400 text-sm bg-gray-50/50 rounded-lg border border-dashed">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                点击右上角「现场抽题」按钮，从题库中抽取本次问答题目
+                {t('点击右上角「现场抽题」按钮，从题库中抽取本次问答题目')}
               </div>
             )}
             {rdQuestions.map((q, idx) => (
@@ -880,7 +889,7 @@ export default function GradingDetailPage() {
           <div className="px-4 py-3 border-b flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
             <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
               <Package className="h-4 w-4 text-amber-500" />
-              {isReview ? '现场评审材料' : isOutcome ? '成果材料' : '作业材料'}
+              {isReview ? t('现场评审材料') : isOutcome ? t('成果材料') : t('作业材料')}
             </h2>
           </div>
           <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
@@ -888,7 +897,7 @@ export default function GradingDetailPage() {
               <Card className="border-slate-200">
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-xs font-medium text-gray-500">
-                    评审步骤（选择本次评价的步骤）
+                    {t('评审步骤（选择本次评价的步骤）')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 pt-0 space-y-2">
@@ -960,7 +969,7 @@ export default function GradingDetailPage() {
                 <Card className="border-slate-200">
                   <CardHeader className="py-3 px-4">
                     <CardTitle className="text-xs font-medium text-gray-500">
-                      学生按评价点自评
+                      {t('学生按评价点自评')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 pt-0 space-y-2">
@@ -975,7 +984,7 @@ export default function GradingDetailPage() {
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-sm font-medium text-gray-800">{ep.name}</span>
                             <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                              {ep.weight || 0} 分
+                              {t('{n} 分', { n: ep.weight || 0 })}
                             </Badge>
                           </div>
                           <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
@@ -991,7 +1000,9 @@ export default function GradingDetailPage() {
             {subjectiveContent.text && (
               <Card className="border-slate-200">
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-xs font-medium text-gray-500">学生提交内容</CardTitle>
+                  <CardTitle className="text-xs font-medium text-gray-500">
+                    {t('学生提交内容')}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 pt-0">
                   <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed bg-slate-50 rounded-lg border border-slate-100 p-3">
@@ -1005,7 +1016,7 @@ export default function GradingDetailPage() {
               subjectiveContent.files.length > 0 && (
                 <Card className="border-slate-200">
                   <CardHeader className="py-3 px-4">
-                    <CardTitle className="text-xs font-medium text-gray-500">附件</CardTitle>
+                    <CardTitle className="text-xs font-medium text-gray-500">{t('附件')}</CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 pt-0 space-y-2">
                     {subjectiveContent.files.map((f: any, i: number) => (
@@ -1025,7 +1036,7 @@ export default function GradingDetailPage() {
                             }
                           >
                             <Eye className="h-3.5 w-3.5 mr-1" />
-                            预览
+                            {t('预览')}
                           </Button>
                           <Button
                             variant="ghost"
@@ -1039,7 +1050,7 @@ export default function GradingDetailPage() {
                             }}
                           >
                             <Download className="h-3.5 w-3.5 mr-1" />
-                            下载
+                            {t('下载')}
                           </Button>
                         </HoverActionBar>
                       </div>
@@ -1051,7 +1062,7 @@ export default function GradingDetailPage() {
               (!subjectiveContent.files || subjectiveContent.files.length === 0) && (
                 <div className="text-center py-12 text-gray-400 text-sm bg-gray-50/50 rounded-lg border border-dashed">
                   <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  学生未提交在线材料
+                  {t('学生未提交在线材料')}
                 </div>
               )}
           </div>
@@ -1070,10 +1081,10 @@ export default function GradingDetailPage() {
         <div className="px-4 py-3 bg-white border-b flex items-center justify-between shrink-0 sticky top-0 z-10">
           <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             <Star className="h-4 w-4 text-amber-500" />
-            {isRandomDraw || isReview ? '评价点评分' : isHomework ? '评价标准' : '评价点评分'}
+            {isRandomDraw || isReview ? t('评价点评分') : isHomework ? t('评价标准') : t('评价点评分')}
           </h2>
           <div className="text-sm text-gray-600">
-            已评分：
+            {t('已评分：')}
             <span className="font-semibold text-gray-900">
               {evalPointTotal} / {evalPointMaxTotal || 100}
             </span>
@@ -1095,7 +1106,7 @@ export default function GradingDetailPage() {
             ) : (
               <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-dashed">
                 <Star className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">该任务未配置评分项</p>
+                <p className="text-sm">{t('该任务未配置评分项')}</p>
               </div>
             )
           ) : evalPoints.length > 0 ? (
@@ -1112,7 +1123,7 @@ export default function GradingDetailPage() {
           ) : (
             <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-dashed">
               <Star className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">该任务未配置评价点</p>
+              <p className="text-sm">{t('该任务未配置评价点')}</p>
             </div>
           )}
         </div>
@@ -1134,11 +1145,11 @@ export default function GradingDetailPage() {
               }
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
-              返回
+              {t('返回')}
             </Link>
           </Button>
           <Separator orientation="vertical" className="h-4" />
-          <span className="text-sm text-gray-500 truncate">评分详情</span>
+          <span className="text-sm text-gray-500 truncate">{t('评分详情')}</span>
         </div>
 
         <StudentInfoCard
@@ -1164,16 +1175,20 @@ export default function GradingDetailPage() {
                       <FileText className="h-5 w-5 text-blue-500" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold text-gray-800">{methodName}评分</h2>
+                      <h2 className="text-sm font-semibold text-gray-800">
+                        {t('{name}评分', { name: t(methodName) })}
+                      </h2>
                       <p className="text-xs text-gray-500">
-                        共 {examQuestions.length} 题（客观{' '}
-                        {examQuestions.filter((q: any) => isAutoQuestion(q)).length} / 主观{' '}
-                        {examQuestions.filter((q: any) => !isAutoQuestion(q)).length}）
+                        {t('共 {total} 题（客观 {auto} / 主观 {subj}）', {
+                          total: examQuestions.length,
+                          auto: examQuestions.filter((q: any) => isAutoQuestion(q)).length,
+                          subj: examQuestions.filter((q: any) => !isAutoQuestion(q)).length,
+                        })}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
-                    <span className="text-sm text-gray-500">最终总分</span>
+                    <span className="text-sm text-gray-500">{t('最终总分')}</span>
                     <Input
                       type="number"
                       min={0}
@@ -1187,7 +1202,7 @@ export default function GradingDetailPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-xs">
                   <div className="flex items-center gap-1.5 bg-green-50 rounded-md px-2.5 py-1 border border-green-100">
-                    <span className="text-gray-600">客观题自动得分</span>
+                    <span className="text-gray-600">{t('客观题自动得分')}</span>
                     <span className="font-semibold text-green-700">
                       {examAutoTotal} /{' '}
                       {examQuestions.reduce(
@@ -1197,7 +1212,7 @@ export default function GradingDetailPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-amber-50 rounded-md px-2.5 py-1 border border-amber-100">
-                    <span className="text-gray-600">主观题得分</span>
+                    <span className="text-gray-600">{t('主观题得分')}</span>
                     <span
                       className={cn(
                         'font-semibold',
@@ -1215,7 +1230,7 @@ export default function GradingDetailPage() {
                         variant="outline"
                         className="text-[10px] h-4 px-1 text-amber-600 border-amber-200 bg-white"
                       >
-                        待评分
+                        {t('待评分')}
                       </Badge>
                     )}
                   </div>
@@ -1234,7 +1249,7 @@ export default function GradingDetailPage() {
                       )}
                       onClick={() => setQuestionFilter('all')}
                     >
-                      全部题目 ({examQuestions.length})
+                      {t('全部题目 ({n})', { n: examQuestions.length })}
                     </button>
                     <button
                       className={cn(
@@ -1245,7 +1260,7 @@ export default function GradingDetailPage() {
                       )}
                       onClick={() => setQuestionFilter('pending')}
                     >
-                      待评分题目 ({pendingQuestions.length})
+                      {t('待评分题目 ({n})', { n: pendingQuestions.length })}
                     </button>
                   </div>
                   <Button
@@ -1254,7 +1269,7 @@ export default function GradingDetailPage() {
                     className="h-8 text-xs text-gray-500 hover:text-gray-700"
                     onClick={() => setAllExpanded((prev) => !prev)}
                   >
-                    {allExpanded ? '全部收起' : '全部展开'}
+                    {allExpanded ? t('全部收起') : t('全部展开')}
                   </Button>
                 </div>
                 <div className="space-y-2">
@@ -1292,7 +1307,7 @@ export default function GradingDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 lg:left-56 bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-3 z-50">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
-            <span className="text-sm text-gray-500">最终得分</span>
+            <span className="text-sm text-gray-500">{t('最终得分')}</span>
             <span
               className={cn(
                 'text-3xl font-bold',
@@ -1306,7 +1321,7 @@ export default function GradingDetailPage() {
           <Separator orientation="vertical" className="h-8" />
           <div className="flex-1 min-w-0">
             <Textarea
-              placeholder="教师评语..."
+              placeholder={t('教师评语...')}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               disabled={saved}
@@ -1316,7 +1331,7 @@ export default function GradingDetailPage() {
           </div>
           {saved && result.gradedAt && (
             <div className="text-xs text-gray-400 shrink-0 text-right">
-              <div>评分时间</div>
+              <div>{t('评分时间')}</div>
               <div>{new Date(result.gradedAt).toLocaleString('zh-CN')}</div>
             </div>
           )}
@@ -1328,7 +1343,7 @@ export default function GradingDetailPage() {
                   : '/evaluation/scene-results'
               }
             >
-              取消
+              {t('取消')}
             </Link>
           </Button>
           {!saved && (
@@ -1339,10 +1354,10 @@ export default function GradingDetailPage() {
               className="shrink-0 h-9 gap-1 px-4"
             >
               <Save className="h-3.5 w-3.5" />
-              {saving ? '保存中...' : '提交评分'}
+              {saving ? t('保存中...') : t('提交评分')}
             </Button>
           )}
-          {saveFailed && <span className="text-xs text-red-500">保存失败，请重试</span>}
+          {saveFailed && <span className="text-xs text-red-500">{t('保存失败，请重试')}</span>}
           {saved && (
             <Button
               size="sm"
@@ -1350,7 +1365,7 @@ export default function GradingDetailPage() {
               className="bg-green-600 hover:bg-green-600 shrink-0 h-9 gap-1 px-4"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              已提交
+              {t('已提交')}
             </Button>
           )}
         </div>

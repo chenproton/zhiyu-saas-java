@@ -51,7 +51,9 @@ import type {
 import { QUESTION_TYPES, QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, canPerformAction } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 export default function ExamComposerPage() {
+  const t = useT()
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -146,8 +148,8 @@ export default function ExamComposerPage() {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold">加载中...</h2>
-          <p className="mb-4 text-muted-foreground">正在获取试卷信息</p>
+          <h2 className="text-lg font-semibold">{t('加载中...')}</h2>
+          <p className="mb-4 text-muted-foreground">{t('正在获取试卷信息')}</p>
         </div>
       </div>
     )
@@ -157,10 +159,10 @@ export default function ExamComposerPage() {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold">试卷不存在</h2>
-          <p className="mb-4 text-muted-foreground">该试卷可能已被删除</p>
+          <h2 className="text-lg font-semibold">{t('试卷不存在')}</h2>
+          <p className="mb-4 text-muted-foreground">{t('该试卷可能已被删除')}</p>
           <Button asChild>
-            <Link href="/evaluation/exams">返回组卷列表</Link>
+            <Link href="/evaluation/exams">{t('返回组卷列表')}</Link>
           </Button>
         </div>
       </div>
@@ -296,7 +298,7 @@ export default function ExamComposerPage() {
           }}
         >
           <ArrowLeft />
-          {isPreview ? '返回' : '返回组卷列表'}
+          {isPreview ? t('返回') : t('返回组卷列表')}
         </Button>
       </div>
 
@@ -321,7 +323,7 @@ export default function ExamComposerPage() {
                     <Badge variant="outline">{exam.version}</Badge>
                   </div>
                   <CardDescription className="mt-2">
-                    {exam.description || '暂无描述'}
+                    {exam.description || t('暂无描述')}
                   </CardDescription>
                 </div>
               </div>
@@ -330,7 +332,7 @@ export default function ExamComposerPage() {
                   {canEdit && (
                     <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
                       <Edit className="mr-1 size-4" />
-                      编辑信息
+                      {t('编辑信息')}
                     </Button>
                   )}
                   {canPublish && (
@@ -341,7 +343,7 @@ export default function ExamComposerPage() {
                       onClick={() => updateExamStatus(examId, 'publish')}
                     >
                       <Rocket className="mr-1 size-4" />
-                      发布
+                      {t('发布')}
                     </Button>
                   )}
                 </div>
@@ -351,23 +353,23 @@ export default function ExamComposerPage() {
           <CardContent>
             <div className="flex flex-wrap gap-6 text-sm">
               <div>
-                <span className="text-muted-foreground">创建人:</span>{' '}
+                <span className="text-muted-foreground">{t('创建人')}:</span>{' '}
                 <strong>{exam.creatorName || exam.creatorId || '-'}</strong>
               </div>
               <div>
-                <span className="text-muted-foreground">题目数量:</span>{' '}
+                <span className="text-muted-foreground">{t('题目数量')}:</span>{' '}
                 <strong>{exam.questions.length}</strong>
               </div>
               <div>
-                <span className="text-muted-foreground">总分:</span>{' '}
-                <strong>{totalScore} 分</strong>
+                <span className="text-muted-foreground">{t('总分')}:</span>{' '}
+                <strong>{t('{score} 分', { score: totalScore })}</strong>
               </div>
               <div>
-                <span className="text-muted-foreground">创建时间:</span>{' '}
+                <span className="text-muted-foreground">{t('创建时间')}:</span>{' '}
                 {formatDate(exam.createdAt)}
               </div>
               <div>
-                <span className="text-muted-foreground">更新时间:</span>{' '}
+                <span className="text-muted-foreground">{t('更新时间')}:</span>{' '}
                 {formatDate(exam.updatedAt)}
               </div>
             </div>
@@ -376,7 +378,7 @@ export default function ExamComposerPage() {
                 {getCollaboratorNames().length > 0 && (
                   <div className="flex items-center gap-2">
                     <Users className="size-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">共建人:</span>
+                    <span className="text-sm text-muted-foreground">{t('共建人')}:</span>
                     <div className="flex flex-wrap gap-1">
                       {getCollaboratorNames().map((name, i) => (
                         <Badge key={i} variant="secondary" className="text-xs">
@@ -389,7 +391,7 @@ export default function ExamComposerPage() {
                 {getCollaboratorDeptNames().length > 0 && (
                   <div className="flex items-center gap-2">
                     <Building2 className="size-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">共建部门:</span>
+                    <span className="text-sm text-muted-foreground">{t('共建部门')}:</span>
                     <div className="flex flex-wrap gap-1">
                       {getCollaboratorDeptNames().map((name, i) => (
                         <Badge key={i} variant="outline" className="text-xs">
@@ -410,9 +412,9 @@ export default function ExamComposerPage() {
         {/* 工具栏 */}
         <div className="flex items-center justify-between border-b px-6 py-3">
           <div>
-            <h3 className="font-semibold">试卷题目</h3>
+            <h3 className="font-semibold">{t('试卷题目')}</h3>
             <p className="text-sm text-muted-foreground">
-              {canEdit ? '拖拽调整顺序，点击分值可修改' : '查看试卷题目'}
+              {canEdit ? t('拖拽调整顺序，点击分值可修改') : t('查看试卷题目')}
             </p>
           </div>
           {canEdit && (
@@ -421,31 +423,31 @@ export default function ExamComposerPage() {
                 <DropdownMenuTrigger asChild>
                   <Button size="sm">
                     <SlidersHorizontal className="mr-1 size-4" />
-                    分数配置
+                    {t('分数配置')}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-72">
                   <DropdownMenuItem onClick={handleEvenDistribution}>
                     <div>
-                      <div className="font-medium">均匀分配</div>
+                      <div className="font-medium">{t('均匀分配')}</div>
                       <div className="text-xs text-muted-foreground">
-                        将 100 分均匀分给每道题，余数从第一题起依次加 1 分
+                        {t('将 100 分均匀分给每道题，余数从第一题起依次加 1 分')}
                       </div>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setScoreTypeDialogOpen(true)}>
                     <div>
-                      <div className="font-medium">题型分配</div>
+                      <div className="font-medium">{t('题型分配')}</div>
                       <div className="text-xs text-muted-foreground">
-                        为每种题型分配总分（合计 100），各题型内均匀分配
+                        {t('为每种题型分配总分（合计 100），各题型内均匀分配')}
                       </div>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleProportionalDistribution}>
                     <div>
-                      <div className="font-medium">等比分配</div>
+                      <div className="font-medium">{t('等比分配')}</div>
                       <div className="text-xs text-muted-foreground">
-                        按当前每题分数的比例缩放至总分 100 分
+                        {t('按当前每题分数的比例缩放至总分 100 分')}
                       </div>
                     </div>
                   </DropdownMenuItem>
@@ -453,17 +455,17 @@ export default function ExamComposerPage() {
               </DropdownMenu>
               <Button variant="outline" size="sm" onClick={() => setRandomDialogOpen(true)}>
                 <Wand2 className="mr-1 size-4" />
-                自动抽题
+                {t('自动抽题')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => setManualDialogOpen(true)}>
                 <Hand className="mr-1 size-4" />
-                手动抽题
+                {t('手动抽题')}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Plus className="mr-1 size-4" />
-                    新增题目
+                    {t('新增题目')}
                     <ChevronDown className="ml-1 size-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -476,14 +478,14 @@ export default function ExamComposerPage() {
                         setQuestionFormOpen(true)
                       }}
                     >
-                      {QUESTION_TYPE_LABELS[type]}
+                      {t(QUESTION_TYPE_LABELS[type])}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button variant="outline" size="sm" disabled title="批量导入题目功能开发中">
+              <Button variant="outline" size="sm" disabled title={t('批量导入题目功能开发中')}>
                 <FileUp className="mr-1 size-4" />
-                批量导入题目
+                {t('批量导入题目')}
               </Button>
             </div>
           )}
@@ -495,9 +497,9 @@ export default function ExamComposerPage() {
             <div className="flex h-full items-center justify-center p-8 text-center">
               <div>
                 <FileText className="mx-auto mb-2 size-12 text-muted-foreground/50" />
-                <p className="text-muted-foreground">暂无题目</p>
+                <p className="text-muted-foreground">{t('暂无题目')}</p>
                 {canEdit && (
-                  <p className="text-sm text-muted-foreground">点击上方按钮抽取或新增题目</p>
+                  <p className="text-sm text-muted-foreground">{t('点击上方按钮抽取或新增题目')}</p>
                 )}
               </div>
             </div>
@@ -524,7 +526,7 @@ export default function ExamComposerPage() {
                   <Badge
                     className={`text-xs text-white shrink-0 hover:opacity-90 ${QUESTION_TYPE_BADGE_CLASSES[question.type]}`}
                   >
-                    {QUESTION_TYPE_LABELS[question.type]}
+                    {t(QUESTION_TYPE_LABELS[question.type])}
                   </Badge>
                   {canEdit ? (
                     <div className="flex items-center gap-1 shrink-0">
@@ -542,11 +544,11 @@ export default function ExamComposerPage() {
                         disabled={savingScoreId === question.id}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <span className="text-xs text-muted-foreground">分</span>
+                      <span className="text-xs text-muted-foreground">{t('分')}</span>
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground shrink-0">
-                      {question.score} 分
+                      {t('{score} 分', { score: question.score })}
                     </span>
                   )}
                   <div className="flex shrink-0 items-center gap-1">
@@ -595,8 +597,8 @@ export default function ExamComposerPage() {
       <ConfirmDialog
         open={!!deleteConfirm}
         onOpenChange={(open) => !open && setDeleteConfirm(null)}
-        title="移除题目"
-        description="确定要从试卷中移除这道题目吗？"
+        title={t('移除题目')}
+        description={t('确定要从试卷中移除这道题目吗？')}
         variant="destructive"
         onConfirm={handleRemoveQuestion}
       />

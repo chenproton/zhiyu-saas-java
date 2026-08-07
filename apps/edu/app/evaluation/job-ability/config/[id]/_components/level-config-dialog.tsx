@@ -16,6 +16,7 @@ import { useToast } from '@zhiyu/ui'
 import { certApi } from '@/lib/api'
 import type { LevelMapping } from '@zhiyu/shared-types'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 /** 掌握程度五档（代码、标签、系统默认最低分 50/60/70/80/90） */
 const LEVEL_ORDER: { level: string; label: string; defaultMin: number }[] = [
@@ -43,13 +44,14 @@ export function LevelConfigDialog({
   point,
   onSaved,
 }: LevelConfigDialogProps) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>能力点分档配置 · {point.name}</DialogTitle>
+          <DialogTitle>{t('能力点分档配置 · {name}', { name: point.name })}</DialogTitle>
           <DialogDescription>
-            配置该能力点各档位最低分数线，低于最低档判定为「未达标」；修改后需在结果页重新触发汇聚生效
+            {t('配置该能力点各档位最低分数线，低于最低档判定为「未达标」；修改后需在结果页重新触发汇聚生效')}
           </DialogDescription>
         </DialogHeader>
         {/* DialogContent 仅在打开时挂载，表单状态随每次打开从最新 point 重置 */}
@@ -75,6 +77,7 @@ function LevelConfigForm({
   onSaved: () => void
   onCancel: () => void
 }) {
+  const t = useT()
   const { toast } = useToast()
   const [mins, setMins] = useState<number[]>(() => {
     const configured = point.levelMapping ?? []
@@ -126,13 +129,13 @@ function LevelConfigForm({
     setSaving(true)
     try {
       await certApi.putPointLevels(positionId, point.abilityPointId, mapping)
-      toast({ title: '保存成功', description: '分档配置已保存，重新汇聚后生效' })
+      toast({ title: t('保存成功'), description: t('分档配置已保存，重新汇聚后生效') })
       onSaved()
       onCancel()
     } catch (err) {
       toast({
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '保存分档配置失败',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('保存分档配置失败'),
         variant: 'destructive',
       })
     } finally {
@@ -144,9 +147,9 @@ function LevelConfigForm({
     <>
       <div className="py-2 space-y-2.5">
         <div className="flex items-center gap-3 p-3 rounded-md bg-muted/40 border border-border">
-          <span className="w-20 text-sm font-medium">未达标</span>
+          <span className="w-20 text-sm font-medium">{t('未达标')}</span>
           <span className="text-sm text-muted-foreground">
-            {rows.length > 0 ? `0 ~ ${rows[0].min - 1} 分` : '—'}
+            {rows.length > 0 ? t('0 ~ {max} 分', { max: rows[0].min - 1 }) : '—'}
           </span>
         </div>
         {rows.map((row, i) => (
@@ -154,7 +157,7 @@ function LevelConfigForm({
             key={row.level}
             className="flex items-center gap-3 p-3 rounded-md bg-secondary/50 border border-border"
           >
-            <span className="w-20 text-sm font-medium">{row.label}</span>
+            <span className="w-20 text-sm font-medium">{t(row.label)}</span>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -164,27 +167,29 @@ function LevelConfigForm({
                 onChange={(e) => handleChange(i, e.target.value)}
                 className="w-20 h-8 text-center"
               />
-              <span className="text-muted-foreground text-sm">~ {row.max} 分</span>
+              <span className="text-muted-foreground text-sm">
+                {t('~ {max} 分', { max: row.max })}
+              </span>
             </div>
           </div>
         ))}
         <div className="flex items-center justify-between pt-1">
           <Button variant="outline" size="sm" onClick={resetDefault}>
             <RotateCcw className="mr-2 h-4 w-4" />
-            恢复默认（50/60/70/80/90）
+            {t('恢复默认（50/60/70/80/90）')}
           </Button>
           <span className={cn('text-xs', error ? 'text-red-600' : 'text-muted-foreground')}>
-            {error ?? '档位区间连续覆盖 1-100 分'}
+            {error ? t(error) : t('档位区间连续覆盖 1-100 分')}
           </span>
         </div>
       </div>
 
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
-          取消
+          {t('取消')}
         </Button>
         <Button onClick={handleSave} disabled={!!error || saving}>
-          {saving ? '保存中...' : '保存'}
+          {saving ? t('保存中...') : t('保存')}
         </Button>
       </DialogFooter>
     </>

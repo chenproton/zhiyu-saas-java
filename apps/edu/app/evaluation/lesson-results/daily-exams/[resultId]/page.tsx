@@ -26,6 +26,7 @@ import {
   getAutoScore,
   isAutoQuestion,
 } from '@/components/shared/exam-grading/question-grading-card'
+import { useT } from '@/lib/i18n/locale-provider'
 
 function getInitials(name: string): string {
   if (!name || name === '未知') return '?'
@@ -34,6 +35,7 @@ function getInitials(name: string): string {
 
 export default function DailyExamGradingPage() {
   const params = useParams()
+  const t = useT()
   const resultId = params.resultId as string
 
   const [result, setResult] = useState<ExamResult | null>(null)
@@ -75,12 +77,12 @@ export default function DailyExamGradingPage() {
         }
       } catch (e) {
         reportError(e, '加载评分详情')
-        setLoadError(e instanceof Error ? e.message : '加载失败')
+        setLoadError(e instanceof Error ? e.message : t('加载失败'))
       }
       setLoading(false)
     }
     load()
-  }, [resultId])
+  }, [resultId, t])
 
   const examQuestions = useMemo(() => exam?.questions || [], [exam])
   const objectiveAnswers = useMemo(
@@ -147,22 +149,24 @@ export default function DailyExamGradingPage() {
   }
 
   if (loading)
-    return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
+    return (
+      <div className="h-screen flex items-center justify-center text-gray-400">{t('加载中...')}</div>
+    )
   if (!result)
     return (
       <div className="h-screen flex flex-col items-center justify-center text-gray-400">
         {loadError ? (
           <>
-            <p className="mb-2">加载失败</p>
+            <p className="mb-2">{t('加载失败')}</p>
             <p className="text-xs text-red-400">{loadError}</p>
           </>
         ) : (
-          <p>记录不存在</p>
+          <p>{t('记录不存在')}</p>
         )}
       </div>
     )
 
-  const studentName = result.studentName || '未知'
+  const studentName = result.studentName || t('未知')
   const classInfo = [result.grade, result.className].filter(Boolean).join(' · ')
 
   return (
@@ -173,12 +177,12 @@ export default function DailyExamGradingPage() {
           <Button variant="ghost" size="sm" asChild className="h-8">
             <Link href="/evaluation/lesson-results/daily-exams">
               <ArrowLeft className="mr-1 h-4 w-4" />
-              返回
+              {t('返回')}
             </Link>
           </Button>
           <Separator orientation="vertical" className="h-4" />
           <span className="text-sm text-gray-500 truncate">
-            {usageName || '日常考试'} · 评分详情
+            {t('{name} · 评分详情', { name: usageName || t('日常考试') })}
           </span>
         </div>
 
@@ -207,7 +211,7 @@ export default function DailyExamGradingPage() {
               </div>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className="text-sm text-gray-600 truncate max-w-[260px]">
-                  {usageName || '日常考试'}
+                  {usageName || t('日常考试')}
                 </span>
                 {saved ? (
                   <Badge
@@ -215,7 +219,7 @@ export default function DailyExamGradingPage() {
                     className="text-[10px] h-5 px-1.5 bg-green-50 text-green-600 border-green-200 gap-1"
                   >
                     <CheckCircle2 className="h-3 w-3" />
-                    已评分
+                    {t('已评分')}
                   </Badge>
                 ) : (
                   <Badge
@@ -223,13 +227,13 @@ export default function DailyExamGradingPage() {
                     className="text-[10px] h-5 px-1.5 bg-amber-50 text-amber-600 border-amber-200 gap-1"
                   >
                     <Star className="h-3 w-3" />
-                    待评分
+                    {t('待评分')}
                   </Badge>
                 )}
               </div>
             </div>
             <div className="text-right shrink-0">
-              <div className="text-xs text-gray-500 mb-0.5">当前总分</div>
+              <div className="text-xs text-gray-500 mb-0.5">{t('当前总分')}</div>
               <div className="flex items-baseline justify-end gap-1">
                 <span
                   className={cn(
@@ -254,16 +258,18 @@ export default function DailyExamGradingPage() {
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-gray-800">试卷评分</h2>
+                  <h2 className="text-sm font-semibold text-gray-800">{t('试卷评分')}</h2>
                   <p className="text-xs text-gray-500">
-                    共 {examQuestions.length} 题（客观{' '}
-                    {examQuestions.filter((q: any) => isAutoQuestion(q)).length} / 主观{' '}
-                    {examQuestions.filter((q: any) => !isAutoQuestion(q)).length}）
+                    {t('共 {total} 题（客观 {auto} / 主观 {subj}）', {
+                      total: examQuestions.length,
+                      auto: examQuestions.filter((q: any) => isAutoQuestion(q)).length,
+                      subj: examQuestions.filter((q: any) => !isAutoQuestion(q)).length,
+                    })}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
-                <span className="text-sm text-gray-500">最终总分</span>
+                <span className="text-sm text-gray-500">{t('最终总分')}</span>
                 <Input
                   type="number"
                   min={0}
@@ -277,7 +283,7 @@ export default function DailyExamGradingPage() {
             </div>
             <div className="flex flex-wrap items-center gap-4 text-xs">
               <div className="flex items-center gap-1.5 bg-green-50 rounded-md px-2.5 py-1 border border-green-100">
-                <span className="text-gray-600">客观题自动得分</span>
+                <span className="text-gray-600">{t('客观题自动得分')}</span>
                 <span className="font-semibold text-green-700">
                   {examAutoTotal} /{' '}
                   {examQuestions.reduce(
@@ -287,7 +293,7 @@ export default function DailyExamGradingPage() {
                 </span>
               </div>
               <div className="flex items-center gap-1.5 bg-amber-50 rounded-md px-2.5 py-1 border border-amber-100">
-                <span className="text-gray-600">主观题得分</span>
+                <span className="text-gray-600">{t('主观题得分')}</span>
                 <span
                   className={cn(
                     'font-semibold',
@@ -316,7 +322,7 @@ export default function DailyExamGradingPage() {
                   )}
                   onClick={() => setQuestionFilter('all')}
                 >
-                  全部题目 ({examQuestions.length})
+                  {t('全部题目 ({n})', { n: examQuestions.length })}
                 </button>
                 <button
                   className={cn(
@@ -327,7 +333,7 @@ export default function DailyExamGradingPage() {
                   )}
                   onClick={() => setQuestionFilter('pending')}
                 >
-                  待评分题目 ({pendingQuestions.length})
+                  {t('待评分题目 ({n})', { n: pendingQuestions.length })}
                 </button>
               </div>
             </div>
@@ -345,7 +351,7 @@ export default function DailyExamGradingPage() {
               ))}
               {displayedQuestions.length === 0 && (
                 <div className="py-12 text-center text-gray-400 text-sm bg-white rounded-lg border border-dashed border-gray-200">
-                  暂无待评分题目
+                  {t('暂无待评分题目')}
                 </div>
               )}
             </div>
@@ -357,7 +363,7 @@ export default function DailyExamGradingPage() {
       <div className="fixed bottom-0 left-0 right-0 lg:left-56 bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-3 z-50">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
-            <span className="text-sm text-gray-500">最终得分</span>
+            <span className="text-sm text-gray-500">{t('最终得分')}</span>
             <span
               className={cn(
                 'text-3xl font-bold',
@@ -371,7 +377,7 @@ export default function DailyExamGradingPage() {
           <Separator orientation="vertical" className="h-8" />
           <div className="flex-1 min-w-0">
             <Textarea
-              placeholder="教师评语..."
+              placeholder={t('教师评语...')}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               disabled={saved}
@@ -380,7 +386,7 @@ export default function DailyExamGradingPage() {
             />
           </div>
           <Button variant="outline" size="sm" asChild className="shrink-0 h-9">
-            <Link href="/evaluation/lesson-results/daily-exams">取消</Link>
+            <Link href="/evaluation/lesson-results/daily-exams">{t('取消')}</Link>
           </Button>
           {!saved && (
             <Button
@@ -390,10 +396,10 @@ export default function DailyExamGradingPage() {
               className="shrink-0 h-9 gap-1 px-4"
             >
               <Save className="h-3.5 w-3.5" />
-              {saving ? '保存中...' : '提交评分'}
+              {saving ? t('保存中...') : t('提交评分')}
             </Button>
           )}
-          {saveFailed && <span className="text-xs text-red-500">保存失败，请重试</span>}
+          {saveFailed && <span className="text-xs text-red-500">{t('保存失败，请重试')}</span>}
           {saved && (
             <Button
               size="sm"
@@ -401,7 +407,7 @@ export default function DailyExamGradingPage() {
               className="bg-green-600 hover:bg-green-600 shrink-0 h-9 gap-1 px-4"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              已提交
+              {t('已提交')}
             </Button>
           )}
         </div>

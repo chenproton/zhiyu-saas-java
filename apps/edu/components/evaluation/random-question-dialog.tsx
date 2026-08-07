@@ -20,6 +20,7 @@ import { useData } from '@/components/providers/data-provider'
 import { knowledgeApi, questionApi } from '@/lib/api'
 import type { Question, QuestionType, Difficulty, EvalKnowledgePoint } from '@/lib/types'
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface RandomQuestionDialogProps {
   open: boolean
@@ -58,6 +59,7 @@ export function RandomQuestionDialog({
   onAddQuestions,
 }: RandomQuestionDialogProps) {
   const { questionBanks } = useData()
+  const t = useT()
 
   const publishedBanks = useMemo(
     () => questionBanks.filter((bank) => bank.status === 'published'),
@@ -374,16 +376,16 @@ export function RandomQuestionDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shuffle className="size-5" />
-              抽题预览
+              {t('抽题预览')}
             </DialogTitle>
             <DialogDescription>
-              已抽取 {previewQuestions.length} 道题目，可移除不需要的题目后确认加入
+              {t('已抽取 {n} 道题目，可移除不需要的题目后确认加入', { n: previewQuestions.length })}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[55vh] overflow-y-auto space-y-2">
             {previewQuestions.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
-                未抽到符合条件的题目，请调整筛选条件后重试
+                {t('未抽到符合条件的题目，请调整筛选条件后重试')}
               </div>
             ) : (
               previewQuestions.map((q, i) => {
@@ -398,11 +400,11 @@ export function RandomQuestionDialog({
                       <p className="text-sm line-clamp-1">{q.content}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge className={`text-xs text-white ${TYPE_COLORS[q.type]}`}>
-                          {QUESTION_TYPE_LABELS[q.type]}
+                          {t(QUESTION_TYPE_LABELS[q.type])}
                         </Badge>
                         {q.difficulty && (
                           <Badge variant="outline" className="text-xs">
-                            {DIFFICULTY_LABELS[q.difficulty]}
+                            {t(DIFFICULTY_LABELS[q.difficulty])}
                           </Badge>
                         )}
                         {bankName && (
@@ -433,10 +435,10 @@ export function RandomQuestionDialog({
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setPreviewQuestions(null)}>
                 <RefreshCw className="mr-2 size-4" />
-                重新抽题
+                {t('重新抽题')}
               </Button>
               <Button onClick={handleConfirm} disabled={previewQuestions.length === 0}>
-                确认加入试卷
+                {t('确认加入试卷')}
               </Button>
             </div>
           </DialogFooter>
@@ -446,10 +448,11 @@ export function RandomQuestionDialog({
   }
 
   const filterSummary = [
-    selectedBankIds.length > 0 && `题库 ${selectedBankIds.length} 个`,
-    selectedTypes.length > 0 && `题型 ${selectedTypes.length} 种`,
-    selectedDifficulties.length > 0 && `难度 ${selectedDifficulties.length} 级`,
-    selectedKnowledgePoints.length > 0 && `知识点 ${selectedKnowledgePoints.length} 个`,
+    selectedBankIds.length > 0 && t('题库 {n} 个', { n: selectedBankIds.length }),
+    selectedTypes.length > 0 && t('题型 {n} 种', { n: selectedTypes.length }),
+    selectedDifficulties.length > 0 && t('难度 {n} 级', { n: selectedDifficulties.length }),
+    selectedKnowledgePoints.length > 0 &&
+      t('知识点 {n} 个', { n: selectedKnowledgePoints.length }),
   ]
     .filter(Boolean)
     .join('，')
@@ -460,25 +463,25 @@ export function RandomQuestionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shuffle className="size-5" />
-            随机抽题
+            {t('随机抽题')}
           </DialogTitle>
           <DialogDescription>
-            从已发布题库中随机抽取题目，可配置筛选条件与比例分配
+            {t('从已发布题库中随机抽取题目，可配置筛选条件与比例分配')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 max-h-[58vh] overflow-y-auto pr-1">
           {/* 题库 */}
           <div>
-            <Label className="text-sm font-medium mb-2 block">选择题库</Label>
+            <Label className="text-sm font-medium mb-2 block">{t('选择题库')}</Label>
             {publishedBanks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">暂无已发布的题库</p>
+              <p className="text-sm text-muted-foreground">{t('暂无已发布的题库')}</p>
             ) : (
               <MultiSelectSearch
                 options={publishedBanks.map((b) => ({
                   label: b.name,
                   value: b.id,
-                  subtitle: `${b.questionCount}题`,
+                  subtitle: t('{n}题', { n: b.questionCount }),
                 }))}
                 selected={selectedBankIds}
                 onChange={(ids) => {
@@ -486,15 +489,15 @@ export function RandomQuestionDialog({
                   setWeightDimension('')
                   setWeightValues({})
                 }}
-                placeholder="不选则从全部题库抽取"
-                searchPlaceholder="搜索题库名称..."
+                placeholder={t('不选则从全部题库抽取')}
+                searchPlaceholder={t('搜索题库名称...')}
               />
             )}
           </div>
 
           {/* 题型 */}
           <div>
-            <Label className="text-sm font-medium mb-2 block">题目类型</Label>
+            <Label className="text-sm font-medium mb-2 block">{t('题目类型')}</Label>
             <div className="flex flex-wrap gap-1.5">
               {questionTypes.map((type) => (
                 <Badge
@@ -507,7 +510,7 @@ export function RandomQuestionDialog({
                     setWeightValues({})
                   }}
                 >
-                  {QUESTION_TYPE_LABELS[type]}
+                  {t(QUESTION_TYPE_LABELS[type])}
                 </Badge>
               ))}
             </div>
@@ -515,7 +518,7 @@ export function RandomQuestionDialog({
 
           {/* 难度 */}
           <div>
-            <Label className="text-sm font-medium mb-2 block">难度等级</Label>
+            <Label className="text-sm font-medium mb-2 block">{t('难度等级')}</Label>
             <div className="flex flex-wrap gap-1.5">
               {difficulties.map((d) => (
                 <Badge
@@ -528,7 +531,7 @@ export function RandomQuestionDialog({
                     setWeightValues({})
                   }}
                 >
-                  {DIFFICULTY_LABELS[d]}
+                  {t(DIFFICULTY_LABELS[d])}
                 </Badge>
               ))}
             </div>
@@ -536,9 +539,9 @@ export function RandomQuestionDialog({
 
           {/* 知识点 (always expanded) */}
           <div>
-            <Label className="text-sm font-medium mb-2 block">知识点</Label>
+            <Label className="text-sm font-medium mb-2 block">{t('知识点')}</Label>
             {loadingKnowledgePoints ? (
-              <p className="text-sm text-muted-foreground py-1">加载中...</p>
+              <p className="text-sm text-muted-foreground py-1">{t('加载中...')}</p>
             ) : (
               <MultiSelectSearch
                 options={knowledgePoints.map((kp) => ({ label: kp.name, value: kp.id }))}
@@ -548,8 +551,8 @@ export function RandomQuestionDialog({
                   setWeightDimension('')
                   setWeightValues({})
                 }}
-                placeholder="不选则包含全部知识点"
-                searchPlaceholder="搜索知识点..."
+                placeholder={t('不选则包含全部知识点')}
+                searchPlaceholder={t('搜索知识点...')}
               />
             )}
           </div>
@@ -557,7 +560,7 @@ export function RandomQuestionDialog({
           {/* 按比例分配 */}
           {availableDimensions.length > 0 && (
             <div>
-              <Label className="text-sm font-medium mb-2 block">按比例分配</Label>
+              <Label className="text-sm font-medium mb-2 block">{t('按比例分配')}</Label>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {availableDimensions.map((dim) => (
                   <Badge
@@ -566,15 +569,15 @@ export function RandomQuestionDialog({
                     className="cursor-pointer select-none"
                     onClick={() => toggleWeightDim(dim)}
                   >
-                    {DIM_LABEL[dim]}
+                    {t(DIM_LABEL[dim])}
                   </Badge>
                 ))}
               </div>
               {weightDimension && weightKeys.length > 0 && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2 max-h-48 overflow-y-auto">
-                  {weightKeys.map((key) => renderWeightSliderRow(key, weightKeyLabel(key)))}
+                  {weightKeys.map((key) => renderWeightSliderRow(key, t(weightKeyLabel(key))))}
                   <p className="text-xs text-muted-foreground pt-1">
-                    输入的数字按比例折算，无需凑满 100
+                    {t('输入的数字按比例折算，无需凑满 100')}
                   </p>
                 </div>
               )}
@@ -584,7 +587,7 @@ export function RandomQuestionDialog({
           {/* 抽取数量 */}
           <div className="rounded-lg border p-4">
             <div className="flex items-center justify-between mb-2">
-              <Label className="text-sm font-medium">抽取数量</Label>
+              <Label className="text-sm font-medium">{t('抽取数量')}</Label>
               <Input
                 type="number"
                 min={1}
@@ -604,10 +607,12 @@ export function RandomQuestionDialog({
               onValueChange={([v]) => setCount(v)}
             />
             <p className="text-xs text-muted-foreground mt-2">
-              {filterSummary ? `筛选条件：${filterSummary}` : '未设置筛选，从全部题目中抽取'}
-              ｜可用题目池：{filteredPool.length} 道
+              {filterSummary
+                ? t('筛选条件：{summary}', { summary: filterSummary })
+                : t('未设置筛选，从全部题目中抽取')}
+              {t('｜可用题目池：{n} 道', { n: filteredPool.length })}
               {count > filteredPool.length && (
-                <span className="text-amber-600 ml-1">（超过可用数量，将全部抽取）</span>
+                <span className="text-amber-600 ml-1">{t('（超过可用数量，将全部抽取）')}</span>
               )}
             </p>
           </div>
@@ -618,19 +623,19 @@ export function RandomQuestionDialog({
             {filteredPool.length === 0 ? (
               <span className="text-destructive flex items-center gap-1">
                 <AlertCircle className="size-4" />
-                当前条件下没有可用题目
+                {t('当前条件下没有可用题目')}
               </span>
             ) : (
-              <span>实际抽取 {Math.min(count, filteredPool.length)} 道题目</span>
+              <span>{t('实际抽取 {n} 道题目', { n: Math.min(count, filteredPool.length) })}</span>
             )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleClose}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={doRandomSelect} disabled={filteredPool.length === 0}>
               <Shuffle className="mr-2 size-4" />
-              随机抽题
+              {t('随机抽题')}
             </Button>
           </div>
         </DialogFooter>

@@ -31,6 +31,7 @@ import {
 } from '@/lib/api'
 import type { SceneEvaluationResult } from '@/lib/types'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface TaskStudent {
   studentId: string
@@ -78,6 +79,7 @@ export default function GradingPage() {
 
 function GradingPageContent() {
   const searchParams = useSearchParams()
+  const t = useT()
   const urlSceneId = searchParams.get('sceneId')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
@@ -109,7 +111,7 @@ function GradingPageContent() {
           .filter((s: any) => s.status === 'published')
           .map((s: any) => ({
             ...s,
-            positionName: pMap.get(s.careerPositionId) || '未分类',
+            positionName: pMap.get(s.careerPositionId) || t('未分类'),
           }))
         setScenarios(loadedScenarios)
         setSelectedScenarioId((prev) => {
@@ -133,7 +135,7 @@ function GradingPageContent() {
       setLoading(false)
     }
     load()
-  }, [urlSceneId])
+  }, [urlSceneId, t])
 
   useEffect(() => {
     if (!selectedScenarioId) return
@@ -161,14 +163,14 @@ function GradingPageContent() {
         studentCount: new Set(subs.map((s) => s.evaluateeId)).size,
       }
 
-      const pos = scenario.positionName || '未分类'
+      const pos = scenario.positionName || t('未分类')
       if (!map.has(pos)) {
         map.set(pos, { positionName: pos, scenarios: [] })
       }
       map.get(pos)!.scenarios.push(item)
     }
     return Array.from(map.values())
-  }, [scenarios, results, selectedScenarioId])
+  }, [scenarios, results, selectedScenarioId, t])
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return scenarioGroups
@@ -208,7 +210,7 @@ function GradingPageContent() {
       const user = userMap.get(sub.evaluateeId)
       const taskStudent: TaskStudent = {
         studentId: sub.evaluateeId,
-        studentName: user?.name || '未知',
+        studentName: user?.name || t('未知'),
         studentNumber: user?.studentNo || '-',
         className: user?.className || '-',
         enrollmentYear: user?.enrollmentYear || 0,
@@ -253,7 +255,7 @@ function GradingPageContent() {
     }
 
     return Array.from(taskMap.values())
-  }, [selectedScenarioId, results, userMap, taskNameMap])
+  }, [selectedScenarioId, results, userMap, taskNameMap, t])
 
   const toggleTask = (taskId: string) => {
     setExpandedTasks((prev) => {
@@ -308,7 +310,7 @@ function GradingPageContent() {
                     : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50',
                 )}
               >
-                {EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey}
+                {t(EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey)}
                 <span className="ml-1 flex items-center gap-1">
                   {m.pendingCount > 0 && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-700 font-medium">
@@ -327,7 +329,7 @@ function GradingPageContent() {
         )}
         {activeMethodData && activeMethodData.students.length === 0 ? (
           <div className="py-8 text-center text-gray-400 text-sm bg-white rounded-lg border border-dashed border-gray-200 mt-3">
-            暂无学生提交记录
+            {t('暂无学生提交记录')}
           </div>
         ) : (
           <div className="space-y-3 mt-3">
@@ -335,9 +337,13 @@ function GradingPageContent() {
               <Card key={yearGroup.year} className="overflow-hidden border-gray-200">
                 <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
                   <GraduationCap className="h-3.5 w-3.5 text-gray-500" />
-                  <span className="text-xs font-semibold text-gray-700">{yearGroup.year} 届</span>
+                  <span className="text-xs font-semibold text-gray-700">
+                    {t('{n} 届', { n: yearGroup.year })}
+                  </span>
                   <span className="text-[10px] text-gray-400">
-                    {yearGroup.classes.reduce((s, c) => s + c.students.length, 0)} 人
+                    {t('{n} 人', {
+                      n: yearGroup.classes.reduce((s, c) => s + c.students.length, 0),
+                    })}
                   </span>
                 </div>
                 <div className="p-3 space-y-3">
@@ -349,7 +355,7 @@ function GradingPageContent() {
                           {classGroup.className}
                         </span>
                         <span className="text-[10px] text-gray-400">
-                          {classGroup.students.length} 人
+                          {t('{n} 人', { n: classGroup.students.length })}
                         </span>
                       </div>
                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
@@ -374,11 +380,14 @@ function GradingPageContent() {
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {item.result.status === 'pending' ? (
                                     <span className="text-[10px] text-amber-600 font-medium">
-                                      待评分
+                                      {t('待评分')}
                                     </span>
                                   ) : item.result.totalScore != null ? (
                                     <span className="text-[10px] text-gray-500 font-medium">
-                                      得分 {item.result.totalScore}/{item.result.maxScore}
+                                      {t('得分 {score}/{max}', {
+                                        score: item.result.totalScore,
+                                        max: item.result.maxScore,
+                                      })}
                                     </span>
                                   ) : null}
                                 </div>
@@ -393,14 +402,14 @@ function GradingPageContent() {
                               >
                                 <Link href={`/evaluation/scene-results/${item.result.id}`}>
                                   <Eye className="mr-1 h-3 w-3" />
-                                  查看
+                                  {t('查看')}
                                 </Link>
                               </Button>
                               {item.result.status === 'pending' ? (
                                 <Button size="sm" className="h-7 text-xs px-2" asChild>
                                   <Link href={`/evaluation/scene-results/${item.result.id}`}>
                                     <PenLine className="mr-1 h-3 w-3" />
-                                    评分
+                                    {t('评分')}
                                   </Link>
                                 </Button>
                               ) : (
@@ -411,7 +420,7 @@ function GradingPageContent() {
                                   disabled
                                 >
                                   <CheckCircle2 className="mr-1 h-3 w-3" />
-                                  已评分
+                                  {t('已评分')}
                                 </Button>
                               )}
                             </div>
@@ -430,14 +439,16 @@ function GradingPageContent() {
   }
 
   if (loading)
-    return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
+    return (
+      <div className="h-screen flex items-center justify-center text-gray-400">{t('加载中...')}</div>
+    )
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <div className="bg-white border-b border-gray-200 shrink-0">
         <div className="max-w-[1600px] mx-auto px-6 py-4">
-          <h1 className="text-xl font-semibold text-foreground">场景任务评价</h1>
-          <p className="text-sm text-gray-500 mt-0.5">选择场景与任务，查看学生提交并进行评分</p>
+          <h1 className="text-xl font-semibold text-foreground">{t('场景任务评价')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('选择场景与任务，查看学生提交并进行评分')}</p>
         </div>
       </div>
 
@@ -447,7 +458,7 @@ function GradingPageContent() {
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="搜索场景..."
+                placeholder={t('搜索场景...')}
                 className="pl-9 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -520,13 +531,15 @@ function GradingPageContent() {
                     <Badge variant="outline" className="text-xs font-normal text-gray-500">
                       {selectedScenario.code}
                     </Badge>
-                    <span className="text-xs text-gray-400">{results.length} 条提交记录</span>
+                    <span className="text-xs text-gray-400">
+                      {t('{n} 条提交记录', { n: results.length })}
+                    </span>
                   </div>
                 </div>
                 {taskGroups.length > 0 && (
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" className="h-8 text-xs" onClick={expandAll}>
-                      全部展开
+                      {t('全部展开')}
                     </Button>
                     <Button
                       variant="outline"
@@ -534,7 +547,7 @@ function GradingPageContent() {
                       className="h-8 text-xs"
                       onClick={collapseAll}
                     >
-                      全部收起
+                      {t('全部收起')}
                     </Button>
                   </div>
                 )}
@@ -544,7 +557,7 @@ function GradingPageContent() {
                 <Card className="border-dashed border-gray-200">
                   <CardContent className="py-12 text-center text-gray-400">
                     <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">该场景下暂无学生提交记录</p>
+                    <p className="text-sm">{t('该场景下暂无学生提交记录')}</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -591,7 +604,7 @@ function GradingPageContent() {
                                         variant="outline"
                                         className="text-[10px] font-normal bg-primary/5 text-primary border-primary/20"
                                       >
-                                        均分 {taskScore.toFixed(1)}
+                                        {t('均分 {n}', { n: taskScore.toFixed(1) })}
                                       </Badge>
                                     )}
                                   </div>
@@ -602,7 +615,7 @@ function GradingPageContent() {
                                         variant="outline"
                                         className="text-[10px] font-normal bg-gray-50 text-gray-600 border-gray-200"
                                       >
-                                        {EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey}
+                                        {t(EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey)}
                                       </Badge>
                                     ))}
                                   </div>
@@ -612,7 +625,7 @@ function GradingPageContent() {
                                 <div className="flex items-center gap-3 text-xs">
                                   <div className="text-center min-w-[48px]">
                                     <p className="font-semibold text-gray-800">{totalStudents}</p>
-                                    <p className="text-[10px] text-gray-400">学生</p>
+                                    <p className="text-[10px] text-gray-400">{t('学生')}</p>
                                   </div>
                                   <div className="w-px h-6 bg-gray-200" />
                                   <div className="text-center min-w-[48px]">
@@ -624,11 +637,11 @@ function GradingPageContent() {
                                     >
                                       {totalPending}
                                     </p>
-                                    <p className="text-[10px] text-gray-400">待评</p>
+                                    <p className="text-[10px] text-gray-400">{t('待评')}</p>
                                   </div>
                                   <div className="text-center min-w-[48px]">
                                     <p className="font-semibold text-green-600">{totalGraded}</p>
-                                    <p className="text-[10px] text-gray-400">已评</p>
+                                    <p className="text-[10px] text-gray-400">{t('已评')}</p>
                                   </div>
                                 </div>
                                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50">
@@ -654,7 +667,7 @@ function GradingPageContent() {
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
               <BookOpen className="h-12 w-12 mb-3 opacity-50" />
-              <p className="text-sm">请在左侧选择一个场景</p>
+              <p className="text-sm">{t('请在左侧选择一个场景')}</p>
             </div>
           )}
         </div>

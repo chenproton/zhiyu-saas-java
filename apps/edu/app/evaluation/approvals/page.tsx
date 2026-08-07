@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { toast } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const TYPE_LABELS: Record<string, string> = {
   question_bank: '题库',
@@ -34,6 +35,7 @@ interface ApprovalView {
 }
 
 export default function EvaluationApprovalsPage() {
+  const t = useT()
   const {
     records: bankRecords,
     loading: bankLoading,
@@ -70,11 +72,11 @@ export default function EvaluationApprovalsPage() {
         reportError(err, { source: '加载题库/试卷/批次列表' })
         toast({
           variant: 'destructive',
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '加载题库/试卷/批次列表失败',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('加载题库/试卷/批次列表失败'),
         })
       })
-  }, [])
+  }, [t])
 
   const loading = bankLoading || examLoading
 
@@ -90,36 +92,36 @@ export default function EvaluationApprovalsPage() {
   )
 
   const columns: ApprovalColumn<ApprovalView>[] = [
-    { header: '资源名称', cell: (i) => <span className="font-medium">{i.targetName}</span> },
+    { header: t('资源名称'), cell: (i) => <span className="font-medium">{i.targetName}</span> },
     {
-      header: '类型',
+      header: t('类型'),
       className: 'text-center',
       cell: (i) => (
         <Badge variant="outline" className="text-xs">
-          {TYPE_LABELS[i.targetType]}
+          {t(TYPE_LABELS[i.targetType])}
         </Badge>
       ),
     },
-    { header: '版本', className: 'text-center text-sm text-gray-600', cell: (i) => i.version },
+    { header: t('版本'), className: 'text-center text-sm text-gray-600', cell: (i) => i.version },
     {
-      header: '所属批次分组',
+      header: t('所属批次分组'),
       cell: (i) => <span className="text-sm text-gray-600">{i.batchName || '-'}</span>,
     },
     {
-      header: '创建人',
+      header: t('创建人'),
       cell: (i) => <span className="text-sm text-gray-600">{getName(i.submitterId)}</span>,
     },
     {
-      header: '提交审批日期',
+      header: t('提交审批日期'),
       cell: (i) => <span className="text-sm text-gray-600">{i.submittedAt}</span>,
     },
     {
-      header: '状态',
+      header: t('状态'),
       className: 'text-center',
       cell: (i) => <StatusBadge status={i.status} />,
     },
     {
-      header: '当前步骤',
+      header: t('当前步骤'),
       className: 'text-center',
       cell: (i) =>
         i.stepInfo ? (
@@ -197,7 +199,7 @@ export default function EvaluationApprovalsPage() {
     comment?: string,
   ) => {
     if (ids.length === 0) return
-    const label = status === 'approved' ? '通过' : '驳回'
+    const label = status === 'approved' ? t('通过') : t('驳回')
     try {
       const results = await Promise.allSettled(
         ids.map((id) => approvalApi.review(id, { status, comment })),
@@ -205,21 +207,27 @@ export default function EvaluationApprovalsPage() {
       const success = results.filter((r) => r.status === 'fulfilled').length
       const failed = results.length - success
       if (failed === 0) {
-        toast({ title: `批量${label}成功，共 ${success} 条` })
+        toast({ title: t('批量{label}成功，共 {n} 条', { label, n: success }) })
       } else {
-        toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
+        toast({
+          title: t('批量{label}完成，成功 {s} 条，失败 {f} 条', {
+            label,
+            s: success,
+            f: failed,
+          }),
+        })
       }
       await Promise.all([refreshBank(), refreshExam()])
     } catch (err: any) {
-      toast({ title: err.message || `批量${label}失败`, variant: 'destructive' })
+      toast({ title: err.message || t('批量{label}失败', { label }), variant: 'destructive' })
     }
   }
 
   return (
     <ApprovalListPage<ApprovalView>
-      entityLabel="测评资源"
-      pageDescription="审核题库、试卷提交申请，管理审批流程"
-      emptyPendingText="所有提交的测评资源都已处理完毕"
+      entityLabel={t('测评资源')}
+      pageDescription={t('审核题库、试卷提交申请，管理审批流程')}
+      emptyPendingText={t('所有提交的测评资源都已处理完毕')}
       records={allRecords}
       loading={loading}
       onApprove={handleApprove}
@@ -234,7 +242,7 @@ export default function EvaluationApprovalsPage() {
       }
       columns={columns}
       groupOf={(item) => item.batchId}
-      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
+      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : t('未关联批次'))}
     />
   )
 }

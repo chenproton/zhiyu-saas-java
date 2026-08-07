@@ -22,12 +22,15 @@ import { courseNodeApi, nodeEvaluationResultApi, userManagementApi } from '@/lib
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel } from '@/lib/hybrid-eval'
+import { useT } from '@/lib/i18n/locale-provider'
 
-const methodLabel = (key: string) => getHybridMethodLabel(key, (k) => EVAL_METHOD_LABELS_GRADING[k] || k)
+const methodLabel = (key: string, label: (k: string) => string) =>
+  getHybridMethodLabel(key, label)
 
 export default function LessonResultDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const t = useT()
   const id = params.id as string
 
   const [result, setResult] = useState<NodeEvaluationResult | null>(null)
@@ -50,7 +53,7 @@ export default function LessonResultDetailPage() {
         if (res.totalScore != null) setScore(String(res.totalScore))
         if (res.comment) setComment(res.comment)
         const user = (userRes.items || []).find((u: any) => u.id === res.evaluateeId)
-        if (user) setStudentName(user.name || '未知')
+        if (user) setStudentName(user.name || t('未知'))
         try {
           const node = await courseNodeApi.get(res.nodeId)
           setNodeName(node.name || res.nodeId)
@@ -59,13 +62,13 @@ export default function LessonResultDetailPage() {
           setNodeName(res.nodeId)
         }
       } catch {
-        toast({ variant: 'destructive', title: '加载失败', description: '测评结果不存在' })
+        toast({ variant: 'destructive', title: t('加载失败'), description: t('测评结果不存在') })
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [id])
+  }, [id, t])
 
   const subjective = useMemo(() => {
     const sc = result?.subjectiveContent || {}
@@ -92,26 +95,28 @@ export default function LessonResultDetailPage() {
         score: parseFloat(score),
         comment: comment.trim() || undefined,
       })
-      toast({ title: '评分成功' })
+      toast({ title: t('评分成功') })
       router.push(`/evaluation/lesson-results${courseId ? `?courseId=${courseId}` : ''}`)
     } catch {
-      toast({ variant: 'destructive', title: '评分失败', description: '请稍后重试' })
+      toast({ variant: 'destructive', title: t('评分失败'), description: t('请稍后重试') })
     } finally {
       setSaving(false)
     }
   }
 
   if (loading) {
-    return <div className="h-screen flex items-center justify-center text-gray-400">加载中...</div>
+    return (
+      <div className="h-screen flex items-center justify-center text-gray-400">{t('加载中...')}</div>
+    )
   }
 
   if (!result) {
     return (
       <div className="h-screen flex flex-col items-center justify-center text-gray-400">
         <FileText className="h-12 w-12 mb-3 opacity-50" />
-        <p className="text-sm">测评结果不存在</p>
+        <p className="text-sm">{t('测评结果不存在')}</p>
         <Link href="/evaluation/lesson-results" className="text-primary text-sm mt-2">
-          返回评分列表
+          {t('返回评分列表')}
         </Link>
       </div>
     )
@@ -128,23 +133,23 @@ export default function LessonResultDetailPage() {
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
               <Link
                 href={`/evaluation/lesson-results${courseId ? `?courseId=${courseId}` : ''}`}
-                aria-label="返回"
+                aria-label={t('返回')}
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
             <div>
-              <h1 className="text-lg font-semibold text-foreground">节点测评评分</h1>
+              <h1 className="text-lg font-semibold text-foreground">{t('节点测评评分')}</h1>
               <p className="text-xs text-gray-500 mt-0.5">
-                {nodeName} · {methodLabel(result.methodKey)}
+                {nodeName} · {methodLabel(result.methodKey, (k) => t(EVAL_METHOD_LABELS_GRADING[k] || k))}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {isPending ? (
-              <Badge className="bg-amber-50 text-amber-600 border-amber-200">待评分</Badge>
+              <Badge className="bg-amber-50 text-amber-600 border-amber-200">{t('待评分')}</Badge>
             ) : (
-              <Badge className="bg-green-50 text-green-600 border-green-200">已评分</Badge>
+              <Badge className="bg-green-50 text-green-600 border-green-200">{t('已评分')}</Badge>
             )}
           </div>
         </div>
@@ -160,22 +165,26 @@ export default function LessonResultDetailPage() {
                   {(studentName || '?').charAt(0)}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">{studentName || '未知学生'}</p>
+                  <p className="text-sm font-semibold text-gray-800">{studentName || t('未知学生')}</p>
                   <p className="text-[11px] text-gray-400">{result.evaluateeId}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <GraduationCap className="h-3.5 w-3.5" />
-                节点：{nodeName}
+                {t('节点：{name}', { name: nodeName })}
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <FileText className="h-3.5 w-3.5" />
-                方式：{methodLabel(result.methodKey)}
+                {t('方式：{name}', {
+                  name: methodLabel(result.methodKey, (k) => t(EVAL_METHOD_LABELS_GRADING[k] || k)),
+                })}
               </div>
               {result.gradedAt && (
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <Clock className="h-3.5 w-3.5" />
-                  评分时间：{new Date(result.gradedAt).toLocaleString('zh-CN')}
+                  {t('评分时间：{time}', {
+                    time: new Date(result.gradedAt).toLocaleString('zh-CN'),
+                  })}
                 </div>
               )}
             </div>
@@ -186,7 +195,7 @@ export default function LessonResultDetailPage() {
         <Card className="border-gray-200">
           <CardContent className="p-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="text-sm font-semibold text-gray-800">客观题自动得分</div>
+              <div className="text-sm font-semibold text-gray-800">{t('客观题自动得分')}</div>
               <div className="text-2xl font-bold text-primary">
                 {result.totalScore != null ? result.totalScore : 0}
                 <span className="text-sm font-normal text-gray-400"> / {maxScore}</span>
@@ -194,8 +203,8 @@ export default function LessonResultDetailPage() {
             </div>
             <p className="text-xs text-gray-400 mt-2">
               {isPending
-                ? '该结果包含主观题（填空/简答等）或人工提交内容，需教师评分后计入成绩'
-                : '该结果已完成评分'}
+                ? t('该结果包含主观题（填空/简答等）或人工提交内容，需教师评分后计入成绩')
+                : t('该结果已完成评分')}
             </p>
           </CardContent>
         </Card>
@@ -203,27 +212,29 @@ export default function LessonResultDetailPage() {
         {/* 提交内容 */}
         <Card className="border-gray-200">
           <CardContent className="p-5 space-y-4">
-            <div className="text-sm font-semibold text-gray-800">提交内容</div>
+            <div className="text-sm font-semibold text-gray-800">{t('提交内容')}</div>
             {subjective.text ? (
               <div>
-                <Label className="text-xs text-gray-500">作答内容</Label>
+                <Label className="text-xs text-gray-500">{t('作答内容')}</Label>
                 <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 mt-1 whitespace-pre-wrap">
                   {subjective.text}
                 </p>
               </div>
             ) : subjective.attended ? (
               <div>
-                <Label className="text-xs text-gray-500">到场情况</Label>
+                <Label className="text-xs text-gray-500">{t('到场情况')}</Label>
                 <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 mt-1">
-                  学生已标记到场参与（现场问答/现场评审）
+                  {t('学生已标记到场参与（现场问答/现场评审）')}
                 </p>
               </div>
             ) : (
-              <p className="text-xs text-gray-400">无文本提交内容</p>
+              <p className="text-xs text-gray-400">{t('无文本提交内容')}</p>
             )}
             {subjective.files.length > 0 && (
               <div>
-                <Label className="text-xs text-gray-500">附件（{subjective.files.length}）</Label>
+                <Label className="text-xs text-gray-500">
+                  {t('附件（{n}）', { n: subjective.files.length })}
+                </Label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {subjective.files.map((f: any, i: number) => (
                     <a
@@ -234,7 +245,7 @@ export default function LessonResultDetailPage() {
                       className="inline-flex items-center gap-1.5 text-xs text-primary border border-gray-200 rounded-lg px-3 py-1.5 bg-white hover:bg-gray-50 transition-colors"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      {f.name || `附件 ${i + 1}`}
+                      {f.name || t('附件 {n}', { n: i + 1 })}
                     </a>
                   ))}
                 </div>
@@ -242,7 +253,7 @@ export default function LessonResultDetailPage() {
             )}
             {result.objectiveAnswers && Object.keys(result.objectiveAnswers).length > 0 && (
               <div>
-                <Label className="text-xs text-gray-500">考试作答（含主观题）</Label>
+                <Label className="text-xs text-gray-500">{t('考试作答（含主观题）')}</Label>
                 <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 mt-1 overflow-x-auto max-h-72">
                   {JSON.stringify(result.objectiveAnswers, null, 2)}
                 </pre>
@@ -255,37 +266,39 @@ export default function LessonResultDetailPage() {
         {isPending ? (
           <Card className="border-gray-200">
             <CardContent className="p-5 space-y-4">
-              <div className="text-sm font-semibold text-gray-800">评分</div>
+              <div className="text-sm font-semibold text-gray-800">{t('评分')}</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-500">得分（0 ~ {maxScore}）</Label>
+                  <Label className="text-xs text-gray-500">
+                    {t('得分（0 ~ {n}）', { n: maxScore })}
+                  </Label>
                   <Input
                     type="number"
                     min={0}
                     max={maxScore}
                     value={score}
                     onChange={(e) => setScore(e.target.value)}
-                    placeholder={`0-${maxScore}`}
+                    placeholder={t('0-{max}', { max: maxScore })}
                     className="h-9 text-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-500">评语</Label>
+                  <Label className="text-xs text-gray-500">{t('评语')}</Label>
                   <Input
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="评语"
+                    placeholder={t('评语')}
                     className="h-9 text-sm"
                   />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={() => router.back()}>
-                  取消
+                  {t('取消')}
                 </Button>
                 <Button size="sm" disabled={saving || !isValidScore()} onClick={handleSave}>
                   <Save className="h-3.5 w-3.5 mr-1" />
-                  {saving ? '保存中...' : '保存评分'}
+                  {saving ? t('保存中...') : t('保存评分')}
                 </Button>
               </div>
             </CardContent>
@@ -295,19 +308,23 @@ export default function LessonResultDetailPage() {
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-semibold text-gray-800">评分结果</span>
+                <span className="text-sm font-semibold text-gray-800">{t('评分结果')}</span>
               </div>
               <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
                 <span className="text-gray-500">
-                  得分：
+                  {t('得分：')}
                   <strong className="text-primary">
                     {result.totalScore} / {maxScore}
                   </strong>
                 </span>
-                {result.comment && <span className="text-gray-500">评语：{result.comment}</span>}
+                {result.comment && (
+                  <span className="text-gray-500">{t('评语：{comment}', { comment: result.comment })}</span>
+                )}
                 {result.gradedAt && (
                   <span className="text-gray-400 text-xs">
-                    评分时间：{new Date(result.gradedAt).toLocaleString('zh-CN')}
+                    {t('评分时间：{time}', {
+                      time: new Date(result.gradedAt).toLocaleString('zh-CN'),
+                    })}
                   </span>
                 )}
               </div>

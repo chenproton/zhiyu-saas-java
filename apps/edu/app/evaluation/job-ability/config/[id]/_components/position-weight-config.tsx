@@ -28,6 +28,7 @@ import { certApi, positionApi } from '@/lib/api'
 import type { CertificationModelPoint, CertificationPositionModel } from '@/lib/types'
 import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import { WeightConfigDialog } from './weight-config-dialog'
 import { LevelConfigDialog } from './level-config-dialog'
 
@@ -45,6 +46,7 @@ interface PositionWeightConfigProps {
 
 /** 岗位能力认定配置页：关联链全链只读，仅配置两级汇聚权重（任务→能力点、能力点→岗位总评） */
 export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) {
+  const t = useT()
   const { toast } = useToast()
 
   const [loading, setLoading] = useState(true)
@@ -83,8 +85,8 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
       .catch((err) => {
         if (cancelled) return
         toast({
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '获取岗位能力模型失败',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('获取岗位能力模型失败'),
           variant: 'destructive',
         })
       })
@@ -94,7 +96,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
     return () => {
       cancelled = true
     }
-  }, [positionId, toast, reloadKey])
+  }, [positionId, toast, reloadKey, t])
 
   const allPoints = useMemo<DomainPoint[]>(
     () =>
@@ -118,7 +120,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
     if (allPoints.length > 0) {
       const sum = allPoints.reduce((s, p) => s + (pointWeights[p.abilityPointId] ?? 0), 0)
       if (Math.abs(sum - 100) > 0.01) {
-        errors.push(`全部能力点权重合计为 ${sum}%，应为 100%`)
+        errors.push(t('全部能力点权重合计为 {sum}%，应为 100%', { sum }))
       }
     }
     for (const point of allPoints) {
@@ -129,11 +131,13 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
         0,
       )
       if (Math.abs(sum - 100) > 0.01) {
-        errors.push(`能力点「${point.name}」下任务权重合计为 ${sum}%，应为 100%`)
+        errors.push(
+          t('能力点「{name}」下任务权重合计为 {sum}%，应为 100%', { name: point.name, sum }),
+        )
       }
     }
     if (errors.length > 0) {
-      toast({ title: '权重校验未通过', description: errors.join('；'), variant: 'destructive' })
+      toast({ title: t('权重校验未通过'), description: errors.join('；'), variant: 'destructive' })
       return
     }
 
@@ -152,13 +156,13 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
           })),
         ),
       })
-      toast({ title: '保存成功', description: '权重配置已保存' })
+      toast({ title: t('保存成功'), description: t('权重配置已保存') })
       setLoading(true)
       setReloadKey((k) => k + 1)
     } catch (err) {
       toast({
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '保存权重配置失败',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('保存权重配置失败'),
         variant: 'destructive',
       })
     } finally {
@@ -167,7 +171,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
   }
 
   if (loading) {
-    return <LoadingView text="加载岗位能力模型中..." />
+    return <LoadingView text={t('加载岗位能力模型中...')} />
   }
 
   return (
@@ -176,11 +180,11 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
         <Link href="/evaluation/job-ability">
           <Button variant="ghost" size="sm" className="gap-2">
             <ArrowLeft className="size-4" />
-            返回岗位列表
+            {t('返回岗位列表')}
           </Button>
         </Link>
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">{positionName || '岗位'}</h1>
+          <h1 className="text-xl font-semibold text-slate-900">{positionName || t('岗位')}</h1>
           <StatusBadge status={model?.rule?.status ?? 'none'} />
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -192,7 +196,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
             disabled={allPoints.length === 0}
           >
             <SlidersHorizontal className="size-4" />
-            能力点权重配置
+            {t('能力点权重配置')}
           </Button>
           <Button
             size="sm"
@@ -201,19 +205,18 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
             disabled={saving || allPoints.length === 0}
           >
             <Save className="size-4" />
-            {saving ? '保存中...' : '保存权重'}
+            {saving ? t('保存中...') : t('保存权重')}
           </Button>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        能力模型与任务关联来自岗位/场景编辑页，此处仅配置汇聚权重：任务得分按权重汇聚为能力点得分（点内合计
-        100%），能力点得分按权重汇聚为岗位总评（岗位内合计 100%）。
+        {t('能力模型与任务关联来自岗位/场景编辑页，此处仅配置汇聚权重：任务得分按权重汇聚为能力点得分（点内合计 100%），能力点得分按权重汇聚为岗位总评（岗位内合计 100%）。')}
       </p>
 
       {allPoints.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            该岗位尚未配置能力模型，请先在岗位编辑页配置能力模型与能力域
+            {t('该岗位尚未配置能力模型，请先在岗位编辑页配置能力模型与能力域')}
           </CardContent>
         </Card>
       ) : (
@@ -223,12 +226,12 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50">
-                    <TableHead className="w-[120px]">所属能力域</TableHead>
-                    <TableHead className="w-[240px]">能力点名称</TableHead>
-                    <TableHead className="w-[100px]">能力点权重</TableHead>
-                    <TableHead className="w-[100px]">胜任标准</TableHead>
-                    <TableHead>胜任标准描述</TableHead>
-                    <TableHead className="w-[210px] text-right">操作</TableHead>
+                    <TableHead className="w-[120px]">{t('所属能力域')}</TableHead>
+                    <TableHead className="w-[240px]">{t('能力点名称')}</TableHead>
+                    <TableHead className="w-[100px]">{t('能力点权重')}</TableHead>
+                    <TableHead className="w-[100px]">{t('胜任标准')}</TableHead>
+                    <TableHead>{t('胜任标准描述')}</TableHead>
+                    <TableHead className="w-[210px] text-right">{t('操作')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -267,8 +270,8 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
       <WeightConfigDialog
         open={pointDialogOpen}
         onOpenChange={setPointDialogOpen}
-        title="能力点权重配置"
-        description="配置各能力点得分占岗位总评的权重，岗位内全部能力点合计必须为 100%"
+        title={t('能力点权重配置')}
+        description={t('配置各能力点得分占岗位总评的权重，岗位内全部能力点合计必须为 100%')}
         items={allPoints.map((p) => ({
           id: p.abilityPointId,
           name: p.name,
@@ -284,8 +287,12 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
         onOpenChange={(open) => {
           if (!open) setTaskDialogPoint(null)
         }}
-        title={taskDialogPoint ? `任务权重配置 · ${taskDialogPoint.name}` : '任务权重配置'}
-        description="配置各任务得分占该能力点得分的权重，合计必须为 100%"
+        title={
+          taskDialogPoint
+            ? t('任务权重配置 · {name}', { name: taskDialogPoint.name })
+            : t('任务权重配置')
+        }
+        description={t('配置各任务得分占该能力点得分的权重，合计必须为 100%')}
         items={(taskDialogPoint?.tasks ?? []).map((t) => ({
           id: t.taskId,
           name: t.taskName,
@@ -354,6 +361,7 @@ function PointRows({
   domainCount: number
   isFirstInDomain: boolean
 }) {
+  const t = useT()
   return (
     <>
       <TableRow>
@@ -363,7 +371,9 @@ function PointRows({
               <Badge variant="outline" className="text-[10px]">
                 {domainName}
               </Badge>
-              <span className="text-[10px] text-muted-foreground">{domainCount} 个能力点</span>
+              <span className="text-[10px] text-muted-foreground">
+                {t('{n} 个能力点', { n: domainCount })}
+              </span>
             </div>
           </TableCell>
         )}
@@ -386,7 +396,7 @@ function PointRows({
         </TableCell>
         <TableCell>
           <Badge variant="outline" className="text-xs">
-            {COMPETENCY_LEVEL_LABELS[point.requiredLevel] ?? point.requiredLevel}
+            {t(COMPETENCY_LEVEL_LABELS[point.requiredLevel] ?? point.requiredLevel)}
           </Badge>
         </TableCell>
         <TableCell className="max-w-[320px]">
@@ -400,7 +410,7 @@ function PointRows({
         <TableCell className="text-right">
           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onOpenLevels}>
             <ListOrdered className="mr-1 size-3" />
-            分档配置
+            {t('分档配置')}
           </Button>
           <Button
             variant="ghost"
@@ -410,7 +420,7 @@ function PointRows({
             disabled={point.tasks.length === 0}
           >
             <ListChecks className="mr-1 size-3" />
-            任务权重
+            {t('任务权重')}
           </Button>
         </TableCell>
       </TableRow>
@@ -419,16 +429,16 @@ function PointRows({
           <TableCell colSpan={6} className="bg-muted/30 p-0">
             {point.tasks.length === 0 ? (
               <p className="px-10 py-4 text-sm text-muted-foreground">
-                暂无关联任务（请在场景编辑页关联能力点）
+                {t('暂无关联任务（请在场景编辑页关联能力点）')}
               </p>
             ) : (
               <div className="px-10 py-3">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>任务名称</TableHead>
-                      <TableHead className="w-[200px]">所属场景</TableHead>
-                      <TableHead className="w-[90px]">权重</TableHead>
+                      <TableHead>{t('任务名称')}</TableHead>
+                      <TableHead className="w-[200px]">{t('所属场景')}</TableHead>
+                      <TableHead className="w-[90px]">{t('权重')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
