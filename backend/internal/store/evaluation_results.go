@@ -167,6 +167,8 @@ func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examR
 
 // FindNodeExamResult 查询节点测评方式对应的考试结果。
 // 通过节点 eval_data 中 methodResourceConfigs[methodKey].usageId 精确关联考试安排。
+// 兼容混合课：usageId 存于 hybridEvalRules.<module>.evalRuleConfig.methodResourceConfigs，
+// 合并时 key 拼为复合 key（如 preQuiz:quiz），与 node_evaluation_results.method_key 一致。
 func (s *EvaluationResultStore) FindNodeExamResult(ctx context.Context, nodeID, methodKey, evaluateeID string) (string, error) {
 	var examResultID string
 	err := s.q.QueryRow(ctx, `
@@ -177,7 +179,16 @@ func (s *EvaluationResultStore) FindNodeExamResult(ctx context.Context, nodeID, 
 		WHERE n.id = $1 AND er.user_id = $3 AND eu.target_type = 'node'
 			AND eu.id = (
 				SELECT (rc.value->>'usageId')::uuid
-				FROM jsonb_each(COALESCE(n.eval_data->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)) rc
+				FROM jsonb_each(
+					COALESCE(n.eval_data->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)
+					|| COALESCE((
+						SELECT jsonb_object_agg(hm.module_key || ':' || mc.key, mc.value)
+						FROM jsonb_each(COALESCE(n.eval_data->'hybridEvalRules', '{}'::jsonb)) hm
+						CROSS JOIN LATERAL jsonb_each(
+							COALESCE(hm.value->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)
+						) mc
+					), '{}'::jsonb)
+				) rc
 				WHERE rc.key = $2 AND rc.value->>'usageId' IS NOT NULL
 				LIMIT 1
 			)

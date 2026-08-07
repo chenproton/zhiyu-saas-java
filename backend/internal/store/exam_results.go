@@ -204,6 +204,13 @@ func (s *ExamResultStore) UsageAllowRetake(ctx context.Context, usageID string) 
 				JOIN system_course_nodes n ON n.id = eu.target_ids[1]
 				CROSS JOIN LATERAL jsonb_each(
 					COALESCE(n.eval_data->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)
+					|| COALESCE((
+						SELECT jsonb_object_agg(hm.module_key || ':' || mc.key, mc.value)
+						FROM jsonb_each(COALESCE(n.eval_data->'hybridEvalRules', '{}'::jsonb)) hm
+						CROSS JOIN LATERAL jsonb_each(
+							COALESCE(hm.value->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)
+						) mc
+					), '{}'::jsonb)
 				) rc
 				WHERE eu.id = $1 AND eu.target_type = 'node'
 					AND rc.value->>'examId' IS NOT NULL
