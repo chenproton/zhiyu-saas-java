@@ -38,7 +38,7 @@ interface CourseNodeTreeProps {
   ) => void
   onUpdateNode: (nodeId: string, updates: Partial<SystemCourseNode>) => void
   onDeleteNode: (nodeId: string) => void
-  onReorderNodes: (nodeId: string, targetNodeId: string) => void
+  onReorderNodes: (nodeId: string, targetNodeId: string, position: 'before' | 'after') => void
   disableCloneQuote?: boolean
 }
 
@@ -92,7 +92,10 @@ export default function CourseNodeTree({
 
   const [editNodeName, setEditNodeName] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [dragOverState, setDragOverState] = useState<{
+    nodeId: string
+    position: 'before' | 'after'
+  } | null>(null)
   const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null)
 
   const tree = useMemo(() => buildTree(nodes), [nodes])
@@ -148,33 +151,46 @@ export default function CourseNodeTree({
   const handleDragStart = (e: React.DragEvent, nodeId: string) => {
     setDraggingId(nodeId)
     e.dataTransfer.effectAllowed = 'move'
+    // Firefox 等浏览器要求设置数据才能发起拖拽
+    e.dataTransfer.setData('text/plain', nodeId)
   }
 
   const handleDragOver = (e: React.DragEvent, nodeId: string) => {
     e.preventDefault()
-    if (draggingId && draggingId !== nodeId) {
-      setDragOverId(nodeId)
-    }
+    e.stopPropagation()
+    if (!draggingId || draggingId === nodeId) return
+    // 根据鼠标在目标行的上/下半区决定插入到目标前还是目标后
+    const rect = e.currentTarget.getBoundingClientRect()
+    const position: 'before' | 'after' =
+      e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+    setDragOverState((prev) =>
+      prev && prev.nodeId === nodeId && prev.position === position ? prev : { nodeId, position },
+    )
   }
 
-  const handleDragLeave = () => {
-    setDragOverId(null)
+  const handleDragLeave = (e: React.DragEvent, nodeId: string) => {
+    // 仅当真正离开该行时才清除指示（子元素间移动会触发 leave）
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverState((prev) => (prev?.nodeId === nodeId ? null : prev))
+    }
   }
 
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
-    if (draggingId && draggingId !== targetId) {
-      onReorderNodes(draggingId, targetId)
+    e.stopPropagation()
+    if (draggingId && draggingId !== targetId && dragOverState?.nodeId === targetId) {
+      onReorderNodes(draggingId, targetId, dragOverState.position)
     }
     setDraggingId(null)
-    setDragOverId(null)
+    setDragOverState(null)
   }
 
   const renderTreeNode = (item: TreeItem, indexPath: string) => {
     const { node, level, children } = item
     const isActive = selectedNodeId === node.id
     const isDragging = draggingId === node.id
-    const isDragOver = dragOverId === node.id
+    const isDragOver = dragOverState?.nodeId === node.id
+    const dragPosition = isDragOver ? dragOverState.position : null
     const seq = indexPath
 
     return (
@@ -186,13 +202,18 @@ export default function CourseNodeTree({
               ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-500'
               : 'text-gray-600 hover:bg-gray-50',
             isDragging && 'opacity-40',
-            isDragOver && 'border-t-2 border-blue-500',
+            isDragOver &&
+              dragPosition === 'before' &&
+              'border-t-2 border-blue-500 shadow-[0_-2px_0_0_rgba(59,130,246,0.3)]',
+            isDragOver &&
+              dragPosition === 'after' &&
+              'border-b-2 border-blue-500 shadow-[0_2px_0_0_rgba(59,130,246,0.3)]',
           )}
           style={{ paddingLeft: `${8 + level * 10}px` }}
           draggable
           onDragStart={(e) => handleDragStart(e, node.id)}
           onDragOver={(e) => handleDragOver(e, node.id)}
-          onDragLeave={handleDragLeave}
+          onDragLeave={(e) => handleDragLeave(e, node.id)}
           onDrop={(e) => handleDrop(e, node.id)}
           onClick={() => onSelect(node.id)}
         >
