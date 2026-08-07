@@ -137,10 +137,13 @@ export default function PortalLoginPage() {
           <div className="absolute right-0 top-0">
             <Link
               href="/changelog"
-              className="flex items-center gap-1 rounded-full border border-white/30 px-3 py-1.5 text-xs text-white/90 transition-colors hover:border-white/60 hover:bg-white/10"
+              title={t('查看平台更新记录')}
+              className="group flex items-center gap-0 rounded-full border border-white/30 px-2.5 py-1.5 text-xs text-white/90 transition-all hover:gap-1 hover:border-white/60 hover:bg-white/10"
             >
-              <History className="h-3.5 w-3.5" />
-              {t('查看平台更新记录')}
+              <History className="h-3.5 w-3.5 shrink-0" />
+              <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover:max-w-[8rem] group-hover:opacity-100">
+                {t('查看平台更新记录')}
+              </span>
             </Link>
           </div>
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30 ring-1 ring-white/20">
