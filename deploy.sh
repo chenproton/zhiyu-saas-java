@@ -15,6 +15,9 @@
 #   首次运行 → 安装依赖、生成 .env、初始化数据库+种子数据
 #   后续运行 → 增量更新，仅编译变更部分
 #   前后端变更 → 各自独立判断，无变更则跳过
+#   非分支模式 → 位于 master 分支时自动同步 origin/master 并在隔离 worktree 构建，
+#                本地工作树脏（lockfile 被旧版 pnpm 改写、部署产物等）不影响构建；
+#                回滚场景（git checkout <tag> 后 detached）仍基于本地 HEAD 构建
 #
 set -euo pipefail
 
@@ -650,12 +653,31 @@ if [[ -n "$BRANCH_NAME" ]]; then
   oc=$(git -C "$ORIGINAL_ROOT" rev-parse "origin/$BRANCH_NAME" 2>/dev/null || true)
   [[ -z "$oc" ]] && die "origin/$BRANCH_NAME 不存在，请先 git push"
   [[ "$lc" != "$oc" ]] && die "本地 $BRANCH_NAME 与 origin 不一致，请先 git push"
+else
+  # 非分支模式：先同步 origin/master 引用，供下方自动同步判定与构建使用
+  git -C "$ORIGINAL_ROOT" fetch origin master 2>/dev/null || true
+fi
+
+# 非分支自动同步判定：仅在"位于 master 分支且无本地未推送提交"时自动以 origin/master 最新代码
+# 在隔离 worktree 中构建。这样本地工作树即使脏（如 pnpm-lock.yaml 被旧版 pnpm 改写、
+# public/image-editor 部署产物等）也不影响构建，无需手动清理/拉取。
+# 回滚部署（git checkout <tag> 后处于 detached HEAD）或处于其他分支时，
+# 保持原有"基于本地当前 HEAD 构建"的行为，保证回滚语义不变。
+SYNC_MASTER=false
+if [[ -z "$BRANCH_NAME" ]] && [[ "$ORIGINAL_ROOT" == "$PROJECT_ROOT" ]] && \
+   git -C "$ORIGINAL_ROOT" rev-parse --verify -q origin/master >/dev/null 2>&1 && \
+   [[ "$(git -C "$ORIGINAL_ROOT" symbolic-ref -q HEAD 2>/dev/null)" == "refs/heads/master" ]] && \
+   [[ -z "$(git -C "$ORIGINAL_ROOT" rev-list origin/master..HEAD 2>/dev/null)" ]]; then
+  SYNC_MASTER=true
+  log "处于 master 分支且无未推送提交，自动同步并部署 origin/master 最新代码"
 fi
 
 # 镜像标签：分支部署时用分支提交（构建的正是这份代码），否则用当前 HEAD。
 # 标签即构建源码的 commit hash，部署后一眼可确认镜像内容，无需再进容器核对。
 if [[ -n "$BRANCH_NAME" ]]; then
   IMAGE_TAG="$(git -C "$ORIGINAL_ROOT" rev-parse --short "origin/$BRANCH_NAME" 2>/dev/null || echo "latest")"
+elif [[ "$SYNC_MASTER" == "true" ]]; then
+  IMAGE_TAG="$(git -C "$ORIGINAL_ROOT" rev-parse --short origin/master 2>/dev/null || echo "latest")"
 else
   IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "latest")"
 fi
@@ -682,9 +704,13 @@ fi
 # 3. 分支 worktree
 # ════════════════════════════════════════════
 BUILD_ROOT="$PROJECT_ROOT"
-if [[ -n "$BRANCH_NAME" ]]; then
+if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   BUILD_TREE="/tmp/zhiyu-build-cache"
-  log "构建分支: $BRANCH_NAME"
+  if [[ -n "$BRANCH_NAME" ]]; then
+    log "构建分支: $BRANCH_NAME"
+  else
+    log "构建 origin/master 最新代码（隔离 worktree，不触碰本地工作区）"
+  fi
 
   [[ "$CLEAN_BUILD" == "true" ]] && { git -C "$ORIGINAL_ROOT" worktree remove --force "$BUILD_TREE" 2>/dev/null || true; rm -rf "$BUILD_TREE"; }
 
@@ -697,7 +723,9 @@ if [[ -n "$BRANCH_NAME" ]]; then
 
   # 保留 apps/edu/.next 以复用 Next.js 增量产物；仅清理后端编译产物
   rm -rf "$BUILD_TREE/backend/bin" 2>/dev/null || true
-  git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit || { git -C "$BUILD_TREE" merge --abort 2>/dev/null; die "合并冲突，请先 rebase master"; }
+  if [[ -n "$BRANCH_NAME" ]]; then
+    git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit || { git -C "$BUILD_TREE" merge --abort 2>/dev/null; die "合并冲突，请先 rebase master"; }
+  fi
   [[ -f "$ORIGINAL_ROOT/.env" ]] && cp "$ORIGINAL_ROOT/.env" "$BUILD_TREE/.env"
   BUILD_ROOT="$BUILD_TREE"
 fi
