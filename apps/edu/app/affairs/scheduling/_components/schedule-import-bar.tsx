@@ -57,8 +57,8 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
     downloadBlob(await res.blob(), '排课导入模板.xlsx')
   }
 
-  const doImport = async (overwrite: boolean) => {
-    const ok = await executeImport(overwrite)
+  const doImport = async (mode: 'skip' | 'overwrite') => {
+    const ok = await executeImport(mode)
     if (ok) setConfirmOpen(false)
   }
 
@@ -138,8 +138,8 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
           duplicates={importPreview.duplicates}
           failed={importPreview.failed}
           duplicateItems={importPreview.duplicateItems}
-          onConfirmOverwrite={() => doImport(true)}
-          onConfirmSkip={() => doImport(false)}
+          onConfirmOverwrite={() => doImport('overwrite')}
+          onConfirmSkip={() => doImport('skip')}
         />
       )}
     </>

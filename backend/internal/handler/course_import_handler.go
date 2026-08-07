@@ -69,8 +69,8 @@ func (h *CourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Reques
 	mfu.ForEach(func(xlsx *excelize.File) {
 		result := &courseImportResult{}
 		courseMap := make(map[string]string)
-		h.importCourses(ctx, xlsx, tenantID, claims.UserID, true, false, courseMap, result)
-		h.importNodes(ctx, xlsx, tenantID, claims.UserID, true, false, courseMap, result)
+		h.importCourses(ctx, xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
+		h.importNodes(ctx, xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
 		aggregated.Created += result.Created
 		aggregated.Failed += result.Failed
 		aggregated.Duplicates += len(result.DuplicateItems)
@@ -94,6 +94,7 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	}
 	userID := claims.UserID
 	overwrite := importOverwriteParam(r)
+	rename := importRenameParam(r)
 
 	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
@@ -106,9 +107,9 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	aggregated := &courseImportResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
 		courseMap := make(map[string]string)
-		h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, courseMap, aggregated)
+		h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
 		if len(courseMap) > 0 {
-			h.importNodes(ctx, xlsx, tenantID, userID, false, overwrite, courseMap, aggregated)
+			h.importNodes(ctx, xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
 		}
 	})
 
@@ -131,7 +132,7 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	})
 }
 
-func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, courseMap map[string]string, result *courseImportResult) {
+func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *courseImportResult) {
 	rows, err := xlsx.GetRows("课程基本信息")
 	if err != nil {
 		return
@@ -162,6 +163,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 		err := h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, name).Scan(&existingID)
 		exists := err == nil && existingID != ""
 
+		origName := ""
 		if exists {
 			if preview {
 				if len(result.DuplicateItems) < 100 {
@@ -174,23 +176,32 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 				result.Skipped++
 				continue
 			}
-			if !overwrite {
+			if !overwrite && !rename {
 				result.Skipped++
 				continue
 			}
-			_, err := h.DB.Exec(ctx, `
-				UPDATE courses
-				SET major_id=$3, batch_id=$4, description=$5, ability_point_ids=$6, updated_at=NOW()
-				WHERE id=$1 AND tenant_id=$2
-			`, existingID, tenantID, majorID, batchID, descPtr, abilityPointIDs)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
+			if overwrite {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE courses
+					SET major_id=$3, batch_id=$4, description=$5, ability_point_ids=$6, updated_at=NOW()
+					WHERE id=$1 AND tenant_id=$2
+				`, existingID, tenantID, majorID, batchID, descPtr, abilityPointIDs)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
+					continue
+				}
+				h.clearCourseNodes(ctx, existingID)
+				courseMap[name] = existingID
 				continue
 			}
-			h.clearCourseNodes(ctx, existingID)
-			courseMap[name] = existingID
-			continue
+			// rename 模式：追加随机后缀生成新名称，按新对象导入
+			origName = name
+			name = uniqueSuffixed(name, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		if preview {
@@ -214,12 +225,15 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 			continue
 		}
 		courseMap[name] = courseID
+		if origName != "" {
+			courseMap[origName] = courseID
+		}
 		result.CourseCreated++
 		result.Created++
 	}
 }
 
-func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, courseMap map[string]string, result *courseImportResult) {
+func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *courseImportResult) {
 	if preview {
 		return
 	}

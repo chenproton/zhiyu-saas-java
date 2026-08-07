@@ -98,7 +98,7 @@ export function ResourceBatchImportDialog({
     if (!v) reset()
   }
 
-  const runImport = async (overwrite: boolean, existing: ResourceLibraryItem[]) => {
+  const runImport = async (mode: 'skip' | 'overwrite' | 'new', existing: ResourceLibraryItem[]) => {
     const existingByName = new Map(existing.map((item) => [item.name, item.id]))
     setDuplicateItems(null)
     setUploading(true)
@@ -109,7 +109,7 @@ export function ResourceBatchImportDialog({
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       const existingId = existingByName.get(file.name)
-      if (existingId && !overwrite) {
+      if (existingId && mode === 'skip') {
         skipped += 1
         setUploadedCount(i + 1)
         continue
@@ -124,9 +124,12 @@ export function ResourceBatchImportDialog({
           fileSize: res.size,
           description: undefined,
         }
-        if (existingId) {
+        if (existingId && mode === 'overwrite') {
           await resourceLibraryApi.update(existingId, payload as any)
         } else {
+          if (existingId) {
+            payload.name = `${file.name}-${Math.floor(1000 + Math.random() * 9000)}`
+          }
           await resourceLibraryApi.create(payload as any)
         }
         success += 1
@@ -168,7 +171,7 @@ export function ResourceBatchImportDialog({
       setDuplicateItems(existing)
       return
     }
-    await runImport(false, [])
+    await runImport('skip', [])
   }
 
   return (
@@ -287,8 +290,9 @@ export function ResourceBatchImportDialog({
         duplicates={duplicateItems?.length || 0}
         failed={0}
         duplicateItems={(duplicateItems || []).map((item) => ({ key: item.id, name: item.name }))}
-        onConfirmOverwrite={() => duplicateItems && runImport(true, duplicateItems)}
-        onConfirmSkip={() => duplicateItems && runImport(false, duplicateItems)}
+        onConfirmOverwrite={() => duplicateItems && runImport('overwrite', duplicateItems)}
+        onConfirmSkip={() => duplicateItems && runImport('skip', duplicateItems)}
+        onConfirmNew={() => duplicateItems && runImport('new', duplicateItems)}
       />
     </Dialog>
   )

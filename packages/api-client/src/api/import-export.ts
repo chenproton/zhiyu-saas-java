@@ -35,6 +35,7 @@ export const importExportApi = {
     entity: string,
     files: File | File[],
     overwrite = false,
+    rename = false,
   ): Promise<{
     created: number
     failed: number
@@ -45,10 +46,13 @@ export const importExportApi = {
     const form = new FormData()
     const fileArr = Array.isArray(files) ? files : [files]
     fileArr.forEach((f) => form.append('file', f))
-    const res = await authedFetch(`/import/${entity}?overwrite=${overwrite}`, {
-      method: 'POST',
-      body: form,
-    })
+    const res = await authedFetch(
+      `/import/${entity}?overwrite=${overwrite}&rename=${rename}`,
+      {
+        method: 'POST',
+        body: form,
+      },
+    )
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
@@ -70,6 +74,7 @@ export const importExportApi = {
     entity: string,
     files: File | File[],
     overwrite = false,
+    rename = false,
   ): Promise<{
     created: number
     failed: number
@@ -85,10 +90,13 @@ export const importExportApi = {
     const form = new FormData()
     const fileArr = Array.isArray(files) ? files : [files]
     fileArr.forEach((f) => form.append('file', f))
-    const res = await authedFetch(`/import/${entity}/excel?overwrite=${overwrite}`, {
-      method: 'POST',
-      body: form,
-    })
+    const res = await authedFetch(
+      `/import/${entity}/excel?overwrite=${overwrite}&rename=${rename}`,
+      {
+        method: 'POST',
+        body: form,
+      },
+    )
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)

@@ -126,6 +126,7 @@ export interface ContentImportExportApi {
     entity: string,
     file: File,
     overwrite?: boolean,
+    rename?: boolean,
   ) => Promise<{ created: number; failed: number; skipped?: number; errors?: string[] }>
   importPreview?: (entity: string, file: File) => Promise<ImportPreviewResult>
   export: (entity: string) => Promise<Response>
@@ -133,6 +134,7 @@ export interface ContentImportExportApi {
     entity: string,
     file: File,
     overwrite?: boolean,
+    rename?: boolean,
   ) => Promise<{
     created: number
     failed: number
@@ -1112,7 +1114,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         setCsvImporting(false)
         return
       }
-      await doCsvImport(false)
+      await doCsvImport('skip')
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -1123,11 +1125,16 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     }
   }
 
-  const doCsvImport = async (overwrite = false) => {
+  const doCsvImport = async (mode: 'skip' | 'overwrite' | 'new' = 'skip') => {
     if (importFiles.length === 0) return
     setCsvImporting(true)
     try {
-      const result = await importExportApi.import(importEntityName, importFiles[0], overwrite)
+      const result = await importExportApi.import(
+        importEntityName,
+        importFiles[0],
+        mode === 'overwrite',
+        mode === 'new',
+      )
       const skippedMsg =
         result.skipped != null ? t('，跳过 {skipped} 条', { skipped: result.skipped }) : ''
       toast({
@@ -1154,12 +1161,12 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     }
   }
 
-  const doImport = async (overwrite = false) => {
+  const doImport = async (mode: 'skip' | 'overwrite' | 'new' = 'skip') => {
     if (hasExcel) {
-      await executeImport(overwrite)
+      await executeImport(mode)
       // useImportFlow.onSuccess 负责关闭弹窗与刷新
     } else {
-      await doCsvImport(overwrite)
+      await doCsvImport(mode)
     }
   }
 
@@ -1829,8 +1836,9 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           duplicates={importPreview.duplicates}
           failed={importPreview.failed}
           duplicateItems={importPreview.duplicateItems}
-          onConfirmOverwrite={() => doImport(true)}
-          onConfirmSkip={() => doImport(false)}
+          onConfirmOverwrite={() => doImport('overwrite')}
+          onConfirmSkip={() => doImport('skip')}
+          onConfirmNew={() => doImport('new')}
         />
       )}
 

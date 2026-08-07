@@ -28,8 +28,8 @@ func (h *PositionImportHandler) processImport(r *http.Request, w http.ResponseWr
 
 	irc.MFU.ForEach(func(xlsx *excelize.File) {
 		positionMap := make(map[string]string)
-		h.importPositions(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, positionMap, aggregated)
-		h.importResponsibilities(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, positionMap, aggregated)
+		h.importPositions(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, irc.Rename, positionMap, aggregated)
+		h.importResponsibilities(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, irc.Rename, positionMap, aggregated)
 	})
 
 	if preview {
@@ -73,7 +73,7 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	h.processImport(r, w, false)
 }
 
-func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, positionMap map[string]string, result *importResult) {
+func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, positionMap map[string]string, result *importResult) {
 	rows, err := xlsx.GetRows("岗位基本信息")
 	if err != nil {
 		return
@@ -106,6 +106,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		err := h.DB.QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
 		exists := err == nil && existingID != ""
 
+		origName := ""
 		if exists {
 			if preview {
 				if len(result.DuplicateItems) < 100 {
@@ -118,43 +119,52 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 				result.Skipped++
 				continue
 			}
-			if !overwrite {
+			if !overwrite && !rename {
 				result.Skipped++
 				continue
 			}
-			_, err := h.DB.Exec(ctx, `
-				UPDATE career_positions
-				SET name=$3, short_name=$4, industry_id=$5, position_type=$6,
-				    salary_min=$7, salary_max=$8, description=$9, requirements=$10,
-				    career_path=$11, batch_id=$12
-				WHERE id=$1 AND tenant_id=$2
-			`, existingID, tenantID, name, shortName, industryID, positionType,
-				salaryMin, salaryMax, description, requirements, careerPath, batchID)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]更新失败: %v", name, err))
-				continue
-			}
-			// 覆盖时清空原有关联数据，随后根据新文件内容重新写入
-			h.DB.Exec(ctx, `DELETE FROM career_position_majors WHERE career_position_id=$1`, existingID)
-			h.DB.Exec(ctx, `DELETE FROM position_certificates WHERE career_position_id=$1`, existingID)
-			h.DB.Exec(ctx, `DELETE FROM position_responsibilities WHERE career_position_id=$1`, existingID)
-			h.DB.Exec(ctx, `DELETE FROM position_ability_bindings WHERE career_position_id=$1`, existingID)
-
-			for _, mid := range majorIDs {
-				h.DB.Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-					uuid.NewString(), existingID, mid)
-			}
-			for _, certName := range certNames {
-				if certName == "" {
+			if overwrite {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE career_positions
+					SET name=$3, short_name=$4, industry_id=$5, position_type=$6,
+					    salary_min=$7, salary_max=$8, description=$9, requirements=$10,
+					    career_path=$11, batch_id=$12
+					WHERE id=$1 AND tenant_id=$2
+				`, existingID, tenantID, name, shortName, industryID, positionType,
+					salaryMin, salaryMax, description, requirements, careerPath, batchID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]更新失败: %v", name, err))
 					continue
 				}
-				certID := h.findOrCreateCert(ctx, tenantID, certName)
-				h.DB.Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-					uuid.NewString(), tenantID, existingID, certID)
+				// 覆盖时清空原有关联数据，随后根据新文件内容重新写入
+				h.DB.Exec(ctx, `DELETE FROM career_position_majors WHERE career_position_id=$1`, existingID)
+				h.DB.Exec(ctx, `DELETE FROM position_certificates WHERE career_position_id=$1`, existingID)
+				h.DB.Exec(ctx, `DELETE FROM position_responsibilities WHERE career_position_id=$1`, existingID)
+				h.DB.Exec(ctx, `DELETE FROM position_ability_bindings WHERE career_position_id=$1`, existingID)
+
+				for _, mid := range majorIDs {
+					h.DB.Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+						uuid.NewString(), existingID, mid)
+				}
+				for _, certName := range certNames {
+					if certName == "" {
+						continue
+					}
+					certID := h.findOrCreateCert(ctx, tenantID, certName)
+					h.DB.Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+						uuid.NewString(), tenantID, existingID, certID)
+				}
+				positionMap[name] = existingID
+				continue
 			}
-			positionMap[name] = existingID
-			continue
+			// rename 模式：追加随机后缀生成新名称，按新对象导入
+			origName = name
+			name = uniqueSuffixed(name, func(c string) bool {
+				var eid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+				return eid != ""
+			})
 		}
 
 		if preview {
@@ -194,12 +204,15 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		}
 
 		positionMap[name] = positionID
+		if origName != "" {
+			positionMap[origName] = positionID
+		}
 		result.PositionCreated++
 		result.Created++
 	}
 }
 
-func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, positionMap map[string]string, result *importResult) {
+func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, positionMap map[string]string, result *importResult) {
 	if preview {
 		return
 	}

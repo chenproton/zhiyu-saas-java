@@ -39,7 +39,7 @@ func (h *QuestionBankImportHandler) PreviewExcel(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 	aggregated := ImportPreviewResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
-		previewRes, _ := h.importBanks(ctx, xlsx, tenantID, userID, true, false)
+		previewRes, _ := h.importBanks(ctx, xlsx, tenantID, userID, true, false, false)
 		aggregated.Created += previewRes.Created
 		aggregated.Failed += previewRes.Failed
 		aggregated.Duplicates += previewRes.Duplicates
@@ -68,11 +68,12 @@ func (h *QuestionBankImportHandler) ImportExcel(w http.ResponseWriter, r *http.R
 		return
 	}
 	overwrite := importOverwriteParam(r)
+	rename := importRenameParam(r)
 
 	ctx := r.Context()
 	aggregated := ImportExecuteResult{Entity: "题库"}
 	mfu.ForEach(func(xlsx *excelize.File) {
-		_, res := h.importBanks(ctx, xlsx, tenantID, userID, false, overwrite)
+		_, res := h.importBanks(ctx, xlsx, tenantID, userID, false, overwrite, rename)
 		aggregated.Created += res.Created
 		aggregated.Failed += res.Failed
 		aggregated.Skipped += res.Skipped
@@ -88,7 +89,7 @@ func (h *QuestionBankImportHandler) ImportExcel(w http.ResponseWriter, r *http.R
 	})
 }
 
-func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (ImportPreviewResult, ImportExecuteResult) {
+func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (ImportPreviewResult, ImportExecuteResult) {
 	var previewRes ImportPreviewResult
 	var execRes ImportExecuteResult
 
@@ -163,10 +164,19 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 				}
 				execRes.Created++
 				slog.Info(fmt.Sprintf("[import/question-banks] updated bank %s (id=%s)", name, existingID))
+				continue
+			}
+			if rename {
+				// rename 模式：追加随机后缀生成新名称，按新对象导入
+				name = uniqueSuffixed(name, func(c string) bool {
+					var eid string
+					_ = h.DB.QueryRow(ctx, `SELECT id FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+					return eid != ""
+				})
 			} else {
 				execRes.Skipped++
+				continue
 			}
-			continue
 		}
 
 		bankID := uuid.NewString()

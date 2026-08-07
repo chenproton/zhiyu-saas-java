@@ -27,6 +27,8 @@ export interface ImportConfirmDialogProps {
   duplicateItems: ImportPreviewRow[]
   onConfirmOverwrite: () => void
   onConfirmSkip: () => void
+  /** 传入后展示「新增并导入」：为重名对象追加 4 位随机后缀后按新对象导入 */
+  onConfirmNew?: () => void
 }
 
 export function ImportConfirmDialog({
@@ -39,6 +41,7 @@ export function ImportConfirmDialog({
   duplicateItems,
   onConfirmOverwrite,
   onConfirmSkip,
+  onConfirmNew,
 }: ImportConfirmDialogProps) {
   const displayedItems = duplicateItems.slice(0, 10)
   const hasMore = duplicateItems.length > 10
@@ -51,7 +54,8 @@ export function ImportConfirmDialog({
             检测到 {duplicates} 条已存在{entityLabel}
           </DialogTitle>
           <DialogDescription>
-            请确认处理方式：仅导入新数据不会覆盖已有记录；覆盖并继续会用文件内容替换已有记录。
+            请确认处理方式：仅导入新数据不会覆盖已有记录；覆盖并继续会用文件内容替换已有记录；
+            {onConfirmNew ? '新增并导入会自动为重名对象追加 4 位随机后缀后新建。' : ''}
           </DialogDescription>
         </DialogHeader>
 
@@ -111,6 +115,11 @@ export function ImportConfirmDialog({
           <Button variant="secondary" onClick={onConfirmSkip}>
             仅导入新数据
           </Button>
+          {onConfirmNew && (
+            <Button variant="secondary" onClick={onConfirmNew}>
+              新增并导入
+            </Button>
+          )}
           <Button variant="default" onClick={onConfirmOverwrite}>
             覆盖并继续
           </Button>

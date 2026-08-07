@@ -39,11 +39,16 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
     setImportFiles([])
   }, [])
 
-  const executeImport = async (overwrite = false) => {
+  const executeImport = async (mode: 'skip' | 'overwrite' | 'new' = 'skip') => {
     if (importFiles.length === 0) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel(importType, importFiles, overwrite)
+      const result = await importExportApi.importExcel(
+        importType,
+        importFiles,
+        mode === 'overwrite',
+        mode === 'new',
+      )
       const errorHint =
         result.errors && result.errors.length > 0
           ? `，错误：${result.errors.slice(0, 3).join(';')}`
@@ -78,7 +83,7 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
         setIsImporting(false)
         return
       }
-      return await executeImport(false)
+      return await executeImport('skip')
     } catch (err: unknown) {
       toast({
         variant: 'destructive',
