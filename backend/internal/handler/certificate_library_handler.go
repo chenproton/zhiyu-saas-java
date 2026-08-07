@@ -121,3 +121,43 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	crudDelete(w, r, h.crud())
 }
+
+// CitationStats 证书引用次数分布（顶部指标卡片用）。
+func (h *CertificateLibraryHandler) CitationStats(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	stats, err := h.Store.CitationStats(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询证书引用统计失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, stats)
+}
+
+// UncitedList 零引用证书列表（弹窗：创建时段筛选 + 分页）。
+func (h *CertificateLibraryHandler) UncitedList(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	from, to, ok := parseDateRange(w, r)
+	if !ok {
+		return
+	}
+	limit, err := parsePageLimit(r.URL.Query().Get("limit"), 20)
+	if err != nil {
+		limit = 20
+	}
+	offset := 0
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
+		offset = v
+	}
+	items, total, err := h.Store.ListUncited(r.Context(), tenantID, from, to, limit, offset)
+	if err != nil {
+		respondServerError(w, r, err, "查询零引用证书失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[store.UncitedItem]{Items: items, Total: total})
+}

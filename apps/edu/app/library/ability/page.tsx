@@ -26,6 +26,7 @@ import { useTagBindings } from '@/components/shared/use-tag-bindings'
 import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { useLibraryCrud } from '../_components/use-library-crud'
 import { LibraryPageShell } from '../_components/library-page-shell'
+import { CitationStatsPanel } from '@/components/shared/citation-stats-panel'
 
 export default function AbilityPointsPage() {
   const { toast } = useToast()
@@ -149,6 +150,19 @@ export default function AbilityPointsPage() {
       }
       statGradient="from-primary/5 to-primary/10"
       statCount={total}
+      statsExtra={
+        <CitationStatsPanel
+          entityLabel="能力点"
+          dialogTitle="零引用能力点"
+          fetchStats={() => abilityApi.citationStats()}
+          fetchUncited={(params) => abilityApi.uncited(params)}
+          deleteItem={(id) => abilityApi.delete(id)}
+          onDeleted={loadItems}
+          statCount={total}
+          statLabel="能力点总数"
+          statIcon={<Lightbulb className="size-5 text-primary" />}
+        />
+      }
       searchPlaceholder="搜索能力点..."
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}

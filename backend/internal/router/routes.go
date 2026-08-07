@@ -93,6 +93,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
 				r.Get("/scene/tasks/{taskId}/evaluation-methods", h.taskEvaluationHandler.ListMethods)
 				r.Get("/job/abilities", h.abilityHandler.List)
+				r.Get("/job/abilities/citation-stats", h.abilityHandler.CitationStats)
+				r.Get("/job/abilities/uncited", h.abilityHandler.UncitedList)
 				r.Get("/job/abilities/{id}", h.abilityHandler.Get)
 				r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
 				r.Get("/lesson/knowledge-points/citation-stats", h.knowledgePointHandler.CitationStats)

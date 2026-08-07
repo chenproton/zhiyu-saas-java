@@ -37,6 +37,8 @@ func registerJobRoutes(r chi.Router, h *Handlers) {
 	r.Delete("/job/position-certificates/{id}", h.positionCertificateHandler.Delete)
 
 	r.Get("/job/certificate-library", h.certificateLibraryHandler.List)
+	r.Get("/job/certificate-library/citation-stats", h.certificateLibraryHandler.CitationStats)
+	r.Get("/job/certificate-library/uncited", h.certificateLibraryHandler.UncitedList)
 	r.Get("/job/certificate-library/{id}", h.certificateLibraryHandler.Get)
 	r.Post("/job/certificate-library", h.certificateLibraryHandler.Create)
 	r.Put("/job/certificate-library/{id}", h.certificateLibraryHandler.Update)
