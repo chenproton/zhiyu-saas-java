@@ -44,6 +44,8 @@ interface StatusActionBarProps {
   onInvite?: () => void
   onViewRejectReason?: () => void
   extraActions?: ReactNode
+  /** 任意状态（含已发布）都显示的自定义操作，如导出 */
+  alwaysExtraActions?: ReactNode
 }
 
 export function StatusActionBar({
@@ -62,6 +64,7 @@ export function StatusActionBar({
   onInvite,
   onViewRejectReason,
   extraActions,
+  alwaysExtraActions,
 }: StatusActionBarProps) {
   const t = useT()
   if (isDraftPool) {
@@ -136,7 +139,8 @@ export function StatusActionBar({
           {t('查看详情')}
         </Button>
       )}
-      {extraActions}
+      {alwaysExtraActions}
+      {EDITABLE_STATUSES.includes(status) && extraActions}
       {onEdit && EDITABLE_STATUSES.includes(status) && (
         <Button
           variant="ghost"

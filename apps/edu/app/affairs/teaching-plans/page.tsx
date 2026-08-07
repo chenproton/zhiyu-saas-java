@@ -183,7 +183,7 @@ export default function TeachingPlansPage() {
                               onArchive={onArchive ? () => onArchive(item) : undefined}
                               onDelete={onDelete ? () => onDelete(item) : undefined}
                               onInvite={onInviteCoBuild ? () => onInviteCoBuild(item) : undefined}
-                              extraActions={
+                              alwaysExtraActions={
                                 <Button
                                   variant="ghost"
                                   size="sm"
