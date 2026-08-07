@@ -33,6 +33,36 @@ type UpdateResourceLibraryRequest struct {
 	Metadata     domain.JSONMap       `json:"metadata"`
 }
 
+// PreviewImportRequest 批量导入重名校验请求。
+type PreviewImportRequest struct {
+	Names        []string            `json:"names"`
+	ResourceType domain.ResourceType `json:"resourceType"`
+}
+
+// PreviewImport 批量导入前按名称校验重名，返回已存在的资源列表。
+func (h *ResourceLibraryHandler) PreviewImport(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	var req PreviewImportRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if len(req.Names) == 0 || req.ResourceType == "" {
+		respondError(w, http.StatusBadRequest, "缺少名称或资源类型")
+		return
+	}
+
+	items, err := h.Service.FindByNames(r.Context(), tenantID, string(req.ResourceType), req.Names)
+	if err != nil {
+		respondServerError(w, r, err, "查询重名资源失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.ResourceLibraryItem]{Items: items, Total: len(items)})
+}
+
 func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
 	if !ok {

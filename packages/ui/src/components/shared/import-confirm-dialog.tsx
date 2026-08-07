@@ -86,9 +86,11 @@ export function ImportConfirmDialog({
                       <span className="font-medium truncate max-w-[260px]" title={item.name}>
                         {item.name || item.key}
                       </span>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                        第 {item.rowNum} 行
-                      </span>
+                      {item.rowNum != null && (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                          第 {item.rowNum} 行
+                        </span>
+                      )}
                     </div>
                   ))}
                   {hasMore && (

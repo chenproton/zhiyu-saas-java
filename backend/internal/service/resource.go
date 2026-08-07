@@ -34,6 +34,11 @@ func (s *ResourceService) Get(ctx context.Context, id string) (*domain.ResourceL
 	return s.st.ResourceLibrary().Get(ctx, id)
 }
 
+// FindByNames 批量导入重名校验：按名称精确匹配查询已有资源。
+func (s *ResourceService) FindByNames(ctx context.Context, tenantID, resourceType string, names []string) ([]domain.ResourceLibraryItem, error) {
+	return s.st.ResourceLibrary().FindByNames(ctx, tenantID, resourceType, names)
+}
+
 // Create 创建资源。
 func (s *ResourceService) Create(ctx context.Context, tenantID string, p *store.ResourceCreateParams) (*domain.ResourceLibraryItem, error) {
 	return s.st.ResourceLibrary().Create(ctx, tenantID, p)

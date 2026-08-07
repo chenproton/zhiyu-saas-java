@@ -171,6 +171,24 @@ func (s *ResourceLibraryStore) CountByType(ctx context.Context, tenantID, search
 	return out, rows.Err()
 }
 
+// FindByNames 按名称精确匹配查询已有资源（批量导入重名校验用）。
+func (s *ResourceLibraryStore) FindByNames(ctx context.Context, tenantID, resourceType string, names []string) ([]domain.ResourceLibraryItem, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT `+resourceSelectColumns+`
+		FROM resource_library rl
+		`+resourceJoinClause+`
+		WHERE rl.tenant_id = $1 AND rl.resource_type = $2 AND rl.name = ANY($3)
+	`, tenantID, resourceType, names)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanResourceRows(rows)
+}
+
 // Get 按 ID 查询资源（跨租户校验由 handler 层负责）。
 func (s *ResourceLibraryStore) Get(ctx context.Context, id string) (*domain.ResourceLibraryItem, error) {
 	item, err := s.fetchItem(ctx, id)

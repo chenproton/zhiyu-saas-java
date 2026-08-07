@@ -122,3 +122,46 @@ func TestResourceLibrary_Stats(t *testing.T) {
 		t.Fatalf("stats empty: got %d items; want 0", len(resp.Items))
 	}
 }
+
+// TestResourceLibrary_PreviewImport 验证批量导入重名校验：
+// 同租户同类型下按名称精确匹配返回已存在资源，其他类型/名称不误报。
+func TestResourceLibrary_PreviewImport(t *testing.T) {
+	env, do := newResourceLibraryTestEnv(t)
+	defer env.Cleanup()
+
+	prefix := fmt.Sprintf("导入校验-%s", uuid.NewString()[:8])
+	createTestResources(t, do, prefix, "document", "image")
+
+	w := do("POST", "/api/v1/library/resources/import/preview", map[string]interface{}{
+		"names":        []string{prefix + "-document", prefix + "-image", prefix + "-不存在"},
+		"resourceType": "document",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("preview: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	items, total, err := testhelper.UnmarshalList[domain.ResourceLibraryItem](w)
+	if err != nil {
+		t.Fatalf("unmarshal preview: %v", err)
+	}
+	if total != 1 || len(items) != 1 || items[0].Name != prefix+"-document" {
+		t.Fatalf("preview: got %d items total %d; want only the document", len(items), total)
+	}
+
+	wEmpty := do("POST", "/api/v1/library/resources/import/preview", map[string]interface{}{
+		"names":        []string{prefix + "-不存在"},
+		"resourceType": "document",
+	})
+	if wEmpty.Code != http.StatusOK {
+		t.Fatalf("preview empty: %d %s", wEmpty.Code, testhelper.ErrMsg(wEmpty))
+	}
+	if _, total, err := testhelper.UnmarshalList[domain.ResourceLibraryItem](wEmpty); err != nil || total != 0 {
+		t.Fatalf("preview empty: total %d err %v; want 0", total, err)
+	}
+
+	wBad := do("POST", "/api/v1/library/resources/import/preview", map[string]interface{}{
+		"names": []string{},
+	})
+	if wBad.Code != http.StatusBadRequest {
+		t.Fatalf("preview bad request: %d; want 400", wBad.Code)
+	}
+}
