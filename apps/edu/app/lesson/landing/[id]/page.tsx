@@ -193,11 +193,44 @@ export default function CourseDetailPage() {
   const diff = SCENE_DIFFICULTY[course?.difficulty ?? 3] || SCENE_DIFFICULTY[3]
 
   function getNodeEvalMethods(node: SystemCourseNode) {
-    const evalRuleConfig = (node.evalData as any)?.evalRuleConfig
-    const methods = (evalRuleConfig?.evaluationMethods || []) as string[]
-    return methods.map((methodKey) => ({
-      methodKey,
-    }))
+    const evalData = (node.evalData as any) || {}
+    const methods: string[] = []
+    const evalRuleConfig = evalData.evalRuleConfig
+    if (evalRuleConfig?.evaluationMethods) {
+      methods.push(...evalRuleConfig.evaluationMethods)
+    }
+    // 混合课：课前测验/随堂测验/课后作业三个子规则的测评方式聚合展示
+    const hybridRules = evalData.hybridEvalRules
+    if (hybridRules) {
+      ;['preQuiz', 'inClassQuiz', 'homework'].forEach((moduleKey) => {
+        const part = hybridRules[moduleKey]
+        const mrc = part?.evalRuleConfig
+        if (mrc?.evaluationMethods) {
+          methods.push(...mrc.evaluationMethods)
+        }
+      })
+    }
+    return methods.map((methodKey) => ({ methodKey }))
+  }
+
+  // 聚合节点评价规则（体系课 evalRuleConfig / 混合课 hybridEvalRules）
+  function getNodeEvalRule(node: SystemCourseNode) {
+    const evalData = (node.evalData as any) || {}
+    const methods: { key: string; weight: number }[] = []
+    const collect = (rc: any) => {
+      if (!rc?.evaluationMethods) return
+      ;(rc.evaluationMethods as string[]).forEach((m) => {
+        methods.push({ key: m, weight: rc.methodWeights?.[m] || 0 })
+      })
+    }
+    collect(evalData.evalRuleConfig)
+    const hybridRules = evalData.hybridEvalRules
+    if (hybridRules) {
+      ;['preQuiz', 'inClassQuiz', 'homework'].forEach((moduleKey) => {
+        collect(hybridRules[moduleKey]?.evalRuleConfig)
+      })
+    }
+    return methods
   }
 
   if (loading) {
@@ -481,11 +514,9 @@ export default function CourseDetailPage() {
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {evalNodes.map((node) => {
-                  const evalRuleConfig = (node.evalData as any)?.evalRuleConfig as
-                    | { evaluationMethods?: string[]; methodWeights?: Record<string, number> }
-                    | undefined
-                  const methods = evalRuleConfig?.evaluationMethods || []
-                  const weights = evalRuleConfig?.methodWeights || {}
+                  const evalRule = getNodeEvalRule(node)
+                  const methods = evalRule.map((m) => m.key)
+                  const weights = Object.fromEntries(evalRule.map((m) => [m.key, m.weight]))
                   return (
                     <div
                       key={node.id}

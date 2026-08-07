@@ -43,15 +43,22 @@ import {
   EvalMethodResultModel,
   UploadedFile,
 } from '@/components/shared/eval-method-card'
+import { HybridModulesView } from '@/components/lesson/student/hybrid-modules-view'
 
-import { courseApi, courseNodeApi, nodeEvaluationResultApi, fileApi } from '@/lib/api'
+import {
+  courseApi,
+  courseNodeApi,
+  hybridModuleApi,
+  nodeEvaluationResultApi,
+  fileApi,
+} from '@/lib/api'
 import type { Course } from '@/lib/types'
 import type {
   SystemCourseNode,
   KnowledgePoint as NodeKnowledgePoint,
   NodeResource,
 } from '@/lib/types/lesson-source'
-import type { NodeEvaluationResult } from '@zhiyu/api-client'
+import type { NodeEvaluationResult, HybridNodeModule } from '@zhiyu/api-client'
 
 /* ---------- constants ---------- */
 
@@ -82,6 +89,8 @@ export default function LessonLearnPage() {
   const [loading, setLoading] = useState(true)
   const [activeNodeId, setActiveNodeId] = useState<string | null>(targetNodeId || null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+
+  const [hybridModules, setHybridModules] = useState<HybridNodeModule[]>([])
 
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const [myResults, setMyResults] = useState<NodeEvaluationResult[]>([])
@@ -119,7 +128,23 @@ export default function LessonLearnPage() {
         })
       })
       .catch(() => setNodes([]))
+    if (course.type === 'hybrid') {
+      hybridModuleApi
+        .list({ courseId: id, limit: 1000 })
+        .then((res) => setHybridModules(res.items || []))
+        .catch(() => setHybridModules([]))
+    }
   }, [id, course, targetNodeId])
+
+  const hybridModulesByNode = useMemo(() => {
+    const map = new Map<string, HybridNodeModule[]>()
+    hybridModules.forEach((m) => {
+      const list = map.get(m.nodeId) || []
+      list.push(m)
+      map.set(m.nodeId, list)
+    })
+    return map
+  }, [hybridModules])
 
   const activeNode = useMemo(() => nodes.find((n) => n.id === activeNodeId), [nodes, activeNodeId])
   const totalHours = useMemo(() => nodes.reduce((s, n) => s + (n.estimatedHours || 0), 0), [nodes])
@@ -198,6 +223,12 @@ export default function LessonLearnPage() {
   const [submittedMethodKeys, setSubmittedMethodKeys] = useState<Set<string>>(new Set())
   const [uploadingFile, setUploadingFile] = useState(false)
 
+  /* ---------- hybrid eval submit state ---------- */
+  const [hybridSubmitOpen, setHybridSubmitOpen] = useState(false)
+  const [hybridActiveModuleKey, setHybridActiveModuleKey] = useState<string | null>(null)
+  const [hybridActiveMethod, setHybridActiveMethod] = useState<EvalMethodViewModel | null>(null)
+  const [hybridSubmittedKeys, setHybridSubmittedKeys] = useState<Set<string>>(new Set())
+
   const activeMethod = useMemo(
     () => evalMethods.find((m) => m.methodKey === activeMethodKey),
     [evalMethods, activeMethodKey],
@@ -239,6 +270,25 @@ export default function LessonLearnPage() {
       subjectiveContent: payload.subjectiveContent,
     })
     setSubmittedMethodKeys((prev) => new Set([...Array.from(prev), payload.methodKey]))
+  }
+
+  const handleHybridEvalAction = (moduleKey: string, method: EvalMethodViewModel) => {
+    setHybridActiveModuleKey(moduleKey)
+    setHybridActiveMethod(method)
+    setHybridSubmitOpen(true)
+  }
+
+  const handleHybridSubmit = async (payload: EvalMethodSubmitPayload) => {
+    if (!user?.id || !activeNodeId || !hybridActiveModuleKey) return
+    const compositeKey = `${hybridActiveModuleKey}:${payload.methodKey}`
+    await nodeEvaluationResultApi.submit({
+      nodeId: activeNodeId,
+      methodKey: compositeKey,
+      evaluateeId: user.id,
+      maxScore: payload.maxScore,
+      subjectiveContent: payload.subjectiveContent,
+    })
+    setHybridSubmittedKeys((prev) => new Set([...Array.from(prev), compositeKey]))
   }
 
   const handleFileUpload = async (file: File): Promise<UploadedFile | null> => {
@@ -520,7 +570,18 @@ export default function LessonLearnPage() {
             <>
               {/* collapsed layout: left 2 cards + right sticky tab card */}
               <div className="flex flex-1 gap-4 p-4">
-                {/* left column: 2 cards */}
+                {course.type === 'hybrid' ? (
+                  <div className="flex-1 space-y-4">
+                    <HybridModulesView
+                      node={activeNode}
+                      modules={hybridModulesByNode.get(activeNode.id) || []}
+                      courseId={id}
+                      myResults={myResults}
+                      submittedKeys={hybridSubmittedKeys}
+                      onEvalAction={handleHybridEvalAction}
+                    />
+                  </div>
+                ) : (
                 <div className="flex-1 space-y-4">
                   {/* 节点说明书 */}
                   <Card className="rounded-2xl border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] transition-all duration-300 py-0 gap-0 flex flex-col bg-white">
@@ -626,6 +687,7 @@ export default function LessonLearnPage() {
                     )}
                   </div>
                 </div>
+                )}
               </div>
             </>
           )}
@@ -726,6 +788,27 @@ export default function LessonLearnPage() {
           onSubmitted={() => {
             if (activeMethodKey) {
               setSubmittedMethodKeys((prev) => new Set([...Array.from(prev), activeMethodKey]))
+            }
+          }}
+        />
+      )}
+
+      {hybridActiveMethod && (
+        <EvalMethodSubmitDialog
+          open={hybridSubmitOpen}
+          onOpenChange={setHybridSubmitOpen}
+          method={{
+            ...hybridActiveMethod,
+            label: `提交测评`,
+          }}
+          uploading={uploadingFile}
+          onFileUpload={handleFileUpload}
+          onSubmit={handleHybridSubmit}
+          onSubmitted={() => {
+            if (hybridActiveModuleKey) {
+              setHybridSubmittedKeys((prev) =>
+                new Set([...Array.from(prev), `${hybridActiveModuleKey}:${hybridActiveMethod.methodKey}`]),
+              )
             }
           }}
         />

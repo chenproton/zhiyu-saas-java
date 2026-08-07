@@ -31,7 +31,8 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
-import { courseApi, fileApi, lessonBatchApi } from '@/lib/api'
+import { courseApi, courseNodeApi, hybridModuleApi, fileApi, lessonBatchApi } from '@/lib/api'
+import type { HybridNodeModule } from '@zhiyu/api-client'
 import { MajorSelect } from '@/components/shared/major-select'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import type { Course } from '@/lib/types/lesson'
@@ -52,6 +53,11 @@ import {
   type NodeModuleData,
   type CourseBasicForm,
 } from './_components/atomic-modules'
+import {
+  applyModuleData,
+  buildModulesForNode,
+  TEACHING_DESIGN_KEY,
+} from './_components/module-serialize'
 
 const FIRST_NODE_ID = 'hybrid-node-1'
 
@@ -85,23 +91,6 @@ function HybridCourseAddForm() {
   const [existing, setExisting] = useState<Course | null>(null)
   const [batchId, setBatchId] = useState('')
 
-  useEffect(() => {
-    ;(async () => {
-      if (!editId) {
-        setExisting(null)
-        return
-      }
-      try {
-        const c = await courseApi.get(editId)
-        setExisting(c)
-        if (c.batchId) setBatchId(c.batchId)
-      } catch (err) {
-        reportError(err, '加载课程信息')
-        setExisting(null)
-      }
-    })()
-  }, [editId])
-
   interface ClaimPayload {
     course?: string
     teacher?: string
@@ -134,108 +123,152 @@ function HybridCourseAddForm() {
   }, [claimPayload])
 
   /* ========== course node tree ========== */
-  const initialNodes = useMemo<SystemCourseNode[]>(() => {
-    const rootName = claimCourse || existing?.name || '混合课程'
-    const rootNode: SystemCourseNode = {
-      id: FIRST_NODE_ID,
-      courseId: editId || 'hybrid-new',
-      parentId: null,
-      name: rootName,
-      order: 1,
-      type: 'normal',
-      status: 'draft',
-    }
-
-    if (claimSessionNames.length === 0) {
-      return [rootNode]
-    }
-
-    const childNodes: SystemCourseNode[] = claimSessionNames.map((name, idx) => ({
-      id: `hybrid-node-child-${idx + 1}`,
-      courseId: editId || 'hybrid-new',
-      parentId: FIRST_NODE_ID,
-      name,
-      order: idx + 1,
-      type: 'normal',
-      status: 'draft',
-    }))
-
-    return [rootNode, ...childNodes]
-  }, [editId, existing?.name, claimCourse, claimSessionNames])
-
-  const [nodes, setNodes] = useState<SystemCourseNode[]>(initialNodes)
-  const [selectedNodeId, setSelectedNodeId] = useState<string>(FIRST_NODE_ID)
-
-  // 编辑模式：课程信息加载完成后同步根节点名称（initialNodes 只在首帧生效）
-  useEffect(() => {
-    const rootName = claimCourse || existing?.name
-    if (!rootName) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNodes((prev) => {
-      if (prev[0] && prev[0].id === FIRST_NODE_ID && prev[0].name !== rootName) {
-        return [{ ...prev[0], name: rootName }, ...prev.slice(1)]
-      }
-      return prev
-    })
-  }, [claimCourse, existing?.name])
+  const [nodes, setNodes] = useState<SystemCourseNode[]>([])
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   /* ========== atomic module assignments per node ========== */
-  const [moduleAssignments, setModuleAssignments] = useState<Record<string, AtomicModuleKey[]>>(
-    () => ({
-      [FIRST_NODE_ID]: [...DEFAULT_MODULES],
-    }),
-  )
+  const [moduleAssignments, setModuleAssignments] = useState<Record<string, AtomicModuleKey[]>>({})
 
   /* ========== independent data per node ========== */
-  const [nodeDataMap, setNodeDataMap] = useState<Record<string, NodeModuleData>>(() => ({
-    [FIRST_NODE_ID]: createDefaultNodeModuleData({
-      name: claimCourse || existing?.name,
-      code: existing?.code,
-      majorId: existing?.majorId,
-      semester: existing?.semester,
-      category: existing?.category as CourseBasicForm['category'],
-    }),
-  }))
+  const [nodeDataMap, setNodeDataMap] = useState<Record<string, NodeModuleData>>({})
 
-  // 编辑模式回填根节点表单（useState 初始化时 existing 尚未加载）
+  // ref 同步，供保存函数读取最新状态
+  const nodesRef = useRef(nodes)
+  const nodeDataMapRef = useRef(nodeDataMap)
+  const moduleAssignmentsRef = useRef(moduleAssignments)
+  const selectedNodeIdRef = useRef(selectedNodeId)
+
+  // 根节点：parentId 为 null 的节点（课程基本信息挂载在根节点）
+  const rootNodeId = useMemo(
+    () =>
+      nodes.find((n) => n.parentId === null)?.id ||
+      (nodes.length > 0 ? nodes[0].id : null),
+    [nodes],
+  )
+
+  const rootForm: CourseBasicForm =
+    (rootNodeId ? nodeDataMap[rootNodeId]?.form : undefined) || createDefaultNodeModuleData().form
+  const rootFormRef = useRef(rootForm)
+
   useEffect(() => {
-    if (!existing || !editId) return
-    queueMicrotask(() => {
-      setNodeDataMap((prev) => {
-        const next = {
-          ...prev,
-          [FIRST_NODE_ID]: createDefaultNodeModuleData({
-            name: existing.name,
-            code: existing.code,
-            majorId: existing.majorId || undefined,
-            majorName: existing.majorName || undefined,
-            semester: existing.semester || undefined,
-            category: existing.category as CourseBasicForm['category'],
-            coverImage: existing.coverImage || undefined,
-          }),
+    rootFormRef.current = rootForm
+  }, [rootForm])
+
+  // 加载后同步节点列表与模块数据到 ref
+  useEffect(() => {
+    nodesRef.current = nodes
+    nodeDataMapRef.current = nodeDataMap
+    moduleAssignmentsRef.current = moduleAssignments
+    selectedNodeIdRef.current = selectedNodeId
+  }, [nodes, nodeDataMap, moduleAssignments, selectedNodeId])
+
+  // 编辑模式：加载课程 + 节点树 + 各节点模块内容；新建：按排课会话生成初始节点树
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (editId) {
+        try {
+          const [c, nodeRes, moduleRes] = await Promise.all([
+            courseApi.get(editId),
+            courseNodeApi.list({ courseId: editId }),
+            hybridModuleApi.list({ courseId: editId }),
+          ])
+          if (cancelled) return
+          setExisting(c)
+          if (c.batchId) setBatchId(c.batchId)
+          const loadedNodes = (nodeRes.items || []) as SystemCourseNode[]
+          setNodes(loadedNodes)
+          const modulesByNode = new Map<string, HybridNodeModule[]>()
+          ;(moduleRes.items || []).forEach((m) => {
+            const list = modulesByNode.get(m.nodeId) || []
+            list.push(m)
+            modulesByNode.set(m.nodeId, list)
+          })
+          const assignments: Record<string, AtomicModuleKey[]> = {}
+          const dataMap: Record<string, NodeModuleData> = {}
+          loadedNodes.forEach((n, idx) => {
+            const modules = modulesByNode.get(n.id) || []
+            const keys: AtomicModuleKey[] = []
+            const modes: NodeModuleData['moduleModes'] = {}
+            const d = createDefaultNodeModuleData({
+              name: n.name,
+              code: c.code,
+              majorId: c.majorId,
+              majorName: c.majorName,
+              semester: c.semester,
+              category: c.category as CourseBasicForm['category'],
+              coverImage: c.coverImage,
+            })
+            // 根节点回填课程级字段（background/estimatedHours 存于 evalData）
+            if (n.parentId === null || idx === 0) {
+              const courseEvalData = (c.evalData as any) || {}
+              d.form.courseObjectives = courseEvalData.learningGoal || ''
+              d.form.detailedDescription = c.description || ''
+              d.form.background = courseEvalData.background || ''
+              d.form.estimatedHours = courseEvalData.estimatedHours
+                ? String(courseEvalData.estimatedHours)
+                : ''
+            }
+            modules.forEach((m) => {
+              if (
+                m.moduleKey === TEACHING_DESIGN_KEY ||
+                m.moduleKey === 'postLessonReview'
+              ) {
+                applyModuleData(d, m)
+                return
+              }
+              if (!(m.moduleKey in ATOMIC_MODULES_BY_KEY)) return
+              keys.push(m.moduleKey as AtomicModuleKey)
+              modes[m.moduleKey as AtomicModuleKey] = m.mode
+              applyModuleData(d, m)
+            })
+            d.moduleModes = modes
+            assignments[n.id] = keys
+            dataMap[n.id] = d
+          })
+          setModuleAssignments(assignments)
+          setNodeDataMap(dataMap)
+          setSelectedNodeId(loadedNodes[0]?.id || null)
+        } catch (err) {
+          reportError(err, '加载课程信息')
+          setExisting(null)
         }
-        // 回填持久化的评价规则（按节点名匹配，根节点优先）
-        const evalRules = existing.evalData?.hybridEvalRules as
-          Record<string, { preQuiz?: any; inClassQuiz?: any; homework?: any }> | undefined
-        const rules =
-          evalRules?.[existing.name] ||
-          evalRules?.['root'] ||
-          (evalRules && Object.values(evalRules)[0])
-        if (rules) {
-          next[FIRST_NODE_ID] = {
-            ...next[FIRST_NODE_ID],
-            preQuizEvalMethods: rules.preQuiz?.methods || [],
-            preQuizEvalRules: rules.preQuiz?.evalRuleConfig,
-            inClassQuizEvalMethods: rules.inClassQuiz?.methods || [],
-            inClassQuizEvalRules: rules.inClassQuiz?.evalRuleConfig,
-            homeworkEvalMethods: rules.homework?.methods || [],
-            homeworkEvalRules: rules.homework?.evalRuleConfig,
-          }
-        }
-        return next
+        return
+      }
+
+      // 新建：根节点 + 排课会话生成的节次子节点
+      const rootNode: SystemCourseNode = {
+        id: FIRST_NODE_ID,
+        courseId: 'hybrid-new',
+        parentId: null,
+        name: claimCourse || '混合课程',
+        order: 1,
+        type: 'normal',
+        status: 'draft',
+      }
+      const childNodes: SystemCourseNode[] = claimSessionNames.map((name, idx) => ({
+        id: `hybrid-node-child-${idx + 1}`,
+        courseId: 'hybrid-new',
+        parentId: FIRST_NODE_ID,
+        name,
+        order: idx + 1,
+        type: 'normal',
+        status: 'draft',
+      }))
+      if (cancelled) return
+      setNodes([rootNode, ...childNodes])
+      setSelectedNodeId(FIRST_NODE_ID)
+      setModuleAssignments({ [FIRST_NODE_ID]: [...DEFAULT_MODULES] })
+      setNodeDataMap({
+        [FIRST_NODE_ID]: createDefaultNodeModuleData({
+          name: claimCourse || undefined,
+        }),
       })
-    })
-  }, [existing, editId])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [editId, claimCourse, claimSessionNames])
 
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)
@@ -245,17 +278,19 @@ function HybridCourseAddForm() {
   const [saving, setSaving] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
 
-  const rootForm = nodeDataMap[FIRST_NODE_ID]?.form || createDefaultNodeModuleData().form
-
-  const updateRootForm = useCallback((patch: Partial<CourseBasicForm>) => {
-    setNodeDataMap((prev) => ({
-      ...prev,
-      [FIRST_NODE_ID]: {
-        ...prev[FIRST_NODE_ID],
-        form: { ...prev[FIRST_NODE_ID].form, ...patch },
-      },
-    }))
-  }, [])
+  const updateRootForm = useCallback(
+    (patch: Partial<CourseBasicForm>) => {
+      if (!rootNodeId) return
+      setNodeDataMap((prev) => {
+        const cur = prev[rootNodeId] || createDefaultNodeModuleData()
+        return {
+          ...prev,
+          [rootNodeId]: { ...cur, form: { ...cur.form, ...patch } },
+        }
+      })
+    },
+    [rootNodeId],
+  )
 
   const handleAddNode = useCallback(
     (
@@ -323,7 +358,7 @@ function HybridCourseAddForm() {
         return next
       })
       if (selectedNodeId === nodeId) {
-        setSelectedNodeId(FIRST_NODE_ID)
+        setSelectedNodeId(null)
       }
     },
     [selectedNodeId],
@@ -491,28 +526,16 @@ function HybridCourseAddForm() {
     setShareDialogOpen(false)
   }
 
-  // 混合课节点评价规则持久化到课程级 eval_data（hybrid 无独立节点表语义，规则随课程草稿保存/恢复）
-  const buildHybridEvalRules = (): Record<string, any> => {
-    const result: Record<string, any> = {}
-    Object.entries(nodeDataMap).forEach(([nodeId, d]) => {
-      const rules = {
-        preQuiz: { methods: d.preQuizEvalMethods || [], evalRuleConfig: d.preQuizEvalRules },
-        inClassQuiz: {
-          methods: d.inClassQuizEvalMethods || [],
-          evalRuleConfig: d.inClassQuizEvalRules,
-        },
-        homework: { methods: d.homeworkEvalMethods || [], evalRuleConfig: d.homeworkEvalRules },
-      }
-      if (
-        rules.preQuiz.evalRuleConfig ||
-        rules.inClassQuiz.evalRuleConfig ||
-        rules.homework.evalRuleConfig
-      ) {
-        const nodeName = nodes.find((n) => n.id === nodeId)?.name || 'root'
-        result[nodeName] = rules
-      }
-    })
-    return result
+  // 混合课节点评价规则持久化到节点级 eval_data（发布时 GenerateCourseAssessments 读取生成测评）
+  const buildNodeHybridEvalRules = (d: NodeModuleData): Record<string, any> => {
+    return {
+      preQuiz: { methods: d.preQuizEvalMethods || [], evalRuleConfig: d.preQuizEvalRules },
+      inClassQuiz: {
+        methods: d.inClassQuizEvalMethods || [],
+        evalRuleConfig: d.inClassQuizEvalRules,
+      },
+      homework: { methods: d.homeworkEvalMethods || [], evalRuleConfig: d.homeworkEvalRules },
+    }
   }
 
   const buildCoursePayload = (): Omit<
@@ -520,36 +543,124 @@ function HybridCourseAddForm() {
     'id' | 'nodeCount' | 'resourceCount' | 'studyCount' | 'createdAt' | 'updatedAt'
   > =>
     ({
-      code: rootForm.code || '',
-      name: rootForm.name || '',
+      code: rootForm?.code || '',
+      name: rootForm?.name || '',
       type: 'hybrid',
-      category: rootForm.category || '专业核心课程',
-      majorId: rootForm.majorId || existing?.majorId || undefined,
-      majorName: rootForm.majorName || existing?.majorName || undefined,
-      semester: rootForm.semester || existing?.semester || undefined,
+      category: rootForm?.category || '专业核心课程',
+      majorId: rootForm?.majorId || existing?.majorId || undefined,
+      majorName: rootForm?.majorName || existing?.majorName || undefined,
+      semester: rootForm?.semester || existing?.semester || undefined,
       className: existing?.className || '',
-      coverImage: rootForm.coverImage || undefined,
+      coverImage: rootForm?.coverImage || undefined,
       batchId: batchId || undefined,
       status: 'draft',
       creatorId: existing?.creatorId || '',
       coCreatorIds: existing?.coCreatorIds || [],
-      detailedDescription: rootForm.detailedDescription || undefined,
-      background: rootForm.background || undefined,
-      estimatedHours: parseInt(rootForm.estimatedHours) || undefined,
+      detailedDescription: rootForm?.detailedDescription || undefined,
+      background: rootForm?.background || undefined,
+      estimatedHours: parseInt(rootForm?.estimatedHours || '') || undefined,
       evalData: {
-        learningGoal: rootForm.courseObjectives || undefined,
-        hybridEvalRules: buildHybridEvalRules(),
+        learningGoal: rootForm?.courseObjectives || undefined,
+        background: rootForm?.background || undefined,
+        estimatedHours: parseInt(rootForm?.estimatedHours || '') || undefined,
       },
     }) as any
 
+  const saveNodes = useCallback(
+    async (effectiveCourseId: string) => {
+      // 删除在后端存在但本地已删除的节点（级联删除其混合模块）
+      const currentBackendNodes = await courseNodeApi.list({ courseId: effectiveCourseId })
+      const backendNodeIds = new Set((currentBackendNodes.items || []).map((n: any) => n.id))
+      const localNodeIds = new Set(
+        nodesRef.current.map((n) => n.id).filter((id) => !id.startsWith('node-')),
+      )
+      for (const backendId of backendNodeIds) {
+        if (!localNodeIds.has(backendId)) {
+          try {
+            await courseNodeApi.delete(backendId)
+          } catch (err) {
+            reportError(err, '删除多余课程节点')
+          }
+        }
+      }
+
+      const sortedNodes = [...nodesRef.current].sort((a, b) => a.order - b.order)
+      const idMapping = new Map<string, string>()
+      const courseCode = rootFormRef.current?.code || existing?.code || ''
+
+      for (const node of sortedNodes) {
+        const d = nodeDataMapRef.current[node.id]
+        if (!d) continue
+        const isTempId = node.id.startsWith('node-') || node.id.startsWith('hybrid-node-')
+        const realParentId = node.parentId
+          ? idMapping.get(node.parentId) || node.parentId
+          : undefined
+
+        const nodePayload = {
+          courseId: effectiveCourseId,
+          parentId: realParentId,
+          name: node.name,
+          code: node.code || courseCode,
+          sortOrder: Math.round(node.order),
+          refType: 'normal' as const,
+          evalData: { hybridEvalRules: buildNodeHybridEvalRules(d) },
+          status: 'draft',
+        }
+
+        let realNodeId = node.id
+        if (isTempId) {
+          const created = await courseNodeApi.create(nodePayload)
+          realNodeId = created.id
+          idMapping.set(node.id, created.id)
+        } else {
+          await courseNodeApi.update(node.id, nodePayload)
+          idMapping.set(node.id, node.id)
+        }
+
+        // 保存节点模块（全量替换）
+        const modules = buildModulesForNode(d, moduleAssignmentsRef.current[node.id] || [])
+        try {
+          await hybridModuleApi.batchSave(realNodeId, modules)
+        } catch (err) {
+          reportError(err, '保存节点模块')
+        }
+      }
+
+      // 刷新节点列表（临时 ID 已映射为真实 ID），并迁移编辑态缓存 key
+      const refreshed = await courseNodeApi.list({ courseId: effectiveCourseId })
+      const refreshedNodes = (refreshed.items || []) as SystemCourseNode[]
+      setNodes(refreshedNodes)
+      setNodeDataMap((prev) => {
+        const next: Record<string, NodeModuleData> = {}
+        Object.entries(prev).forEach(([k, v]) => {
+          next[idMapping.get(k) || k] = v
+        })
+        return next
+      })
+      setModuleAssignments((prev) => {
+        const next: Record<string, AtomicModuleKey[]> = {}
+        Object.entries(prev).forEach(([k, v]) => {
+          next[idMapping.get(k) || k] = v
+        })
+        return next
+      })
+      if (selectedNodeIdRef.current) {
+        const mapped = idMapping.get(selectedNodeIdRef.current)
+        if (mapped) setSelectedNodeId(mapped)
+      }
+    },
+    [existing?.code],
+  )
+
   const handleSave = async () => {
-    if (!rootForm.name || !rootForm.code) {
+    if (!rootForm?.name || !rootForm?.code) {
       toast({ title: '请填写课程名称和课程编码', variant: 'destructive' })
       return false
     }
     setSaving(true)
     try {
       const payload = buildCoursePayload()
+      let effectiveCourseId = editId
       if (editId) {
         const updated = await courseApi.update(editId, payload)
         hasSavedRef.current = true
@@ -559,16 +670,22 @@ function HybridCourseAddForm() {
         } else {
           setExisting(updated)
         }
-        toast({ title: '草稿已保存' })
-        return true
       } else {
         const created = await courseApi.create(payload)
         setExisting(created)
+        effectiveCourseId = created.id
         hasSavedRef.current = true
-        toast({ title: '草稿已保存' })
-        router.replace(`/lesson/admin/hybrid/add?id=${created.id}`)
-        return true
       }
+
+      if (effectiveCourseId) {
+        await saveNodes(effectiveCourseId)
+      }
+
+      toast({ title: '草稿已保存' })
+      if (!editId && effectiveCourseId) {
+        router.replace(`/lesson/admin/hybrid/add?id=${effectiveCourseId}`)
+      }
+      return true
     } catch (e: any) {
       toast({ title: e?.message || '保存失败，请检查表单后重试', variant: 'destructive' })
     } finally {
@@ -587,6 +704,7 @@ function HybridCourseAddForm() {
   const availableModules = ATOMIC_MODULES.filter((m) => !currentModules.includes(m.key))
 
   const renderModuleCard = (key: AtomicModuleKey, data: NodeModuleData) => {
+    if (!selectedNodeId) return null
     const meta = ATOMIC_MODULES_BY_KEY[key]
     const Icon = meta.icon
     const Component = meta.component

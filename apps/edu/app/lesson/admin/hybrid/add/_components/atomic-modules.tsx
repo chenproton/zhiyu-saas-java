@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   BookOpen,
   MonitorPlay,
@@ -18,6 +18,7 @@ import {
   Award,
   PenTool,
   Search,
+  Loader2,
 } from 'lucide-react'
 import { CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast } from '@zhiyu/ui'
+import { fileApi, questionBankApi, questionApi, scenarioApi } from '@/lib/api'
+import { useAuth } from '@/components/auth-provider'
 import { EvaluationMethodSelector } from '../../../_components/assessment/evaluation-method-selector'
 import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluation-rules-dialog'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
@@ -307,14 +311,45 @@ function AttachmentListEditor({
   onChange: (items: AttachmentItem[]) => void
   addLabel?: string
 }) {
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+  const pendingItemIdRef = React.useRef<string | null>(null)
+
   const update = (idx: number, patch: Partial<AttachmentItem>) => {
     const next = [...items]
     next[idx] = { ...next[idx], ...patch }
     onChange(next)
   }
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const itemId = pendingItemIdRef.current
+    e.target.value = ''
+    if (!file || !itemId) return
+    setUploadingId(itemId)
+    try {
+      const res = await fileApi.upload(file)
+      const idx = items.findIndex((it) => it.id === itemId)
+      if (idx >= 0) {
+        update(idx, { name: file.name, file: res.url })
+      }
+      toast({ title: '附件上传成功' })
+    } catch (err: any) {
+      toast({ title: err?.message || '附件上传失败', variant: 'destructive' })
+    } finally {
+      setUploadingId(null)
+      pendingItemIdRef.current = null
+    }
+  }
+
+  const triggerUpload = (itemId: string) => {
+    pendingItemIdRef.current = itemId
+    fileInputRef.current?.click()
+  }
+
   return (
     <div className="space-y-3">
+      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
       {items.map((item, idx) => (
         <div key={item.id} className="flex items-center gap-2 border rounded-lg p-3 bg-gray-50/50">
           <Input
@@ -325,8 +360,8 @@ function AttachmentListEditor({
           />
           <div className="flex items-center gap-2 shrink-0">
             {item.file ? (
-              <Badge variant="secondary" className="font-normal text-xs">
-                {item.file}
+              <Badge variant="secondary" className="font-normal text-xs max-w-[160px] truncate">
+                {item.file.split('/').pop()}
               </Badge>
             ) : (
               <span className="text-xs text-gray-400 whitespace-nowrap">未选择资料</span>
@@ -334,10 +369,15 @@ function AttachmentListEditor({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => update(idx, { file: `资料附件${idx + 1}.pdf` })}
+              disabled={uploadingId === item.id}
+              onClick={() => triggerUpload(item.id)}
             >
-              <Upload className="h-3.5 w-3.5 mr-1" />
-              选择资料
+              {uploadingId === item.id ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5 mr-1" />
+              )}
+              {uploadingId === item.id ? '上传中' : '选择资料'}
             </Button>
             <Button
               variant="ghost"
@@ -717,18 +757,65 @@ function InClassQuizzesModule({ data, onChange }: AtomicModuleProps) {
   )
 }
 
-const EMPTY_QUESTION_BANK: { id: string; title: string; type: string }[] = []
-
 function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
   const questions = data.classQuestions || []
   const [dialogOpen, setDialogOpen] = useState(false)
   const [addMode, setAddMode] = useState<'manual' | 'bank' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedQuestionId, setSelectedQuestionId] = useState('')
+  const [bankId, setBankId] = useState('')
+  const [banks, setBanks] = useState<{ id: string; name: string }[]>([])
+  const [bankQuestions, setBankQuestions] = useState<{
+    id: string
+    content: string
+    type: string
+  }[]>([])
+  const [loadingBanks, setLoadingBanks] = useState(true)
 
-  const filteredQuestions = EMPTY_QUESTION_BANK.filter(
+  useEffect(() => {
+    let cancelled = false
+    questionBankApi
+      .list({ limit: 200 })
+      .then((res) => {
+        if (!cancelled) {
+          setBanks((res.items || []).map((b) => ({ id: b.id, name: b.name })))
+          if ((res.items || []).length > 0) setBankId(res.items[0].id)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBanks([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingBanks(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!bankId) return
+    let cancelled = false
+    questionApi
+      .list({ bankId, limit: 500 } as any)
+      .then((res) => {
+        if (!cancelled) {
+          setBankQuestions(
+            (res.items || []).map((q) => ({ id: q.id, content: q.content, type: q.type })),
+          )
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBankQuestions([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [bankId])
+
+  const filteredQuestions = bankQuestions.filter(
     (q) =>
-      q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      q.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.type.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
@@ -740,18 +827,18 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
   }
 
   const handleAddBankQuestion = () => {
-    const question = EMPTY_QUESTION_BANK.find((q) => q.id === selectedQuestionId)
+    const question = bankQuestions.find((q) => q.id === selectedQuestionId)
     if (!question) return
     onChange({
       classQuestions: [
         ...questions,
         {
           id: uid('bank-q'),
-          stem: question.title,
+          stem: question.content,
           answer: '',
           source: 'bank',
           bankId: question.id,
-          bankTitle: question.title,
+          bankTitle: question.content,
         },
       ],
     })
@@ -849,6 +936,21 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
             </div>
           ) : (
             <div className="space-y-4 py-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">选择题库</Label>
+                <Select value={bankId} onValueChange={(v) => { setBankId(v); setSelectedQuestionId('') }}>
+                  <SelectTrigger className="h-9 text-sm w-full mt-1">
+                    <SelectValue placeholder="请选择题库" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {banks.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -862,7 +964,11 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                 />
               </div>
               <div className="border rounded-lg overflow-hidden max-h-[320px] overflow-y-auto">
-                {filteredQuestions.length === 0 ? (
+                {loadingBanks ? (
+                  <div className="p-6 text-sm text-gray-400 text-center flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> 加载题库中...
+                  </div>
+                ) : filteredQuestions.length === 0 ? (
                   <div className="p-3 text-sm text-gray-400 text-center">无匹配题目</div>
                 ) : (
                   filteredQuestions.map((q) => (
@@ -876,7 +982,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                           : 'hover:bg-gray-50 border-l-2 border-transparent'
                       }`}
                     >
-                      <span className="font-medium">{q.title}</span>
+                      <span className="font-medium">{q.content}</span>
                       <span className="ml-2 text-xs text-gray-400">{q.type}</span>
                     </button>
                   ))
@@ -898,17 +1004,9 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
   )
 }
 
-const EMPTY_SCENARIOS: {
-  id: string
-  title: string
-  desc: string
-  post: string
-  batch: string
-  scope: 'mine' | 'shared' | 'public'
-}[] = []
-
 function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
   const tasks = data.practiceTasks || []
+  const { user } = useAuth()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [addMode, setAddMode] = useState<'manual' | 'scenario' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -916,11 +1014,53 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
   const [scenarioScope, setScenarioScope] = useState<'mine' | 'shared' | 'public'>('mine')
   const [scenarioPost, setScenarioPost] = useState('全部')
   const [scenarioBatch, setScenarioBatch] = useState('全部')
+  const [scenarios, setScenarios] = useState<
+    {
+      id: string
+      title: string
+      desc: string
+      post: string
+      batch: string
+      scope: 'mine' | 'shared' | 'public'
+    }[]
+  >([])
+  const [loadingScenarios, setLoadingScenarios] = useState(true)
 
-  const uniquePosts = Array.from(new Set(EMPTY_SCENARIOS.map((s) => s.post)))
-  const uniqueBatches = Array.from(new Set(EMPTY_SCENARIOS.map((s) => s.batch)))
+  useEffect(() => {
+    let cancelled = false
+    scenarioApi
+      .list({ status: 'published', limit: 500 })
+      .then((res) => {
+        if (cancelled) return
+        const list = (res.items || []).map((s) => ({
+          id: s.id,
+          title: s.name,
+          desc: s.background || s.deliveryGoal || '',
+          post: (s.professionNames && s.professionNames[0]) || '',
+          batch: s.batchId || '',
+          scope: (s.coBuilderIds || []).includes(user?.id || '')
+            ? ('shared' as const)
+            : s.creatorId === user?.id
+              ? ('mine' as const)
+              : ('public' as const),
+        }))
+        setScenarios(list)
+      })
+      .catch(() => {
+        if (!cancelled) setScenarios([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingScenarios(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
 
-  const filteredScenarios = EMPTY_SCENARIOS.filter((s) => {
+  const uniquePosts = Array.from(new Set(scenarios.map((s) => s.post).filter(Boolean)))
+  const uniqueBatches = Array.from(new Set(scenarios.map((s) => s.batch).filter(Boolean)))
+
+  const filteredScenarios = scenarios.filter((s) => {
     const matchScope = s.scope === scenarioScope
     const matchPost = scenarioPost === '全部' || s.post === scenarioPost
     const matchBatch = scenarioBatch === '全部' || s.batch === scenarioBatch
@@ -941,7 +1081,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
   }
 
   const handleAddScenario = () => {
-    const scenario = EMPTY_SCENARIOS.find((s) => s.id === selectedScenarioId)
+    const scenario = scenarios.find((s) => s.id === selectedScenarioId)
     if (!scenario) return
     onChange({
       practiceTasks: [
@@ -1159,7 +1299,11 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                   {selectedScenarioId && <span className="text-primary ml-2">已选择 1 个</span>}
                 </p>
                 <div className="space-y-2 max-h-[320px] overflow-y-auto">
-                  {filteredScenarios.length === 0 ? (
+                  {loadingScenarios ? (
+                    <p className="text-sm text-gray-400 text-center py-6 flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> 加载场景库中...
+                    </p>
+                  ) : filteredScenarios.length === 0 ? (
                     <p className="text-sm text-gray-400 text-center py-6">未找到匹配的场景</p>
                   ) : (
                     filteredScenarios.map((s) => {

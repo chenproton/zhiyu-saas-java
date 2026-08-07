@@ -59,6 +59,7 @@ func registerLessonRoutes(r chi.Router, h *Handlers) {
 	r.Post("/lesson/hybrid-modules", h.hybridModuleHandler.UpsertModule)
 	r.Put("/lesson/hybrid-modules/{id}", h.hybridModuleHandler.UpsertModule)
 	r.Delete("/lesson/hybrid-modules/{id}", h.hybridModuleHandler.DeleteModule)
+	r.Post("/lesson/hybrid-modules/batch", h.hybridModuleHandler.BatchSave)
 
 	registerBatchRoutes(r, "/lesson/batches", h.courseBatchHandler)
 

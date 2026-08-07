@@ -93,3 +93,47 @@ func (h *HybridModuleHandler) DeleteModule(w http.ResponseWriter, r *http.Reques
 func (h *HybridModuleHandler) ListModules(w http.ResponseWriter, r *http.Request) {
 	h.List(w, r)
 }
+
+type BatchSaveHybridModulesRequest struct {
+	NodeID  string                          `json:"nodeId"`
+	Modules []UpsertHybridModuleRequestPart `json:"modules"`
+}
+
+type UpsertHybridModuleRequestPart struct {
+	ModuleKey string         `json:"moduleKey"`
+	Mode      string         `json:"mode"`
+	Data      domain.JSONMap `json:"data"`
+}
+
+// BatchSave 全量替换某节点的混合模块（新增/编辑统一入口）。
+func (h *HybridModuleHandler) BatchSave(w http.ResponseWriter, r *http.Request) {
+	if middleware.CurrentUser(r) == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	var req BatchSaveHybridModulesRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.NodeID == "" {
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	modules := make([]store.HybridModuleParams, 0, len(req.Modules))
+	for _, m := range req.Modules {
+		modules = append(modules, store.HybridModuleParams{
+			ModuleKey: m.ModuleKey,
+			Mode:      m.Mode,
+			Data:      m.Data,
+		})
+	}
+	if err := h.Service.ReplaceHybridModules(r.Context(), tenantID, req.NodeID, modules); err != nil {
+		respondServerError(w, r, err, "保存混合模块失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"nodeId": req.NodeID})
+}
