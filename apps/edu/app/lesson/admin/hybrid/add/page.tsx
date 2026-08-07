@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Textarea } from '@/components/ui/textarea'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -31,10 +31,12 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
-import { courseApi, courseNodeApi, hybridModuleApi, fileApi, lessonBatchApi } from '@/lib/api'
+import { courseApi, courseNodeApi, hybridModuleApi, fileApi, lessonBatchApi, abilityApi } from '@/lib/api'
 import type { HybridNodeModule } from '@zhiyu/api-client'
 import { MajorSelect } from '@/components/shared/major-select'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
+import { AbilityPointSelector } from '../../_components/ability/ability-point-selector'
+import { RichTextEditor } from '../../_components/common/rich-text-editor'
 import type { Course } from '@/lib/types/lesson'
 import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
 import CourseNodeTree from '../../system/add/_components/CourseNodeTree'
@@ -90,6 +92,28 @@ function HybridCourseAddForm() {
   const claimSessionsParam = searchParams.get('claimSessions')
   const [existing, setExisting] = useState<Course | null>(null)
   const [batchId, setBatchId] = useState('')
+  const [abilityPoints, setAbilityPoints] = useState<
+    { id: string; name: string; code?: string; description?: string }[]
+  >([])
+  const [abilityPool, setAbilityPool] = useState<
+    { id: string; name: string; code?: string; description?: string }[]
+  >([])
+
+  useEffect(() => {
+    abilityApi
+      .list({ limit: 1000 })
+      .then((res) => {
+        setAbilityPool(
+          (res.items || []).map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            code: a.code,
+            description: a.description,
+          })),
+        )
+      })
+      .catch(() => setAbilityPool([]))
+  }, [])
 
   interface ClaimPayload {
     course?: string
@@ -201,6 +225,12 @@ function HybridCourseAddForm() {
             })
           }
           setNodes(loadedNodes)
+          setAbilityPoints(
+            (c.abilityPointIds || []).map((id: string) => {
+              const found = abilityPool.find((a) => a.id === id)
+              return found || { id, name: id }
+            }),
+          )
           const modulesByNode = new Map<string, HybridNodeModule[]>()
           ;(moduleRes.items || []).forEach((m) => {
             const list = modulesByNode.get(m.nodeId) || []
@@ -281,7 +311,7 @@ function HybridCourseAddForm() {
     return () => {
       cancelled = true
     }
-  }, [editId, claimCourse, claimSessionNames])
+  }, [editId, claimCourse, claimSessionNames, abilityPool])
 
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)
@@ -552,21 +582,15 @@ function HybridCourseAddForm() {
       category: courseForm.category || '专业核心课程',
       majorId: courseForm.majorId || existing?.majorId || undefined,
       majorName: courseForm.majorName || existing?.majorName || undefined,
-      semester: courseForm.semester || existing?.semester || undefined,
+      semester: existing?.semester || undefined,
       className: existing?.className || '',
       coverImage: courseForm.coverImage || undefined,
       batchId: batchId || undefined,
       status: 'draft',
       creatorId: existing?.creatorId || '',
       coCreatorIds: existing?.coCreatorIds || [],
-      detailedDescription: courseForm.detailedDescription || undefined,
-      background: courseForm.background || undefined,
-      estimatedHours: parseInt(courseForm.estimatedHours || '') || undefined,
-      evalData: {
-        learningGoal: courseForm.courseObjectives || undefined,
-        background: courseForm.background || undefined,
-        estimatedHours: parseInt(courseForm.estimatedHours || '') || undefined,
-      },
+      description: courseForm.detailedDescription || undefined,
+      abilityPointIds: abilityPoints.map((a) => a.id),
     }) as any
 
   const saveNodes = useCallback(
@@ -815,118 +839,107 @@ function HybridCourseAddForm() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormFieldRow label="课程名称" labelClassName="text-xs">
-                  <Input
-                    value={courseForm.name}
-                    onChange={(e) => updateCourseForm({ name: e.target.value })}
-                    placeholder="请输入课程名称"
-                    className="h-9 text-sm"
-                  />
-                </FormFieldRow>
-                <FormFieldRow label="课程编码" labelClassName="text-xs">
-                  <Input
-                    value={courseForm.code}
-                    onChange={(e) => updateCourseForm({ code: e.target.value })}
-                    placeholder="请输入课程编码"
-                    className="h-9 text-sm"
-                  />
-                </FormFieldRow>
-                <FormFieldRow label="所属专业" labelClassName="text-xs">
-                  <MajorSelect
-                    value={courseForm.majorId}
-                    onChange={(v, m) =>
-                      updateCourseForm({ majorId: v || '', majorName: m?.name || '' })
-                    }
-                    placeholder="请选择所属专业"
-                  />
-                </FormFieldRow>
-                <FormFieldRow label="课程分类" labelClassName="text-xs">
-                  <Select
-                    value={courseForm.category}
-                    onValueChange={(v) =>
-                      updateCourseForm({ category: v as CourseBasicForm['category'] })
-                    }
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="请选择课程分类" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COURSE_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormFieldRow>
-                <FormFieldRow label="学期" labelClassName="text-xs">
-                  <Input
-                    value={courseForm.semester}
-                    onChange={(e) => updateCourseForm({ semester: e.target.value })}
-                    placeholder="如：2026-2027-1"
-                    className="h-9 text-sm"
-                  />
-                </FormFieldRow>
-                <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
-              </div>
-              <div className="mt-5 space-y-1.5">
-                <Label className="text-xs">课程目标</Label>
-                <MockRichEditor
-                  value={courseForm.courseObjectives}
-                  onChange={(v) => updateCourseForm({ courseObjectives: v })}
-                  placeholder="请输入课程目标，可填写多条，按回车分隔"
-                />
-              </div>
-              <div className="mt-5 space-y-1.5">
-                <Label className="text-xs">详细描述</Label>
-                <MockRichEditor
-                  value={courseForm.detailedDescription}
-                  onChange={(v) => updateCourseForm({ detailedDescription: v })}
-                  placeholder="请输入课程详细描述"
-                />
-              </div>
-              <FormFieldGrid cols={2} className="mt-5">
-                <FormFieldRow label="任务背景" labelClassName="text-xs">
-                  <Input
-                    value={courseForm.background}
-                    onChange={(e) => updateCourseForm({ background: e.target.value })}
-                    placeholder="任务背景说明"
-                    className="h-9 text-sm"
-                  />
-                </FormFieldRow>
-                <FormFieldRow label="预计学时" labelClassName="text-xs">
-                  <Input
-                    type="number"
-                    value={courseForm.estimatedHours}
-                    onChange={(e) => updateCourseForm({ estimatedHours: e.target.value })}
-                    placeholder="预计完成学时"
-                    className="h-9 text-sm"
-                  />
-                </FormFieldRow>
-              </FormFieldGrid>
-              <div className="mt-5 space-y-1.5">
-                <Label className="text-xs">封面图片</Label>
-                <div className="max-w-[400px]">
-                  <CoverImageUpload
-                    imageUrl={courseForm.coverImage}
-                    uploading={coverUploading}
-                    label="课程封面"
-                    alt="课程封面"
-                    onUpload={async (file) => {
-                      setCoverUploading(true)
-                      try {
-                        const res = await fileApi.upload(file)
-                        updateCourseForm({ coverImage: res.url })
-                        toast({ title: '封面上传成功' })
-                      } catch (err: any) {
-                        toast({ title: err?.message || '封面上传失败', variant: 'destructive' })
-                      } finally {
-                        setCoverUploading(false)
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left: 课程名称 + 课程编码 + 课程分类 + 课程简介 */}
+                <div className="space-y-4 min-w-0">
+                  <FormFieldRow label="课程名称" labelClassName="text-xs">
+                    <Input
+                      value={courseForm.name}
+                      onChange={(e) => updateCourseForm({ name: e.target.value })}
+                      placeholder="请输入课程名称"
+                      className="h-9 text-sm"
+                    />
+                  </FormFieldRow>
+                  <FormFieldRow label="课程编码" labelClassName="text-xs">
+                    <Input
+                      value={editId ? courseForm.code || '保存后自动生成' : '保存后自动生成'}
+                      disabled
+                      className="h-9 text-sm bg-gray-50 text-gray-500"
+                    />
+                  </FormFieldRow>
+                  <FormFieldRow label="课程分类" labelClassName="text-xs">
+                    <Select
+                      value={courseForm.category}
+                      onValueChange={(v) =>
+                        updateCourseForm({ category: v as CourseBasicForm['category'] })
                       }
-                    }}
-                    onRemove={() => updateCourseForm({ coverImage: '' })}
-                  />
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="请选择课程分类" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COURSE_CATEGORIES.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormFieldRow>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">课程简介</Label>
+                    <RichTextEditor
+                      value={courseForm.detailedDescription}
+                      onChange={(v) => updateCourseForm({ detailedDescription: v })}
+                      placeholder="请输入课程简介..."
+                      minHeight={280}
+                    />
+                  </div>
+                </div>
+                {/* Right: 封面图片 + 适用专业 + 所属批次 + 关联能力点 */}
+                <div className="space-y-4 min-w-0">
+                  <div className="max-w-[400px]">
+                    <CoverImageUpload
+                      imageUrl={courseForm.coverImage}
+                      uploading={coverUploading}
+                      label="课程封面"
+                      alt="课程封面"
+                      onUpload={async (file) => {
+                        setCoverUploading(true)
+                        try {
+                          const res = await fileApi.upload(file)
+                          updateCourseForm({ coverImage: res.url })
+                          toast({ title: '封面上传成功' })
+                        } catch (err: any) {
+                          toast({ title: err?.message || '封面上传失败', variant: 'destructive' })
+                        } finally {
+                          setCoverUploading(false)
+                        }
+                      }}
+                      onRemove={() => updateCourseForm({ coverImage: '' })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">适用专业</Label>
+                      <MajorSelect
+                        value={courseForm.majorId}
+                        onChange={(v, m) =>
+                          updateCourseForm({ majorId: v || '', majorName: m?.name || '' })
+                        }
+                        placeholder="请选择适用专业"
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <BatchSelector
+                      value={batchId}
+                      onChange={setBatchId}
+                      batchApi={lessonBatchApi}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">关联能力点（用于岗位能力汇聚）</Label>
+                    <AbilityPointSelector
+                      selected={abilityPoints}
+                      pool={abilityPool}
+                      onChange={setAbilityPoints}
+                      onAddCustom={(name, description) => {
+                        const newAp = { id: `ap-custom-${Date.now()}`, name, description }
+                        setAbilityPoints((prev) => [...prev, newAp])
+                        setAbilityPool((prev) => [...prev, newAp])
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
