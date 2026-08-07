@@ -90,6 +90,12 @@ func (h *AppealHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// 被申诉用户必须属于当前租户，防止跨租户构造申诉记录
+	user, err := h.Service.Store().Users().Get(r.Context(), req.UserID)
+	if err != nil || user.TenantID == nil || *user.TenantID != tenantID {
+		respondError(w, http.StatusNotFound, "用户不存在")
+		return
+	}
 	appeal, err := h.Service.CreateAppeal(r.Context(), tenantID, req.UserID, req.Type, req.Reason)
 	if err != nil {
 		respondServerError(w, r, err, "创建申诉失败")

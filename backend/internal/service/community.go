@@ -95,8 +95,8 @@ func (s *CommunityService) CreateReply(ctx context.Context, tenantID, userID, to
 }
 
 // ListReplies 查询帖子回复列表，并标记是否本人发布。
-func (s *CommunityService) ListReplies(ctx context.Context, userID, topicID string) ([]domain.CommunityReply, error) {
-	rows, err := s.st.Community().ListReplies(ctx, topicID)
+func (s *CommunityService) ListReplies(ctx context.Context, userID, tenantID, topicID string) ([]domain.CommunityReply, error) {
+	rows, err := s.st.Community().ListReplies(ctx, tenantID, topicID)
 	if err != nil {
 		return nil, err
 	}

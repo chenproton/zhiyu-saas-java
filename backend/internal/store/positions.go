@@ -91,6 +91,8 @@ func (s *PositionStore) FavoritesListConfig(userID string) ListQueryConfig[domai
 	return ListQueryConfig[domain.CareerPosition]{
 		Table:         positionFavoritesFrom,
 		SelectColumns: positionSelectColumns,
+		TenantScoped:  true,
+		TenantColumn:  "cp.tenant_id",
 		OrderBy:       "cp.created_at DESC",
 		DefaultLimit:  50,
 		ScanRows:      ScanPositionRows,

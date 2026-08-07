@@ -23,8 +23,8 @@ func (s *AbilityDomainStore) List(ctx context.Context, p ListParams, cfg ListQue
 }
 
 // Get 查询单个能力域。
-func (s *AbilityDomainStore) Get(ctx context.Context, id string) (*domain.AbilityDomain, error) {
-	d, err := s.fetchDomain(ctx, id)
+func (s *AbilityDomainStore) Get(ctx context.Context, id, tenantID string) (*domain.AbilityDomain, error) {
+	d, err := s.fetchDomain(ctx, id, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -45,27 +45,27 @@ func (s *AbilityDomainStore) Create(ctx context.Context, tenantID string, p *Abi
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Update 更新能力域。
-func (s *AbilityDomainStore) Update(ctx context.Context, id string, p *AbilityDomainParams) (*domain.AbilityDomain, error) {
-	if _, err := s.Get(ctx, id); err != nil {
+func (s *AbilityDomainStore) Update(ctx context.Context, id, tenantID string, p *AbilityDomainParams) (*domain.AbilityDomain, error) {
+	if _, err := s.Get(ctx, id, tenantID); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE ability_domains SET
 			career_position_id = $1, name = $2, description = $3, binding_ids = $4, sort_order = $5
-		WHERE id = $6
-	`, p.CareerPositionID, p.Name, p.Description, p.BindingIDs, p.SortOrder, id); err != nil {
+		WHERE id = $6 AND tenant_id = $7
+	`, p.CareerPositionID, p.Name, p.Description, p.BindingIDs, p.SortOrder, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, id, tenantID)
 }
 
 // Delete 删除能力域。
-func (s *AbilityDomainStore) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM ability_domains WHERE id = $1`, id)
+func (s *AbilityDomainStore) Delete(ctx context.Context, id, tenantID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM ability_domains WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -78,18 +78,18 @@ type AbilityDomainParams struct {
 	SortOrder        int
 }
 
-func (s *AbilityDomainStore) fetchDomain(ctx context.Context, id string) (*domain.AbilityDomain, error) {
+func (s *AbilityDomainStore) fetchDomain(ctx context.Context, id, tenantID string) (*domain.AbilityDomain, error) {
 	var d domain.AbilityDomain
-	var tenantID, description *string
+	var tenant, description *string
 	var bindingIDs []string
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, career_position_id, name, description, binding_ids, sort_order
-		FROM ability_domains WHERE id = $1
-	`, id).Scan(&d.ID, &tenantID, &d.CareerPositionID, &d.Name, &description, &bindingIDs, &d.SortOrder)
+		FROM ability_domains WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&d.ID, &tenant, &d.CareerPositionID, &d.Name, &description, &bindingIDs, &d.SortOrder)
 	if err != nil {
 		return nil, err
 	}
-	d.TenantID = tenantID
+	d.TenantID = tenant
 	d.Description = description
 	d.BindingIDs = bindingIDs
 	return &d, nil

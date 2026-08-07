@@ -22,6 +22,6 @@ func (s *EvaluationService) ToggleEvaluationMethod(ctx context.Context, id strin
 }
 
 // ListEvaluationCategories 查询评价分类。
-func (s *EvaluationService) ListEvaluationCategories(ctx context.Context) ([]domain.EvaluationMethodCategory, error) {
-	return s.st.EvaluationMethods().ListCategories(ctx)
+func (s *EvaluationService) ListEvaluationCategories(ctx context.Context, tenantID string) ([]domain.EvaluationMethodCategory, error) {
+	return s.st.EvaluationMethods().ListCategories(ctx, tenantID)
 }

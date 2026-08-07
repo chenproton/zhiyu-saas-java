@@ -70,6 +70,16 @@ func (h *PositionAbilityHandler) CreateBinding(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// 校验岗位归属当前租户（与 Update/Delete 一致），防止跨租户写绑定
+	posTenant, err := h.Service.PositionTenantID(r.Context(), req.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, posTenant) {
+		return
+	}
+
 	binding, err := h.Service.CreateAbilityBinding(r.Context(), tenantID, &store.PositionAbilityParams{
 		CareerPositionID:  req.CareerPositionID,
 		ResponsibilityID:  req.ResponsibilityID,

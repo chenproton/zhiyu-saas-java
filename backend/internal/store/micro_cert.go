@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -116,9 +117,28 @@ func (s *MicroCertStore) DeleteTemplate(ctx context.Context, id string) error {
 }
 
 func (s *MicroCertStore) IssueCerts(ctx context.Context, tenantID, templateID string, userIDs []string) (int, error) {
+	uuids := make([]string, 0, len(userIDs))
+	for _, uid := range userIDs {
+		if uid != "" {
+			uuids = append(uuids, uid)
+		}
+	}
+	if len(uuids) == 0 {
+		return 0, nil
+	}
 	count := 0
 	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
-		for _, userID := range userIDs {
+		// 目标用户必须全部属于当前租户，防止对他租户/不存在的用户颁发证书
+		var matched int
+		if err := tx.QueryRow(ctx, `
+			SELECT COUNT(*) FROM users WHERE id = ANY($1::uuid[]) AND tenant_id = $2
+		`, uuids, tenantID).Scan(&matched); err != nil {
+			return err
+		}
+		if matched != len(uuids) {
+			return fmt.Errorf("存在不属于当前租户的颁发对象")
+		}
+		for _, userID := range uuids {
 			recordID := uuid.NewString()
 			tag, err := tx.Exec(ctx,
 				`INSERT INTO cert_issuance_records (id, tenant_id, template_id, user_id, issue_date, status, cert_number) VALUES ($1,$2,$3,$4,$5,'issued',$6)

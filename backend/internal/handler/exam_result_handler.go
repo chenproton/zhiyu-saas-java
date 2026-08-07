@@ -148,7 +148,17 @@ func (h *ExamResultHandler) Grade(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-	result, err := h.Service.GradeExamResult(r.Context(), chi.URLParam(r, "id"), claims.UserID, req.Scores, req.Comment)
+	id := chi.URLParam(r, "id")
+	// 评分前先校验结果归属租户，防止先写入后校验（跨租户改分）
+	existing, err := h.Service.Store().ExamResults().Get(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "考试结果不存在")
+		return
+	}
+	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
+		return
+	}
+	result, err := h.Service.GradeExamResult(r.Context(), id, claims.UserID, req.Scores, req.Comment)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "考试结果不存在")
@@ -159,10 +169,6 @@ func (h *ExamResultHandler) Grade(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		respondServerError(w, r, err, "保存评分失败")
-		return
-	}
-	if result.TenantID != nil && claims.TenantID != nil && *result.TenantID != *claims.TenantID {
-		respondError(w, http.StatusNotFound, "考试结果不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, result)

@@ -181,17 +181,18 @@ func (s *CommunityStore) IncrementTopicReplyCount(ctx context.Context, q Queryer
 }
 
 // ListReplies 查询帖子全部回复（按时间正序）。
-func (s *CommunityStore) ListReplies(ctx context.Context, topicID string) ([]CommunityReplyRow, error) {
+func (s *CommunityStore) ListReplies(ctx context.Context, tenantID, topicID string) ([]CommunityReplyRow, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT r.id, r.topic_id, r.author_id, COALESCE(u.name, ''), COALESCE(u.avatar_url, ''),
 			r.parent_id, COALESCE(pu.id::text, ''), COALESCE(pu.name, ''), r.content, r.created_at
 		FROM community_replies r
 		JOIN users u ON u.id = r.author_id
+		JOIN community_topics t ON t.id = r.topic_id
 		LEFT JOIN community_replies pr ON pr.id = r.parent_id
 		LEFT JOIN users pu ON pu.id = pr.author_id
-		WHERE r.topic_id = $1
+		WHERE r.topic_id = $1 AND t.tenant_id = $2
 		ORDER BY r.created_at ASC
-	`, topicID)
+	`, topicID, tenantID)
 	if err != nil {
 		return nil, err
 	}

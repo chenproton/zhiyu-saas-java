@@ -174,6 +174,10 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if batchID == nil {
 		batchID = existing.BatchID
 	}
+	knowledgePointIDs := req.KnowledgePointIds
+	if knowledgePointIDs == nil {
+		knowledgePointIDs = existing.KnowledgePointIDs
+	}
 
 	bank, err := h.Service.UpdateQuestionBank(r.Context(), id, tenantID, &store.QuestionBankUpdateParams{
 		TenantID:            tenantID,
@@ -183,7 +187,7 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		CollaboratorIDs:     collaboratorIDs,
 		CollaboratorDeptIDs: collaboratorDeptIDs,
 		BatchID:             emptyStrToNil(batchID),
-		KnowledgePointIDs:   req.KnowledgePointIds,
+		KnowledgePointIDs:   knowledgePointIDs,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {

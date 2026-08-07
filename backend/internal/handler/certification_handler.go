@@ -210,6 +210,15 @@ func (h *CertificationHandler) UpdateRule(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
+	// 校验改绑岗位属于当前租户（与 CreateRule 一致），防止跨租户关联
+	posTenant, err := h.Service.PositionTenantID(r.Context(), req.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, posTenant) {
+		return
+	}
 	rule, err := h.Service.UpdateCertificationRule(r.Context(), id, tenantID, req.CareerPositionID, req.RuleSource)
 	if err != nil {
 		respondServerError(w, r, err, "更新认证规则失败")

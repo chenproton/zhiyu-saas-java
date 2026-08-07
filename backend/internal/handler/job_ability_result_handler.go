@@ -266,7 +266,8 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -283,6 +284,11 @@ func (h *JobAbilityResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		respondServerError(w, r, err, "查询岗位能力结果详情失败")
+		return
+	}
+	// 学生仅可查看本人的能力汇聚结果（与 List 强制本人一致）
+	if middleware.HasRole(claims, domain.RoleStudent) && row.UserID != claims.UserID {
+		respondError(w, http.StatusNotFound, "岗位能力结果不存在")
 		return
 	}
 	item := JobAbilityResultItem{

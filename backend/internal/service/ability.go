@@ -49,8 +49,8 @@ func (s *PositionService) ListAbilityDomains(ctx context.Context, p store.ListPa
 }
 
 // GetAbilityDomain 查询单个能力域。
-func (s *PositionService) GetAbilityDomain(ctx context.Context, id string) (*domain.AbilityDomain, error) {
-	return s.st.AbilityDomains().Get(ctx, id)
+func (s *PositionService) GetAbilityDomain(ctx context.Context, id, tenantID string) (*domain.AbilityDomain, error) {
+	return s.st.AbilityDomains().Get(ctx, id, tenantID)
 }
 
 // CreateAbilityDomain 创建能力域。
@@ -59,11 +59,11 @@ func (s *PositionService) CreateAbilityDomain(ctx context.Context, tenantID stri
 }
 
 // UpdateAbilityDomain 更新能力域。
-func (s *PositionService) UpdateAbilityDomain(ctx context.Context, id string, p *store.AbilityDomainParams) (*domain.AbilityDomain, error) {
-	return s.st.AbilityDomains().Update(ctx, id, p)
+func (s *PositionService) UpdateAbilityDomain(ctx context.Context, id, tenantID string, p *store.AbilityDomainParams) (*domain.AbilityDomain, error) {
+	return s.st.AbilityDomains().Update(ctx, id, tenantID, p)
 }
 
 // DeleteAbilityDomain 删除能力域。
-func (s *PositionService) DeleteAbilityDomain(ctx context.Context, id string) error {
-	return s.st.AbilityDomains().Delete(ctx, id)
+func (s *PositionService) DeleteAbilityDomain(ctx context.Context, id, tenantID string) error {
+	return s.st.AbilityDomains().Delete(ctx, id, tenantID)
 }

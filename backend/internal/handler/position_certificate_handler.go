@@ -38,7 +38,18 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 		offset = v
 	}
 
-	items, total, err := h.Service.ListCertificates(r.Context(), r.URL.Query().Get("careerPositionId"), limit, offset)
+	careerPositionID := r.URL.Query().Get("careerPositionId")
+	if careerPositionID == "" {
+		respondJSON(w, http.StatusOK, ListResponse[domain.PositionCertificate]{Items: []domain.PositionCertificate{}, Total: 0})
+		return
+	}
+	// 校验岗位归属当前租户，防止枚举他租户岗位证书
+	posTenant, err := h.Service.PositionTenantID(r.Context(), careerPositionID)
+	if err != nil || !verifyTenantOwnership(w, r, posTenant) {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	items, total, err := h.Service.ListCertificates(r.Context(), careerPositionID, limit, offset)
 	if err != nil {
 		respondServerError(w, r, err, "查询证书失败")
 		return
@@ -53,6 +64,18 @@ func (h *PositionCertificateHandler) checkCertTenant(ctx context.Context, id, te
 		return err
 	}
 	posTenant, err := h.Service.PositionTenantID(ctx, item.CareerPositionID)
+	if err != nil {
+		return err
+	}
+	if posTenant != tenantID {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+// checkPositionTenant 校验岗位归属当前租户。
+func (h *PositionCertificateHandler) checkPositionTenant(ctx context.Context, careerPositionID, tenantID string) error {
+	posTenant, err := h.Service.PositionTenantID(ctx, careerPositionID)
 	if err != nil {
 		return err
 	}
@@ -77,12 +100,16 @@ func (h *PositionCertificateHandler) crud() crudConfig[PositionCertificateReques
 			return ""
 		},
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *PositionCertificateRequest) (string, bool) {
-			// 与原实现一致：容忍空租户，不返回 403
-			claims := middleware.CurrentUser(r)
-			if claims == nil || claims.TenantID == nil {
-				return "", true
+			tenantID, ok := requireTenant(w, r)
+			if !ok {
+				return "", false
 			}
-			return *claims.TenantID, true
+			// 校验证书挂载的岗位属于当前租户
+			if err := h.checkPositionTenant(r.Context(), t.CareerPositionID, tenantID); err != nil {
+				respondError(w, http.StatusNotFound, "岗位不存在")
+				return "", false
+			}
+			return tenantID, true
 		},
 		TenantFn: func(w http.ResponseWriter, r *http.Request) (string, bool) {
 			return requireTenant(w, r)
@@ -108,6 +135,10 @@ func (h *PositionCertificateHandler) crud() crudConfig[PositionCertificateReques
 		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *PositionCertificateRequest) error {
 			if err := h.checkCertTenant(ctx, id, tenantID); err != nil {
+				return err
+			}
+			// 校验改绑的目标岗位同样属于当前租户
+			if err := h.checkPositionTenant(ctx, t.CareerPositionID, tenantID); err != nil {
 				return err
 			}
 			_, err := h.Service.UpdateCertificate(ctx, tenantID, &store.PositionCertificateUpdateParams{

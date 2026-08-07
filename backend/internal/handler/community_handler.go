@@ -148,7 +148,11 @@ func (h *CommunityHandler) ListReplies(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少话题 ID")
 		return
 	}
-	items, err := h.Service.ListReplies(r.Context(), claims.UserID, topicID)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	items, err := h.Service.ListReplies(r.Context(), claims.UserID, tenantID, topicID)
 	if err != nil {
 		respondServerError(w, r, err, "查询回复失败")
 		return

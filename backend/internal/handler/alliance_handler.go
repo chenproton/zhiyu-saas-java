@@ -170,7 +170,8 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID); err != nil {
+	existing, err := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "协议不存在")
 		return
 	}
@@ -178,6 +179,28 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	var p store.AllianceEnterpriseAgreementUpdateParams
 	if !decodeBody(w, r, &p) {
 		return
+	}
+	// 部分更新兜底：缺失字段回退已有值，防止全列覆盖清空数据
+	if p.Name == "" {
+		p.Name = existing.Name
+	}
+	if p.Status == "" {
+		p.Status = existing.Status
+	}
+	if p.Type == nil {
+		p.Type = existing.Type
+	}
+	if p.StartDate == nil {
+		p.StartDate = existing.StartDate
+	}
+	if p.EndDate == nil {
+		p.EndDate = existing.EndDate
+	}
+	if p.Content == nil {
+		p.Content = existing.Content
+	}
+	if len(p.Attachments) == 0 {
+		p.Attachments = existing.Attachments
 	}
 	if err := h.Store.UpdateEnterpriseAgreement(r.Context(), id, tenantID, &p); err != nil {
 		respondServerError(w, r, err, "更新失败")
@@ -301,13 +324,30 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetMilestoneByID(r.Context(), id, tenantID); err != nil {
+	existing, err := h.Store.GetMilestoneByID(r.Context(), id, tenantID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "里程碑不存在")
 		return
 	}
 	var m domain.AllianceProjectMilestone
 	if !decodeBody(w, r, &m) {
 		return
+	}
+	// 部分更新兜底：缺失字段回退已有值，防止全列覆盖清空数据
+	if m.ProjectID == "" {
+		m.ProjectID = existing.ProjectID
+	}
+	if m.Name == "" {
+		m.Name = existing.Name
+	}
+	if m.Description == nil {
+		m.Description = existing.Description
+	}
+	if m.DueDate == nil {
+		m.DueDate = existing.DueDate
+	}
+	if m.CompletedDate == nil {
+		m.CompletedDate = existing.CompletedDate
 	}
 	if err := h.Store.UpdateMilestone(r.Context(), id, tenantID, &m); err != nil {
 		respondServerError(w, r, err, "更新失败")

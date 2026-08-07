@@ -504,6 +504,9 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.checkPositionTenant(w, r, id) {
+		return
+	}
 	isfav, err := h.Service.GetFavorite(r.Context(), claims.UserID, id)
 	if err != nil {
 		respondServerError(w, r, err, "查询收藏状态失败")
@@ -520,6 +523,9 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.checkPositionTenant(w, r, id) {
+		return
+	}
 	isfav, err := h.Service.ToggleFavorite(r.Context(), claims.UserID, id)
 	if err != nil {
 		respondServerError(w, r, err, "切换收藏失败")
@@ -531,6 +537,16 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav, FavoriteCount: cnt})
 }
 
+// checkPositionTenant 校验岗位归属当前租户，不匹配时按不存在处理。
+func (h *PositionHandler) checkPositionTenant(w http.ResponseWriter, r *http.Request, id string) bool {
+	pt, err := h.Service.TenantID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return false
+	}
+	return verifyTenantOwnership(w, r, pt)
+}
+
 func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -539,7 +555,11 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cfg := h.Service.Store().Positions().FavoritesListConfig(claims.UserID)
-	params, _ := listParamsFromRequest(r, false)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
 	items, total, err := h.Service.ListFavorites(r.Context(), claims.UserID, params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询收藏岗位失败")

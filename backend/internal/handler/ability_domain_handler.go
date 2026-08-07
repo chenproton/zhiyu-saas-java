@@ -79,8 +79,8 @@ func (h *AbilityDomainHandler) crud() crudConfig[AbilityDomainRequest, domain.Ab
 			}
 			return d.ID, nil
 		},
-		UpdateFn: func(ctx context.Context, id, _ string, t *AbilityDomainRequest) error {
-			_, err := h.Service.UpdateAbilityDomain(ctx, id, &store.AbilityDomainParams{
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *AbilityDomainRequest) error {
+			_, err := h.Service.UpdateAbilityDomain(ctx, id, tenantID, &store.AbilityDomainParams{
 				CareerPositionID: t.CareerPositionID,
 				Name:             t.Name,
 				Description:      t.Description,
@@ -89,11 +89,11 @@ func (h *AbilityDomainHandler) crud() crudConfig[AbilityDomainRequest, domain.Ab
 			})
 			return err
 		},
-		DeleteFn: func(ctx context.Context, id, _ string) error {
-			return h.Service.DeleteAbilityDomain(ctx, id)
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Service.DeleteAbilityDomain(ctx, id, tenantID)
 		},
-		GetByIDFn: func(ctx context.Context, id, _ string) (domain.AbilityDomain, error) {
-			d, err := h.Service.GetAbilityDomain(ctx, id)
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.AbilityDomain, error) {
+			d, err := h.Service.GetAbilityDomain(ctx, id, tenantID)
 			if err != nil {
 				return domain.AbilityDomain{}, err
 			}

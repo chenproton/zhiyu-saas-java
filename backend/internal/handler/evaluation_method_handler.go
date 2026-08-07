@@ -23,7 +23,11 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	items, err := h.Service.ListEvaluationCategories(r.Context())
+	if claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, err := h.Service.ListEvaluationCategories(r.Context(), *claims.TenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询分类失败")
 		return

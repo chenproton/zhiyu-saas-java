@@ -18,10 +18,11 @@ func NewEvaluationMethodStore(q Queryer) *EvaluationMethodStore {
 }
 
 // ListCategories 查询评价分类。
-func (s *EvaluationMethodStore) ListCategories(ctx context.Context) ([]domain.EvaluationMethodCategory, error) {
+func (s *EvaluationMethodStore) ListCategories(ctx context.Context, tenantID string) ([]domain.EvaluationMethodCategory, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT id, name, sort_order FROM evaluation_method_categories ORDER BY sort_order
-	`)
+		SELECT id, name, sort_order FROM evaluation_method_categories
+		WHERE tenant_id = $1 ORDER BY sort_order
+	`, tenantID)
 	if err != nil {
 		return nil, err
 	}

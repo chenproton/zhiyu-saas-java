@@ -414,12 +414,8 @@ func (h *CourseHandler) Assessments(w http.ResponseWriter, r *http.Request) {
 	}
 	courseID := chi.URLParam(r, "id")
 
-	_, err := h.fetchCourse(r.Context(), courseID)
-	if err != nil {
+	if _, err := h.Service.GetCourseDetailInTenant(r.Context(), courseID, *claims.TenantID); err != nil {
 		respondError(w, http.StatusNotFound, "课程不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, *claims.TenantID) {
 		return
 	}
 
