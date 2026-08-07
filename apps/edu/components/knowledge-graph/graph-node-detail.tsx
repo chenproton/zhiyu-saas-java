@@ -7,6 +7,7 @@ import { useGraphData } from './graph-data-context'
 import type { GraphNode } from './types'
 import { cn } from '@/lib/utils'
 import type { PositionAbilityBinding, AbilityDomain } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export type NodeLite = { id: string; type: GraphNode['type']; label: string }
 
@@ -27,11 +28,19 @@ const GRAPH_TYPE_META: Record<
   course: { label: '颗粒课', color: '#06b6d4', icon: <BookOpen className="size-4" /> },
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function Field({
+  label,
+  value,
+  t,
+}: {
+  label: string
+  value: React.ReactNode
+  t: (key: string) => string
+}) {
   if (value === undefined || value === null || value === '') return null
   return (
     <div className="flex gap-3 py-2 text-sm">
-      <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
+      <span className="w-20 shrink-0 text-muted-foreground">{t(label)}</span>
       <span className="flex-1 font-medium break-words">{value}</span>
     </div>
   )
@@ -41,18 +50,22 @@ function Section({
   title,
   count,
   children,
+  t,
 }: {
   title: string
   count?: number
   children: React.ReactNode
+  t: (key: string, vars?: Record<string, string | number>) => string
 }) {
   return (
     <div>
       <div className="mb-2 flex items-center gap-2 text-sm font-bold">
         <span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-[#5b76e8] to-[#8c6ff0]" />
-        {title}
+        {t(title)}
         {count !== undefined && (
-          <span className="text-[11px] font-semibold text-muted-foreground">{count} 项</span>
+          <span className="text-[11px] font-semibold text-muted-foreground">
+            {t('{n} 项', { n: count })}
+          </span>
         )}
       </div>
       {children}
@@ -64,12 +77,15 @@ function Chips({
   items,
   empty,
   onNavigate,
+  t,
 }: {
   items: NodeLite[]
   empty: string
   onNavigate?: (node: NodeLite) => void
+  t: (key: string) => string
 }) {
-  if (items.length === 0) return <span className="text-xs text-muted-foreground">{empty}</span>
+  if (items.length === 0)
+    return <span className="text-xs text-muted-foreground">{t(empty)}</span>
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((it) => {
@@ -107,6 +123,7 @@ export function GraphNodeDetail({
   node: Pick<GraphNode, 'id' | 'type' | 'label'>
   onNavigate?: (node: NodeLite) => void
 }) {
+  const t = useT()
   const { position, domains, units, bindings, tasks, knowledgePoints, courses } = useGraphData()
 
   if (node.type === 'position') {
@@ -132,13 +149,13 @@ export function GraphNodeDetail({
     return (
       <div className="space-y-4">
         <div className="divide-y">
-          <Field label="岗位名称" value={position?.name} />
+          <Field label={t('岗位名称')} value={position?.name} t={t} />
         </div>
-        <Section title="关联能力领域" count={relatedDomainItems.length}>
-          <Chips items={relatedDomainItems} empty="暂无关联能力领域" onNavigate={onNavigate} />
+        <Section title={t('关联能力领域')} count={relatedDomainItems.length} t={t}>
+          <Chips items={relatedDomainItems} empty={t('暂无关联能力领域')} onNavigate={onNavigate} t={t} />
         </Section>
-        <Section title="关联能力点" count={relatedUnitItems.length}>
-          <Chips items={relatedUnitItems} empty="暂无关联能力点" onNavigate={onNavigate} />
+        <Section title={t('关联能力点')} count={relatedUnitItems.length} t={t}>
+          <Chips items={relatedUnitItems} empty={t('暂无关联能力点')} onNavigate={onNavigate} t={t} />
         </Section>
       </div>
     )
@@ -162,16 +179,16 @@ export function GraphNodeDetail({
     return (
       <div className="space-y-4">
         <div className="divide-y">
-          <Field label="领域名称" value={dom?.name} />
-          <Field label="所属岗位" value={position?.name} />
+          <Field label={t('领域名称')} value={dom?.name} t={t} />
+          <Field label={t('所属岗位')} value={position?.name} t={t} />
           {dom?.description && (
-            <Section title="领域说明">
+            <Section title={t('领域说明')} t={t}>
               <p className="text-sm leading-relaxed text-muted-foreground">{dom.description}</p>
             </Section>
           )}
         </div>
-        <Section title="关联能力点" count={relatedUnitItems.length}>
-          <Chips items={relatedUnitItems} empty="暂无关联能力点" onNavigate={onNavigate} />
+        <Section title={t('关联能力点')} count={relatedUnitItems.length} t={t}>
+          <Chips items={relatedUnitItems} empty={t('暂无关联能力点')} onNavigate={onNavigate} t={t} />
         </Section>
       </div>
     )
@@ -221,21 +238,21 @@ export function GraphNodeDetail({
     return (
       <div className="space-y-4">
         <div className="divide-y">
-          <Field label="能力点编码" value={unit?.code} />
+          <Field label={t('能力点编码')} value={unit?.code} t={t} />
         </div>
         {unit?.description && (
-          <Section title="能力说明">
+          <Section title={t('能力说明')} t={t}>
             <p className="text-sm leading-relaxed text-muted-foreground">{unit.description}</p>
           </Section>
         )}
-        <Section title="关联能力领域" count={relatedDomainItems.length}>
-          <Chips items={relatedDomainItems} empty="暂无关联能力领域" onNavigate={onNavigate} />
+        <Section title={t('关联能力领域')} count={relatedDomainItems.length} t={t}>
+          <Chips items={relatedDomainItems} empty={t('暂无关联能力领域')} onNavigate={onNavigate} t={t} />
         </Section>
-        <Section title="关联知识点" count={relatedKnowledgeItems.length}>
-          <Chips items={relatedKnowledgeItems} empty="暂无关联知识点" onNavigate={onNavigate} />
+        <Section title={t('关联知识点')} count={relatedKnowledgeItems.length} t={t}>
+          <Chips items={relatedKnowledgeItems} empty={t('暂无关联知识点')} onNavigate={onNavigate} t={t} />
         </Section>
-        <Section title="推荐颗粒课" count={relatedCourseItems.length}>
-          <Chips items={relatedCourseItems} empty="暂无关联颗粒课" onNavigate={onNavigate} />
+        <Section title={t('推荐颗粒课')} count={relatedCourseItems.length} t={t}>
+          <Chips items={relatedCourseItems} empty={t('暂无关联颗粒课')} onNavigate={onNavigate} t={t} />
         </Section>
       </div>
     )
@@ -266,11 +283,11 @@ export function GraphNodeDetail({
 
     return (
       <div className="space-y-4">
-        <Section title="关联能力点" count={relatedUnitItems.length}>
-          <Chips items={relatedUnitItems} empty="暂无关联能力点" onNavigate={onNavigate} />
+        <Section title={t('关联能力点')} count={relatedUnitItems.length} t={t}>
+          <Chips items={relatedUnitItems} empty={t('暂无关联能力点')} onNavigate={onNavigate} t={t} />
         </Section>
-        <Section title="关联颗粒课" count={relatedCourseItems.length}>
-          <Chips items={relatedCourseItems} empty="暂无关联颗粒课" onNavigate={onNavigate} />
+        <Section title={t('关联颗粒课')} count={relatedCourseItems.length} t={t}>
+          <Chips items={relatedCourseItems} empty={t('暂无关联颗粒课')} onNavigate={onNavigate} t={t} />
         </Section>
       </div>
     )
@@ -286,10 +303,10 @@ export function GraphNodeDetail({
     return (
       <div className="space-y-4">
         <div className="divide-y">
-          <Field label="资源类型" value={COURSE_TYPE_LABEL[node.type]} />
+          <Field label={t('资源类型')} value={t(COURSE_TYPE_LABEL[node.type])} t={t} />
         </div>
-        <Section title="关联知识点" count={relatedKnowledgeItems.length}>
-          <Chips items={relatedKnowledgeItems} empty="暂无关联知识点" onNavigate={onNavigate} />
+        <Section title={t('关联知识点')} count={relatedKnowledgeItems.length} t={t}>
+          <Chips items={relatedKnowledgeItems} empty={t('暂无关联知识点')} onNavigate={onNavigate} t={t} />
         </Section>
       </div>
     )
@@ -309,6 +326,7 @@ export function GraphDetailStack({
   rootNode: NodeLite | null
   onClose: () => void
 }) {
+  const t = useT()
   const [stack, setStack] = useState<NodeLite[]>([])
 
   useEffect(() => {
@@ -357,7 +375,7 @@ export function GraphDetailStack({
                 <div className="min-w-0">
                   <div className="truncate text-base font-semibold">{node.label}</div>
                   <Badge variant="outline" className="mt-0.5 text-[10px]">
-                    {meta.label}
+                    {t(meta.label)}
                   </Badge>
                 </div>
               </div>
@@ -365,7 +383,7 @@ export function GraphDetailStack({
                 type="button"
                 onClick={() => closeFrom(i)}
                 className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-                title="关闭"
+                title={t('关闭')}
               >
                 <X className="size-4" />
               </button>
@@ -374,7 +392,7 @@ export function GraphDetailStack({
               <GraphNodeDetail node={node} onNavigate={(n) => navigateFrom(i, n)} />
             </div>
             <div className="border-t px-4 py-2 font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
-              层级 {i + 1} / {stack.length}
+              {t('层级 {n} / {total}', { n: i + 1, total: stack.length })}
             </div>
           </div>
         )

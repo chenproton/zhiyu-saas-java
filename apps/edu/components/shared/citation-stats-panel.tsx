@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { CitationStats, UncitedItem } from '@/lib/types/library'
 import { UncitedResourcesDialog } from './uncited-resources-dialog'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface CitationStatsPanelProps {
   /** 实体名称，如「知识点」「资源」 */
@@ -54,6 +55,7 @@ export function CitationStatsPanel({
   statGradient = 'from-primary/5 to-primary/10',
   statIconWrapClass = 'bg-primary/10',
 }: CitationStatsPanelProps) {
+  const t = useT()
   const [stats, setStats] = useState<CitationStats | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -94,7 +96,7 @@ export function CitationStatsPanel({
         <button
           type="button"
           onClick={() => setDialogOpen(true)}
-          title={`点击查看并批量删除从未被引用的${entityLabel}`}
+          title={t('点击查看并批量删除从未被引用的{label}', { label: entityLabel })}
           className="text-left cursor-pointer rounded-xl border-0 shadow-sm bg-gradient-to-br from-rose-50 to-orange-50 hover:from-rose-100 hover:to-orange-100 transition-colors p-4 flex-1 min-h-0 flex flex-col justify-between"
         >
           <div className="flex items-center gap-3">
@@ -103,11 +105,13 @@ export function CitationStatsPanel({
             </div>
             <div className="min-w-0">
               <div className="text-2xl font-bold text-rose-500">{stats?.zeroCount ?? '-'}</div>
-              <div className="text-xs text-rose-400 truncate">零引用{entityLabel}</div>
+              <div className="text-xs text-rose-400 truncate">
+                {t('零引用{label}', { label: entityLabel })}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-0.5 text-[11px] font-medium text-rose-500/80">
-            去管理
+            {t('去管理')}
             <ChevronRight className="size-3.5" />
           </div>
         </button>
@@ -120,9 +124,9 @@ export function CitationStatsPanel({
               <BarChart3 className="size-4 text-indigo-500" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-slate-700">引用次数分布</div>
+              <div className="text-sm font-semibold text-slate-700">{t('引用次数分布')}</div>
               <div className="text-xs text-slate-400">
-                共 {stats?.total ?? '-'} 个{entityLabel}
+                {t('共 {n} 个{label}', { n: stats?.total ?? '-', label: entityLabel })}
               </div>
             </div>
           </div>
@@ -141,14 +145,14 @@ export function CitationStatsPanel({
                   <Tooltip
                     cursor={{ fill: 'rgba(99,102,241,0.06)' }}
                     contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                    formatter={(value: any) => [`${value} 个`, '数量']}
+                    formatter={(value: any) => [t('{n} 个', { n: value }), t('数量')]}
                   />
                   <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={36} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-xs text-slate-300">
-                暂无统计数据
+                {t('暂无统计数据')}
               </div>
             )}
           </div>

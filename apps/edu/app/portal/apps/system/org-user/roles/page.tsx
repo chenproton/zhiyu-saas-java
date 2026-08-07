@@ -84,6 +84,7 @@ function SystemCard({
   checked: Set<string>
   onCheck: (id: string) => void
 }) {
+  const t = useT()
   const collectPages = (items: MenuTreeItem[]): MenuTreeItem[] => {
     const pages: MenuTreeItem[] = []
     const walk = (list: MenuTreeItem[]) => {
@@ -134,7 +135,7 @@ function SystemCard({
           className="flex items-center gap-1.5 p-1.5 rounded hover:bg-accent cursor-pointer text-sm"
         >
           <Checkbox checked={checked.has(page.id)} onCheckedChange={() => onCheck(page.id)} />
-          <span className="truncate">{page.label}</span>
+          <span className="truncate">{t(page.label)}</span>
         </label>
       ))}
     </div>
@@ -148,7 +149,7 @@ function SystemCard({
           onCheckedChange={handleSystemToggle}
         />
         <LayoutDashboard className="w-4 h-4 text-primary" />
-        <span className="text-sm font-medium">{node.label}</span>
+        <span className="text-sm font-medium">{t(node.label)}</span>
         <span className="text-xs text-muted-foreground">
           （{checkedCount}/{allPages.length}）
         </span>
@@ -167,7 +168,7 @@ function SystemCard({
                   onCheckedChange={() => togglePages(pages, !groupAll)}
                 />
                 <Folder className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-sm font-medium">{item.label}</span>
+                <span className="text-sm font-medium">{t(item.label)}</span>
                 <span className="text-xs text-muted-foreground">
                   （{groupCheckedCount}/{pages.length}）
                 </span>
@@ -692,12 +693,12 @@ export default function RolesPage() {
                     <div key={mod.module} className="rounded-lg border border-border p-4">
                       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
                         <LayoutDashboard className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium">{mod.label}</span>
+                        <span className="text-sm font-medium">{t(mod.label)}</span>
                       </div>
                       {mod.pages.map((page) => (
                         <div key={page.page} className="space-y-2">
                           <span className="text-sm font-medium text-muted-foreground">
-                            {page.label}
+                            {t(page.label)}
                           </span>
                           <div className="flex flex-wrap gap-3">
                             {page.actions.map((a) => (

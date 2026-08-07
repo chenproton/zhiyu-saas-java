@@ -6,6 +6,7 @@ import { Network, GitBranch } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { GraphNode, GraphEdge } from './types'
 import { ChunkErrorBoundary } from '@/components/chunk-error-handler'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const KnowledgeGraphView = dynamic(
   () => import('./knowledge-graph-view').then((mod) => mod.KnowledgeGraphView),
@@ -38,6 +39,7 @@ function ViewToggle({
   mode: 'static' | 'force'
   onChange: (m: 'static' | 'force') => void
 }) {
+  const t = useT()
   return (
     <div className="flex items-center rounded-lg border bg-muted/60 p-0.5">
       <button
@@ -49,7 +51,7 @@ function ViewToggle({
         }`}
       >
         <Network className="size-3.5" />
-        静态
+        {t('静态')}
       </button>
       <button
         onClick={() => onChange('force')}
@@ -60,7 +62,7 @@ function ViewToggle({
         }`}
       >
         <GitBranch className="size-3.5" />
-        力矩
+        {t('力矩')}
       </button>
     </div>
   )

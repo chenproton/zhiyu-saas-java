@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { approvalApi, workflowApi } from '@/lib/api'
 import type { ApprovalRecord, Workflow, WorkflowStep } from '@/lib/types/backend'
 import { toast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface ApprovalStepInfo {
   currentStepIndex: number
@@ -41,6 +42,7 @@ export function useApprovals({
   targetType,
   limit = 1000,
 }: UseApprovalsOptions): UseApprovalsReturn {
+  const t = useT()
   const [records, setRecords] = useState<ApprovalRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [workflows, setWorkflows] = useState<Map<string, Workflow>>(new Map())
@@ -71,11 +73,11 @@ export function useApprovals({
         }
       }
     } catch (err: any) {
-      toast({ title: err.message || '无法获取审批数据', variant: 'destructive' })
+      toast({ title: err.message || t('无法获取审批数据'), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
-  }, [targetType, limit])
+  }, [targetType, limit, t])
 
   useEffect(() => {
     ;(async () => {
@@ -93,12 +95,12 @@ export function useApprovals({
       return {
         currentStepIndex,
         totalSteps,
-        currentStepName: step?.name || `第 ${currentStepIndex + 1} 步`,
+        currentStepName: step?.name || t('第 {n} 步', { n: currentStepIndex + 1 }),
         isFinalStep: currentStepIndex >= totalSteps - 1,
         steps: workflow?.steps || [],
       }
     },
-    [workflows],
+    [workflows, t],
   )
 
   const approve = useCallback(
@@ -106,21 +108,21 @@ export function useApprovals({
       try {
         const result = await approvalApi.review(id, { status: 'approved', comment })
         if (result.status === 'approved') {
-          toast({ title: '审批通过' })
+          toast({ title: t('审批通过') })
         } else {
-          toast({ title: '审批意见已记录' })
+          toast({ title: t('审批意见已记录') })
         }
         await refresh()
       } catch (err: any) {
         toast({
           title: isApprovalPermissionDenied(err)
-            ? PERMISSION_DENIED_HINT
-            : err.message || '审批失败',
+            ? t(PERMISSION_DENIED_HINT)
+            : err.message || t('审批失败'),
           variant: 'destructive',
         })
       }
     },
-    [refresh],
+    [refresh, t],
   )
 
   const reject = useCallback(
@@ -128,27 +130,27 @@ export function useApprovals({
       try {
         const result = await approvalApi.review(id, { status: 'rejected', comment })
         if (result.status === 'rejected') {
-          toast({ title: '已驳回' })
+          toast({ title: t('已驳回') })
         } else {
-          toast({ title: '驳回意见已记录' })
+          toast({ title: t('驳回意见已记录') })
         }
         await refresh()
       } catch (err: any) {
         toast({
           title: isApprovalPermissionDenied(err)
-            ? PERMISSION_DENIED_HINT
-            : err.message || '驳回失败',
+            ? t(PERMISSION_DENIED_HINT)
+            : err.message || t('驳回失败'),
           variant: 'destructive',
         })
       }
     },
-    [refresh],
+    [refresh, t],
   )
 
   const batchReview = useCallback(
     async (ids: string[], status: 'approved' | 'rejected', comment?: string) => {
       if (ids.length === 0) return
-      const label = status === 'approved' ? '通过' : '驳回'
+      const label = status === 'approved' ? t('通过') : t('驳回')
       try {
         const results = await Promise.allSettled(
           ids.map((id) => approvalApi.review(id, { status, comment })),
@@ -156,21 +158,27 @@ export function useApprovals({
         const success = results.filter((r) => r.status === 'fulfilled').length
         const failed = results.length - success
         if (failed === 0) {
-          toast({ title: `批量${label}成功，共 ${success} 条` })
+          toast({ title: t('批量{action}成功，共 {n} 条', { action: label, n: success }) })
         } else if (
           failed === results.length &&
           results.every((r) => isApprovalPermissionDenied((r as any).reason))
         ) {
           toast({ title: PERMISSION_DENIED_HINT, variant: 'destructive' })
         } else {
-          toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
+          toast({
+            title: t('批量{action}完成，成功 {ok} 条，失败 {fail} 条', {
+              action: label,
+              ok: success,
+              fail: failed,
+            }),
+          })
         }
         await refresh()
       } catch (err: any) {
-        toast({ title: err.message || `批量${label}失败`, variant: 'destructive' })
+        toast({ title: err.message || t('批量{action}失败', { action: label }), variant: 'destructive' })
       }
     },
-    [refresh],
+    [refresh, t],
   )
 
   const batchApprove = useCallback(

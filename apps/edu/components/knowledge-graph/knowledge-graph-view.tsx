@@ -21,6 +21,7 @@ import { Separator } from '@/components/ui/separator'
 import { GraphNodeDetail, GraphDetailStack } from './graph-node-detail'
 import { cn } from '@/lib/utils'
 import type { GraphNode, GraphEdge } from './types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 type GraphViewProps = {
   nodes: GraphNode[]
@@ -138,6 +139,7 @@ export function KnowledgeGraphView({
   highlightNodeIds,
   nodeLabels,
 }: GraphViewProps) {
+  const t = useT()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const rfRef = useRef<any>(null)
   const filteredNodes = nodes
@@ -314,11 +316,11 @@ export function KnowledgeGraphView({
             {(nodeLabels
               ? (Object.keys(nodeLabels) as GraphNode['type'][])
               : (['position', 'domain', 'unit', 'knowledge', 'course'] as const)
-            ).map((t) => {
-              const meta = TYPE_META[t]
-              const label = nodeLabels?.[t] ?? meta.label
+            ).map((type) => {
+              const meta = TYPE_META[type]
+              const label = nodeLabels?.[type] ?? t(meta.label)
               return (
-                <div key={t} className="flex items-center gap-1.5 mb-0.5 last:mb-0">
+                <div key={type} className="flex items-center gap-1.5 mb-0.5 last:mb-0">
                   <span
                     className="size-2 rounded-full shrink-0"
                     style={{ backgroundColor: meta.color }}
@@ -353,7 +355,7 @@ export function KnowledgeGraphView({
                     <div>
                       <div className="font-medium">{selectedNode.label}</div>
                       <Badge variant="outline" className="text-[10px]">
-                        {nodeLabels?.[selectedNode.type] ?? TYPE_META[selectedNode.type].label}
+                        {nodeLabels?.[selectedNode.type] ?? t(TYPE_META[selectedNode.type].label)}
                       </Badge>
                     </div>
                   </div>
