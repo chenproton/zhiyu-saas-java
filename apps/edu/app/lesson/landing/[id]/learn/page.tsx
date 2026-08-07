@@ -36,6 +36,7 @@ import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
 import { evalRuleConfigToMethods } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 import { useToast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import { Footer } from '@/components/portal/footer'
@@ -90,6 +91,7 @@ export default function LessonLearnPage() {
   const searchParams = useSearchParams()
   const id = params.id as string
   const targetNodeId = searchParams.get('node')
+  const t = useT()
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -184,9 +186,9 @@ export default function LessonLearnPage() {
       .then((res) => setMyResults(res.items || []))
       .catch((err) => {
         reportError(err, '加载我的测评结果')
-        toast({ title: '测评结果加载失败', variant: 'destructive' })
+        toast({ title: t('测评结果加载失败'), variant: 'destructive' })
       })
-  }, [activeNodeId, user?.id, toast])
+  }, [activeNodeId, user?.id, toast, t])
 
   useEffect(() => {
     if (!id || !course || course.type === 'hybrid') return
@@ -206,9 +208,9 @@ export default function LessonLearnPage() {
       })
       .catch((err) => {
         reportError(err, '加载知识点/颗粒课数据')
-        toast({ title: '部分数据加载失败', variant: 'destructive' })
+        toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
-  }, [id, course, toast])
+  }, [id, course, toast, t])
 
   const nodeKnowledgePoints = useMemo(() => {
     if (!activeNode) return []
@@ -389,12 +391,12 @@ export default function LessonLearnPage() {
               <BookOpen className="w-12 h-12 text-white/80" />
             </div>
           </div>
-          <div className="text-lg font-semibold text-gray-600">课程不存在</div>
+          <div className="text-lg font-semibold text-gray-600">{t('课程不存在')}</div>
           <Link
             href="/lesson/landing"
             className="text-primary hover:text-primary mt-2 text-sm font-medium transition-colors"
           >
-            返回课程列表
+            {t('返回课程列表')}
           </Link>
         </div>
         <Footer className="mt-auto" />
@@ -444,16 +446,16 @@ export default function LessonLearnPage() {
                       `Lv.${activeNode.difficulty ?? 3}`}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
-                    <Clock className="w-3.5 h-3.5 text-primary" /> {activeNode.estimatedHours || 0}{' '}
-                    课时
+                    <Clock className="w-3.5 h-3.5 text-primary" />{' '}
+                    {t('{n} 课时', { n: activeNode.estimatedHours || 0 })}
                   </span>
                 </>
               )}
               <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <ListChecks className="w-3.5 h-3.5 text-primary" /> {nodes.length} 个节点
+                <ListChecks className="w-3.5 h-3.5 text-primary" /> {t('{n} 个节点', { n: nodes.length })}
               </span>
               <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <Clock className="w-3.5 h-3.5 text-primary" /> {totalHours} 课时
+                <Clock className="w-3.5 h-3.5 text-primary" /> {t('{n} 课时', { n: totalHours })}
               </span>
             </div>
           </div>
@@ -488,11 +490,11 @@ export default function LessonLearnPage() {
                 <div className="flex-1 flex items-center gap-3">
                   <span className="flex items-center gap-1 text-xs text-gray-400">
                     <Layers className="w-3 h-3" />
-                    {nodes.length} 个节点
+                    {t('{n} 个节点', { n: nodes.length })}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-gray-400">
                     <Clock className="w-3 h-3" />
-                    {totalHours} 课时
+                    {t('{n} 课时', { n: totalHours })}
                   </span>
                 </div>
               )}
@@ -504,7 +506,7 @@ export default function LessonLearnPage() {
                     ? 'w-9 h-9 text-gray-500 hover:text-primary'
                     : 'w-8 h-8 ml-auto',
                 )}
-                title={sidebarCollapsed ? '展开节点列表' : '折叠节点列表'}
+                title={sidebarCollapsed ? t('展开节点列表') : t('折叠节点列表')}
               >
                 {sidebarCollapsed ? (
                   <PanelLeftOpen className="h-5 w-5" />
@@ -538,7 +540,7 @@ export default function LessonLearnPage() {
                             ? 'bg-gradient-to-br from-primary to-primary/70 text-white shadow-lg shadow-primary/30'
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600 hover:-translate-y-0.5',
                         )}
-                        title={`${idx + 1}. ${node.name} (${diff.label}, ${node.estimatedHours || 0}h)`}
+                        title={`${idx + 1}. ${node.name} (${t(diff.label)}, ${node.estimatedHours || 0}h)`}
                       >
                         {idx + 1}
                       </button>
@@ -611,8 +613,8 @@ export default function LessonLearnPage() {
                   <BookOpen className="w-12 h-12 text-white/80" />
                 </div>
               </div>
-              <p className="text-base font-semibold text-gray-600">选择一个节点开始学习</p>
-              <p className="text-sm text-gray-400 mt-1.5">从左侧节点列表中点击节点</p>
+              <p className="text-base font-semibold text-gray-600">{t('选择一个节点开始学习')}</p>
+              <p className="text-sm text-gray-400 mt-1.5">{t('从左侧节点列表中点击节点')}</p>
             </div>
           ) : (
             <>
@@ -638,21 +640,21 @@ export default function LessonLearnPage() {
                         <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
                           <FileText className="h-4 w-4" />
                         </div>
-                        <span className="text-gray-800 font-semibold text-lg">节点说明书</span>
+                        <span className="text-gray-800 font-semibold text-lg">{t('节点说明书')}</span>
                         {activeNode.descriptionPdf && (
                           <button
                             onClick={() =>
                               addPreviewResource({
                                 id: `pdf-${Date.now()}`,
                                 url: activeNode.descriptionPdf,
-                                name: '节点说明书 PDF',
+                                name: t('节点说明书 PDF'),
                                 type: 'pdf',
                               } as any)
                             }
                             className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 shadow-sm transition-all"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            查看 PDF
+                            {t('查看 PDF')}
                           </button>
                         )}
                       </CardTitle>
@@ -664,7 +666,7 @@ export default function LessonLearnPage() {
                             {activeNode.detailedDescription}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-400">暂无节点说明书</p>
+                          <p className="text-xs text-gray-400">{t('暂无节点说明书')}</p>
                         )}
                       </ScrollArea>
                     </CardContent>
@@ -676,15 +678,21 @@ export default function LessonLearnPage() {
                       <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
                         <ClipboardList className="h-4 w-4" />
                       </div>
-                      <h3 className="text-base font-semibold text-gray-800">节点测评</h3>
+                      <h3 className="text-base font-semibold text-gray-800">{t('节点测评')}</h3>
                       {nodeAggregate.totalMethods > 0 && (
                         <div className="ml-auto flex items-center gap-3">
                           <span className="text-xs text-gray-500">
-                            已评分 {nodeAggregate.evaluatedCount}/{nodeAggregate.totalMethods}
+                            {t('已评分 {evaluated}/{total}', {
+                              evaluated: nodeAggregate.evaluatedCount,
+                              total: nodeAggregate.totalMethods,
+                            })}
                           </span>
                           {nodeAggregate.evaluatedCount > 0 && (
                             <span className="text-sm font-semibold text-primary">
-                              综合 {nodeAggregate.score}/{nodeAggregate.maxScore}
+                              {t('综合 {score}/{max}', {
+                                score: nodeAggregate.score,
+                                max: nodeAggregate.maxScore,
+                              })}
                             </span>
                           )}
                         </div>
@@ -725,10 +733,10 @@ export default function LessonLearnPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-700">
-                            该节点暂未设置评价方式
+                            {t('该节点暂未设置评价方式')}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            教师配置后，测评入口将显示在此处
+                            {t('教师配置后，测评入口将显示在此处')}
                           </p>
                         </div>
                       </Card>
@@ -756,14 +764,14 @@ export default function LessonLearnPage() {
                       className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                     >
                       <BrainCircuit className="mr-1 h-3.5 w-3.5" />
-                      知识点
+                      {t('知识点')}
                     </TabsTrigger>
                     <TabsTrigger
                       value="collapsed-resource"
                       className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                     >
                       <FolderOpen className="mr-1 h-3.5 w-3.5" />
-                      资源
+                      {t('资源')}
                     </TabsTrigger>
                   </TabsList>
                 </CardHeader>
@@ -790,7 +798,7 @@ export default function LessonLearnPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">暂无知识点</p>
+                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无知识点')}</p>
                     )}
                   </TabsContent>
                   <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
@@ -816,7 +824,7 @@ export default function LessonLearnPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">暂无资源</p>
+                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无资源')}</p>
                     )}
                   </TabsContent>
                 </CardContent>
@@ -835,19 +843,19 @@ export default function LessonLearnPage() {
                 {activeKnowledgePoint.name}
               </DialogTitle>
               {activeKnowledgePoint.code && (
-                <DialogDescription>编码：{activeKnowledgePoint.code}</DialogDescription>
+                <DialogDescription>{t('编码：{n}', { n: activeKnowledgePoint.code })}</DialogDescription>
               )}
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1.5">描述</p>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">{t('描述')}</p>
                 <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                  {activeKnowledgePoint.description || '暂无描述'}
+                  {activeKnowledgePoint.description || t('暂无描述')}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-1.5">
-                  关联颗粒课（{activeKnowledgePointCourses.length}）
+                  {t('关联颗粒课（{n}）', { n: activeKnowledgePointCourses.length })}
                 </p>
                 {activeKnowledgePointCourses.length > 0 ? (
                   <div className="space-y-2">
@@ -865,7 +873,8 @@ export default function LessonLearnPage() {
                             {c.name}
                           </p>
                           <p className="text-[11px] text-gray-400">
-                            {c.code ? `${c.code} · ` : ''}颗粒课
+                            {c.code ? `${c.code} · ` : ''}
+                            {t('颗粒课')}
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
@@ -874,7 +883,7 @@ export default function LessonLearnPage() {
                   </div>
                 ) : (
                   <p className="text-xs text-gray-400 text-center py-6 bg-gray-50 rounded-xl">
-                    暂无关联颗粒课
+                    {t('暂无关联颗粒课')}
                   </p>
                 )}
               </div>
@@ -905,7 +914,7 @@ export default function LessonLearnPage() {
           onOpenChange={setHybridSubmitOpen}
           method={{
             ...hybridActiveMethod,
-            label: `提交测评`,
+            label: t('提交测评'),
           }}
           uploading={uploadingFile}
           onFileUpload={handleFileUpload}

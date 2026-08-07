@@ -12,8 +12,9 @@ import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
 import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/approval-list-page'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
+import { useT } from '@/lib/i18n/locale-provider'
 
-const COURSE_TYPE_LABELS: Record<Course['type'], string> = {
+const COURSE_TYPE_KEYS: Record<Course['type'], string> = {
   system: '体系课',
   granular: '颗粒课',
   hybrid: '混合课',
@@ -37,6 +38,7 @@ interface ApprovalView {
 }
 
 export default function CourseApprovalsPage() {
+  const t = useT()
   const { records, loading, approve, reject, batchApprove, batchReject, getStepInfo } =
     useApprovals({ targetType: 'course' })
   const { getName } = useSubmitterNames()
@@ -53,44 +55,44 @@ export default function CourseApprovalsPage() {
   }, [])
 
   const columns: ApprovalColumn<ApprovalView>[] = [
-    { header: '课程名称', cell: (i) => <span className="font-medium">{i.courseName}</span> },
+    { header: t('课程名称'), cell: (i) => <span className="font-medium">{i.courseName}</span> },
     {
-      header: '课程编码',
+      header: t('课程编码'),
       cell: (i) => <span className="text-sm text-gray-600">{i.courseCode}</span>,
     },
-    { header: '版本', className: 'text-center text-sm text-gray-600', cell: (i) => i.version },
+    { header: t('版本'), className: 'text-center text-sm text-gray-600', cell: (i) => i.version },
     {
-      header: '类型',
+      header: t('类型'),
       className: 'text-center',
       cell: (i) => (
         <Badge variant="secondary" className="px-1.5 py-0 text-xs">
-          {COURSE_TYPE_LABELS[i.courseType] || i.courseType}
+          {t(COURSE_TYPE_KEYS[i.courseType] || i.courseType)}
         </Badge>
       ),
     },
     {
-      header: '专业',
+      header: t('专业'),
       cell: (i) => <span className="text-sm text-gray-600">{i.major || '-'}</span>,
     },
     {
-      header: '所属批次',
+      header: t('所属批次'),
       cell: (i) => <span className="text-sm text-gray-600">{i.batchName || '-'}</span>,
     },
     {
-      header: '创建人',
+      header: t('创建人'),
       cell: (i) => <span className="text-sm text-gray-600">{getName(i.submitterId)}</span>,
     },
     {
-      header: '提交审批日期',
+      header: t('提交审批日期'),
       cell: (i) => <span className="text-sm text-gray-600">{i.submittedAt}</span>,
     },
     {
-      header: '状态',
+      header: t('状态'),
       className: 'text-center',
       cell: (i) => <StatusBadge status={i.status} />,
     },
     {
-      header: '当前步骤',
+      header: t('当前步骤'),
       className: 'text-center',
       cell: (i) =>
         i.stepInfo ? (
@@ -134,9 +136,9 @@ export default function CourseApprovalsPage() {
 
   return (
     <ApprovalListPage<ApprovalView>
-      entityLabel="课程"
-      pageDescription="审核课程提交申请，管理审批流程"
-      emptyPendingText="所有提交的课程都已处理完毕"
+      entityLabel={t('课程')}
+      pageDescription={t('审核课程提交申请，管理审批流程')}
+      emptyPendingText={t('所有提交的课程都已处理完毕')}
       records={records}
       loading={loading}
       onApprove={approve}
@@ -147,7 +149,7 @@ export default function CourseApprovalsPage() {
       detailHref={(item) => `/lesson/landing/${item.courseId}`}
       columns={columns}
       groupOf={(item) => item.batchId}
-      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : '未关联批次')}
+      groupLabelOf={(key) => (key ? batchMap.get(key)?.name || key : t('未关联批次'))}
     />
   )
 }

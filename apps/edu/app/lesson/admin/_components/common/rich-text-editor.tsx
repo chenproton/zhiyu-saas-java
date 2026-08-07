@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { fileApi } from '@/lib/api'
 import { toast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface RichTextEditorProps {
   value: string
@@ -32,6 +33,7 @@ export function RichTextEditor({
   pdfUrl,
   onPdfChange,
 }: RichTextEditorProps) {
+  const t = useT()
   const [mode, setMode] = useState<'rich_text' | 'pdf'>('rich_text')
   const [pdfUploading, setPdfUploading] = useState(false)
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
@@ -42,20 +44,20 @@ export function RichTextEditor({
   const handlePdfUpload = async (file: File) => {
     if (!file) return
     if (file.type !== 'application/pdf') {
-      toast({ variant: 'destructive', title: '请上传 PDF 文件' })
+      toast({ variant: 'destructive', title: t('请上传 PDF 文件') })
       return
     }
     if (file.size > 20 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: '文件大小超过 20MB' })
+      toast({ variant: 'destructive', title: t('文件大小超过 20MB') })
       return
     }
     setPdfUploading(true)
     try {
       const res = await fileApi.upload(file)
       onPdfChange?.(res.url)
-      toast({ title: '上传成功' })
+      toast({ title: t('上传成功') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '上传失败', description: err.message })
+      toast({ variant: 'destructive', title: t('上传失败'), description: err.message })
     } finally {
       setPdfUploading(false)
     }
@@ -95,27 +97,27 @@ export function RichTextEditor({
     <div className="space-y-3">
       <Tabs value={mode} onValueChange={(v) => setMode(v as 'rich_text' | 'pdf')}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="rich_text">自定义编辑</TabsTrigger>
-          <TabsTrigger value="pdf">上传自定义文件</TabsTrigger>
+          <TabsTrigger value="rich_text">{t('自定义编辑')}</TabsTrigger>
+          <TabsTrigger value="pdf">{t('上传自定义文件')}</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {mode === 'rich_text' ? (
         <div className="flex flex-col">
-          <p className="text-xs text-gray-500 mb-2">可编写详细的学习目标（纯文本）</p>
+          <p className="text-xs text-gray-500 mb-2">{t('可编写详细的学习目标（纯文本）')}</p>
           <div className="border rounded-lg overflow-hidden flex flex-col" style={{ minHeight }}>
             <div className="p-4 flex-1 bg-white">
               <Textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder || defaultPlaceholder}
+                placeholder={placeholder || t(defaultPlaceholder)}
                 className="border-0 min-h-full w-full focus-visible:ring-0 resize-none text-sm leading-relaxed"
                 style={{ minHeight: minHeight - 40 }}
               />
             </div>
             <div className="bg-gray-50 border-t px-3 py-1.5 flex items-center justify-between text-xs text-gray-400">
-              <span>纯文本模式</span>
-              <span>{value.length} 字符</span>
+              <span>{t('纯文本模式')}</span>
+              <span>{t('{n} 字符', { n: value.length })}</span>
             </div>
           </div>
         </div>
@@ -158,8 +160,8 @@ export function RichTextEditor({
                 )}
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-700">点击或拖拽上传课程说明书</p>
-                <p className="text-xs text-gray-500 mt-1">支持 PDF 格式，最大 20MB</p>
+                <p className="text-sm font-medium text-gray-700">{t('点击或拖拽上传课程说明书')}</p>
+                <p className="text-xs text-gray-500 mt-1">{t('支持 PDF 格式，最大 20MB')}</p>
               </div>
             </>
           )}
@@ -170,7 +172,7 @@ export function RichTextEditor({
             >
               <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
                 <Eye className="h-4 w-4 mr-1" />
-                预览
+                {t('预览')}
               </Button>
               <Button
                 variant="outline"
@@ -179,11 +181,11 @@ export function RichTextEditor({
                 onClick={() => pdfInputRef.current?.click()}
               >
                 <Upload className="h-4 w-4 mr-1" />
-                重新上传
+                {t('重新上传')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => onPdfChange?.(null)}>
                 <Trash2 className="h-4 w-4 mr-1" />
-                移除文件
+                {t('移除文件')}
               </Button>
             </div>
           )}
@@ -195,19 +197,19 @@ export function RichTextEditor({
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <File className="h-5 w-5 text-red-500" />
-              <span className="truncate">{pdfFileName || '文件预览'}</span>
+              <span className="truncate">{pdfFileName || t('文件预览')}</span>
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50">
             {pdfUrl ? (
-              <iframe src={pdfUrl} title={pdfFileName || 'PDF 预览'} className="w-full h-full" />
+              <iframe src={pdfUrl} title={pdfFileName || t('PDF 预览')} className="w-full h-full" />
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400">暂无文件</div>
+              <div className="h-full flex items-center justify-center text-gray-400">{t('暂无文件')}</div>
             )}
           </div>
           <DialogFooter className="shrink-0 gap-2">
             <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>

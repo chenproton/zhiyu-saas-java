@@ -43,8 +43,10 @@ import { BatchSelector } from '@/components/shared/batch-selector'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { usePreviewResources } from '@/components/shared/resource-preview-modal'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 
 function AddGranularPageInner() {
+  const t = useT()
   // 组件内状态，避免模块级单例在多个编辑会话间串数据
   const [customKnowledgePointIds, setCustomKnowledgePointIds] = useState<Set<string>>(
     () => new Set(),
@@ -158,7 +160,7 @@ function AddGranularPageInner() {
           )
         }
       } catch (err: any) {
-        toast({ title: err.message || '加载失败', variant: 'destructive' })
+        toast({ title: err.message || t('加载失败'), variant: 'destructive' })
       } finally {
         setLoading(false)
       }
@@ -192,7 +194,7 @@ function AddGranularPageInner() {
       id: 'granular-current',
       courseId: editId || 'granular-new',
       parentId: null,
-      name: courseName || '未命名',
+      name: courseName || t('未命名'),
       order: 1,
       type: 'normal',
       status: 'draft' as const,
@@ -220,6 +222,7 @@ function AddGranularPageInner() {
     courseResourcePool,
     knowledgePoints,
     selectedResourceIds,
+    t,
   ])
 
   // 本地上传资源（res- 临时 ID）入库并绑定课程，返回临时 ID → 真实 ID 映射。
@@ -245,7 +248,10 @@ function AddGranularPageInner() {
           { ...r, id: created.id },
         ])
       } catch (err: any) {
-        toast({ title: `资源「${r.name}」保存失败: ${err.message}`, variant: 'destructive' })
+        toast({
+          title: t('资源「{name}」保存失败: {msg}', { name: r.name, msg: err.message }),
+          variant: 'destructive',
+        })
         throw err
       }
     }
@@ -254,7 +260,7 @@ function AddGranularPageInner() {
 
   const handleSave = async () => {
     if (!courseName) {
-      toast({ title: '请输入课程名称', variant: 'destructive' })
+      toast({ title: t('请输入课程名称'), variant: 'destructive' })
       return
     }
     setSaving(true)
@@ -287,7 +293,10 @@ function AddGranularPageInner() {
             } as any)
           }
         } catch (err: any) {
-          toast({ title: `知识点「${kp.name}」保存失败: ${err.message}`, variant: 'destructive' })
+          toast({
+            title: t('知识点「{name}」保存失败: {msg}', { name: kp.name, msg: err.message }),
+            variant: 'destructive',
+          })
           setSaving(false)
           return
         }
@@ -350,7 +359,7 @@ function AddGranularPageInner() {
           await courseApi.saveDraft(editId)
           setCourse((prev) => (prev ? { ...prev, status: 'draft' as const } : prev))
         }
-        toast({ title: '草稿已保存' })
+        toast({ title: t('草稿已保存') })
         if (Object.keys(kpIdMapping).length > 0) {
           setKnowledgePoints((prev) =>
             prev.map((kp) => (kpIdMapping[kp.id] ? { ...kp, id: kpIdMapping[kp.id] } : kp)),
@@ -368,10 +377,10 @@ function AddGranularPageInner() {
           await courseApi.update(c.id, { resourceIds: realIds })
         }
         router.replace(`/lesson/admin/granular/add?id=${c.id}`)
-        toast({ title: '草稿已保存' })
+        toast({ title: t('草稿已保存') })
       }
     } catch (err: any) {
-      toast({ title: err.message || '保存失败', variant: 'destructive' })
+      toast({ title: err.message || t('保存失败'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -386,7 +395,7 @@ function AddGranularPageInner() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center text-gray-400">
-        加载中...
+        {t('加载中...')}
       </div>
     )
   }
@@ -394,7 +403,7 @@ function AddGranularPageInner() {
   return (
     <EditorShell
       mode="fullscreen"
-      backText="取消"
+      backText={t('取消')}
       onBack={async () => {
         if (isNewCourse && editId && !hasSavedRef.current) {
           try {
@@ -408,8 +417,8 @@ function AddGranularPageInner() {
       onSaveDraft={handleSave}
       isSaving={saving}
       onSubmit={handleFinish}
-      submitText="完成配置"
-      title={editId ? '编辑颗粒课' : '新建颗粒课'}
+      submitText={t('完成配置')}
+      title={editId ? t('编辑颗粒课') : t('新建颗粒课')}
     >
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6">
         <main className="space-y-5 min-w-0">
@@ -418,30 +427,30 @@ function AddGranularPageInner() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-[#1890ff]" />
-                基本信息配置
+                {t('基本信息配置')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                 {/* 左列：课程名称、所属批次、所属专业 */}
                 <div className="space-y-4 min-w-0">
-                  <FormFieldRow label="课程名称" labelClassName="text-xs">
+                  <FormFieldRow label={t('课程名称')} labelClassName="text-xs">
                     <Input
                       value={courseName}
                       onChange={(e) => setCourseName(e.target.value)}
-                      placeholder="请输入课程名称"
+                      placeholder={t('请输入课程名称')}
                       className="h-9 text-sm"
                     />
                   </FormFieldRow>
                   <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
-                  <FormFieldRow label="所属专业" labelClassName="text-xs">
+                  <FormFieldRow label={t('所属专业')} labelClassName="text-xs">
                     <MajorSelect
                       value={majorId}
                       onChange={(v, m) => {
                         setMajorId(v || '')
                         setMajor(m?.name || '')
                       }}
-                      placeholder="请选择适用专业"
+                      placeholder={t('请选择适用专业')}
                     />
                   </FormFieldRow>
                 </div>
@@ -450,15 +459,18 @@ function AddGranularPageInner() {
                   <CoverImageUpload
                     imageUrl={coverImage}
                     uploading={coverUploading}
-                    label="课程封面"
-                    alt="课程封面"
+                    label={t('课程封面')}
+                    alt={t('课程封面')}
                     onUpload={async (file) => {
                       setCoverUploading(true)
                       try {
                         const res = await fileApi.upload(file)
                         setCoverImage(res.url)
                       } catch (err: any) {
-                        toast({ title: err.message || '封面上传失败', variant: 'destructive' })
+                        toast({
+                          title: err.message || t('封面上传失败'),
+                          variant: 'destructive',
+                        })
                       } finally {
                         setCoverUploading(false)
                       }
@@ -479,11 +491,11 @@ function AddGranularPageInner() {
                     showBackground={false}
                     showName={false}
                     showType={false}
-                    hoursLabel="课时数"
+                    hoursLabel={t('课时数')}
                   />
                 </div>
                 <div className="md:col-span-2 space-y-1.5">
-                  <Label className="text-xs">学习目标</Label>
+                  <Label className="text-xs">{t('学习目标')}</Label>
                   <RichTextEditor
                     value={learningGoal}
                     onChange={setLearningGoal}
@@ -501,7 +513,7 @@ function AddGranularPageInner() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-[#1890ff]" />
-                关联知识点
+                {t('关联知识点')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
@@ -529,7 +541,7 @@ function AddGranularPageInner() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-[#1890ff]" />
-                配置课程资源
+                {t('配置课程资源')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
@@ -561,7 +573,7 @@ function AddGranularPageInner() {
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="w-full border-dashed">
                     <Plus className="mr-2 h-4 w-4" />
-                    添加课程资源
+                    {t('添加课程资源')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent
@@ -574,8 +586,8 @@ function AddGranularPageInner() {
                   }}
                 >
                   <DialogHeader>
-                    <DialogTitle>添加课程资源</DialogTitle>
-                    <DialogDescription>从资源库中选择或上传新资源</DialogDescription>
+                    <DialogTitle>{t('添加课程资源')}</DialogTitle>
+                    <DialogDescription>{t('从资源库中选择或上传新资源')}</DialogDescription>
                   </DialogHeader>
                   <ResourceSelector
                     standalone={false}
@@ -594,7 +606,7 @@ function AddGranularPageInner() {
                   />
                   <DialogFooter>
                     <DialogClose asChild>
-                      <Button>确认</Button>
+                      <Button>{t('确认')}</Button>
                     </DialogClose>
                   </DialogFooter>
                 </DialogContent>

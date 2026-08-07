@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { StatusBadge } from '@zhiyu/ui'
 import { StatusActionBar } from '@/components/shared/status-action-bar'
 import type { Course, CourseType } from '@/lib/types/lesson-source'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface CourseListProps {
   activeTab?: 'my' | 'collab' | 'public'
@@ -55,6 +56,7 @@ export function CourseList({
   className,
   viewHref,
 }: CourseListProps) {
+  const t = useT()
   const router = useRouter()
   if (courses.length === 0) return null
 
@@ -78,24 +80,24 @@ export function CourseList({
                 <Checkbox
                   checked={someSelected ? 'indeterminate' : allSelected}
                   onCheckedChange={(checked) => onSelectAll?.(checked === true)}
-                  aria-label="全选"
+                  aria-label={t('全选')}
                 />
               </TableHead>
-              <TableHead className="w-40 text-xs font-medium text-slate-500">课程名称</TableHead>
-              <TableHead className="w-24 text-xs font-medium text-slate-500">课程编码</TableHead>
+              <TableHead className="w-40 text-xs font-medium text-slate-500">{t('课程名称')}</TableHead>
+              <TableHead className="w-24 text-xs font-medium text-slate-500">{t('课程编码')}</TableHead>
               <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
-                版本
+                {t('版本')}
               </TableHead>
-              <TableHead className="w-28 text-xs font-medium text-slate-500">所属行业</TableHead>
-              <TableHead className="w-28 text-xs font-medium text-slate-500">适用专业</TableHead>
+              <TableHead className="w-28 text-xs font-medium text-slate-500">{t('所属行业')}</TableHead>
+              <TableHead className="w-28 text-xs font-medium text-slate-500">{t('适用专业')}</TableHead>
               <TableHead className="w-32 text-xs font-medium text-slate-500">
-                所属批次分组
+                {t('所属批次分组')}
               </TableHead>
-              <TableHead className="w-24 text-xs font-medium text-slate-500">创建人</TableHead>
+              <TableHead className="w-24 text-xs font-medium text-slate-500">{t('创建人')}</TableHead>
               <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
-                状态
+                {t('状态')}
               </TableHead>
-              <TableHead className="text-right text-xs font-medium text-slate-500">操作</TableHead>
+              <TableHead className="text-right text-xs font-medium text-slate-500">{t('操作')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -114,7 +116,7 @@ export function CourseList({
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={(checked) => onSelectId?.(course.id, checked === true)}
-                      aria-label={`选择 ${course.name}`}
+                      aria-label={t('选择 {name}', { name: course.name })}
                     />
                   </TableCell>
                   <TableCell>

@@ -2,6 +2,7 @@
 
 import { CheckCircle2, AlertCircle } from 'lucide-react'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface PublishCheckPanelProps {
   node: SystemCourseNode | undefined
@@ -13,7 +14,10 @@ interface CheckItem {
   key: string
   label: string
   check: (node: SystemCourseNode) => boolean
-  getStatus: (node: SystemCourseNode) => string
+  getStatus: (
+    node: SystemCourseNode,
+    t: (key: string, vars?: Record<string, string | number>) => string,
+  ) => string
 }
 
 const CHECK_ITEMS: CheckItem[] = [
@@ -21,42 +25,42 @@ const CHECK_ITEMS: CheckItem[] = [
     key: 'name',
     label: '节点名称',
     check: (node) => !!node.name?.trim(),
-    getStatus: (node) => `已填写：${node.name}`,
+    getStatus: (node, t) => t('已填写：{n}', { n: node.name ?? '' }),
   },
   {
     key: 'goals',
     label: '学习目标',
     check: (node) => !!node.teachingGoals?.trim(),
-    getStatus: (node) => {
+    getStatus: (node, t) => {
       const lines = node.teachingGoals?.split('\n').filter((l) => l.trim()) ?? []
-      return `已填写：${lines.length} 条目标`
+      return t('已填写：{n} 条目标', { n: lines.length })
     },
   },
   {
     key: 'knowledge',
     label: '涉及知识点',
     check: (node) => (node.knowledgePoints?.length ?? 0) > 0,
-    getStatus: (node) => `已关联：${node.knowledgePoints?.length ?? 0} 个知识点`,
+    getStatus: (node, t) => t('已关联：{n} 个知识点', { n: node.knowledgePoints?.length ?? 0 }),
   },
   {
     key: 'duration',
     label: '预估课时',
     check: (node) => typeof node.duration === 'number' && node.duration > 0,
-    getStatus: (node) => `已设置：${node.duration} 课时`,
+    getStatus: (node, t) => t('已设置：{n} 课时', { n: node.duration ?? 0 }),
   },
   {
     key: 'resources',
     label: '课程资源',
     check: (node) => (node.resources?.length ?? 0) > 0,
-    getStatus: (node) => `已上传：${node.resources?.length ?? 0} 个文件`,
+    getStatus: (node, t) => t('已上传：{n} 个文件', { n: node.resources?.length ?? 0 }),
   },
   {
     key: 'detailedDescription',
     label: '详细描述',
     check: (node) => !!node.detailedDescription?.trim(),
-    getStatus: (node) => {
+    getStatus: (node, t) => {
       const len = node.detailedDescription?.length ?? 0
-      return len > 0 ? `已填写：${len} 字符` : '未填写详细描述'
+      return len > 0 ? t('已填写：{n} 字符', { n: len }) : t('未填写详细描述')
     },
   },
 ]
@@ -66,6 +70,7 @@ export default function PublishCheckPanel({
   hideEval = false,
   hideDetailedDescription = false,
 }: PublishCheckPanelProps) {
+  const t = useT()
   const nodeEvalData = (node?.evalData || {}) as {
     methods?: string[]
     evalRuleConfig?: Record<string, any>
@@ -75,11 +80,12 @@ export default function PublishCheckPanel({
     key: 'nodeEval',
     label: '节点评价规则',
     check: () => evalMethods.length > 0,
-    getStatus: () =>
-      evalMethods.length > 0 ? `已配置：${evalMethods.length} 种测评方式` : '未配置节点评价规则',
+    getStatus: () => t('已配置：{n} 种测评方式', { n: evalMethods.length }),
     passed: evalMethods.length > 0,
     statusText:
-      evalMethods.length > 0 ? `已配置：${evalMethods.length} 种测评方式` : '未配置节点评价规则',
+      evalMethods.length > 0
+        ? t('已配置：{n} 种测评方式', { n: evalMethods.length })
+        : t('未配置节点评价规则'),
   }
 
   if (!node) {
@@ -101,7 +107,7 @@ export default function PublishCheckPanel({
                   )}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-800">{evalCheck.label}</p>
+                  <p className="text-xs text-gray-800">{t(evalCheck.label)}</p>
                   <p
                     className={`text-[10px] truncate ${evalCheck.passed ? 'text-green-600' : 'text-amber-600'}`}
                   >
@@ -111,7 +117,7 @@ export default function PublishCheckPanel({
               </div>
             </div>
           )}
-          <p className="text-sm text-gray-400 text-center py-4 mt-2">请选择一个节点查看完整检查</p>
+          <p className="text-sm text-gray-400 text-center py-4 mt-2">{t('请选择一个节点查看完整检查')}</p>
         </div>
       </aside>
     )
@@ -124,7 +130,9 @@ export default function PublishCheckPanel({
   const results = items.map((item) => ({
     ...item,
     passed: item.check(node),
-    statusText: item.check(node) ? item.getStatus(node) : `未设置${item.label}`,
+    statusText: item.check(node)
+      ? item.getStatus(node, t)
+      : t('未设置{n}', { n: t(item.label) }),
   }))
 
   if (!hideEval) {
@@ -143,9 +151,9 @@ export default function PublishCheckPanel({
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-amber-500" />
-            发布检查
+            {t('发布检查')}
           </h3>
-          <span className="text-xs text-gray-400">共 {total} 项</span>
+          <span className="text-xs text-gray-400">{t('共 {n} 项', { n: total })}</span>
         </div>
         <div className="space-y-2">
           {results.map((r) => (
@@ -165,7 +173,7 @@ export default function PublishCheckPanel({
                 )}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-800">{r.label}</p>
+                <p className="text-xs text-gray-800">{t(r.label)}</p>
                 <p
                   className={`text-[10px] truncate ${
                     r.passed ? 'text-green-600' : 'text-amber-600'
@@ -181,7 +189,7 @@ export default function PublishCheckPanel({
           <div className="flex items-center gap-2 mb-2">
             <span className={`w-2 h-2 rounded-full ${allDone ? 'bg-green-500' : 'bg-amber-500'}`} />
             <span className="text-xs text-gray-700">
-              {completed}/{total} 项已完成
+              {t('{completed}/{total} 项已完成', { completed, total })}
             </span>
           </div>
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -194,8 +202,10 @@ export default function PublishCheckPanel({
           </div>
           <p className="text-[10px] text-gray-400 mt-2">
             {allDone
-              ? '💡 所有检查项已完成，可以发布课程'
-              : `💡 建议完善${emptyFields.join('、')}，提升课程规划准确性`}
+              ? t('💡 所有检查项已完成，可以发布课程')
+              : t('💡 建议完善{n}，提升课程规划准确性', {
+                  n: emptyFields.map((l) => t(l)).join('、'),
+                })}
           </p>
         </div>
       </div>

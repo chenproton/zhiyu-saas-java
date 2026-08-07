@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface AbilityPointItem {
   id: string
@@ -36,6 +37,7 @@ export function AbilityPointSelector({
   onChange,
   onAddCustom,
 }: AbilityPointSelectorProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [newName, setNewName] = useState('')
@@ -89,25 +91,25 @@ export function AbilityPointSelector({
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="text-xs h-9">
             <Award className="h-3.5 w-3.5 mr-1.5" />
-            {selected.length > 0 ? '调整能力点' : '关联能力点'}
+            {selected.length > 0 ? t('调整能力点') : t('关联能力点')}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>关联能力点</DialogTitle>
+            <DialogTitle>{t('关联能力点')}</DialogTitle>
           </DialogHeader>
           <div className="relative my-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索能力点名称、编码、描述"
+              placeholder={t('搜索能力点名称、编码、描述')}
               className="pl-9 text-sm h-9"
             />
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
             {filtered.length === 0 && !adding && (
-              <p className="text-sm text-gray-400 text-center py-4">未找到匹配的能力点</p>
+              <p className="text-sm text-gray-400 text-center py-4">{t('未找到匹配的能力点')}</p>
             )}
             {filtered.map((ap) => {
               const isSelected = selected.some((s) => s.id === ap.id)
@@ -143,17 +145,17 @@ export function AbilityPointSelector({
           </div>
           {adding ? (
             <div className="space-y-2 py-2 border-t">
-              <Label className="text-xs">新增能力点</Label>
+              <Label className="text-xs">{t('新增能力点')}</Label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="名称"
+                placeholder={t('名称')}
                 className="h-9 text-sm"
               />
               <Input
                 value={newDesc}
                 onChange={(e) => setNewDesc(e.target.value)}
-                placeholder="描述（可选）"
+                placeholder={t('描述（可选）')}
                 className="h-9 text-sm"
               />
               <div className="flex justify-end gap-2">
@@ -163,7 +165,7 @@ export function AbilityPointSelector({
                   className="text-xs"
                   onClick={() => setAdding(false)}
                 >
-                  取消
+                  {t('取消')}
                 </Button>
                 <Button
                   size="sm"
@@ -171,7 +173,7 @@ export function AbilityPointSelector({
                   onClick={handleAddCustom}
                   disabled={!newName.trim()}
                 >
-                  添加
+                  {t('添加')}
                 </Button>
               </div>
             </div>
@@ -184,13 +186,13 @@ export function AbilityPointSelector({
                 onClick={() => setAdding(true)}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                自定义能力点
+                {t('自定义能力点')}
               </Button>
             )
           )}
           <DialogFooter>
             <Button size="sm" onClick={() => setOpen(false)}>
-              完成
+              {t('完成')}
             </Button>
           </DialogFooter>
         </DialogContent>

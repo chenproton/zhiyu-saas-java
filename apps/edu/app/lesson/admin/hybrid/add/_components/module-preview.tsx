@@ -15,6 +15,7 @@ import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { EVALUATION_METHOD_OPTIONS } from '@/components/shared/eval-method-selector'
 import { ATOMIC_MODULES_BY_KEY, type AtomicModuleKey, type NodeModuleData } from './atomic-modules'
+import { useT } from '@/lib/i18n/locale-provider'
 
 // ==================== 摘要生成（参考 scene/scenarios/.../edit/tasks 卡片摘要模式） ====================
 
@@ -29,15 +30,18 @@ function truncate(text: string, max = 60) {
 function listSummary(
   items: { name?: string; stem?: string; bankTitle?: string; requirement?: string }[],
   countLabel: string,
+  t: (key: string, vars?: Record<string, string | number>) => string,
 ) {
   if (items.length === 0) return ''
   const lines = items
     .slice(0, 5)
     .map(
-      (it) => `· ${truncate(it.name || it.bankTitle || it.stem || it.requirement || '未填写', 40)}`,
+      (it) => `· ${truncate(it.name || it.bankTitle || it.stem || it.requirement || t('未填写'), 40)}`,
     )
     .join('\n')
-  return items.length > 5 ? `${lines}\n…共 ${items.length} ${countLabel}` : lines
+  return items.length > 5
+    ? t('…共 {n} {count}', { n: items.length, count: t(countLabel) })
+    : lines
 }
 
 export function isModuleConfigured(key: AtomicModuleKey, data: NodeModuleData): boolean {
@@ -71,54 +75,64 @@ export function isModuleConfigured(key: AtomicModuleKey, data: NodeModuleData): 
   }
 }
 
-function evalSummary(methods: string[]) {
-  return methods.length > 0 ? `测评方式：${methods.map(methodLabel).join('、')}` : ''
+function evalSummary(
+  methods: string[],
+  t: (key: string, vars?: Record<string, string | number>) => string,
+) {
+  return methods.length > 0 ? t('测评方式：{n}', { n: methods.map(methodLabel).join('、') }) : ''
 }
 
-export function getModuleSummary(key: AtomicModuleKey, data: NodeModuleData): string {
+export function getModuleSummary(
+  key: AtomicModuleKey,
+  data: NodeModuleData,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
   switch (key) {
     case 'prePreview': {
       const lines = [truncate(data.previewContent)]
       if (data.previewAttachments.length > 0) {
-        lines.push(`${data.previewAttachments.length} 份附件`)
+        lines.push(t('{n} 份附件', { n: data.previewAttachments.length }))
       }
       return lines.filter(Boolean).join('\n')
     }
     case 'preResources':
-      return listSummary(data.preClassResources, '份资源')
+      return listSummary(data.preClassResources, '份资源', t)
     case 'preTasks':
-      return listSummary(data.preClassTasks, '项任务')
+      return listSummary(data.preClassTasks, '项任务', t)
     case 'preQuizzes':
-      return [evalSummary(data.preQuizEvalMethods), data.preQuizEvalRules ? '已配置评价规则' : '']
+      return [
+        evalSummary(data.preQuizEvalMethods, t),
+        data.preQuizEvalRules ? t('已配置评价规则') : '',
+      ]
         .filter(Boolean)
         .join('\n')
     case 'lecture':
-      return listSummary(data.lectureSections, '个环节')
+      return listSummary(data.lectureSections, '个环节', t)
     case 'inClassTasks':
-      return listSummary(data.inClassTasks, '项任务')
+      return listSummary(data.inClassTasks, '项任务', t)
     case 'inClassQuizzes':
       return [
-        evalSummary(data.inClassQuizEvalMethods),
-        data.inClassQuizEvalRules ? '已配置评价规则' : '',
+        evalSummary(data.inClassQuizEvalMethods, t),
+        data.inClassQuizEvalRules ? t('已配置评价规则') : '',
       ]
         .filter(Boolean)
         .join('\n')
     case 'classQuestions':
-      return listSummary(data.classQuestions, '个问题')
+      return listSummary(data.classQuestions, '个问题', t)
     case 'practiceTasks':
-      return listSummary(data.practiceTasks, '项任务')
+      return listSummary(data.practiceTasks, '项任务', t)
     case 'homeworks':
       return [
-        data.homeworks.length > 0 ? `${data.homeworks.length} 项作业` : '',
-        evalSummary(data.homeworkEvalMethods),
-        data.homeworkEvalRules ? '已配置评价规则' : '',
+        data.homeworks.length > 0 ? t('{n} 项作业', { n: data.homeworks.length }) : '',
+        evalSummary(data.homeworkEvalMethods, t),
+        data.homeworkEvalRules ? t('已配置评价规则') : '',
       ]
         .filter(Boolean)
         .join('\n')
     case 'extensionMaterials':
-      return listSummary(data.extensionMaterials, '份资料')
+      return listSummary(data.extensionMaterials, '份资料', t)
     case 'trainingReports':
-      return listSummary(data.trainingReports, '份报告')
+      return listSummary(data.trainingReports, '份报告', t)
   }
 }
 
@@ -133,10 +147,11 @@ export function ModulePreviewCard({
   data: NodeModuleData
   onClick: () => void
 }) {
+  const t = useT()
   const meta = ATOMIC_MODULES_BY_KEY[moduleKey]
   const Icon = meta.icon
   const configured = isModuleConfigured(moduleKey, data)
-  const summary = getModuleSummary(moduleKey, data)
+  const summary = getModuleSummary(moduleKey, data, t)
 
   return (
     <button
@@ -158,12 +173,12 @@ export function ModulePreviewCard({
         >
           <Icon className="h-4 w-4" />
         </div>
-        <span className="text-xs font-medium truncate flex-1">{meta.label}</span>
+        <span className="text-xs font-medium truncate flex-1">{t(meta.label)}</span>
         <Badge
           variant={configured ? 'secondary' : 'outline'}
           className="text-[10px] px-1.5 py-0 font-normal"
         >
-          {configured ? '已配置' : '未配置'}
+          {configured ? t('已配置') : t('未配置')}
         </Badge>
       </div>
       <p
@@ -172,7 +187,7 @@ export function ModulePreviewCard({
           configured ? 'text-gray-600' : 'text-gray-400',
         )}
       >
-        {configured ? summary : '尚未配置，点击卡片开始编辑'}
+        {configured ? summary : t('尚未配置，点击卡片开始编辑')}
       </p>
     </button>
   )
@@ -197,6 +212,7 @@ export function ModuleEditDialog({
   onClose: () => void
   courseId?: string
 }) {
+  const t = useT()
   const meta = ATOMIC_MODULES_BY_KEY[moduleKey]
   const Icon = meta.icon
   const Component = meta.component
@@ -215,7 +231,7 @@ export function ModuleEditDialog({
             <div className="p-1.5 bg-primary/10 rounded">
               <Icon className="h-4 w-4" />
             </div>
-            {meta.label}
+            {t(meta.label)}
           </DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto py-4">
@@ -240,7 +256,7 @@ export function ModuleEditDialog({
                 htmlFor={`module-edit-mode-${moduleKey}`}
                 className="text-xs text-gray-500 cursor-pointer"
               >
-                {mode === 'online' ? '线上' : '线下'}
+                {mode === 'online' ? t('线上') : t('线下')}
               </Label>
             </div>
             <Button
@@ -250,14 +266,14 @@ export function ModuleEditDialog({
               onClick={remove}
             >
               <Trash2 className="h-4 w-4 mr-1" />
-              删除
+              {t('删除')}
             </Button>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onClose}>
-              取消
+              {t('取消')}
             </Button>
-            <Button onClick={onClose}>完成</Button>
+            <Button onClick={onClose}>{t('完成')}</Button>
           </div>
         </DialogFooter>
       </DialogContent>

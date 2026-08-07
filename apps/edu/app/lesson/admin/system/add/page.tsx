@@ -60,6 +60,7 @@ import {
   resolveResourceIds,
 } from './_components/lesson-save-utils'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 import {
   courseApi,
   courseNodeApi,
@@ -90,6 +91,7 @@ interface GrainCourseOption {
 function AddSystemPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const t = useT()
   const editId = searchParams.get('id')
   const isEdit = !!editId
   const isNewCourse = searchParams.get('new') === 'true'
@@ -220,7 +222,7 @@ function AddSystemPageInner() {
       })
       .catch((e: any) => {
         if (cancelled) return
-        toast({ title: e.message || '加载课程失败', variant: 'destructive' })
+        toast({ title: e.message || t('加载课程失败'), variant: 'destructive' })
       })
       .finally(() => {
         if (!cancelled) setLoadingEdit(false)
@@ -228,7 +230,7 @@ function AddSystemPageInner() {
     return () => {
       cancelled = true
     }
-  }, [editId, abilityPool])
+  }, [editId, abilityPool, t])
 
   const handleAddNode = useCallback(
     (
@@ -745,9 +747,9 @@ function AddSystemPageInner() {
         await saveNodes(effectiveCourseId)
       }
 
-      toast({ title: '草稿已保存' })
+      toast({ title: t('草稿已保存') })
     } catch (e: any) {
-      toast({ title: e.message || '保存失败', variant: 'destructive' })
+      toast({ title: e.message || t('保存失败'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -763,6 +765,7 @@ function AddSystemPageInner() {
     originalStatus,
     saveNodes,
     abilityPoints,
+    t,
   ])
 
   const handleFinish = useCallback(async () => {
@@ -809,12 +812,12 @@ function AddSystemPageInner() {
             id: `qz-${i}`,
             title:
               String(method) === 'exam' || method === 'homework'
-                ? '作业测评'
+                ? t('作业测评')
                 : method === 'question_bank'
-                  ? '题库测验'
+                  ? t('题库测验')
                   : method === 'paper'
-                    ? '试卷测验'
-                    : '现场问答',
+                    ? t('试卷测验')
+                    : t('现场问答'),
             type: method === 'question_bank' ? ('question_bank' as const) : ('paper' as const),
             questions: [] as any[],
           }))
@@ -838,12 +841,13 @@ function AddSystemPageInner() {
     selectedResourceIds,
     resourcePool,
     nodeEvalMethods,
+    t,
   ])
 
   return (
     <EditorShell
       mode="fullscreen"
-      backText="取消"
+      backText={t('取消')}
       onBack={async () => {
         if (isNewCourse && courseId && !hasSavedRef.current) {
           try {
@@ -857,8 +861,8 @@ function AddSystemPageInner() {
       onSaveDraft={handleSave}
       isSaving={saving}
       onSubmit={handleFinish}
-      submitText="完成配置"
-      title={isEdit ? '编辑体系课' : '新建体系课'}
+      submitText={t('完成配置')}
+      title={isEdit ? t('编辑体系课') : t('新建体系课')}
     >
       {/* ========== Global Course Info (collapsible, spans full width) ========== */}
       <Collapsible open={globalInfoOpen} onOpenChange={setGlobalInfoOpen} className="mb-6">
@@ -869,9 +873,9 @@ function AddSystemPageInner() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-[#1890ff]" />
-                    全局课程信息
+                    {t('全局课程信息')}
                     <span className="text-xs font-normal text-gray-400">
-                      {courseName ? `《${courseName}》` : '未填写课程名称'}
+                      {courseName ? t('《{name}》', { name: courseName }) : t('未填写课程名称')}
                     </span>
                     {major && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
@@ -880,7 +884,7 @@ function AddSystemPageInner() {
                     )}
                   </CardTitle>
                   <div className="flex items-center gap-2 text-gray-400">
-                    <span className="text-xs">{globalInfoOpen ? '收起' : '展开编辑'}</span>
+                    <span className="text-xs">{globalInfoOpen ? t('收起') : t('展开编辑')}</span>
                     {globalInfoOpen ? (
                       <ChevronDown className="w-4 h-4" />
                     ) : (
@@ -901,20 +905,20 @@ function AddSystemPageInner() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left: 课程名称 + 课程简介 */}
                 <div className="space-y-4 min-w-0">
-                  <FormFieldRow label="课程名称" labelClassName="text-xs">
+                  <FormFieldRow label={t('课程名称')} labelClassName="text-xs">
                     <Input
                       value={courseName}
                       onChange={(e) => setCourseName(e.target.value)}
-                      placeholder="请输入课程名称"
+                      placeholder={t('请输入课程名称')}
                       className="h-9 text-sm"
                     />
                   </FormFieldRow>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">课程简介</Label>
+                    <Label className="text-xs">{t('课程简介')}</Label>
                     <RichTextEditor
                       value={courseDescription}
                       onChange={setCourseDescription}
-                      placeholder="请输入课程简介..."
+                      placeholder={t('请输入课程简介...')}
                       minHeight={280}
                       pdfUrl={courseDescriptionPdf}
                       onPdfChange={setCourseDescriptionPdf}
@@ -927,15 +931,15 @@ function AddSystemPageInner() {
                     <CoverImageUpload
                       imageUrl={coverImage}
                       uploading={coverUploading}
-                      label="课程封面"
-                      alt="课程封面"
+                      label={t('课程封面')}
+                      alt={t('课程封面')}
                       onUpload={async (file) => {
                         setCoverUploading(true)
                         try {
                           const res = await fileApi.upload(file)
                           setCoverImage(res.url)
                         } catch (err: any) {
-                          toast({ title: err?.message || '封面上传失败', variant: 'destructive' })
+                          toast({ title: err?.message || t('封面上传失败'), variant: 'destructive' })
                         } finally {
                           setCoverUploading(false)
                         }
@@ -945,11 +949,11 @@ function AddSystemPageInner() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">适用专业</Label>
+                      <Label className="text-xs">{t('适用专业')}</Label>
                       <MajorSelect
                         value={major}
                         onChange={(v) => setMajor(v || '')}
-                        placeholder="请选择适用专业"
+                        placeholder={t('请选择适用专业')}
                         className="h-9 text-sm"
                       />
                     </div>
@@ -960,7 +964,7 @@ function AddSystemPageInner() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">关联能力点（用于岗位能力汇聚）</Label>
+                    <Label className="text-xs">{t('关联能力点（用于岗位能力汇聚）')}</Label>
                     <AbilityPointSelector
                       selected={abilityPoints}
                       pool={abilityPool}
@@ -1001,7 +1005,7 @@ function AddSystemPageInner() {
                 <Sparkles className="w-4 h-4 text-blue-600" />
               </div>
               <p className="text-sm text-blue-800">
-                当前节点的课程内容将被纳入颗粒课管理体系，支持跨课程复用。
+                {t('当前节点的课程内容将被纳入颗粒课管理体系，支持跨课程复用。')}
               </p>
             </div>
           )}
@@ -1010,7 +1014,7 @@ function AddSystemPageInner() {
             {!selectedNode && (
               <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400">
                 <Info className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">请从左侧目录选择一个节点进行编辑</p>
+                <p className="text-sm">{t('请从左侧目录选择一个节点进行编辑')}</p>
               </div>
             )}
 
@@ -1019,7 +1023,7 @@ function AddSystemPageInner() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-[#1890ff]" />
-                    选择编辑方式
+                    {t('选择编辑方式')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -1027,8 +1031,8 @@ function AddSystemPageInner() {
                     {[
                       {
                         key: 'upload' as const,
-                        label: '自定义编排节点资源',
-                        desc: '自行上传并编辑课程资源',
+                        label: t('自定义编排节点资源'),
+                        desc: t('自行上传并编辑课程资源'),
                         icon: Upload,
                         color: 'bg-blue-500',
                         border: 'border-blue-500',
@@ -1036,8 +1040,8 @@ function AddSystemPageInner() {
                       },
                       {
                         key: 'clone' as const,
-                        label: '克隆颗粒课',
-                        desc: '复制颗粒课内容生成独立节点',
+                        label: t('克隆颗粒课'),
+                        desc: t('复制颗粒课内容生成独立节点'),
                         icon: Copy,
                         color: 'bg-amber-500',
                         border: 'border-amber-500',
@@ -1045,8 +1049,8 @@ function AddSystemPageInner() {
                       },
                       {
                         key: 'quote' as const,
-                        label: '引用已有颗粒课',
-                        desc: '引用颗粒课内容，关联可同步编辑',
+                        label: t('引用已有颗粒课'),
+                        desc: t('引用颗粒课内容，关联可同步编辑'),
                         icon: Link2,
                         color: 'bg-purple-500',
                         border: 'border-purple-500',
@@ -1098,10 +1102,10 @@ function AddSystemPageInner() {
                         <CardHeader className="pb-3 flex flex-row items-center justify-between">
                           <CardTitle className="text-sm font-semibold flex items-center gap-2">
                             <BookOpen className="w-4 h-4 text-[#1890ff]" />
-                            基本信息配置
+                            {t('基本信息配置')}
                             {isQuoteMode && (
                               <span className="text-xs text-gray-400 font-normal ml-2">
-                                （引用模式，不可编辑）
+                                {t('（引用模式，不可编辑）')}
                               </span>
                             )}
                           </CardTitle>
@@ -1112,7 +1116,7 @@ function AddSystemPageInner() {
                             className={isQuoteMode ? 'opacity-70' : ''}
                           >
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <FormFieldRow label="内容名称" labelClassName="text-xs">
+                              <FormFieldRow label={t('内容名称')} labelClassName="text-xs">
                                 <Input
                                   value={selectedNode?.name || ''}
                                   onChange={(e) => {
@@ -1120,18 +1124,18 @@ function AddSystemPageInner() {
                                       handleUpdateNode(selectedNodeId, { name: e.target.value })
                                     }
                                   }}
-                                  placeholder="请输入内容名称"
+                                  placeholder={t('请输入内容名称')}
                                   className="h-9 text-sm"
                                 />
                               </FormFieldRow>
                               <div className="space-y-1.5">
-                                <Label className="text-xs">节点编码</Label>
+                                <Label className="text-xs">{t('节点编码')}</Label>
                                 <Input
                                   value={contentCode}
                                   disabled
                                   className="h-9 text-sm bg-gray-50 text-gray-500"
                                 />
-                                <p className="text-[10px] text-gray-400">系统自动生成，不可修改</p>
+                                <p className="text-[10px] text-gray-400">{t('系统自动生成，不可修改')}</p>
                               </div>
                               <div className="md:col-span-2">
                                 <TaskInfoCard
@@ -1146,11 +1150,11 @@ function AddSystemPageInner() {
                                   showBackground={false}
                                   showName={false}
                                   showType={false}
-                                  hoursLabel="课时数"
+                                  hoursLabel={t('课时数')}
                                 />
                               </div>
                               <div className="md:col-span-2 space-y-1.5">
-                                <Label className="text-xs">节点详细说明</Label>
+                                <Label className="text-xs">{t('节点详细说明')}</Label>
                                 <TaskDescriptionCard
                                   description={detailedDescription}
                                   onDescriptionChange={setDetailedDescription}
@@ -1169,7 +1173,7 @@ function AddSystemPageInner() {
                         <CardHeader className="pb-3">
                           <CardTitle className="text-sm font-semibold flex items-center gap-2">
                             <GraduationCap className="w-4 h-4 text-[#1890ff]" />
-                            关联知识点
+                            {t('关联知识点')}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">
@@ -1202,7 +1206,7 @@ function AddSystemPageInner() {
                         <CardHeader className="pb-3">
                           <CardTitle className="text-sm font-semibold flex items-center gap-2">
                             <BookOpen className="w-4 h-4 text-[#1890ff]" />
-                            配置课程资源
+                            {t('配置课程资源')}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">
@@ -1231,7 +1235,7 @@ function AddSystemPageInner() {
                         <CardHeader className="pb-3">
                           <CardTitle className="text-sm font-semibold flex items-center gap-2">
                             <ClipboardList className="w-4 h-4 text-[#1890ff]" />
-                            配置节点测评
+                            {t('配置节点测评')}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">
@@ -1240,8 +1244,8 @@ function AddSystemPageInner() {
                             onChange={(config) => setNodeEvalRuleConfig(config)}
                             knowledgePoints={knowledgePoints}
                             abilityPoints={abilityPoints}
-                            methodTitle="配置节点测评方式"
-                            rulesTitle="配置节点评价规则"
+                            methodTitle={t('配置节点测评方式')}
+                            rulesTitle={t('配置节点评价规则')}
                           />
                         </CardContent>
                       </Card>
@@ -1267,7 +1271,9 @@ function AddSystemPageInner() {
         <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {grainSelectorMode === 'clone' ? '选择要克隆的颗粒课' : '选择要引用的颗粒课'}
+              {grainSelectorMode === 'clone'
+                ? t('选择要克隆的颗粒课')
+                : t('选择要引用的颗粒课')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -1276,13 +1282,13 @@ function AddSystemPageInner() {
               <Input
                 value={grainSearch}
                 onChange={(e) => setGrainSearch(e.target.value)}
-                placeholder="搜索颗粒课名称、来源..."
+                placeholder={t('搜索颗粒课名称、来源...')}
                 className="pl-9 text-sm h-9"
               />
             </div>
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
               {filteredGrainCourses.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">未找到匹配的颗粒课</p>
+                <p className="text-sm text-gray-400 text-center py-4">{t('未找到匹配的颗粒课')}</p>
               ) : (
                 filteredGrainCourses.map((g) => {
                   const selected = grainSelectedId === g.id
@@ -1314,7 +1320,9 @@ function AddSystemPageInner() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1 pl-7">{g.description}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 pl-7">{g.duration} 课时</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5 pl-7">
+                        {t('{n} 课时', { n: g.duration })}
+                      </p>
                     </button>
                   )
                 })
@@ -1323,10 +1331,10 @@ function AddSystemPageInner() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowGrainSelector(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleGrainConfirm} disabled={!grainSelectedId}>
-              确认选择
+              {t('确认选择')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1336,11 +1344,12 @@ function AddSystemPageInner() {
 }
 
 export default function AddSystemPage() {
+  const t = useT()
   return (
     <Suspense
       fallback={
         <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">
-          加载中...
+          {t('加载中...')}
         </div>
       }
     >

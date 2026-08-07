@@ -42,6 +42,7 @@ import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 import {
   ATOMIC_MODULES,
   ATOMIC_MODULES_BY_KEY,
@@ -88,6 +89,7 @@ function MockRichEditor({
 function HybridCourseAddForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const t = useT()
   const editId = searchParams.get('id')
   const hasSavedRef = useRef(false)
   const isNewCourse = searchParams.get('new') === 'true'
@@ -554,7 +556,7 @@ function HybridCourseAddForm() {
     setAddMemberGroupId(gid)
     setAddMemberGroupName(name)
     setAddMemberSelectedIds([])
-    toast({ title: `已创建分组「${name}」，可继续添加其他节点` })
+    toast({ title: t('已创建分组「{name}」，可继续添加其他节点', { name }) })
   }
 
   // 重命名分组（更新所有成员节点上的组名）
@@ -795,7 +797,7 @@ function HybridCourseAddForm() {
 
   const handleSave = async () => {
     if (!courseForm.name || !courseForm.code) {
-      toast({ title: '请填写课程名称和课程编码', variant: 'destructive' })
+      toast({ title: t('请填写课程名称和课程编码'), variant: 'destructive' })
       return false
     }
     setSaving(true)
@@ -822,13 +824,13 @@ function HybridCourseAddForm() {
         await saveNodes(effectiveCourseId)
       }
 
-      toast({ title: '草稿已保存' })
+      toast({ title: t('草稿已保存') })
       if (!editId && effectiveCourseId) {
         router.replace(`/lesson/admin/hybrid/add?id=${effectiveCourseId}`)
       }
       return true
     } catch (e: any) {
-      toast({ title: e?.message || '保存失败，请检查表单后重试', variant: 'destructive' })
+      toast({ title: e?.message || t('保存失败，请检查表单后重试'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -857,9 +859,9 @@ function HybridCourseAddForm() {
   }
 
   const processCategories: { key: AtomicModuleCategory; label: string }[] = [
-    { key: 'pre-class', label: '课前' },
-    { key: 'in-class', label: '课中' },
-    { key: 'post-class', label: '课后' },
+    { key: 'pre-class', label: t('课前') },
+    { key: 'in-class', label: t('课中') },
+    { key: 'post-class', label: t('课后') },
   ]
 
   const dialogModules = addDialogCategory
@@ -869,7 +871,7 @@ function HybridCourseAddForm() {
   return (
     <EditorShell
       mode="fullscreen"
-      backText="取消"
+      backText={t('取消')}
       onBack={async () => {
         if (isNewCourse && editId && !hasSavedRef.current) {
           try {
@@ -883,8 +885,8 @@ function HybridCourseAddForm() {
       onSaveDraft={handleSave}
       isSaving={saving}
       onSubmit={handleFinish}
-      submitText="完成配置"
-      title={editId ? '编辑混合课程' : '新建混合课程'}
+      submitText={t('完成配置')}
+      title={editId ? t('编辑混合课程') : t('新建混合课程')}
     >
       {/* ========== Global Course Info (collapsible, spans full width) ========== */}
       <Collapsible open={globalInfoOpen} onOpenChange={setGlobalInfoOpen} className="mb-6">
@@ -895,9 +897,9 @@ function HybridCourseAddForm() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-[#1890ff]" />
-                    课程基本信息
+                    {t('课程基本信息')}
                     <span className="text-xs font-normal text-gray-400">
-                      {courseForm.name ? `《${courseForm.name}》` : '未填写课程名称'}
+                      {courseForm.name ? t('《{name}》', { name: courseForm.name }) : t('未填写课程名称')}
                     </span>
                     {courseForm.majorName && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
@@ -906,7 +908,7 @@ function HybridCourseAddForm() {
                     )}
                   </CardTitle>
                   <div className="flex items-center gap-2 text-gray-400">
-                    <span className="text-xs">{globalInfoOpen ? '收起' : '展开编辑'}</span>
+                    <span className="text-xs">{globalInfoOpen ? t('收起') : t('展开编辑')}</span>
                     {globalInfoOpen ? (
                       <ChevronDown className="w-4 h-4" />
                     ) : (
@@ -927,15 +929,15 @@ function HybridCourseAddForm() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left: 课程名称 + 课程分类 + 课程简介 */}
                 <div className="space-y-4 min-w-0">
-                  <FormFieldRow label="课程名称" labelClassName="text-xs">
+                  <FormFieldRow label={t('课程名称')} labelClassName="text-xs">
                     <Input
                       value={courseForm.name}
                       onChange={(e) => updateCourseForm({ name: e.target.value })}
-                      placeholder="请输入课程名称"
+                      placeholder={t('请输入课程名称')}
                       className="h-9 text-sm"
                     />
                   </FormFieldRow>
-                  <FormFieldRow label="课程分类" labelClassName="text-xs">
+                  <FormFieldRow label={t('课程分类')} labelClassName="text-xs">
                     <Select
                       value={courseForm.category}
                       onValueChange={(v) =>
@@ -943,23 +945,23 @@ function HybridCourseAddForm() {
                       }
                     >
                       <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="请选择课程分类" />
+                        <SelectValue placeholder={t('请选择课程分类')} />
                       </SelectTrigger>
                       <SelectContent>
                         {COURSE_CATEGORIES.map((c) => (
                           <SelectItem key={c} value={c}>
-                            {c}
+                            {t(c)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">课程简介</Label>
+                    <Label className="text-xs">{t('课程简介')}</Label>
                     <RichTextEditor
                       value={courseForm.detailedDescription}
                       onChange={(v) => updateCourseForm({ detailedDescription: v })}
-                      placeholder="请输入课程简介..."
+                      placeholder={t('请输入课程简介...')}
                       minHeight={280}
                       pdfUrl={courseDescriptionPdf}
                       onPdfChange={setCourseDescriptionPdf}
@@ -972,16 +974,19 @@ function HybridCourseAddForm() {
                     <CoverImageUpload
                       imageUrl={courseForm.coverImage}
                       uploading={coverUploading}
-                      label="课程封面"
-                      alt="课程封面"
+                      label={t('课程封面')}
+                      alt={t('课程封面')}
                       onUpload={async (file) => {
                         setCoverUploading(true)
                         try {
                           const res = await fileApi.upload(file)
                           updateCourseForm({ coverImage: res.url })
-                          toast({ title: '封面上传成功' })
+                          toast({ title: t('封面上传成功') })
                         } catch (err: any) {
-                          toast({ title: err?.message || '封面上传失败', variant: 'destructive' })
+                          toast({
+                            title: err?.message || t('封面上传失败'),
+                            variant: 'destructive',
+                          })
                         } finally {
                           setCoverUploading(false)
                         }
@@ -991,13 +996,13 @@ function HybridCourseAddForm() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">适用专业</Label>
+                      <Label className="text-xs">{t('适用专业')}</Label>
                       <MajorSelect
                         value={courseForm.majorId}
                         onChange={(v, m) =>
                           updateCourseForm({ majorId: v || '', majorName: m?.name || '' })
                         }
-                        placeholder="请选择适用专业"
+                        placeholder={t('请选择适用专业')}
                         className="h-9 text-sm"
                       />
                     </div>
@@ -1008,7 +1013,7 @@ function HybridCourseAddForm() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">关联能力点（用于岗位能力汇聚）</Label>
+                    <Label className="text-xs">{t('关联能力点（用于岗位能力汇聚）')}</Label>
                     <AbilityPointSelector
                       selected={abilityPoints}
                       pool={abilityPool}
@@ -1050,7 +1055,7 @@ function HybridCourseAddForm() {
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
                   <span>
-                    当前编辑节点：
+                    {t('当前编辑节点：')}
                     <span className="font-medium text-gray-700">{selectedNode.name}</span>
                   </span>
                 </div>
@@ -1060,16 +1065,16 @@ function HybridCourseAddForm() {
             {!selectedNode && (
               <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400">
                 <Info className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">请从左侧目录选择一个节点进行编辑</p>
+                <p className="text-sm">{t('请从左侧目录选择一个节点进行编辑')}</p>
               </div>
             )}
 
             {selectedNode && currentData && (
               <Tabs defaultValue="design" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="design">教学设计</TabsTrigger>
-                  <TabsTrigger value="process">教学过程</TabsTrigger>
-                  <TabsTrigger value="review">课后复盘</TabsTrigger>
+                  <TabsTrigger value="design">{t('教学设计')}</TabsTrigger>
+                  <TabsTrigger value="process">{t('教学过程')}</TabsTrigger>
+                  <TabsTrigger value="review">{t('课后复盘')}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="design" className="space-y-4 pt-4">
@@ -1078,11 +1083,11 @@ function HybridCourseAddForm() {
                       <div className="space-y-1">
                         <CardTitle className="text-base flex items-center gap-2">
                           <BookOpen className="h-4 w-4 text-primary" />
-                          教学设计
+                          {t('教学设计')}
                         </CardTitle>
                         {currentData.teachingDesignGroups?.length > 0 && (
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs text-gray-400">所属分组：</span>
+                            <span className="text-xs text-gray-400">{t('所属分组：')}</span>
                             {currentData.teachingDesignGroups.map((g) => (
                               <Badge
                                 key={g.id}
@@ -1098,14 +1103,14 @@ function HybridCourseAddForm() {
                       </div>
                       <Button size="sm" variant="outline" onClick={openShareDialog}>
                         <Layers className="h-4 w-4 mr-1" />
-                        复用教学设计
+                        {t('复用教学设计')}
                       </Button>
                     </CardHeader>
                     <CardContent>
                       <MockRichEditor
                         value={currentData.teachingDesignContent}
                         onChange={updateTeachingDesignContent}
-                        placeholder="请输入教学设计内容"
+                        placeholder={t('请输入教学设计内容')}
                       />
                     </CardContent>
                   </Card>
@@ -1126,13 +1131,13 @@ function HybridCourseAddForm() {
                             onClick={() => openAddDialog(category)}
                           >
                             <Plus className="h-4 w-4 mr-1" />
-                            添加教学活动
+                            {t('添加教学活动')}
                           </Button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                           {categoryModules.length === 0 && (
                             <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm sm:col-span-2 xl:col-span-3">
-                              暂无{label}教学活动，点击上方按钮添加
+                              {t('暂无{n}教学活动，点击上方按钮添加', { n: label })}
                             </div>
                           )}
                           {categoryModules.map((key) => renderModuleCard(key, currentData))}
@@ -1147,14 +1152,14 @@ function HybridCourseAddForm() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
                         <ClipboardList className="h-4 w-4 text-primary" />
-                        课后复盘
+                        {t('课后复盘')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <MockRichEditor
                         value={currentData.postLessonReviewContent}
                         onChange={(v) => updateNodeData({ postLessonReviewContent: v })}
-                        placeholder="请输入课后总结内容"
+                        placeholder={t('请输入课后总结内容')}
                       />
                     </CardContent>
                   </Card>
@@ -1179,16 +1184,16 @@ function HybridCourseAddForm() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              添加
-              {addDialogCategory
-                ? processCategories.find((c) => c.key === addDialogCategory)?.label
-                : ''}
-              教学活动
+              {t('添加{n}教学活动', {
+                n: addDialogCategory
+                  ? processCategories.find((c) => c.key === addDialogCategory)?.label || ''
+                  : '',
+              })}
             </DialogTitle>
           </DialogHeader>
           {dialogModules.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              该分组下所有教学活动已挂载
+              {t('该分组下所有教学活动已挂载')}
             </p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 py-4">
@@ -1201,7 +1206,7 @@ function HybridCourseAddForm() {
                     className="flex items-center gap-2 p-3 border rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors text-left"
                   >
                     <Icon className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-sm">{m.label}</span>
+                    <span className="text-sm">{t(m.label)}</span>
                   </button>
                 )
               })}
@@ -1242,7 +1247,7 @@ function HybridCourseAddForm() {
       >
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>教学设计复用分组</DialogTitle>
+            <DialogTitle>{t('教学设计复用分组')}</DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-4">
             {/* 新建分组 */}
@@ -1250,7 +1255,7 @@ function HybridCourseAddForm() {
               <Input
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="输入新分组名称（如：共用教学设计）"
+                placeholder={t('输入新分组名称（如：共用教学设计）')}
                 className="h-9 text-sm"
               />
               <Button
@@ -1259,13 +1264,13 @@ function HybridCourseAddForm() {
                 onClick={createShareGroup}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                新建分组
+                {t('新建分组')}
               </Button>
             </div>
 
             {/* 分组列表 */}
             {allShareGroups.length === 0 ? (
-              <p className="text-xs text-gray-300 py-6 text-center">尚未创建分组</p>
+              <p className="text-xs text-gray-300 py-6 text-center">{t('尚未创建分组')}</p>
             ) : (
               allShareGroups.map((g) => {
                 const isAdding = addMemberGroupId === g.id
@@ -1291,7 +1296,7 @@ function HybridCourseAddForm() {
                             disabled={!renameValue.trim()}
                             onClick={() => renameShareGroup(g.id)}
                           >
-                            保存
+                            {t('保存')}
                           </Button>
                           <Button
                             variant="outline"
@@ -1302,7 +1307,7 @@ function HybridCourseAddForm() {
                               setRenameValue('')
                             }}
                           >
-                            取消
+                            {t('取消')}
                           </Button>
                         </div>
                       ) : (
@@ -1312,7 +1317,7 @@ function HybridCourseAddForm() {
                               {g.name}
                             </span>
                             <Badge variant="secondary" className="text-[11px] font-normal shrink-0">
-                              {g.members.length} 个节点
+                              {t('{n} 个节点', { n: g.members.length })}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
@@ -1325,7 +1330,7 @@ function HybridCourseAddForm() {
                                 setRenameValue(g.name)
                               }}
                             >
-                              重命名分组
+                              {t('重命名分组')}
                             </Button>
                             <Button
                               variant="ghost"
@@ -1334,7 +1339,7 @@ function HybridCourseAddForm() {
                               onClick={() => openAddMember(g.id, g.name)}
                             >
                               <Plus className="h-3 w-3 mr-1" />
-                              加入复用分组
+                              {t('加入复用分组')}
                             </Button>
                             {disbandGroupId === g.id ? (
                               <>
@@ -1344,7 +1349,7 @@ function HybridCourseAddForm() {
                                   className="h-7 text-xs"
                                   onClick={() => disbandShareGroup(g.id)}
                                 >
-                                  确认删除
+                                  {t('确认删除')}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -1352,7 +1357,7 @@ function HybridCourseAddForm() {
                                   className="h-7 text-xs"
                                   onClick={() => setDisbandGroupId('')}
                                 >
-                                  取消
+                                  {t('取消')}
                                 </Button>
                               </>
                             ) : (
@@ -1362,7 +1367,7 @@ function HybridCourseAddForm() {
                                 className="h-7 text-xs text-red-500 hover:text-red-600"
                                 onClick={() => setDisbandGroupId(g.id)}
                               >
-                                删除分组
+                                {t('删除分组')}
                               </Button>
                             )}
                           </div>
@@ -1381,7 +1386,7 @@ function HybridCourseAddForm() {
                           <button
                             type="button"
                             className="text-primary/50 hover:text-red-500 transition-colors"
-                            title="移出分组"
+                            title={t('移出分组')}
                             onClick={() => removeGroupMember(g.id, m.id)}
                           >
                             ×
@@ -1389,7 +1394,7 @@ function HybridCourseAddForm() {
                         </span>
                       ))}
                       {g.members.length === 0 && (
-                        <span className="text-xs text-gray-300">暂无成员</span>
+                        <span className="text-xs text-gray-300">{t('暂无成员')}</span>
                       )}
                     </div>
 
@@ -1397,8 +1402,10 @@ function HybridCourseAddForm() {
                     {isAdding && (
                       <div className="mt-3 border-t pt-3 space-y-2">
                         <p className="text-xs text-gray-400">
-                          勾选节点加入「{g.name}」，加入后与组内节点教学设计同步
-                          {candidateNodes.length === 0 && '（所有节点均已在该组中）'}
+                          {t('勾选节点加入「{name}」，加入后与组内节点教学设计同步', {
+                            name: g.name,
+                          })}
+                          {candidateNodes.length === 0 && t('（所有节点均已在该组中）')}
                         </p>
                         {candidateNodes.length > 0 && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
@@ -1433,7 +1440,7 @@ function HybridCourseAddForm() {
                                 setAddMemberSelectedIds([])
                               }}
                             >
-                              取消
+                              {t('取消')}
                             </Button>
                             <Button
                               size="sm"
@@ -1441,7 +1448,7 @@ function HybridCourseAddForm() {
                               disabled={addMemberSelectedIds.length === 0}
                               onClick={confirmAddMembers}
                             >
-                              确认加入（{addMemberSelectedIds.length}）
+                              {t('确认加入（{n}）', { n: addMemberSelectedIds.length })}
                             </Button>
                           </div>
                         )}
@@ -1459,11 +1466,12 @@ function HybridCourseAddForm() {
 }
 
 export default function HybridCourseAddPage() {
+  const t = useT()
   return (
     <Suspense
       fallback={
         <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">
-          加载中...
+          {t('加载中...')}
         </div>
       }
     >

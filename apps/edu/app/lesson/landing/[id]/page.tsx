@@ -36,6 +36,7 @@ import { coverGradientFor } from '@/lib/cover-gradients'
 import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-graph'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
+import { useT } from '@/lib/i18n/locale-provider'
 import {
   ResourcePreviewModal,
   usePreviewResources,
@@ -94,6 +95,7 @@ export default function CourseDetailPage() {
   const id = params.id as string
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useT()
   const highlightNodeId = searchParams.get('node')
 
   const [course, setCourse] = useState<Course | null>(null)
@@ -252,12 +254,12 @@ export default function CourseDetailPage() {
           <div className="w-20 h-20 mb-5 rounded-3xl bg-slate-100 flex items-center justify-center">
             <BookOpen className="w-10 h-10 opacity-40" />
           </div>
-          <div className="text-lg font-semibold text-slate-600">课程不存在或暂未公开</div>
+          <div className="text-lg font-semibold text-slate-600">{t('课程不存在或暂未公开')}</div>
           <Link
             href="/lesson/landing"
             className="text-primary hover:text-primary mt-3 text-sm font-medium"
           >
-            返回课程列表
+            {t('返回课程列表')}
           </Link>
         </div>
         <Footer className="mt-auto" />
@@ -303,7 +305,7 @@ export default function CourseDetailPage() {
                 <button
                   onClick={() => toggleCollapse(node.id)}
                   className="w-5 h-5 rounded-md bg-slate-100 text-slate-500 hover:bg-primary/5 hover:text-primary flex items-center justify-center shrink-0 transition-colors cursor-pointer"
-                  title={collapsed ? '展开子节点' : '收起子节点'}
+                  title={collapsed ? t('展开子节点') : t('收起子节点')}
                 >
                   {collapsed ? (
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -324,25 +326,25 @@ export default function CourseDetailPage() {
                   </div>
                   {node.type === 'original' && (
                     <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium border bg-primary/5 text-primary border-primary/15 shrink-0">
-                      引用颗粒课
+                      {t('引用颗粒课')}
                     </span>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
-                    {node.duration || 0} 课时
+                    {t('{n} 课时', { n: node.duration || 0 })}
                   </span>
                   {nodeResources.length > 0 && (
                     <span className="flex items-center gap-1">
                       <FolderOpen className="w-3.5 h-3.5" />
-                      {nodeResources.length} 个资源
+                      {t('{n} 个资源', { n: nodeResources.length })}
                     </span>
                   )}
                   {nodeKnow > 0 && (
                     <span className="flex items-center gap-1">
                       <GitBranch className="w-3.5 h-3.5" />
-                      {nodeKnow} 个知识点
+                      {t('{n} 个知识点', { n: nodeKnow })}
                     </span>
                   )}
                 </div>
@@ -381,8 +383,8 @@ export default function CourseDetailPage() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
                   <ListChecks className="w-8 h-8 opacity-40" />
                 </div>
-                <div className="text-[15px] font-medium text-slate-600">暂无课程节点</div>
-                <div className="text-[13px] mt-1">该课程暂未配置章节节点</div>
+                <div className="text-[15px] font-medium text-slate-600">{t('暂无课程节点')}</div>
+                <div className="text-[13px] mt-1">{t('该课程暂未配置章节节点')}</div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -399,15 +401,15 @@ export default function CourseDetailPage() {
         return (
           <div>
             <div className="text-sm text-slate-500 mb-4">
-              共 <strong className="text-primary">{totalResources}</strong> 个资源
+              {t('共')} <strong className="text-primary">{totalResources}</strong> {t('个资源')}
             </div>
             {totalResources === 0 ? (
               <div className="text-center py-16 text-slate-400">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
                   <FolderOpen className="w-8 h-8 opacity-40" />
                 </div>
-                <div className="text-[15px] font-medium text-slate-600">暂无关联资源</div>
-                <div className="text-[13px] mt-1">该课程暂未配置学习资源</div>
+                <div className="text-[15px] font-medium text-slate-600">{t('暂无关联资源')}</div>
+                <div className="text-[13px] mt-1">{t('该课程暂未配置学习资源')}</div>
               </div>
             ) : (
               <div className="space-y-5">
@@ -422,7 +424,7 @@ export default function CourseDetailPage() {
                     byNode.set(nid, list)
                   })
                   return Array.from(byNode.entries()).map(([nid, resList]) => {
-                    const nodeName = nid === 'course' ? '课程全局资源' : nodeMap.get(nid) || nid
+                    const nodeName = nid === 'course' ? t('课程全局资源') : nodeMap.get(nid) || nid
                     return (
                       <div key={nid}>
                         <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
@@ -473,7 +475,7 @@ export default function CourseDetailPage() {
                                         addPreviewResource(r as unknown as TaskResource)
                                       }
                                       className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-primary/5 text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
-                                      title="预览资源"
+                                      title={t('预览资源')}
                                     >
                                       <Eye className="w-3.5 h-3.5" />
                                     </button>
@@ -501,16 +503,16 @@ export default function CourseDetailPage() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
                   <Target className="w-8 h-8 opacity-40" />
                 </div>
-                <div className="text-[15px] font-medium text-slate-600">暂未配置评价标准</div>
-                <div className="text-[13px] mt-1">该课程暂未设置评价方式</div>
+                <div className="text-[15px] font-medium text-slate-600">{t('暂未配置评价标准')}</div>
+                <div className="text-[13px] mt-1">{t('该课程暂未设置评价方式')}</div>
               </div>
             )
           }
           return (
             <div>
               <div className="text-sm text-slate-500 mb-4">
-                共 <strong className="text-primary">{evalNodes.length}</strong>{' '}
-                个节点配置了评价标准
+                {t('共')} <strong className="text-primary">{evalNodes.length}</strong>{' '}
+                {t('个节点配置了评价标准')}
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {evalNodes.map((node) => {
@@ -531,7 +533,9 @@ export default function CourseDetailPage() {
                             {node.name}
                           </div>
                           <span className="text-[11px] text-slate-400">
-                            {node.duration ? `${node.duration} 课时` : '未配置课时'}
+                            {node.duration
+                              ? t('{n} 课时', { n: node.duration })
+                              : t('未配置课时')}
                           </span>
                         </div>
                       </div>
@@ -599,11 +603,11 @@ export default function CourseDetailPage() {
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary/5 hover:text-primary transition-colors">
                 ←
               </span>{' '}
-              返回上一页
+              {t('返回上一页')}
             </button>
             <span className="text-slate-300 shrink-0">/</span>
             <Link href="/lesson/landing" className="hover:text-primary transition-colors hidden sm:inline">
-              课程列表
+              {t('课程列表')}
             </Link>
             <span className="text-slate-300 shrink-0 hidden sm:inline">/</span>
             <span className="text-slate-800 font-medium truncate min-w-0">{course.name}</span>
@@ -635,20 +639,20 @@ export default function CourseDetailPage() {
                           {course.name}
                         </h1>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-primary/5 text-primary font-medium shrink-0 border border-primary/15">
-                          {courseTypeLabels[course.type] || course.type}
+                          {t(courseTypeLabels[course.type] || course.type)}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 mb-3">
                       <span className="flex items-center gap-1.5">
-                        创建人：{course.creatorId.slice(0, 8)}
+                        {t('创建人：{n}', { n: course.creatorId.slice(0, 8) })}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> 更新于 {formatDate(course.updatedAt)}
+                        <Clock className="w-3.5 h-3.5" /> {t('更新于 {n}', { n: formatDate(course.updatedAt) })}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5" /> {course.nodeCount} 节点
+                        <Layers className="w-3.5 h-3.5" /> {t('{n} 节点', { n: course.nodeCount })}
                       </span>
                     </div>
 
@@ -661,7 +665,7 @@ export default function CourseDetailPage() {
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
                       {course.majorName && (
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-400 shrink-0">适用专业：</span>
+                          <span className="text-slate-400 shrink-0">{t('适用专业：')}</span>
                           <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-primary/5 text-primary border border-primary/10 font-medium">
                             {course.majorName}
                           </span>
@@ -669,7 +673,7 @@ export default function CourseDetailPage() {
                       )}
                       {course.difficulty && (
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-400 shrink-0">难度等级：</span>
+                          <span className="text-slate-400 shrink-0">{t('难度等级：')}</span>
                           <span
                             className="px-2.5 py-0.5 rounded-full text-[11px] border font-medium"
                             style={{
@@ -688,20 +692,20 @@ export default function CourseDetailPage() {
                       {!isGranular && (
                         <Link href={`/lesson/landing/${id}/learn`}>
                           <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
-                            <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
+                            <PlayCircle className="w-4 h-4 mr-1.5" /> {t('开始学习')}
                           </Button>
                         </Link>
                       )}
                       <FavoriteButton
                         targetType="course"
                         targetId={id}
-                        label="收藏课程"
+                        label={t('收藏课程')}
                         className="h-11 rounded-xl"
                       />
                       <Button
                         variant="ghost"
                         className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-primary border border-slate-200 hover:bg-primary/5 hover:border-primary/30 transition-all"
-                        aria-label="分享"
+                        aria-label={t('分享')}
                         onClick={() => setMobileAccessOpen(true)}
                       >
                         <Share2 className="w-4 h-4" />
@@ -718,31 +722,31 @@ export default function CourseDetailPage() {
                   <div className="w-7 h-7 rounded-lg bg-primary/5 flex items-center justify-center">
                     <Layers className="w-4 h-4 text-primary" />
                   </div>
-                  <span className="text-sm font-bold text-slate-800">课程统计</span>
+                  <span className="text-sm font-bold text-slate-800">{t('课程统计')}</span>
                 </div>
                 <div className="p-5 space-y-3">
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                    <span className="text-sm text-slate-500">课程节点</span>
+                    <span className="text-sm text-slate-500">{t('课程节点')}</span>
                     <span className="text-sm font-bold text-primary">{nodes.length}</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                    <span className="text-sm text-slate-500">教学资源</span>
+                    <span className="text-sm text-slate-500">{t('教学资源')}</span>
                     <span className="text-sm font-bold text-primary">{totalResources}</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                    <span className="text-sm text-slate-500">知识点</span>
+                    <span className="text-sm text-slate-500">{t('知识点')}</span>
                     <span className="text-sm font-bold text-primary">
                       {courseKnowledgeList.length}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                    <span className="text-sm text-slate-500">线上课时</span>
+                    <span className="text-sm text-slate-500">{t('线上课时')}</span>
                     <span className="text-sm font-bold text-primary">
                       {course.onlineHours || 0}h
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-2">
-                    <span className="text-sm text-slate-500">线下课时</span>
+                    <span className="text-sm text-slate-500">{t('线下课时')}</span>
                     <span className="text-sm font-bold text-primary">
                       {course.offlineHours || 0}h
                     </span>
@@ -757,16 +761,16 @@ export default function CourseDetailPage() {
       <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-6 w-full">
         <div className="bg-white rounded-2xl border border-slate-200 overflow-visible md:overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
           <MobileTabDropdown
-            items={tabs.map((t) => ({
-              value: t.value,
-              label: t.label,
-              icon: t.icon,
+            items={tabs.map((tTab) => ({
+              value: tTab.value,
+              label: t(tTab.label),
+              icon: tTab.icon,
               count:
-                t.value === 'nodes'
+                tTab.value === 'nodes'
                   ? nodes.length
-                  : t.value === 'resources'
+                  : tTab.value === 'resources'
                     ? totalResources
-                    : t.value === 'knowledge'
+                    : tTab.value === 'knowledge'
                       ? courseKnowledgeList.length
                       : undefined,
             }))}
@@ -775,41 +779,41 @@ export default function CourseDetailPage() {
             className="md:hidden m-4"
           />
           <div className="hidden md:flex overflow-x-auto border-b border-slate-100 px-4 sm:px-6">
-            {tabs.map((t) => (
+            {tabs.map((tabItem) => (
               <button
-                key={t.value}
-                onClick={() => setActiveTab(t.value)}
+                key={tabItem.value}
+                onClick={() => setActiveTab(tabItem.value)}
                 className={`
                   py-3.5 sm:py-4 px-3 sm:px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
-                  ${effectiveTab === t.value ? 'text-primary font-semibold' : 'text-slate-500 hover:text-primary hover:bg-primary/5'}
+                  ${effectiveTab === tabItem.value ? 'text-primary font-semibold' : 'text-slate-500 hover:text-primary hover:bg-primary/5'}
                 `}
               >
-                <t.icon
-                  className={`w-4 h-4 ${effectiveTab === t.value ? 'text-primary' : 'text-slate-400'}`}
+                <tabItem.icon
+                  className={`w-4 h-4 ${effectiveTab === tabItem.value ? 'text-primary' : 'text-slate-400'}`}
                 />
-                {t.label}
-                {t.value === 'nodes' && nodes.length > 0 && (
+                {t(tabItem.label)}
+                {tabItem.value === 'nodes' && nodes.length > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === tabItem.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {nodes.length}
                   </span>
                 )}
-                {t.value === 'resources' && totalResources > 0 && (
+                {tabItem.value === 'resources' && totalResources > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === tabItem.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {totalResources}
                   </span>
                 )}
-                {t.value === 'knowledge' && courseKnowledgeList.length > 0 && (
+                {tabItem.value === 'knowledge' && courseKnowledgeList.length > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${effectiveTab === tabItem.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {courseKnowledgeList.length}
                   </span>
                 )}
-                {effectiveTab === t.value && (
+                {effectiveTab === tabItem.value && (
                   <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-primary rounded-t-full" />
                 )}
               </button>

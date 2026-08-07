@@ -10,6 +10,7 @@ import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
@@ -19,6 +20,7 @@ const SORT_OPTIONS = [
 ]
 
 function CourseCard({ course }: { course: Course; index: number }) {
+  const t = useT()
   const creatorName = course.creatorName || course.creatorId?.slice(0, 8) || '-'
   const coverStyle = course.coverImage
     ? { backgroundImage: `url('${course.coverImage}')` }
@@ -45,7 +47,7 @@ function CourseCard({ course }: { course: Course; index: number }) {
                 {course.version || 'v1.0'}
               </span>
               <span className="bg-[#0f172a]/40 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/20">
-                创建人：{creatorName}
+                {t('创建人：{n}', { n: creatorName })}
               </span>
             </div>
           </div>
@@ -54,7 +56,7 @@ function CourseCard({ course }: { course: Course; index: number }) {
               {course.name}
             </div>
             <div className="text-xs text-white/85 text-shadow-sm">
-              课程编码：{course.code || course.id.slice(0, 8)}
+              {t('课程编码：{n}', { n: course.code || course.id.slice(0, 8) })}
             </div>
           </div>
         </div>
@@ -64,32 +66,36 @@ function CourseCard({ course }: { course: Course; index: number }) {
               <div className="text-base sm:text-lg font-bold text-slate-800">
                 {course.viewCount ?? 0}
               </div>
-              <div className="text-[11px] text-slate-400 mt-0.5">浏览次数</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">{t('浏览次数')}</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-2 sm:p-2.5 text-center border border-slate-100">
               <div className="text-base sm:text-lg font-bold text-slate-800">
                 {course.nodeCount}
               </div>
-              <div className="text-[11px] text-slate-400 mt-0.5">关联节点</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">{t('关联节点')}</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-2 sm:p-2.5 text-center border border-slate-100">
               <div className="text-base sm:text-lg font-bold text-slate-800">
                 {course.resourceCount}
               </div>
-              <div className="text-[11px] text-slate-400 mt-0.5">关联资源</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">{t('关联资源')}</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 font-medium">
-              面向行业：{course.industryName || '未分类'}
+              {t('面向行业：{n}', { n: course.industryName || t('未分类') })}
             </span>
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-primary/5 text-primary border border-primary/10 font-medium">
-              适用专业：{course.majorName || '未分类'}
+              {t('适用专业：{n}', { n: course.majorName || t('未分类') })}
             </span>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500">收录：{formatDate(course.createdAt)}</span>
-            <span className="text-xs text-slate-500">更新：{formatDate(course.updatedAt)}</span>
+            <span className="text-xs text-slate-500">
+              {t('收录：{n}', { n: formatDate(course.createdAt) })}
+            </span>
+            <span className="text-xs text-slate-500">
+              {t('更新：{n}', { n: formatDate(course.updatedAt) })}
+            </span>
           </div>
         </div>
       </div>
@@ -98,6 +104,8 @@ function CourseCard({ course }: { course: Course; index: number }) {
 }
 
 export default function LessonLandingPage() {
+  const t = useT()
+  const allLabel = t('全部')
   const listRef = useRef<HTMLDivElement>(null)
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
@@ -186,11 +194,12 @@ export default function LessonLandingPage() {
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []
     if (selectedIndustry !== '全部')
-      filters.push({ type: 'industry', label: `行业：${selectedIndustry}` })
-    if (selectedBatch !== '全部') filters.push({ type: 'batch', label: `批次：${selectedBatch}` })
-    if (keyword.trim()) filters.push({ type: 'keyword', label: `关键词：${keyword.trim()}` })
+      filters.push({ type: 'industry', label: `${t('行业：')}${selectedIndustry}` })
+    if (selectedBatch !== '全部')
+      filters.push({ type: 'batch', label: `${t('批次：')}${selectedBatch}` })
+    if (keyword.trim()) filters.push({ type: 'keyword', label: `${t('关键词：')}${keyword.trim()}` })
     return filters
-  }, [selectedIndustry, selectedBatch, keyword])
+  }, [selectedIndustry, selectedBatch, keyword, t])
 
   const executeSearch = () => {
     setCurrentPage(1)
@@ -215,60 +224,60 @@ export default function LessonLandingPage() {
   return (
     <LandingShell
       hero={{
-        badge: '体系化课程 · 颗粒化知识管理',
+        badge: t('体系化课程 · 颗粒化知识管理'),
         title: (
           <>
-            课程教学管理平台
+            {t('课程教学管理平台')}
             <br />
-            <span className="text-white/80">从基础到进阶，系统提升专业能力</span>
+            <span className="text-white/80">{t('从基础到进阶，系统提升专业能力')}</span>
           </>
         ),
-        description: '体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效',
-        ctaLabel: '浏览课程',
+        description: t('体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效'),
+        ctaLabel: t('浏览课程'),
       }}
       stats={[
         {
           icon: BookOpen,
           value: systemCourses.length,
-          label: '体系课',
+          label: t('体系课'),
           gradient: 'from-primary to-primary/80',
         },
         {
           icon: Layers,
           value: granularCourses.length,
-          label: '颗粒课',
+          label: t('颗粒课'),
           gradient: 'from-primary/90 to-primary/70',
         },
         {
           icon: FileText,
           value: totalResources,
-          label: '教学资源',
+          label: t('教学资源'),
           gradient: 'from-primary/80 to-primary/60',
         },
         {
           icon: GraduationCap,
           value: totalNodes,
-          label: '课程节点',
+          label: t('课程节点'),
           gradient: 'from-primary/90 to-primary/70',
         },
       ]}
-      filterTitle="课程筛选"
+      filterTitle={t('课程筛选')}
       filterRows={
         <>
           {industries.length > 1 && (
             <LandingFilterRow
-              label="行业"
-              items={industries}
-              selected={selectedIndustry}
+              label={t('行业')}
+              items={industries.map((i) => (i === '全部' ? allLabel : i))}
+              selected={selectedIndustry === '全部' ? allLabel : selectedIndustry}
               onSelect={setSelectedIndustry}
               accentColor="primary"
             />
           )}
           {batches.length > 1 && (
             <LandingFilterRow
-              label="批次"
-              items={batches}
-              selected={selectedBatch}
+              label={t('批次')}
+              items={batches.map((b) => (b === '全部' ? allLabel : b))}
+              selected={selectedBatch === '全部' ? allLabel : selectedBatch}
               onSelect={setSelectedBatch}
               showBorder={industries.length <= 1}
               accentColor="primary"
@@ -279,21 +288,21 @@ export default function LessonLandingPage() {
       activeFilters={activeFilters}
       onRemoveFilter={removeFilter}
       onClearFilters={clearFilters}
-      sortOptions={SORT_OPTIONS}
+      sortOptions={SORT_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
       sort={sort}
       onSortChange={setSort}
       keyword={keyword}
       onKeywordChange={setKeyword}
       onSearch={executeSearch}
-      searchPlaceholder="搜索课程名称、描述或专业"
+      searchPlaceholder={t('搜索课程名称、描述或专业')}
       totalCount={filtered.length}
-      countLabel="个课程"
+      countLabel={t('个课程')}
       listRef={listRef}
     >
       {loading ? (
         <LandingSkeleton />
       ) : filtered.length === 0 ? (
-        <LandingEmpty title="暂无匹配的课程" hint="试试调整筛选条件或搜索关键词" />
+        <LandingEmpty title={t('暂无匹配的课程')} hint={t('试试调整筛选条件或搜索关键词')} />
       ) : (
         <>
           {/* 体系课 */}
@@ -302,7 +311,7 @@ export default function LessonLandingPage() {
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
                   <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-                  体系课
+                  {t('体系课')}
                   <span className="text-[13px] text-[#64748b] font-normal ml-1">
                     ({systemCourses.length})
                   </span>
@@ -331,7 +340,7 @@ export default function LessonLandingPage() {
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
                   <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-                  混合课
+                  {t('混合课')}
                   <span className="text-[13px] text-[#64748b] font-normal ml-1">
                     ({hybridCourses.length})
                   </span>
@@ -351,7 +360,7 @@ export default function LessonLandingPage() {
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
                   <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-                  颗粒课
+                  {t('颗粒课')}
                   <span className="text-[13px] text-[#64748b] font-normal ml-1">
                     ({granularCourses.length})
                   </span>
