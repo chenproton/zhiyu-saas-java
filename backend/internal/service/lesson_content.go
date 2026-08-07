@@ -374,13 +374,15 @@ func (s *LessonContentService) GradeNodeHomework(ctx context.Context, graderID, 
 // ===== 课程评估生成（发布 hook）=====
 
 // GenerateCourseAssessments 发布课程时生成节点测评（考试/作业）。
+// 体系课读取节点 eval_data.evalRuleConfig；混合课读取 eval_data.hybridEvalRules
+// 的三个子规则（preQuiz/inClassQuiz/homework），各自独立生成测评实体。
 func (s *LessonContentService) GenerateCourseAssessments(ctx context.Context, txStore *store.Store, courseID string) error {
 	q := txStore.Q()
 	info, err := txStore.CourseAssessments().FetchCourseInfo(ctx, q, courseID)
 	if err != nil {
 		return err
 	}
-	if info.Type != "system" {
+	if info.Type != "system" && info.Type != "hybrid" {
 		return nil
 	}
 
@@ -390,47 +392,11 @@ func (s *LessonContentService) GenerateCourseAssessments(ctx context.Context, tx
 	}
 
 	for _, n := range nodes {
-		ruleConfig := extractEvalRuleConfig(n.EvalData)
-		if ruleConfig == nil {
-			continue
+		updated, err := s.generateNodeAssessments(ctx, q, n, info)
+		if err != nil {
+			return err
 		}
-		methods := store.GetStringSliceFromJSONMap(ruleConfig, "evaluationMethods")
-		methodResourceConfigs, _ := ruleConfig["methodResourceConfigs"].(map[string]interface{})
-		if methodResourceConfigs == nil {
-			methodResourceConfigs = make(map[string]interface{})
-		}
-
-		updated := false
-		for _, methodKey := range methods {
-			rc, _ := methodResourceConfigs[methodKey].(map[string]interface{})
-			if rc == nil {
-				rc = make(map[string]interface{})
-			}
-			switch methodKey {
-			case "paper":
-				newRC, err := s.ensureNodePaperUsage(ctx, q, n, info, rc, ruleConfig)
-				if err != nil {
-					return err
-				}
-				methodResourceConfigs[methodKey] = newRC
-				updated = true
-			case "question_bank", "quiz":
-				newRC, err := s.ensureNodeQuestionExam(ctx, q, n, info, methodKey, rc, ruleConfig)
-				if err != nil {
-					return err
-				}
-				methodResourceConfigs[methodKey] = newRC
-				updated = true
-			case "homework":
-				if err := s.ensureNodeHomework(ctx, q, n, info); err != nil {
-					return err
-				}
-			}
-		}
-
 		if updated {
-			ruleConfig["methodResourceConfigs"] = methodResourceConfigs
-			n.EvalData["evalRuleConfig"] = ruleConfig
 			if err := txStore.CourseAssessments().UpdateNodeEvalData(ctx, q, n.ID, n.EvalData); err != nil {
 				return err
 			}
@@ -438,6 +404,99 @@ func (s *LessonContentService) GenerateCourseAssessments(ctx context.Context, tx
 	}
 
 	return txStore.CourseAssessments().CleanupCourseLevelAssessments(ctx, q, courseID)
+}
+
+// generateNodeAssessments 按课程类型生成单节点测评，返回是否有写回。
+func (s *LessonContentService) generateNodeAssessments(ctx context.Context, q store.Queryer, n store.NodeEvalRow, info *store.CourseInfo) (bool, error) {
+	if info.Type == "hybrid" {
+		return s.generateHybridNodeAssessments(ctx, q, n, info)
+	}
+	ruleConfig := extractEvalRuleConfig(n.EvalData)
+	if ruleConfig == nil {
+		return false, nil
+	}
+	updated, err := s.applyRuleConfig(ctx, q, n, info, ruleConfig)
+	if err != nil {
+		return false, err
+	}
+	if updated {
+		n.EvalData["evalRuleConfig"] = ruleConfig
+	}
+	return updated, nil
+}
+
+// generateHybridNodeAssessments 混合课：对课前测验/随堂测验/课后作业三个子规则分别生成。
+func (s *LessonContentService) generateHybridNodeAssessments(ctx context.Context, q store.Queryer, n store.NodeEvalRow, info *store.CourseInfo) (bool, error) {
+	hybridRules, _ := n.EvalData["hybridEvalRules"].(map[string]interface{})
+	if hybridRules == nil {
+		return false, nil
+	}
+	updated := false
+	for _, moduleKey := range []string{"preQuiz", "inClassQuiz", "homework"} {
+		part, _ := hybridRules[moduleKey].(map[string]interface{})
+		if part == nil {
+			continue
+		}
+		ruleConfig, _ := part["evalRuleConfig"].(map[string]interface{})
+		if ruleConfig == nil {
+			continue
+		}
+		changed, err := s.applyRuleConfig(ctx, q, n, info, ruleConfig)
+		if err != nil {
+			return false, err
+		}
+		if changed {
+			part["evalRuleConfig"] = ruleConfig
+			hybridRules[moduleKey] = part
+			updated = true
+		}
+	}
+	if updated {
+		n.EvalData["hybridEvalRules"] = hybridRules
+	}
+	return updated, nil
+}
+
+// applyRuleConfig 按规则配置生成测评（试卷安排/题库考试/作业），写回 methodResourceConfigs。
+func (s *LessonContentService) applyRuleConfig(ctx context.Context, q store.Queryer, n store.NodeEvalRow, info *store.CourseInfo, ruleConfig map[string]interface{}) (bool, error) {
+	methods := store.GetStringSliceFromJSONMap(ruleConfig, "evaluationMethods")
+	methodResourceConfigs, _ := ruleConfig["methodResourceConfigs"].(map[string]interface{})
+	if methodResourceConfigs == nil {
+		methodResourceConfigs = make(map[string]interface{})
+	}
+
+	updated := false
+	for _, methodKey := range methods {
+		rc, _ := methodResourceConfigs[methodKey].(map[string]interface{})
+		if rc == nil {
+			rc = make(map[string]interface{})
+		}
+		switch methodKey {
+		case "paper":
+			newRC, err := s.ensureNodePaperUsage(ctx, q, n, info, rc, ruleConfig)
+			if err != nil {
+				return false, err
+			}
+			methodResourceConfigs[methodKey] = newRC
+			updated = true
+		case "question_bank", "quiz":
+			newRC, err := s.ensureNodeQuestionExam(ctx, q, n, info, methodKey, rc, ruleConfig)
+			if err != nil {
+				return false, err
+			}
+			methodResourceConfigs[methodKey] = newRC
+			updated = true
+		case "homework":
+			if err := s.ensureNodeHomework(ctx, q, n, info); err != nil {
+				return false, err
+			}
+		}
+	}
+
+	if updated {
+		ruleConfig["methodResourceConfigs"] = methodResourceConfigs
+	}
+	return updated, nil
 }
 
 // ensureNodePaperUsage 生成节点试卷安排。

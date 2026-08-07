@@ -28,3 +28,10 @@ func (s *LessonContentService) UpsertHybridModule(ctx context.Context, tenantID,
 func (s *LessonContentService) DeleteHybridModule(ctx context.Context, id, tenantID string) error {
 	return s.st.HybridModules().Delete(ctx, id, tenantID)
 }
+
+// ReplaceHybridModules 全量替换某节点的混合模块（事务内 DELETE + INSERT）。
+func (s *LessonContentService) ReplaceHybridModules(ctx context.Context, tenantID, nodeID string, modules []store.HybridModuleParams) error {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.HybridModules().ReplaceByNode(ctx, txStore.Q(), tenantID, nodeID, modules)
+	})
+}

@@ -35,8 +35,30 @@ func (s *HybridModuleStore) ListConfig() ListQueryConfig[domain.HybridNodeModule
 			if nodeID := p.Values["nodeId"]; nodeID != "" {
 				qb.AddCondition("node_id = " + qb.NextArg(nodeID))
 			}
+			if courseID := p.Values["courseId"]; courseID != "" {
+				qb.AddCondition("node_id IN (SELECT id FROM system_course_nodes WHERE course_id = " + qb.NextArg(courseID) + ")")
+			}
 		},
 	}
+}
+
+// ReplaceByNode 全量替换某节点的模块（事务内 DELETE + INSERT，幂等）。
+func (s *HybridModuleStore) ReplaceByNode(ctx context.Context, q Queryer, tenantID, nodeID string, modules []HybridModuleParams) error {
+	if _, err := q.Exec(ctx, `DELETE FROM hybrid_node_modules WHERE node_id = $1 AND tenant_id = $2`, nodeID, tenantID); err != nil {
+		return err
+	}
+	for _, m := range modules {
+		if m.ModuleKey == "" {
+			continue
+		}
+		if _, err := q.Exec(ctx, `
+			INSERT INTO hybrid_node_modules (id, tenant_id, node_id, module_key, mode, data)
+			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+		`, tenantID, nodeID, m.ModuleKey, m.Mode, m.Data); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Get 查询单个混合模块（限定租户）。
