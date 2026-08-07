@@ -53,6 +53,7 @@ import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
 import { authApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
+import { useT } from '@/lib/i18n/locale-provider'
 import {
   applyBrandColor,
   fetchThemeColor,
@@ -169,6 +170,7 @@ export default function SuperAdminPage() {
   const [tenantThemeSaving, setTenantThemeSaving] = useState(false)
 
   const { toast } = useToast()
+  const t = useT()
 
   // 加载平台主题配置（公开接口）
   useEffect(() => {
@@ -180,7 +182,7 @@ export default function SuperAdminPage() {
 
   const saveTheme = async (color: string) => {
     if (!isHexColor(color)) {
-      toast({ variant: 'destructive', title: '主题色格式错误', description: '应为 #RRGGBB 格式' })
+      toast({ variant: 'destructive', title: t('主题色格式错误'), description: t('应为 #RRGGBB 格式') })
       return
     }
     setThemeSaving(true)
@@ -192,59 +194,59 @@ export default function SuperAdminPage() {
       applyBrandColor(color)
       window.dispatchEvent(new Event(BRAND_CHANGED_EVENT))
       setThemeColor(color)
-      toast({ title: '主题色已保存并生效' })
+      toast({ title: t('主题色已保存并生效') })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setThemeSaving(false)
     }
   }
 
-  const openTenantTheme = async (t: AdminTenant) => {
-    setTenantThemeTarget(t)
+  const openTenantTheme = async (ten: AdminTenant) => {
+    setTenantThemeTarget(ten)
     setTenantThemeSaving(false)
-    setTenantThemeColor(await fetchThemeColor(t.id))
+    setTenantThemeColor(await fetchThemeColor(ten.id))
   }
 
-  const saveTenantTheme = async (t: AdminTenant, color: string) => {
+  const saveTenantTheme = async (ten: AdminTenant, color: string) => {
     if (!isHexColor(color)) {
-      toast({ variant: 'destructive', title: '主题色格式错误', description: '应为 #RRGGBB 格式' })
+      toast({ variant: 'destructive', title: t('主题色格式错误'), description: t('应为 #RRGGBB 格式') })
       return
     }
     setTenantThemeSaving(true)
     try {
-      await saasRequest(`/admin/tenants/${t.id}/settings/theme`, {
+      await saasRequest(`/admin/tenants/${ten.id}/settings/theme`, {
         method: 'PUT',
         body: JSON.stringify({ primary: color }),
       })
       setTenantThemeColor(color)
-      toast({ title: `已保存，租户「${t.name}」主题色生效` })
+      toast({ title: t('已保存，租户「{name}」主题色生效', { name: ten.name }) })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setTenantThemeSaving(false)
     }
   }
 
-  const clearTenantTheme = async (t: AdminTenant) => {
+  const clearTenantTheme = async (ten: AdminTenant) => {
     setTenantThemeSaving(true)
     try {
-      await saasRequest(`/admin/tenants/${t.id}/settings/theme`, { method: 'DELETE' })
+      await saasRequest(`/admin/tenants/${ten.id}/settings/theme`, { method: 'DELETE' })
       setTenantThemeColor(DEFAULT_BRAND_COLOR)
-      toast({ title: `已恢复平台默认主题色` })
+      toast({ title: t('已恢复平台默认主题色') })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '恢复失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('恢复失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setTenantThemeSaving(false)
@@ -259,10 +261,10 @@ export default function SuperAdminPage() {
           const payload = JSON.parse(atob(token.split('.')[1]))
           if (payload.roleCodes?.includes('platform_admin')) {
             setAuthenticated(true)
-            setAuthUser(payload.username || '管理员')
+            setAuthUser(payload.username || t('管理员'))
           } else {
             setAuthenticated(false)
-            setLoginError('当前账号不是平台管理员')
+            setLoginError(t('当前账号不是平台管理员'))
             removeToken('saas')
           }
         } catch {
@@ -273,7 +275,7 @@ export default function SuperAdminPage() {
         setAuthenticated(false)
       }
     })()
-  }, [])
+  }, [t])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -283,13 +285,13 @@ export default function SuperAdminPage() {
       const data = await authApi.saasLogin({ username: loginUsername, password: loginPassword })
       const payload = JSON.parse(atob(data.token.split('.')[1]))
       if (!payload.roleCodes?.includes('platform_admin')) {
-        throw new Error('当前账号不是平台管理员，无权限访问')
+        throw new Error(t('当前账号不是平台管理员，无权限访问'))
       }
       setToken(data.token, 'saas')
       setAuthenticated(true)
-      setAuthUser(data.user.username || data.user.name || '管理员')
+      setAuthUser(data.user.username || data.user.name || t('管理员'))
     } catch (err) {
-      setLoginError(err instanceof Error ? err.message : '登录失败')
+      setLoginError(err instanceof Error ? err.message : t('登录失败'))
     } finally {
       setLoginLoading(false)
     }
@@ -316,17 +318,17 @@ export default function SuperAdminPage() {
     })
   }
 
-  const loadForm = (t: AdminTenant) => {
+  const loadForm = (ten: AdminTenant) => {
     setFormData({
-      name: t.name,
-      code: t.code,
-      contact: t.contact || '',
-      phone: t.phone || '',
-      domain: t.domain || '',
-      enterpriseCode: t.enterpriseCode || '',
-      address: t.address || '',
-      description: t.description || '',
-      status: t.status,
+      name: ten.name,
+      code: ten.code,
+      contact: ten.contact || '',
+      phone: ten.phone || '',
+      domain: ten.domain || '',
+      enterpriseCode: ten.enterpriseCode || '',
+      address: ten.address || '',
+      description: ten.description || '',
+      status: ten.status,
     })
   }
 
@@ -339,11 +341,11 @@ export default function SuperAdminPage() {
       setTenants(res.items)
       setTotal(res.total)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载租户列表失败')
+      setError(err instanceof Error ? err.message : t('加载租户列表失败'))
     } finally {
       setLoading(false)
     }
-  }, [searchTerm])
+  }, [searchTerm, t])
 
   useEffect(() => {
     if (!authenticated) return
@@ -351,12 +353,12 @@ export default function SuperAdminPage() {
     return () => clearTimeout(timer)
   }, [searchTerm, authenticated, fetchTenants])
 
-  const openAdminModal = (t: AdminTenant) => {
-    setAdminModalTenant(t)
+  const openAdminModal = (ten: AdminTenant) => {
+    setAdminModalTenant(ten)
     setAdminModalOpen(true)
     setAdminInline(null)
     setAdminError(null)
-    fetchAdmins(t.id)
+    fetchAdmins(ten.id)
   }
 
   const fetchAdmins = async (tenantId: string) => {
@@ -366,7 +368,7 @@ export default function SuperAdminPage() {
       const res = await adminFetch<ListResponse<TenantAdmin>>(`/${tenantId}/admins`)
       setAdmins(res.items)
     } catch (err) {
-      setAdminError(err instanceof Error ? err.message : '加载管理员列表失败')
+      setAdminError(err instanceof Error ? err.message : t('加载管理员列表失败'))
     } finally {
       setAdminLoading(false)
     }
@@ -390,7 +392,7 @@ export default function SuperAdminPage() {
   const submitInlineAdmin = async () => {
     if (!adminInline || !adminModalTenant) return
     if (!adminInline.username || !adminInline.name) {
-      setAdminError('账号和姓名不能为空')
+      setAdminError(t('账号和姓名不能为空'))
       return
     }
 
@@ -402,21 +404,23 @@ export default function SuperAdminPage() {
           method: 'PUT',
           body: JSON.stringify({ username: adminInline.username, name: adminInline.name }),
         })
-        toast({ title: '保存成功' })
+        toast({ title: t('保存成功') })
       } else {
         const created = await adminFetch<TenantAdmin>(`/${adminModalTenant.id}/admins`, {
           method: 'POST',
           body: JSON.stringify({ username: adminInline.username, name: adminInline.name }),
         })
         toast({
-          title: '创建成功',
-          description: created.newPassword ? `初始密码：${created.newPassword}` : '创建成功',
+          title: t('创建成功'),
+          description: created.newPassword
+            ? t('初始密码：{pwd}', { pwd: created.newPassword })
+            : t('创建成功'),
         })
       }
       setAdminInline(null)
       await fetchAdmins(adminModalTenant.id)
     } catch (err) {
-      setAdminError(err instanceof Error ? err.message : adminInline.id ? '保存失败' : '创建失败')
+      setAdminError(err instanceof Error ? err.message : t(adminInline.id ? '保存失败' : '创建失败'))
     } finally {
       setAdminInlineSubmitting(false)
     }
@@ -428,13 +432,13 @@ export default function SuperAdminPage() {
       await adminFetch(`/${adminModalTenant.id}/admins/${adminDeleteTarget.id}`, {
         method: 'DELETE',
       })
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       await fetchAdmins(adminModalTenant.id)
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setAdminDeleteTarget(null)
@@ -453,15 +457,15 @@ export default function SuperAdminPage() {
   const submitPassword = async () => {
     if (!passwordAdmin) return
     if (!newPassword) {
-      setPasswordError('请输入新密码')
+      setPasswordError(t('请输入新密码'))
       return
     }
     if (!PASSWORD_RULE.test(newPassword)) {
-      setPasswordError('密码长度至少 8 位，且需同时包含字母和数字')
+      setPasswordError(t('密码长度至少 8 位，且需同时包含字母和数字'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('两次输入的密码不一致')
+      setPasswordError(t('两次输入的密码不一致'))
       return
     }
     setPasswordSubmitting(true)
@@ -471,17 +475,17 @@ export default function SuperAdminPage() {
         method: 'POST',
         body: JSON.stringify({ password: newPassword }),
       })
-      toast({ title: '修改成功' })
+      toast({ title: t('修改成功') })
       setPasswordAdmin(null)
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : '修改密码失败')
+      setPasswordError(err instanceof Error ? err.message : t('修改密码失败'))
     } finally {
       setPasswordSubmitting(false)
     }
   }
 
-  const openSubscriptionModal = (t: AdminTenant) => {
-    setSubscriptionTenant(t)
+  const openSubscriptionModal = (ten: AdminTenant) => {
+    setSubscriptionTenant(ten)
     setSubscriptionDialogOpen(true)
     setSubscriptionLoading(true)
     adminFetch<{
@@ -490,7 +494,7 @@ export default function SuperAdminPage() {
       validUntil?: string
       status: string
       modules: Record<string, boolean>
-    }>(`/${t.id}/subscription`)
+    }>(`/${ten.id}/subscription`)
       .then((res) => {
         const defaultModules: Record<string, boolean> = {}
         Object.keys(platformModuleDefs).forEach((key) => {
@@ -507,8 +511,8 @@ export default function SuperAdminPage() {
       .catch((err) => {
         toast({
           variant: 'destructive',
-          title: '加载套餐失败',
-          description: err instanceof Error ? err.message : '未知错误',
+          title: t('加载套餐失败'),
+          description: err instanceof Error ? err.message : t('未知错误'),
         })
       })
       .finally(() => setSubscriptionLoading(false))
@@ -517,7 +521,7 @@ export default function SuperAdminPage() {
   const handleSubscriptionSubmit = async () => {
     if (!subscriptionTenant) return
     if (!subscriptionData.name) {
-      toast({ variant: 'destructive', title: '套餐名称不能为空' })
+      toast({ variant: 'destructive', title: t('套餐名称不能为空') })
       return
     }
     setSubscriptionSubmitting(true)
@@ -531,13 +535,13 @@ export default function SuperAdminPage() {
           modules: subscriptionData.modules,
         }),
       })
-      toast({ title: '保存成功' })
+      toast({ title: t('保存成功') })
       setSubscriptionDialogOpen(false)
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setSubscriptionSubmitting(false)
@@ -557,15 +561,15 @@ export default function SuperAdminPage() {
     setDialogOpen(true)
   }
 
-  const openEdit = (t: AdminTenant) => {
-    setEditingTenant(t)
-    loadForm(t)
+  const openEdit = (ten: AdminTenant) => {
+    setEditingTenant(ten)
+    loadForm(ten)
     setDialogOpen(true)
   }
 
   const handleSubmit = async () => {
     if (!formData.name) {
-      setError('企业名称不能为空')
+      setError(t('企业名称不能为空'))
       return
     }
     setSubmitting(true)
@@ -584,7 +588,7 @@ export default function SuperAdminPage() {
             description: formData.description || null,
           }),
         })
-        toast({ title: '更新成功' })
+        toast({ title: t('更新成功') })
       } else {
         const code = formData.code || 't' + Math.random().toString(36).substring(2, 9)
         await adminFetch('', {
@@ -600,59 +604,59 @@ export default function SuperAdminPage() {
             description: formData.description || null,
           }),
         })
-        toast({ title: '创建成功' })
+        toast({ title: t('创建成功') })
       }
       setDialogOpen(false)
       await fetchTenants()
     } catch (err) {
-      setError(err instanceof Error ? err.message : editingTenant ? '更新失败' : '创建失败')
+      setError(err instanceof Error ? err.message : t(editingTenant ? '更新失败' : '创建失败'))
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleToggleClick = (t: AdminTenant) => {
-    setToggleTarget(t)
+  const handleToggleClick = (ten: AdminTenant) => {
+    setToggleTarget(ten)
   }
 
   const confirmToggleStatus = async () => {
     if (!toggleTarget) return
     const newStatus = toggleTarget.status === 'active' ? 'inactive' : 'active'
-    const label = newStatus === 'active' ? '启用' : '停用'
+    const label = t(newStatus === 'active' ? '启用' : '停用')
     try {
       await adminFetch(`/${toggleTarget.id}/status`, {
         method: 'POST',
         body: JSON.stringify({ status: newStatus }),
       })
-      toast({ title: `${label}成功` })
+      toast({ title: t('{label}成功', { label }) })
       await fetchTenants()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: `${label}失败`,
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('{label}失败', { label }),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setToggleTarget(null)
     }
   }
 
-  const handleDeleteClick = (t: AdminTenant) => {
+  const handleDeleteClick = (ten: AdminTenant) => {
     setDeleteConfirmName('')
-    setDeleteTarget(t)
+    setDeleteTarget(ten)
   }
 
   const confirmDelete = async () => {
     if (!deleteTarget) return
     try {
       await adminFetch(`/${deleteTarget.id}`, { method: 'DELETE' })
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       await fetchTenants()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setDeleteTarget(null)
@@ -676,16 +680,16 @@ export default function SuperAdminPage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <Shield className="h-8 w-8 text-primary" />
               </div>
-              <h1 className="text-2xl font-bold text-foreground">超级管理员控制台</h1>
-              <p className="mt-2 text-sm text-muted-foreground">请使用平台管理员账号登录</p>
+              <h1 className="text-2xl font-bold text-foreground">{t('超级管理员控制台')}</h1>
+              <p className="mt-2 text-sm text-muted-foreground">{t('请使用平台管理员账号登录')}</p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">账号</Label>
+                <Label htmlFor="username">{t('账号')}</Label>
                 <Input
                   id="username"
-                  placeholder="请输入平台管理员账号"
+                  placeholder={t('请输入平台管理员账号')}
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
                   required
@@ -693,11 +697,11 @@ export default function SuperAdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
+                <Label htmlFor="password">{t('密码')}</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="请输入密码"
+                  placeholder={t('请输入密码')}
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
@@ -719,12 +723,12 @@ export default function SuperAdminPage() {
                 {loginLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    登录中...
+                    {t('登录中...')}
                   </>
                 ) : (
                   <>
                     <LogIn className="mr-2 h-4 w-4" />
-                    登录
+                    {t('登录')}
                   </>
                 )}
               </Button>
@@ -739,18 +743,18 @@ export default function SuperAdminPage() {
     <div className="p-6 bg-[#f5f7fa] min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">超级管理员 - 租户管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">管理所有平台租户，支持增删改查</p>
+          <h1 className="text-xl font-semibold text-foreground">{t('超级管理员 - 租户管理')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('管理所有平台租户，支持增删改查')}</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{authUser}</span>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-1" />
-            退出
+            {t('退出')}
           </Button>
           <Button onClick={openCreate} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            新建租户
+            {t('新建租户')}
           </Button>
         </div>
       </div>
@@ -759,7 +763,7 @@ export default function SuperAdminPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="搜索企业名称或标识..."
+            placeholder={t('搜索企业名称或标识...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
@@ -774,9 +778,9 @@ export default function SuperAdminPage() {
             <Palette className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold">平台主题配置</h2>
+            <h2 className="text-sm font-semibold">{t('平台主题配置')}</h2>
             <p className="text-xs text-muted-foreground">
-              设置全平台主题色，保存后对所有用户实时生效（刷新或新开页面即同步）；可在下方租户列表中为单个租户单独配置
+              {t('设置全平台主题色，保存后对所有用户实时生效（刷新或新开页面即同步）；可在下方租户列表中为单个租户单独配置')}
             </p>
           </div>
         </div>
@@ -788,7 +792,7 @@ export default function SuperAdminPage() {
             submitting={themeSaving}
             secondary={[
               {
-                label: '恢复默认',
+                label: t('恢复默认'),
                 onClick: () => {
                   setThemeColor(DEFAULT_BRAND_COLOR)
                   void saveTheme(DEFAULT_BRAND_COLOR)
@@ -815,84 +819,84 @@ export default function SuperAdminPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground w-24">租户标识</TableHead>
-                  <TableHead className="text-muted-foreground">企业名称</TableHead>
-                  <TableHead className="text-muted-foreground">联系人</TableHead>
-                  <TableHead className="text-muted-foreground">联系电话</TableHead>
-                  <TableHead className="text-muted-foreground">状态</TableHead>
-                  <TableHead className="text-muted-foreground">创建时间</TableHead>
-                  <TableHead className="text-muted-foreground text-right w-16">操作</TableHead>
+                  <TableHead className="text-muted-foreground w-24">{t('租户标识')}</TableHead>
+                  <TableHead className="text-muted-foreground">{t('企业名称')}</TableHead>
+                  <TableHead className="text-muted-foreground">{t('联系人')}</TableHead>
+                  <TableHead className="text-muted-foreground">{t('联系电话')}</TableHead>
+                  <TableHead className="text-muted-foreground">{t('状态')}</TableHead>
+                  <TableHead className="text-muted-foreground">{t('创建时间')}</TableHead>
+                  <TableHead className="text-muted-foreground text-right w-16">{t('操作')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tenants.map((t) => (
-                  <TableRow key={t.id} className="border-border group">
+                {tenants.map((ten) => (
+                  <TableRow key={ten.id} className="border-border group">
                     <TableCell className="font-mono text-sm text-muted-foreground">
-                      {t.code}
+                      {ten.code}
                     </TableCell>
-                    <TableCell className="font-medium">{t.name}</TableCell>
-                    <TableCell>{t.contact || '-'}</TableCell>
-                    <TableCell className="text-muted-foreground">{t.phone || '-'}</TableCell>
+                    <TableCell className="font-medium">{ten.name}</TableCell>
+                    <TableCell>{ten.contact || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{ten.phone || '-'}</TableCell>
                     <TableCell>
-                      <StatusBadge status={t.status} />
+                      <StatusBadge status={ten.status} />
                     </TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {formatDate(t.createdAt)}
+                      {formatDate(ten.createdAt)}
                     </TableCell>
                     <TableRowActions>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs"
-                        onClick={() => openAdminModal(t)}
+                        onClick={() => openAdminModal(ten)}
                       >
                         <Users className="mr-1 h-3 w-3" />
-                        学校管理员配置
+                        {t('学校管理员配置')}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs"
-                        onClick={() => openSubscriptionModal(t)}
+                        onClick={() => openSubscriptionModal(ten)}
                       >
                         <Package className="mr-1 h-3 w-3" />
-                        套餐配置
+                        {t('套餐配置')}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs"
-                        onClick={() => openTenantTheme(t)}
+                        onClick={() => openTenantTheme(ten)}
                       >
                         <Palette className="mr-1 h-3 w-3" />
-                        主题配置
+                        {t('主题配置')}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs"
-                        onClick={() => openEdit(t)}
+                        onClick={() => openEdit(ten)}
                       >
                         <Pencil className="mr-1 h-3 w-3" />
-                        编辑
+                        {t('编辑')}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs"
-                        onClick={() => handleToggleClick(t)}
+                        onClick={() => handleToggleClick(ten)}
                       >
                         <Power className="mr-1 h-3 w-3" />
-                        {t.status === 'active' ? '停用' : '启用'}
+                        {t(ten.status === 'active' ? '停用' : '启用')}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => handleDeleteClick(t)}
+                        onClick={() => handleDeleteClick(ten)}
                       >
                         <Trash2 className="mr-1 h-3 w-3" />
-                        删除
+                        {t('删除')}
                       </Button>
                     </TableRowActions>
                   </TableRow>
@@ -903,7 +907,7 @@ export default function SuperAdminPage() {
                       colSpan={7}
                       className="text-center text-sm text-muted-foreground py-8"
                     >
-                      暂无租户
+                      {t('暂无租户')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -912,7 +916,7 @@ export default function SuperAdminPage() {
           </div>
 
           <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-            <span>共 {total} 条记录</span>
+            <span>{t('共 {total} 条记录', { total })}</span>
           </div>
         </>
       )}
@@ -920,19 +924,19 @@ export default function SuperAdminPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingTenant ? '编辑租户' : '新增租户'}</DialogTitle>
+            <DialogTitle>{t(editingTenant ? '编辑租户' : '新增租户')}</DialogTitle>
             <DialogDescription>
-              {editingTenant ? '修改租户信息，租户标识创建后不可修改' : '创建新的平台租户'}
+              {t(editingTenant ? '修改租户信息，租户标识创建后不可修改' : '创建新的平台租户')}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>
-                  租户标识 <span className="text-destructive">*</span>
+                  {t('租户标识')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  placeholder="唯一标识，创建后不可修改"
+                  placeholder={t('唯一标识，创建后不可修改')}
                   value={formData.code}
                   onChange={(e) => setFormData((p) => ({ ...p, code: e.target.value }))}
                   disabled={!!editingTenant}
@@ -940,7 +944,7 @@ export default function SuperAdminPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>状态</Label>
+                <Label>{t('状态')}</Label>
                 <Select
                   value={formData.status}
                   onValueChange={(v) =>
@@ -951,35 +955,35 @@ export default function SuperAdminPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">启用</SelectItem>
-                    <SelectItem value="inactive">停用</SelectItem>
+                    <SelectItem value="active">{t('启用')}</SelectItem>
+                    <SelectItem value="inactive">{t('停用')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid gap-2">
               <Label>
-                企业名称 <span className="text-destructive">*</span>
+                {t('企业名称')} <span className="text-destructive">*</span>
               </Label>
               <Input
-                placeholder="如：清华大学"
+                placeholder={t('如：清华大学')}
                 value={formData.name}
                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>联系人</Label>
+                <Label>{t('联系人')}</Label>
                 <Input
-                  placeholder="企业联系人姓名"
+                  placeholder={t('企业联系人姓名')}
                   value={formData.contact}
                   onChange={(e) => setFormData((p) => ({ ...p, contact: e.target.value }))}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>联系电话</Label>
+                <Label>{t('联系电话')}</Label>
                 <Input
-                  placeholder="联系电话"
+                  placeholder={t('联系电话')}
                   value={formData.phone}
                   onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
                 />
@@ -987,34 +991,34 @@ export default function SuperAdminPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>绑定域名</Label>
+                <Label>{t('绑定域名')}</Label>
                 <Input
-                  placeholder="如：xxx.edu.cn"
+                  placeholder={t('如：xxx.edu.cn')}
                   value={formData.domain}
                   onChange={(e) => setFormData((p) => ({ ...p, domain: e.target.value }))}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>企业代码</Label>
+                <Label>{t('企业代码')}</Label>
                 <Input
-                  placeholder="统一社会信用代码"
+                  placeholder={t('统一社会信用代码')}
                   value={formData.enterpriseCode}
                   onChange={(e) => setFormData((p) => ({ ...p, enterpriseCode: e.target.value }))}
                 />
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>企业地址</Label>
+              <Label>{t('企业地址')}</Label>
               <Input
-                placeholder="企业详细地址"
+                placeholder={t('企业详细地址')}
                 value={formData.address}
                 onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
               />
             </div>
             <div className="grid gap-2">
-              <Label>企业简介</Label>
+              <Label>{t('企业简介')}</Label>
               <Textarea
-                placeholder="企业简介描述"
+                placeholder={t('企业简介描述')}
                 value={formData.description}
                 onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
                 rows={3}
@@ -1028,11 +1032,11 @@ export default function SuperAdminPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleSubmit} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {editingTenant ? '保存' : '创建'}
+              {t(editingTenant ? '保存' : '创建')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1041,9 +1045,11 @@ export default function SuperAdminPage() {
       <Dialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>套餐配置</DialogTitle>
+            <DialogTitle>{t('套餐配置')}</DialogTitle>
             <DialogDescription>
-              {subscriptionTenant ? `配置租户「${subscriptionTenant.name}」的订阅套餐` : ''}
+              {subscriptionTenant
+                ? t('配置租户「{name}」的订阅套餐', { name: subscriptionTenant.name })
+                : ''}
             </DialogDescription>
           </DialogHeader>
 
@@ -1056,16 +1062,16 @@ export default function SuperAdminPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>
-                    套餐名称 <span className="text-destructive">*</span>
+                    {t('套餐名称')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
-                    placeholder="如：默认全功能套餐"
+                    placeholder={t('如：默认全功能套餐')}
                     value={subscriptionData.name}
                     onChange={(e) => setSubscriptionData((p) => ({ ...p, name: e.target.value }))}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label>有效期至</Label>
+                  <Label>{t('有效期至')}</Label>
                   <Input
                     type="date"
                     value={subscriptionData.validUntil}
@@ -1076,7 +1082,7 @@ export default function SuperAdminPage() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label>状态</Label>
+                <Label>{t('状态')}</Label>
                 <Select
                   value={subscriptionData.status}
                   onValueChange={(v) =>
@@ -1087,13 +1093,13 @@ export default function SuperAdminPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">启用</SelectItem>
-                    <SelectItem value="inactive">停用</SelectItem>
+                    <SelectItem value="active">{t('启用')}</SelectItem>
+                    <SelectItem value="inactive">{t('停用')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>平台模块</Label>
+                <Label>{t('平台模块')}</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 rounded-lg border border-border p-3">
                   {Object.entries(platformModuleDefs).map(([key, def]) => (
                     <label
@@ -1119,14 +1125,14 @@ export default function SuperAdminPage() {
               onClick={() => setSubscriptionDialogOpen(false)}
               disabled={subscriptionSubmitting}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={handleSubscriptionSubmit}
               disabled={subscriptionLoading || subscriptionSubmitting}
             >
               {subscriptionSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              保存
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1135,10 +1141,12 @@ export default function SuperAdminPage() {
       <Dialog open={tenantThemeTarget !== null} onOpenChange={(open) => !open && setTenantThemeTarget(null)}>
         <DialogContent size="sm">
           <DialogHeader>
-            <DialogTitle>租户主题配置</DialogTitle>
+            <DialogTitle>{t('租户主题配置')}</DialogTitle>
             <DialogDescription>
               {tenantThemeTarget
-                ? `为租户「${tenantThemeTarget.name}」单独配置主题色，该租户下所有用户生效；不配置则使用平台默认色`
+                ? t('为租户「{name}」单独配置主题色，该租户下所有用户生效；不配置则使用平台默认色', {
+                    name: tenantThemeTarget.name,
+                  })
                 : ''}
             </DialogDescription>
           </DialogHeader>
@@ -1150,12 +1158,12 @@ export default function SuperAdminPage() {
                 if (tenantThemeTarget) void saveTenantTheme(tenantThemeTarget, color)
               }}
               submitting={tenantThemeSaving}
-              submitLabel="保存"
+              submitLabel={t('保存')}
               secondary={
                 tenantThemeTarget
                   ? [
                       {
-                        label: '恢复平台默认',
+                        label: t('恢复平台默认'),
                         onClick: () => clearTenantTheme(tenantThemeTarget),
                         disabled: tenantThemeSaving,
                       },
@@ -1172,13 +1180,20 @@ export default function SuperAdminPage() {
         onOpenChange={(open) => {
           if (!open) setToggleTarget(null)
         }}
-        title={toggleTarget ? `${toggleTarget.status === 'active' ? '停用' : '启用'}租户` : ''}
-        description={
+        title={
           toggleTarget
-            ? `确定${toggleTarget.status === 'active' ? '停用' : '启用'}租户「${toggleTarget.name}」吗？`
+            ? t('{action}租户', { action: toggleTarget.status === 'active' ? t('停用') : t('启用') })
             : ''
         }
-        confirmText={toggleTarget ? (toggleTarget.status === 'active' ? '停用' : '启用') : ''}
+        description={
+          toggleTarget
+            ? t('确定{action}租户「{name}」吗？', {
+                action: toggleTarget.status === 'active' ? t('停用') : t('启用'),
+                name: toggleTarget.name,
+              })
+            : ''
+        }
+        confirmText={toggleTarget ? t(toggleTarget.status === 'active' ? '停用' : '启用') : ''}
         onConfirm={confirmToggleStatus}
       />
       <Dialog
@@ -1189,16 +1204,18 @@ export default function SuperAdminPage() {
       >
         <DialogContent size="sm">
           <DialogHeader>
-            <DialogTitle>确认删除</DialogTitle>
+            <DialogTitle>{t('确认删除')}</DialogTitle>
             <DialogDescription>
               {deleteTarget
-                ? `确定删除租户「${deleteTarget.name}」吗？此操作不可撤销。请输入租户名称以确认删除。`
+                ? t('确定删除租户「{name}」吗？此操作不可撤销。请输入租户名称以确认删除。', {
+                    name: deleteTarget.name,
+                  })
                 : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2 py-2">
             <Input
-              placeholder={deleteTarget ? `请输入租户名称「${deleteTarget.name}」` : ''}
+              placeholder={deleteTarget ? t('请输入租户名称「{name}」', { name: deleteTarget.name }) : ''}
               value={deleteConfirmName}
               onChange={(e) => setDeleteConfirmName(e.target.value)}
               autoFocus
@@ -1206,19 +1223,19 @@ export default function SuperAdminPage() {
             {deleteConfirmName.trim() !== '' &&
               deleteTarget &&
               deleteConfirmName.trim() !== deleteTarget.name && (
-                <p className="text-sm text-destructive">租户名称不匹配</p>
+                <p className="text-sm text-destructive">{t('租户名称不匹配')}</p>
               )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>
-              取消
+              {t('取消')}
             </Button>
             <Button
               variant="destructive"
               disabled={!deleteTarget || deleteConfirmName.trim() !== deleteTarget.name}
               onClick={confirmDelete}
             >
-              删除
+              {t('删除')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1228,14 +1245,16 @@ export default function SuperAdminPage() {
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
           <DialogHeader className="flex-row items-center justify-between">
             <div>
-              <DialogTitle>学校管理员配置</DialogTitle>
+              <DialogTitle>{t('学校管理员配置')}</DialogTitle>
               <DialogDescription>
-                {adminModalTenant ? `管理租户「${adminModalTenant.name}」的学校管理员账号` : ''}
+                {adminModalTenant
+                  ? t('管理租户「{name}」的学校管理员账号', { name: adminModalTenant.name })
+                  : ''}
               </DialogDescription>
             </div>
             <Button size="sm" onClick={startAddAdmin} disabled={adminInline !== null}>
               <Plus className="h-4 w-4 mr-1" />
-              新增
+              {t('新增')}
             </Button>
           </DialogHeader>
 
@@ -1250,10 +1269,10 @@ export default function SuperAdminPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-muted-foreground">账号</TableHead>
-                    <TableHead className="text-muted-foreground">姓名</TableHead>
-                    <TableHead className="text-muted-foreground">状态</TableHead>
-                    <TableHead className="text-muted-foreground text-right w-32">操作</TableHead>
+                    <TableHead className="text-muted-foreground">{t('账号')}</TableHead>
+                    <TableHead className="text-muted-foreground">{t('姓名')}</TableHead>
+                    <TableHead className="text-muted-foreground">{t('状态')}</TableHead>
+                    <TableHead className="text-muted-foreground text-right w-32">{t('操作')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1261,7 +1280,7 @@ export default function SuperAdminPage() {
                     <TableRow className="border-border bg-slate-50/50">
                       <TableCell>
                         <Input
-                          placeholder="登录账号"
+                          placeholder={t('登录账号')}
                           value={adminInline.username}
                           onChange={(e) =>
                             setAdminInline((p) => (p ? { ...p, username: e.target.value } : p))
@@ -1271,7 +1290,7 @@ export default function SuperAdminPage() {
                       </TableCell>
                       <TableCell>
                         <Input
-                          placeholder="姓名"
+                          placeholder={t('姓名')}
                           value={adminInline.name}
                           onChange={(e) =>
                             setAdminInline((p) => (p ? { ...p, name: e.target.value } : p))
@@ -1291,7 +1310,7 @@ export default function SuperAdminPage() {
                             {adminInlineSubmitting ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
-                              '保存'
+                              t('保存')
                             )}
                           </Button>
                           <Button
@@ -1301,7 +1320,7 @@ export default function SuperAdminPage() {
                             onClick={cancelInlineAdmin}
                             disabled={adminInlineSubmitting}
                           >
-                            取消
+                            {t('取消')}
                           </Button>
                         </div>
                       </TableCell>
@@ -1354,7 +1373,7 @@ export default function SuperAdminPage() {
                                     {adminInlineSubmitting ? (
                                       <Loader2 className="h-3 w-3 animate-spin" />
                                     ) : (
-                                      '保存'
+                                      t('保存')
                                     )}
                                   </Button>
                                   <Button
@@ -1364,7 +1383,7 @@ export default function SuperAdminPage() {
                                     onClick={cancelInlineAdmin}
                                     disabled={adminInlineSubmitting}
                                   >
-                                    取消
+                                    {t('取消')}
                                   </Button>
                                 </div>
                               </TableCell>
@@ -1385,7 +1404,7 @@ export default function SuperAdminPage() {
                                     onClick={() => handlePasswordClick(a)}
                                   >
                                     <KeyRound className="mr-1 h-3 w-3" />
-                                    修改密码
+                                    {t('修改密码')}
                                   </Button>
                                   <Button
                                     variant="ghost"
@@ -1394,7 +1413,7 @@ export default function SuperAdminPage() {
                                     onClick={() => startEditAdmin(a)}
                                   >
                                     <Pencil className="mr-1 h-3 w-3" />
-                                    编辑
+                                    {t('编辑')}
                                   </Button>
                                   <Button
                                     variant="ghost"
@@ -1403,7 +1422,7 @@ export default function SuperAdminPage() {
                                     onClick={() => setAdminDeleteTarget(a)}
                                   >
                                     <Trash2 className="mr-1 h-3 w-3" />
-                                    删除
+                                    {t('删除')}
                                   </Button>
                                 </div>
                               </TableCell>
@@ -1417,7 +1436,7 @@ export default function SuperAdminPage() {
                             colSpan={4}
                             className="text-center text-sm text-muted-foreground py-8"
                           >
-                            暂无学校管理员
+                            {t('暂无学校管理员')}
                           </TableCell>
                         </TableRow>
                       )}
@@ -1438,30 +1457,33 @@ export default function SuperAdminPage() {
       >
         <DialogContent size="sm">
           <DialogHeader>
-            <DialogTitle>修改密码</DialogTitle>
+            <DialogTitle>{t('修改密码')}</DialogTitle>
             <DialogDescription>
               {passwordAdmin
-                ? `为 ${passwordAdmin.name}（${passwordAdmin.username}）设置新密码`
+                ? t('为 {name}（{username}）设置新密码', {
+                    name: passwordAdmin.name,
+                    username: passwordAdmin.username,
+                  })
                 : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="set-password">新密码</Label>
+              <Label htmlFor="set-password">{t('新密码')}</Label>
               <Input
                 id="set-password"
                 type="password"
-                placeholder="至少 8 位，包含字母和数字"
+                placeholder={t('至少 8 位，包含字母和数字')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="set-confirm-password">确认新密码</Label>
+              <Label htmlFor="set-confirm-password">{t('确认新密码')}</Label>
               <Input
                 id="set-confirm-password"
                 type="password"
-                placeholder="再次输入新密码"
+                placeholder={t('再次输入新密码')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
@@ -1474,14 +1496,14 @@ export default function SuperAdminPage() {
               onClick={() => setPasswordAdmin(null)}
               disabled={passwordSubmitting}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={submitPassword}
               disabled={passwordSubmitting || !newPassword || !confirmPassword}
             >
               {passwordSubmitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              保存
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1492,13 +1514,16 @@ export default function SuperAdminPage() {
         onOpenChange={(open) => {
           if (!open) setAdminDeleteTarget(null)
         }}
-        title="确认删除"
+        title={t('确认删除')}
         description={
           adminDeleteTarget
-            ? `确定删除管理员「${adminDeleteTarget.name}（${adminDeleteTarget.username}）」吗？此操作不可撤销。`
+            ? t('确定删除管理员「{name}（{username}）」吗？此操作不可撤销。', {
+                name: adminDeleteTarget.name,
+                username: adminDeleteTarget.username,
+              })
             : ''
         }
-        confirmText="删除"
+        confirmText={t('删除')}
         variant="destructive"
         onConfirm={handleAdminDelete}
       />

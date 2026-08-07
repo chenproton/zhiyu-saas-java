@@ -46,6 +46,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { SchoolAdminManager } from './_components/school-admin-manager'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface Tenant {
   id: string
@@ -148,28 +149,29 @@ export default function TenantPage() {
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const { toast } = useToast()
+  const t = useT()
 
   const cities = useMemo(
     () => (formData.province ? CHINA_REGION[formData.province] || [] : []),
     [formData.province],
   )
 
-  const loadTenantToForm = (t: Tenant) => {
+  const loadTenantToForm = (ten: Tenant) => {
     setFormData({
-      name: t.enterpriseName,
-      shortName: t.shortName === '-' ? '' : t.shortName,
-      province: PROVINCES.includes(t.province) ? t.province : PROVINCES[0],
-      city: t.city !== '-' && t.city ? t.city : CHINA_REGION[PROVINCES[0]][0],
-      contact: t.contact === '-' ? '' : t.contact,
-      phone: t.phone === '-' ? '' : t.phone,
-      contactPhone: t.contactPhone === '-' ? '' : t.contactPhone,
-      domain: t.domain === '-' ? '' : t.domain,
-      address: t.address === '-' ? '' : t.address,
-      website: t.website === '-' ? '' : t.website,
-      enterpriseCode: t.enterpriseCode === '-' ? '' : t.enterpriseCode,
-      description: t.description === '-' ? '' : t.description,
-      educationLevel: t.educationLevel === '-' ? '' : t.educationLevel,
-      educationNature: t.educationNature === '-' ? '' : t.educationNature,
+      name: ten.enterpriseName,
+      shortName: ten.shortName === '-' ? '' : ten.shortName,
+      province: PROVINCES.includes(ten.province) ? ten.province : PROVINCES[0],
+      city: ten.city !== '-' && ten.city ? ten.city : CHINA_REGION[PROVINCES[0]][0],
+      contact: ten.contact === '-' ? '' : ten.contact,
+      phone: ten.phone === '-' ? '' : ten.phone,
+      contactPhone: ten.contactPhone === '-' ? '' : ten.contactPhone,
+      domain: ten.domain === '-' ? '' : ten.domain,
+      address: ten.address === '-' ? '' : ten.address,
+      website: ten.website === '-' ? '' : ten.website,
+      enterpriseCode: ten.enterpriseCode === '-' ? '' : ten.enterpriseCode,
+      description: ten.description === '-' ? '' : ten.description,
+      educationLevel: ten.educationLevel === '-' ? '' : ten.educationLevel,
+      educationNature: ten.educationNature === '-' ? '' : ten.educationNature,
     })
   }
 
@@ -179,15 +181,15 @@ export default function TenantPage() {
     setError(null)
     try {
       const res = await portalRequest<BackendTenant>(`/tenants/${tenantId}`)
-      const t = mapBackendTenant(res)
-      setTenant(t)
-      loadTenantToForm(t)
+      const ten = mapBackendTenant(res)
+      setTenant(ten)
+      loadTenantToForm(ten)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('加载失败'))
     } finally {
       setLoading(false)
     }
-  }, [tenantId])
+  }, [tenantId, t])
 
   useEffect(() => {
     if (authLoading) return
@@ -199,7 +201,7 @@ export default function TenantPage() {
 
   const handleUpdate = async () => {
     if (!formData.name || !tenant) {
-      setError('请填写学校名称')
+      setError(t('请填写学校名称'))
       return
     }
     setSubmitting(true)
@@ -229,10 +231,10 @@ export default function TenantPage() {
         }),
       })
       setIsEditDialogOpen(false)
-      toast({ title: '保存成功' })
+      toast({ title: t('保存成功') })
       await fetchTenant()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新失败')
+      setError(err instanceof Error ? err.message : t('更新失败'))
     } finally {
       setSubmitting(false)
     }
@@ -255,15 +257,15 @@ export default function TenantPage() {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
         <Spinner className="h-5 w-5" />
-        加载中...
+        {t('加载中...')}
       </div>
     )
 
   return (
     <PortalCrudPage
-      title="租户信息管理"
-      description="查看和编辑当前租户及学校信息"
-      entityLabel="租户"
+      title={t('租户信息管理')}
+      description={t('查看和编辑当前租户及学校信息')}
+      entityLabel={t('租户')}
       items={[]}
       loading={false}
       error={error}
@@ -282,7 +284,7 @@ export default function TenantPage() {
             }}
           >
             <Pencil className="h-4 w-4 mr-1" />
-            编辑
+            {t('编辑')}
           </Button>
         )
       }
@@ -301,7 +303,7 @@ export default function TenantPage() {
                   </div>
                   <StatusBadge
                     status={tenant.status}
-                    label={tenant.status === 'active' ? '启用' : '停用'}
+                    label={t(tenant.status === 'active' ? '启用' : '停用')}
                     className="ml-auto"
                   />
                 </div>
@@ -309,25 +311,25 @@ export default function TenantPage() {
               <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <F
                   icon={Phone}
-                  label="联系人"
+                  label={t('联系人')}
                   v={`${tenant.contact} / ${tenant.contactPhone !== '-' ? tenant.contactPhone : tenant.phone}`}
                 />
-                <F icon={School} label="学校简称" v={tenant.shortName} />
-                <F icon={BookOpen} label="办学层次" v={tenant.educationLevel} />
-                <F icon={MapPin} label="省份/城市" v={`${tenant.province} ${tenant.city}`} />
-                <F icon={Globe} label="官网" v={tenant.website} />
-                <F icon={Globe} label="绑定域名" v={tenant.domain} />
-                <F icon={MapPin} label="学校地址" v={tenant.address} />
-                <F icon={Hash} label="学校代码" v={tenant.enterpriseCode} />
-                <F icon={Calendar} label="创建时间" v={tenant.createdAt} />
-                <F icon={Shield} label="管理员" v={`${tenant.adminCount} 人`} />
+                <F icon={School} label={t('学校简称')} v={tenant.shortName} />
+                <F icon={BookOpen} label={t('办学层次')} v={tenant.educationLevel} />
+                <F icon={MapPin} label={t('省份/城市')} v={`${tenant.province} ${tenant.city}`} />
+                <F icon={Globe} label={t('官网')} v={tenant.website} />
+                <F icon={Globe} label={t('绑定域名')} v={tenant.domain} />
+                <F icon={MapPin} label={t('学校地址')} v={tenant.address} />
+                <F icon={Hash} label={t('学校代码')} v={tenant.enterpriseCode} />
+                <F icon={Calendar} label={t('创建时间')} v={tenant.createdAt} />
+                <F icon={Shield} label={t('管理员')} v={t('{n}人', { n: tenant.adminCount })} />
               </div>
               {tenant.description && tenant.description !== '-' && (
                 <div className="px-6 py-4 border-t border-gray-100">
                   <div className="flex items-start gap-3">
                     <FileText className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-xs text-muted-foreground">学校简介</p>
+                      <p className="text-xs text-muted-foreground">{t('学校简介')}</p>
                       <p className="text-sm mt-1 leading-relaxed">{tenant.description}</p>
                     </div>
                   </div>
@@ -346,29 +348,29 @@ export default function TenantPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>编辑信息</DialogTitle>
-            <DialogDescription>修改租户与学校信息</DialogDescription>
+            <DialogTitle>{t('编辑信息')}</DialogTitle>
+            <DialogDescription>{t('修改租户与学校信息')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
             <FormFieldGrid cols={2}>
-              <FormFieldRow label="租户标识">
+              <FormFieldRow label={t('租户标识')}>
                 <Input disabled className="bg-muted font-mono" value={tenant?.code || ''} />
               </FormFieldRow>
-              <FormFieldRow label="状态">
+              <FormFieldRow label={t('状态')}>
                 <Input
                   disabled
                   className="bg-muted"
-                  value={tenant?.status === 'active' ? '启用' : '停用'}
+                  value={t(tenant?.status === 'active' ? '启用' : '停用')}
                 />
               </FormFieldRow>
             </FormFieldGrid>
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
-                基础信息
+                {t('基础信息')}
               </Label>
               <div className="space-y-4">
-                <FormFieldRow label="学校名称" required>
+                <FormFieldRow label={t('学校名称')} required>
                   <IconInput
                     icon={Building}
                     value={formData.name || ''}
@@ -376,14 +378,14 @@ export default function TenantPage() {
                   />
                 </FormFieldRow>
                 <FormFieldGrid cols={2}>
-                  <FormFieldRow label="学校代码">
+                  <FormFieldRow label={t('学校代码')}>
                     <IconInput
                       icon={Hash}
                       value={formData.enterpriseCode || ''}
                       onChange={(e) => setF('enterpriseCode', e.target.value)}
                     />
                   </FormFieldRow>
-                  <FormFieldRow label="学校简称">
+                  <FormFieldRow label={t('学校简称')}>
                     <IconInput
                       icon={School}
                       value={formData.shortName || ''}
@@ -392,47 +394,47 @@ export default function TenantPage() {
                   </FormFieldRow>
                 </FormFieldGrid>
                 <FormFieldGrid cols={2}>
-                  <FormFieldRow label="办学层次">
+                  <FormFieldRow label={t('办学层次')}>
                     <Select
                       value={formData.educationLevel || ''}
                       onValueChange={(v) => setF('educationLevel', v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择" />
+                        <SelectValue placeholder={t('请选择')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="普通本科院校">普通本科院校</SelectItem>
-                        <SelectItem value="职业本科院校">职业本科院校</SelectItem>
-                        <SelectItem value="高职院校">高职院校</SelectItem>
-                        <SelectItem value="中等专业学校">中等专业学校</SelectItem>
-                        <SelectItem value="职业高中">职业高中</SelectItem>
-                        <SelectItem value="技工学校">技工学校</SelectItem>
+                        <SelectItem value="普通本科院校">{t('普通本科院校')}</SelectItem>
+                        <SelectItem value="职业本科院校">{t('职业本科院校')}</SelectItem>
+                        <SelectItem value="高职院校">{t('高职院校')}</SelectItem>
+                        <SelectItem value="中等专业学校">{t('中等专业学校')}</SelectItem>
+                        <SelectItem value="职业高中">{t('职业高中')}</SelectItem>
+                        <SelectItem value="技工学校">{t('技工学校')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
-                  <FormFieldRow label="办学性质">
+                  <FormFieldRow label={t('办学性质')}>
                     <Select
                       value={formData.educationNature || ''}
                       onValueChange={(v) => setF('educationNature', v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择" />
+                        <SelectValue placeholder={t('请选择')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="公办">公办</SelectItem>
-                        <SelectItem value="民办">民办</SelectItem>
+                        <SelectItem value="公办">{t('公办')}</SelectItem>
+                        <SelectItem value="民办">{t('民办')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
                 </FormFieldGrid>
                 <FormFieldGrid cols={2}>
-                  <FormFieldRow label="省份">
+                  <FormFieldRow label={t('省份')}>
                     <Select
                       value={formData.province || ''}
                       onValueChange={(v) => setF('province', v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择省份" />
+                        <SelectValue placeholder={t('请选择省份')} />
                       </SelectTrigger>
                       <SelectContent>
                         {PROVINCES.map((p) => (
@@ -443,7 +445,7 @@ export default function TenantPage() {
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
-                  <FormFieldRow label="城市">
+                  <FormFieldRow label={t('城市')}>
                     <Select
                       value={formData.city || ''}
                       onValueChange={(v) => setF('city', v)}
@@ -451,7 +453,7 @@ export default function TenantPage() {
                     >
                       <SelectTrigger>
                         <SelectValue
-                          placeholder={formData.province ? '请选择城市' : '请先选省份'}
+                          placeholder={t(formData.province ? '请选择城市' : '请先选省份')}
                         />
                       </SelectTrigger>
                       <SelectContent>
@@ -464,7 +466,7 @@ export default function TenantPage() {
                     </Select>
                   </FormFieldRow>
                 </FormFieldGrid>
-                <FormFieldRow label="学校简介">
+                <FormFieldRow label={t('学校简介')}>
                   <Textarea
                     value={formData.description || ''}
                     onChange={(e) => setF('description', e.target.value)}
@@ -476,18 +478,18 @@ export default function TenantPage() {
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
-                联系信息
+                {t('联系信息')}
               </Label>
               <div className="space-y-4">
                 <FormFieldGrid cols={2}>
-                  <FormFieldRow label="联系人">
+                  <FormFieldRow label={t('联系人')}>
                     <IconInput
                       icon={User}
                       value={formData.contact || ''}
                       onChange={(e) => setF('contact', e.target.value)}
                     />
                   </FormFieldRow>
-                  <FormFieldRow label="联系电话">
+                  <FormFieldRow label={t('联系电话')}>
                     <IconInput
                       icon={Phone}
                       value={formData.contactPhone || formData.phone || ''}
@@ -498,7 +500,7 @@ export default function TenantPage() {
                     />
                   </FormFieldRow>
                 </FormFieldGrid>
-                <FormFieldRow label="学校地址">
+                <FormFieldRow label={t('学校地址')}>
                   <IconInput
                     icon={MapPin}
                     value={formData.address || ''}
@@ -510,11 +512,11 @@ export default function TenantPage() {
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
-                网络信息
+                {t('网络信息')}
               </Label>
               <div className="space-y-4">
                 <FormFieldGrid cols={2}>
-                  <FormFieldRow label="官网">
+                  <FormFieldRow label={t('官网')}>
                     <IconInput
                       icon={Globe}
                       value={formData.website || ''}
@@ -522,7 +524,7 @@ export default function TenantPage() {
                       placeholder="https://www.example.edu.cn"
                     />
                   </FormFieldRow>
-                  <FormFieldRow label="绑定域名">
+                  <FormFieldRow label={t('绑定域名')}>
                     <IconInput
                       icon={Monitor}
                       value={formData.domain || ''}
@@ -544,10 +546,11 @@ export default function TenantPage() {
               onClick={() => setIsEditDialogOpen(false)}
               disabled={submitting}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleUpdate} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}保存
+              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>

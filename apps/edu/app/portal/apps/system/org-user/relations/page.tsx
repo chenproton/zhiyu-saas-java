@@ -17,6 +17,7 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { UserSelector } from '@/components/shared/user-selector'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface RelationItem {
   id: string
@@ -44,6 +45,7 @@ const typeLabelMap: Record<string, string> = Object.fromEntries(
 )
 
 export default function RelationsPage() {
+  const t = useT()
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
   const [searchText, setSearchText] = useState('')
@@ -68,13 +70,13 @@ export default function RelationsPage() {
         targetId: item.targetId,
         relationType: item.relationType,
       })
-      toast({ title: '创建成功' })
+      toast({ title: t('创建成功') })
       setSearchText('')
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '创建失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('创建失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
@@ -82,68 +84,68 @@ export default function RelationsPage() {
   const handleDelete = async (id: string) => {
     try {
       await portalUserRelationApi.delete(id)
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       await refresh()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
 
   return (
     <PortalCrudPage<RelationItem>
-      title="人员关系管理"
-      description="维护用户之间的上下级、协同等业务关系"
-      entityLabel="关系"
+      title={t('人员关系管理')}
+      description={t('维护用户之间的上下级、协同等业务关系')}
+      entityLabel={t('关系')}
       items={relations ?? []}
       loading={loading}
       error={error?.message ?? null}
       onRetry={refresh}
       colSpan={8}
-      searchPlaceholder="搜索关系..."
+      searchPlaceholder={t('搜索关系...')}
       searchValue={searchText}
       onSearchChange={setSearchText}
       hideImport
-      createButtonLabel="新建人员关系"
+      createButtonLabel={t('新建人员关系')}
       createDefault={() => ({ id: '', initiatorId: '', targetId: '', relationType: '' })}
       renderForm={(item, setItem) => (
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">关系发起人</label>
+            <label className="text-sm font-medium">{t('关系发起人')}</label>
             <UserSelector
               value={item.initiatorId ? [item.initiatorId] : []}
               onChange={(ids) => setItem({ ...item, initiatorId: ids[0] || '' })}
               multiple={false}
-              placeholder="搜索选择用户..."
+              placeholder={t('搜索选择用户...')}
               tenantId={tenantId}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">关系目标人</label>
+            <label className="text-sm font-medium">{t('关系目标人')}</label>
             <UserSelector
               value={item.targetId ? [item.targetId] : []}
               onChange={(ids) => setItem({ ...item, targetId: ids[0] || '' })}
               multiple={false}
-              placeholder="搜索选择用户..."
+              placeholder={t('搜索选择用户...')}
               tenantId={tenantId}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">关系类型</label>
+            <label className="text-sm font-medium">{t('关系类型')}</label>
             <Select
               value={item.relationType}
               onValueChange={(v) => setItem({ ...item, relationType: v })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="请选择关系类型" />
+                <SelectValue placeholder={t('请选择关系类型')} />
               </SelectTrigger>
               <SelectContent>
                 {relationTypes.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
-                    {type.label}
+                    {t(type.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -156,14 +158,14 @@ export default function RelationsPage() {
       }}
       renderTableHeader={() => (
         <>
-          <TableHead className="w-12">序号</TableHead>
-          <TableHead className="w-32">关系发起人</TableHead>
-          <TableHead className="hidden md:table-cell">所属部门</TableHead>
-          <TableHead className="w-32">关系目标人</TableHead>
-          <TableHead className="hidden md:table-cell">所属部门</TableHead>
-          <TableHead className="w-28">关系类型</TableHead>
-          <TableHead className="hidden md:table-cell">创建时间</TableHead>
-          <TableHead className="w-24 text-center">操作</TableHead>
+          <TableHead className="w-12">{t('序号')}</TableHead>
+          <TableHead className="w-32">{t('关系发起人')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('所属部门')}</TableHead>
+          <TableHead className="w-32">{t('关系目标人')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('所属部门')}</TableHead>
+          <TableHead className="w-28">{t('关系类型')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('创建时间')}</TableHead>
+          <TableHead className="w-24 text-center">{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(relation, actions) => (
@@ -185,7 +187,7 @@ export default function RelationsPage() {
           </TableCell>
           <TableCell>
             <span className="px-2 py-1 rounded text-xs bg-primary/10 text-primary">
-              {typeLabelMap[relation.relationType] || relation.relationType}
+              {t(typeLabelMap[relation.relationType] || relation.relationType)}
             </span>
           </TableCell>
           <TableCell className="hidden md:table-cell text-muted-foreground">
@@ -199,12 +201,12 @@ export default function RelationsPage() {
               onClick={actions.delete}
             >
               <Trash2 className="mr-1 h-3 w-3" />
-              删除
+              {t('删除')}
             </Button>
           </TableRowActions>
         </>
       )}
-      getDeleteDescription={() => <>确定要删除该关系吗？此操作不可撤销。</>}
+      getDeleteDescription={() => <>{t('确定要删除该关系吗？此操作不可撤销。')}</>}
       onDelete={async (relation) => {
         await handleDelete(relation.id)
       }}

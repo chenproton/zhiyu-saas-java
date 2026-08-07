@@ -208,7 +208,7 @@ export function TeacherDashboardTab({
                       variant={item.type === '重要' ? 'destructive' : 'secondary'}
                       className="shrink-0 text-xs px-1.5 py-0 h-5 mt-0.5 bg-white border-gray-100"
                     >
-                      {item.type}
+                      {t(item.type)}
                     </Badge>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-900 truncate group-hover:text-primary transition-colors">
@@ -529,14 +529,14 @@ function CourseScheduleTable({
               key={d}
               className="p-3 text-sm font-semibold text-gray-700 text-center border-r border-gray-200 last:border-r-0"
             >
-              {d}
+              {t(d)}
             </div>
           ))}
         </div>
         {allPeriods.map((period) => (
           <div key={period} className="grid grid-cols-8 min-w-[760px] border-t border-gray-200">
             <div className="p-3 text-xs text-gray-500 border-r border-gray-200 bg-gray-50/50 flex items-center justify-center font-medium">
-              {period}
+              {t(period)}
             </div>
             {[1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => {
               const event = events.find((e) => e.dayOfWeek === dayOfWeek && e.period === period)

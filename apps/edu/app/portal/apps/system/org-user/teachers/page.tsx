@@ -25,6 +25,7 @@ import { MultiSelectSearch } from '@/components/ui/multi-select-search'
 import { useToast } from '@zhiyu/ui'
 import { PortalSidebarCrudPage } from '@/components/shared/portal-sidebar-crud-page'
 import { Pencil, Trash2, Key, UserCheck, Ban, Users, Loader2 } from 'lucide-react'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface Teacher {
   id: string
@@ -50,6 +51,7 @@ function toBackendStatus(status: Teacher['status']): string {
 }
 
 export default function TeachersPage() {
+  const t = useT()
   const { institution, institutionId, tenantId } = usePortalAuth()
   const { toast } = useToast()
   const {
@@ -115,7 +117,7 @@ export default function TeachersPage() {
 
   const titleNameMap = useMemo(() => {
     const map = new Map<string, string>()
-    staffTitles.forEach((t) => map.set(t.id, t.name))
+    staffTitles.forEach((title) => map.set(title.id, title.name))
     return map
   }, [staffTitles])
 
@@ -130,13 +132,13 @@ export default function TeachersPage() {
   const changeStatus = async (teacher: Teacher, targetStatus: Teacher['status']) => {
     try {
       await portalUserManagementApi.updateStatus(teacher.id, toBackendStatus(targetStatus))
-      toast({ title: '状态已更新' })
+      toast({ title: t('状态已更新') })
       await refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '操作失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('操作失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
@@ -146,12 +148,12 @@ export default function TeachersPage() {
     setBatchDeleting(true)
     try {
       await portalUserManagementApi.batchDelete(batchDeleteTarget)
-      toast({ title: `成功删除 ${batchDeleteTarget.length} 名教师` })
+      toast({ title: t('成功删除 {n} 名教师', { n: batchDeleteTarget.length }) })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '批量删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('批量删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setBatchDeleting(false)
@@ -166,11 +168,11 @@ export default function TeachersPage() {
   return (
     <>
       <PortalSidebarCrudPage
-        title="教职工管理"
-        description="维护教师档案信息"
-        entityLabel="教师"
-        searchPlaceholder="搜索姓名或登录账号..."
-        createButtonLabel="新建教师"
+        title={t('教职工管理')}
+        description={t('维护教师档案信息')}
+        entityLabel={t('教师')}
+        searchPlaceholder={t('搜索姓名或登录账号...')}
+        createButtonLabel={t('新建教师')}
         items={teachers}
         loading={loading}
         error={error}
@@ -183,37 +185,37 @@ export default function TeachersPage() {
         orgMap={orgMap}
         orgTypeMap={orgTypeMap}
         orgLoading={orgLoading}
-        sidebarAllLabel="全部教职工"
+        sidebarAllLabel={t('全部教职工')}
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
         statusOptions={[
-          { value: 'all', label: '全部状态' },
-          { value: '正常', label: '正常' },
-          { value: '禁用', label: '禁用' },
+          { value: 'all', label: t('全部状态') },
+          { value: '正常', label: t('正常') },
+          { value: '禁用', label: t('禁用') },
         ]}
         filterItems={(items, search, status) =>
-          items.filter((t) => {
-            if (status !== 'all' && t.status !== status) return false
+          items.filter((teacher) => {
+            if (status !== 'all' && teacher.status !== status) return false
             if (!search) return true
-            return t.name.includes(search) || t.loginAccount.includes(search)
+            return teacher.name.includes(search) || teacher.loginAccount.includes(search)
           })
         }
         getItemOrgNodeId={(item) => item.orgNodeId}
         importConfig={{
           importType: 'teachers',
-          entityLabel: '教师',
-          templateFileName: '教师批量导入模板.xlsx',
+          entityLabel: t('教师'),
+          templateFileName: t('教师批量导入模板.xlsx'),
         }}
         colSpan={7}
         renderTableHeader={() => (
           <>
-            <TableHead className="w-32">登录账号（工号）</TableHead>
-            <TableHead className="w-28">姓名</TableHead>
-            <TableHead className="hidden md:table-cell">所属组织节点</TableHead>
-            <TableHead className="hidden md:table-cell">关联角色</TableHead>
-            <TableHead className="hidden md:table-cell">职位</TableHead>
-            <TableHead className="w-24">状态</TableHead>
-            <TableHead className="w-24 text-right">操作</TableHead>
+            <TableHead className="w-32">{t('登录账号（工号）')}</TableHead>
+            <TableHead className="w-28">{t('姓名')}</TableHead>
+            <TableHead className="hidden md:table-cell">{t('所属组织节点')}</TableHead>
+            <TableHead className="hidden md:table-cell">{t('关联角色')}</TableHead>
+            <TableHead className="hidden md:table-cell">{t('职位')}</TableHead>
+            <TableHead className="w-24">{t('状态')}</TableHead>
+            <TableHead className="w-24 text-right">{t('操作')}</TableHead>
           </>
         )}
         renderTableRow={(teacher, actions) => (
@@ -253,7 +255,7 @@ export default function TeachersPage() {
             <TableRowActions>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
                 <Pencil className="mr-1 h-3 w-3" />
-                编辑
+                {t('编辑')}
               </Button>
               <Button
                 variant="ghost"
@@ -262,7 +264,7 @@ export default function TeachersPage() {
                 onClick={() => changeStatus(teacher, '正常')}
               >
                 <UserCheck className="mr-1 h-3 w-3" />
-                {teacher.status !== '正常' ? '设为正常' : '正常'}
+                {teacher.status !== '正常' ? t('设为正常') : t('正常')}
               </Button>
               <Button
                 variant="ghost"
@@ -271,7 +273,7 @@ export default function TeachersPage() {
                 onClick={() => changeStatus(teacher, '禁用')}
               >
                 <Ban className="mr-1 h-3 w-3" />
-                {teacher.status !== '禁用' ? '设为禁用' : '禁用'}
+                {teacher.status !== '禁用' ? t('设为禁用') : t('禁用')}
               </Button>
               <Button
                 variant="ghost"
@@ -280,7 +282,7 @@ export default function TeachersPage() {
                 onClick={actions.onResetPwd}
               >
                 <Key className="mr-1 h-3 w-3" />
-                重置密码
+                {t('重置密码')}
               </Button>
               <Button
                 variant="ghost"
@@ -289,7 +291,7 @@ export default function TeachersPage() {
                 onClick={actions.onDelete}
               >
                 <Trash2 className="mr-1 h-3 w-3" />
-                删除
+                {t('删除')}
               </Button>
             </TableRowActions>
           </>
@@ -310,7 +312,9 @@ export default function TeachersPage() {
               ) : (
                 <Trash2 className="h-4 w-4 mr-1" />
               )}
-              {selectedIds.length > 0 ? `批量删除(${selectedIds.length})` : '批量删除'}
+              {selectedIds.length > 0
+                ? t('批量删除({n})', { n: selectedIds.length })
+                : t('批量删除')}
             </Button>
           </>
         )}
@@ -323,7 +327,9 @@ export default function TeachersPage() {
               onClick={openJoinDialog}
             >
               <Users className="h-4 w-4 mr-1" />
-              {selectedIds.length > 0 ? `批量加入部门(${selectedIds.length})` : '批量加入部门'}
+              {selectedIds.length > 0
+                ? t('批量加入部门({n})', { n: selectedIds.length })
+                : t('批量加入部门')}
             </Button>
           </>
         )}
@@ -343,51 +349,53 @@ export default function TeachersPage() {
         }}
         isEditDialogOpen={isDialogOpen}
         setIsEditDialogOpen={setIsDialogOpen}
-        editDialogTitle={selectedTeacher ? '编辑教师' : '新建教师'}
-        editDialogDescription={selectedTeacher ? '修改教职工基本信息' : '填写教职工基本信息'}
+        editDialogTitle={selectedTeacher ? t('编辑教师') : t('新建教师')}
+        editDialogDescription={
+          selectedTeacher ? t('修改教职工基本信息') : t('填写教职工基本信息')
+        }
         renderForm={() => (
           <>
-            <FormFieldRow label="姓名" required>
+            <FormFieldRow label={t('姓名')} required>
               <Input
-                placeholder="请输入姓名"
+                placeholder={t('请输入姓名')}
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
             </FormFieldRow>
-            <FormFieldRow label="登录账号（工号）" required>
+            <FormFieldRow label={t('登录账号（工号）')} required>
               <Input
-                placeholder="如：T001"
+                placeholder={t('如：T001')}
                 value={formUsername}
                 onChange={(e) => setFormUsername(e.target.value)}
               />
             </FormFieldRow>
             {!selectedTeacher && (
-              <FormFieldRow label="密码" required>
+              <FormFieldRow label={t('密码')} required>
                 <Input
                   type="text"
-                  placeholder="请输入密码"
+                  placeholder={t('请输入密码')}
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
                 />
               </FormFieldRow>
             )}
-            <FormFieldRow label="所属组织节点">
+            <FormFieldRow label={t('所属组织节点')}>
               <OrgNodePicker
                 tenantId={tenantId}
                 value={formOrgNodeId}
                 onChange={(value) => setFormOrgNodeId(value || '')}
-                placeholder="选择所属组织节点"
-                title="选择所属组织节点"
+                placeholder={t('选择所属组织节点')}
+                title={t('选择所属组织节点')}
               />
             </FormFieldRow>
-            <FormFieldRow label="职位">
+            <FormFieldRow label={t('职位')}>
               <MultiSelectSearch
-                options={staffTitles.map((t) => ({ label: t.name, value: t.id }))}
+                options={staffTitles.map((title) => ({ label: title.name, value: title.id }))}
                 selected={formTitleIds}
                 onChange={setFormTitleIds}
-                placeholder="选择职位"
-                searchPlaceholder="搜索职位..."
-                emptyText="未找到匹配的职位"
+                placeholder={t('选择职位')}
+                searchPlaceholder={t('搜索职位...')}
+                emptyText={t('未找到匹配的职位')}
               />
             </FormFieldRow>
           </>
@@ -402,8 +410,8 @@ export default function TeachersPage() {
               if (!original) {
                 toast({
                   variant: 'destructive',
-                  title: '保存失败',
-                  description: '未找到原始用户数据',
+                  title: t('保存失败'),
+                  description: t('未找到原始用户数据'),
                 })
                 return
               }
@@ -423,19 +431,23 @@ export default function TeachersPage() {
                 idCard: original.idCard,
                 titleIds: formTitleIds,
               })
-              toast({ title: '保存成功' })
+              toast({ title: t('保存成功') })
             } else {
               if (!tenantId) {
                 toast({
                   variant: 'destructive',
-                  title: '创建失败',
-                  description: '未获取到租户信息',
+                  title: t('创建失败'),
+                  description: t('未获取到租户信息'),
                 })
                 return
               }
               const teacherRole = tenantRoles.find((r) => r.code === 'teacher')
               if (!teacherRole) {
-                toast({ variant: 'destructive', title: '创建失败', description: '未找到教师角色' })
+                toast({
+                  variant: 'destructive',
+                  title: t('创建失败'),
+                  description: t('未找到教师角色'),
+                })
                 return
               }
               await portalUserManagementApi.create({
@@ -451,7 +463,7 @@ export default function TeachersPage() {
                 orgNodeId: formOrgNodeId || undefined,
                 titleIds: formTitleIds.length > 0 ? formTitleIds : undefined,
               })
-              toast({ title: '创建成功' })
+              toast({ title: t('创建成功') })
             }
             setIsDialogOpen(false)
             resetForm()
@@ -460,8 +472,8 @@ export default function TeachersPage() {
           } catch (err) {
             toast({
               variant: 'destructive',
-              title: '保存失败',
-              description: err instanceof Error ? err.message : '未知错误',
+              title: t('保存失败'),
+              description: err instanceof Error ? err.message : t('未知错误'),
             })
           } finally {
             setSaving(false)
@@ -472,12 +484,15 @@ export default function TeachersPage() {
         }}
         onExport={async (selectedIds) => {
           const res = await importExportApi.exportTeachersExcel(selectedIds)
-          downloadBlob(await res.blob(), '教师导出.xlsx')
+          downloadBlob(await res.blob(), t('教师导出.xlsx'))
           toast({
-            title: selectedIds.length > 0 ? `已导出 ${selectedIds.length} 名教职工` : '导出完成',
+            title:
+              selectedIds.length > 0
+                ? t('已导出 {n} 名教职工', { n: selectedIds.length })
+                : t('导出完成'),
           })
         }}
-        joinEntityLabel="部门"
+        joinEntityLabel={t('部门')}
         onBatchJoin={async (orgNodeId, userIds) => {
           await portalUserManagementApi.batchUpdateOrgNode({ userIds, orgNodeId })
         }}
@@ -487,8 +502,10 @@ export default function TeachersPage() {
         onOpenChange={(open) => {
           if (!open) setBatchDeleteTarget(null)
         }}
-        title="确认批量删除"
-        description={`确定要删除选中的 ${batchDeleteTarget?.length || 0} 名教师吗？此操作不可撤销。`}
+        title={t('确认批量删除')}
+        description={t('确定要删除选中的 {n} 名教师吗？此操作不可撤销。', {
+          n: batchDeleteTarget?.length || 0,
+        })}
         variant="destructive"
         onConfirm={confirmBatchDelete}
       />

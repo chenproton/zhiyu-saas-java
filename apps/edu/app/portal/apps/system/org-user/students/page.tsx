@@ -17,6 +17,7 @@ import type { Organization } from '@/lib/types/backend'
 import { useToast, StatusBadge } from '@zhiyu/ui'
 import { PortalSidebarCrudPage } from '@/components/shared/portal-sidebar-crud-page'
 import { Pencil, Power, Trash2, Key, Award, Users, Loader2 } from 'lucide-react'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const DEPT_TYPE = '二级学院'
 const CLASS_TYPE = '班级'
@@ -61,6 +62,7 @@ function getOrgTypeName(
 }
 
 export default function StudentsPage() {
+  const t = useT()
   const { institution, institutionId, tenantId } = usePortalAuth()
   const { toast } = useToast()
   const {
@@ -132,13 +134,13 @@ export default function StudentsPage() {
   const changeStatus = async (student: Student, targetStatus: Student['status']) => {
     try {
       await portalUserManagementApi.updateStatus(student.id, toBackendStatus(targetStatus))
-      toast({ title: '状态已更新' })
+      toast({ title: t('状态已更新') })
       await refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '操作失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('操作失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
@@ -148,12 +150,12 @@ export default function StudentsPage() {
     setBatchDeleting(true)
     try {
       await portalUserManagementApi.batchDelete(batchDeleteTarget)
-      toast({ title: `成功删除 ${batchDeleteTarget.length} 名学生` })
+      toast({ title: t('成功删除 {n} 名学生', { n: batchDeleteTarget.length }) })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '批量删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('批量删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setBatchDeleting(false)
@@ -171,11 +173,11 @@ export default function StudentsPage() {
   return (
     <>
       <PortalSidebarCrudPage
-        title="学生管理"
-        description="管理学生基础信息与学籍数据"
-        entityLabel="学生"
-        searchPlaceholder="搜索姓名、登录账号..."
-        createButtonLabel="新建学生"
+        title={t('学生管理')}
+        description={t('管理学生基础信息与学籍数据')}
+        entityLabel={t('学生')}
+        searchPlaceholder={t('搜索姓名、登录账号...')}
+        createButtonLabel={t('新建学生')}
         items={students}
         loading={loading}
         error={error}
@@ -188,14 +190,14 @@ export default function StudentsPage() {
         orgMap={orgMap}
         orgTypeMap={orgTypeMap}
         orgLoading={orgLoading}
-        sidebarAllLabel="全部学生"
+        sidebarAllLabel={t('全部学生')}
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
         statusOptions={[
-          { value: 'all', label: '全部状态' },
-          { value: '正常', label: '正常' },
-          { value: '禁用', label: '禁用' },
-          { value: '毕业', label: '毕业' },
+          { value: 'all', label: t('全部状态') },
+          { value: '正常', label: t('正常') },
+          { value: '禁用', label: t('禁用') },
+          { value: '毕业', label: t('毕业') },
         ]}
         filterItems={(items, search, status) =>
           items.filter((s) => {
@@ -207,18 +209,18 @@ export default function StudentsPage() {
         getItemOrgNodeId={(item) => item.orgNodeId}
         importConfig={{
           importType: 'students',
-          entityLabel: '学生',
-          templateFileName: '学生批量导入模板.xlsx',
+          entityLabel: t('学生'),
+          templateFileName: t('学生批量导入模板.xlsx'),
         }}
         colSpan={6}
         renderTableHeader={() => (
           <>
-            <TableHead className="w-32">登录账号（学号）</TableHead>
-            <TableHead className="w-28">姓名</TableHead>
-            <TableHead className="hidden md:table-cell">所属院系</TableHead>
-            <TableHead className="hidden md:table-cell">班级</TableHead>
-            <TableHead className="w-24">状态</TableHead>
-            <TableHead className="w-24 text-right">操作</TableHead>
+            <TableHead className="w-32">{t('登录账号（学号）')}</TableHead>
+            <TableHead className="w-28">{t('姓名')}</TableHead>
+            <TableHead className="hidden md:table-cell">{t('所属院系')}</TableHead>
+            <TableHead className="hidden md:table-cell">{t('班级')}</TableHead>
+            <TableHead className="w-24">{t('状态')}</TableHead>
+            <TableHead className="w-24 text-right">{t('操作')}</TableHead>
           </>
         )}
         renderTableRow={(student, actions) => (
@@ -233,7 +235,7 @@ export default function StudentsPage() {
             <TableRowActions>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
                 <Pencil className="mr-1 h-3 w-3" />
-                编辑
+                {t('编辑')}
               </Button>
               <Button
                 variant="ghost"
@@ -242,7 +244,7 @@ export default function StudentsPage() {
                 onClick={actions.onResetPwd}
               >
                 <Key className="mr-1 h-3 w-3" />
-                重置密码
+                {t('重置密码')}
               </Button>
               <Button
                 variant="ghost"
@@ -251,7 +253,7 @@ export default function StudentsPage() {
                 onClick={() => changeStatus(student, '正常')}
               >
                 <Power className="mr-1 h-3 w-3" />
-                {student.status !== '正常' ? '设为正常' : '正常'}
+                {student.status !== '正常' ? t('设为正常') : t('正常')}
               </Button>
               <Button
                 variant="ghost"
@@ -260,7 +262,7 @@ export default function StudentsPage() {
                 onClick={() => changeStatus(student, '禁用')}
               >
                 <Power className="mr-1 h-3 w-3" />
-                {student.status !== '禁用' ? '设为禁用' : '禁用'}
+                {student.status !== '禁用' ? t('设为禁用') : t('禁用')}
               </Button>
               <Button
                 variant="ghost"
@@ -269,7 +271,7 @@ export default function StudentsPage() {
                 onClick={() => changeStatus(student, '毕业')}
               >
                 <Award className="mr-1 h-3 w-3" />
-                {student.status !== '毕业' ? '设为毕业' : '毕业'}
+                {student.status !== '毕业' ? t('设为毕业') : t('毕业')}
               </Button>
               <Button
                 variant="ghost"
@@ -278,7 +280,7 @@ export default function StudentsPage() {
                 onClick={actions.onDelete}
               >
                 <Trash2 className="mr-1 h-3 w-3" />
-                删除
+                {t('删除')}
               </Button>
             </TableRowActions>
           </>
@@ -299,7 +301,7 @@ export default function StudentsPage() {
               ) : (
                 <Trash2 className="h-4 w-4 mr-1" />
               )}
-              批量删除({selectedIds.length})
+              {t('批量删除({n})', { n: selectedIds.length })}
             </Button>
           </>
         )}
@@ -315,15 +317,15 @@ export default function StudentsPage() {
                 try {
                   await portalUserManagementApi.batchGraduate({ userIds: selectedIds })
                   toast({
-                    title: '批量毕业成功',
-                    description: `已将 ${selectedIds.length} 名学生状态改为毕业`,
+                    title: t('批量毕业成功'),
+                    description: t('已将 {n} 名学生状态改为毕业', { n: selectedIds.length }),
                   })
                   await refetch()
                 } catch (err) {
                   toast({
                     variant: 'destructive',
-                    title: '批量毕业失败',
-                    description: err instanceof Error ? err.message : '未知错误',
+                    title: t('批量毕业失败'),
+                    description: err instanceof Error ? err.message : t('未知错误'),
                   })
                 } finally {
                   setGraduateLoading(false)
@@ -335,7 +337,9 @@ export default function StudentsPage() {
               ) : (
                 <Award className="h-4 w-4 mr-1" />
               )}
-              {selectedIds.length > 0 ? `批量毕业(${selectedIds.length})` : '批量毕业'}
+              {selectedIds.length > 0
+                ? t('批量毕业({n})', { n: selectedIds.length })
+                : t('批量毕业')}
             </Button>
             <Button
               variant="outline"
@@ -344,7 +348,9 @@ export default function StudentsPage() {
               onClick={openJoinDialog}
             >
               <Users className="h-4 w-4 mr-1" />
-              {selectedIds.length > 0 ? `批量加入班级(${selectedIds.length})` : '批量加入班级'}
+              {selectedIds.length > 0
+                ? t('批量加入班级({n})', { n: selectedIds.length })
+                : t('批量加入班级')}
             </Button>
           </>
         )}
@@ -363,44 +369,44 @@ export default function StudentsPage() {
         }}
         isEditDialogOpen={isDialogOpen}
         setIsEditDialogOpen={setIsDialogOpen}
-        editDialogTitle={selectedStudent ? '编辑学生' : '新建学生'}
+        editDialogTitle={selectedStudent ? t('编辑学生') : t('新建学生')}
         editDialogDescription={
-          selectedStudent ? '修改学生基本信息与班级归属' : '填写学生基本信息，并关联到真实班级'
+          selectedStudent ? t('修改学生基本信息与班级归属') : t('填写学生基本信息，并关联到真实班级')
         }
         renderForm={() => (
           <>
-            <FormFieldRow label="姓名" required>
+            <FormFieldRow label={t('姓名')} required>
               <Input
-                placeholder="请输入姓名"
+                placeholder={t('请输入姓名')}
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
             </FormFieldRow>
-            <FormFieldRow label="登录账号（学号）" required>
+            <FormFieldRow label={t('登录账号（学号）')} required>
               <Input
-                placeholder="如：S2024001"
+                placeholder={t('如：S2024001')}
                 value={formUsername}
                 onChange={(e) => setFormUsername(e.target.value)}
               />
             </FormFieldRow>
             {!selectedStudent && (
-              <FormFieldRow label="密码" required>
+              <FormFieldRow label={t('密码')} required>
                 <Input
                   type="text"
-                  placeholder="请输入密码"
+                  placeholder={t('请输入密码')}
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
                 />
               </FormFieldRow>
             )}
-            <FormFieldRow label="班级" required>
+            <FormFieldRow label={t('班级')} required>
               <OrgNodePicker
                 tenantId={tenantId}
                 value={formClassNodeId}
                 onChange={(value) => setFormClassNodeId(value || '')}
                 selectableTypes={[CLASS_TYPE]}
-                placeholder="选择班级"
-                title="选择班级"
+                placeholder={t('选择班级')}
+                title={t('选择班级')}
               />
             </FormFieldRow>
           </>
@@ -415,8 +421,8 @@ export default function StudentsPage() {
               if (!original) {
                 toast({
                   variant: 'destructive',
-                  title: '保存失败',
-                  description: '未找到原始用户数据',
+                  title: t('保存失败'),
+                  description: t('未找到原始用户数据'),
                 })
                 return
               }
@@ -436,23 +442,23 @@ export default function StudentsPage() {
                 idCard: original.idCard,
                 titleIds: original.titleIds,
               })
-              toast({ title: '保存成功' })
+              toast({ title: t('保存成功') })
             } else {
               if (!tenantId) {
                 toast({
                   variant: 'destructive',
-                  title: '创建失败',
-                  description: '未获取到租户信息',
+                  title: t('创建失败'),
+                  description: t('未获取到租户信息'),
                 })
                 return
               }
               if (!formClassNodeId) {
-                toast({ variant: 'destructive', title: '创建失败', description: '请选择班级' })
+                toast({ variant: 'destructive', title: t('创建失败'), description: t('请选择班级') })
                 return
               }
               const studentRole = tenantRoles.find((r) => r.code === 'student')
               if (!studentRole) {
-                toast({ variant: 'destructive', title: '创建失败', description: '未找到学生角色' })
+                toast({ variant: 'destructive', title: t('创建失败'), description: t('未找到学生角色') })
                 return
               }
               await portalUserManagementApi.create({
@@ -467,7 +473,7 @@ export default function StudentsPage() {
                 name: formName.trim(),
                 orgNodeId: formClassNodeId,
               })
-              toast({ title: '创建成功' })
+              toast({ title: t('创建成功') })
             }
             setIsDialogOpen(false)
             resetForm()
@@ -476,8 +482,8 @@ export default function StudentsPage() {
           } catch (err) {
             toast({
               variant: 'destructive',
-              title: '保存失败',
-              description: err instanceof Error ? err.message : '未知错误',
+              title: t('保存失败'),
+              description: err instanceof Error ? err.message : t('未知错误'),
             })
           } finally {
             setSaving(false)
@@ -488,19 +494,22 @@ export default function StudentsPage() {
         }}
         onExport={async (selectedIds) => {
           const res = await importExportApi.exportStudentsExcel(selectedIds)
-          downloadBlob(await res.blob(), '学生导出.xlsx')
+          downloadBlob(await res.blob(), t('学生导出.xlsx'))
           toast({
-            title: selectedIds.length > 0 ? `已导出 ${selectedIds.length} 名学生` : '导出完成',
+            title:
+              selectedIds.length > 0
+                ? t('已导出 {n} 名学生', { n: selectedIds.length })
+                : t('导出完成'),
           })
         }}
-        joinEntityLabel="班级"
+        joinEntityLabel={t('班级')}
         onBatchJoin={async (orgNodeId, userIds) => {
           await portalUserManagementApi.batchUpdateOrgNode({ userIds, orgNodeId })
         }}
         orgNodePickerProps={{
           selectableTypes: [CLASS_TYPE],
-          placeholder: '选择班级',
-          title: '选择班级',
+          placeholder: t('选择班级'),
+          title: t('选择班级'),
         }}
       />
       <ConfirmDialog
@@ -508,8 +517,10 @@ export default function StudentsPage() {
         onOpenChange={(open) => {
           if (!open) setBatchDeleteTarget(null)
         }}
-        title="确认批量删除"
-        description={`确定要删除选中的 ${batchDeleteTarget?.length || 0} 名学生吗？此操作不可撤销。`}
+        title={t('确认批量删除')}
+        description={t('确定要删除选中的 {n} 名学生吗？此操作不可撤销。', {
+          n: batchDeleteTarget?.length || 0,
+        })}
         variant="destructive"
         onConfirm={confirmBatchDelete}
       />

@@ -20,6 +20,7 @@ import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import type { OrgType } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useToast, useAsync } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const categoryLabels = { internal: '内部组织', business: '业务组织', external: '外部协作组织' }
 const categoryColors = {
@@ -29,6 +30,7 @@ const categoryColors = {
 }
 
 export default function OrgTypesPage() {
+  const t = useT()
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
@@ -55,14 +57,14 @@ export default function OrgTypesPage() {
         category: item.category,
         tenantId,
       })
-      toast({ title: '保存成功', description: `「${updated.name}」已更新` })
+      toast({ title: t('保存成功'), description: t('「{name}」已更新', { name: updated.name }) })
     } else {
       const created = await orgTypeApi.create({
         name: item.name.trim(),
         category: item.category,
         tenantId,
       })
-      toast({ title: '创建成功', description: `「${created.name}」已添加` })
+      toast({ title: t('创建成功'), description: t('「{name}」已添加', { name: created.name }) })
     }
   }
 
@@ -72,32 +74,32 @@ export default function OrgTypesPage() {
 
   return (
     <PortalCrudPage
-      title="组织类型管理"
-      description="管理组织架构中的节点类型"
-      entityLabel="组织类型"
+      title={t('组织类型管理')}
+      description={t('管理组织架构中的节点类型')}
+      entityLabel={t('组织类型')}
       items={orgTypes ?? []}
       loading={isLoading}
       error={error?.message ?? null}
       onRetry={refresh}
       colSpan={4}
-      searchPlaceholder="搜索类型名称..."
+      searchPlaceholder={t('搜索类型名称...')}
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
-      filterItems={(items, search) => items.filter((t) => !search || t.name.includes(search))}
+      filterItems={(items, search) => items.filter((item) => !search || item.name.includes(search))}
       hideImport
       headerActions={
         <>
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" disabled title={t('即将上线')}>
             <Download className="h-4 w-4 mr-1" />
-            批量导出
+            {t('批量导出')}
           </Button>
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" disabled title={t('即将上线')}>
             <Upload className="h-4 w-4 mr-1" />
-            批量导入
+            {t('批量导入')}
           </Button>
         </>
       }
-      createButtonLabel="新建类型"
+      createButtonLabel={t('新建类型')}
       createDefault={() =>
         ({
           id: '',
@@ -110,15 +112,15 @@ export default function OrgTypesPage() {
       renderForm={(item, setItem) => (
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">类型名称</label>
+            <label className="text-sm font-medium">{t('类型名称')}</label>
             <Input
-              placeholder="如：二级学院"
+              placeholder={t('如：二级学院')}
               value={item.name}
               onChange={(e) => setItem({ ...item, name: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">类型分类</label>
+            <label className="text-sm font-medium">{t('类型分类')}</label>
             <Select
               value={item.category}
               onValueChange={(v) => setItem({ ...item, category: v as OrgType['category'] })}
@@ -127,9 +129,9 @@ export default function OrgTypesPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="internal">内部组织</SelectItem>
-                <SelectItem value="business">业务组织</SelectItem>
-                <SelectItem value="external">外部协作组织</SelectItem>
+                <SelectItem value="internal">{t('内部组织')}</SelectItem>
+                <SelectItem value="business">{t('业务组织')}</SelectItem>
+                <SelectItem value="external">{t('外部协作组织')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -138,10 +140,10 @@ export default function OrgTypesPage() {
       onSave={handleSave}
       renderTableHeader={() => (
         <>
-          <TableHead>类型名称</TableHead>
-          <TableHead>类型分类</TableHead>
-          <TableHead>创建时间</TableHead>
-          <TableHead className="text-right">操作</TableHead>
+          <TableHead>{t('类型名称')}</TableHead>
+          <TableHead>{t('类型分类')}</TableHead>
+          <TableHead>{t('创建时间')}</TableHead>
+          <TableHead className="text-right">{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(type, actions) => (
@@ -151,19 +153,21 @@ export default function OrgTypesPage() {
               {type.name}
               {type.isDefault && (
                 <Badge variant="outline" className="text-xs">
-                  系统默认
+                  {t('系统默认')}
                 </Badge>
               )}
             </div>
           </TableCell>
           <TableCell>
-            <Badge className={categoryColors[type.category]}>{categoryLabels[type.category]}</Badge>
+            <Badge className={categoryColors[type.category]}>
+              {t(categoryLabels[type.category])}
+            </Badge>
           </TableCell>
           <TableCell className="text-muted-foreground">{type.createdAt}</TableCell>
           <TableRowActions>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
               <Pencil className="mr-1 h-3 w-3" />
-              编辑
+              {t('编辑')}
             </Button>
             {!type.isDefault ? (
               <Button
@@ -173,27 +177,31 @@ export default function OrgTypesPage() {
                 onClick={actions.delete}
               >
                 <Trash2 className="mr-1 h-3 w-3" />
-                删除
+                {t('删除')}
               </Button>
             ) : (
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled>
                 <Trash2 className="mr-1 h-3 w-3" />
-                系统默认类型不可删除
+                {t('系统默认类型不可删除')}
               </Button>
             )}
           </TableRowActions>
         </>
       )}
       getDeleteDescription={(type) => (
-        <>确定删除组织类型「{type.name}」吗？如果该类型仍被组织使用，删除可能会失败。</>
+        <>
+          {t('确定删除组织类型「{name}」吗？如果该类型仍被组织使用，删除可能会失败。', {
+            name: type.name,
+          })}
+        </>
       )}
       onDelete={handleDelete}
       emptyContent={
         <Empty className="py-6">
           <EmptyHeader>
-            <EmptyTitle>暂无组织类型</EmptyTitle>
+            <EmptyTitle>{t('暂无组织类型')}</EmptyTitle>
             <EmptyDescription>
-              {searchTerm ? '未找到匹配的组织类型' : '当前租户下尚未创建组织类型'}
+              {searchTerm ? t('未找到匹配的组织类型') : t('当前租户下尚未创建组织类型')}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

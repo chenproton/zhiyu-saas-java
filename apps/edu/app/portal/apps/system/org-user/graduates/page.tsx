@@ -30,6 +30,7 @@ import { useToast } from '@zhiyu/ui'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { Download, Loader2, Pencil, RotateCcw } from 'lucide-react'
 import type { Organization } from '@/lib/types/backend'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const DEPT_TYPE = '二级学院'
 const CLASS_TYPE = '班级'
@@ -53,6 +54,7 @@ function getOrgTypeName(
 }
 
 export default function GraduatesPage() {
+  const t = useT()
   const { institution, tenantId } = usePortalAuth()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
@@ -124,7 +126,7 @@ export default function GraduatesPage() {
     if (!editingGraduate || !formName.trim() || !formUsername.trim()) return
     const original = users.find((u) => u.id === editingGraduate.id)
     if (!original) {
-      toast({ variant: 'destructive', title: '保存失败', description: '未找到原始用户数据' })
+      toast({ variant: 'destructive', title: t('保存失败'), description: t('未找到原始用户数据') })
       return
     }
     setSaving(true)
@@ -145,15 +147,15 @@ export default function GraduatesPage() {
         idCard: original.idCard,
         titleIds: original.titleIds,
       })
-      toast({ title: '保存成功' })
+      toast({ title: t('保存成功') })
       setIsDialogOpen(false)
       setEditingGraduate(null)
       await refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setSaving(false)
@@ -163,40 +165,40 @@ export default function GraduatesPage() {
   const handleReEnroll = async (graduate: DisplayGraduate) => {
     try {
       await portalUserManagementApi.updateStatus(graduate.id, 'active')
-      toast({ title: '已恢复入学' })
+      toast({ title: t('已恢复入学') })
       await refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '操作失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('操作失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
 
   return (
     <PortalCrudPage
-      title="毕业学生管理"
-      description="管理已毕业学生的档案信息"
-      entityLabel="毕业学生"
+      title={t('毕业学生管理')}
+      description={t('管理已毕业学生的档案信息')}
+      entityLabel={t('毕业学生')}
       items={graduates}
       loading={loading}
       error={error ?? null}
       onRetry={refetch}
       colSpan={7}
-      searchPlaceholder="搜索姓名或学号..."
+      searchPlaceholder={t('搜索姓名或学号...')}
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
       searchRight={
         <Select value={yearFilter} onValueChange={setYearFilter}>
           <SelectTrigger className="w-32">
-            <SelectValue placeholder="毕业年份" />
+            <SelectValue placeholder={t('毕业年份')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部年份</SelectItem>
+            <SelectItem value="all">{t('全部年份')}</SelectItem>
             {graduateYears.map((year) => (
               <SelectItem key={year} value={year}>
-                {year}届
+                {t('{year}届', { year })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -216,22 +218,22 @@ export default function GraduatesPage() {
       }
       hideImport
       hideCreate
-      emptyContent={searchTerm || yearFilter !== 'all' ? '未找到匹配的学生' : '暂无数据'}
+      emptyContent={searchTerm || yearFilter !== 'all' ? t('未找到匹配的学生') : t('暂无数据')}
       headerActions={
-        <Button variant="outline" size="sm" disabled title="即将上线">
+        <Button variant="outline" size="sm" disabled title={t('即将上线')}>
           <Download className="h-4 w-4 mr-1" />
-          批量导出
+          {t('批量导出')}
         </Button>
       }
       renderTableHeader={() => (
         <>
-          <TableHead className="w-32">登录账号（学号）</TableHead>
-          <TableHead className="w-28">姓名</TableHead>
-          <TableHead className="hidden md:table-cell">所属院系</TableHead>
-          <TableHead className="hidden md:table-cell">班级</TableHead>
-          <TableHead className="hidden md:table-cell">毕业年份</TableHead>
-          <TableHead className="w-24">状态</TableHead>
-          <TableHead className="w-24 text-right">操作</TableHead>
+          <TableHead className="w-32">{t('登录账号（学号）')}</TableHead>
+          <TableHead className="w-28">{t('姓名')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('所属院系')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('班级')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('毕业年份')}</TableHead>
+          <TableHead className="w-24">{t('状态')}</TableHead>
+          <TableHead className="w-24 text-right">{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(graduate) => (
@@ -242,11 +244,13 @@ export default function GraduatesPage() {
           <TableCell className="hidden md:table-cell">{graduate.className}</TableCell>
           <TableCell className="hidden md:table-cell">
             <Badge variant="secondary">
-              {graduate.graduateYear !== undefined ? `${graduate.graduateYear}届` : '—'}
+              {graduate.graduateYear !== undefined
+                ? t('{year}届', { year: graduate.graduateYear })
+                : '—'}
             </Badge>
           </TableCell>
           <TableCell>
-            <Badge>毕业</Badge>
+            <Badge>{t('毕业')}</Badge>
           </TableCell>
           <TableRowActions>
             <Button
@@ -256,7 +260,7 @@ export default function GraduatesPage() {
               onClick={() => openEditDialog(graduate)}
             >
               <Pencil className="mr-1 h-3 w-3" />
-              编辑
+              {t('编辑')}
             </Button>
             <Button
               variant="ghost"
@@ -265,7 +269,7 @@ export default function GraduatesPage() {
               onClick={() => handleReEnroll(graduate)}
             >
               <RotateCcw className="mr-1 h-3 w-3" />
-              重新入学
+              {t('重新入学')}
             </Button>
           </TableRowActions>
         </>
@@ -274,33 +278,33 @@ export default function GraduatesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>编辑学生</DialogTitle>
-            <DialogDescription>修改学生基本信息与班级归属</DialogDescription>
+            <DialogTitle>{t('编辑学生')}</DialogTitle>
+            <DialogDescription>{t('修改学生基本信息与班级归属')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                姓名 <span className="text-destructive">*</span>
+                {t('姓名')} <span className="text-destructive">*</span>
               </label>
               <Input
-                placeholder="请输入姓名"
+                placeholder={t('请输入姓名')}
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                登录账号（学号） <span className="text-destructive">*</span>
+                {t('登录账号（学号）')} <span className="text-destructive">*</span>
               </label>
               <Input
-                placeholder="如：S2024001"
+                placeholder={t('如：S2024001')}
                 value={formUsername}
                 onChange={(e) => setFormUsername(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                班级 <span className="text-destructive">*</span>
+                {t('班级')} <span className="text-destructive">*</span>
               </label>
               <OrgNodePicker
                 tenantId={tenantId}
@@ -309,21 +313,21 @@ export default function GraduatesPage() {
                   setFormClassNodeId(value || '')
                 }}
                 selectableTypes={[CLASS_TYPE]}
-                placeholder="选择班级"
-                title="选择班级"
+                placeholder={t('选择班级')}
+                title={t('选择班级')}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={handleUpdate}
               disabled={saving || !formName.trim() || !formUsername.trim() || !formClassNodeId}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              保存
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>

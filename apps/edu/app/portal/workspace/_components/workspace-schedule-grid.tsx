@@ -399,7 +399,7 @@ function WeekView({
             key={d}
             className="p-3 text-sm font-semibold text-gray-700 text-center border-r border-gray-200 last:border-r-0"
           >
-            {d}
+            {t(d)}
           </div>
         ))}
       </div>
@@ -407,7 +407,7 @@ function WeekView({
       {allPeriods.map((period) => (
         <div key={period} className="grid grid-cols-8 min-w-[760px] border-t border-gray-200">
           <div className="p-3 text-xs text-gray-500 border-r border-gray-200 bg-gray-50/50 flex items-center justify-center font-medium">
-            {period}
+            {t(period)}
           </div>
           {[1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => {
             const event = weekEvents.find((e) => e.dayOfWeek === dayOfWeek && e.period === period)

@@ -24,6 +24,7 @@ import { Plus, Pencil, Trash2, Loader2, KeyRound } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Label } from '@/components/ui/label'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface TenantAdmin {
   id: string
@@ -60,6 +61,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSubmitting, setPasswordSubmitting] = useState(false)
   const { toast } = useToast()
+  const t = useT()
 
   const fetchAdmins = useCallback(async () => {
     setLoading(true)
@@ -68,11 +70,11 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
       const res = await fetcher<ListResponse<TenantAdmin>>('/admins')
       setAdmins(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载管理员列表失败')
+      setError(err instanceof Error ? err.message : t('加载管理员列表失败'))
     } finally {
       setLoading(false)
     }
-  }, [fetcher])
+  }, [fetcher, t])
 
   useEffect(() => {
     let cancelled = false
@@ -102,7 +104,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
   const submitInline = async () => {
     if (!inline) return
     if (!inline.username || !inline.name) {
-      setError('账号和姓名不能为空')
+      setError(t('账号和姓名不能为空'))
       return
     }
 
@@ -114,18 +116,21 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
           method: 'PUT',
           body: JSON.stringify({ username: inline.username, name: inline.name }),
         })
-        toast({ title: '保存成功' })
+        toast({ title: t('保存成功') })
       } else {
         const created = await fetcher<TenantAdmin>('/admins', {
           method: 'POST',
           body: JSON.stringify({ username: inline.username, name: inline.name }),
         })
-        toast({ title: '创建成功', description: `初始密码：${created.plainPassword}` })
+        toast({
+          title: t('创建成功'),
+          description: t('初始密码：{pwd}', { pwd: created.plainPassword ?? '' }),
+        })
       }
       setInline(null)
       await fetchAdmins()
     } catch (err) {
-      setError(err instanceof Error ? err.message : inline.id ? '保存失败' : '创建失败')
+      setError(err instanceof Error ? err.message : t(inline.id ? '保存失败' : '创建失败'))
     } finally {
       setInlineSubmitting(false)
     }
@@ -135,13 +140,13 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
     if (!deleteTarget) return
     try {
       await fetcher(`/admins/${deleteTarget.id}`, { method: 'DELETE' })
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       await fetchAdmins()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setDeleteTarget(null)
@@ -160,15 +165,15 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
   const submitPassword = async () => {
     if (!passwordAdmin) return
     if (!newPassword) {
-      setPasswordError('请输入新密码')
+      setPasswordError(t('请输入新密码'))
       return
     }
     if (!PASSWORD_RULE.test(newPassword)) {
-      setPasswordError('密码长度至少 8 位，且需同时包含字母和数字')
+      setPasswordError(t('密码长度至少 8 位，且需同时包含字母和数字'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('两次输入的密码不一致')
+      setPasswordError(t('两次输入的密码不一致'))
       return
     }
     setPasswordSubmitting(true)
@@ -178,10 +183,10 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
         method: 'POST',
         body: JSON.stringify({ password: newPassword }),
       })
-      toast({ title: '修改成功' })
+      toast({ title: t('修改成功') })
       setPasswordAdmin(null)
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : '修改密码失败')
+      setPasswordError(err instanceof Error ? err.message : t('修改密码失败'))
     } finally {
       setPasswordSubmitting(false)
     }
@@ -191,12 +196,12 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
     <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
       <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold">学校管理员</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">管理当前租户的学校管理员账号</p>
+          <h3 className="text-base font-semibold">{t('学校管理员')}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('管理当前租户的学校管理员账号')}</p>
         </div>
         <Button size="sm" onClick={startAdd} disabled={inline !== null}>
           <Plus className="h-4 w-4 mr-1" />
-          新增
+          {t('新增')}
         </Button>
       </div>
 
@@ -210,10 +215,10 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground">账号</TableHead>
-              <TableHead className="text-muted-foreground">姓名</TableHead>
-              <TableHead className="text-muted-foreground">状态</TableHead>
-              <TableHead className="text-muted-foreground text-right w-32">操作</TableHead>
+              <TableHead className="text-muted-foreground">{t('账号')}</TableHead>
+              <TableHead className="text-muted-foreground">{t('姓名')}</TableHead>
+              <TableHead className="text-muted-foreground">{t('状态')}</TableHead>
+              <TableHead className="text-muted-foreground text-right w-32">{t('操作')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -221,7 +226,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
               <TableRow className="border-border bg-slate-50/50">
                 <TableCell>
                   <Input
-                    placeholder="登录账号"
+                    placeholder={t('登录账号')}
                     value={inline.username}
                     onChange={(e) => setInline((p) => (p ? { ...p, username: e.target.value } : p))}
                     disabled={inlineSubmitting}
@@ -229,7 +234,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                 </TableCell>
                 <TableCell>
                   <Input
-                    placeholder="姓名"
+                    placeholder={t('姓名')}
                     value={inline.name}
                     onChange={(e) => setInline((p) => (p ? { ...p, name: e.target.value } : p))}
                     disabled={inlineSubmitting}
@@ -244,7 +249,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                       onClick={submitInline}
                       disabled={inlineSubmitting}
                     >
-                      {inlineSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : '保存'}
+                      {inlineSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : t('保存')}
                     </Button>
                     <Button
                       variant="outline"
@@ -253,7 +258,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                       onClick={cancelInline}
                       disabled={inlineSubmitting}
                     >
-                      取消
+                      {t('取消')}
                     </Button>
                   </div>
                 </TableCell>
@@ -293,7 +298,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                         <TableCell>
                           <StatusBadge
                             status={a.status}
-                            label={a.status === 'active' ? '启用' : '停用'}
+                            label={t(a.status === 'active' ? '启用' : '停用')}
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -307,7 +312,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                               {inlineSubmitting ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
-                                '保存'
+                                t('保存')
                               )}
                             </Button>
                             <Button
@@ -317,7 +322,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                               onClick={cancelInline}
                               disabled={inlineSubmitting}
                             >
-                              取消
+                              {t('取消')}
                             </Button>
                           </div>
                         </TableCell>
@@ -329,7 +334,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                         <TableCell>
                           <StatusBadge
                             status={a.status}
-                            label={a.status === 'active' ? '启用' : '停用'}
+                            label={t(a.status === 'active' ? '启用' : '停用')}
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -341,7 +346,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                               onClick={() => handlePasswordClick(a)}
                             >
                               <KeyRound className="mr-1 h-3 w-3" />
-                              修改密码
+                              {t('修改密码')}
                             </Button>
                             <Button
                               variant="ghost"
@@ -350,7 +355,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                               onClick={() => startEdit(a)}
                             >
                               <Pencil className="mr-1 h-3 w-3" />
-                              编辑
+                              {t('编辑')}
                             </Button>
                             <Button
                               variant="ghost"
@@ -359,7 +364,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                               onClick={() => setDeleteTarget(a)}
                             >
                               <Trash2 className="mr-1 h-3 w-3" />
-                              删除
+                              {t('删除')}
                             </Button>
                           </div>
                         </TableCell>
@@ -373,7 +378,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                       colSpan={4}
                       className="text-center text-sm text-muted-foreground py-8"
                     >
-                      暂无学校管理员
+                      {t('暂无学校管理员')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -391,30 +396,33 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
       >
         <DialogContent size="sm">
           <DialogHeader>
-            <DialogTitle>修改密码</DialogTitle>
+            <DialogTitle>{t('修改密码')}</DialogTitle>
             <DialogDescription>
               {passwordAdmin
-                ? `为 ${passwordAdmin.name}（${passwordAdmin.username}）设置新密码`
+                ? t('为 {name}（{username}）设置新密码', {
+                    name: passwordAdmin.name,
+                    username: passwordAdmin.username,
+                  })
                 : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="set-password">新密码</Label>
+              <Label htmlFor="set-password">{t('新密码')}</Label>
               <Input
                 id="set-password"
                 type="password"
-                placeholder="至少 8 位，包含字母和数字"
+                placeholder={t('至少 8 位，包含字母和数字')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="set-confirm-password">确认新密码</Label>
+              <Label htmlFor="set-confirm-password">{t('确认新密码')}</Label>
               <Input
                 id="set-confirm-password"
                 type="password"
-                placeholder="再次输入新密码"
+                placeholder={t('再次输入新密码')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
@@ -427,14 +435,14 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
               onClick={() => setPasswordAdmin(null)}
               disabled={passwordSubmitting}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={submitPassword}
               disabled={passwordSubmitting || !newPassword || !confirmPassword}
             >
               {passwordSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              保存
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -445,13 +453,16 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null)
         }}
-        title="确认删除"
+        title={t('确认删除')}
         description={
           deleteTarget
-            ? `确定删除管理员「${deleteTarget.name}（${deleteTarget.username}）」吗？此操作不可撤销。`
+            ? t('确定删除管理员「{name}（{username}）」吗？此操作不可撤销。', {
+                name: deleteTarget.name,
+                username: deleteTarget.username,
+              })
             : ''
         }
-        confirmText="删除"
+        confirmText={t('删除')}
         variant="destructive"
         onConfirm={handleDelete}
       />

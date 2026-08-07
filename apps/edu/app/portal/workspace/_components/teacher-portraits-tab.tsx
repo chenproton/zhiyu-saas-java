@@ -366,7 +366,7 @@ export function TeacherPortraitsTab() {
                                   <Badge
                                     className={`text-[10px] font-semibold border ${gradeColors}`}
                                   >
-                                    {student.grade}
+                                    {t(student.grade)}
                                   </Badge>
                                 )}
                               </div>
@@ -474,7 +474,7 @@ export function TeacherPortraitsTab() {
                 <TableCell className="text-sm font-medium">{t('认定等级')}</TableCell>
                 <TableCell>
                   <Badge className={`text-xs ${getGradeColor(activeStudent?.grade)}`}>
-                    {activeStudent?.grade || '-'}
+                    {t(activeStudent?.grade ?? '') || '-'}
                   </Badge>
                 </TableCell>
               </TableRow>
@@ -511,7 +511,7 @@ export function TeacherPortraitsTab() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">{t('综合评级')}</span>
                 <Badge className={`text-xs font-bold ${getGradeColor(activeStudent?.grade)}`}>
-                  {activeStudent?.grade || '-'}
+                  {t(activeStudent?.grade ?? '') || '-'}
                 </Badge>
               </div>
             </div>

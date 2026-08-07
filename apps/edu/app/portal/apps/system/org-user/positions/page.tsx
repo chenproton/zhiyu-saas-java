@@ -21,8 +21,10 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { Pencil, Power, Trash2, Upload, Download, Loader2, Users } from 'lucide-react'
 import type { StaffTitle } from '@/lib/types/backend'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function PositionsPage() {
+  const t = useT()
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
@@ -54,12 +56,12 @@ export default function PositionsPage() {
     }
     if (isEdit) {
       await portalStaffTitleApi.update(item.id, payload)
-      toast({ title: '保存成功', description: '职位信息已更新' })
+      toast({ title: t('保存成功'), description: t('职位信息已更新') })
     } else {
       await portalStaffTitleApi.create(
         payload as Omit<StaffTitle, 'id' | 'userCount' | 'createdAt'>,
       )
-      toast({ title: '创建成功', description: '新职位已添加' })
+      toast({ title: t('创建成功'), description: t('新职位已添加') })
     }
   }
 
@@ -67,12 +69,12 @@ export default function PositionsPage() {
     const nextStatus = position.status === 'active' ? 'inactive' : 'active'
     try {
       await portalStaffTitleApi.toggleStatus(position.id, nextStatus)
-      toast({ title: '状态已更新' })
+      toast({ title: t('状态已更新') })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '操作失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('操作失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
@@ -89,8 +91,8 @@ export default function PositionsPage() {
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '加载用户失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('加载用户失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setLoadingUsers(false)
@@ -99,15 +101,15 @@ export default function PositionsPage() {
 
   return (
     <PortalCrudPage
-      title="职位管理"
-      description="管理系统职位信息"
-      entityLabel="职位"
+      title={t('职位管理')}
+      description={t('管理系统职位信息')}
+      entityLabel={t('职位')}
       items={positions ?? []}
       loading={loading}
       error={error?.message ?? null}
       onRetry={refresh}
       colSpan={5}
-      searchPlaceholder="搜索职位名称..."
+      searchPlaceholder={t('搜索职位名称...')}
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
       filterItems={(items, search) =>
@@ -121,17 +123,17 @@ export default function PositionsPage() {
       hideImport
       headerActions={
         <>
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" disabled title={t('即将上线')}>
             <Download className="h-4 w-4 mr-1" />
-            批量导出
+            {t('批量导出')}
           </Button>
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" disabled title={t('即将上线')}>
             <Upload className="h-4 w-4 mr-1" />
-            批量导入
+            {t('批量导入')}
           </Button>
         </>
       }
-      createButtonLabel="新建职位"
+      createButtonLabel={t('新建职位')}
       createDefault={() => ({
         id: '',
         tenantId: '',
@@ -146,18 +148,18 @@ export default function PositionsPage() {
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              职位名称 <span className="text-destructive">*</span>
+              {t('职位名称')} <span className="text-destructive">*</span>
             </label>
             <Input
-              placeholder="如：教授"
+              placeholder={t('如：教授')}
               value={item.name}
               onChange={(e) => setItem({ ...item, name: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">描述</label>
+            <label className="text-sm font-medium">{t('描述')}</label>
             <Input
-              placeholder="可选描述"
+              placeholder={t('可选描述')}
               value={item.description || ''}
               onChange={(e) => setItem({ ...item, description: e.target.value })}
             />
@@ -168,23 +170,23 @@ export default function PositionsPage() {
       onToggleEnabled={toggleStatus}
       renderTableHeader={() => (
         <>
-          <TableHead className="w-32">职位名称</TableHead>
-          <TableHead className="w-32">关联用户数量</TableHead>
-          <TableHead className="w-24">状态</TableHead>
-          <TableHead className="hidden md:table-cell">创建时间</TableHead>
-          <TableHead className="w-24 text-right">操作</TableHead>
+          <TableHead className="w-32">{t('职位名称')}</TableHead>
+          <TableHead className="w-32">{t('关联用户数量')}</TableHead>
+          <TableHead className="w-24">{t('状态')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('创建时间')}</TableHead>
+          <TableHead className="w-24 text-right">{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(position, actions) => (
         <>
           <TableCell className="font-medium">{position.name}</TableCell>
           <TableCell>
-            <Badge variant="secondary">{position.userCount} 人</Badge>
+            <Badge variant="secondary">{t('{n} 人', { n: position.userCount })}</Badge>
           </TableCell>
           <TableCell>
             <StatusBadge
               status={position.status}
-              label={position.status === 'active' ? '启用' : '停用'}
+              label={position.status === 'active' ? t('启用') : t('停用')}
             />
           </TableCell>
           <TableCell className="hidden md:table-cell text-muted-foreground">
@@ -193,7 +195,7 @@ export default function PositionsPage() {
           <TableRowActions>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
               <Pencil className="mr-1 h-3 w-3" />
-              编辑
+              {t('编辑')}
             </Button>
             <Button
               variant="ghost"
@@ -202,11 +204,11 @@ export default function PositionsPage() {
               onClick={() => openUsersDialog(position)}
             >
               <Users className="mr-1 h-3 w-3" />
-              查看用户
+              {t('查看用户')}
             </Button>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.toggle}>
               <Power className="mr-1 h-3 w-3" />
-              {position.status === 'active' ? '停用' : '启用'}
+              {position.status === 'active' ? t('停用') : t('启用')}
             </Button>
             <Button
               variant="ghost"
@@ -215,13 +217,13 @@ export default function PositionsPage() {
               onClick={actions.delete}
             >
               <Trash2 className="mr-1 h-3 w-3" />
-              删除
+              {t('删除')}
             </Button>
           </TableRowActions>
         </>
       )}
       getDeleteDescription={(position) => (
-        <>确定要删除职位「{position.name}」吗？删除后不可恢复。</>
+        <>{t('确定要删除职位「{name}」吗？删除后不可恢复。', { name: position.name })}</>
       )}
       onDelete={async (position) => {
         await portalStaffTitleApi.delete(position.id)
@@ -230,17 +232,19 @@ export default function PositionsPage() {
       <Dialog open={isUsersDialogOpen} onOpenChange={setIsUsersDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>关联用户 - {selectedPosition?.name}</DialogTitle>
-            <DialogDescription>共 {titleUsers.length} 名用户关联此职位</DialogDescription>
+            <DialogTitle>{t('关联用户 - {name}', { name: selectedPosition?.name ?? '' })}</DialogTitle>
+            <DialogDescription>
+              {t('共 {n} 名用户关联此职位', { n: titleUsers.length })}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             {loadingUsers ? (
               <div className="text-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                <p className="mt-2 text-sm text-muted-foreground">加载中...</p>
+                <p className="mt-2 text-sm text-muted-foreground">{t('加载中...')}</p>
               </div>
             ) : titleUsers.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-4">暂无关联用户</p>
+              <p className="text-center text-sm text-muted-foreground py-4">{t('暂无关联用户')}</p>
             ) : (
               <div className="space-y-2">
                 {titleUsers.slice(0, 5).map((user) => (
@@ -259,7 +263,7 @@ export default function PositionsPage() {
                 ))}
                 {titleUsers.length > 5 && (
                   <p className="text-center text-sm text-muted-foreground">
-                    ... 还有 {titleUsers.length - 5} 名用户
+                    {t('... 还有 {n} 名用户', { n: titleUsers.length - 5 })}
                   </p>
                 )}
               </div>
@@ -267,7 +271,7 @@ export default function PositionsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsUsersDialogOpen(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>

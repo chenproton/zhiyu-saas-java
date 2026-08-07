@@ -298,7 +298,7 @@ export function LearningTab() {
                         variant="outline"
                         className="text-xs shrink-0 border-primary/15 text-primary bg-primary/5"
                       >
-                        {course.type}
+                        {t(course.type)}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-1.5 mt-2">

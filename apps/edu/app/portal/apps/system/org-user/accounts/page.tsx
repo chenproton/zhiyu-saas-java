@@ -25,8 +25,10 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Trash2, Loader2, Check, X, Users, KeyRound, Power } from 'lucide-react'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AccountsPage() {
+  const t = useT()
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
   const [searchText, setSearchText] = useState('')
@@ -58,14 +60,14 @@ export default function AccountsPage() {
     setBindSaving(true)
     try {
       await portalUserManagementApi.bindRoles(bindTarget.id, bindRoleIds)
-      toast({ title: '角色绑定成功' })
+      toast({ title: t('角色绑定成功') })
       setBindTarget(null)
       await refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '绑定失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('绑定失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setBindSaving(false)
@@ -86,13 +88,13 @@ export default function AccountsPage() {
     const nextStatus = currentStatus === 'active' ? 'disabled' : 'active'
     try {
       await portalUserManagementApi.updateStatus(id, nextStatus)
-      toast({ title: nextStatus === 'active' ? '账户已启用' : '账户已禁用' })
+      toast({ title: nextStatus === 'active' ? t('账户已启用') : t('账户已禁用') })
       await refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '操作失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('操作失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
@@ -102,12 +104,12 @@ export default function AccountsPage() {
     setBatchDeleting(true)
     try {
       await portalUserManagementApi.batchDelete(batchDeleteTarget)
-      toast({ title: `成功删除 ${batchDeleteTarget.length} 个账户` })
+      toast({ title: t('成功删除 {n} 个账户', { n: batchDeleteTarget.length }) })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '批量删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('批量删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setBatchDeleting(false)
@@ -135,25 +137,25 @@ export default function AccountsPage() {
 
   return (
     <PortalCrudPage
-      title="账户管理"
-      description="管理系统登录账户，绑定角色并维护账户状态"
-      entityLabel="账户"
+      title={t('账户管理')}
+      description={t('管理系统登录账户，绑定角色并维护账户状态')}
+      entityLabel={t('账户')}
       items={accounts}
       loading={loading}
       error={error ?? null}
       onRetry={refetch}
       colSpan={7}
-      searchPlaceholder="搜索姓名或账户..."
+      searchPlaceholder={t('搜索姓名或账户...')}
       searchValue={searchText}
       onSearchChange={setSearchText}
       hideImport
       hideCreate
-      emptyContent={searchText ? '未找到匹配的账户' : '暂无账户数据'}
+      emptyContent={searchText ? t('未找到匹配的账户') : t('暂无账户数据')}
       toolbar={
         <div className="mb-4">
           <Tabs value={roleCode || 'all'} onValueChange={handleRoleTabChange}>
             <TabsList className="h-auto flex-wrap justify-start">
-              <TabsTrigger value="all">全部</TabsTrigger>
+              <TabsTrigger value="all">{t('全部')}</TabsTrigger>
               {roles.map((r) => (
                 <TabsTrigger key={r.id} value={r.code}>
                   {r.name}
@@ -183,19 +185,19 @@ export default function AccountsPage() {
             ) : (
               <Trash2 className="h-4 w-4 mr-1" />
             )}
-            批量删除({selectedAccounts.length})
-          </Button>
+              {t('批量删除({n})', { n: selectedAccounts.length })}
+            </Button>
         )
       }
       renderTableHeader={() => (
         <>
-          <TableHead className="w-28">姓名</TableHead>
-          <TableHead className="w-36">角色</TableHead>
-          <TableHead className="hidden md:table-cell">所属组织</TableHead>
-          <TableHead className="w-36">账户登录名</TableHead>
-          <TableHead className="w-24">状态</TableHead>
-          <TableHead className="hidden md:table-cell">最后登录时间</TableHead>
-          <TableHead className="w-24 text-center">操作</TableHead>
+          <TableHead className="w-28">{t('姓名')}</TableHead>
+          <TableHead className="w-36">{t('角色')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('所属组织')}</TableHead>
+          <TableHead className="w-36">{t('账户登录名')}</TableHead>
+          <TableHead className="w-24">{t('状态')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('最后登录时间')}</TableHead>
+          <TableHead className="w-24 text-center">{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(account, actions) => (
@@ -239,7 +241,7 @@ export default function AccountsPage() {
               onClick={() => openBindDialog(account)}
             >
               <Users className="mr-1 h-3 w-3" />
-              绑定角色
+              {t('绑定角色')}
             </Button>
             <Button
               variant="ghost"
@@ -248,7 +250,7 @@ export default function AccountsPage() {
               onClick={() => handleResetPassword(account.id, account.name)}
             >
               <KeyRound className="mr-1 h-3 w-3" />
-              重置密码
+              {t('重置密码')}
             </Button>
             {account.status === 'active' ? (
               <Button
@@ -258,7 +260,7 @@ export default function AccountsPage() {
                 onClick={() => handleToggleStatus(account.id, account.status)}
               >
                 <Power className="mr-1 h-3 w-3" />
-                禁用账户
+                {t('禁用账户')}
               </Button>
             ) : (
               <Button
@@ -268,7 +270,7 @@ export default function AccountsPage() {
                 onClick={() => handleToggleStatus(account.id, account.status)}
               >
                 <Power className="mr-1 h-3 w-3" />
-                启用账户
+                {t('启用账户')}
               </Button>
             )}
             <Button
@@ -278,12 +280,14 @@ export default function AccountsPage() {
               onClick={actions.delete}
             >
               <Trash2 className="mr-1 h-3 w-3" />
-              删除
+              {t('删除')}
             </Button>
           </TableRowActions>
         </>
       )}
-      getDeleteDescription={(account) => <>确定要删除账户「{account.name}」吗？此操作不可撤销。</>}
+      getDeleteDescription={(account) => (
+        <>{t('确定要删除账户「{name}」吗？此操作不可撤销。', { name: account.name })}</>
+      )}
       onDelete={async (account) => {
         await portalUserManagementApi.delete(account.id)
       }}
@@ -296,9 +300,9 @@ export default function AccountsPage() {
       >
         <DialogContent size="sm">
           <DialogHeader>
-            <DialogTitle>绑定角色 - {bindTarget?.name}</DialogTitle>
+            <DialogTitle>{t('绑定角色 - {name}', { name: bindTarget?.name ?? '' })}</DialogTitle>
             <DialogDescription>
-              为用户绑定 1 个或多个角色，用户登录后可在顶栏切换当前角色
+              {t('为用户绑定 1 个或多个角色，用户登录后可在顶栏切换当前角色')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -307,9 +311,9 @@ export default function AccountsPage() {
               value={bindRoleIds}
               onChange={setBindRoleIds}
               options={roles.map((r) => ({ value: r.id, label: r.name }))}
-              placeholder="搜索并选择角色..."
-              searchPlaceholder="搜索角色名称或编码..."
-              emptyText="未找到角色"
+              placeholder={t('搜索并选择角色...')}
+              searchPlaceholder={t('搜索角色名称或编码...')}
+              emptyText={t('未找到角色')}
               className="w-full"
               renderOption={(o, selected) => (
                 <>
@@ -340,17 +344,17 @@ export default function AccountsPage() {
                 )
               })}
               {bindRoleIds.length === 0 && (
-                <span className="text-sm text-muted-foreground">至少需要绑定一个角色</span>
+                <span className="text-sm text-muted-foreground">{t('至少需要绑定一个角色')}</span>
               )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBindTarget(null)} disabled={bindSaving}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleBindRoles} disabled={bindSaving || bindRoleIds.length === 0}>
               {bindSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-              保存
+              {t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -364,7 +368,7 @@ export default function AccountsPage() {
         userId={resetTarget?.id}
         userName={resetTarget?.name}
         onSuccess={async () => {
-          toast({ title: '密码重置成功' })
+          toast({ title: t('密码重置成功') })
           await refetch()
         }}
       />
@@ -374,8 +378,10 @@ export default function AccountsPage() {
         onOpenChange={(open) => {
           if (!open) setBatchDeleteTarget(null)
         }}
-        title="确认批量删除"
-        description={`确定要删除选中的 ${batchDeleteTarget?.length || 0} 个账户吗？此操作不可撤销。`}
+        title={t('确认批量删除')}
+        description={t('确定要删除选中的 {n} 个账户吗？此操作不可撤销。', {
+          n: batchDeleteTarget?.length || 0,
+        })}
         variant="destructive"
         onConfirm={confirmBatchDelete}
       />

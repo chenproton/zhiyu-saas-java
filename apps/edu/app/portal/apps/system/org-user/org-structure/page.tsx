@@ -43,6 +43,7 @@ import type { Organization, OrgType } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useToast } from '@zhiyu/ui'
 import { typeMetaFor } from '@/lib/org-type-icons'
+import { useT } from '@/lib/i18n/locale-provider'
 
 type OrgNodeType = string
 
@@ -108,6 +109,7 @@ function TreeNode({
   highlightedId?: string | null
   registerRef?: (id: string, el: HTMLDivElement | null) => void
 }) {
+  const t = useT()
   const hasChildren = node.children && node.children.length > 0
   const meta = typeMetaFor(node.type)
   const Icon = meta.icon
@@ -153,7 +155,7 @@ function TreeNode({
             onClick={() => onAction('addChild', node)}
           >
             <Plus className="mr-1 h-3 w-3" />
-            添加子节点
+            {t('添加子节点')}
           </Button>
           <Button
             variant="ghost"
@@ -162,7 +164,7 @@ function TreeNode({
             onClick={() => onAction('edit', node)}
           >
             <Pencil className="mr-1 h-3 w-3" />
-            编辑
+            {t('编辑')}
           </Button>
           {node.type === '班级' && (
             <Button
@@ -172,7 +174,7 @@ function TreeNode({
               onClick={() => onAction('graduate', node)}
             >
               <GraduationCap className="mr-1 h-3 w-3" />
-              批量毕业
+              {t('批量毕业')}
             </Button>
           )}
           <Button
@@ -182,7 +184,7 @@ function TreeNode({
             onClick={() => onAction('delete', node)}
           >
             <Trash2 className="mr-1 h-3 w-3" />
-            删除
+            {t('删除')}
           </Button>
         </HoverActionBar>
       </div>
@@ -207,6 +209,7 @@ function TreeNode({
 }
 
 export default function OrgStructurePage() {
+  const t = useT()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const [orgData, setOrgData] = useState<OrgNode[]>([])
@@ -247,7 +250,7 @@ export default function OrgStructurePage() {
   const fetchData = useCallback(async () => {
     if (!tenantId) {
       setIsLoading(false)
-      setError('未获取到租户信息，请重新登录')
+      setError(t('未获取到租户信息，请重新登录'))
       return
     }
     setIsLoading(true)
@@ -262,11 +265,11 @@ export default function OrgStructurePage() {
       setTypeNames(map)
       setOrgData(treeRes.items.map((node) => mapToOrgNode(node, map)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载组织架构失败')
+      setError(err instanceof Error ? err.message : t('加载组织架构失败'))
     } finally {
       setIsLoading(false)
     }
-  }, [tenantId])
+  }, [tenantId, t])
 
   useEffect(() => {
     let cancelled = false
@@ -381,13 +384,13 @@ export default function OrgStructurePage() {
     if (!tenantId) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: '未获取到租户信息，请重新登录',
+        title: t('保存失败'),
+        description: t('未获取到租户信息，请重新登录'),
       })
       return
     }
     if (!formName.trim() || !formTypeId) {
-      setFormError('请填写节点组织名称并选择组织类型')
+      setFormError(t('请填写节点组织名称并选择组织类型'))
       return
     }
     setSaving(true)
@@ -408,15 +411,18 @@ export default function OrgStructurePage() {
           sortOrder: Number(formSortOrder) || 0,
         })
         targetId = selectedNode.id
-        toastTitle = '保存成功'
-        toastDescription = `组织节点「${formName.trim()}」已更新`
+        toastTitle = t('保存成功')
+        toastDescription = t('组织节点「{name}」已更新', { name: formName.trim() })
         if (parentChanged) {
           const parentName = nextParentId
             ? parentOptions.find((p) => p.id === nextParentId)?.name
             : null
           toastDescription = parentName
-            ? `组织节点「${formName.trim()}」及其子节点已迁移到「${parentName}」下`
-            : `组织节点「${formName.trim()}」已调整为一级节点`
+            ? t('组织节点「{name}」及其子节点已迁移到「{parent}」下', {
+                name: formName.trim(),
+                parent: parentName,
+              })
+            : t('组织节点「{name}」已调整为一级节点', { name: formName.trim() })
         }
       } else {
         const parentId = formParentId === '__root__' ? undefined : formParentId
@@ -429,8 +435,8 @@ export default function OrgStructurePage() {
           memberCount: 0,
         })
         targetId = newNode.id
-        toastTitle = '创建成功'
-        toastDescription = `已添加节点「${newNode.name}」`
+        toastTitle = t('创建成功')
+        toastDescription = t('已添加节点「{name}」', { name: newNode.name })
       }
 
       await fetchData()
@@ -440,7 +446,7 @@ export default function OrgStructurePage() {
       setIsDialogOpen(false)
       toast({ title: toastTitle, description: toastDescription })
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : '保存失败，请重试')
+      setFormError(err instanceof Error ? err.message : t('保存失败，请重试'))
     } finally {
       setSaving(false)
     }
@@ -454,13 +460,13 @@ export default function OrgStructurePage() {
     if (!deleteTarget) return
     try {
       await orgApi.delete(deleteTarget.id)
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       await fetchData()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('删除失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setDeleteTarget(null)
@@ -479,16 +485,19 @@ export default function OrgStructurePage() {
       })
       const userIds = res.items.map((u) => u.id)
       if (userIds.length === 0) {
-        toast({ title: '暂无在籍学生', description: '该班级下没有可毕业的在籍学生' })
+        toast({ title: t('暂无在籍学生'), description: t('该班级下没有可毕业的在籍学生') })
         return
       }
       await portalUserManagementApi.batchGraduate({ userIds })
-      toast({ title: '批量毕业成功', description: `已将 ${userIds.length} 名学生状态改为毕业` })
+      toast({
+        title: t('批量毕业成功'),
+        description: t('已将 {n} 名学生状态改为毕业', { n: userIds.length }),
+      })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '批量毕业失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('批量毕业失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     } finally {
       setGraduateLoading(false)
@@ -499,10 +508,14 @@ export default function OrgStructurePage() {
   const handleExport = async () => {
     try {
       const res = await importExportApi.exportOrganizationsExcel([])
-      downloadBlob(await res.blob(), '组织架构导出.xlsx')
-      toast({ title: '导出完成' })
+      downloadBlob(await res.blob(), t('组织架构导出.xlsx'))
+      toast({ title: t('导出完成') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '导出失败', description: err.message || '导出失败' })
+      toast({
+        variant: 'destructive',
+        title: t('导出失败'),
+        description: err.message || t('导出失败'),
+      })
     }
   }
 
@@ -510,16 +523,16 @@ export default function OrgStructurePage() {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
         <Spinner className="h-5 w-5" />
-        加载中...
+        {t('加载中...')}
       </div>
     )
   }
 
   return (
     <PortalCrudPage
-      title="组织架构管理"
-      description="管理学校组织架构树，同时维护学生线与教师线的组织归属"
-      entityLabel="组织节点"
+      title={t('组织架构管理')}
+      description={t('管理学校组织架构树，同时维护学生线与教师线的组织归属')}
+      entityLabel={t('组织节点')}
       items={orgData}
       loading={isLoading}
       error={error}
@@ -528,26 +541,26 @@ export default function OrgStructurePage() {
       search={false}
       stats={[
         ...statEntries.slice(0, 5).map((entry) => ({ label: entry.name, value: entry.count })),
-        { label: '总人数', value: stats.members },
+        { label: t('总人数'), value: stats.members },
       ]}
       importConfig={{
         importType: 'organizations',
-        entityLabel: '组织',
-        templateFileName: '组织批量导入模板.xlsx',
+        entityLabel: t('组织'),
+        templateFileName: t('组织批量导入模板.xlsx'),
       }}
       hideCreate
       headerActions={
         <>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1" />
-            批量导出
+            {t('批量导出')}
           </Button>
         </>
       }
       afterImportActions={
         <Button size="sm" onClick={() => openDialog('addRoot')}>
           <Plus className="h-4 w-4 mr-1" />
-          新建节点
+          {t('新建节点')}
         </Button>
       }
       body={
@@ -555,15 +568,15 @@ export default function OrgStructurePage() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <div className="flex items-center gap-2 text-sm font-medium">
               <LayoutList className="w-4 h-4 text-muted-foreground" />
-              组织架构树
+              {t('组织架构树')}
             </div>
           </div>
           <ScrollArea className="h-[600px] p-4">
             {orgData.length === 0 ? (
               <Empty className="h-full">
                 <EmptyHeader>
-                  <EmptyTitle>暂无组织架构</EmptyTitle>
-                  <EmptyDescription>当前租户下尚未创建组织架构节点</EmptyDescription>
+                  <EmptyTitle>{t('暂无组织架构')}</EmptyTitle>
+                  <EmptyDescription>{t('当前租户下尚未创建组织架构节点')}</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
@@ -593,24 +606,24 @@ export default function OrgStructurePage() {
             <div className="flex flex-col gap-2 text-center sm:text-left mb-4">
               <h2 className="text-lg font-semibold">
                 {dialogMode === 'addRoot'
-                  ? '新增节点'
+                  ? t('新增节点')
                   : dialogMode === 'addChild'
-                    ? `添加子节点：${selectedNode?.name}`
-                    : '编辑节点'}
+                    ? t('添加子节点：{name}', { name: selectedNode?.name ?? '' })
+                    : t('编辑节点')}
               </h2>
-              <p className="text-muted-foreground text-sm">配置组织节点信息</p>
+              <p className="text-muted-foreground text-sm">{t('配置组织节点信息')}</p>
             </div>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label>节点组织名称</Label>
+                <Label>{t('节点组织名称')}</Label>
                 <Input
-                  placeholder="如：信息学院"
+                  placeholder={t('如：信息学院')}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>组织类型</Label>
+                <Label>{t('组织类型')}</Label>
                 <div className="grid grid-cols-4 gap-2">
                   {orgTypes.map((type) => {
                     const meta = typeMetaFor(type.name)
@@ -637,19 +650,19 @@ export default function OrgStructurePage() {
               </div>
               <div className="space-y-2">
                 <Label>
-                  父节点
+                  {t('父节点')}
                   {dialogMode === 'edit' && (
                     <span className="ml-1 text-xs text-muted-foreground">
-                      更改父节点后，当前节点及其全部子节点将迁移到新父节点下
+                      {t('更改父节点后，当前节点及其全部子节点将迁移到新父节点下')}
                     </span>
                   )}
                 </Label>
                 <Select value={formParentId} onValueChange={setFormParentId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="选择父节点" />
+                    <SelectValue placeholder={t('选择父节点')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__root__">无（作为一级节点）</SelectItem>
+                    <SelectItem value="__root__">{t('无（作为一级节点）')}</SelectItem>
                     {parentOptions.map((option) => (
                       <SelectItem key={option.id} value={option.id}>
                         {`${'　'.repeat(option.depth)}${option.name}`}
@@ -659,7 +672,7 @@ export default function OrgStructurePage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>排序序号</Label>
+                <Label>{t('排序序号')}</Label>
                 <Input
                   type="number"
                   placeholder="1"
@@ -675,11 +688,11 @@ export default function OrgStructurePage() {
             </div>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-4">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
-                取消
+                {t('取消')}
               </Button>
               <Button onClick={handleSave} disabled={saving || !formName.trim() || !formTypeId}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                保存
+                {t('保存')}
               </Button>
             </div>
           </div>
@@ -689,9 +702,11 @@ export default function OrgStructurePage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="确认删除"
-        description={`确定删除组织节点「${deleteTarget?.name}」吗？其子节点会被一并删除，节点下的用户将保留但清空所属班级/部门。`}
-        confirmText="删除"
+        title={t('确认删除')}
+        description={t('确定删除组织节点「{name}」吗？其子节点会被一并删除，节点下的用户将保留但清空所属班级/部门。', {
+          name: deleteTarget?.name ?? '',
+        })}
+        confirmText={t('删除')}
         variant="destructive"
         onConfirm={confirmDelete}
       />
@@ -699,9 +714,11 @@ export default function OrgStructurePage() {
       <ConfirmDialog
         open={!!graduateTarget}
         onOpenChange={(open) => !open && !graduateLoading && setGraduateTarget(null)}
-        title="确认批量毕业"
-        description={`确定将「${graduateTarget?.name}」下的在籍学生全部标记为毕业吗？此操作不可撤销。`}
-        confirmText="确认毕业"
+        title={t('确认批量毕业')}
+        description={t('确定将「{name}」下的在籍学生全部标记为毕业吗？此操作不可撤销。', {
+          name: graduateTarget?.name ?? '',
+        })}
+        confirmText={t('确认毕业')}
         variant="destructive"
         onConfirm={confirmGraduate}
       />

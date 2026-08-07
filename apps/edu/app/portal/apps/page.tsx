@@ -276,7 +276,7 @@ export default function AppsPage() {
                     : 'bg-muted text-muted-foreground border-border hover:text-foreground',
                 )}
               >
-                {section.label}
+                {t(section.label)}
               </button>
             ))}
           </div>
@@ -359,10 +359,10 @@ export default function AppsPage() {
                           href={section.href}
                           className="text-base font-semibold text-foreground hover:text-primary transition-colors"
                         >
-                          {section.label}
+                          {t(section.label)}
                         </Link>
                       ) : (
-                        <h2 className="text-base font-semibold text-foreground">{section.label}</h2>
+                        <h2 className="text-base font-semibold text-foreground">{t(section.label)}</h2>
                       )}
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                         {t('{count} 个模块', { count: section.modules.length })}

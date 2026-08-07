@@ -85,7 +85,7 @@ export function SchoolAdminPersonnelTab() {
             >
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-primary-foreground/80 text-sm">{item.label}</p>
+                  <p className="text-primary-foreground/80 text-sm">{t(item.label)}</p>
                   <p className="text-2xl font-bold">{item.value}</p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">

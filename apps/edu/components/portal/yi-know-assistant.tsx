@@ -765,7 +765,7 @@ export function YiKnowAssistant() {
                         }}
                       >
                         <span className={CATEGORY_META[r.category].color}>{getIcon(r.icon)}</span>
-                        <span className="text-[10px] truncate flex-1">{r.title}</span>
+                        <span className="text-[10px] truncate flex-1">{t(r.title)}</span>
                       </div>
                     ))}
                   </div>

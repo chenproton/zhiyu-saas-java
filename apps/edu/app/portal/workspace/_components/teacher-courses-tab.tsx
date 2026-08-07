@@ -267,7 +267,7 @@ function TrackingView() {
                     }
                     className="text-xs"
                   >
-                    {s.grade}
+                    {t(s.grade)}
                   </Badge>
                 </TableCell>
               </TableRow>
@@ -452,7 +452,7 @@ function AssessmentView() {
                     }
                     className="text-xs"
                   >
-                    {report.rating}
+                    {t(report.rating)}
                   </Badge>
                 </TableCell>
               </TableRow>

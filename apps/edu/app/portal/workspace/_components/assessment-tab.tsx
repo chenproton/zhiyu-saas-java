@@ -243,7 +243,7 @@ export function AssessmentTab() {
                           {exam.name}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">{exam.type}</TableCell>
+                      <TableCell className="text-xs">{t(exam.type)}</TableCell>
                       <TableCell>
                         <StatusBadge
                           status={exam.status}
@@ -357,7 +357,7 @@ export function AssessmentTab() {
                                     : 'bg-primary/5 text-primary border-primary/15',
                                 )}
                               >
-                                {point.levelLabel}
+                                {t(point.levelLabel)}
                               </Badge>
                             ) : (
                               '-'

@@ -43,6 +43,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from '@/lib/menu-permissions'
 import type { MenuTreeItem } from '@/lib/menu-permissions'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const MENU_TREE_PLATFORM_MAP: Record<string, string> = {
   'system-entry': 'system',
@@ -192,6 +193,7 @@ interface RoleItem {
 }
 
 export default function RolesPage() {
+  const t = useT()
   const { tenantId, subscriptionModules } = usePortalAuth()
   const { toast } = useToast()
   const [roles, setRoles] = useState<Role[]>([])
@@ -222,7 +224,7 @@ export default function RolesPage() {
   const fetchData = useCallback(async () => {
     if (!tenantId) {
       setIsLoading(false)
-      setError('未获取到租户信息，请重新登录')
+      setError(t('未获取到租户信息，请重新登录'))
       return
     }
     setIsLoading(true)
@@ -231,11 +233,11 @@ export default function RolesPage() {
       const res = await roleApi.list({ tenantId, limit: 1000 })
       setRoles(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载角色失败')
+      setError(err instanceof Error ? err.message : t('加载角色失败'))
     } finally {
       setIsLoading(false)
     }
-  }, [tenantId])
+  }, [tenantId, t])
 
   useEffect(() => {
     ;(async () => {
@@ -383,8 +385,8 @@ export default function RolesPage() {
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err instanceof Error ? err.message : '保存权限失败',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('保存权限失败'),
       })
     } finally {
       setIsSaving(false)
@@ -395,14 +397,14 @@ export default function RolesPage() {
     if (!tenantId) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: '未获取到租户信息，请重新登录',
+        title: t('保存失败'),
+        description: t('未获取到租户信息，请重新登录'),
       })
       return
     }
     if (isEdit) {
       await roleApi.update(item.id, { ...(item as unknown as Role), name: item.name.trim() })
-      toast({ title: '保存成功' })
+      toast({ title: t('保存成功') })
     } else {
       await roleApi.create({
         tenantId,
@@ -412,7 +414,7 @@ export default function RolesPage() {
         permissions: {},
         status: 'active',
       })
-      toast({ title: '创建成功' })
+      toast({ title: t('创建成功') })
     }
   }
 
@@ -428,7 +430,7 @@ export default function RolesPage() {
       const res = await portalUserManagementApi.list({ tenantId, roleId: role.id, limit: 1000 })
       setRoleUsers(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载角色用户失败')
+      setError(err instanceof Error ? err.message : t('加载角色用户失败'))
     } finally {
       setUsersLoading(false)
     }
@@ -440,15 +442,15 @@ export default function RolesPage() {
 
   return (
     <PortalCrudPage
-      title="角色权限管理"
-      description="管理系统角色及权限配置"
-      entityLabel="角色"
+      title={t('角色权限管理')}
+      description={t('管理系统角色及权限配置')}
+      entityLabel={t('角色')}
       items={roles}
       loading={isLoading}
       error={error}
       onRetry={fetchData}
       colSpan={6}
-      searchPlaceholder="搜索角色名称或编码..."
+      searchPlaceholder={t('搜索角色名称或编码...')}
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
       filterItems={(items, search) =>
@@ -457,17 +459,17 @@ export default function RolesPage() {
       hideImport
       headerActions={
         <>
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" disabled title={t('即将上线')}>
             <Download className="h-4 w-4 mr-1" />
-            批量导出
+            {t('批量导出')}
           </Button>
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" disabled title={t('即将上线')}>
             <Upload className="h-4 w-4 mr-1" />
-            批量导入
+            {t('批量导入')}
           </Button>
         </>
       }
-      createButtonLabel="新建角色"
+      createButtonLabel={t('新建角色')}
       createDefault={() => ({
         id: '',
         code: generateRoleCode(),
@@ -478,7 +480,7 @@ export default function RolesPage() {
       renderForm={(item, setItem) => (
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">角色编码</label>
+            <label className="text-sm font-medium">{t('角色编码')}</label>
             <Input
               value={item.code || generateRoleCode()}
               disabled
@@ -487,10 +489,10 @@ export default function RolesPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              角色名称 <span className="text-destructive">*</span>
+              {t('角色名称')} <span className="text-destructive">*</span>
             </label>
             <Input
-              placeholder="如：学校管理员"
+              placeholder={t('如：学校管理员')}
               value={item.name}
               onChange={(e) => setItem({ ...item, name: e.target.value })}
             />
@@ -500,12 +502,12 @@ export default function RolesPage() {
       onSave={saveRole}
       renderTableHeader={() => (
         <>
-          <TableHead className="w-32">角色编码</TableHead>
-          <TableHead className="w-28">角色名称</TableHead>
-          <TableHead className="w-32">关联用户</TableHead>
-          <TableHead className="w-24">状态</TableHead>
-          <TableHead className="hidden md:table-cell">创建时间</TableHead>
-          <TableHead className="w-24 text-right">操作</TableHead>
+          <TableHead className="w-32">{t('角色编码')}</TableHead>
+          <TableHead className="w-28">{t('角色名称')}</TableHead>
+          <TableHead className="w-32">{t('关联用户')}</TableHead>
+          <TableHead className="w-24">{t('状态')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('创建时间')}</TableHead>
+          <TableHead className="w-24 text-right">{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(role, actions) => {
@@ -515,10 +517,10 @@ export default function RolesPage() {
             <TableCell className="font-mono text-sm text-muted-foreground">{role.code}</TableCell>
             <TableCell className="font-medium">{role.name}</TableCell>
             <TableCell>
-              <Badge variant="secondary">{role.userCount} 人</Badge>
+              <Badge variant="secondary">{t('{n} 人', { n: role.userCount })}</Badge>
             </TableCell>
             <TableCell>
-              <StatusBadge status={status} label={status === 'active' ? '启用' : '停用'} />
+              <StatusBadge status={status} label={status === 'active' ? t('启用') : t('停用')} />
             </TableCell>
             <TableCell className="hidden md:table-cell text-muted-foreground">
               {role.createdAt}
@@ -526,7 +528,7 @@ export default function RolesPage() {
             <TableRowActions>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
                 <Pencil className="mr-1 h-3 w-3" />
-                编辑
+                {t('编辑')}
               </Button>
               <Button
                 variant="ghost"
@@ -535,7 +537,7 @@ export default function RolesPage() {
                 onClick={() => openPermDialog(role as Role)}
               >
                 <Settings className="mr-1 h-3 w-3" />
-                权限配置
+                {t('权限配置')}
               </Button>
               <Button
                 variant="ghost"
@@ -544,7 +546,7 @@ export default function RolesPage() {
                 onClick={() => openUsersDialog(role as Role)}
               >
                 <Users className="mr-1 h-3 w-3" />
-                查看用户
+                {t('查看用户')}
               </Button>
               <Button
                 variant="ghost"
@@ -553,22 +555,22 @@ export default function RolesPage() {
                 onClick={actions.delete}
               >
                 <Trash2 className="mr-1 h-3 w-3" />
-                删除
+                {t('删除')}
               </Button>
             </TableRowActions>
           </>
         )
       }}
-      getDeleteDescription={(role) => <>确定要删除角色「{role.name}」吗？</>}
+      getDeleteDescription={(role) => <>{t('确定要删除角色「{name}」吗？', { name: role.name })}</>}
       onDelete={async (role) => {
         await deleteRole(role as Role)
       }}
       emptyContent={
         <Empty className="py-6">
           <EmptyHeader>
-            <EmptyTitle>暂无角色</EmptyTitle>
+            <EmptyTitle>{t('暂无角色')}</EmptyTitle>
             <EmptyDescription>
-              {searchTerm ? '未找到匹配的角色' : '当前租户下尚未创建角色'}
+              {searchTerm ? t('未找到匹配的角色') : t('当前租户下尚未创建角色')}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -583,21 +585,23 @@ export default function RolesPage() {
       >
         <DialogContent className="!max-h-[80vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>绑定用户 - {usersRole?.name}</DialogTitle>
+            <DialogTitle>{t('绑定用户 - {name}', { name: usersRole?.name ?? '' })}</DialogTitle>
             <DialogDescription>
-              {usersLoading ? '加载中...' : `共 ${roleUsers.length} 个用户绑定了该角色`}
+              {usersLoading
+                ? t('加载中...')
+                : t('共 {n} 个用户绑定了该角色', { n: roleUsers.length })}
             </DialogDescription>
           </DialogHeader>
           {usersLoading ? (
             <div className="flex h-40 items-center justify-center gap-2 text-muted-foreground">
-              <span>加载中...</span>
+              <span>{t('加载中...')}</span>
             </div>
           ) : roleUsers.length === 0 ? (
             <Empty className="h-40">
               <EmptyHeader>
-                <EmptyTitle>暂无用户</EmptyTitle>
+                <EmptyTitle>{t('暂无用户')}</EmptyTitle>
                 <EmptyDescription>
-                  还没有用户绑定该角色，可在「账户列表」中为用户绑定角色
+                  {t('还没有用户绑定该角色，可在「账户列表」中为用户绑定角色')}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -606,10 +610,10 @@ export default function RolesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>姓名</TableHead>
-                    <TableHead>登录账号</TableHead>
-                    <TableHead>全部角色</TableHead>
-                    <TableHead>状态</TableHead>
+                    <TableHead>{t('姓名')}</TableHead>
+                    <TableHead>{t('登录账号')}</TableHead>
+                    <TableHead>{t('全部角色')}</TableHead>
+                    <TableHead>{t('状态')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -633,10 +637,10 @@ export default function RolesPage() {
                           status={u.status}
                           label={
                             u.status === 'active'
-                              ? '正常'
+                              ? t('正常')
                               : u.status === 'graduated'
-                                ? '已毕业'
-                                : '禁用'
+                                ? t('已毕业')
+                                : t('禁用')
                           }
                         />
                       </TableCell>
@@ -653,17 +657,17 @@ export default function RolesPage() {
       <Dialog open={isPermDialogOpen} onOpenChange={setIsPermDialogOpen}>
         <DialogContent size="xl" className="!max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>权限配置 - {selectedRole?.name}</DialogTitle>
-            <DialogDescription>配置角色的系统权限、菜单权限和数据权限</DialogDescription>
+            <DialogTitle>{t('权限配置 - {name}', { name: selectedRole?.name ?? '' })}</DialogTitle>
+            <DialogDescription>{t('配置角色的系统权限、菜单权限和数据权限')}</DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="menus" className="mt-4">
             <TabsList>
-              <TabsTrigger value="menus">菜单权限</TabsTrigger>
-              <TabsTrigger value="actions">操作权限</TabsTrigger>
+              <TabsTrigger value="menus">{t('菜单权限')}</TabsTrigger>
+              <TabsTrigger value="actions">{t('操作权限')}</TabsTrigger>
             </TabsList>
             <TabsContent value="menus" className="mt-4">
               <div className="text-sm text-muted-foreground mb-3">
-                选择该角色可访问的功能页面。未勾选的页面将在应用中心与各平台侧边导航中隐藏入口。
+                {t('选择该角色可访问的功能页面。未勾选的页面将在应用中心与各平台侧边导航中隐藏入口。')}
               </div>
               <ScrollArea className="border border-border rounded-lg p-4">
                 <div className="space-y-4">
@@ -680,7 +684,7 @@ export default function RolesPage() {
             </TabsContent>
             <TabsContent value="actions" className="mt-4">
               <div className="text-sm text-muted-foreground mb-3">
-                控制各模块页面的操作按钮权限（提交审批、发布、删除、审核等）。
+                {t('控制各模块页面的操作按钮权限（提交审批、发布、删除、审核等）。')}
               </div>
               <ScrollArea className="border border-border rounded-lg p-4">
                 <div className="space-y-4">
@@ -719,7 +723,7 @@ export default function RolesPage() {
                   ))}
                   {visibleActionModules.length === 0 && (
                     <div className="text-sm text-muted-foreground text-center py-8">
-                      暂无可配置的操作权限
+                      {t('暂无可配置的操作权限')}
                     </div>
                   )}
                 </div>
@@ -728,10 +732,10 @@ export default function RolesPage() {
           </Tabs>
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsPermDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={savePermissions} disabled={isSaving}>
-              {isSaving ? '保存中...' : '保存配置'}
+              {isSaving ? t('保存中...') : t('保存配置')}
             </Button>
           </DialogFooter>
         </DialogContent>

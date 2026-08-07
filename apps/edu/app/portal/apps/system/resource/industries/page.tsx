@@ -20,11 +20,13 @@ import { industryApi } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { Industry } from '@/lib/types/backend'
 
 export default function IndustriesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
+  const t = useT()
 
   const { data, loading, error, refresh } = useAsync(
     async () => {
@@ -52,10 +54,10 @@ export default function IndustriesPage() {
 
   return (
     <PortalCrudPage
-      title="行业管理"
-      description="管理行业分类，可为行业设置上级行业并启用/关闭"
-      entityLabel="行业"
-      searchPlaceholder="搜索行业代码、名称或上级行业..."
+      title={t('行业管理')}
+      description={t('管理行业分类，可为行业设置上级行业并启用/关闭')}
+      entityLabel={t('行业')}
+      searchPlaceholder={t('搜索行业代码、名称或上级行业...')}
       hideCreate
       items={industries}
       loading={loading}
@@ -74,19 +76,19 @@ export default function IndustriesPage() {
       }
       importConfig={{
         importType: 'industries',
-        entityLabel: '行业',
-        templateFileName: '行业批量导入模板.xlsx',
+        entityLabel: t('行业'),
+        templateFileName: t('行业批量导入模板.xlsx'),
       }}
       colSpan={7}
       renderTableHeader={() => (
         <>
-          <TableHead className="w-28">行业代码</TableHead>
-          <TableHead>行业名称</TableHead>
-          <TableHead>上级行业</TableHead>
-          <TableHead className="w-20 text-center">排序</TableHead>
-          <TableHead className="w-24 text-center">状态</TableHead>
-          <TableHead className="w-24 text-center">启用/关闭</TableHead>
-          <TableHead className="w-20 text-center">操作</TableHead>
+          <TableHead className="w-28">{t('行业代码')}</TableHead>
+          <TableHead>{t('行业名称')}</TableHead>
+          <TableHead>{t('上级行业')}</TableHead>
+          <TableHead className="w-20 text-center">{t('排序')}</TableHead>
+          <TableHead className="w-24 text-center">{t('状态')}</TableHead>
+          <TableHead className="w-24 text-center">{t('启用/关闭')}</TableHead>
+          <TableHead className="w-20 text-center">{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(industry, actions) => (
@@ -105,7 +107,7 @@ export default function IndustriesPage() {
           </TableCell>
           <TableCell className="text-center">
             <Badge variant={industry.enabled ? 'default' : 'secondary'}>
-              {industry.enabled ? '已启用' : '已关闭'}
+              {t(industry.enabled ? '已启用' : '已关闭')}
             </Badge>
           </TableCell>
           <TableCell className="text-center">
@@ -114,7 +116,7 @@ export default function IndustriesPage() {
           <TableRowActions>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
               <Pencil className="mr-1 h-3 w-3" />
-              编辑
+              {t('编辑')}
             </Button>
             <Button
               variant="ghost"
@@ -123,7 +125,7 @@ export default function IndustriesPage() {
               onClick={actions.delete}
             >
               <Trash2 className="mr-1 h-3 w-3" />
-              删除
+              {t('删除')}
             </Button>
           </TableRowActions>
         </>
@@ -135,31 +137,31 @@ export default function IndustriesPage() {
         const set = (patch: Partial<Industry>) => setItem({ ...item, ...patch })
         return (
           <>
-            <FormFieldRow label="行业代码" required>
+            <FormFieldRow label={t('行业代码')} required>
               <Input
-                placeholder="如：IT"
+                placeholder={t('如：IT')}
                 value={item.code}
                 onChange={(e) => set({ code: e.target.value })}
                 disabled={!!item.id}
               />
             </FormFieldRow>
-            <FormFieldRow label="行业名称" required>
+            <FormFieldRow label={t('行业名称')} required>
               <Input
-                placeholder="如：信息技术"
+                placeholder={t('如：信息技术')}
                 value={item.name}
                 onChange={(e) => set({ name: e.target.value })}
               />
             </FormFieldRow>
-            <FormFieldRow label="上级行业">
+            <FormFieldRow label={t('上级行业')}>
               <Select
                 value={item.parentId || '__none__'}
                 onValueChange={(val) => set({ parentId: val === '__none__' ? '' : val })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="无（顶级行业）" />
+                  <SelectValue placeholder={t('无（顶级行业）')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">无（顶级行业）</SelectItem>
+                  <SelectItem value="__none__">{t('无（顶级行业）')}</SelectItem>
                   {candidateParents
                     .filter((i) => i.id !== item.id)
                     .map((ind) => (
@@ -170,7 +172,7 @@ export default function IndustriesPage() {
                 </SelectContent>
               </Select>
             </FormFieldRow>
-            <FormFieldRow label="排序">
+            <FormFieldRow label={t('排序')}>
               <Input
                 type="number"
                 placeholder="0"
@@ -182,14 +184,11 @@ export default function IndustriesPage() {
         )
       }}
       getDeleteDescription={(item) => (
-        <>
-          确定要删除行业 <span className="font-medium">{item.name}</span>（{item.code}
-          ）吗？此操作不可撤销。
-        </>
+        <>{t('确定要删除行业「{name}」（{code}）吗？此操作不可撤销。', { name: item.name, code: item.code })}</>
       )}
       onSave={async (item, isEdit) => {
         if (!tenantId) {
-          toast({ variant: 'destructive', title: '保存失败', description: '未获取到租户信息' })
+          toast({ variant: 'destructive', title: t('保存失败'), description: t('未获取到租户信息') })
           return
         }
         if (!item.code.trim() || !item.name.trim()) return
@@ -201,7 +200,7 @@ export default function IndustriesPage() {
             enabled: item.enabled,
             sortOrder: item.sortOrder,
           })
-          toast({ title: '保存成功', description: '行业信息已更新' })
+          toast({ title: t('保存成功'), description: t('行业信息已更新') })
         } else {
           await industryApi.create({
             tenantId,
@@ -211,7 +210,7 @@ export default function IndustriesPage() {
             enabled: true,
             sortOrder: item.sortOrder,
           })
-          toast({ title: '创建成功', description: '新行业已添加' })
+          toast({ title: t('创建成功'), description: t('新行业已添加') })
         }
       }}
       onDelete={async (item) => {
@@ -225,7 +224,7 @@ export default function IndustriesPage() {
           enabled: !item.enabled,
           sortOrder: item.sortOrder,
         })
-        toast({ title: !item.enabled ? '已启用' : '已关闭' })
+        toast({ title: t(!item.enabled ? '已启用' : '已关闭') })
       }}
     />
   )

@@ -13,6 +13,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { Pencil } from 'lucide-react'
 import type { Role, UserExtensionField } from '@/lib/types/backend'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ExtendField {
   id: string
@@ -23,6 +24,7 @@ interface ExtendField {
 }
 
 export default function UserFieldsPage() {
+  const t = useT()
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const [fields, setFields] = useState<ExtendField[]>([])
@@ -58,11 +60,11 @@ export default function UserFieldsPage() {
         })),
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('加载失败'))
     } finally {
       setLoading(false)
     }
-  }, [tenantId])
+  }, [tenantId, t])
 
   useEffect(() => {
     ;(async () => {
@@ -75,12 +77,12 @@ export default function UserFieldsPage() {
     if (!original) return
     try {
       await portalUserExtensionFieldApi.update(field.id, { isEnabled: !field.enabled })
-      toast({ title: '状态已更新' })
+      toast({ title: t('状态已更新') })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '操作失败',
-        description: err instanceof Error ? err.message : '未知错误',
+        title: t('操作失败'),
+        description: err instanceof Error ? err.message : t('未知错误'),
       })
     }
   }
@@ -90,7 +92,7 @@ export default function UserFieldsPage() {
       fieldName: item.name.trim(),
       applicableRoleCodes: item.roleCodes,
     })
-    toast({ title: '保存成功' })
+    toast({ title: t('保存成功') })
   }
 
   const toggleRoleCode = (code: string, current: string[]) => {
@@ -103,9 +105,9 @@ export default function UserFieldsPage() {
 
   return (
     <PortalCrudPage
-      title="用户字段扩展"
-      description="系统预留20个用户扩展字段，您可以根据需要启用、命名这些字段，并指定适用的角色"
-      entityLabel="扩展字段"
+      title={t('用户字段扩展')}
+      description={t('系统预留20个用户扩展字段，您可以根据需要启用、命名这些字段，并指定适用的角色')}
+      entityLabel={t('扩展字段')}
       items={fields}
       loading={loading}
       error={error ?? null}
@@ -116,7 +118,10 @@ export default function UserFieldsPage() {
       hideCreate
       footer={
         <span className="text-sm text-muted-foreground">
-          已启用 {fields.filter((f) => f.enabled).length} / {fields.length} 个扩展字段
+          {t('已启用 {enabled} / {total} 个扩展字段', {
+            enabled: fields.filter((f) => f.enabled).length,
+            total: fields.length,
+          })}
         </span>
       }
       createDefault={() => ({
@@ -129,17 +134,17 @@ export default function UserFieldsPage() {
       renderForm={(item, setItem) => (
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">字段名称</label>
+            <label className="text-sm font-medium">{t('字段名称')}</label>
             <Input
-              placeholder="请输入字段名称"
+              placeholder={t('请输入字段名称')}
               value={item.name}
               onChange={(e) => setItem({ ...item, name: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">适用角色（可多选）</label>
+            <label className="text-sm font-medium">{t('适用角色（可多选）')}</label>
             <p className="text-xs text-muted-foreground">
-              选择此字段适用的角色，不选则表示所有角色均可使用
+              {t('选择此字段适用的角色，不选则表示所有角色均可使用')}
             </p>
             <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30">
               {roles.map((r) => {
@@ -169,11 +174,11 @@ export default function UserFieldsPage() {
       onToggleEnabled={handleToggle}
       renderTableHeader={() => (
         <>
-          <TableHead className="w-12">序号</TableHead>
-          <TableHead>字段名称</TableHead>
-          <TableHead>适用角色</TableHead>
-          <TableHead className="w-24 text-center">是否启用</TableHead>
-          <TableHead className="w-20 text-center">操作</TableHead>
+          <TableHead className="w-12">{t('序号')}</TableHead>
+          <TableHead>{t('字段名称')}</TableHead>
+          <TableHead>{t('适用角色')}</TableHead>
+          <TableHead className="w-24 text-center">{t('是否启用')}</TableHead>
+          <TableHead className="w-20 text-center">{t('操作')}</TableHead>
         </>
       )}
       renderTableRow={(field, actions) => (
@@ -190,7 +195,7 @@ export default function UserFieldsPage() {
                 ))}
               </div>
             ) : (
-              <span className="text-muted-foreground text-sm">未指定</span>
+              <span className="text-muted-foreground text-sm">{t('未指定')}</span>
             )}
           </TableCell>
           <TableCell className="text-center">
@@ -199,7 +204,7 @@ export default function UserFieldsPage() {
           <TableRowActions>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
               <Pencil className="mr-1 h-3 w-3" />
-              编辑
+              {t('编辑')}
             </Button>
           </TableRowActions>
         </>
