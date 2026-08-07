@@ -24,12 +24,42 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { courseApi, knowledgeApi } from '@/lib/api'
-import type { Course, KnowledgePointItem } from '@/lib/types/lesson'
+import { courseApi, knowledgeApi, scenarioApi, taskApi, positionApi } from '@/lib/api'
+import type { Course, KnowledgePoint, KnowledgePointItem } from '@/lib/types/lesson'
+import type { Scenario, ScenarioTask } from '@/lib/types/scene'
+import type { CareerPosition } from '@/lib/types/job'
 import { useT } from '@/lib/i18n/locale-provider'
 
 function generateKpCode() {
   return `KP-${Date.now().toString().slice(-6)}`
+}
+
+// 服务端知识点 → 选择器条目（granularLessonIds 归一为 granularLessons）
+function mapServerKp(k: KnowledgePoint): KnowledgePointItem {
+  return {
+    id: k.id,
+    name: k.name,
+    code: k.code,
+    description: k.description,
+    linked: k.linked,
+    granularLessons: k.granularLessonIds || [],
+  }
+}
+
+// 分页拉取全量数据（后端 limit 钳制 200，逐页翻到 total）
+async function fetchAllPages<T>(
+  fn: (params: { limit: number; offset: number }) => Promise<{ items: T[]; total: number }>,
+): Promise<T[]> {
+  const PAGE = 200
+  const items: T[] = []
+  let offset = 0
+  for (;;) {
+    const res = await fn({ limit: PAGE, offset })
+    items.push(...res.items)
+    if (res.items.length < PAGE || items.length >= res.total) break
+    offset += PAGE
+  }
+  return items
 }
 
 interface KnowledgeSelectorProps {
@@ -38,24 +68,6 @@ interface KnowledgeSelectorProps {
   onChange?: (selected: KnowledgePointItem[]) => void
   onAddCustom?: (name: string, description?: string) => void
   standalone?: boolean
-}
-
-const SCENE_KNOWLEDGE_MAP: Record<string, string[]> = {
-  'web-security': ['kp-1', 'kp-2', 'kp-3', 'kp-4', 'kp-5'],
-  'data-analysis': ['kp-6', 'kp-7', 'kp-8'],
-  'network-attack': ['kp-1', 'kp-5', 'kp-6', 'kp-10'],
-  'dev-standard': ['kp-9', 'kp-10'],
-}
-
-const TASK_SCENE_MAP: Record<string, string[]> = {
-  'task-sql-inject': ['web-security', 'network-attack'],
-  'task-xss': ['web-security'],
-  'task-data-clean': ['data-analysis'],
-  'task-model-train': ['data-analysis'],
-  'task-penetration': ['network-attack', 'web-security'],
-  'task-code-review': ['dev-standard', 'web-security'],
-  'task-visualize': ['data-analysis'],
-  'task-component': ['dev-standard'],
 }
 
 export function KnowledgeSelector({
@@ -70,11 +82,22 @@ export function KnowledgeSelector({
   const [searchResults, setSearchResults] = useState<KnowledgePointItem[] | null>(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const searchSeqRef = useRef(0)
-  const [sceneFilter, setSceneFilter] = useState('all')
-  const [positionFilter, setPositionFilter] = useState('all')
-  const [taskFilter, setTaskFilter] = useState('all')
   const [kpDetailOpen, setKpDetailOpen] = useState(false)
   const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
+
+  // 真实筛选：岗位/场景/任务互斥（只能启用一种），筛选命中后聚合对应知识点集合
+  const [positions, setPositions] = useState<CareerPosition[]>([])
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [sceneTasks, setSceneTasks] = useState<ScenarioTask[]>([])
+  const [filterMode, setFilterMode] = useState<'all' | 'scene' | 'position'>('all')
+  const [selectedPositionId, setSelectedPositionId] = useState('all')
+  const [selectedSceneId, setSelectedSceneId] = useState('all')
+  const [selectedTaskId, setSelectedTaskId] = useState('all')
+  const [filterKpIds, setFilterKpIds] = useState<Set<string> | null>(null)
+  const [sceneKpIdSet, setSceneKpIdSet] = useState<Set<string> | null>(null)
+  const [filterLoading, setFilterLoading] = useState(false)
+  // 筛选时需展示 pool 之外的知识点，懒加载全量知识点（分页）
+  const [allKps, setAllKps] = useState<KnowledgePointItem[] | null>(null)
 
   const [kpActionOpen, setKpActionOpen] = useState(false)
   const [kpActionMode, setKpActionMode] = useState<'add' | 'clone' | 'edit' | null>(null)
@@ -94,34 +117,6 @@ export function KnowledgeSelector({
 
   const t = useT()
 
-  const SCENES = [
-    { id: 'all', name: t('全部场景') },
-    { id: 'web-security', name: t('Web安全实战') },
-    { id: 'data-analysis', name: t('数据分析项目') },
-    { id: 'network-attack', name: t('网络攻防演练') },
-    { id: 'dev-standard', name: t('软件开发规范') },
-  ]
-
-  const POSITIONS = [
-    { id: 'all', name: t('全部岗位') },
-    { id: 'frontend', name: t('前端开发工程师') },
-    { id: 'backend', name: t('后端开发工程师') },
-    { id: 'security', name: t('安全测试工程师') },
-    { id: 'data', name: t('数据分析师') },
-  ]
-
-  const TASKS = [
-    { id: 'all', name: t('全部任务') },
-    { id: 'task-sql-inject', name: t('SQL注入漏洞挖掘') },
-    { id: 'task-xss', name: t('XSS攻击与防御') },
-    { id: 'task-data-clean', name: t('数据清洗与预处理') },
-    { id: 'task-model-train', name: t('回归模型训练') },
-    { id: 'task-penetration', name: t('渗透测试演练') },
-    { id: 'task-code-review', name: t('安全代码审查') },
-    { id: 'task-visualize', name: t('数据可视化报告') },
-    { id: 'task-component', name: t('业务组件封装') },
-  ]
-
   useEffect(() => {
     courseApi
       .list({ type: 'granular' })
@@ -130,6 +125,32 @@ export function KnowledgeSelector({
       })
       .catch(() => setGranularCourses([]))
   }, [])
+
+  // 岗位/场景下拉数据（真实数据，分页拉全量）
+  useEffect(() => {
+    fetchAllPages(({ limit, offset }) => positionApi.list({ limit, offset }))
+      .then(setPositions)
+      .catch(() => setPositions([]))
+    fetchAllPages(({ limit, offset }) => scenarioApi.list({ limit, offset }))
+      .then(setScenarios)
+      .catch(() => setScenarios([]))
+  }, [])
+
+  // 筛选命中集合非空时，懒加载全量知识点（超出 pool 200 条的部分也能筛出来）
+  useEffect(() => {
+    if (filterKpIds === null || allKps !== null) return
+    let cancelled = false
+    fetchAllPages(({ limit, offset }) => knowledgeApi.list({ limit, offset }))
+      .then((items) => {
+        if (!cancelled) setAllKps(items.map(mapServerKp))
+      })
+      .catch(() => {
+        if (!cancelled) setAllKps([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [filterKpIds, allKps])
 
   const kpSearchTerm = kpSearch.trim()
 
@@ -143,12 +164,7 @@ export function KnowledgeSelector({
         .list({ search: kpSearchTerm, limit: 200 })
         .then((res) => {
           if (seq !== searchSeqRef.current) return
-          setSearchResults(
-            (res.items || []).map((k) => ({
-              ...k,
-              granularLessons: (k as any).granularLessonIds || [],
-            })),
-          )
+          setSearchResults((res.items || []).map(mapServerKp))
           setSearchLoading(false)
         })
         .catch(() => {
@@ -163,12 +179,89 @@ export function KnowledgeSelector({
   const isReferenceKp = (kp: KnowledgePointItem) => kp.linked
 
   const isSearching = !!kpSearchTerm
-  const sceneKpIds = sceneFilter === 'all' ? null : SCENE_KNOWLEDGE_MAP[sceneFilter]
+  const filterActive = filterKpIds !== null && !isSearching
   const filtered = isSearching
     ? searchResults || []
-    : pool.filter((kp) => !sceneKpIds || sceneKpIds.includes(kp.id))
+    : filterActive
+      ? (allKps || []).filter((kp) => filterKpIds!.has(kp.id))
+      : pool
 
   const hasResults = isSearching ? filtered.length > 0 : false
+
+  // 切换筛选模式（岗位/场景任务互斥，切换即重置已选条件）
+  const handleFilterModeChange = (mode: 'all' | 'scene' | 'position') => {
+    setFilterMode(mode)
+    setSelectedSceneId('all')
+    setSelectedTaskId('all')
+    setSelectedPositionId('all')
+    setSceneTasks([])
+    setSceneKpIdSet(null)
+    setFilterKpIds(null)
+    setFilterLoading(false)
+  }
+
+  // 场景/任务筛选：选场景 → 拉该场景任务并聚合其全部知识点；选任务 → 缩窄为该任务知识点
+  const handleSceneChange = (sid: string) => {
+    setSelectedSceneId(sid)
+    setSelectedTaskId('all')
+    if (sid === 'all') {
+      setSceneTasks([])
+      setSceneKpIdSet(null)
+      setFilterKpIds(null)
+      return
+    }
+    setFilterLoading(true)
+    setFilterKpIds(new Set())
+    taskApi
+      .list({ scenarioId: sid, limit: 200 })
+      .then((res) => {
+        const tasks = res.items || []
+        setSceneTasks(tasks)
+        const ids = new Set<string>()
+        for (const task of tasks) for (const id of task.knowledgePointIds || []) ids.add(id)
+        setSceneKpIdSet(ids)
+        setFilterKpIds(ids)
+      })
+      .catch(() => {
+        setSceneTasks([])
+        setFilterKpIds(new Set())
+      })
+      .finally(() => setFilterLoading(false))
+  }
+
+  const handleTaskChange = (tid: string) => {
+    setSelectedTaskId(tid)
+    if (tid === 'all') {
+      setFilterKpIds(sceneKpIdSet)
+    } else {
+      const task = sceneTasks.find((t) => t.id === tid)
+      setFilterKpIds(new Set(task?.knowledgePointIds || []))
+    }
+  }
+
+  // 岗位筛选：聚合该岗位下所有场景（careerPositionId）的全部任务知识点
+  const handlePositionChange = (pid: string) => {
+    setSelectedPositionId(pid)
+    setSelectedSceneId('all')
+    setSelectedTaskId('all')
+    setSceneTasks([])
+    setSceneKpIdSet(null)
+    if (pid === 'all') {
+      setFilterKpIds(null)
+      return
+    }
+    const posScenarios = scenarios.filter((s) => s.careerPositionId === pid)
+    setFilterLoading(true)
+    setFilterKpIds(new Set())
+    Promise.all(posScenarios.map((s) => taskApi.list({ scenarioId: s.id, limit: 200 })))
+      .then((results) => {
+        const ids = new Set<string>()
+        for (const r of results) for (const task of r.items || []) for (const id of task.knowledgePointIds || []) ids.add(id)
+        setFilterKpIds(ids)
+      })
+      .catch(() => setFilterKpIds(new Set()))
+      .finally(() => setFilterLoading(false))
+  }
 
   const handleReferenceKp = (kp: KnowledgePointItem) => {
     if (selected.find((s) => s.id === kp.id)) return
@@ -246,6 +339,7 @@ export function KnowledgeSelector({
           : s,
       )
       onChange?.(updated)
+      setAllKps(null) // 失效全量缓存，下次筛选重新拉取
       setKpActionOpen(false)
       return
     }
@@ -260,6 +354,7 @@ export function KnowledgeSelector({
     }
     onAddCustom?.(newKp.name, newKp.description)
     onChange?.([...selected, newKp])
+    setAllKps(null) // 失效全量缓存，下次筛选重新拉取
     setKpActionOpen(false)
     setKpSearch('')
   }
@@ -320,86 +415,117 @@ export function KnowledgeSelector({
             {t('新增知识点')}
           </Button>
         </div>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs text-gray-500 shrink-0">{t('场景/任务筛选')}</span>
-          {!isSearching && (
-            <>
-              <Select
-                value={sceneFilter}
-                onValueChange={(v) => {
-                  setSceneFilter(v)
-                  if (
-                    taskFilter !== 'all' &&
-                    v !== 'all' &&
-                    TASK_SCENE_MAP[taskFilter] &&
-                    !TASK_SCENE_MAP[taskFilter].includes(v)
-                  ) {
-                    setTaskFilter('all')
-                  }
-                }}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs text-gray-500 shrink-0">{t('筛选')}</span>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+            {(
+              [
+                ['all', t('全部')],
+                ['scene', t('按场景/任务')],
+                ['position', t('按岗位')],
+              ] as const
+            ).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => handleFilterModeChange(m)}
+                className={cn(
+                  'px-3 py-1 transition-colors',
+                  filterMode === m
+                    ? 'bg-primary text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50',
+                )}
               >
-                <SelectTrigger className="h-8 text-xs w-[120px]">
-                  <SelectValue placeholder={t('选择场景')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {SCENES.map((scene) => (
-                    <SelectItem key={scene.id} value={scene.id} className="text-xs">
-                      {scene.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-[10px] text-gray-300 shrink-0">▸</span>
-              <Select
-                value={taskFilter}
-                onValueChange={(v) => {
-                  setTaskFilter(v)
-                  if (v !== 'all' && TASK_SCENE_MAP[v] && !TASK_SCENE_MAP[v].includes(sceneFilter)) {
-                    setSceneFilter(TASK_SCENE_MAP[v][0] || 'all')
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs w-[120px]">
-                  <SelectValue placeholder={t('选择任务')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {TASKS.filter(
-                    (t) =>
-                      t.id === 'all' ||
-                      sceneFilter === 'all' ||
-                      (TASK_SCENE_MAP[t.id] && TASK_SCENE_MAP[t.id].includes(sceneFilter)),
-                  ).map((task) => (
-                    <SelectItem key={task.id} value={task.id} className="text-xs">
-                      {task.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </>
+                {label}
+              </button>
+            ))}
+          </div>
+          {filterActive && !filterLoading && (
+            <span className="text-[10px] text-gray-400">
+              {t('筛选出 {count} 条知识点', { count: filtered.length })}
+            </span>
           )}
         </div>
-        {!isSearching && (
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs text-gray-500 shrink-0">{t('岗位筛选')}</span>
-            <Select value={positionFilter} onValueChange={setPositionFilter}>
-              <SelectTrigger className="h-8 text-xs flex-1">
+        {!isSearching && filterMode === 'scene' && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-gray-500 shrink-0">{t('场景')}</span>
+            <Select value={selectedSceneId} onValueChange={handleSceneChange}>
+              <SelectTrigger className="h-8 text-xs w-[150px]">
+                <SelectValue placeholder={t('选择场景')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">
+                  {t('全部场景')}
+                </SelectItem>
+                {scenarios.map((scene) => (
+                  <SelectItem key={scene.id} value={scene.id} className="text-xs">
+                    {scene.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedSceneId !== 'all' && (
+              <>
+                <span className="text-xs text-gray-500 shrink-0">{t('任务')}</span>
+                <Select value={selectedTaskId} onValueChange={handleTaskChange}>
+                  <SelectTrigger className="h-8 text-xs w-[150px]">
+                    <SelectValue placeholder={t('选择任务')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">
+                      {t('全部任务')}
+                    </SelectItem>
+                    {sceneTasks.map((task) => (
+                      <SelectItem key={task.id} value={task.id} className="text-xs">
+                        {task.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+          </div>
+        )}
+        {!isSearching && filterMode === 'position' && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-gray-500 shrink-0">{t('岗位')}</span>
+            <Select value={selectedPositionId} onValueChange={handlePositionChange}>
+              <SelectTrigger className="h-8 text-xs w-[170px]">
                 <SelectValue placeholder={t('选择岗位')} />
               </SelectTrigger>
               <SelectContent>
-                {POSITIONS.map((pos) => (
+                <SelectItem value="all" className="text-xs">
+                  {t('全部岗位')}
+                </SelectItem>
+                {positions.map((pos) => (
                   <SelectItem key={pos.id} value={pos.id} className="text-xs">
                     {pos.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <span className="text-[10px] text-gray-400">
+              {t('聚合该岗位下所有场景任务的知识点')}
+            </span>
           </div>
         )}
         <div className="flex-1 overflow-y-auto pr-1">
-          {!isSearching && filtered.length === 0 && (
+          {!isSearching && !filterActive && filtered.length === 0 && (
             <div className="text-center text-gray-400 py-8">
               <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">{t('请输入关键词搜索知识点')}</p>
+            </div>
+          )}
+          {!isSearching && filterActive && filterLoading && (
+            <div className="text-center text-gray-400 py-8">
+              <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin" />
+              <p className="text-sm">{t('筛选加载中...')}</p>
+            </div>
+          )}
+          {!isSearching && filterActive && !filterLoading && filtered.length === 0 && (
+            <div className="text-center text-gray-400 py-8">
+              <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">{t('该筛选条件下暂无知识点')}</p>
             </div>
           )}
           {isSearching && searchLoading && (
