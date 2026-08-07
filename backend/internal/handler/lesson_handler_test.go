@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -846,5 +847,196 @@ func TestHybridCourseGenerateAssessments(t *testing.T) {
 	paperRC, _ := mrc["paper"].(map[string]interface{})
 	if usageID, _ := paperRC["usageId"].(string); usageID == "" {
 		t.Fatal("expected usageId written back to eval_data")
+	}
+}
+
+func TestHybridCourseClone(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	w := env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
+		"code":     "TEST-HYBRID-CLONE",
+		"name":     "混合克隆源课",
+		"type":     "hybrid",
+		"category": "专业核心课程",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	course, _ := testhelper.Unmarshal[domain.Course](w)
+	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", course.ID)
+
+	// 父节点 + 子节点
+	w = env.Do("POST", "/api/v1/lesson/nodes", map[string]interface{}{
+		"courseId":  course.ID,
+		"name":      "混合父节点",
+		"sortOrder": 0,
+		"refType":   "normal",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", w.Code)
+	}
+	parentNode, _ := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
+
+	w = env.Do("POST", "/api/v1/lesson/nodes", map[string]interface{}{
+		"courseId":  course.ID,
+		"parentId":  parentNode.ID,
+		"name":      "混合子节点",
+		"sortOrder": 1,
+		"refType":   "normal",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", w.Code)
+	}
+	childNode, _ := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
+
+	// 父节点：两个混合模块
+	for _, m := range []map[string]interface{}{
+		{"moduleKey": "teachingDesign", "mode": "offline", "data": map[string]interface{}{"content": "教学设计内容"}},
+		{"moduleKey": "prePreview", "mode": "online", "data": map[string]interface{}{"previewContent": "预习内容"}},
+	} {
+		w = env.Do("POST", "/api/v1/lesson/hybrid-modules", map[string]interface{}{
+			"nodeId":    parentNode.ID,
+			"moduleKey": m["moduleKey"],
+			"mode":      m["mode"],
+			"data":      m["data"],
+		})
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	}
+
+	// 父节点：测验 + 题目
+	w = env.Do("POST", "/api/v1/lesson/quizzes", map[string]interface{}{
+		"nodeId": parentNode.ID,
+		"title":  "混合节点测验",
+		"type":   "paper",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	quiz, _ := testhelper.Unmarshal[domain.NodeQuiz](w)
+	w = env.Do("POST", "/api/v1/lesson/quizzes/"+quiz.ID+"/questions", map[string]interface{}{
+		"type":      "single",
+		"question":  "2+2=?",
+		"options":   map[string]interface{}{"A": "3", "B": "4"},
+		"answer":    "B",
+		"score":     5.0,
+		"sortOrder": 0,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201 for question, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// 子节点：作业 + 混合模块
+	w = env.Do("POST", "/api/v1/lesson/homeworks", map[string]interface{}{
+		"nodeId": childNode.ID,
+		"title":  "混合节点作业",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.Do("POST", "/api/v1/lesson/hybrid-modules", map[string]interface{}{
+		"nodeId":    childNode.ID,
+		"moduleKey": "inClassQuiz",
+		"mode":      "online",
+		"data":      map[string]interface{}{"quizContent": "随堂测验"},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// 克隆混合课
+	w = env.Do("POST", "/api/v1/lesson/courses/"+course.ID+"/clone", map[string]interface{}{
+		"name": "混合克隆目标课",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	cloned, _ := testhelper.Unmarshal[domain.Course](w)
+	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", cloned.ID)
+
+	// 节点克隆（含父子关系）
+	var nodeCount int
+	if err := env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM system_course_nodes WHERE course_id = $1`, cloned.ID).Scan(&nodeCount); err != nil {
+		t.Fatalf("query cloned nodes: %v", err)
+	}
+	if nodeCount != 2 {
+		t.Fatalf("expected 2 cloned nodes, got %d", nodeCount)
+	}
+
+	var clonedParentID, clonedChildID, clonedChildParentID string
+	if err := env.DB.QueryRow(ctx, `SELECT id FROM system_course_nodes WHERE course_id = $1 AND name = '混合父节点'`, cloned.ID).Scan(&clonedParentID); err != nil {
+		t.Fatalf("query cloned parent: %v", err)
+	}
+	if err := env.DB.QueryRow(ctx, `
+		SELECT id, parent_id FROM system_course_nodes WHERE course_id = $1 AND name = '混合子节点'
+	`, cloned.ID).Scan(&clonedChildID, &clonedChildParentID); err != nil {
+		t.Fatalf("query cloned child: %v", err)
+	}
+	if clonedChildParentID != clonedParentID {
+		t.Fatalf("expected cloned child parent_id=%s, got %s", clonedParentID, clonedChildParentID)
+	}
+
+	// 混合模块克隆（父节点 2 个 + 子节点 1 个）
+	var moduleCount int
+	if err := env.DB.QueryRow(ctx, `
+		SELECT COUNT(*) FROM hybrid_node_modules
+		WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id = $1)
+	`, cloned.ID).Scan(&moduleCount); err != nil {
+		t.Fatalf("query cloned modules: %v", err)
+	}
+	if moduleCount != 3 {
+		t.Fatalf("expected 3 cloned hybrid modules, got %d", moduleCount)
+	}
+
+	var moduleData string
+	if err := env.DB.QueryRow(ctx, `
+		SELECT data::text FROM hybrid_node_modules WHERE node_id = $1 AND module_key = 'teachingDesign'
+	`, clonedParentID).Scan(&moduleData); err != nil {
+		t.Fatalf("query cloned module data: %v", err)
+	}
+	if !strings.Contains(moduleData, "教学设计内容") {
+		t.Fatalf("expected module data cloned, got %s", moduleData)
+	}
+
+	// 测验 + 题目克隆
+	var quizCount, questionCount int
+	if err := env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM node_quizzes WHERE node_id = $1`, clonedParentID).Scan(&quizCount); err != nil {
+		t.Fatalf("query cloned quizzes: %v", err)
+	}
+	if quizCount != 1 {
+		t.Fatalf("expected 1 cloned quiz, got %d", quizCount)
+	}
+	if err := env.DB.QueryRow(ctx, `
+		SELECT COUNT(*) FROM node_quiz_questions
+		WHERE quiz_id IN (SELECT id FROM node_quizzes WHERE node_id = $1)
+	`, clonedParentID).Scan(&questionCount); err != nil {
+		t.Fatalf("query cloned questions: %v", err)
+	}
+	if questionCount != 1 {
+		t.Fatalf("expected 1 cloned quiz question, got %d", questionCount)
+	}
+
+	// 作业克隆
+	var hwCount int
+	if err := env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM node_homeworks WHERE node_id = $1`, clonedChildID).Scan(&hwCount); err != nil {
+		t.Fatalf("query cloned homeworks: %v", err)
+	}
+	if hwCount != 1 {
+		t.Fatalf("expected 1 cloned homework, got %d", hwCount)
+	}
+
+	// 源课不受影响
+	var origModuleCount int
+	if err := env.DB.QueryRow(ctx, `
+		SELECT COUNT(*) FROM hybrid_node_modules
+		WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id = $1)
+	`, course.ID).Scan(&origModuleCount); err != nil {
+		t.Fatalf("query source modules: %v", err)
+	}
+	if origModuleCount != 3 {
+		t.Fatalf("expected 3 source modules intact, got %d", origModuleCount)
 	}
 }

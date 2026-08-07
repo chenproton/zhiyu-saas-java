@@ -77,6 +77,7 @@ func (s *CourseCloneStore) FetchSource(ctx context.Context, id string) (*SourceC
 }
 
 // CloneCourse 在事务内克隆课程及全部关联（绑定/体系课节点/节点子表）。
+// 混合课与体系课共用 system_course_nodes 节点表，一并克隆节点及全部子表。
 // 返回新课程 ID。
 func (s *CourseCloneStore) CloneCourse(ctx context.Context, tx Queryer, tenantID, oldCourseID, newName string, src *SourceCourseFields, createdBy, code string) (string, error) {
 	newID := uuid.NewString()
@@ -99,8 +100,8 @@ func (s *CourseCloneStore) CloneCourse(ctx context.Context, tx Queryer, tenantID
 		return "", err
 	}
 
-	if src.Type == "system" {
-		if err := s.cloneSystemCourseNodes(ctx, tx, oldCourseID, newID, tenantID); err != nil {
+	if src.Type == "system" || src.Type == "hybrid" {
+		if err := s.cloneCourseNodes(ctx, tx, oldCourseID, newID, tenantID); err != nil {
 			return "", err
 		}
 		if _, err := tx.Exec(ctx, `
@@ -176,7 +177,7 @@ func (s *CourseCloneStore) cloneCourseBindings(ctx context.Context, tx Queryer, 
 	return nil
 }
 
-func (s *CourseCloneStore) cloneSystemCourseNodes(ctx context.Context, tx Queryer, oldCourseID, newCourseID, tenantID string) error {
+func (s *CourseCloneStore) cloneCourseNodes(ctx context.Context, tx Queryer, oldCourseID, newCourseID, tenantID string) error {
 	type nodeRow struct {
 		ID                  string
 		ParentID            *string
