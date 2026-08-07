@@ -33,10 +33,13 @@ export default function TagsPage() {
 
   const filtered = tags.filter((t) => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
+  const randomColor = () =>
+    `#${Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0')}`
+
   const handleOpenAdd = () => {
     setEditingItem(null)
     setName('')
-    setColor('#6366f1')
+    setColor(randomColor())
     setIsDialogOpen(true)
   }
 
