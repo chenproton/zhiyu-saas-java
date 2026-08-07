@@ -170,6 +170,10 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		DrawnQuestions:    jsonRawMessageToJSONMap(req.DrawnQuestions),
 	})
 	if err != nil {
+		if errors.Is(err, store.ErrAlreadyGraded) {
+			respondError(w, http.StatusConflict, "评价结果已被评分，无法重新提交")
+			return
+		}
 		respondServerError(w, r, err, "提交评价结果失败")
 		return
 	}

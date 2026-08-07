@@ -104,10 +104,15 @@ func (s *NodeEvaluationResultStore) Submit(ctx context.Context, p *NodeEvaluatio
 			status = 'pending',
 			graded_at = NULL,
 			updated_at = EXCLUDED.updated_at
+		WHERE node_evaluation_results.graded_at IS NULL
 		RETURNING id
 	`, p.TenantID, p.NodeID, p.MethodKey, p.EvaluateeID,
 		p.EvaluatorID, p.EvaluatorType, p.MaxScore,
 		p.EvalPointScores, p.ObjectiveAnswers, p.SubjectiveContent, p.DrawnQuestions, now, now).Scan(&id)
+	if err == pgx.ErrNoRows {
+		// 已被教师评分的结果禁止重交覆盖
+		return nil, ErrAlreadyGraded
+	}
 	if err != nil {
 		return nil, err
 	}

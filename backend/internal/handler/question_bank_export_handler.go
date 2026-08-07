@@ -54,6 +54,7 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 		f.SetCellStyle(sheet, cell, cell, wrapAlign)
 	}
 
+	failed := 0
 	for ri, bid := range bankIDs {
 		var name, desc string
 		var batchID *string
@@ -62,6 +63,7 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 			FROM question_banks WHERE id=$1 AND tenant_id=$2
 		`, bid, tenantID).Scan(&name, &desc, &batchID)
 		if err != nil {
+			failed++
 			slog.Warn("导出题库行跳过", "bankId", bid, "error", err)
 			continue
 		}
@@ -78,5 +80,8 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 		f.SetRowHeight("题库基本信息", r, 24)
 	}
 
+	if failed > 0 {
+		return fmt.Errorf("%d 个题库数据导出失败", failed)
+	}
 	return nil
 }
