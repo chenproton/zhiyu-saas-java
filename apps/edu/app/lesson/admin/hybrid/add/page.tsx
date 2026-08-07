@@ -138,21 +138,15 @@ function HybridCourseAddForm() {
   const moduleAssignmentsRef = useRef(moduleAssignments)
   const selectedNodeIdRef = useRef(selectedNodeId)
 
-  // 根节点：parentId 为 null 的节点（课程基本信息挂载在根节点）
-  const rootNodeId = useMemo(
-    () =>
-      nodes.find((n) => n.parentId === null)?.id ||
-      (nodes.length > 0 ? nodes[0].id : null),
-    [nodes],
+  // 课程基本信息独立 state（与节点无关，对齐体系课编辑结构）
+  const [courseForm, setCourseForm] = useState<CourseBasicForm>(
+    () => createDefaultNodeModuleData().form,
   )
-
-  const rootForm: CourseBasicForm =
-    (rootNodeId ? nodeDataMap[rootNodeId]?.form : undefined) || createDefaultNodeModuleData().form
-  const rootFormRef = useRef(rootForm)
+  const courseFormRef = useRef(courseForm)
 
   useEffect(() => {
-    rootFormRef.current = rootForm
-  }, [rootForm])
+    courseFormRef.current = courseForm
+  }, [courseForm])
 
   // 加载后同步节点列表与模块数据到 ref
   useEffect(() => {
@@ -176,7 +170,36 @@ function HybridCourseAddForm() {
           if (cancelled) return
           setExisting(c)
           if (c.batchId) setBatchId(c.batchId)
+          // 回填课程基本信息
+          const courseEvalData = (c.evalData as any) || {}
+          setCourseForm({
+            name: c.name || '',
+            code: c.code || '',
+            majorId: c.majorId || '',
+            majorName: c.majorName || '',
+            semester: c.semester || '',
+            category: (c.category as CourseBasicForm['category']) || '专业核心课程',
+            courseObjectives: courseEvalData.learningGoal || '',
+            detailedDescription: c.description || '',
+            background: courseEvalData.background || '',
+            estimatedHours: courseEvalData.estimatedHours
+              ? String(courseEvalData.estimatedHours)
+              : '',
+            coverImage: c.coverImage || '',
+          })
           const loadedNodes = (nodeRes.items || []) as SystemCourseNode[]
+          // 旧课程可能没有节点：生成内存根节点，保证课程基本信息可编辑，保存时自动落库
+          if (loadedNodes.length === 0) {
+            loadedNodes.push({
+              id: `node-${Date.now()}`,
+              courseId: editId,
+              parentId: null,
+              name: c.name || '混合课程',
+              order: 1,
+              type: 'normal',
+              status: 'draft',
+            })
+          }
           setNodes(loadedNodes)
           const modulesByNode = new Map<string, HybridNodeModule[]>()
           ;(moduleRes.items || []).forEach((m) => {
@@ -186,7 +209,7 @@ function HybridCourseAddForm() {
           })
           const assignments: Record<string, AtomicModuleKey[]> = {}
           const dataMap: Record<string, NodeModuleData> = {}
-          loadedNodes.forEach((n, idx) => {
+          loadedNodes.forEach((n) => {
             const modules = modulesByNode.get(n.id) || []
             const keys: AtomicModuleKey[] = []
             const modes: NodeModuleData['moduleModes'] = {}
@@ -199,16 +222,6 @@ function HybridCourseAddForm() {
               category: c.category as CourseBasicForm['category'],
               coverImage: c.coverImage,
             })
-            // 根节点回填课程级字段（background/estimatedHours 存于 evalData）
-            if (n.parentId === null || idx === 0) {
-              const courseEvalData = (c.evalData as any) || {}
-              d.form.courseObjectives = courseEvalData.learningGoal || ''
-              d.form.detailedDescription = c.description || ''
-              d.form.background = courseEvalData.background || ''
-              d.form.estimatedHours = courseEvalData.estimatedHours
-                ? String(courseEvalData.estimatedHours)
-                : ''
-            }
             modules.forEach((m) => {
               if (
                 m.moduleKey === TEACHING_DESIGN_KEY ||
@@ -278,19 +291,9 @@ function HybridCourseAddForm() {
   const [saving, setSaving] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
 
-  const updateRootForm = useCallback(
-    (patch: Partial<CourseBasicForm>) => {
-      if (!rootNodeId) return
-      setNodeDataMap((prev) => {
-        const cur = prev[rootNodeId] || createDefaultNodeModuleData()
-        return {
-          ...prev,
-          [rootNodeId]: { ...cur, form: { ...cur.form, ...patch } },
-        }
-      })
-    },
-    [rootNodeId],
-  )
+  const updateCourseForm = useCallback((patch: Partial<CourseBasicForm>) => {
+    setCourseForm((prev) => ({ ...prev, ...patch }))
+  }, [])
 
   const handleAddNode = useCallback(
     (
@@ -543,26 +546,26 @@ function HybridCourseAddForm() {
     'id' | 'nodeCount' | 'resourceCount' | 'studyCount' | 'createdAt' | 'updatedAt'
   > =>
     ({
-      code: rootForm?.code || '',
-      name: rootForm?.name || '',
+      code: courseForm.code || '',
+      name: courseForm.name || '',
       type: 'hybrid',
-      category: rootForm?.category || '专业核心课程',
-      majorId: rootForm?.majorId || existing?.majorId || undefined,
-      majorName: rootForm?.majorName || existing?.majorName || undefined,
-      semester: rootForm?.semester || existing?.semester || undefined,
+      category: courseForm.category || '专业核心课程',
+      majorId: courseForm.majorId || existing?.majorId || undefined,
+      majorName: courseForm.majorName || existing?.majorName || undefined,
+      semester: courseForm.semester || existing?.semester || undefined,
       className: existing?.className || '',
-      coverImage: rootForm?.coverImage || undefined,
+      coverImage: courseForm.coverImage || undefined,
       batchId: batchId || undefined,
       status: 'draft',
       creatorId: existing?.creatorId || '',
       coCreatorIds: existing?.coCreatorIds || [],
-      detailedDescription: rootForm?.detailedDescription || undefined,
-      background: rootForm?.background || undefined,
-      estimatedHours: parseInt(rootForm?.estimatedHours || '') || undefined,
+      detailedDescription: courseForm.detailedDescription || undefined,
+      background: courseForm.background || undefined,
+      estimatedHours: parseInt(courseForm.estimatedHours || '') || undefined,
       evalData: {
-        learningGoal: rootForm?.courseObjectives || undefined,
-        background: rootForm?.background || undefined,
-        estimatedHours: parseInt(rootForm?.estimatedHours || '') || undefined,
+        learningGoal: courseForm.courseObjectives || undefined,
+        background: courseForm.background || undefined,
+        estimatedHours: parseInt(courseForm.estimatedHours || '') || undefined,
       },
     }) as any
 
@@ -586,7 +589,7 @@ function HybridCourseAddForm() {
 
       const sortedNodes = [...nodesRef.current].sort((a, b) => a.order - b.order)
       const idMapping = new Map<string, string>()
-      const courseCode = rootFormRef.current?.code || existing?.code || ''
+      const courseCode = courseFormRef.current?.code || existing?.code || ''
 
       for (const node of sortedNodes) {
         const d = nodeDataMapRef.current[node.id]
@@ -653,7 +656,7 @@ function HybridCourseAddForm() {
   )
 
   const handleSave = async () => {
-    if (!rootForm?.name || !rootForm?.code) {
+    if (!courseForm.name || !courseForm.code) {
       toast({ title: '请填写课程名称和课程编码', variant: 'destructive' })
       return false
     }
@@ -790,11 +793,11 @@ function HybridCourseAddForm() {
                     <BookOpen className="w-4 h-4 text-[#1890ff]" />
                     课程基本信息
                     <span className="text-xs font-normal text-gray-400">
-                      {rootForm.name ? `《${rootForm.name}》` : '未填写课程名称'}
+                      {courseForm.name ? `《${courseForm.name}》` : '未填写课程名称'}
                     </span>
-                    {rootForm.majorName && (
+                    {courseForm.majorName && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                        {rootForm.majorName}
+                        {courseForm.majorName}
                       </span>
                     )}
                   </CardTitle>
@@ -815,34 +818,34 @@ function HybridCourseAddForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormFieldRow label="课程名称" labelClassName="text-xs">
                   <Input
-                    value={rootForm.name}
-                    onChange={(e) => updateRootForm({ name: e.target.value })}
+                    value={courseForm.name}
+                    onChange={(e) => updateCourseForm({ name: e.target.value })}
                     placeholder="请输入课程名称"
                     className="h-9 text-sm"
                   />
                 </FormFieldRow>
                 <FormFieldRow label="课程编码" labelClassName="text-xs">
                   <Input
-                    value={rootForm.code}
-                    onChange={(e) => updateRootForm({ code: e.target.value })}
+                    value={courseForm.code}
+                    onChange={(e) => updateCourseForm({ code: e.target.value })}
                     placeholder="请输入课程编码"
                     className="h-9 text-sm"
                   />
                 </FormFieldRow>
                 <FormFieldRow label="所属专业" labelClassName="text-xs">
                   <MajorSelect
-                    value={rootForm.majorId}
+                    value={courseForm.majorId}
                     onChange={(v, m) =>
-                      updateRootForm({ majorId: v || '', majorName: m?.name || '' })
+                      updateCourseForm({ majorId: v || '', majorName: m?.name || '' })
                     }
                     placeholder="请选择所属专业"
                   />
                 </FormFieldRow>
                 <FormFieldRow label="课程分类" labelClassName="text-xs">
                   <Select
-                    value={rootForm.category}
+                    value={courseForm.category}
                     onValueChange={(v) =>
-                      updateRootForm({ category: v as CourseBasicForm['category'] })
+                      updateCourseForm({ category: v as CourseBasicForm['category'] })
                     }
                   >
                     <SelectTrigger className="h-9 text-sm">
@@ -859,8 +862,8 @@ function HybridCourseAddForm() {
                 </FormFieldRow>
                 <FormFieldRow label="学期" labelClassName="text-xs">
                   <Input
-                    value={rootForm.semester}
-                    onChange={(e) => updateRootForm({ semester: e.target.value })}
+                    value={courseForm.semester}
+                    onChange={(e) => updateCourseForm({ semester: e.target.value })}
                     placeholder="如：2026-2027-1"
                     className="h-9 text-sm"
                   />
@@ -870,24 +873,24 @@ function HybridCourseAddForm() {
               <div className="mt-5 space-y-1.5">
                 <Label className="text-xs">课程目标</Label>
                 <MockRichEditor
-                  value={rootForm.courseObjectives}
-                  onChange={(v) => updateRootForm({ courseObjectives: v })}
+                  value={courseForm.courseObjectives}
+                  onChange={(v) => updateCourseForm({ courseObjectives: v })}
                   placeholder="请输入课程目标，可填写多条，按回车分隔"
                 />
               </div>
               <div className="mt-5 space-y-1.5">
                 <Label className="text-xs">详细描述</Label>
                 <MockRichEditor
-                  value={rootForm.detailedDescription}
-                  onChange={(v) => updateRootForm({ detailedDescription: v })}
+                  value={courseForm.detailedDescription}
+                  onChange={(v) => updateCourseForm({ detailedDescription: v })}
                   placeholder="请输入课程详细描述"
                 />
               </div>
               <FormFieldGrid cols={2} className="mt-5">
                 <FormFieldRow label="任务背景" labelClassName="text-xs">
                   <Input
-                    value={rootForm.background}
-                    onChange={(e) => updateRootForm({ background: e.target.value })}
+                    value={courseForm.background}
+                    onChange={(e) => updateCourseForm({ background: e.target.value })}
                     placeholder="任务背景说明"
                     className="h-9 text-sm"
                   />
@@ -895,8 +898,8 @@ function HybridCourseAddForm() {
                 <FormFieldRow label="预计学时" labelClassName="text-xs">
                   <Input
                     type="number"
-                    value={rootForm.estimatedHours}
-                    onChange={(e) => updateRootForm({ estimatedHours: e.target.value })}
+                    value={courseForm.estimatedHours}
+                    onChange={(e) => updateCourseForm({ estimatedHours: e.target.value })}
                     placeholder="预计完成学时"
                     className="h-9 text-sm"
                   />
@@ -906,7 +909,7 @@ function HybridCourseAddForm() {
                 <Label className="text-xs">封面图片</Label>
                 <div className="max-w-[400px]">
                   <CoverImageUpload
-                    imageUrl={rootForm.coverImage}
+                    imageUrl={courseForm.coverImage}
                     uploading={coverUploading}
                     label="课程封面"
                     alt="课程封面"
@@ -914,7 +917,7 @@ function HybridCourseAddForm() {
                       setCoverUploading(true)
                       try {
                         const res = await fileApi.upload(file)
-                        updateRootForm({ coverImage: res.url })
+                        updateCourseForm({ coverImage: res.url })
                         toast({ title: '封面上传成功' })
                       } catch (err: any) {
                         toast({ title: err?.message || '封面上传失败', variant: 'destructive' })
@@ -922,7 +925,7 @@ function HybridCourseAddForm() {
                         setCoverUploading(false)
                       }
                     }}
-                    onRemove={() => updateRootForm({ coverImage: '' })}
+                    onRemove={() => updateCourseForm({ coverImage: '' })}
                   />
                 </div>
               </div>
