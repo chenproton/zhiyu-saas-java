@@ -133,7 +133,16 @@ export default function PortalLoginPage() {
       </div>
 
       <div className="relative w-full max-w-md">
-        <div className="mb-8 flex flex-col items-center gap-3">
+        <div className="relative mb-8 flex flex-col items-center gap-3">
+          <div className="absolute right-0 top-0">
+            <Link
+              href="/changelog"
+              className="flex items-center gap-1 rounded-full border border-white/30 px-3 py-1.5 text-xs text-white/90 transition-colors hover:border-white/60 hover:bg-white/10"
+            >
+              <History className="h-3.5 w-3.5" />
+              {t('查看平台更新记录')}
+            </Link>
+          </div>
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30 ring-1 ring-white/20">
             <GraduationCap className="h-8 w-8 text-white" />
           </div>
@@ -237,21 +246,11 @@ export default function PortalLoginPage() {
                   <li>{t('学校管理员：school / school123')}</li>
                   <li>{t('教师：teacher / teacher123')}</li>
                   <li>{t('学生：student / student123')}</li>
-                </ul>
-              </div>
-            )}
-
-            <div className="mt-6">
-              <Link
-                href="/changelog"
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-sm text-slate-500 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
-              >
-                <History className="h-4 w-4" />
-                {t('查看平台更新记录')}
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+                 </ul>
+               </div>
+             )}
+           </CardContent>
+         </Card>
 
         <p className="mt-6 text-center text-xs text-blue-200/40">
           © {new Date().getFullYear()} {t('场景化数智教学服务平台')} All Rights Reserved
