@@ -136,7 +136,7 @@ export function StatusActionBar({
           {t('查看详情')}
         </Button>
       )}
-      {EDITABLE_STATUSES.includes(status) && extraActions}
+      {extraActions}
       {onEdit && EDITABLE_STATUSES.includes(status) && (
         <Button
           variant="ghost"
