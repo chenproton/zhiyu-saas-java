@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Flag, Heart, Layers, ListChecks, Factory, Building2, Briefcase, GraduationCap } from 'lucide-react'
-import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi } from '@/lib/api'
+import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi, targetPositionApi } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import type { CareerPosition, Scenario } from '@/lib/types'
@@ -35,11 +35,11 @@ interface JobHomeProps {
 }
 
 function PositionSideLists({
-  recommendedPositions,
+  targetPositions,
   favoritePositions,
   linkToLearn,
 }: {
-  recommendedPositions: CareerPosition[]
+  targetPositions: CareerPosition[]
   favoritePositions: CareerPosition[]
   linkToLearn: boolean
 }) {
@@ -59,8 +59,8 @@ function PositionSideLists({
   }
 
   const isRec = activeTab === 'recommended'
-  const positions = isRec ? recommendedPositions : favoritePositions
-  const emptyText = isRec ? '暂无目标推荐岗位' : '快去收藏岗位吧！'
+  const positions = isRec ? targetPositions : favoritePositions
+  const emptyText = isRec ? '暂无目标岗位' : '快去收藏岗位吧！'
   const EmptyIcon = isRec ? Flag : Heart
   const activeClass = isRec
     ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white border border-transparent shadow-sm'
@@ -152,6 +152,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     new Map(),
   )
   const [favoritePositions, setFavoritePositions] = useState<CareerPosition[]>([])
+  const [targetPositions, setTargetPositions] = useState<CareerPosition[]>([])
   const [hotPositions, setHotPositions] = useState<Array<{ positionId: string; order: number }>>([])
   const [loading, setLoading] = useState(true)
 
@@ -258,6 +259,22 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
         setFavoritePositions(res.items || [])
       } catch {
         setFavoritePositions([])
+      }
+    })()
+  }, [user, isScene])
+
+  // 目标岗位：唯一来源为人培方案按班级排的岗位（非运营推荐位）
+  useEffect(() => {
+    ;(async () => {
+      if (!user) {
+        setTargetPositions([])
+        return
+      }
+      try {
+        const res = await targetPositionApi.list()
+        setTargetPositions(res.items || [])
+      } catch {
+        setTargetPositions([])
       }
     })()
   }, [user, isScene])
@@ -404,13 +421,6 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
     () => new Map(hotPositions.map((h) => [h.positionId, h.order])),
     [hotPositions],
   )
-
-  const recommendedPositions = useMemo(() => {
-    const orderMap = new Map(hotPositions.map((h) => [h.positionId, h.order]))
-    return positions
-      .filter((p) => hotPositionIds.has(p.id))
-      .sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999))
-  }, [positions, hotPositions, hotPositionIds])
 
   const jobFiltered = useMemo(() => {
     let list = [...positions]
@@ -647,7 +657,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
         ctaLabel: isScene ? '浏览场景' : '浏览岗位',
         right: (
           <PositionSideLists
-            recommendedPositions={recommendedPositions}
+            targetPositions={targetPositions}
             favoritePositions={favoritePositions}
             linkToLearn={isScene}
           />
