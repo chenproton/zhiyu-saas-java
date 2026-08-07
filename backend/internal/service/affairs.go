@@ -190,7 +190,8 @@ func (s *AffairsService) ListTimetableEntries(ctx context.Context, tenantID, ter
 	return s.st.Scheduling().ListTimetableEntries(ctx, tenantID, termID, classNodeID, teacherID, status)
 }
 
-// AutoSchedule 编排：加载节次/场地/待排条目 + 内存冲突判断 + 单事务批量插入。
+// AutoSchedule 编排：加载节次/场地/待排条目 + 锁内重读现有排课 + 内存冲突判断 + 批量插入。
+// 冲突校验与插入整体在 advisory 锁事务内执行，防止并发自动/手动排课基于同一快照产生重叠排课。
 func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, planID string) (int, int, []string, error) {
 	periodNames, err := s.st.Scheduling().PeriodSlotNames(ctx, tenantID)
 	if err != nil {
@@ -210,102 +211,100 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 	if err != nil {
 		return 0, 0, nil, err
 	}
-	existing, err := s.st.Scheduling().ListTermScheduleBriefs(ctx, tenantID, termID)
-	if err != nil {
-		return 0, 0, nil, err
-	}
 
 	success := 0
 	failed := 0
 	failures := make([]string, 0)
-	creates := make([]*store.ScheduleCreateParams, 0)
 
-	for _, e := range pending {
-		candidateVenues := venues
-		if e.VenueType != "" {
-			filtered := make([]store.VenueBrief, 0)
-			for _, v := range venues {
-				if v.Type == e.VenueType {
-					filtered = append(filtered, v)
-				}
-			}
-			if len(filtered) > 0 {
-				candidateVenues = filtered
-			}
-		}
-
-		placed := false
-		entryType := e.EntryType
-		if entryType == "theory" || entryType == "practice" {
-			entryType = "traditional"
-		}
-		weekPattern := e.WeekPattern
-		if weekPattern == "" {
-			weekPattern = "all"
-		}
-
-	dayLoop:
-		for day := 1; day <= 7; day++ {
-			for _, periodName := range periodNames {
-				for _, venue := range candidateVenues {
-					// 运行内已放置的排课也参与冲突检查（防止同一次自动排课内部重复占用）
-					// 全新切片避免 append 复用 existing 底层数组（其 cap 可能大于 len）
-					checkSet := make([]store.TermScheduleBrief, 0, len(existing)+len(creates))
-					checkSet = append(checkSet, existing...)
-					checkSet = append(checkSet, createdBriefs(creates)...)
-					if hasScheduleConflict(checkSet, &store.ScheduleConflictParams{
-						PlanEntryID: store.StrPtrIfNonEmpty(e.ID),
-						ClassNodeID: e.ClassNodeID,
-						TeacherID:   store.StrPtrIfNonEmpty(e.TeacherID),
-						DayOfWeek:   day,
-						Periods:     domain.JSONSlice{periodName},
-						StartWeek:   e.StartWeek,
-						EndWeek:     e.EndWeek,
-						WeekPattern: weekPattern,
-						VenueID:     &venue.ID,
-					}) {
-						continue
-					}
-					creates = append(creates, &store.ScheduleCreateParams{
-						TenantID:    tenantID,
-						TermID:      termID,
-						PlanEntryID: &e.ID,
-						CourseName:  e.CourseName,
-						CourseCode:  store.StrPtrIfNonEmpty(e.CourseCode),
-						CourseID:    store.StrPtrIfNonEmpty(e.CourseID),
-						Type:        entryType,
-						ClassNodeID: e.ClassNodeID,
-						TeacherID:   store.StrPtrIfNonEmpty(e.TeacherID),
-						DayOfWeek:   day,
-						Periods:     domain.JSONSlice{periodName},
-						StartWeek:   e.StartWeek,
-						EndWeek:     e.EndWeek,
-						WeekPattern: weekPattern,
-						VenueID:     &venue.ID,
-						ScenarioID:  store.StrPtrIfNonEmpty(e.ScenarioID),
-						Source:      "auto",
-					})
-					success++
-					placed = true
-					break dayLoop
-				}
-			}
-		}
-
-		if !placed {
-			failed++
-			failures = append(failures, fmt.Sprintf("%s：未找到可用时段", e.CourseName))
-		}
-	}
-
-	if len(creates) == 0 {
-		return success, failed, failures, nil
-	}
 	err = s.WithTx(ctx, func(txStore *store.Store) error {
-		// advisory 锁串行化并发排课（自动+手动），防冲突校验与插入间的竞态
+		// advisory 锁串行化并发排课（自动+手动）
 		if err := txStore.Scheduling().LockScheduleTerm(ctx, txStore.Q(), tenantID, termID); err != nil {
 			return err
 		}
+		// 锁内重读现有排课，防止基于陈旧快照计算冲突
+		existing, err := txStore.Scheduling().ListTermScheduleBriefs(ctx, txStore.Q(), tenantID, termID)
+		if err != nil {
+			return err
+		}
+		creates := make([]*store.ScheduleCreateParams, 0)
+		for _, e := range pending {
+			candidateVenues := venues
+			if e.VenueType != "" {
+				filtered := make([]store.VenueBrief, 0)
+				for _, v := range venues {
+					if v.Type == e.VenueType {
+						filtered = append(filtered, v)
+					}
+				}
+				if len(filtered) > 0 {
+					candidateVenues = filtered
+				}
+			}
+
+			placed := false
+			entryType := e.EntryType
+			if entryType == "theory" || entryType == "practice" {
+				entryType = "traditional"
+			}
+			weekPattern := e.WeekPattern
+			if weekPattern == "" {
+				weekPattern = "all"
+			}
+
+		dayLoop:
+			for day := 1; day <= 7; day++ {
+				for _, periodName := range periodNames {
+					for _, venue := range candidateVenues {
+						// 运行内已放置的排课也参与冲突检查（防止同一次自动排课内部重复占用）
+						// 全新切片避免 append 复用 existing 底层数组（其 cap 可能大于 len）
+						checkSet := make([]store.TermScheduleBrief, 0, len(existing)+len(creates))
+						checkSet = append(checkSet, existing...)
+						checkSet = append(checkSet, createdBriefs(creates)...)
+						if hasScheduleConflict(checkSet, &store.ScheduleConflictParams{
+							PlanEntryID: store.StrPtrIfNonEmpty(e.ID),
+							ClassNodeID: e.ClassNodeID,
+							TeacherID:   store.StrPtrIfNonEmpty(e.TeacherID),
+							DayOfWeek:   day,
+							Periods:     domain.JSONSlice{periodName},
+							StartWeek:   e.StartWeek,
+							EndWeek:     e.EndWeek,
+							WeekPattern: weekPattern,
+							VenueID:     &venue.ID,
+						}) {
+							continue
+						}
+						creates = append(creates, &store.ScheduleCreateParams{
+							TenantID:    tenantID,
+							TermID:      termID,
+							PlanEntryID: &e.ID,
+							CourseName:  e.CourseName,
+							CourseCode:  store.StrPtrIfNonEmpty(e.CourseCode),
+							CourseID:    store.StrPtrIfNonEmpty(e.CourseID),
+							Type:        entryType,
+							ClassNodeID: e.ClassNodeID,
+							TeacherID:   store.StrPtrIfNonEmpty(e.TeacherID),
+							DayOfWeek:   day,
+							Periods:     domain.JSONSlice{periodName},
+							StartWeek:   e.StartWeek,
+							EndWeek:     e.EndWeek,
+							WeekPattern: weekPattern,
+							VenueID:     &venue.ID,
+							ScenarioID:  store.StrPtrIfNonEmpty(e.ScenarioID),
+							Source:      "auto",
+						})
+						success++
+						placed = true
+						break dayLoop
+					}
+				}
+			}
+
+			if !placed {
+				failed++
+				failures = append(failures, fmt.Sprintf("%s：未找到可用时段", e.CourseName))
+			}
+		}
+
 		for _, p := range creates {
 			if _, err := txStore.Scheduling().CreateSchedule(ctx, txStore.Q(), p); err != nil {
 				return err

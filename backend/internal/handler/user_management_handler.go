@@ -186,6 +186,17 @@ func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 	user.PasswordHash = ""
 	// 详情保留身份证供编辑回显，OAuth 凭据不随详情下发
 	user.Oauth = nil
+	// 敏感信息脱敏：仅系统管理角色可见完整身份证号
+	if !canManageUsers(r) && user.IDCard != nil && *user.IDCard != "" {
+		runes := []rune(*user.IDCard)
+		if len(runes) <= 6 {
+			masked := "******"
+			user.IDCard = &masked
+		} else {
+			masked := string(runes[:3]) + "********" + string(runes[len(runes)-3:])
+			user.IDCard = &masked
+		}
+	}
 	respondJSON(w, http.StatusOK, user)
 }
 

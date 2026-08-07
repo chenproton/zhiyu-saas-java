@@ -645,8 +645,8 @@ type TermScheduleBrief struct {
 }
 
 // ListTermScheduleBriefs 加载某学期全部已排条目（轻量字段，供自动排课批量冲突判断）。
-func (s *SchedulingStore) ListTermScheduleBriefs(ctx context.Context, tenantID, termID string) ([]TermScheduleBrief, error) {
-	rows, err := s.q.Query(ctx, `
+func (s *SchedulingStore) ListTermScheduleBriefs(ctx context.Context, q Queryer, tenantID, termID string) ([]TermScheduleBrief, error) {
+	rows, err := q.Query(ctx, `
 		SELECT se.id, se.plan_entry_id, COALESCE(se.class_node_id::text, ''), COALESCE(se.class_node_ids, '{}'),
 			se.teacher_id, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id
 		FROM schedule_entries se

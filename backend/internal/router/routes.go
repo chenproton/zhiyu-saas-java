@@ -251,6 +251,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 			r.Group(func(r chi.Router) {
 				r.Use(platformAdmin)
+				// 运营端租户/订阅/主题等变更操作纳入操作审计
+				r.Use(authmw.OperationLog(db, oplogBuffer))
 				registerSuperAdminRoutes(r, h)
 			})
 		})

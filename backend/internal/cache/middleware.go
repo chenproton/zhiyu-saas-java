@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -84,6 +85,13 @@ func (w *cachedResponseWriter) Write(b []byte) (int, error) {
 }
 
 func clientIP(r *http.Request) string {
+	// 经宿主 nginx 反代时 RemoteAddr 恒为 nginx 地址（全站共享同一限流桶），
+	// 优先取 X-Forwarded-For 首段区分真实客户端；伪造 XFF 只会绕过自身限流，不影响他人
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if first := strings.TrimSpace(strings.Split(xff, ",")[0]); first != "" {
+			return first
+		}
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

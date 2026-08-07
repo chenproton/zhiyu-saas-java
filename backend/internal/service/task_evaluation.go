@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -31,29 +30,13 @@ func (s *TaskEvaluationService) TaskTenantID(ctx context.Context, taskID string)
 	return s.st.ScenarioTasks().TaskTenantID(ctx, taskID)
 }
 
-// SaveMethods 保存任务测评方式（乐观锁 + 事务内软删/重写，临时考试联动在事务外执行）。
+// SaveMethods 保存任务测评方式（乐观锁 + 事务内软删/重写，临时考试联动在锁内执行）。
 func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskID, creatorID string, version int, inputs []*MethodSaveInput) ([]domain.TaskEvaluationMethod, error) {
 	taskName := "未命名任务"
 	if name, err := s.st.TaskEval().TaskName(ctx, s.st.Q(), taskID); err == nil && name != "" {
 		taskName = name
 	}
 	newVersion := version + 1
-
-	// 临时考试联动在事务外执行：失败仅丢弃 examId 联动，不阻塞测评方式保存本身。
-	for _, m := range inputs {
-		if !m.IsEnabled || (m.MethodKey != "paper" && m.MethodKey != "question_bank" && m.MethodKey != "quiz") {
-			continue
-		}
-		resourceConfig := JSONRawToJSONMap(m.ResourceConfig)
-		updatedConfig, err := s.st.TaskEval().EnsureExamUsageForMethod(ctx, s.st.Q(), tenantID, taskID, taskName, creatorID, m.MethodKey, resourceConfig)
-		if err != nil {
-			slog.Info("failed to ensure exam usage", "task", taskID, "method", m.MethodKey, "error", err)
-			continue
-		}
-		if b, marshalErr := json.Marshal(updatedConfig); marshalErr == nil {
-			m.ResourceConfig = b
-		}
-	}
 
 	err := s.WithTx(ctx, func(txStore *store.Store) error {
 		// advisory 锁串行化并发保存，版本检查与写入在同一事务内，防双提交静默覆盖
@@ -64,6 +47,21 @@ func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskI
 			return err
 		} else if currentVersion > version {
 			return ErrMethodVersionConflict
+		}
+		// 临时考试联动在事务内、持锁后执行：败者事务回滚时其 usage 写入一并回滚，
+		// 防止并发双保存时败者的考试安排污染胜者结果
+		for _, m := range inputs {
+			if !m.IsEnabled || (m.MethodKey != "paper" && m.MethodKey != "question_bank" && m.MethodKey != "quiz") {
+				continue
+			}
+			resourceConfig := JSONRawToJSONMap(m.ResourceConfig)
+			updatedConfig, err := txStore.TaskEval().EnsureExamUsageForMethod(ctx, txStore.Q(), tenantID, taskID, taskName, creatorID, m.MethodKey, resourceConfig)
+			if err != nil {
+				return err
+			}
+			if b, marshalErr := json.Marshal(updatedConfig); marshalErr == nil {
+				m.ResourceConfig = b
+			}
 		}
 		for _, m := range inputs {
 			evalSubjects := JSONRawToJSONSlice(m.EvalSubjects)

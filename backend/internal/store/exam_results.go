@@ -283,8 +283,13 @@ func (s *ExamResultStore) SaveResult(ctx context.Context, tenantID, usageID, use
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (exam_usage_id, user_id)
 		DO UPDATE SET score = EXCLUDED.score, total_score = EXCLUDED.total_score, is_pass = EXCLUDED.is_pass, answers = EXCLUDED.answers, grading_status = EXCLUDED.grading_status, submit_time = NOW()
+		WHERE exam_results.graded_at IS NULL
 		RETURNING id, submit_time, created_at
 	`, tenantID, usageID, userID, p.StudentName, p.ClassName, p.Grade, p.MajorID, p.Score, p.TotalScore, p.IsPass, p.Answers, p.GradingStatus).Scan(&result.ID, &submitTime, &createdAt)
+	if err == pgx.ErrNoRows {
+		// 已被教师评分的结果禁止重交覆盖（重交保护的第二道防线）
+		return nil, ErrAlreadyGraded
+	}
 	if err != nil {
 		return nil, err
 	}
