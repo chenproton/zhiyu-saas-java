@@ -782,7 +782,7 @@ function HybridCourseAddForm() {
             </Button>
           </div>
         </CardHeader>
-        <Component nodeId={selectedNodeId} data={data} onChange={updateNodeData} />
+        <Component nodeId={selectedNodeId} data={data} onChange={updateNodeData} courseId={editId || undefined} />
       </Card>
     )
   }

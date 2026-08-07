@@ -42,12 +42,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from '@zhiyu/ui'
-import { fileApi, questionBankApi, questionApi, scenarioApi } from '@/lib/api'
+import { fileApi, questionBankApi, questionApi, scenarioApi, resourceLibraryApi } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
+import { ResourceSelector } from '@/components/shared/resource-selector'
 import { EvaluationMethodSelector } from '../../../_components/assessment/evaluation-method-selector'
 import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluation-rules-dialog'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
-import { TeachingResourceSelector } from './teaching-resource-selector'
 
 // ==================== Types ====================
 
@@ -138,8 +138,8 @@ export interface HomeworkItem {
 export interface ResourceItem {
   id: string
   name: string
-  type: 'system' | 'granular' | 'case' | 'question' | 'material' | 'simulation' | 'custom'
-  source: string
+  type: string
+  source?: string
   url?: string
   description?: string
   thumbnail?: string
@@ -211,6 +211,7 @@ export interface AtomicModuleProps {
   nodeId: string
   data: NodeModuleData
   onChange: (patch: Partial<NodeModuleData>) => void
+  courseId?: string
 }
 
 // ==================== Default data ====================
@@ -578,12 +579,69 @@ function PrePreviewModule({ data, onChange }: AtomicModuleProps) {
   )
 }
 
-function PreResourcesModule({ data, onChange }: AtomicModuleProps) {
+// 教学活动模块的资源选择统一复用公共 ResourceSelector（与体系课/颗粒课/场景任务一致）
+function ResourceModuleEditor({
+  items,
+  onChange,
+  courseId,
+}: {
+  items: ResourceItem[]
+  onChange: (items: ResourceItem[]) => void
+  courseId?: string
+}) {
+  const [pool, setPool] = useState<ResourceItem[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    resourceLibraryApi
+      .list({ limit: 1000 })
+      .then((res) => {
+        if (cancelled) return
+        setPool(
+          (res.items || []).map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            type: r.resourceType || r.type || 'other',
+            url: r.url,
+            description: r.description,
+            thumbnail: r.thumbnail,
+            source: r.url || '',
+          })),
+        )
+      })
+      .catch(() => {
+        /* 资源库加载失败时保持空池 */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleChange = (ids: string[]) => {
+    const selected = ids
+      .map((id) => pool.find((p) => p.id === id))
+      .filter(Boolean) as ResourceItem[]
+    onChange(selected)
+  }
+
+  return (
+    <ResourceSelector
+      pool={pool}
+      selectedIds={items.map((i) => i.id)}
+      onChange={handleChange}
+      onUpload={(r) => setPool((prev) => [r, ...prev])}
+      courseId={courseId}
+    />
+  )
+}
+
+function PreResourcesModule({ data, onChange, courseId }: AtomicModuleProps) {
   return (
     <CardContent>
-      <TeachingResourceSelector
+      <ResourceModuleEditor
         items={data.preClassResources}
         onChange={(v) => onChange({ preClassResources: v })}
+        courseId={courseId}
       />
     </CardContent>
   )
@@ -1401,12 +1459,13 @@ function HomeworksModule({ data, onChange }: AtomicModuleProps) {
   )
 }
 
-function ExtensionMaterialsModule({ data, onChange }: AtomicModuleProps) {
+function ExtensionMaterialsModule({ data, onChange, courseId }: AtomicModuleProps) {
   return (
     <CardContent>
-      <TeachingResourceSelector
+      <ResourceModuleEditor
         items={data.extensionMaterials}
         onChange={(v) => onChange({ extensionMaterials: v })}
+        courseId={courseId}
       />
     </CardContent>
   )
