@@ -283,6 +283,46 @@ func (h *AllianceHandler) projectCRUD() crudConfig[domain.AllianceProject, domai
 	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceProject) error {
 		return h.Store.UpdateProject(ctx, id, tenantID, t)
 	}
+	// 部分更新兜底：请求未携带的字段回退到已存在记录，避免 PUT 全列覆盖清空数据。
+	cfg.ValidateUpdateExisting = func(t *domain.AllianceProject, existing *domain.AllianceProject) string {
+		if t.Name == "" {
+			t.Name = existing.Name
+		}
+		if t.Type == nil {
+			t.Type = existing.Type
+		}
+		if t.Description == nil {
+			t.Description = existing.Description
+		}
+		if t.Phase == "" {
+			t.Phase = existing.Phase
+		}
+		if t.PublishStatus == "" {
+			t.PublishStatus = existing.PublishStatus
+		}
+		if t.StartDate == nil {
+			t.StartDate = existing.StartDate
+		}
+		if t.EndDate == nil {
+			t.EndDate = existing.EndDate
+		}
+		if t.Budget == nil {
+			t.Budget = existing.Budget
+		}
+		if t.CoverImage == nil {
+			t.CoverImage = existing.CoverImage
+		}
+		if len(t.EnterpriseIDs) == 0 {
+			t.EnterpriseIDs = existing.EnterpriseIDs
+		}
+		if len(t.AgreementIDs) == 0 {
+			t.AgreementIDs = existing.AgreementIDs
+		}
+		if len(t.SecondaryColleges) == 0 {
+			t.SecondaryColleges = existing.SecondaryColleges
+		}
+		return ""
+	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
 		return h.Store.DeleteProject(ctx, id, tenantID)
 	}

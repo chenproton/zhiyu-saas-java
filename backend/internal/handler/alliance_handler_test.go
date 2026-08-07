@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
@@ -102,6 +103,91 @@ func TestAlliance_BusinessRolePermission(t *testing.T) {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 	})
+}
+
+// TestAllianceProject_PartialUpdatePreservesFields 列表页“前台展示”开关仅携带 {isPublic} 部分更新，
+// 其余字段必须回退到已存在记录，禁止 PUT 全列覆盖清空数据（回归 bug：合作项目数据丢失）。
+func TestAllianceProject_PartialUpdatePreservesFields(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	h := &handler.AllianceHandler{Store: store.New(env.DB).Alliance()}
+	r := chi.NewRouter()
+	r.Post("/alliance/projects", h.CreateProject)
+	r.Put("/alliance/projects/{id}", h.UpdateProject)
+	r.Get("/alliance/projects/{id}", h.GetProject)
+
+	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa21", domain.RoleTeacher)
+	do := func(method, path string, body interface{}) *httptest.ResponseRecorder {
+		var reqBody *strings.Reader
+		if body != nil {
+			b, _ := json.Marshal(body)
+			reqBody = strings.NewReader(string(b))
+		} else {
+			reqBody = strings.NewReader("")
+		}
+		req := httptest.NewRequest(method, path, reqBody)
+		req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w
+	}
+
+	desc := "联合共建测试项目描述"
+	typ := "联合研发"
+	budget := "300万"
+	entID := "3a253303-0770-4541-9e87-608e853caddd"
+	create := do(http.MethodPost, "/alliance/projects", map[string]interface{}{
+		"name":          "部分更新测试项目",
+		"type":          typ,
+		"description":   desc,
+		"phase":         "execution",
+		"publishStatus": "draft",
+		"budget":        budget,
+		"enterpriseIds": []string{entID},
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create: expected 201, got %d: %s", create.Code, create.Body.String())
+	}
+	var proj domain.AllianceProject
+	if err := json.Unmarshal(create.Body.Bytes(), &proj); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+	defer env.DB.Exec(context.Background(), "DELETE FROM alliance_projects WHERE id = $1", proj.ID)
+
+	upd := do(http.MethodPut, "/alliance/projects/"+proj.ID, map[string]interface{}{"isPublic": true})
+	if upd.Code != http.StatusOK {
+		t.Fatalf("update: expected 200, got %d: %s", upd.Code, upd.Body.String())
+	}
+
+	got := do(http.MethodGet, "/alliance/projects/"+proj.ID, nil)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get: expected 200, got %d: %s", got.Code, got.Body.String())
+	}
+	var after domain.AllianceProject
+	if err := json.Unmarshal(got.Body.Bytes(), &after); err != nil {
+		t.Fatalf("unmarshal get: %v", err)
+	}
+
+	if after.Name != "部分更新测试项目" || after.Phase != "execution" || after.PublishStatus != "draft" {
+		t.Fatalf("字符串字段被部分更新清空: %+v", after)
+	}
+	if after.Type == nil || *after.Type != typ {
+		t.Fatalf("type 被清空: %+v", after.Type)
+	}
+	if after.Description == nil || *after.Description != desc {
+		t.Fatalf("description 被清空: %+v", after.Description)
+	}
+	if after.Budget == nil || *after.Budget != budget {
+		t.Fatalf("budget 被清空: %+v", after.Budget)
+	}
+	if len(after.EnterpriseIDs) == 0 || string(after.EnterpriseIDs) != `["`+entID+`"]` {
+		t.Fatalf("enterpriseIds 被清空: %s", string(after.EnterpriseIDs))
+	}
+	if !after.IsPublic {
+		t.Fatalf("isPublic 未生效: %+v", after.IsPublic)
+	}
 }
 
 // TestAllianceImport_TeacherPermission 教师可执行 alliance-* 导入（与 alliance 模块权限一致），
