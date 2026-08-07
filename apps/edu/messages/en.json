@@ -1969,5 +1969,16 @@
   "人才培养协议": "Talent Cultivation Agreement",
   "人才培养项目": "Talent Cultivation Project",
   "Linux系统管理教师": "Linux System Administration Teacher",
-  "查看平台更新记录": "View Changelog"
+  "查看平台更新记录": "View Changelog",
+  "页面出错了": "Page error",
+  "页面渲染过程中发生异常，已记录错误信息，请重试": "An error occurred while rendering the page. The error has been logged. Please try again.",
+  "应用出错了": "Application error",
+  "应用发生严重异常，已记录错误信息，请刷新重试": "A serious error occurred. The error has been logged. Please refresh and try again.",
+  "刷新重试": "Refresh and retry",
+  "页面不存在或已被移除": "The page does not exist or has been removed",
+  "返回工作台": "Back to Dashboard",
+  "获取用户信息失败": "Failed to get user info",
+  "图谱组件加载失败，请检查网络连接后重试": "Failed to load the graph component. Check your network and try again.",
+  "刷新页面": "Refresh page",
+  "该试卷未关联批次，无法提交审批": "This exam is not linked to a batch and cannot be submitted for approval"
 }

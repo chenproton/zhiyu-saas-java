@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface MobileTabItem {
   value: string
@@ -29,6 +30,7 @@ export function MobileTabDropdown({
   onValueChange,
   className,
 }: MobileTabDropdownProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const active = items.find((i) => i.value === value) ?? items[0]
@@ -53,7 +55,7 @@ export function MobileTabDropdown({
       >
         <span className="flex items-center gap-2 min-w-0">
           {active?.icon && <active.icon className="w-4 h-4 text-primary shrink-0" />}
-          <span className="truncate">{active?.label ?? '请选择'}</span>
+          <span className="truncate">{active?.label ?? t('请选择')}</span>
           {typeof active?.count === 'number' && active.count > 0 && (
             <span className="px-1.5 py-0.5 rounded-full text-[11px] leading-none bg-primary/10 text-primary shrink-0">
               {active.count}
