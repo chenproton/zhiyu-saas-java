@@ -312,13 +312,14 @@ func (h *AllianceHandler) projectCRUD() crudConfig[domain.AllianceProject, domai
 		if t.CoverImage == nil {
 			t.CoverImage = existing.CoverImage
 		}
-		if len(t.EnterpriseIDs) == 0 {
+		// 数组字段：仅"未携带"（nil）时回退；显式传空数组表示清空关联
+		if t.EnterpriseIDs == nil {
 			t.EnterpriseIDs = existing.EnterpriseIDs
 		}
-		if len(t.AgreementIDs) == 0 {
+		if t.AgreementIDs == nil {
 			t.AgreementIDs = existing.AgreementIDs
 		}
-		if len(t.SecondaryColleges) == 0 {
+		if t.SecondaryColleges == nil {
 			t.SecondaryColleges = existing.SecondaryColleges
 		}
 		return ""

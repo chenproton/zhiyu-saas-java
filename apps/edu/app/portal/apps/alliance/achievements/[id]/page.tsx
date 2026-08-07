@@ -46,7 +46,7 @@ export default function AllianceAchievementDetailPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceAchievementApi.get(id),
-      portalRequest<{ items: RelatedRef[] }>('/career/positions?limit=200').catch(() => ({
+      portalRequest<{ items: RelatedRef[] }>('/job/positions?limit=200').catch(() => ({
         items: [],
       })),
       allianceAchievementApi.list({ limit: 200 }),

@@ -197,22 +197,24 @@ export default function ExamUsagePage() {
     if (!formName || (!editingUsage && !formExamId)) return
     setCreateSubmitting(true)
     try {
-      const payload = {
+      const base = {
         name: formName,
         description: formDescription || undefined,
         duration: formDuration ? Number(formDuration) : undefined,
         startTime: formActivationMode === 'scheduled' ? formStartTime || undefined : undefined,
         endTime: formActivationMode === 'scheduled' ? formEndTime || undefined : undefined,
-        targetType: 'class' as const,
-        targetIds: formClassIds,
         activationMode: formActivationMode,
       }
       if (editingUsage) {
-        await examUsageApi.update(editingUsage.id, payload)
+        // 编辑模式不携带 targetType/targetIds：后端 COALESCE 保留原值，
+        // 防止把 major/department/public 类型的安排改写为 class
+        await examUsageApi.update(editingUsage.id, base)
       } else {
         await examUsageApi.create({
-          ...payload,
+          ...base,
           examId: formExamId,
+          targetType: 'class' as const,
+          targetIds: formClassIds,
           status: formActivationMode === 'always' ? 'published' : 'draft',
         })
       }

@@ -720,7 +720,23 @@ function HybridCourseAddForm() {
         }
       }
 
-      const sortedNodes = [...nodesRef.current].sort((a, b) => a.order - b.order)
+      // 父节点必须先于子节点创建（parent_id 外键）：按层级拓扑排序
+      const sortedNodes = (() => {
+        const all = [...nodesRef.current].sort((a, b) => a.order - b.order)
+        const byId = new Map(all.map((n) => [n.id, n]))
+        const out: typeof all = []
+        const visited = new Set<string>()
+        const visit = (n: (typeof all)[number]) => {
+          if (visited.has(n.id)) return
+          visited.add(n.id)
+          if (n.parentId && byId.has(n.parentId)) {
+            visit(byId.get(n.parentId)!)
+          }
+          out.push(n)
+        }
+        all.forEach(visit)
+        return out
+      })()
       const idMapping = new Map<string, string>()
       const courseCode = courseFormRef.current?.code || existing?.code || ''
 
@@ -753,7 +769,7 @@ function HybridCourseAddForm() {
         }
       }
 
-      // 第二遍：保存各节点模块（全量替换）
+      // 第二遍：保存各节点模块（全量替换）；任一失败向上抛错，防止静默丢失教学内容
       for (const node of sortedNodes) {
         const d = nodeDataMapRef.current[node.id]
         const realNodeId = idMapping.get(node.id)
@@ -762,11 +778,7 @@ function HybridCourseAddForm() {
           d,
           moduleAssignmentsRef.current[node.id] || [],
         )
-        try {
-          await hybridModuleApi.batchSave(realNodeId, modules)
-        } catch (err) {
-          reportError(err, '保存节点模块')
-        }
+        await hybridModuleApi.batchSave(realNodeId, modules)
       }
 
       // 刷新节点列表（临时 ID 已映射为真实 ID），并迁移编辑态缓存 key（含共享节点 ID）
@@ -1018,10 +1030,28 @@ function HybridCourseAddForm() {
                       selected={abilityPoints}
                       pool={abilityPool}
                       onChange={setAbilityPoints}
-                      onAddCustom={(name, description) => {
-                        const newAp = { id: `ap-custom-${Date.now()}`, name, description }
-                        setAbilityPoints((prev) => [...prev, newAp])
-                        setAbilityPool((prev) => [...prev, newAp])
+                      onAddCustom={async (name, description) => {
+                        try {
+                          // 先创建真实能力点换取 ID，避免 ap-custom-* 假 ID 随 abilityPointIds 入库
+                          const created = await abilityApi.create({
+                            name,
+                            description,
+                            attributes: [],
+                            isPublic: false,
+                          })
+                          setAbilityPoints((prev) => [
+                            ...prev,
+                            {
+                              id: created.id,
+                              name: created.name,
+                              code: created.code,
+                              description: created.description,
+                            },
+                          ])
+                        } catch (err) {
+                          reportError(err, '创建能力点')
+                          toast({ title: t('创建能力点失败'), variant: 'destructive' })
+                        }
                       }}
                     />
                   </div>

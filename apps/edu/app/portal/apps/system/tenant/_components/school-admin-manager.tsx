@@ -33,7 +33,7 @@ interface TenantAdmin {
   loginName: string
   name: string
   status: string
-  plainPassword?: string
+  newPassword?: string
   createdAt: string
   updatedAt: string
   lastLoginAt?: string
@@ -124,7 +124,7 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
         })
         toast({
           title: t('创建成功'),
-          description: t('初始密码：{pwd}', { pwd: created.plainPassword ?? '' }),
+          description: t('初始密码：{pwd}', { pwd: created.newPassword ?? '' }),
         })
       }
       setInline(null)

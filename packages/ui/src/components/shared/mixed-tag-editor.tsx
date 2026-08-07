@@ -282,6 +282,14 @@ export function MixedTagEditor({
         }
       }
     })
+    // 兜底合并：props 中已登记但 DOM 尚未渲染成 span 的标签（主列表缺失/异步未达）
+    // 不能被静默丢弃；已被删除的标签已从 props 移除，不会被加回。
+    for (const id of prevTags.current.kp) {
+      if (id && !newKpIds.includes(id)) newKpIds.push(id)
+    }
+    for (const id of prevTags.current.ab) {
+      if (id && !newAbIds.includes(id)) newAbIds.push(id)
+    }
     onChangeRef.current({ name: newText, knowledgePointIds: newKpIds, abilityPointIds: newAbIds })
   }
 

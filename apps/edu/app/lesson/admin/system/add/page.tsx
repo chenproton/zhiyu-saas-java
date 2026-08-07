@@ -612,8 +612,23 @@ function AddSystemPageInner() {
         }
       }
 
-      // 按 parentId 分组并排序
-      const sortedNodes = [...nodesRef.current].sort((a, b) => a.order - b.order)
+      // 父节点必须先于子节点创建（parent_id 外键）：按层级拓扑排序
+      const sortedNodes = (() => {
+        const all = [...nodesRef.current].sort((a, b) => a.order - b.order)
+        const byId = new Map(all.map((n) => [n.id, n]))
+        const out: typeof all = []
+        const visited = new Set<string>()
+        const visit = (n: (typeof all)[number]) => {
+          if (visited.has(n.id)) return
+          visited.add(n.id)
+          if (n.parentId && byId.has(n.parentId)) {
+            visit(byId.get(n.parentId)!)
+          }
+          out.push(n)
+        }
+        all.forEach(visit)
+        return out
+      })()
 
       // 临时 ID -> 真实 ID
       const idMapping = new Map<string, string>()
@@ -969,10 +984,27 @@ function AddSystemPageInner() {
                       selected={abilityPoints}
                       pool={abilityPool}
                       onChange={setAbilityPoints}
-                      onAddCustom={(name, description) => {
-                        const newAp = { id: `ap-custom-${Date.now()}`, name, description }
-                        setAbilityPoints((prev) => [...prev, newAp])
-                        setAbilityPool((prev) => [...prev, newAp])
+                      onAddCustom={async (name, description) => {
+                        try {
+                          // 先创建真实能力点换取 ID，避免 ap-custom-* 假 ID 随 abilityPointIds 入库
+                          const created = await abilityApi.create({
+                            name,
+                            description,
+                            attributes: [],
+                            isPublic: false,
+                          })
+                          const real = {
+                            id: created.id,
+                            name: created.name,
+                            code: created.code,
+                            description: created.description,
+                          }
+                          setAbilityPoints((prev) => [...prev, real])
+                          setAbilityPool((prev) => [...prev, real])
+                        } catch (err) {
+                          reportError(err, '创建能力点')
+                          toast({ title: t('创建能力点失败'), variant: 'destructive' })
+                        }
                       }}
                     />
                   </div>

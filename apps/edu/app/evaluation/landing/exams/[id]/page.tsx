@@ -480,8 +480,34 @@ export default function ExamDetailPage() {
                       })
                     })()}
                   </div>
+                ) : q.type === 'judge' ? (
+                  <div style={{ display: 'flex', gap: 12, paddingTop: 4 }}>
+                    {[
+                      { value: 'true', label: t('正确') },
+                      { value: 'false', label: t('错误') },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleEssay(q.id, opt.value)}
+                        style={{
+                          padding: '8px 24px',
+                          border: `1px solid ${
+                            answers[q.id] === opt.value ? '#2563eb' : '#e5e6eb'
+                          }`,
+                          borderRadius: 8,
+                          background: answers[q.id] === opt.value ? '#eff6ff' : '#fff',
+                          color: answers[q.id] === opt.value ? '#2563eb' : '#333',
+                          fontSize: 14,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 ) : (
-                  (q.type === 'essay' || q.type === 'short_answer' || q.type === 'judge') && (
+                  (q.type === 'essay' || q.type === 'short_answer') && (
                     <Textarea
                       placeholder={t('请输入您的答案...')}
                       rows={4}

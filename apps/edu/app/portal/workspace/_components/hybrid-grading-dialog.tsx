@@ -83,34 +83,44 @@ export function HybridGradingDialog({
   const [userMap, setUserMap] = useState<Map<string, any>>(new Map())
   const [loading, setLoading] = useState(true)
 
+  const loadCourseData = (cid: string) => {
+    setLoading(true)
+    Promise.all([
+      courseNodeApi.list({ courseId: cid, limit: 1000 }).catch(() => ({ items: [] as any[] })),
+      nodeEvaluationResultApi.listByCourse(cid).catch(() => ({ items: [] })),
+      userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
+    ])
+      .then(([nodeRes, resRes, userRes]) => {
+        setNodes((nodeRes.items || []) as SystemCourseNode[])
+        setResults(resRes.items || [])
+        const uMap = new Map<string, any>()
+        ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
+        setUserMap(uMap)
+      })
+      .catch(() => reportError(new Error('加载混合课测评数据失败'), '加载混合课测评数据'))
+      .finally(() => setLoading(false))
+  }
+
   useEffect(() => {
     if (!open) return
     portalApi
       .workspaceDashboard({ role: 'teacher' })
       .then((res) => {
-        setClassPlans((res.classPlans || []).filter((p) => p.courseId))
-        if (courseId && (res.classPlans || []).some((p) => p.courseId === courseId)) {
+        const plans = (res.classPlans || []).filter((p) => p.courseId)
+        setClassPlans(plans)
+        // 未传 courseId 时默认选中第一个有排课计划的课程
+        if (!courseId) {
+          setSelectedPlanId((prev) => prev || plans[0]?.courseId || null)
+        } else if (plans.some((p) => p.courseId === courseId)) {
           setSelectedPlanId((prev) => prev || courseId)
         }
       })
       .catch((err) => reportError(err, '加载工作台班级/课时数据'))
     if (courseId) {
-      Promise.all([
-        courseNodeApi
-          .list({ courseId, limit: 1000 })
-          .catch(() => ({ items: [] as any[] })),
-        nodeEvaluationResultApi.listByCourse(courseId).catch(() => ({ items: [] })),
-        userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
-      ])
-        .then(([nodeRes, resRes, userRes]) => {
-          setNodes((nodeRes.items || []) as SystemCourseNode[])
-          setResults(resRes.items || [])
-          const uMap = new Map<string, any>()
-          ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
-          setUserMap(uMap)
-        })
-        .catch(() => reportError(new Error('加载混合课测评数据失败'), '加载混合课测评数据'))
-        .finally(() => setLoading(false))
+      queueMicrotask(() => loadCourseData(courseId))
+    } else {
+      // 无 courseId 时由左侧课程选择驱动，先结束加载态
+      queueMicrotask(() => setLoading(false))
     }
   }, [open, courseId])
 
@@ -232,6 +242,10 @@ export function HybridGradingDialog({
                     key={plan.courseId || plan.id}
                     onClick={() => {
                       setSelectedPlanId(plan.courseId || plan.id)
+                      // 切换课程时按新 courseId 重新拉取节点/结果/学生数据，防止展示错误课程数据
+                      if (plan.courseId) {
+                        loadCourseData(plan.courseId)
+                      }
                       setCollapsedNodes(new Set())
                     }}
                     className={cn(

@@ -92,7 +92,8 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
     onSubmit({
       name: name.trim(),
       description: description.trim(),
-      duration: 60,
+      // 编辑时沿用已有时长，防止把非 60 分钟的试卷静默重置
+      duration: exam?.duration ?? 60,
       coverImage: coverUrl || undefined,
       collaboratorIds: collaboratorIds.length > 0 ? collaboratorIds : undefined,
       batchId: batchId || undefined,

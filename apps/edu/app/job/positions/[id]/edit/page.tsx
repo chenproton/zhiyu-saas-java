@@ -207,8 +207,8 @@ function PositionEditPageContent({ params }: PageProps) {
     )
   }
 
-  const handleSave = async () => {
-    if (!position) return
+  const handleSave = async (): Promise<boolean> => {
+    if (!position) return false
     setIsSaving(true)
     try {
       await positionApi.saveFull(position.id, {
@@ -238,17 +238,21 @@ function PositionEditPageContent({ params }: PageProps) {
       setPosition(savedPosition)
       setPositions((prev) => prev.map((p) => (p.id === position.id ? savedPosition : p)))
       toast({ title: t('草稿已保存') })
+      return true
     } catch (err: any) {
       reportError(err, '保存岗位')
       toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
+      return false
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleFinish = async () => {
-    await handleSave()
-    router.push('/job/positions')
+    const ok = await handleSave()
+    if (ok) {
+      router.push('/job/positions')
+    }
   }
 
   const handleCoverUpload = async (file: File) => {

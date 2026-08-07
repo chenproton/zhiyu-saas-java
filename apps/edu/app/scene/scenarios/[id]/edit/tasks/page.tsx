@@ -565,14 +565,12 @@ export default function TasksEditPage() {
       }
       const newTasks = [...tasks, mkTask]
       setTasks(newTasks)
-      const count = newTasks.length
-      const weight = Math.floor(100 / count)
       const newStates = { ...taskStates }
-      Object.keys(newStates).forEach((id) => {
-        newStates[id] = { ...newStates[id], weight }
-      })
-      newStates[created.id] = makeDefaultTaskState(count, count - 1)
-      newStates[created.id].weight = 100 - weight * (count - 1)
+      // 保留既有任务已配置的权重，仅给新任务分配剩余权重（不覆盖既有配置）
+      const used = Object.values(newStates).reduce((sum, s) => sum + (s.weight || 0), 0)
+      const remaining = Math.max(0, 100 - used)
+      newStates[created.id] = makeDefaultTaskState(newTasks.length, newTasks.length - 1)
+      newStates[created.id].weight = newTasks.length === 1 ? 100 : Math.min(remaining, 100)
       setTaskStates(newStates)
       setIsAddTaskOpen(false)
       setNewTask({ name: '', hours: 4, type: 'training', difficulty: 3, background: '' })
@@ -641,10 +639,11 @@ export default function TasksEditPage() {
   }
 
   // 持久化任务权重（仅对已落库任务；ON CONFLICT (scenario_id, task_id) 幂等 upsert）
-  const persistWeights = async () => {
-    for (const t of tasks) {
+  // 由调用方传入最新任务列表与状态，避免闭包陈旧导致新建任务权重丢失
+  const persistWeights = async (taskList: Task[], states: Record<string, TaskState>) => {
+    for (const t of taskList) {
       if (t.id.startsWith('task-')) continue
-      const st = taskStates[t.id]
+      const st = states[t.id]
       if (!st) continue
       try {
         await scenarioWeightApi.upsert({
@@ -988,7 +987,7 @@ export default function TasksEditPage() {
     }
     setTasks(newTasks)
     setTaskStates(updatedTaskStates)
-    await persistWeights()
+    await persistWeights(newTasks, updatedTaskStates)
   }
 
   const handleSaveDraft = async () => {
@@ -1508,7 +1507,7 @@ export default function TasksEditPage() {
       <WeightConfigDialog
         open={isWeightConfigOpen}
         onOpenChange={(v) => {
-          if (!v) persistWeights()
+          if (!v) persistWeights(tasks, taskStates)
           setIsWeightConfigOpen(v)
         }}
         tasks={tasks}

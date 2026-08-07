@@ -105,7 +105,7 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 				EndTime:        t.EndTime,
 				Duration:       t.Duration,
 				TargetType:     t.TargetType,
-				TargetIDs:      coalesceStringSlice(t.TargetIDs),
+				TargetIDs:      t.TargetIDs,
 				ActivationMode: t.ActivationMode,
 			})
 			return err

@@ -30,7 +30,6 @@ import type { TeachingPlanDetail, TeachingPlanEntry } from '@/lib/types'
 import { EntryTypeBadge } from './_components/entry-type-badge'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { formatDateTime } from '@/lib/format-utils'
-import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const VENUE_TYPES = ['教室', '机房', '实训室', '实验室', '校外基地']
@@ -118,26 +117,16 @@ export default function TeachingPlanDetailPage() {
     setEditMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], ...patch } }))
   }
 
-  const updateTeacherId = async (entryId: string, tid: string) => {
-    try {
-      const updated = await teachingPlanApi.updateEntry(entryId, { teacherId: tid })
-      setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
-      return true
-    } catch (err) {
-      reportError(err, '更新计划教师')
-      toast({
-        variant: 'destructive',
-        title: t('教师更新失败'),
-        description: t('请通过「保存修改」重新提交'),
-      })
-      return false
-    }
+  const updateTeacherId = (entryId: string, tid: string) => {
+    // 仅更新编辑态，由「保存修改」统一提交（含失败重试路径，取消时自然回滚）
+    updateEditField(entryId, { teacherId: tid || undefined })
   }
 
   const handleSaveAll = async () => {
     setSaving(true)
     const toSave = entries.filter((e) => editMap[e.id])
     let success = 0
+    const failedIds: string[] = []
     for (const e of toSave) {
       const s = editMap[e.id]
       try {
@@ -148,17 +137,35 @@ export default function TeachingPlanDetailPage() {
           totalHours: s.totalHours !== '' ? Number(s.totalHours) : undefined,
           venueType: s.venueType,
           classNodeIds: s.classNodeIds,
+          teacherId: s.teacherId,
         })
         setEntries((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
         success++
       } catch {
-        /* skip failed, already saved ones stay */
+        failedIds.push(e.id)
       }
     }
-    setIsEditing(false)
-    setEditMap({})
+    if (failedIds.length > 0) {
+      // 保留失败条目的编辑态供重试，并明确提示失败项
+      const next = { ...editMap }
+      for (const e of toSave) {
+        if (failedIds.includes(e.id)) continue
+        delete next[e.id]
+      }
+      setEditMap(next)
+      toast({
+        variant: 'destructive',
+        title: t('保存完成：{done}/{total} 项', { done: success, total: toSave.length }),
+        description: t('以下条目保存失败，请重试：{ids}', {
+          ids: failedIds.map((fid) => entries.find((x) => x.id === fid)?.courseName || fid).join('、'),
+        }),
+      })
+    } else {
+      setIsEditing(false)
+      setEditMap({})
+      toast({ title: t('保存完成：{done}/{total} 项', { done: success, total: toSave.length }) })
+    }
     setSaving(false)
-    toast({ title: t('保存完成：{done}/{total} 项', { done: success, total: toSave.length }) })
   }
 
   const handleSubmitApproval = async () => {
@@ -423,7 +430,6 @@ export default function TeachingPlanDetailPage() {
                                 value={es.teacherId ? [es.teacherId] : []}
                                 onChange={(ids) => {
                                   const tid = ids[0] || ''
-                                  updateEditField(e.id, { teacherId: tid })
                                   updateTeacherId(e.id, tid)
                                 }}
                                 multiple={false}

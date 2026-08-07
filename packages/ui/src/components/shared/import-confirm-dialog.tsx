@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,19 @@ export function ImportConfirmDialog({
 }: ImportConfirmDialogProps) {
   const displayedItems = duplicateItems.slice(0, 10)
   const hasMore = duplicateItems.length > 10
+  const [pending, setPending] = useState<string | null>(null)
+
+  const run = async (mode: string, fn: () => void) => {
+    if (pending) return
+    setPending(mode)
+    try {
+      fn()
+    } finally {
+      setPending(null)
+    }
+  }
+
+  const busy = pending !== null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -109,19 +123,31 @@ export function ImportConfirmDialog({
         </div>
 
         <DialogFooter className="gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => !busy && onOpenChange(false)} disabled={busy}>
             取消
           </Button>
-          <Button variant="default" onClick={onConfirmSkip}>
-            仅导入新数据
+          <Button
+            variant="default"
+            onClick={() => run('skip', onConfirmSkip)}
+            disabled={busy}
+          >
+            {pending === 'skip' ? '导入中...' : '仅导入新数据'}
           </Button>
           {onConfirmNew && (
-            <Button variant="default" onClick={onConfirmNew}>
-              新增并导入
+            <Button
+              variant="default"
+              onClick={() => run('new', onConfirmNew)}
+              disabled={busy}
+            >
+              {pending === 'new' ? '导入中...' : '新增并导入'}
             </Button>
           )}
-          <Button variant="default" onClick={onConfirmOverwrite}>
-            覆盖并继续
+          <Button
+            variant="default"
+            onClick={() => run('overwrite', onConfirmOverwrite)}
+            disabled={busy}
+          >
+            {pending === 'overwrite' ? '导入中...' : '覆盖并继续'}
           </Button>
         </DialogFooter>
       </DialogContent>

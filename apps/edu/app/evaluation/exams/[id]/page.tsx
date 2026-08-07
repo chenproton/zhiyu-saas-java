@@ -51,6 +51,8 @@ import type {
 import { QUESTION_TYPES, QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, canPerformAction } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format-utils'
+import { reportError } from '@/lib/error-handling'
+import { toast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 export default function ExamComposerPage() {
   const t = useT()
@@ -112,16 +114,25 @@ export default function ExamComposerPage() {
       const score = Number(raw)
       if (isNaN(score) || score <= 0) return
       setSavingScoreId(questionId)
-      updateExamQuestionScore(examId, questionId, score).finally(() => {
-        setSavingScoreId(null)
-        setEditScores((prev) => {
-          const next = { ...prev }
-          delete next[questionId]
-          return next
+      updateExamQuestionScore(examId, questionId, score)
+        .then(() => {
+          setEditScores((prev) => {
+            const next = { ...prev }
+            delete next[questionId]
+            return next
+          })
         })
-      })
+        .catch((err) => {
+          toast({
+            variant: 'destructive',
+            title: t('保存分值失败'),
+            description: t('请重试，已输入的分值已保留'),
+          })
+          reportError(err, '保存题目分值')
+        })
+        .finally(() => setSavingScoreId(null))
     },
-    [examId, editScores, updateExamQuestionScore],
+    [examId, editScores, updateExamQuestionScore, t],
   )
 
   const handleScoreKeyDown = useCallback(
