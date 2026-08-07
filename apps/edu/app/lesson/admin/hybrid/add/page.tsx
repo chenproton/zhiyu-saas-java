@@ -203,7 +203,9 @@ function HybridCourseAddForm() {
             majorId: c.majorId || '',
             majorName: c.majorName || '',
             semester: c.semester || '',
-            category: (c.category as CourseBasicForm['category']) || '专业核心课程',
+            category: COURSE_CATEGORIES.includes(c.category as CourseBasicForm['category'])
+              ? (c.category as CourseBasicForm['category'])
+              : COURSE_CATEGORIES[0],
             courseObjectives: courseEvalData.learningGoal || '',
             detailedDescription: c.description || '',
             background: courseEvalData.background || '',
