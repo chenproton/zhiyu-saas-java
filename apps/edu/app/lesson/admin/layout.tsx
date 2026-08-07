@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { PlatformShell } from '@/components/platform-shell'
 import { adminNavigationConfig } from '@/lib/navigation-config'
 import { useAuth } from '@/components/auth-provider'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { PlatformNavigationConfig } from '@/components/platform-shell'
 
 const config: PlatformNavigationConfig = {
@@ -14,6 +15,7 @@ const config: PlatformNavigationConfig = {
 }
 
 export default function LessonAdminLayout({ children }: { children: React.ReactNode }) {
+  const t = useT()
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, hasMenuPermission } = useAuth()
@@ -35,7 +37,7 @@ export default function LessonAdminLayout({ children }: { children: React.ReactN
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           ) : (
             <div className="text-sm text-muted-foreground">
-              当前角色暂无权限访问该页面，请联系管理员在角色权限中开通
+              {t('当前角色暂无权限访问该页面，请联系管理员在角色权限中开通')}
             </div>
           )}
         </div>

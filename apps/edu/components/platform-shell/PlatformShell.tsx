@@ -36,6 +36,7 @@ export function PlatformShell({
         children: translateItems(item.children),
       })),
       userMenuItems: translateItems(config.userMenuItems),
+      platformSwitchItems: translateItems(config.platformSwitchItems),
     }
   }, [config, t])
 
