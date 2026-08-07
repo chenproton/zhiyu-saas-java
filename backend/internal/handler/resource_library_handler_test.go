@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,7 +15,15 @@ import (
 
 func newResourceLibraryTestEnv(t *testing.T) (env *testhelper.TestEnv, do func(method, path string, body interface{}) *httptest.ResponseRecorder) {
 	env = testhelper.SetupTestEnv(t)
-	schoolAdminToken := env.NewTokenWithIdentity("school-admin-001", testhelper.TestTenantID, domain.UserRoleSchool, nil, "school_admin")
+	// 固定 uuid 用户：resource_library.uploaded_by / knowledge_points.creator_id 等
+	// uuid 列要求合法 uuid 格式，非 uuid 字符串（如 school-admin-001）会触发 22P02
+	const userID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa00a1"
+	_, _ = env.DB.Exec(context.Background(), `
+		INSERT INTO users (id, tenant_id, role, username, login_name, password_hash, name, status)
+		VALUES ($1, $2, 'operator', 'lib-test-admin', 'lib-test-admin', 'x', 'lib-test-admin', 'active')
+		ON CONFLICT (id) DO NOTHING
+	`, userID, testhelper.TestTenantID)
+	schoolAdminToken := env.NewTokenWithIdentity(userID, testhelper.TestTenantID, domain.UserRoleSchool, nil, "school_admin")
 	return env, func(method, path string, body interface{}) *httptest.ResponseRecorder {
 		return env.DoWithToken(method, path, body, schoolAdminToken)
 	}

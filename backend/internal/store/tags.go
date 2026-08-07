@@ -215,7 +215,10 @@ func SplitTagIDs(raw string) []string {
 }
 
 // AddTagFilter 向列表查询追加"资源绑定了任一选中标签"的条件（多选 OR 语义）。
-// resourceIDCol 为主查询表中资源 ID 列的限定引用（无别名表传 "id"）。
+// resourceIDCol 必须为主查询表中资源 ID 列的全限定引用：
+// 主表有别名时传「别名.id」（如 rdq.id）；主表无别名时传「表名.id」（如 knowledge_points.id）。
+// 禁止传裸列名（如 id）——EXISTS 子查询内层表 resource_tag_relations 也有 id 列，
+// 裸列名会被内层遮蔽导致 rtr.resource_id = rtr.id 恒不成立，筛选永远返回空。
 // 供各列表 store 的 ExtraFilter 复用，SQL 片段沉淀于本文件。
 func AddTagFilter(qb *ListQueryBuilder, tenantID, resourceType, resourceIDCol string, tagIDs []string) {
 	if len(tagIDs) == 0 {

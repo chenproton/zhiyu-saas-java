@@ -12,12 +12,41 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 )
 
+// cleanupAbilityCitationData 清理能力点引用统计涉及的租户数据，
+// 保证统计断言不受历史数据干扰（SetupTestEnv 不清理这些表）。
+func cleanupAbilityCitationData(t *testing.T, env *testhelper.TestEnv) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := env.DB.Exec(ctx, "DELETE FROM position_ability_bindings WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+		t.Fatalf("cleanup position_ability_bindings: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM certification_ability_points WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+		t.Fatalf("cleanup certification_ability_points: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM certification_ability_items WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+		t.Fatalf("cleanup certification_ability_items: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM certification_rules WHERE career_position_id IN (SELECT id FROM career_positions WHERE created_by = $1)", testhelper.TestOperatorID); err != nil {
+		t.Fatalf("cleanup certification_rules: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM position_responsibilities WHERE career_position_id IN (SELECT id FROM career_positions WHERE created_by = $1)", testhelper.TestOperatorID); err != nil {
+		t.Fatalf("cleanup position_responsibilities: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM career_positions WHERE created_by = $1", testhelper.TestOperatorID); err != nil {
+		t.Fatalf("cleanup career_positions: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM ability_points WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+		t.Fatalf("cleanup ability_points: %v", err)
+	}
+}
+
 // TestAbilityCitationStats 验证能力点引用次数分布：
 // 引用源为岗位职责/节点/场景任务/认证绑定，全部未引用时 zeroCount 覆盖全量。
 func TestAbilityCitationStats(t *testing.T) {
 	env, do := newResourceLibraryTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
+	cleanupAbilityCitationData(t, env)
 
 	prefix := fmt.Sprintf("能力点引用-%s", uuid.NewString()[:8])
 	createAbility := func(name string) string {
@@ -42,18 +71,46 @@ func TestAbilityCitationStats(t *testing.T) {
 	abilityPosition := createAbility(prefix + "-岗位引用")
 	abilityCert := createAbility(prefix + "-认证引用")
 
-	// 岗位职责引用（position_ability_bindings）
+	// 岗位职责引用（position_ability_bindings）：先建岗位与职责
+	positionID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO career_positions (id, name, position_type, requirements, version, status, created_by, collaborators, code)
+		VALUES ($1, $2, '专业', '{}', 'v1', 'draft', $3, '{}', $4)
+	`, positionID, prefix+"-岗位", testhelper.TestOperatorID, "POS-"+uuid.NewString()[:6]); err != nil {
+		t.Fatalf("insert position: %v", err)
+	}
+	responsibilityID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO position_responsibilities (id, career_position_id, name, sort_order)
+		VALUES ($1, $2, $3, 0)
+	`, responsibilityID, positionID, prefix+"-职责"); err != nil {
+		t.Fatalf("insert responsibility: %v", err)
+	}
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO position_ability_bindings (id, career_position_id, responsibility_id, ability_point_id, required_level)
 		VALUES ($1, $2, $3, $4, 'L1')
-	`, uuid.NewString(), uuid.NewString(), uuid.NewString(), abilityPosition); err != nil {
+	`, uuid.NewString(), positionID, responsibilityID, abilityPosition); err != nil {
 		t.Fatalf("insert position binding: %v", err)
 	}
-	// 认证引用（certification_ability_points）
+	// 认证引用（certification_ability_points）：先建规则与能力项
+	ruleID := uuid.NewString()
 	if _, err := env.DB.Exec(ctx, `
-		INSERT INTO certification_ability_points (id, item_id, ability_point_id, required_level)
-		VALUES ($1, $2, $3, 'L1')
-	`, uuid.NewString(), uuid.NewString(), abilityCert); err != nil {
+		INSERT INTO certification_rules (id, career_position_id, status, rule_source, level_mapping)
+		VALUES ($1, $2, 'active', 'manual', '{}')
+	`, ruleID, positionID); err != nil {
+		t.Fatalf("insert cert rule: %v", err)
+	}
+	itemID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO certification_ability_items (id, tenant_id, rule_id, name, sort_order)
+		VALUES ($1, $2, $3, $4, 0)
+	`, itemID, testhelper.TestTenantID, ruleID, prefix+"-能力项"); err != nil {
+		t.Fatalf("insert cert item: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO certification_ability_points (id, tenant_id, item_id, ability_point_id, required_level)
+		VALUES ($1, $2, $3, $4, 'L1')
+	`, uuid.NewString(), testhelper.TestTenantID, itemID, abilityCert); err != nil {
 		t.Fatalf("insert certification binding: %v", err)
 	}
 
@@ -149,11 +206,28 @@ func TestAbilityUncitedList(t *testing.T) {
 	}
 }
 
+// cleanupCertificateCitationData 清理证书引用统计涉及的租户数据，
+// 保证统计断言不受历史数据干扰（SetupTestEnv 不清理这些表）。
+func cleanupCertificateCitationData(t *testing.T, env *testhelper.TestEnv) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := env.DB.Exec(ctx, "DELETE FROM position_certificates WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+		t.Fatalf("cleanup position_certificates: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM certificate_library WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+		t.Fatalf("cleanup certificate_library: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM career_positions WHERE created_by = $1", testhelper.TestOperatorID); err != nil {
+		t.Fatalf("cleanup career_positions: %v", err)
+	}
+}
+
 // TestCertificateCitationStats 验证证书引用次数分布（引用源：岗位证书绑定）。
 func TestCertificateCitationStats(t *testing.T) {
 	env, do := newResourceLibraryTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
+	cleanupCertificateCitationData(t, env)
 
 	prefix := fmt.Sprintf("证书引用-%s", uuid.NewString()[:8])
 	createCert := func(name string) string {
@@ -177,11 +251,18 @@ func TestCertificateCitationStats(t *testing.T) {
 	certZero := createCert(prefix + "-零引用")
 	certReferenced := createCert(prefix + "-被引用")
 
-	// 岗位证书绑定（position_certificates）
+	// 岗位证书绑定（position_certificates）：先建真实岗位
+	positionID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO career_positions (id, name, position_type, requirements, version, status, created_by, collaborators, code)
+		VALUES ($1, $2, '专业', '{}', 'v1', 'draft', $3, '{}', $4)
+	`, positionID, prefix+"-岗位", testhelper.TestOperatorID, "POS-"+uuid.NewString()[:6]); err != nil {
+		t.Fatalf("insert position: %v", err)
+	}
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO position_certificates (id, career_position_id, certificate_library_id, tenant_id)
 		VALUES ($1, $2, $3, $4)
-	`, uuid.NewString(), uuid.NewString(), certReferenced, testhelper.TestTenantID); err != nil {
+	`, uuid.NewString(), positionID, certReferenced, testhelper.TestTenantID); err != nil {
 		t.Fatalf("insert position cert: %v", err)
 	}
 
@@ -204,6 +285,7 @@ func TestCertificateUncitedList(t *testing.T) {
 	env, do := newResourceLibraryTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
+	cleanupCertificateCitationData(t, env)
 
 	prefix := fmt.Sprintf("证书零引用-%s", uuid.NewString()[:8])
 	createCert := func(name string) string {
