@@ -324,9 +324,13 @@ function HybridCourseAddForm() {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const [shareSelectedIds, setShareSelectedIds] = useState<string[]>([])
-  const [shareGroupName, setShareGroupName] = useState('')
-  const [shareGroupId, setShareGroupId] = useState('')
+  const [newGroupName, setNewGroupName] = useState('')
+  const [addMemberGroupId, setAddMemberGroupId] = useState('')
+  const [addMemberGroupName, setAddMemberGroupName] = useState('')
+  const [addMemberSelectedIds, setAddMemberSelectedIds] = useState<string[]>([])
+  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [disbandGroupId, setDisbandGroupId] = useState('')
   const [globalInfoOpen, setGlobalInfoOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
@@ -513,92 +517,149 @@ function HybridCourseAddForm() {
     })
   }
 
-  const openShareDialog = () => {
-    if (!currentData) return
-    setShareSelectedIds([])
-    setShareGroupName('')
-    setShareGroupId('')
-    setShareDialogOpen(true)
-  }
-
-  const toggleShareNode = (nodeId: string) => {
-    setShareSelectedIds((prev) =>
-      prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId],
-    )
-  }
-
-  // 当前节点所属的复用分组（含成员节点推导）
-  const myShareGroups = useMemo(() => {
-    if (!currentData) return []
-    return (currentData.teachingDesignGroups || []).map((g) => ({
-      ...g,
-      members: nodes.filter((n) =>
-        (nodeDataMap[n.id]?.teachingDesignGroups || []).some((og) => og.id === g.id),
-      ),
-    }))
-  }, [currentData, nodes, nodeDataMap])
-
-  // 全部分组（供"加入现有分组"选择，排除当前节点已加入的）
-  const availableShareGroups = useMemo(() => {
-    if (!currentData) return []
-    const myIds = new Set((currentData.teachingDesignGroups || []).map((g) => g.id))
-    const all = new Map<string, { id: string; name: string }>()
+  // 全部分组（由成员节点推导，含成员列表）
+  const allShareGroups = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; members: SystemCourseNode[] }>()
     nodes.forEach((n) => {
       ;(nodeDataMap[n.id]?.teachingDesignGroups || []).forEach((g) => {
-        if (!all.has(g.id)) all.set(g.id, { id: g.id, name: g.name })
+        const entry = map.get(g.id) || { id: g.id, name: g.name, members: [] }
+        entry.name = g.name
+        entry.members.push(n)
+        map.set(g.id, entry)
       })
     })
-    return Array.from(all.values()).filter((g) => !myIds.has(g.id))
-  }, [currentData, nodes, nodeDataMap])
+    return Array.from(map.values())
+  }, [nodes, nodeDataMap])
 
-  // 将当前节点与勾选节点加入分组（新建或已有），并同步内容
-  const joinShareGroup = (gid: string, gname: string) => {
-    if (!selectedNodeId || !currentData) return
-    const memberIds = [selectedNodeId, ...shareSelectedIds.filter((id) => id !== selectedNodeId)]
+  // 新建分组：当前选中节点作为首成员（保证组可见），随后可继续添加其他节点
+  const createShareGroup = () => {
+    const name = newGroupName.trim()
+    if (!name) return
+    const gid = uid('dg')
     setNodeDataMap((prev) => {
       const next = { ...prev }
-      const currentContent = next[selectedNodeId]?.teachingDesignContent || ''
-      memberIds.forEach((id) => {
-        if (!next[id]) return
-        const groups = next[id].teachingDesignGroups || []
+      if (selectedNodeId && next[selectedNodeId]) {
+        const groups = next[selectedNodeId].teachingDesignGroups || []
         if (!groups.some((g) => g.id === gid)) {
-          next[id] = {
-            ...next[id],
-            teachingDesignGroups: [...groups, { id: gid, name: gname }],
-            teachingDesignContent: currentContent,
+          next[selectedNodeId] = {
+            ...next[selectedNodeId],
+            teachingDesignGroups: [...groups, { id: gid, name }],
+          }
+        }
+      }
+      return next
+    })
+    setNewGroupName('')
+    setAddMemberGroupId(gid)
+    setAddMemberGroupName(name)
+    setAddMemberSelectedIds([])
+    toast({ title: `已创建分组「${name}」，可继续添加其他节点` })
+  }
+
+  // 重命名分组（更新所有成员节点上的组名）
+  const renameShareGroup = (gid: string) => {
+    const name = renameValue.trim()
+    if (!name) return
+    setNodeDataMap((prev) => {
+      const next = { ...prev }
+      Object.keys(next).forEach((k) => {
+        const groups = next[k].teachingDesignGroups || []
+        if (groups.some((g) => g.id === gid)) {
+          next[k] = {
+            ...next[k],
+            teachingDesignGroups: groups.map((g) => (g.id === gid ? { ...g, name } : g)),
           }
         }
       })
       return next
     })
-    setShareDialogOpen(false)
+    setRenamingGroupId(null)
+    setRenameValue('')
   }
 
-  const confirmShareNodes = () => {
-    if (shareGroupName.trim()) {
-      joinShareGroup(uid('dg'), shareGroupName.trim())
+  // 解散分组（所有成员移出）
+  const disbandShareGroup = (gid: string) => {
+    setNodeDataMap((prev) => {
+      const next = { ...prev }
+      Object.keys(next).forEach((k) => {
+        const groups = next[k].teachingDesignGroups || []
+        if (groups.some((g) => g.id === gid)) {
+          next[k] = { ...next[k], teachingDesignGroups: groups.filter((g) => g.id !== gid) }
+        }
+      })
+      return next
+    })
+    if (addMemberGroupId === gid) setAddMemberGroupId('')
+  }
+
+  // 打开某分组的"添加节点"
+  const openAddMember = (gid: string, gname: string) => {
+    if (addMemberGroupId === gid) {
+      setAddMemberGroupId('')
       return
     }
-    if (shareGroupId) {
-      const g = availableShareGroups.find((x) => x.id === shareGroupId)
-      if (g) joinShareGroup(g.id, g.name)
-    }
+    setAddMemberGroupId(gid)
+    setAddMemberGroupName(gname)
+    setAddMemberSelectedIds([])
   }
 
-  // 当前节点移出某分组
-  const leaveShareGroup = (gid: string) => {
-    if (!selectedNodeId || !currentData) return
+  const toggleAddMember = (nodeId: string) => {
+    setAddMemberSelectedIds((prev) =>
+      prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId],
+    )
+  }
+
+  // 确认添加成员：新成员加入分组并同步组内基准内容
+  const confirmAddMembers = () => {
+    const gid = addMemberGroupId
+    const gname = addMemberGroupName
+    if (!gid || !gname) return
+    const group = allShareGroups.find((g) => g.id === gid)
+    // 基准内容：组内现有第一个有内容的成员，否则保持新成员自身内容
+    const baseContent =
+      group?.members.find((m) => nodeDataMap[m.id]?.teachingDesignContent)?.id
+        ? nodeDataMap[group.members.find((m) => nodeDataMap[m.id]?.teachingDesignContent)!.id]
+            .teachingDesignContent
+        : undefined
+
     setNodeDataMap((prev) => {
-      const cur = prev[selectedNodeId]
+      const next = { ...prev }
+      addMemberSelectedIds.forEach((id) => {
+        if (!next[id]) return
+        const groups = next[id].teachingDesignGroups || []
+        if (groups.some((g) => g.id === gid)) return
+        next[id] = {
+          ...next[id],
+          teachingDesignGroups: [...groups, { id: gid, name: gname }],
+          teachingDesignContent: baseContent !== undefined ? baseContent : next[id].teachingDesignContent,
+        }
+      })
+      return next
+    })
+    setAddMemberGroupId('')
+    setAddMemberSelectedIds([])
+  }
+
+  // 移除单个成员
+  const removeGroupMember = (gid: string, nodeId: string) => {
+    setNodeDataMap((prev) => {
+      const cur = prev[nodeId]
       if (!cur) return prev
       return {
         ...prev,
-        [selectedNodeId]: {
+        [nodeId]: {
           ...cur,
           teachingDesignGroups: (cur.teachingDesignGroups || []).filter((g) => g.id !== gid),
         },
       }
     })
+  }
+
+  const openShareDialog = () => {
+    setShareDialogOpen(true)
+    setNewGroupName('')
+    setAddMemberGroupId('')
+    setRenamingGroupId(null)
   }
 
   // 混合课节点评价规则持久化到节点级 eval_data（发布时 GenerateCourseAssessments 读取生成测评）
@@ -1052,23 +1113,25 @@ function HybridCourseAddForm() {
                           <BookOpen className="h-4 w-4 text-primary" />
                           教学设计
                         </CardTitle>
-                        {relatedDesignNodeIds.length > 0 && (
+                        {currentData.teachingDesignGroups?.length > 0 && (
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs text-gray-400">已关联节点：</span>
-                            {relatedDesignNodeIds.map((id) => {
-                              const node = nodes.find((n) => n.id === id)
-                              return (
-                                <Badge key={id} variant="secondary" className="text-xs font-normal">
-                                  {node?.name || id}
-                                </Badge>
-                              )
-                            })}
+                            <span className="text-xs text-gray-400">所属分组：</span>
+                            {currentData.teachingDesignGroups.map((g) => (
+                              <Badge
+                                key={g.id}
+                                variant="secondary"
+                                className="text-xs font-normal cursor-pointer hover:bg-primary/10 hover:text-primary"
+                                onClick={openShareDialog}
+                              >
+                                {g.name}（{relatedDesignNodeIds.length > 0 ? relatedDesignNodeIds.length + 1 : 1}）
+                              </Badge>
+                            ))}
                           </div>
                         )}
                       </div>
                       <Button size="sm" variant="outline" onClick={openShareDialog}>
                         <Layers className="h-4 w-4 mr-1" />
-                        复用节点教学设计
+                        管理分组
                       </Button>
                     </CardHeader>
                     <CardContent>
@@ -1180,133 +1243,231 @@ function HybridCourseAddForm() {
         </DialogContent>
       </Dialog>
 
-      {/* Share design nodes dialog */}
+      {/* Share design groups dialog */}
       <Dialog
         open={shareDialogOpen}
         onOpenChange={(open) => {
           setShareDialogOpen(open)
           if (!open) {
-            setShareSelectedIds([])
-            setShareGroupName('')
-            setShareGroupId('')
+            setNewGroupName('')
+            setAddMemberGroupId('')
+            setAddMemberSelectedIds([])
+            setRenamingGroupId(null)
+            setDisbandGroupId('')
           }
         }}
       >
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>复用节点教学设计（分组同步）</DialogTitle>
+            <DialogTitle>教学设计复用分组</DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-4">
-            {/* 当前节点已加入的分组 */}
-            <div className="space-y-2">
-              <p className="text-xs text-gray-400">
-                当前节点已加入的分组（组内节点教学设计保持同步）
-              </p>
-              {myShareGroups.length === 0 ? (
-                <p className="text-xs text-gray-300 py-1">尚未加入任何分组</p>
-              ) : (
-                myShareGroups.map((g) => (
-                  <div key={g.id} className="border rounded-lg p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-gray-700">{g.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => leaveShareGroup(g.id)}
-                      >
-                        移出本节点
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {g.members.map((m) => (
-                        <Badge
-                          key={m.id}
-                          variant="secondary"
-                          className={`text-[11px] font-normal ${m.id === selectedNodeId ? 'bg-primary/10 text-primary border-primary/20' : ''}`}
-                        >
-                          {m.id === selectedNodeId ? `${m.name}（本节点）` : m.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
+            {/* 新建分组 */}
+            <div className="flex items-center gap-2">
+              <Input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="输入新分组名称（如：共用教学设计）"
+                className="h-9 text-sm"
+              />
+              <Button
+                size="sm"
+                disabled={!newGroupName.trim()}
+                onClick={createShareGroup}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                新建分组
+              </Button>
             </div>
 
-            {/* 新建分组或加入现有分组 */}
-            <div className="border-t pt-3 space-y-3">
-              <p className="text-xs text-gray-400">
-                将当前节点与勾选的节点加入分组（内容同步为当前节点内容）
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Input
-                  value={shareGroupName}
-                  onChange={(e) => {
-                    setShareGroupName(e.target.value)
-                    if (e.target.value.trim()) setShareGroupId('')
-                  }}
-                  placeholder="新建分组名称（如：共用教学设计）"
-                  className="h-9 text-sm"
-                />
-                <Select
-                  value={shareGroupId}
-                  onValueChange={(v) => {
-                    setShareGroupId(v)
-                    if (v) setShareGroupName('')
-                  }}
-                >
-                  <SelectTrigger className="h-9 text-sm w-full">
-                    <SelectValue placeholder="或加入已有分组" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableShareGroups.length === 0 && (
-                      <div className="px-3 py-2 text-xs text-gray-400">暂无其他分组</div>
+            {/* 分组列表 */}
+            {allShareGroups.length === 0 ? (
+              <p className="text-xs text-gray-300 py-6 text-center">尚未创建分组</p>
+            ) : (
+              allShareGroups.map((g) => {
+                const isAdding = addMemberGroupId === g.id
+                const isRenaming = renamingGroupId === g.id
+                const candidateNodes = nodes.filter(
+                  (n) => !g.members.some((m) => m.id === n.id),
+                )
+                return (
+                  <div key={g.id} className="border rounded-lg p-3">
+                    {/* 分组头：名称/重命名 + 操作 */}
+                    <div className="flex items-center justify-between gap-2">
+                      {isRenaming ? (
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Input
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            className="h-8 text-sm"
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            className="h-8 text-xs"
+                            disabled={!renameValue.trim()}
+                            onClick={() => renameShareGroup(g.id)}
+                          >
+                            保存
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() => {
+                              setRenamingGroupId('')
+                              setRenameValue('')
+                            }}
+                          >
+                            取消
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm font-medium text-gray-700 truncate">
+                              {g.name}
+                            </span>
+                            <Badge variant="secondary" className="text-[11px] font-normal shrink-0">
+                              {g.members.length} 个节点
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-gray-500"
+                              onClick={() => {
+                                setRenamingGroupId(g.id)
+                                setRenameValue(g.name)
+                              }}
+                            >
+                              重命名
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => openAddMember(g.id, g.name)}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              添加节点
+                            </Button>
+                            {disbandGroupId === g.id ? (
+                              <>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => disbandShareGroup(g.id)}
+                                >
+                                  确认解散
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => setDisbandGroupId('')}
+                                >
+                                  取消
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-red-500 hover:text-red-600"
+                                onClick={() => setDisbandGroupId(g.id)}
+                              >
+                                解散
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* 成员列表 */}
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                      {g.members.map((m) => (
+                        <span
+                          key={m.id}
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-primary/5 text-primary border border-primary/20"
+                        >
+                          {m.name}
+                          <button
+                            type="button"
+                            className="text-primary/50 hover:text-red-500 transition-colors"
+                            title="移出分组"
+                            onClick={() => removeGroupMember(g.id, m.id)}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {g.members.length === 0 && (
+                        <span className="text-xs text-gray-300">暂无成员</span>
+                      )}
+                    </div>
+
+                    {/* 添加节点面板 */}
+                    {isAdding && (
+                      <div className="mt-3 border-t pt-3 space-y-2">
+                        <p className="text-xs text-gray-400">
+                          勾选节点加入「{g.name}」，加入后与组内节点教学设计同步
+                          {candidateNodes.length === 0 && '（所有节点均已在该组中）'}
+                        </p>
+                        {candidateNodes.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+                            {candidateNodes.map((n) => {
+                              const checked = addMemberSelectedIds.includes(n.id)
+                              return (
+                                <label
+                                  key={n.id}
+                                  onClick={() => toggleAddMember(n.id)}
+                                  className={`flex items-center gap-2.5 p-2 border rounded-lg cursor-pointer transition-colors ${checked ? 'bg-primary/5 border-primary/30' : 'hover:bg-gray-50'}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleAddMember(n.id)}
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-sm truncate">{n.name}</span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {candidateNodes.length > 0 && (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => {
+                                setAddMemberGroupId('')
+                                setAddMemberSelectedIds([])
+                              }}
+                            >
+                              取消
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs"
+                              disabled={addMemberSelectedIds.length === 0}
+                              onClick={confirmAddMembers}
+                            >
+                              确认加入（{addMemberSelectedIds.length}）
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    {availableShareGroups.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                {nodes
-                  .filter((n) => n.id !== selectedNodeId)
-                  .map((n) => {
-                    const checked = shareSelectedIds.includes(n.id)
-                    return (
-                      <label
-                        key={n.id}
-                        onClick={() => toggleShareNode(n.id)}
-                        className={`flex items-center gap-3 p-2.5 border rounded-lg cursor-pointer transition-colors ${checked ? 'bg-primary/5 border-primary/30' : 'hover:bg-gray-50'}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleShareNode(n.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm">{n.name}</span>
-                      </label>
-                    )
-                  })}
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(false)}>
-              取消
-            </Button>
-            <Button
-              size="sm"
-              className="bg-[#1890ff] hover:bg-[#40a9ff]"
-              disabled={!shareGroupName.trim() && !shareGroupId}
-              onClick={confirmShareNodes}
-            >
-              确认加入分组
-            </Button>
+                  </div>
+                )
+              })
+            )}
           </div>
         </DialogContent>
       </Dialog>
