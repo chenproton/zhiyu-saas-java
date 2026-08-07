@@ -18,12 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Info,
   Plus,
-  X,
   BookOpen,
   Layers,
   ClipboardList,
@@ -60,6 +58,7 @@ import {
   buildModulesForNode,
   TEACHING_DESIGN_KEY,
 } from './_components/module-serialize'
+import { ModuleEditDialog, ModulePreviewCard } from './_components/module-preview'
 
 const FIRST_NODE_ID = 'hybrid-node-1'
 
@@ -323,6 +322,7 @@ function HybridCourseAddForm() {
 
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)
+  const [editingModuleKey, setEditingModuleKey] = useState<AtomicModuleKey | null>(null)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
   const [addMemberGroupId, setAddMemberGroupId] = useState('')
@@ -493,6 +493,7 @@ function HybridCourseAddForm() {
       ...prev,
       [selectedNodeId]: (prev[selectedNodeId] || []).filter((k) => k !== key),
     }))
+    setEditingModuleKey((prev) => (prev === key ? null : prev))
   }
 
   const updateNodeData = (patch: Partial<NodeModuleData>) => {
@@ -845,47 +846,13 @@ function HybridCourseAddForm() {
 
   const renderModuleCard = (key: AtomicModuleKey, data: NodeModuleData) => {
     if (!selectedNodeId) return null
-    const meta = ATOMIC_MODULES_BY_KEY[key]
-    const Icon = meta.icon
-    const Component = meta.component
-    const mode = data.moduleModes?.[key] ?? 'online'
     return (
-      <Card key={key} className="overflow-visible">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Icon className="h-4 w-4 text-primary" />
-            {meta.label}
-          </CardTitle>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Switch
-                id={`module-mode-${selectedNodeId}-${key}`}
-                checked={mode === 'online'}
-                onCheckedChange={(checked) =>
-                  updateNodeData({
-                    moduleModes: { ...data.moduleModes, [key]: checked ? 'online' : 'offline' },
-                  })
-                }
-              />
-              <Label
-                htmlFor={`module-mode-${selectedNodeId}-${key}`}
-                className="text-xs text-gray-500 cursor-pointer"
-              >
-                {mode === 'online' ? '线上' : '线下'}
-              </Label>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-gray-400 hover:text-red-500"
-              onClick={() => removeModule(key)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <Component nodeId={selectedNodeId} data={data} onChange={updateNodeData} courseId={editId || undefined} />
-      </Card>
+      <ModulePreviewCard
+        key={key}
+        moduleKey={key}
+        data={data}
+        onClick={() => setEditingModuleKey(key)}
+      />
     )
   }
 
@@ -1162,9 +1129,9 @@ function HybridCourseAddForm() {
                             添加教学活动
                           </Button>
                         </div>
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                           {categoryModules.length === 0 && (
-                            <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm">
+                            <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm sm:col-span-2 xl:col-span-3">
                               暂无{label}教学活动，点击上方按钮添加
                             </div>
                           )}
@@ -1242,6 +1209,22 @@ function HybridCourseAddForm() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit module dialog */}
+      {editingModuleKey &&
+        selectedNodeId &&
+        currentData &&
+        currentModules.includes(editingModuleKey) && (
+          <ModuleEditDialog
+            nodeId={selectedNodeId}
+            moduleKey={editingModuleKey}
+            data={currentData}
+            onChange={updateNodeData}
+            onRemove={() => removeModule(editingModuleKey)}
+            onClose={() => setEditingModuleKey(null)}
+            courseId={editId || undefined}
+          />
+        )}
 
       {/* Share design groups dialog */}
       <Dialog
