@@ -196,6 +196,9 @@ export default function KnowledgePointsPage() {
             fetchUncited={(params) => knowledgeApi.uncited(params)}
             deleteItem={(id) => knowledgeApi.delete(id)}
             onDeleted={loadItems}
+            statCount={total}
+            statLabel="知识点总数"
+            statIcon={<BookOpen className="size-5 text-primary" />}
           />
         }
         searchPlaceholder="搜索知识点..."

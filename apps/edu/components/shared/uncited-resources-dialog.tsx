@@ -1,8 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { DateRange } from 'react-day-picker'
-import { format } from 'date-fns'
+import { addDays, format } from 'date-fns'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -22,7 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DateRangePicker } from '@/components/shared/date-range-picker'
 import { PaginationBar } from '@/components/shared/pagination-bar'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@zhiyu/ui'
@@ -49,7 +48,7 @@ interface UncitedResourcesDialogProps {
 }
 
 /**
- * 零引用资源列表弹窗：按上传时间段筛选、分页展示上传时间与距今天数、批量删除。
+ * 零引用资源列表弹窗：按「距今天数」区间筛选、分页展示上传时间与距今天数、批量删除。
  * 引用次数与上传时间定义均来自后端 citation-stats/uncited 接口。
  */
 export function UncitedResourcesDialog({
@@ -64,7 +63,9 @@ export function UncitedResourcesDialog({
   const { toast } = useToast()
   // props 经 ref 同步，避免调用方内联函数身份变化触发弹窗内 effect 重复加载
   const propsRef = useRef({ fetchUncited, deleteItem, onDeleted })
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  // 距今天数区间筛选：[minDays, maxDays]，空值表示不设边界
+  const [minDays, setMinDays] = useState<number | undefined>(undefined)
+  const [maxDays, setMaxDays] = useState<number | undefined>(undefined)
   const [items, setItems] = useState<UncitedItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -72,7 +73,9 @@ export function UncitedResourcesDialog({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  // 打开弹窗时记录当前时间，用于渲染「距今 X 天」（effect 中取时避免渲染期调用不纯函数）
+  // 打开弹窗时记录当前时间：now 仅驱动「距今 X 天」列渲染，
+  // 换算筛选日期走 nowRef，避免 load 依赖 now 引发 effect 重载循环
+  const nowRef = useRef(0)
   const [now, setNow] = useState(0)
 
   useEffect(() => {
@@ -83,12 +86,23 @@ export function UncitedResourcesDialog({
     async (targetPage: number) => {
       setLoading(true)
       try {
-        const res = await propsRef.current.fetchUncited({
-          startDate: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
-          endDate: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
+        const base = nowRef.current || Date.now()
+        const params: {
+          startDate?: string
+          endDate?: string
+          limit: number
+          offset: number
+        } = {
           limit: PAGE_SIZE,
           offset: (targetPage - 1) * PAGE_SIZE,
-        })
+        }
+        if (maxDays !== undefined) {
+          params.startDate = format(addDays(new Date(base), -maxDays), 'yyyy-MM-dd')
+        }
+        if (minDays !== undefined) {
+          params.endDate = format(addDays(new Date(base), -minDays), 'yyyy-MM-dd')
+        }
+        const res = await propsRef.current.fetchUncited(params)
         setItems(res.items || [])
         setTotal(res.total || 0)
         setSelected(new Set())
@@ -102,14 +116,15 @@ export function UncitedResourcesDialog({
         setLoading(false)
       }
     },
-    [dateRange, toast],
+    [minDays, maxDays, toast],
   )
 
-  // 将打开弹窗视为外部事件：在微任务回调中重置页码并加载首屏，避免 effect 体内同步 setState
+  // 将打开弹窗/筛选变化视为外部事件：在微任务回调中重置页码并加载首屏，避免 effect 体内同步 setState
   useEffect(() => {
     if (!open) return
     Promise.resolve().then(() => {
-      setNow(Date.now())
+      nowRef.current = Date.now()
+      setNow(nowRef.current)
       setPage(1)
       void load(1)
     })
@@ -122,9 +137,18 @@ export function UncitedResourcesDialog({
     void load(p)
   }
 
-  const handleDateChange = (range: DateRange | undefined) => {
-    setDateRange(range)
-    setPage(1)
+  const handleDaysInput = (kind: 'min' | 'max', value: string) => {
+    const parsed = value === '' ? undefined : Math.max(0, Math.floor(Number(value)))
+    if (kind === 'min') {
+      setMinDays(parsed)
+    } else {
+      setMaxDays(parsed)
+    }
+  }
+
+  const clearFilter = () => {
+    setMinDays(undefined)
+    setMaxDays(undefined)
   }
 
   const toggleAll = (checked: boolean) => {
@@ -182,15 +206,31 @@ export function UncitedResourcesDialog({
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
-              共 {total} 个零引用{entityLabel}，可按上传时间段筛选
+              共 {total} 个零引用{entityLabel}，可按距今天数区间筛选
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="w-56">
-              <DateRangePicker value={dateRange} onChange={handleDateChange} />
-            </div>
-            {(dateRange?.from || dateRange?.to) && (
-              <Button variant="ghost" size="sm" onClick={() => handleDateChange(undefined)}>
+            <span className="text-sm text-slate-500 whitespace-nowrap">距今</span>
+            <Input
+              type="number"
+              min={0}
+              value={minDays ?? ''}
+              onChange={(e) => handleDaysInput('min', e.target.value)}
+              placeholder="最小"
+              className="w-24"
+            />
+            <span className="text-slate-400">~</span>
+            <Input
+              type="number"
+              min={0}
+              value={maxDays ?? ''}
+              onChange={(e) => handleDaysInput('max', e.target.value)}
+              placeholder="最大"
+              className="w-24"
+            />
+            <span className="text-sm text-slate-500 whitespace-nowrap">天</span>
+            {(minDays !== undefined || maxDays !== undefined) && (
+              <Button variant="ghost" size="sm" onClick={clearFilter}>
                 清除筛选
               </Button>
             )}
@@ -240,7 +280,7 @@ export function UncitedResourcesDialog({
                 {!loading && items.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="p-10 text-center text-muted-foreground">
-                      该时间段内没有零引用{entityLabel}
+                      该天数区间内没有零引用{entityLabel}
                     </TableCell>
                   </TableRow>
                 )}

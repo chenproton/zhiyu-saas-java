@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { BarChart3, FileX2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -25,10 +26,18 @@ interface CitationStatsPanelProps {
   onDeleted?: () => void
   /** 单类型视图下按类型过滤统计 */
   resourceType?: string
+  /** 左侧指标卡片（与零引用卡片上下排列，各占一半高度） */
+  statCount?: number
+  statLabel?: string
+  statIcon?: ReactNode
+  statGradient?: string
+  /** 统计卡片图标底色的样式类 */
+  statIconWrapClass?: string
 }
 
 /**
- * 库页面顶部指标：引用次数分布柱状图 + 零引用数量卡片（点击弹出管理弹窗）。
+ * 库页面顶部指标区：左侧「总数」与「零引用」卡片上下排列（各半高），
+ * 右侧引用次数分布柱状图占满整列（总高度一致）。
  * 引用次数由后端统计（课程/节点/题库等引用源），分桶：0/1-5/6-10/11-100/100 以上。
  */
 export function CitationStatsPanel({
@@ -39,6 +48,11 @@ export function CitationStatsPanel({
   deleteItem,
   onDeleted,
   resourceType,
+  statCount,
+  statLabel,
+  statIcon,
+  statGradient = 'from-primary/5 to-primary/10',
+  statIconWrapClass = 'bg-primary/10',
 }: CitationStatsPanelProps) {
   const [stats, setStats] = useState<CitationStats | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -60,7 +74,41 @@ export function CitationStatsPanel({
   const chartData = stats?.buckets || []
 
   return (
-    <>
+    <div className="flex flex-col lg:flex-row gap-3">
+      <div className="flex flex-col gap-3 lg:w-52 shrink-0">
+        {statCount !== undefined && (
+          <Card className={`border-0 shadow-sm bg-gradient-to-br ${statGradient} flex-1 min-h-0`}>
+            <CardContent className="p-4 flex items-center gap-3 h-full">
+              <div
+                className={`w-10 h-10 rounded-lg ${statIconWrapClass} flex items-center justify-center shrink-0`}
+              >
+                {statIcon}
+              </div>
+              <div className="min-w-0">
+                <div className="text-2xl font-bold">{statCount}</div>
+                <div className="text-xs opacity-70 truncate">{statLabel}</div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        <button
+          type="button"
+          onClick={() => setDialogOpen(true)}
+          title={`点击查看并批量删除从未被引用的${entityLabel}`}
+          className="text-left cursor-pointer rounded-xl border-0 shadow-sm bg-gradient-to-br from-rose-50 to-orange-50 hover:from-rose-100 hover:to-orange-100 transition-colors p-4 flex-1 min-h-0"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
+              <FileX2 className="size-5 text-rose-500" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-2xl font-bold text-rose-500">{stats?.zeroCount ?? '-'}</div>
+              <div className="text-xs text-rose-400 truncate">零引用{entityLabel}</div>
+            </div>
+          </div>
+        </button>
+      </div>
+
       <Card className="border-0 shadow-sm flex-1 min-w-0">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -103,25 +151,6 @@ export function CitationStatsPanel({
         </CardContent>
       </Card>
 
-      <button
-        type="button"
-        onClick={() => setDialogOpen(true)}
-        className="text-left cursor-pointer rounded-xl border-0 shadow-sm bg-gradient-to-br from-rose-50 to-orange-50 hover:from-rose-100 hover:to-orange-100 transition-colors p-4 w-52 shrink-0"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
-            <FileX2 className="size-4 text-rose-500" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-rose-500">{stats?.zeroCount ?? '-'}</div>
-            <div className="text-xs text-rose-400">零引用{entityLabel}</div>
-          </div>
-        </div>
-        <div className="mt-2 text-[11px] text-rose-300">
-          点击查看并批量删除从未被引用的{entityLabel}
-        </div>
-      </button>
-
       <UncitedResourcesDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -136,6 +165,6 @@ export function CitationStatsPanel({
           void loadStats()
         }}
       />
-    </>
+    </div>
   )
 }
