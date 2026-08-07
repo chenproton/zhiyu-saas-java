@@ -92,7 +92,7 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#f6f9ff] via-[#f7f9fc] to-[#eef3fb] p-4">
+    <div className="relative flex min-h-screen items-start justify-center overflow-hidden bg-gradient-to-br from-[#f6f9ff] via-[#f7f9fc] to-[#eef3fb] p-4 pt-12 sm:pt-16">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -left-40 -top-40 h-[560px] w-[560px] rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -bottom-40 -right-40 h-[560px] w-[560px] rounded-full bg-primary/10 blur-3xl" />
