@@ -2,8 +2,11 @@ package handler_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler"
@@ -644,5 +647,204 @@ func TestHybridModule(t *testing.T) {
 	items, _, _ = testhelper.UnmarshalList[domain.HybridNodeModule](w)
 	if len(items) != 0 {
 		t.Fatalf("expected 0 modules after delete, got %d", len(items))
+	}
+}
+
+func TestHybridModuleBatch(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	w := env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
+		"code":     "TEST-HYBRID-BATCH",
+		"name":     "Hybrid Batch Course",
+		"type":     "hybrid",
+		"category": "专业核心课程",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", w.Code)
+	}
+	course, _ := testhelper.Unmarshal[domain.Course](w)
+	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", course.ID)
+
+	w = env.Do("POST", "/api/v1/lesson/nodes", map[string]interface{}{
+		"courseId":  course.ID,
+		"name":      "混合节点一",
+		"sortOrder": 0,
+		"refType":   "normal",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", w.Code)
+	}
+	node, _ := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
+	defer env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE id = $1", node.ID)
+
+	w = env.Do("POST", "/api/v1/lesson/nodes", map[string]interface{}{
+		"courseId":  course.ID,
+		"name":      "混合节点二",
+		"sortOrder": 1,
+		"refType":   "normal",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", w.Code)
+	}
+	node2, _ := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
+	defer env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE id = $1", node2.ID)
+
+	// 批量保存节点一模块（全量替换）
+	w = env.Do("POST", "/api/v1/lesson/hybrid-modules/batch", map[string]interface{}{
+		"nodeId": node.ID,
+		"modules": []map[string]interface{}{
+			{"moduleKey": "teachingDesign", "mode": "offline", "data": map[string]interface{}{"content": "教学设计内容"}},
+			{"moduleKey": "prePreview", "mode": "online", "data": map[string]interface{}{"previewContent": "预习内容"}},
+		},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// 按 nodeId 过滤查询
+	w = env.Do("GET", "/api/v1/lesson/hybrid-modules?nodeId="+node.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	items, _, _ := testhelper.UnmarshalList[domain.HybridNodeModule](w)
+	if len(items) != 2 {
+		t.Fatalf("expected 2 modules, got %d", len(items))
+	}
+
+	// 按 courseId 过滤查询（应包含两节点全部模块）
+	w = env.Do("GET", "/api/v1/lesson/hybrid-modules?courseId="+course.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	items, _, _ = testhelper.UnmarshalList[domain.HybridNodeModule](w)
+	if len(items) != 2 {
+		t.Fatalf("expected 2 modules by courseId, got %d", len(items))
+	}
+
+	// 再次批量保存（覆盖）应幂等替换
+	w = env.Do("POST", "/api/v1/lesson/hybrid-modules/batch", map[string]interface{}{
+		"nodeId": node.ID,
+		"modules": []map[string]interface{}{
+			{"moduleKey": "teachingDesign", "mode": "offline", "data": map[string]interface{}{"content": "更新后的教学设计"}},
+		},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.Do("GET", "/api/v1/lesson/hybrid-modules?nodeId="+node.ID, nil)
+	items, _, _ = testhelper.UnmarshalList[domain.HybridNodeModule](w)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 module after replace, got %d", len(items))
+	}
+	if items[0].ModuleKey != "teachingDesign" {
+		t.Fatalf("expected teachingDesign, got %s", items[0].ModuleKey)
+	}
+}
+
+func TestHybridCourseGenerateAssessments(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+	tenantID := testhelper.TestTenantID
+
+	// 创建混合课并发布（含课前测验 paper + 课后作业 homework 规则）
+	w := env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
+		"code":     "TEST-HYBRID-ASSESS",
+		"name":     "Hybrid Assess Course",
+		"type":     "hybrid",
+		"category": "专业核心课程",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", w.Code)
+	}
+	course, _ := testhelper.Unmarshal[domain.Course](w)
+	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", course.ID)
+
+	// 试卷
+	paperID := uuid.NewString()
+	execOrFail(t, env, ctx, `
+		INSERT INTO exams (id, tenant_id, name, status, duration, creator_id, code, is_temp)
+		VALUES ($1, $2, '混合课前测验试卷', 'published', 30, $3, $4, false)
+	`, paperID, tenantID, testhelper.TestOperatorID, "SJ-HYB-"+uuid.NewString()[:8])
+	defer env.DB.Exec(ctx, "DELETE FROM exams WHERE id = $1", paperID)
+
+	// 节点带 hybridEvalRules（课前测验 paper + 课后作业 homework）
+	evalData := map[string]interface{}{
+		"hybridEvalRules": map[string]interface{}{
+			"preQuiz": map[string]interface{}{
+				"methods": []interface{}{"paper"},
+				"evalRuleConfig": map[string]interface{}{
+					"evaluationMethods": []interface{}{"paper"},
+					"paperIds":          []interface{}{paperID},
+				},
+			},
+			"homework": map[string]interface{}{
+				"methods": []interface{}{"homework"},
+				"evalRuleConfig": map[string]interface{}{
+					"evaluationMethods": []interface{}{"homework"},
+				},
+			},
+		},
+	}
+	evalDataJSON, _ := json.Marshal(evalData)
+	nodeID := uuid.NewString()
+	execOrFail(t, env, ctx, `
+		INSERT INTO system_course_nodes (id, course_id, name, sort_order, tenant_id, eval_data, status)
+		VALUES ($1, $2, '混合节点', 0, $3, $4::jsonb, 'draft')
+	`, nodeID, course.ID, tenantID, string(evalDataJSON))
+	defer env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE id = $1", nodeID)
+
+	// 审批通过后发布（Publish hook 触发 GenerateCourseAssessments）
+	w = env.Do("POST", "/api/v1/lesson/courses/"+course.ID+"/submit", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected submit 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.Do("POST", "/api/v1/lesson/courses/"+course.ID+"/review", map[string]string{"status": "approved"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected review 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.Do("POST", "/api/v1/lesson/courses/"+course.ID+"/publish", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected publish 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// 试卷安排已生成（target_type='node'）
+	var usageCount int
+	err := env.DB.QueryRow(ctx, `
+		SELECT COUNT(*) FROM exam_usages
+		WHERE exam_id = $1 AND target_type = 'node' AND $2 = ANY(target_ids)
+	`, paperID, nodeID).Scan(&usageCount)
+	if err != nil {
+		t.Fatalf("query usage: %v", err)
+	}
+	if usageCount != 1 {
+		t.Fatalf("expected 1 exam usage, got %d", usageCount)
+	}
+
+	// 作业已生成
+	var hwCount int
+	err = env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM node_homeworks WHERE node_id = $1`, nodeID).Scan(&hwCount)
+	if err != nil {
+		t.Fatalf("query homework: %v", err)
+	}
+	if hwCount != 1 {
+		t.Fatalf("expected 1 node homework, got %d", hwCount)
+	}
+
+	// eval_data 已写回 usageId
+	var savedEval domain.JSONMap
+	err = env.DB.QueryRow(ctx, `SELECT eval_data FROM system_course_nodes WHERE id = $1`, nodeID).Scan(&savedEval)
+	if err != nil {
+		t.Fatalf("query eval_data: %v", err)
+	}
+	rules, _ := savedEval["hybridEvalRules"].(map[string]interface{})
+	preQuiz, _ := rules["preQuiz"].(map[string]interface{})
+	cfg, _ := preQuiz["evalRuleConfig"].(map[string]interface{})
+	mrc, _ := cfg["methodResourceConfigs"].(map[string]interface{})
+	paperRC, _ := mrc["paper"].(map[string]interface{})
+	if usageID, _ := paperRC["usageId"].(string); usageID == "" {
+		t.Fatal("expected usageId written back to eval_data")
 	}
 }
