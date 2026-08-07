@@ -401,29 +401,33 @@ function HybridCourseAddForm() {
     [selectedNodeId],
   )
 
-  const handleReorderNodes = useCallback((nodeId: string, targetNodeId: string) => {
-    setNodes((prev) => {
-      const dragged = prev.find((n) => n.id === nodeId)
-      const target = prev.find((n) => n.id === targetNodeId)
-      if (!dragged || !target) return prev
-      const newNodes = prev.map((n) => {
-        if (n.id === nodeId) {
-          return { ...n, parentId: target.parentId, order: target.order + 0.5 }
-        }
-        return n
+  const handleReorderNodes = useCallback(
+    (nodeId: string, targetNodeId: string, position: 'before' | 'after' = 'after') => {
+      setNodes((prev) => {
+        const dragged = prev.find((n) => n.id === nodeId)
+        const target = prev.find((n) => n.id === targetNodeId)
+        if (!dragged || !target) return prev
+        const orderOffset = position === 'before' ? -0.5 : 0.5
+        const newNodes = prev.map((n) => {
+          if (n.id === nodeId) {
+            return { ...n, parentId: target.parentId, order: target.order + orderOffset }
+          }
+          return n
+        })
+        const siblings = newNodes
+          .filter((n) => n.parentId === target.parentId)
+          .sort((a, b) => a.order - b.order)
+        siblings.forEach((n, idx) => {
+          const idxInPrev = newNodes.findIndex((x) => x.id === n.id)
+          if (idxInPrev >= 0) {
+            newNodes[idxInPrev] = { ...newNodes[idxInPrev], order: idx + 1 }
+          }
+        })
+        return [...newNodes]
       })
-      const siblings = newNodes
-        .filter((n) => n.parentId === target.parentId)
-        .sort((a, b) => a.order - b.order)
-      siblings.forEach((n, idx) => {
-        const idxInPrev = newNodes.findIndex((x) => x.id === n.id)
-        if (idxInPrev >= 0) {
-          newNodes[idxInPrev] = { ...newNodes[idxInPrev], order: idx + 1 }
-        }
-      })
-      return [...newNodes]
-    })
-  }, [])
+    },
+    [],
+  )
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
 
