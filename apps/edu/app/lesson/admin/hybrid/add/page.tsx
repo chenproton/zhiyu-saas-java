@@ -92,6 +92,7 @@ function HybridCourseAddForm() {
   const claimSessionsParam = searchParams.get('claimSessions')
   const [existing, setExisting] = useState<Course | null>(null)
   const [batchId, setBatchId] = useState('')
+  const [courseDescriptionPdf, setCourseDescriptionPdf] = useState<string | null>(null)
   const [abilityPoints, setAbilityPoints] = useState<
     { id: string; name: string; code?: string; description?: string }[]
   >([])
@@ -211,6 +212,7 @@ function HybridCourseAddForm() {
               : '',
             coverImage: c.coverImage || '',
           })
+          setCourseDescriptionPdf(courseEvalData.descriptionPdf || null)
           const loadedNodes = (nodeRes.items || []) as SystemCourseNode[]
           // 旧课程可能没有节点：生成内存根节点，保证课程基本信息可编辑，保存时自动落库
           if (loadedNodes.length === 0) {
@@ -591,6 +593,9 @@ function HybridCourseAddForm() {
       coCreatorIds: existing?.coCreatorIds || [],
       description: courseForm.detailedDescription || undefined,
       abilityPointIds: abilityPoints.map((a) => a.id),
+      evalData: {
+        descriptionPdf: courseDescriptionPdf || undefined,
+      },
     }) as any
 
   const saveNodes = useCallback(
@@ -883,6 +888,8 @@ function HybridCourseAddForm() {
                       onChange={(v) => updateCourseForm({ detailedDescription: v })}
                       placeholder="请输入课程简介..."
                       minHeight={280}
+                      pdfUrl={courseDescriptionPdf}
+                      onPdfChange={setCourseDescriptionPdf}
                     />
                   </div>
                 </div>
