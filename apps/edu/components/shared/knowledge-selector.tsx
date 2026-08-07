@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Lightbulb, Plus, Search, X, Check } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Lightbulb, Plus, Search, X, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { courseApi } from '@/lib/api'
+import { courseApi, knowledgeApi } from '@/lib/api'
 import type { Course, KnowledgePointItem } from '@/lib/types/lesson'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -67,6 +67,9 @@ export function KnowledgeSelector({
 }: KnowledgeSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [kpSearch, setKpSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<KnowledgePointItem[] | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const searchSeqRef = useRef(0)
   const [sceneFilter, setSceneFilter] = useState('all')
   const [positionFilter, setPositionFilter] = useState('all')
   const [taskFilter, setTaskFilter] = useState('all')
@@ -128,19 +131,44 @@ export function KnowledgeSelector({
       .catch(() => setGranularCourses([]))
   }, [])
 
+  const kpSearchTerm = kpSearch.trim()
+
+  // 搜索走后端接口（name/code 模糊匹配），可命中全部知识点，不受初始 pool 200 条限制
+  useEffect(() => {
+    const seq = ++searchSeqRef.current
+    if (!kpSearchTerm) return
+    const timer = setTimeout(() => {
+      setSearchLoading(true)
+      knowledgeApi
+        .list({ search: kpSearchTerm, limit: 200 })
+        .then((res) => {
+          if (seq !== searchSeqRef.current) return
+          setSearchResults(
+            (res.items || []).map((k) => ({
+              ...k,
+              granularLessons: (k as any).granularLessonIds || [],
+            })),
+          )
+          setSearchLoading(false)
+        })
+        .catch(() => {
+          if (seq !== searchSeqRef.current) return
+          setSearchResults([])
+          setSearchLoading(false)
+        })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [kpSearchTerm])
+
   const isReferenceKp = (kp: KnowledgePointItem) => kp.linked
 
+  const isSearching = !!kpSearchTerm
   const sceneKpIds = sceneFilter === 'all' ? null : SCENE_KNOWLEDGE_MAP[sceneFilter]
-  const filtered = pool.filter(
-    (kp) =>
-      (!sceneKpIds || sceneKpIds.includes(kp.id)) &&
-      (!kpSearch ||
-        kp.name.includes(kpSearch) ||
-        (kp.description && kp.description.includes(kpSearch)) ||
-        (kp.code && kp.code.includes(kpSearch))),
-  )
+  const filtered = isSearching
+    ? searchResults || []
+    : pool.filter((kp) => !sceneKpIds || sceneKpIds.includes(kp.id))
 
-  const hasResults = kpSearch ? filtered.length > 0 : false
+  const hasResults = isSearching ? filtered.length > 0 : false
 
   const handleReferenceKp = (kp: KnowledgePointItem) => {
     if (selected.find((s) => s.id === kp.id)) return
@@ -188,6 +216,9 @@ export function KnowledgeSelector({
   // 名称在租户内唯一（后端唯一约束），重名创建/改名必然 409，直接阻止
   const findNameCollision = (name: string, excludeId?: string) =>
     pool.find((p) => p.id !== excludeId && p.name.trim() === name.trim()) ||
+    (searchResults || []).find(
+      (p) => p.id !== excludeId && p.name.trim() === name.trim(),
+    ) ||
     selected.find((s) => s.id !== excludeId && s.name.trim() === name.trim())
 
   const handleSaveKp = () => {
@@ -253,7 +284,8 @@ export function KnowledgeSelector({
 
   const detailKp = selectedKpForDetail
     ? selected.find((s) => s.id === selectedKpForDetail) ||
-      pool.find((p) => p.id === selectedKpForDetail)
+      pool.find((p) => p.id === selectedKpForDetail) ||
+      (searchResults || []).find((p) => p.id === selectedKpForDetail)
     : null
   const detailGranularLessons =
     detailKp?.granularLessons
@@ -290,81 +322,93 @@ export function KnowledgeSelector({
         </div>
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs text-gray-500 shrink-0">{t('场景/任务筛选')}</span>
-          <Select
-            value={sceneFilter}
-            onValueChange={(v) => {
-              setSceneFilter(v)
-              if (
-                taskFilter !== 'all' &&
-                v !== 'all' &&
-                TASK_SCENE_MAP[taskFilter] &&
-                !TASK_SCENE_MAP[taskFilter].includes(v)
-              ) {
-                setTaskFilter('all')
-              }
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs w-[120px]">
-              <SelectValue placeholder={t('选择场景')} />
-            </SelectTrigger>
-            <SelectContent>
-              {SCENES.map((scene) => (
-                <SelectItem key={scene.id} value={scene.id} className="text-xs">
-                  {scene.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="text-[10px] text-gray-300 shrink-0">▸</span>
-          <Select
-            value={taskFilter}
-            onValueChange={(v) => {
-              setTaskFilter(v)
-              if (v !== 'all' && TASK_SCENE_MAP[v] && !TASK_SCENE_MAP[v].includes(sceneFilter)) {
-                setSceneFilter(TASK_SCENE_MAP[v][0] || 'all')
-              }
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs w-[120px]">
-              <SelectValue placeholder={t('选择任务')} />
-            </SelectTrigger>
-            <SelectContent>
-              {TASKS.filter(
-                (t) =>
-                  t.id === 'all' ||
-                  sceneFilter === 'all' ||
-                  (TASK_SCENE_MAP[t.id] && TASK_SCENE_MAP[t.id].includes(sceneFilter)),
-              ).map((task) => (
-                <SelectItem key={task.id} value={task.id} className="text-xs">
-                  {task.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!isSearching && (
+            <>
+              <Select
+                value={sceneFilter}
+                onValueChange={(v) => {
+                  setSceneFilter(v)
+                  if (
+                    taskFilter !== 'all' &&
+                    v !== 'all' &&
+                    TASK_SCENE_MAP[taskFilter] &&
+                    !TASK_SCENE_MAP[taskFilter].includes(v)
+                  ) {
+                    setTaskFilter('all')
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs w-[120px]">
+                  <SelectValue placeholder={t('选择场景')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {SCENES.map((scene) => (
+                    <SelectItem key={scene.id} value={scene.id} className="text-xs">
+                      {scene.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-[10px] text-gray-300 shrink-0">▸</span>
+              <Select
+                value={taskFilter}
+                onValueChange={(v) => {
+                  setTaskFilter(v)
+                  if (v !== 'all' && TASK_SCENE_MAP[v] && !TASK_SCENE_MAP[v].includes(sceneFilter)) {
+                    setSceneFilter(TASK_SCENE_MAP[v][0] || 'all')
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs w-[120px]">
+                  <SelectValue placeholder={t('选择任务')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {TASKS.filter(
+                    (t) =>
+                      t.id === 'all' ||
+                      sceneFilter === 'all' ||
+                      (TASK_SCENE_MAP[t.id] && TASK_SCENE_MAP[t.id].includes(sceneFilter)),
+                  ).map((task) => (
+                    <SelectItem key={task.id} value={task.id} className="text-xs">
+                      {task.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs text-gray-500 shrink-0">{t('岗位筛选')}</span>
-          <Select value={positionFilter} onValueChange={setPositionFilter}>
-            <SelectTrigger className="h-8 text-xs flex-1">
-              <SelectValue placeholder={t('选择岗位')} />
-            </SelectTrigger>
-            <SelectContent>
-              {POSITIONS.map((pos) => (
-                <SelectItem key={pos.id} value={pos.id} className="text-xs">
-                  {pos.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!isSearching && (
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs text-gray-500 shrink-0">{t('岗位筛选')}</span>
+            <Select value={positionFilter} onValueChange={setPositionFilter}>
+              <SelectTrigger className="h-8 text-xs flex-1">
+                <SelectValue placeholder={t('选择岗位')} />
+              </SelectTrigger>
+              <SelectContent>
+                {POSITIONS.map((pos) => (
+                  <SelectItem key={pos.id} value={pos.id} className="text-xs">
+                    {pos.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto pr-1">
-          {!kpSearch && filtered.length === 0 && (
+          {!isSearching && filtered.length === 0 && (
             <div className="text-center text-gray-400 py-8">
               <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">{t('请输入关键词搜索知识点')}</p>
             </div>
           )}
-          {kpSearch && !hasResults && (
+          {isSearching && searchLoading && (
+            <div className="text-center text-gray-400 py-8">
+              <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin" />
+              <p className="text-sm">{t('搜索中...')}</p>
+            </div>
+          )}
+          {isSearching && !searchLoading && !hasResults && (
             <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
               <p className="mb-2">{t('未找到 "{kpSearch}" 相关的知识点')}</p>
               <Button variant="outline" size="sm" onClick={openAddKp}>
