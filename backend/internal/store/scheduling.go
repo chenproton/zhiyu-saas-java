@@ -1020,7 +1020,10 @@ func (s *SchedulingStore) ListVenueNames(ctx context.Context, tenantID string) (
 // ListClassNames 查询班级名单。
 func (s *SchedulingStore) ListClassNames(ctx context.Context, tenantID string) ([]string, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT name FROM organizations WHERE tenant_id = $1 AND type = 'class' AND status = 'active' ORDER BY name
+		SELECT o.name FROM organizations o
+		JOIN org_types t ON t.id = o.type_id AND t.tenant_id = o.tenant_id
+		WHERE o.tenant_id = $1 AND t.name = '班级'
+		ORDER BY o.name
 	`, tenantID)
 	if err != nil {
 		return nil, err
