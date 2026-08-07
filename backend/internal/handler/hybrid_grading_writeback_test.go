@@ -39,7 +39,7 @@ func TestHybridGradeWritebackExamResult(t *testing.T) {
 					"evaluationMethods": []interface{}{"quiz"},
 					"methodResourceConfigs": map[string]interface{}{
 						"quiz": map[string]interface{}{
-							"examId": examID,
+							"examId":  examID,
 							"usageId": usageID,
 						},
 					},
