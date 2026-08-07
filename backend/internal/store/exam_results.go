@@ -265,12 +265,12 @@ func (s *ExamResultStore) FetchUserProfile(ctx context.Context, userID string) (
 	var p UserProfile
 	_ = s.q.QueryRow(ctx, `SELECT name FROM users WHERE id = $1`, userID).Scan(&p.Name)
 	_ = s.q.QueryRow(ctx, `
-		SELECT COALESCE(o.name, '') AS class_name, COALESCE(m.name, '') AS major_name, u.major_id, COALESCE(u.grade, '') AS grade
+		SELECT COALESCE(o.name, '') AS class_name, COALESCE(m.name, '') AS major_name, u.major_id
 		FROM users u
 		LEFT JOIN organizations o ON o.id = u.org_node_id
 		LEFT JOIN majors m ON m.id = u.major_id
 		WHERE u.id = $1
-	`, userID).Scan(&p.ClassName, &p.MajorName, &p.MajorID, &p.Grade)
+	`, userID).Scan(&p.ClassName, &p.MajorName, &p.MajorID)
 	return &p, nil
 }
 

@@ -620,7 +620,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 			class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
 				venue_id, scenario_id, source, status, version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, ARRAY[$9::uuid], $10, $11, $12, $13, $14, $15, $16, $17, 'imported', 'draft', 1)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'imported', 'draft', 1)
 		`, uuid.NewString(), tenantID, termID, planEntryID, sr.courseName, courseCode, courseID, sr.entryType,
 			classNodeID, teacherID, sr.dayOfWeek, periods, sr.startWeek, sr.endWeek, sr.weekPattern,
 			venueID, scenarioID)

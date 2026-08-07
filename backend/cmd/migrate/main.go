@@ -209,7 +209,38 @@ func ctx() context.Context {
 }
 
 func isMultiStatement(sql string) bool {
-	return strings.Count(sql, ";\n") > 1
+	// 阈值 >=1：恰好两条语句（Count(";\n")==2）不再被误判为单语句走 prepared statement
+	//（pgx extended protocol 不允许一条 prepare 含多条命令）；单语句文件即使走 multi
+	// 路径，逐条执行结果也等价。
+	return strings.Count(sql, ";\n") >= 1
+}
+
+// splitSQLStatements 按 ";\n" 切分 SQL 语句，但跳过 $$...$$ 字面量块内的分号
+// （DO 块 / PL/pgSQL 函数体内的分号不能被切碎）。
+func splitSQLStatements(sql string) []string {
+	var stmts []string
+	inDollar := false
+	start := 0
+	for i := 0; i < len(sql); i++ {
+		if !inDollar && i+1 < len(sql) && sql[i] == '$' && sql[i+1] == '$' {
+			inDollar = true
+			i++
+			continue
+		}
+		if inDollar && i+1 < len(sql) && sql[i] == '$' && sql[i+1] == '$' {
+			inDollar = false
+			i++
+			continue
+		}
+		if !inDollar && sql[i] == ';' && (i+1 >= len(sql) || sql[i+1] == '\n') {
+			stmts = append(stmts, sql[start:i+1])
+			start = i + 1
+		}
+	}
+	if start < len(sql) {
+		stmts = append(stmts, sql[start:])
+	}
+	return stmts
 }
 
 func execMultiSQL(conn *pgx.Conn, sql string) error {
@@ -220,7 +251,7 @@ func execMultiSQL(conn *pgx.Conn, sql string) error {
 	if !strings.HasSuffix(sql, ";") {
 		sql += ";"
 	}
-	stmts := strings.Split(sql, ";\n")
+	stmts := splitSQLStatements(sql)
 	for j, stmt := range stmts {
 		stmt = stripSQLComments(stmt)
 		if stmt == "" {
