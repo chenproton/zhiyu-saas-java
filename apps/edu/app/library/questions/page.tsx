@@ -170,22 +170,22 @@ export default function QuestionsPage() {
       tableHeaders={
         <>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            题目名称
+            {t('题目名称')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            题目描述
+            {t('题目描述')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-            适用专业
+            {t('适用专业')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-            标签
+            {t('标签')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-            答案
+            {t('答案')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-            操作
+            {t('操作')}
           </TableHead>
         </>
       }
@@ -275,10 +275,10 @@ export default function QuestionsPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                取消
+                {t('取消')}
               </Button>
               <Button onClick={handleSubmit} disabled={!name.trim()}>
-                保存
+                {t('保存')}
               </Button>
             </DialogFooter>
           </DialogContent>

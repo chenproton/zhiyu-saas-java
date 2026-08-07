@@ -312,7 +312,7 @@ export function KnowledgeGraphView({
           </ReactFlow>
 
           <div className="absolute top-3 right-3 bg-white/95 border border-slate-100 rounded-md px-2.5 py-1.5 text-[11px] z-10">
-            <div className="font-semibold text-slate-400 mb-1">图例</div>
+            <div className="font-semibold text-slate-400 mb-1">{t('图例')}</div>
             {(nodeLabels
               ? (Object.keys(nodeLabels) as GraphNode['type'][])
               : (['position', 'domain', 'unit', 'knowledge', 'course'] as const)
@@ -335,7 +335,7 @@ export function KnowledgeGraphView({
         {!compact && (
           <Card className="lg:col-span-1 flex flex-col h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base">节点详情</CardTitle>
+              <CardTitle className="text-base">{t('节点详情')}</CardTitle>
               {selectedId && (
                 <Button variant="ghost" size="icon" onClick={() => setSelectedId(null)}>
                   <X className="size-4" />
@@ -363,7 +363,9 @@ export function KnowledgeGraphView({
                   <GraphNodeDetail node={selectedNode} />
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">点击图谱中的节点查看详情</div>
+                <div className="text-sm text-muted-foreground">
+                  {t('点击图谱中的节点查看详情')}
+                </div>
               )}
             </CardContent>
           </Card>

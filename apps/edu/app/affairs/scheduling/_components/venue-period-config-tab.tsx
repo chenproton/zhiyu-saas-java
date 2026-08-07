@@ -261,7 +261,7 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
             <Field>
               <FieldLabel>{t('学期名称 *')}</FieldLabel>
               <Input
-                placeholder="如 2025-2026-1"
+                placeholder={t('如 2025-2026-1')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -488,7 +488,7 @@ function VenuesSection() {
             <Field>
               <FieldLabel>{t('场地名称 *')}</FieldLabel>
               <Input
-                placeholder="如 A栋-301"
+                placeholder={t('如 A栋-301')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />

@@ -26,6 +26,7 @@ import { PaginationBar } from '@/components/shared/pagination-bar'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@zhiyu/ui'
 import type { UncitedItem } from '@/lib/types/library'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const PAGE_SIZE = 20
 
@@ -60,6 +61,7 @@ export function UncitedResourcesDialog({
   deleteItem,
   onDeleted,
 }: UncitedResourcesDialogProps) {
+  const t = useT()
   const { toast } = useToast()
   // props 经 ref 同步，避免调用方内联函数身份变化触发弹窗内 effect 重复加载
   const propsRef = useRef({ fetchUncited, deleteItem, onDeleted })
@@ -109,14 +111,14 @@ export function UncitedResourcesDialog({
       } catch (err: any) {
         toast({
           variant: 'destructive',
-          title: '加载失败',
-          description: err.message || '无法获取列表',
+          title: t('加载失败'),
+          description: err.message || t('无法获取列表'),
         })
       } finally {
         setLoading(false)
       }
     },
-    [minDays, maxDays, toast],
+    [minDays, maxDays, toast, t],
   )
 
   // 将打开弹窗/筛选变化视为外部事件：在微任务回调中重置页码并加载首屏，避免 effect 体内同步 setState
@@ -176,7 +178,7 @@ export function UncitedResourcesDialog({
     setDeleting(true)
     try {
       await Promise.all([...selected].map((id) => propsRef.current.deleteItem(id)))
-      toast({ title: `已批量删除 ${selected.size} 个${entityLabel}` })
+      toast({ title: t('已批量删除 {n} 个{label}', { n: selected.size, label: entityLabel }) })
       propsRef.current.onDeleted?.()
       const remainingPages = Math.max(1, Math.ceil((total - selected.size) / PAGE_SIZE))
       const nextPage = Math.min(page, remainingPages)
@@ -185,8 +187,8 @@ export function UncitedResourcesDialog({
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '批量删除失败',
-        description: err.message || '请稍后重试',
+        title: t('批量删除失败'),
+        description: err.message || t('请稍后重试'),
       })
     } finally {
       setDeleting(false)
@@ -206,17 +208,20 @@ export function UncitedResourcesDialog({
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
-              共 {total} 个零引用{entityLabel}，可按距今天数区间筛选
+              {t('共 {n} 个零引用{label}，可按距今天数区间筛选', {
+                n: total,
+                label: entityLabel,
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500 whitespace-nowrap">距今</span>
+            <span className="text-sm text-slate-500 whitespace-nowrap">{t('距今')}</span>
             <Input
               type="number"
               min={0}
               value={minDays ?? ''}
               onChange={(e) => handleDaysInput('min', e.target.value)}
-              placeholder="最小"
+              placeholder={t('最小')}
               className="w-24"
             />
             <span className="text-slate-400">~</span>
@@ -225,13 +230,13 @@ export function UncitedResourcesDialog({
               min={0}
               value={maxDays ?? ''}
               onChange={(e) => handleDaysInput('max', e.target.value)}
-              placeholder="最大"
+              placeholder={t('最大')}
               className="w-24"
             />
-            <span className="text-sm text-slate-500 whitespace-nowrap">天</span>
+            <span className="text-sm text-slate-500 whitespace-nowrap">{t('天')}</span>
             {(minDays !== undefined || maxDays !== undefined) && (
               <Button variant="ghost" size="sm" onClick={clearFilter}>
-                清除筛选
+                {t('清除筛选')}
               </Button>
             )}
             {selected.size > 0 && (
@@ -243,7 +248,7 @@ export function UncitedResourcesDialog({
                 disabled={deleting}
               >
                 <Trash2 className="size-4 mr-1" />
-                删除选中（{selected.size}）
+                {t('删除选中（{n}）', { n: selected.size })}
               </Button>
             )}
           </div>
@@ -255,17 +260,17 @@ export function UncitedResourcesDialog({
                     <Checkbox
                       checked={items.length > 0 && selected.size === items.length}
                       onCheckedChange={toggleAll}
-                      aria-label="全选"
+                      aria-label={t('全选')}
                     />
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    名称
+                    {t('名称')}
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    上传时间
+                    {t('上传时间')}
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-                    距今
+                    {t('距今')}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -273,14 +278,14 @@ export function UncitedResourcesDialog({
                 {loading && (
                   <TableRow>
                     <TableCell colSpan={4} className="p-10 text-center text-muted-foreground">
-                      加载中...
+                      {t('加载中...')}
                     </TableCell>
                   </TableRow>
                 )}
                 {!loading && items.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="p-10 text-center text-muted-foreground">
-                      该天数区间内没有零引用{entityLabel}
+                      {t('该天数区间内没有零引用{label}', { label: entityLabel })}
                     </TableCell>
                   </TableRow>
                 )}
@@ -290,7 +295,7 @@ export function UncitedResourcesDialog({
                       <Checkbox
                         checked={selected.has(item.id)}
                         onCheckedChange={(checked) => toggleOne(item.id, !!checked)}
-                        aria-label="选择"
+                        aria-label={t('选择')}
                       />
                     </TableCell>
                     <TableCell className="p-3">
@@ -302,7 +307,7 @@ export function UncitedResourcesDialog({
                       {format(new Date(item.createdAt), 'yyyy-MM-dd HH:mm')}
                     </TableCell>
                     <TableCell className="p-3 text-sm text-slate-400 text-right whitespace-nowrap">
-                      {daysAgo(item.createdAt)} 天
+                      {t('{n} 天', { n: daysAgo(item.createdAt) })}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -321,7 +326,7 @@ export function UncitedResourcesDialog({
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -329,9 +334,12 @@ export function UncitedResourcesDialog({
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="确认批量删除"
-        description={`确定要删除选中的 ${selected.size} 个${entityLabel}吗？此操作不可恢复。`}
-        confirmText="删除"
+        title={t('确认批量删除')}
+        description={t('确定要删除选中的 {n} 个{label}吗？此操作不可恢复。', {
+          n: selected.size,
+          label: entityLabel,
+        })}
+        confirmText={t('删除')}
         variant="destructive"
         pending={deleting}
         onConfirm={confirmBatchDelete}

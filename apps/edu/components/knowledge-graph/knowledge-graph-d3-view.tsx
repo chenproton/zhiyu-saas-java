@@ -30,6 +30,7 @@ import { Separator } from '@/components/ui/separator'
 import { GraphNodeDetail, GraphDetailStack } from './graph-node-detail'
 import { cn } from '@/lib/utils'
 import type { GraphNode, GraphEdge } from './types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const SIMULATION_ALPHA = 0.3
 type GraphViewProps = {
@@ -166,6 +167,7 @@ export function KnowledgeGraphD3View({
   highlightNodeIds,
   nodeLabels,
 }: GraphViewProps) {
+  const t = useT()
   const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const gRef = useRef<SVGGElement>(null)
@@ -643,28 +645,28 @@ export function KnowledgeGraphD3View({
             <button
               onClick={handleZoomIn}
               className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-primary/40 hover:text-primary"
-              title="放大"
+              title={t('放大')}
             >
               <ZoomIn className="size-3.5" />
             </button>
             <button
               onClick={handleZoomOut}
               className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-primary/40 hover:text-primary"
-              title="缩小"
+              title={t('缩小')}
             >
               <ZoomOut className="size-3.5" />
             </button>
             <button
               onClick={handleReset}
               className="flex size-7 items-center justify-center rounded border border-slate-200 bg-white/95 text-slate-500 hover:border-primary/40 hover:text-primary"
-              title="重置"
+              title={t('重置')}
             >
               <RotateCcw className="size-3.5" />
             </button>
           </div>
 
           <div className="absolute top-3 right-3 bg-white/95 border border-slate-100 rounded-md px-2.5 py-1.5 text-[11px] z-10">
-            <div className="font-semibold text-slate-400 mb-1">图例</div>
+            <div className="font-semibold text-slate-400 mb-1">{t('图例')}</div>
             {(nodeLabels
               ? (Object.keys(nodeLabels) as GraphNode['type'][])
               : (['position', 'domain', 'unit', 'knowledge', 'course'] as const)
@@ -680,7 +682,7 @@ export function KnowledgeGraphD3View({
           </div>
 
           <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-[11px] text-white">
-            拖拽节点 · 滚轮缩放 · 点击节点查看详情
+            {t('拖拽节点 · 滚轮缩放 · 点击节点查看详情')}
           </div>
 
           <div
@@ -692,7 +694,7 @@ export function KnowledgeGraphD3View({
         {!compact && (
           <Card className="lg:col-span-1 flex flex-col h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base">节点详情</CardTitle>
+              <CardTitle className="text-base">{t('节点详情')}</CardTitle>
               {selectedId && (
                 <Button variant="ghost" size="icon" onClick={() => setSelectedId(null)}>
                   <X className="size-4" />
@@ -720,7 +722,9 @@ export function KnowledgeGraphD3View({
                   <GraphNodeDetail node={selectedNode} />
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">点击图谱中的节点查看详情</div>
+                <div className="text-sm text-muted-foreground">
+                  {t('点击图谱中的节点查看详情')}
+                </div>
               )}
             </CardContent>
           </Card>

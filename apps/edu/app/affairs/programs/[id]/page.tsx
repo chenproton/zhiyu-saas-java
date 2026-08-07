@@ -192,7 +192,7 @@ export default function ProgramEditPage() {
                       type="number"
                       value={entryYear}
                       onChange={(e) => setEntryYear(e.target.value)}
-                      placeholder="如：2025"
+                      placeholder={t('如：2025')}
                       min={2000}
                     />
                   </Field>
@@ -224,14 +224,14 @@ export default function ProgramEditPage() {
                       type="number"
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
-                      placeholder="如：3"
+                      placeholder={t('如：3')}
                       min={0}
                     />
                   </Field>
                 </div>
 
                 <Field>
-                  <FieldLabel>方案描述</FieldLabel>
+                  <FieldLabel>{t('方案描述')}</FieldLabel>
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
