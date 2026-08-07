@@ -18,9 +18,17 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ClipboardList,
+  ChevronRight,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -51,8 +59,9 @@ import {
   hybridModuleApi,
   nodeEvaluationResultApi,
   fileApi,
+  knowledgeApi,
 } from '@/lib/api'
-import type { Course } from '@/lib/types'
+import type { Course, KnowledgePoint } from '@/lib/types'
 import type {
   SystemCourseNode,
   KnowledgePoint as NodeKnowledgePoint,
@@ -95,6 +104,10 @@ export default function LessonLearnPage() {
 
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const [myResults, setMyResults] = useState<NodeEvaluationResult[]>([])
+
+  const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
+  const [granularCourseMap, setGranularCourseMap] = useState<Map<string, Course>>(new Map())
+  const [activeKnowledgePoint, setActiveKnowledgePoint] = useState<KnowledgePoint | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -175,10 +188,41 @@ export default function LessonLearnPage() {
       })
   }, [activeNodeId, user?.id, toast])
 
+  useEffect(() => {
+    if (!id || !course || course.type === 'hybrid') return
+    Promise.all([
+      knowledgeApi.list({ limit: 1000 }).catch(() => ({ items: [] as KnowledgePoint[], total: 0 })),
+      courseApi
+        .list({ type: 'granular', limit: 1000 })
+        .catch(() => ({ items: [] as Course[], total: 0 })),
+    ])
+      .then(([kRes, gRes]) => {
+        const kMap = new Map<string, KnowledgePoint>()
+        ;(kRes.items || []).forEach((k) => kMap.set(k.id, k))
+        setKnowledgeMap(kMap)
+        const gMap = new Map<string, Course>()
+        ;(gRes.items || []).forEach((c) => gMap.set(c.id, c))
+        setGranularCourseMap(gMap)
+      })
+      .catch((err) => {
+        reportError(err, '加载知识点/颗粒课数据')
+        toast({ title: '部分数据加载失败', variant: 'destructive' })
+      })
+  }, [id, course, toast])
+
   const nodeKnowledgePoints = useMemo(() => {
     if (!activeNode) return []
-    return (activeNode.knowledgePoints || []) as NodeKnowledgePoint[]
-  }, [activeNode])
+    return ((activeNode.knowledgePoints || []) as NodeKnowledgePoint[]).map(
+      (kp) => knowledgeMap.get(kp.id) || ({ ...kp, granularLessonIds: [] } as unknown as KnowledgePoint),
+    )
+  }, [activeNode, knowledgeMap])
+
+  const activeKnowledgePointCourses = useMemo(() => {
+    if (!activeKnowledgePoint) return []
+    return (activeKnowledgePoint.granularLessonIds || [])
+      .map((cid) => granularCourseMap.get(cid))
+      .filter(Boolean) as Course[]
+  }, [activeKnowledgePoint, granularCourseMap])
 
   const nodeResources = useMemo(() => {
     if (!activeNode) return []
@@ -730,6 +774,7 @@ export default function LessonLearnPage() {
                         <div
                           key={kp.id}
                           className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
+                          onClick={() => setActiveKnowledgePoint(kp)}
                         >
                           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                             {i + 1}
@@ -780,6 +825,63 @@ export default function LessonLearnPage() {
           </div>
         )}
       </div>
+
+      {activeKnowledgePoint && (
+        <Dialog open onOpenChange={(open) => !open && setActiveKnowledgePoint(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <BrainCircuit className="h-5 w-5 text-primary" />
+                {activeKnowledgePoint.name}
+              </DialogTitle>
+              {activeKnowledgePoint.code && (
+                <DialogDescription>编码：{activeKnowledgePoint.code}</DialogDescription>
+              )}
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">描述</p>
+                <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                  {activeKnowledgePoint.description || '暂无描述'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                  关联颗粒课（{activeKnowledgePointCourses.length}）
+                </p>
+                {activeKnowledgePointCourses.length > 0 ? (
+                  <div className="space-y-2">
+                    {activeKnowledgePointCourses.map((c) => (
+                      <Link
+                        key={c.id}
+                        href={`/lesson/landing/${c.id}`}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shrink-0">
+                          <BookOpen className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-700 truncate group-hover:text-primary transition-colors">
+                            {c.name}
+                          </p>
+                          <p className="text-[11px] text-gray-400">
+                            {c.code ? `${c.code} · ` : ''}颗粒课
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 text-center py-6 bg-gray-50 rounded-xl">
+                    暂无关联颗粒课
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {activeMethod && (
         <EvalMethodSubmitDialog
