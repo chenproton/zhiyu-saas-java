@@ -140,7 +140,7 @@ export default function PortalLoginPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-white">
             {t('场景化数智教学服务平台')}
           </h1>
-          <p className="text-sm text-primary/60">{t('数智融合 · 精准教学')}</p>
+          <p className="text-sm text-white">{t('数智融合 · 精准教学')}</p>
         </div>
 
         <Card className="border-0 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl">
@@ -240,20 +240,20 @@ export default function PortalLoginPage() {
                 </ul>
               </div>
             )}
+
+            <div className="mt-6">
+              <Link
+                href="/changelog"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-sm text-slate-500 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+              >
+                <History className="h-4 w-4" />
+                {t('查看平台更新记录')}
+              </Link>
+            </div>
           </CardContent>
         </Card>
 
-        <div className="mt-5 flex items-center justify-center">
-          <Link
-            href="/changelog"
-            className="flex items-center gap-1.5 text-xs text-blue-200/40 transition-colors hover:text-blue-100/80"
-          >
-            <History className="h-3.5 w-3.5" />
-            {t('查看平台更新记录')}
-          </Link>
-        </div>
-
-        <p className="mt-3 text-center text-xs text-blue-200/40">
+        <p className="mt-6 text-center text-xs text-blue-200/40">
           © {new Date().getFullYear()} {t('场景化数智教学服务平台')} All Rights Reserved
         </p>
       </div>
