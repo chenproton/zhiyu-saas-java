@@ -58,6 +58,7 @@ import { formatDate } from '@/lib/format-utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const TABS = [
   { value: 'tasks', label: '任务概览', icon: ListChecks },
@@ -66,11 +67,6 @@ const TABS = [
   { value: 'evaluation', label: '评价标准', icon: Target },
   { value: 'knowledge', label: '知识图谱', icon: GitBranch },
 ]
-
-const taskTypeLabels: Record<string, string> = {
-  assessment: '考核',
-  training: '训练',
-}
 
 interface AbilitiesTabProps {
   tasks: ScenarioTask[]
@@ -91,6 +87,7 @@ function AbilitiesTab({
   uniqueAbilityIds,
   abilityDomainMap,
 }: AbilitiesTabProps) {
+  const t = useT()
   const [selectedAbility, setSelectedAbility] = useState<{
     ap: AbilityPoint
     taskNames: string[]
@@ -99,17 +96,17 @@ function AbilitiesTab({
   const groupedByDomain = useMemo(() => {
     const groups = new Map<string, { ap: AbilityPoint; taskNames: string[] }[]>()
 
-    tasks.forEach((t) => {
-      t.abilityPointIds?.forEach((aid) => {
+    tasks.forEach((task) => {
+      task.abilityPointIds?.forEach((aid) => {
         const ap = abilityMap.get(aid)
         if (!ap) return
-        const domain = abilityDomainMap.get(aid) || '其他'
+        const domain = abilityDomainMap.get(aid) || t('其他')
         const list = groups.get(domain) || []
         const existing = list.find((item) => item.ap.id === ap.id)
         if (existing) {
-          if (!existing.taskNames.includes(t.name)) existing.taskNames.push(t.name)
+          if (!existing.taskNames.includes(task.name)) existing.taskNames.push(task.name)
         } else {
-          list.push({ ap, taskNames: [t.name] })
+          list.push({ ap, taskNames: [task.name] })
         }
         groups.set(domain, list)
       })
@@ -118,7 +115,7 @@ function AbilitiesTab({
     return Array.from(groups.entries())
       .map(([name, items]) => ({ name, items }))
       .filter((g) => g.items.length > 0)
-  }, [tasks, abilityMap, abilityDomainMap])
+  }, [tasks, abilityMap, abilityDomainMap, t])
 
   if (uniqueAbilityIds.size === 0) {
     return (
@@ -126,30 +123,34 @@ function AbilitiesTab({
         <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
           <Lightbulb className="w-8 h-8 opacity-40" />
         </div>
-        <div className="text-[15px] font-medium text-slate-600">暂无考查能力点</div>
-        <div className="text-[13px] mt-1">该场景暂未关联能力点</div>
+        <div className="text-[15px] font-medium text-slate-600">{t('暂无考查能力点')}</div>
+        <div className="text-[13px] mt-1">{t('该场景暂未关联能力点')}</div>
       </div>
     )
   }
 
-  const groupLabel = '能力领域'
+  const groupLabel = t('能力领域')
 
   return (
     <div className="space-y-5">
       <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-5 border border-primary/10">
         <div className="flex items-center gap-2 text-primary font-bold mb-2">
           <Sparkles className="w-5 h-5" />
-          能力模型说明
+          {t('能力模型说明')}
         </div>
         <p className="text-sm text-[#475569]">
-          本场景基于真实企业场景标准，拆解为若干{groupLabel}，每个{groupLabel}
-          下关联对应的能力点，帮助学生明确学习目标。
+          {t('本场景基于真实企业场景标准，拆解为若干{group}，每个{group}下关联对应的能力点，帮助学生明确学习目标。', {
+            group: groupLabel,
+          })}
         </p>
       </div>
 
       <div className="text-sm text-[#64748b] mb-2">
-        共 <strong className="text-primary">{groupedByDomain.length}</strong> 个{groupLabel}，
-        <strong className="text-primary"> {uniqueAbilityIds.size}</strong> 个能力点
+        {t('共 {domains} 个{group}，{abilities} 个能力点', {
+          domains: groupedByDomain.length,
+          group: groupLabel,
+          abilities: uniqueAbilityIds.size,
+        })}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -210,7 +211,7 @@ function AbilitiesTab({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-4">
-              <div className="text-base font-semibold text-[#1f2937]">能力点详情</div>
+              <div className="text-base font-semibold text-[#1f2937]">{t('能力点详情')}</div>
               <button
                 className="text-[#94a3b8] hover:text-[#1f2937]"
                 onClick={() => setSelectedAbility(null)}
@@ -230,15 +231,15 @@ function AbilitiesTab({
               )}
               <div className="space-y-2 text-xs">
                 <div>
-                  <span className="font-medium text-[#94a3b8]">能力属性：</span>
+                  <span className="font-medium text-[#94a3b8]">{t('能力属性：')}</span>
                   <span className="text-[#475569]">
                     {selectedAbility.ap.attributes?.length
                       ? selectedAbility.ap.attributes.join('、')
-                      : '未配置'}
+                      : t('未配置')}
                   </span>
                 </div>
                 <div>
-                  <span className="font-medium text-[#94a3b8]">关联任务：</span>
+                  <span className="font-medium text-[#94a3b8]">{t('关联任务：')}</span>
                   <span className="text-[#475569]">{selectedAbility.taskNames.join('、')}</span>
                 </div>
               </div>
@@ -256,14 +257,15 @@ interface EvaluationTabProps {
 }
 
 function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
+  const t = useT()
   if (totalEvalConfigs === 0) {
     return (
       <div className="text-center py-16 text-slate-400">
         <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
           <Target className="w-8 h-8 opacity-40" />
         </div>
-        <div className="text-[15px] font-medium text-slate-600">暂未配置评价标准</div>
-        <div className="text-[13px] mt-1">该场景暂未设置评价方式</div>
+        <div className="text-[15px] font-medium text-slate-600">{t('暂未配置评价标准')}</div>
+        <div className="text-[13px] mt-1">{t('该场景暂未设置评价方式')}</div>
       </div>
     )
   }
@@ -273,7 +275,7 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
   return (
     <div>
       <div className="text-sm text-slate-500 mb-4">
-        共 <strong className="text-primary">{totalEvalConfigs}</strong> 个评价配置
+        {t('共 {n} 个评价配置', { n: totalEvalConfigs })}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {tasksWithEval.map((task) => {
@@ -299,14 +301,16 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
                       color: task.taskType === 'assessment' ? '#dc2626' : 'var(--primary)',
                     }}
                   >
-                    {taskTypeLabels[task.taskType] || task.taskType}
+                    {task.taskType === 'assessment' ? t('考核') : t('训练')}
                   </span>
                 </div>
               </div>
 
               {methods.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-[11px] text-slate-400 mb-2 font-medium">评价方式</div>
+                  <div className="text-[11px] text-slate-400 mb-2 font-medium">
+                    {t('评价方式')}
+                  </div>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {methods.map((m) => (
                       <span
@@ -352,7 +356,13 @@ export default function SceneDetailPage() {
   const id = params.id as string
   const router = useRouter()
   const { toast } = useToast()
+  const t = useT()
   const tabsRef = useRef<HTMLDivElement>(null)
+
+  const taskTypeLabels: Record<string, string> = {
+    assessment: t('考核'),
+    training: t('训练'),
+  }
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [loading, setLoading] = useState(true)
@@ -427,9 +437,9 @@ export default function SceneDetailPage() {
       })
       .catch((err) => {
         reportError(err, '加载知识点/能力点/颗粒课数据')
-        toast({ title: '部分数据加载失败', variant: 'destructive' })
+        toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
-  }, [id, scenario, toast])
+  }, [id, scenario, toast, t])
 
   useEffect(() => {
     if (!scenario?.careerPositionId) return
@@ -509,12 +519,12 @@ export default function SceneDetailPage() {
           <div className="w-20 h-20 mb-5 rounded-3xl bg-slate-100 flex items-center justify-center">
             <Layers className="w-10 h-10 opacity-40" />
           </div>
-          <div className="text-lg font-semibold text-slate-600">场景不存在或暂未公开</div>
+          <div className="text-lg font-semibold text-slate-600">{t('场景不存在或暂未公开')}</div>
           <Link
             href="/scene/landing"
             className="text-primary hover:text-primary mt-3 text-sm font-medium"
           >
-            返回场景列表
+            {t('返回场景列表')}
           </Link>
         </div>
         <Footer className="mt-auto" />
@@ -536,8 +546,8 @@ export default function SceneDetailPage() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
                   <ListChecks className="w-8 h-8 opacity-40" />
                 </div>
-                <div className="text-[15px] font-medium text-slate-600">暂无任务</div>
-                <div className="text-[13px] mt-1">该场景暂未配置任务</div>
+                <div className="text-[15px] font-medium text-slate-600">{t('暂无任务')}</div>
+                <div className="text-[13px] mt-1">{t('该场景暂未配置任务')}</div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -579,7 +589,7 @@ export default function SceneDetailPage() {
                           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
-                              {task.estimatedHours || 0} 课时
+                              {t('{n} 课时', { n: task.estimatedHours || 0 })}
                             </span>
                             <span className="flex items-center gap-1">
                               <BarChart3 className="w-3.5 h-3.5" />
@@ -588,19 +598,19 @@ export default function SceneDetailPage() {
                             {taskRes.length > 0 && (
                               <span className="flex items-center gap-1">
                                 <FolderOpen className="w-3.5 h-3.5" />
-                                {taskRes.length} 个资源
+                                {t('{n} 个资源', { n: taskRes.length })}
                               </span>
                             )}
                             {taskAbs > 0 && (
                               <span className="flex items-center gap-1">
                                 <Lightbulb className="w-3.5 h-3.5" />
-                                {taskAbs} 个能力点
+                                {t('{n} 个能力点', { n: taskAbs })}
                               </span>
                             )}
                             {taskKs > 0 && (
                               <span className="flex items-center gap-1">
                                 <GitBranch className="w-3.5 h-3.5" />
-                                {taskKs} 个知识点
+                                {t('{n} 个知识点', { n: taskKs })}
                               </span>
                             )}
                           </div>
@@ -631,7 +641,7 @@ export default function SceneDetailPage() {
                             size="sm"
                             className="rounded-lg h-9 px-4 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all w-full sm:w-auto"
                           >
-                            <PlayCircle className="w-3.5 h-3.5 mr-1" /> 开始任务
+                            <PlayCircle className="w-3.5 h-3.5 mr-1" /> {t('开始任务')}
                           </Button>
                         </Link>
                       </div>
@@ -647,15 +657,15 @@ export default function SceneDetailPage() {
         return (
           <div>
             <div className="text-sm text-slate-500 mb-4">
-              共 <strong className="text-primary">{totalResources}</strong> 个资源
+              {t('共 {n} 个资源', { n: totalResources })}
             </div>
             {totalResources === 0 ? (
               <div className="text-center py-16 text-slate-400">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
                   <FolderOpen className="w-8 h-8 opacity-40" />
                 </div>
-                <div className="text-[15px] font-medium text-slate-600">暂无关联资源</div>
-                <div className="text-[13px] mt-1">该场景暂未配置学习资源</div>
+                <div className="text-[15px] font-medium text-slate-600">{t('暂无关联资源')}</div>
+                <div className="text-[13px] mt-1">{t('该场景暂未配置学习资源')}</div>
               </div>
             ) : (
               <div className="space-y-5">
@@ -702,7 +712,7 @@ export default function SceneDetailPage() {
                                   <button
                                     onClick={() => addPreviewResource(r)}
                                     className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-primary/5 text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
-                                    title="预览资源"
+                                    title={t('预览资源')}
                                   >
                                     <Eye className="w-3.5 h-3.5" />
                                   </button>
@@ -767,7 +777,7 @@ export default function SceneDetailPage() {
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary/5 hover:text-primary transition-colors">
                 ←
               </span>{' '}
-              返回上一页
+              {t('返回上一页')}
             </button>
             <span className="text-slate-300 shrink-0">/</span>
             <span className="text-slate-800 font-medium truncate min-w-0">{scenario.name}</span>
@@ -807,13 +817,14 @@ export default function SceneDetailPage() {
 
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 mb-3">
                       <span className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5" /> 创建人：{scenario.creatorId.slice(0, 8)}
+                        <Users className="w-3.5 h-3.5" />{' '}
+                        {t('创建人：{id}', { id: scenario.creatorId.slice(0, 8) })}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> 更新于 {formatDate(scenario.updatedAt)}
+                        <Clock className="w-3.5 h-3.5" /> {t('更新于 {date}', { date: formatDate(scenario.updatedAt) })}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5" /> 浏览 {scenario.viewCount ?? 0} 次
+                        <Eye className="w-3.5 h-3.5" /> {t('浏览 {n} 次', { n: scenario.viewCount ?? 0 })}
                       </span>
                     </div>
 
@@ -826,7 +837,7 @@ export default function SceneDetailPage() {
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
                       {scenario.industryNames && scenario.industryNames.length > 0 && (
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-400 shrink-0">面向行业：</span>
+                          <span className="text-slate-400 shrink-0">{t('面向行业：')}</span>
                           <div className="flex flex-wrap gap-1.5">
                             {scenario.industryNames.slice(0, 3).map((n) => (
                               <span
@@ -840,7 +851,7 @@ export default function SceneDetailPage() {
                         </div>
                       )}
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-400 shrink-0">难度等级：</span>
+                        <span className="text-slate-400 shrink-0">{t('难度等级：')}</span>
                         <span
                           className="px-2.5 py-0.5 rounded-full text-[11px] border font-medium"
                           style={{
@@ -857,19 +868,19 @@ export default function SceneDetailPage() {
                     <div className="flex flex-wrap gap-3 mt-auto pt-5">
                       <Link href={`/scene/landing/${id}/learn`}>
                         <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
-                          <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
+                          <PlayCircle className="w-4 h-4 mr-1.5" /> {t('开始学习')}
                         </Button>
                       </Link>
                       <FavoriteButton
                         targetType="scene"
                         targetId={id}
-                        label="收藏场景"
+                        label={t('收藏场景')}
                         className="h-11 rounded-xl"
                       />
                       <Button
                         variant="ghost"
                         className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-primary border border-slate-200 hover:bg-primary/5 hover:border-primary/30 transition-all"
-                        aria-label="分享"
+                        aria-label={t('分享')}
                         onClick={() => setMobileAccessOpen(true)}
                       >
                         <Share2 className="w-4 h-4" />
@@ -887,7 +898,7 @@ export default function SceneDetailPage() {
                   <div className="w-7 h-7 rounded-lg bg-primary/5 flex items-center justify-center">
                     <BarChart3 className="w-4 h-4 text-primary" />
                   </div>
-                  <span className="text-sm font-bold text-slate-800">课时统计</span>
+                  <span className="text-sm font-bold text-slate-800">{t('课时统计')}</span>
                 </div>
                 <div className="p-5">
                   <div className="flex items-center justify-center mb-5">
@@ -931,18 +942,18 @@ export default function SceneDetailPage() {
                         <div className="text-[32px] font-bold text-slate-800 leading-none">
                           {totalHours}
                         </div>
-                        <div className="text-xs text-slate-400 mt-1">总课时</div>
+                        <div className="text-xs text-slate-400 mt-1">{t('总课时')}</div>
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap justify-center gap-x-6 gap-y-1.5 text-xs">
                     <div className="flex items-center gap-2 text-slate-600">
                       <div className="w-2.5 h-2.5 rounded-full bg-primary/50" />
-                      <span>考核 {assessmentHours} 课时</span>
+                      <span>{t('考核 {n} 课时', { n: assessmentHours })}</span>
                     </div>
                     <div className="flex items-center gap-2 text-slate-600">
                       <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                      <span>训练 {trainingHours} 课时</span>
+                      <span>{t('训练 {n} 课时', { n: trainingHours })}</span>
                     </div>
                   </div>
                 </div>
@@ -959,64 +970,64 @@ export default function SceneDetailPage() {
         >
           <MobileTabDropdown
             items={[
-              { value: 'tasks', label: '任务概览', icon: ListChecks, count: tasks.length },
-              { value: 'resources', label: '资源中心', icon: FolderOpen, count: totalResources },
+              { value: 'tasks', label: t('任务概览'), icon: ListChecks, count: tasks.length },
+              { value: 'resources', label: t('资源中心'), icon: FolderOpen, count: totalResources },
               {
                 value: 'abilities',
-                label: '能力模型',
+                label: t('能力模型'),
                 icon: Lightbulb,
                 count: uniqueAbilityIds.size,
               },
-              { value: 'evaluation', label: '评价标准', icon: Target, count: totalEvalConfigs },
-              { value: 'knowledge', label: '知识图谱', icon: GitBranch },
+              { value: 'evaluation', label: t('评价标准'), icon: Target, count: totalEvalConfigs },
+              { value: 'knowledge', label: t('知识图谱'), icon: GitBranch },
             ]}
             value={activeTab}
             onValueChange={setActiveTab}
             className="md:hidden m-4"
           />
           <div className="hidden md:flex overflow-x-auto border-b border-slate-100 px-4 sm:px-6">
-            {TABS.map((t) => (
+            {TABS.map((tab) => (
               <button
-                key={t.value}
-                onClick={() => setActiveTab(t.value)}
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
                 className={`
                   py-3.5 sm:py-4 px-3 sm:px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
-                  ${activeTab === t.value ? 'text-primary font-semibold' : 'text-slate-500 hover:text-primary hover:bg-primary/5'}
+                  ${activeTab === tab.value ? 'text-primary font-semibold' : 'text-slate-500 hover:text-primary hover:bg-primary/5'}
                 `}
               >
-                <t.icon
-                  className={`w-4 h-4 ${activeTab === t.value ? 'text-primary' : 'text-slate-400'}`}
+                <tab.icon
+                  className={`w-4 h-4 ${activeTab === tab.value ? 'text-primary' : 'text-slate-400'}`}
                 />
-                {t.label}
-                {t.value === 'tasks' && tasks.length > 0 && (
+                {t(tab.label)}
+                {tab.value === 'tasks' && tasks.length > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === tab.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {tasks.length}
                   </span>
                 )}
-                {t.value === 'resources' && totalResources > 0 && (
+                {tab.value === 'resources' && totalResources > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === tab.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {totalResources}
                   </span>
                 )}
-                {t.value === 'abilities' && uniqueAbilityIds.size > 0 && (
+                {tab.value === 'abilities' && uniqueAbilityIds.size > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === tab.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {uniqueAbilityIds.size}
                   </span>
                 )}
-                {t.value === 'evaluation' && totalEvalConfigs > 0 && (
+                {tab.value === 'evaluation' && totalEvalConfigs > 0 && (
                   <span
-                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === tab.value ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {totalEvalConfigs}
                   </span>
                 )}
-                {activeTab === t.value && (
+                {activeTab === tab.value && (
                   <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-primary/50 rounded-t-full" />
                 )}
               </button>

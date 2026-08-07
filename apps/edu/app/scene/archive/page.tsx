@@ -8,8 +8,10 @@ import type { Scenario } from '@/lib/types/scene'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { ArchiveListPage, type ArchiveColumn } from '@/components/shared/archive-list-page'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function SceneArchivePage() {
+  const t = useT()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [selectedProfession, setSelectedProfession] = useState<string | null>(null)
@@ -59,12 +61,12 @@ export default function SceneArchivePage() {
     try {
       await scenarioApi.saveDraft(scenario.id)
       await refresh()
-      toast({ title: '已恢复' })
+      toast({ title: t('已恢复') })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '恢复失败',
-        description: err.message || '请稍后重试',
+        title: t('恢复失败'),
+        description: err.message || t('请稍后重试'),
       })
     }
   }
@@ -73,12 +75,12 @@ export default function SceneArchivePage() {
     try {
       await scenarioApi.delete(scenario.id)
       await refresh()
-      toast({ title: '已删除' })
+      toast({ title: t('已删除') })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err.message || '请稍后重试',
+        title: t('删除失败'),
+        description: err.message || t('请稍后重试'),
       })
     }
   }
@@ -88,12 +90,12 @@ export default function SceneArchivePage() {
     const failed = results.filter((r) => r.status === 'rejected').length
     await refresh()
     if (failed === 0) {
-      toast({ title: `已批量恢复 ${ids.length} 个场景` })
+      toast({ title: t('已批量恢复 {n} 个场景', { n: ids.length }) })
     } else {
       toast({
         variant: 'destructive',
-        title: '批量恢复部分失败',
-        description: `成功 ${ids.length - failed} 个，失败 ${failed} 个`,
+        title: t('批量恢复部分失败'),
+        description: t('成功 {ok} 个，失败 {fail} 个', { ok: ids.length - failed, fail: failed }),
       })
     }
   }
@@ -107,12 +109,12 @@ export default function SceneArchivePage() {
     try {
       await Promise.all(batchDeleteTarget.map((id) => scenarioApi.delete(id)))
       await refresh()
-      toast({ title: `已批量删除 ${batchDeleteTarget.length} 个场景` })
+      toast({ title: t('已批量删除 {n} 个场景', { n: batchDeleteTarget.length }) })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '批量删除失败',
-        description: err.message || '请稍后重试',
+        title: t('批量删除失败'),
+        description: err.message || t('请稍后重试'),
       })
     } finally {
       setBatchDeleteTarget(null)
@@ -121,7 +123,7 @@ export default function SceneArchivePage() {
 
   const columns: ArchiveColumn<Scenario>[] = [
     {
-      header: '场景名称',
+      header: t('场景名称'),
       className: 'w-44',
       cell: (entry) => (
         <div className="max-w-44">
@@ -134,19 +136,19 @@ export default function SceneArchivePage() {
       ),
     },
     {
-      header: '场景编码',
+      header: t('场景编码'),
       className: 'w-28',
       cell: (entry) => (
         <span className="text-sm text-muted-foreground max-w-28 truncate">{entry.code}</span>
       ),
     },
     {
-      header: '版本',
+      header: t('版本'),
       className: 'w-20',
       cell: (entry) => <span className="text-sm">{entry.version}</span>,
     },
     {
-      header: '所属行业',
+      header: t('所属行业'),
       className: 'w-24',
       cell: (entry) => (
         <span className="text-sm max-w-24 truncate">
@@ -155,7 +157,7 @@ export default function SceneArchivePage() {
       ),
     },
     {
-      header: '适用专业',
+      header: t('适用专业'),
       className: 'w-32',
       cell: (entry) => (
         <span className="text-sm max-w-32 truncate">
@@ -164,7 +166,7 @@ export default function SceneArchivePage() {
       ),
     },
     {
-      header: '所属批次分组',
+      header: t('所属批次分组'),
       className: 'w-28',
       cell: (entry) => (
         <span className="text-sm max-w-28 truncate">
@@ -173,7 +175,7 @@ export default function SceneArchivePage() {
       ),
     },
     {
-      header: '归档时间',
+      header: t('归档时间'),
       className: 'w-24',
       cell: (entry) => (
         <span className="text-sm text-muted-foreground whitespace-nowrap">
@@ -186,10 +188,10 @@ export default function SceneArchivePage() {
   return (
     <>
       <ArchiveListPage
-        entityLabel="场景"
-        pageTitle="场景历史档案库"
-        pageDescription="查看已归档的场景记录，支持恢复为草稿继续编辑"
-        sidebarTitle="按专业归档"
+        entityLabel={t('场景')}
+        pageTitle={t('场景历史档案库')}
+        pageDescription={t('查看已归档的场景记录，支持恢复为草稿继续编辑')}
+        sidebarTitle={t('按专业归档')}
         sidebarItems={professions.map((p) => ({ id: p, name: p }))}
         sidebarSelectedId={selectedProfession}
         onSidebarSelect={setSelectedProfession}
@@ -200,7 +202,7 @@ export default function SceneArchivePage() {
         onBatchRestore={handleBatchRestore}
         onBatchDelete={handleBatchDelete}
         detailHref={(item) => `/scene/scenarios/${item.id}/edit`}
-        searchPlaceholder="搜索场景名称 / 编码 / 专业 / 行业"
+        searchPlaceholder={t('搜索场景名称 / 编码 / 专业 / 行业')}
         searchValue={search}
         onSearchChange={setSearch}
         columns={columns}
@@ -210,8 +212,10 @@ export default function SceneArchivePage() {
         onOpenChange={(open) => {
           if (!open) setBatchDeleteTarget(null)
         }}
-        title="确认批量删除"
-        description={`确定删除选中的 ${batchDeleteTarget?.length || 0} 个场景吗？删除后不可恢复。`}
+        title={t('确认批量删除')}
+        description={t('确定删除选中的 {n} 个场景吗？删除后不可恢复。', {
+          n: batchDeleteTarget?.length || 0,
+        })}
         variant="destructive"
         onConfirm={confirmBatchDelete}
       />
