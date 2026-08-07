@@ -248,10 +248,8 @@ export function ResourceBatchImportDialog({
             </div>
             <div>
               <p className="text-sm font-medium text-gray-700">点击或拖拽批量选择文件</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {resourceTypeAccept[submitType]
-                  ? `支持 ${resourceTypeAccept[submitType]}，单文件最大 100MB`
-                  : '支持多种格式，单文件最大 100MB'}
+              <p className="text-xs text-gray-500 mt-1 break-words">
+                支持 Office 文档、PDF、图片、CAD 图纸、音视频、压缩包、代码文件、电子书 等常见格式，单文件最大 100MB。
               </p>
             </div>
           </div>
