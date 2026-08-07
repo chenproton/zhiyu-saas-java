@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -1038,5 +1039,124 @@ func TestHybridCourseClone(t *testing.T) {
 	}
 	if origModuleCount != 3 {
 		t.Fatalf("expected 3 source modules intact, got %d", origModuleCount)
+	}
+}
+
+// TestHybridCourseRepublishAfterEvalRuleEdit 混合课发布后编辑测评规则再重新发布：
+// 临时考试同名冲突应复用已有临时考试与考试安排，而非 500。
+func TestHybridCourseRepublishAfterEvalRuleEdit(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+	tenantID := testhelper.TestTenantID
+
+	w := env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
+		"code":     "TEST-HYBRID-REPUB",
+		"name":     "混合重复发布课",
+		"type":     "hybrid",
+		"category": "专业核心课程",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	course, _ := testhelper.Unmarshal[domain.Course](w)
+	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", course.ID)
+
+	// 题库 + 题目
+	bankID := uuid.NewString()
+	execOrFail(t, env, ctx, `
+		INSERT INTO question_banks (id, name, status, question_count, creator_id, version, owner_type, is_draft_pool, code, tenant_id)
+		VALUES ($1, $2, 'published', 0, $3, 'v1', 'system', false, $4, $5)
+	`, bankID, "题库-"+uuid.NewString()[:8], testhelper.TestOperatorID, "BK-"+uuid.NewString()[:8], tenantID)
+	questionID := uuid.NewString()
+	execOrFail(t, env, ctx, `
+		INSERT INTO questions (id, bank_id, type, content, answer, score, difficulty, status, code, tenant_id)
+		VALUES ($1, $2, 'single', $3, $4, 10, 'medium', 'published', $5, $6)
+	`, questionID, bankID, "题目-"+questionID, `["A"]`, "Q-"+uuid.NewString()[:8], tenantID)
+
+	// 节点：preQuiz 使用题库测评
+	evalData := map[string]interface{}{
+		"hybridEvalRules": map[string]interface{}{
+			"preQuiz": map[string]interface{}{
+				"methods": []interface{}{"question_bank"},
+				"evalRuleConfig": map[string]interface{}{
+					"evaluationMethods":     []interface{}{"question_bank"},
+					"questionBankQuestions": []interface{}{questionID},
+					"methodResourceConfigs": map[string]interface{}{},
+				},
+			},
+		},
+	}
+	evalDataJSON, _ := json.Marshal(evalData)
+	nodeID := uuid.NewString()
+	execOrFail(t, env, ctx, `
+		INSERT INTO system_course_nodes (id, course_id, name, sort_order, tenant_id, eval_data, status)
+		VALUES ($1, $2, '题库节点', 0, $3, $4::jsonb, 'draft')
+	`, nodeID, course.ID, tenantID, string(evalDataJSON))
+	defer env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE id = $1", nodeID)
+
+	// 发布流程：提交 → 审核通过 → 发布
+	publishCourse := func() *httptest.ResponseRecorder {
+		if w := env.Do("POST", "/api/v1/lesson/courses/"+course.ID+"/submit", nil); w.Code != http.StatusOK {
+			t.Fatalf("expected submit 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		if w := env.Do("POST", "/api/v1/lesson/courses/"+course.ID+"/review", map[string]string{"status": "approved"}); w.Code != http.StatusOK {
+			t.Fatalf("expected review 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		return env.Do("POST", "/api/v1/lesson/courses/"+course.ID+"/publish", nil)
+	}
+
+	examName := "混合重复发布课-题库节点-题库"
+	if w := publishCourse(); w.Code != http.StatusOK {
+		t.Fatalf("expected first publish 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	var examID string
+	if err := env.DB.QueryRow(ctx, `
+		SELECT id FROM exams WHERE tenant_id = $1 AND name = $2 AND is_temp = TRUE
+	`, tenantID, examName).Scan(&examID); err != nil {
+		t.Fatalf("query temp exam: %v", err)
+	}
+
+	// 模拟发布后编辑测评规则：eval_data 写回被重置（methodResourceConfigs 丢失 examId/usageId），课程退回草稿
+	execOrFail(t, env, ctx, `
+		UPDATE system_course_nodes SET eval_data = $2::jsonb WHERE id = $1
+	`, nodeID, string(evalDataJSON))
+	execOrFail(t, env, ctx, `UPDATE courses SET status = 'draft' WHERE id = $1`, course.ID)
+
+	// 重新发布：此前因 uq_exams_tenant_name 同名冲突返回 500
+	if w := publishCourse(); w.Code != http.StatusOK {
+		t.Fatalf("expected republish 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// 同名临时考试不重复创建
+	var examCount int
+	if err := env.DB.QueryRow(ctx, `
+		SELECT COUNT(*) FROM exams WHERE tenant_id = $1 AND name = $2 AND is_temp = TRUE
+	`, tenantID, examName).Scan(&examCount); err != nil {
+		t.Fatalf("query temp exam count: %v", err)
+	}
+	if examCount != 1 {
+		t.Fatalf("expected 1 temp exam, got %d", examCount)
+	}
+
+	// 节点考试安排不重复创建
+	var usageCount int
+	if err := env.DB.QueryRow(ctx, `
+		SELECT COUNT(*) FROM exam_usages
+		WHERE exam_id = $1 AND target_type = 'node' AND $2 = ANY(target_ids)
+	`, examID, nodeID).Scan(&usageCount); err != nil {
+		t.Fatalf("query usage count: %v", err)
+	}
+	if usageCount != 1 {
+		t.Fatalf("expected 1 exam usage, got %d", usageCount)
+	}
+
+	// 题目已同步到临时考试
+	var qCount int
+	if err := env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM exam_questions WHERE exam_id = $1`, examID).Scan(&qCount); err != nil {
+		t.Fatalf("query exam questions: %v", err)
+	}
+	if qCount != 1 {
+		t.Fatalf("expected 1 exam question, got %d", qCount)
 	}
 }

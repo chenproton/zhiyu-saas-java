@@ -588,6 +588,15 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 	}
 
 	if usageID == "" {
+		// 复用该节点已生成的考试安排（重新发布/编辑测评规则后配置丢失的场景），避免重复创建
+		found, err := s.st.CourseAssessments().FindNodeUsage(ctx, q, examID, n.ID)
+		if err != nil {
+			return rc, err
+		}
+		usageID = found
+	}
+
+	if usageID == "" {
 		// 名称：课程名-节点名-{测评类型}-{YYYYMMDD}-{序号}
 		usageName, err := store.NextAutoUsageName(ctx, q, info.TenantID, "node", fmt.Sprintf("%s-%s", info.Name, n.Name), label)
 		if err != nil {
