@@ -18,11 +18,12 @@ type ExamImportHandler struct {
 }
 
 type examImportResult struct {
-	Created        int
-	Failed         int
-	Skipped        int
-	Errors         []string
-	DuplicateItems []ImportPreviewItem
+	Created           int
+	Failed            int
+	Skipped           int
+	PermissionSkipped int
+	Errors            []string
+	DuplicateItems    []ImportPreviewItem
 }
 
 func (h *ExamImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
@@ -91,11 +92,12 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": aggregated.Created,
-		"failed":  aggregated.Failed,
-		"skipped": aggregated.Skipped,
-		"entity":  "试卷",
-		"errors":  aggregated.Errors,
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "试卷",
+		"errors":            aggregated.Errors,
 	})
 }
 
@@ -134,8 +136,9 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 		}
 		seen[name] = true
 
-		var existingID string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		var existingID, existingCreator string
+		var existingCollaborators []string
+		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, collaborator_ids FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
 		exists := err == nil && existingID != ""
 
 		if preview {
@@ -154,6 +157,10 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 		origName := ""
 		if exists {
 			if overwrite {
+				if !canOverwriteContent(existingCreator, existingCollaborators, userID) {
+					result.PermissionSkipped++
+					continue
+				}
 				_, err := h.DB.Exec(ctx, `
 					UPDATE exams SET name=$1, description=$2, batch_id=$3, updated_at=NOW()
 					WHERE id=$4 AND tenant_id=$5

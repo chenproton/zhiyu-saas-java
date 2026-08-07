@@ -113,11 +113,13 @@ type ImportPreviewResult struct {
 
 // ImportExecuteResult 导入执行接口的基础返回结构，各 handler 可在此基础上扩展。
 type ImportExecuteResult struct {
-	Created int      `json:"created"`
-	Failed  int      `json:"failed"`
-	Skipped int      `json:"skipped"`
-	Entity  string   `json:"entity"`
-	Errors  []string `json:"errors"`
+	Created int `json:"created"`
+	Failed  int `json:"failed"`
+	Skipped int `json:"skipped"`
+	// PermissionSkipped 无权限覆盖（非本人创建且未参与共建）而跳过的条数。
+	PermissionSkipped int      `json:"permissionSkipped,omitempty"`
+	Entity            string   `json:"entity"`
+	Errors            []string `json:"errors"`
 }
 
 // importOverwriteParam 从请求中获取是否覆盖已存在数据的标识。
@@ -145,6 +147,20 @@ func uniqueSuffixed(base string, exists func(candidate string) bool) string {
 		}
 	}
 	return suffixedName(base)
+}
+
+// canOverwriteContent 判断当前用户是否可以覆盖目标内容：
+// 创建者本人或参与共建（协作者数组包含当前用户）才允许覆盖，否则覆盖时跳过并提示。
+func canOverwriteContent(creatorID string, collaboratorIDs []string, userID string) bool {
+	if creatorID != "" && creatorID == userID {
+		return true
+	}
+	for _, id := range collaboratorIDs {
+		if id == userID {
+			return true
+		}
+	}
+	return false
 }
 
 // col 安全读取 Excel 行中的列值，越界时返回空字符串。

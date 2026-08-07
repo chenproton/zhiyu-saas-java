@@ -77,15 +77,17 @@ func (h *QuestionBankImportHandler) ImportExcel(w http.ResponseWriter, r *http.R
 		aggregated.Created += res.Created
 		aggregated.Failed += res.Failed
 		aggregated.Skipped += res.Skipped
+		aggregated.PermissionSkipped += res.PermissionSkipped
 		aggregated.Errors = append(aggregated.Errors, res.Errors...)
 	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": aggregated.Created,
-		"failed":  aggregated.Failed,
-		"skipped": aggregated.Skipped,
-		"entity":  "题库",
-		"errors":  aggregated.Errors,
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "题库",
+		"errors":            aggregated.Errors,
 	})
 }
 
@@ -130,9 +132,10 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 		}
 		seen[name] = true
 
-		var existingID string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
-		found := err == nil
+		var existingID, existingCreator string
+		var existingCollaborators []string
+		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, collaborator_ids FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
+		found := err == nil && existingID != ""
 
 		if preview {
 			if found {
@@ -152,6 +155,10 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 
 		if found {
 			if overwrite {
+				if !canOverwriteContent(existingCreator, existingCollaborators, userID) {
+					execRes.PermissionSkipped++
+					continue
+				}
 				_, err := h.DB.Exec(ctx, `
 					UPDATE question_banks SET name=$1, description=$2, batch_id=$3 WHERE id=$4
 				`, name, description, batchID, existingID)

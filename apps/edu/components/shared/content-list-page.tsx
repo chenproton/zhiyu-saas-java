@@ -127,7 +127,13 @@ export interface ContentImportExportApi {
     file: File,
     overwrite?: boolean,
     rename?: boolean,
-  ) => Promise<{ created: number; failed: number; skipped?: number; errors?: string[] }>
+  ) => Promise<{
+    created: number
+    failed: number
+    skipped?: number
+    permissionSkipped?: number
+    errors?: string[]
+  }>
   importPreview?: (entity: string, file: File) => Promise<ImportPreviewResult>
   export: (entity: string) => Promise<Response>
   importExcel?: (
@@ -139,6 +145,7 @@ export interface ContentImportExportApi {
     created: number
     failed: number
     skipped?: number
+    permissionSkipped?: number
     entity: string
     errors?: string[]
   }>
@@ -1137,12 +1144,19 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       )
       const skippedMsg =
         result.skipped != null ? t('，跳过 {skipped} 条', { skipped: result.skipped }) : ''
+      const permissionMsg =
+        result.permissionSkipped && result.permissionSkipped > 0
+          ? t('，{count} 个资源非本人创建/未参与共建，已跳过覆盖', {
+              count: result.permissionSkipped,
+            })
+          : ''
       toast({
         title: t('导入完成'),
-        description: t('成功 {created} 条，失败 {failed} 条{skippedMsg}', {
+        description: t('成功 {created} 条，失败 {failed} 条{skippedMsg}{permissionMsg}', {
           created: result.created,
           failed: result.failed,
           skippedMsg,
+          permissionMsg,
         }),
       })
       setImportFiles([])

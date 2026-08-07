@@ -22,13 +22,14 @@ type ScenarioImportHandler struct {
 }
 
 type scenarioImportResult struct {
-	Created         int
-	Failed          int
-	Skipped         int
-	ScenarioCreated int
-	TaskCreated     int
-	Errors          []string
-	DuplicateItems  []ImportPreviewItem
+	Created           int
+	Failed            int
+	Skipped           int
+	PermissionSkipped int
+	ScenarioCreated   int
+	TaskCreated       int
+	Errors            []string
+	DuplicateItems    []ImportPreviewItem
 }
 
 func (h *ScenarioImportHandler) processImport(r *http.Request, w http.ResponseWriter, preview bool) {
@@ -74,14 +75,15 @@ func (h *ScenarioImportHandler) processImport(r *http.Request, w http.ResponseWr
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created":         aggregated.Created,
-		"failed":          aggregated.Failed,
-		"skipped":         aggregated.Skipped,
-		"entity":          "场景",
-		"scenarioCreated": aggregated.ScenarioCreated,
-		"taskCreated":     aggregated.TaskCreated,
-		"errors":          aggregated.Errors,
-		"sheets":          irc.MFU.FirstSheets(),
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "场景",
+		"scenarioCreated":   aggregated.ScenarioCreated,
+		"taskCreated":       aggregated.TaskCreated,
+		"errors":            aggregated.Errors,
+		"sheets":            irc.MFU.FirstSheets(),
 	})
 }
 
@@ -118,8 +120,9 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 		professionIDs := h.lookupProfessions(ctx, tenantID, professionNames)
 		batchID := lookupBatchID(ctx, h.DB, "scene_batches", tenantID, batchName)
 
-		var existingID string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		var existingID, existingCreator string
+		var existingBuilders []string
+		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, co_builder_ids FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingBuilders)
 		exists := err == nil && existingID != ""
 
 		origName := ""
@@ -140,6 +143,10 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 				continue
 			}
 			if overwrite {
+				if !canOverwriteContent(existingCreator, existingBuilders, userID) {
+					result.PermissionSkipped++
+					continue
+				}
 				_, err := h.DB.Exec(ctx, `
 					UPDATE scenarios
 					SET name=$3, career_position_id=$4, industry_ids=$5, profession_ids=$6,

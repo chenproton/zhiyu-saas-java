@@ -53,15 +53,16 @@ func (h *PositionImportHandler) processImport(r *http.Request, w http.ResponseWr
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created":          aggregated.Created,
-		"failed":           aggregated.Failed,
-		"skipped":          aggregated.Skipped,
-		"entity":           "岗位",
-		"positionCreated":  aggregated.PositionCreated,
-		"responsibilities": aggregated.RespCreated,
-		"abilityBindings":  aggregated.BindingCreated,
-		"errors":           aggregated.Errors,
-		"sheets":           irc.MFU.FirstSheets(),
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "岗位",
+		"positionCreated":   aggregated.PositionCreated,
+		"responsibilities":  aggregated.RespCreated,
+		"abilityBindings":   aggregated.BindingCreated,
+		"errors":            aggregated.Errors,
+		"sheets":            irc.MFU.FirstSheets(),
 	})
 }
 
@@ -102,8 +103,9 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		batchID := lookupBatchID(ctx, h.DB, "batches", tenantID, batchName)
 		majorIDs := h.lookupMajors(ctx, tenantID, majorNames)
 
-		var existingID string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		var existingID, existingCreator string
+		var existingCollaborators []string
+		err := h.DB.QueryRow(ctx, `SELECT id, created_by, collaborators FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
 		exists := err == nil && existingID != ""
 
 		origName := ""
@@ -124,6 +126,10 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 				continue
 			}
 			if overwrite {
+				if !canOverwriteContent(existingCreator, existingCollaborators, userID) {
+					result.PermissionSkipped++
+					continue
+				}
 				_, err := h.DB.Exec(ctx, `
 					UPDATE career_positions
 					SET name=$3, short_name=$4, industry_id=$5, position_type=$6,
@@ -396,14 +402,15 @@ func (h *PositionImportHandler) ensureAbilityDomain(ctx context.Context, tenantI
 }
 
 type importResult struct {
-	Created         int
-	Failed          int
-	Skipped         int
-	PositionCreated int
-	RespCreated     int
-	BindingCreated  int
-	Errors          []string
-	DuplicateItems  []ImportPreviewItem
+	Created           int
+	Failed            int
+	Skipped           int
+	PermissionSkipped int
+	PositionCreated   int
+	RespCreated       int
+	BindingCreated    int
+	Errors            []string
+	DuplicateItems    []ImportPreviewItem
 }
 
 func parseRequirements(s string) []string {

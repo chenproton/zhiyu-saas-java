@@ -53,9 +53,13 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
         result.errors && result.errors.length > 0
           ? `，错误：${result.errors.slice(0, 3).join(';')}`
           : ''
+      const permissionHint =
+        result.permissionSkipped && result.permissionSkipped > 0
+          ? `，${result.permissionSkipped} 个资源非本人创建/未参与共建，已跳过覆盖`
+          : ''
       toast({
         title: '导入完成',
-        description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`,
+        description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${permissionHint}${errorHint}`,
       })
       setImportFiles([])
       setImportPreview(null)

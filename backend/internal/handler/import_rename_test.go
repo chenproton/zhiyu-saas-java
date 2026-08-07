@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -87,5 +88,85 @@ func TestImportRenameMode_Excel(t *testing.T) {
 	env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM exams WHERE tenant_id=$1 AND (name=$2 OR name LIKE $3)`, tenantID, examPrefix, examPrefix+"-%").Scan(&examCount)
 	if examCount != 2 {
 		t.Fatalf("rename mode: expected 2 exams, got %d", examCount)
+	}
+}
+
+// TestImportOverwritePermission 验证覆盖模式的权限校验：
+// 非本人创建且未参与共建的对象跳过覆盖（permissionSkipped 计数），
+// 本人创建的对象正常覆盖，互不影响。
+func TestImportOverwritePermission(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	tenantID := testhelper.TestTenantID
+	userA := &middleware.Claims{UserID: testhelper.TestOperatorID, TenantID: &tenantID}
+	userB := &middleware.Claims{UserID: uuid.NewString(), TenantID: &tenantID}
+	ctx := context.Background()
+	bankName := fmt.Sprintf("权限覆盖测试-%s", uuid.NewString()[:6])
+
+	fileData := buildExcel(t, "题库基本信息", [][]interface{}{
+		{"填写说明"},
+		{"题库名称 *", "题库简介", "所属批次"},
+		{bankName, "权限测试", ""},
+	})
+
+	h := &handler.QuestionBankImportHandler{DB: env.DB}
+
+	// 用户 A 创建题库
+	req := makeRequest(t, "/api/v1/import/question-banks/excel", fileData, userA)
+	w := httptest.NewRecorder()
+	h.ImportExcel(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("create import: %d %s", w.Code, w.Body.String())
+	}
+
+	// 用户 B 覆盖导入同名题库：无权限 → permissionSkipped=1，题库不被更新
+	req = makeRequest(t, "/api/v1/import/question-banks/excel?overwrite=true", fileData, userB)
+	w = httptest.NewRecorder()
+	h.ImportExcel(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("permission import: %d %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Created           int `json:"created"`
+		PermissionSkipped int `json:"permissionSkipped"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode permission response: %v", err)
+	}
+	if resp.Created != 0 || resp.PermissionSkipped != 1 {
+		t.Fatalf("permission skip: created=%d permissionSkipped=%d; want 0/1", resp.Created, resp.PermissionSkipped)
+	}
+	var desc string
+	if err := env.DB.QueryRow(ctx, `SELECT COALESCE(description,'') FROM question_banks WHERE tenant_id=$1 AND name=$2`, tenantID, bankName).Scan(&desc); err != nil {
+		t.Fatalf("query bank after skip: %v", err)
+	}
+	if desc != "权限测试" {
+		t.Fatalf("bank should not be overwritten by user B, got description %q", desc)
+	}
+
+	// 用户 A 覆盖导入同名题库：本人创建 → 正常覆盖
+	fileData2 := buildExcel(t, "题库基本信息", [][]interface{}{
+		{"填写说明"},
+		{"题库名称 *", "题库简介", "所属批次"},
+		{bankName, "权限测试-已更新", ""},
+	})
+	req = makeRequest(t, "/api/v1/import/question-banks/excel?overwrite=true", fileData2, userA)
+	w = httptest.NewRecorder()
+	h.ImportExcel(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("owner overwrite import: %d %s", w.Code, w.Body.String())
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode owner response: %v", err)
+	}
+	if resp.PermissionSkipped != 0 || resp.Created != 1 {
+		t.Fatalf("owner overwrite: created=%d permissionSkipped=%d; want 1/0", resp.Created, resp.PermissionSkipped)
+	}
+	if err := env.DB.QueryRow(ctx, `SELECT COALESCE(description,'') FROM question_banks WHERE tenant_id=$1 AND name=$2`, tenantID, bankName).Scan(&desc); err != nil {
+		t.Fatalf("query bank after owner overwrite: %v", err)
+	}
+	if desc != "权限测试-已更新" {
+		t.Fatalf("bank should be overwritten by owner, got description %q", desc)
 	}
 }

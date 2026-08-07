@@ -41,6 +41,7 @@ export const importExportApi = {
     failed: number
     entity: string
     skipped?: number
+    permissionSkipped?: number
     errors?: string[]
   }> => {
     const form = new FormData()
@@ -79,6 +80,7 @@ export const importExportApi = {
     created: number
     failed: number
     skipped: number
+    permissionSkipped?: number
     entity: string
     positionCreated?: number
     responsibilities?: number

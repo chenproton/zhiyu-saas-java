@@ -103,15 +103,17 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		aggregated.Created += res.Created
 		aggregated.Failed += res.Failed
 		aggregated.Skipped += res.Skipped
+		aggregated.PermissionSkipped += res.PermissionSkipped
 		aggregated.Errors = append(aggregated.Errors, res.Errors...)
 	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": aggregated.Created,
-		"failed":  aggregated.Failed,
-		"skipped": aggregated.Skipped,
-		"entity":  "题目",
-		"errors":  aggregated.Errors,
+		"created":           aggregated.Created,
+		"failed":            aggregated.Failed,
+		"skipped":           aggregated.Skipped,
+		"permissionSkipped": aggregated.PermissionSkipped,
+		"entity":            "题目",
+		"errors":            aggregated.Errors,
 	})
 }
 
@@ -187,9 +189,9 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 		}
 		seen[key] = true
 
-		var existingID string
-		err = h.DB.QueryRow(ctx, `SELECT id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID)
-		found := err == nil
+		var existingID, existingCreator string
+		err = h.DB.QueryRow(ctx, `SELECT id, creator_id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID, &existingCreator)
+		found := err == nil && existingID != ""
 
 		if preview {
 			if found {
@@ -209,6 +211,10 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 
 		if found {
 			if overwrite {
+				if !canOverwriteContent(existingCreator, nil, userID) {
+					execRes.PermissionSkipped++
+					continue
+				}
 				knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
 				_, err = h.DB.Exec(ctx, `
 					UPDATE questions SET type=$1, options=$2, answer=$3, analysis=$4, score=$5, difficulty=$6, knowledge_point_ids=$7
