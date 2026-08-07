@@ -107,7 +107,8 @@ func (s *TeachingPlanStore) FetchProgramClasses(ctx context.Context, tenantID, m
 		)
 		SELECT DISTINCT ot.id
 		FROM org_tree ot
-		JOIN org_types t ON t.id = ot.type_id AND t.tenant_id = ot.tenant_id
+		JOIN organizations o ON o.id = ot.id
+		JOIN org_types t ON t.id = o.type_id AND t.tenant_id = o.tenant_id
 		WHERE t.name = '班级'
 	`, tenantID, majorID)
 	if err != nil {
