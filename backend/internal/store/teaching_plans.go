@@ -322,7 +322,7 @@ const teachingPlanSelectSQL = `
 // ListPlanEntries 查询计划条目列表。
 func (s *TeachingPlanStore) ListPlanEntries(ctx context.Context, planID, tenantID string) ([]domain.TeachingPlanEntry, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT e.id, e.plan_id, e.course_name, e.course_code, e.type, e.nature, e.credits, e.total_hours,
+		SELECT e.id, e.plan_id, e.course_name, COALESCE(NULLIF(e.course_code, ''), c.code) AS course_code, e.type, e.nature, e.credits, e.total_hours,
 			e.week_hours, e.start_week, e.end_week, e.week_pattern,
 			e.class_node_id, COALESCE(o.name, ''), e.teacher_id, COALESCE(u.name, ''), e.teacher_type, e.venue_type,
 			e.scenario_id, COALESCE(s.name, ''), COALESCE(cp.name, '') AS position_name, e.course_id, COALESCE(c.name, ''), e.status,

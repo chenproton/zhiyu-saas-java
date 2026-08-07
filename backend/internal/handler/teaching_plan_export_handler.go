@@ -78,8 +78,8 @@ func buildTeachingPlanExcel(plan *domain.TeachingPlan, entries []domain.Teaching
 	entrySheet := "教学计划条目"
 	s2, _ := f.NewSheet(entrySheet)
 	f.SetActiveSheet(s2)
-	headers := []string{"序号", "课程", "课程编码", "类型", "学分", "总学时", "周学时", "起止周", "周次模式", "班级", "教师", "场地类型", "场景名称", "目标岗位", "状态"}
-	widths := []float64{6, 26, 14, 8, 8, 8, 8, 12, 10, 28, 16, 12, 20, 18, 10}
+	headers := []string{"序号", "课程", "课程编码", "学分", "总学时", "周学时", "起止周", "周次模式", "班级", "教师", "场地类型"}
+	widths := []float64{6, 26, 14, 8, 8, 8, 8, 12, 10, 28, 16, 12}
 	for ci, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(ci+1, 1)
 		f.SetCellValue(entrySheet, cell, h)
@@ -108,7 +108,6 @@ func buildTeachingPlanExcel(plan *domain.TeachingPlan, entries []domain.Teaching
 			ri + 1,
 			e.CourseName,
 			courseCode,
-			teachingPlanTypeLabel(e.Type),
 			e.Credits,
 			e.TotalHours,
 			e.WeekHours,
@@ -117,9 +116,6 @@ func buildTeachingPlanExcel(plan *domain.TeachingPlan, entries []domain.Teaching
 			className,
 			e.TeacherName,
 			venueType,
-			e.ScenarioName,
-			e.PositionName,
-			teachingPlanStatusLabel(e.Status),
 		}
 		for ci, v := range vals {
 			setCell(entrySheet, fmt.Sprintf("%s%d", colName(ci+1), r), fmt.Sprintf("%v", v))
@@ -128,17 +124,6 @@ func buildTeachingPlanExcel(plan *domain.TeachingPlan, entries []domain.Teaching
 	}
 
 	return f
-}
-
-func teachingPlanTypeLabel(t string) string {
-	switch t {
-	case "scene":
-		return "场景"
-	case "practice":
-		return "实践"
-	default: // theory / traditional
-		return "课程"
-	}
 }
 
 func teachingPlanWeekPatternLabel(p string) string {

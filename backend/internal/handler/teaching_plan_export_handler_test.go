@@ -14,11 +14,6 @@ func TestTeachingPlanLabelMappings(t *testing.T) {
 		got  string
 		want string
 	}{
-		{"type theory", teachingPlanTypeLabel("theory"), "课程"},
-		{"type traditional", teachingPlanTypeLabel("traditional"), "课程"},
-		{"type practice", teachingPlanTypeLabel("practice"), "实践"},
-		{"type scene", teachingPlanTypeLabel("scene"), "场景"},
-		{"type unknown", teachingPlanTypeLabel("unknown"), "课程"},
 		{"week all", teachingPlanWeekPatternLabel("all"), "每周"},
 		{"week odd", teachingPlanWeekPatternLabel("odd"), "单周"},
 		{"week even", teachingPlanWeekPatternLabel("even"), "双周"},
@@ -92,24 +87,32 @@ func TestBuildTeachingPlanExcel(t *testing.T) {
 	}
 
 	// 教学计划条目 Sheet：表头与数据
-	hdr, _ := f.GetCellValue("教学计划条目", "A1")
-	if hdr != "序号" {
-		t.Errorf("教学计划条目 A1 = %q, want 序号", hdr)
+	if v, _ := f.GetCellValue("教学计划条目", "A1"); v != "序号" {
+		t.Errorf("教学计划条目 A1 = %q, want 序号", v)
+	}
+	if v, _ := f.GetCellValue("教学计划条目", "C1"); v != "课程编码" {
+		t.Errorf("教学计划条目 C1 = %q, want 课程编码", v)
+	}
+	if v, _ := f.GetCellValue("教学计划条目", "D1"); v != "学分" {
+		t.Errorf("教学计划条目 D1 = %q, want 学分", v)
+	}
+	if v, _ := f.GetCellValue("教学计划条目", "K1"); v != "场地类型" {
+		t.Errorf("教学计划条目 K1 = %q, want 场地类型", v)
 	}
 	if v, _ := f.GetCellValue("教学计划条目", "B2"); v != "数据结构" {
 		t.Errorf("教学计划条目 B2 = %q, want 数据结构", v)
 	}
-	if v, _ := f.GetCellValue("教学计划条目", "D2"); v != "课程" {
-		t.Errorf("教学计划条目 D2 = %q, want 课程", v)
+	if v, _ := f.GetCellValue("教学计划条目", "I2"); !strings.Contains(v, "计应2501") {
+		t.Errorf("教学计划条目 I2 = %q, want 包含计应2501", v)
 	}
-	if v, _ := f.GetCellValue("教学计划条目", "J2"); !strings.Contains(v, "计应2501") {
-		t.Errorf("教学计划条目 J2 = %q, want 包含计应2501", v)
+	if v, _ := f.GetCellValue("教学计划条目", "D2"); v != "3.5" {
+		t.Errorf("教学计划条目 D2 = %q, want 3.5", v)
 	}
-	if v, _ := f.GetCellValue("教学计划条目", "D3"); v != "场景" {
-		t.Errorf("教学计划条目 D3 = %q, want 场景", v)
+	if v, _ := f.GetCellValue("教学计划条目", "K3"); v != "" {
+		t.Errorf("教学计划条目 K3 = %q, want 空（场景条目无场地类型）", v)
 	}
-	if v, _ := f.GetCellValue("教学计划条目", "O3"); v != "已排课" {
-		t.Errorf("教学计划条目 O3 = %q, want 已排课", v)
+	if v, _ := f.GetCellValue("教学计划条目", "L2"); v != "" {
+		t.Errorf("教学计划条目 L2 = %q, want 空（已去掉目标岗位/状态列）", v)
 	}
 }
 
