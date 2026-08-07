@@ -1098,7 +1098,7 @@ function HybridCourseAddForm() {
                       </div>
                       <Button size="sm" variant="outline" onClick={openShareDialog}>
                         <Layers className="h-4 w-4 mr-1" />
-                        管理分组
+                        复用教学设计
                       </Button>
                     </CardHeader>
                     <CardContent>
@@ -1325,7 +1325,7 @@ function HybridCourseAddForm() {
                                 setRenameValue(g.name)
                               }}
                             >
-                              重命名
+                              重命名分组
                             </Button>
                             <Button
                               variant="ghost"
@@ -1334,7 +1334,7 @@ function HybridCourseAddForm() {
                               onClick={() => openAddMember(g.id, g.name)}
                             >
                               <Plus className="h-3 w-3 mr-1" />
-                              添加节点
+                              加入复用分组
                             </Button>
                             {disbandGroupId === g.id ? (
                               <>
@@ -1344,7 +1344,7 @@ function HybridCourseAddForm() {
                                   className="h-7 text-xs"
                                   onClick={() => disbandShareGroup(g.id)}
                                 >
-                                  确认解散
+                                  确认删除
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -1362,7 +1362,7 @@ function HybridCourseAddForm() {
                                 className="h-7 text-xs text-red-500 hover:text-red-600"
                                 onClick={() => setDisbandGroupId(g.id)}
                               >
-                                解散
+                                删除分组
                               </Button>
                             )}
                           </div>
