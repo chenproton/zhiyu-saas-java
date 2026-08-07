@@ -21,6 +21,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { useToast } from '@zhiyu/ui'
 import { programApi, termApi, teachingPlanApi } from '@/lib/api'
 import type { AffairsTerm, TeachingPlanDetail, TrainingProgram } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface GeneratePlanDialogProps {
   open: boolean
@@ -30,6 +31,7 @@ interface GeneratePlanDialogProps {
 
 export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: GeneratePlanDialogProps) {
   const { toast } = useToast()
+  const t = useT()
   const [programs, setPrograms] = useState<TrainingProgram[]>([])
   const [terms, setTerms] = useState<AffairsTerm[]>([])
   const [programId, setProgramId] = useState('')
@@ -57,11 +59,11 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '加载方案或学期失败',
+        title: t('加载失败'),
+        description: err.message || t('加载方案或学期失败'),
       })
     }
-  }, [toast])
+  }, [toast, t])
 
   useEffect(() => {
     if (!open) return
@@ -76,15 +78,18 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
     setSubmitting(true)
     try {
       const plan = await teachingPlanApi.generate({ programId, termId })
-      toast({ title: '教学计划已生成', description: `共 ${plan.entries.length} 个教学条目` })
+      toast({
+        title: t('教学计划已生成'),
+        description: t('共 {n} 个教学条目', { n: plan.entries.length }),
+      })
       onOpenChange(false)
       onGenerated(plan)
     } catch (err: any) {
       // 后端 409：该方案在此学期已生成教学计划
       toast({
         variant: 'destructive',
-        title: '生成失败',
-        description: err.message || '生成教学计划失败',
+        title: t('生成失败'),
+        description: err.message || t('生成教学计划失败'),
       })
     } finally {
       setSubmitting(false)
@@ -95,27 +100,27 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>从人培方案生成教学计划</DialogTitle>
+          <DialogTitle>{t('从人培方案生成教学计划')}</DialogTitle>
           <DialogDescription>
-            选择已发布的人培方案与目标学期，系统将按方案课程自动生成教学条目
+            {t('选择已发布的人培方案与目标学期，系统将按方案课程自动生成教学条目')}
           </DialogDescription>
         </DialogHeader>
         <FieldGroup className="py-4">
           <Field>
-            <FieldLabel>人培方案（已发布）*</FieldLabel>
+            <FieldLabel>{t('人培方案（已发布）*')}</FieldLabel>
             <Select value={programId} onValueChange={setProgramId}>
               <SelectTrigger>
-                <SelectValue placeholder="请选择人培方案" />
+                <SelectValue placeholder={t('请选择人培方案')} />
               </SelectTrigger>
               <SelectContent>
                 {programs.length === 0 ? (
                   <SelectItem value="__empty" disabled>
-                    暂无已发布的人培方案
+                    {t('暂无已发布的人培方案')}
                   </SelectItem>
                 ) : (
                   programs.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.name}（{p.entryYear} 级）
+                      {t('{name}（{n} 级）', { name: p.name, n: p.entryYear })}
                     </SelectItem>
                   ))
                 )}
@@ -123,21 +128,21 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
             </Select>
           </Field>
           <Field>
-            <FieldLabel>目标学期 *</FieldLabel>
+            <FieldLabel>{t('目标学期 *')}</FieldLabel>
             <Select value={termId} onValueChange={setTermId}>
               <SelectTrigger>
-                <SelectValue placeholder="请选择学期" />
+                <SelectValue placeholder={t('请选择学期')} />
               </SelectTrigger>
               <SelectContent>
                 {terms.length === 0 ? (
                   <SelectItem value="__empty" disabled>
-                    暂无学期数据
+                    {t('暂无学期数据')}
                   </SelectItem>
                 ) : (
-                  terms.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                      {t.isCurrent ? '（当前学期）' : ''}
+                  terms.map((tm) => (
+                    <SelectItem key={tm.id} value={tm.id}>
+                      {tm.name}
+                      {tm.isCurrent ? t('（当前学期）') : ''}
                     </SelectItem>
                   ))
                 )}
@@ -147,10 +152,10 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
         </FieldGroup>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            取消
+            {t('取消')}
           </Button>
           <Button onClick={handleGenerate} disabled={!programId || !termId || submitting}>
-            {submitting ? '生成中...' : '生成教学计划'}
+            {submitting ? t('生成中...') : t('生成教学计划')}
           </Button>
         </DialogFooter>
       </DialogContent>

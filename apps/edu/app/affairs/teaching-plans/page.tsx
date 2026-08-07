@@ -12,6 +12,7 @@ import type { TeachingPlan, AffairsBatch } from '@/lib/types'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
 import { GeneratePlanDialog } from './_components/generate-plan-dialog'
 import { useToast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 // ContentListItem 需要 name/creatorId/coCreatorIds：教学计划无独立名称，以 方案+学期+专业 拼装（同时作为搜索串）
 function mapPlan(backend: any, currentUserId: string) {
@@ -30,6 +31,7 @@ function mapBatch(backend: any) {
 export default function TeachingPlansPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const t = useT()
   const [generateOpen, setGenerateOpen] = useState(false)
   const [exportingId, setExportingId] = useState<string | null>(null)
 
@@ -37,12 +39,12 @@ export default function TeachingPlansPage() {
     setExportingId(p.id)
     try {
       await teachingPlanApi.exportExcel(p.id)
-      toast({ title: '导出成功', description: `${p.programName || '教学计划'}已导出` })
+      toast({ title: t('导出成功'), description: t('{name}已导出', { name: p.programName || '教学计划' }) })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '导出失败',
-        description: err.message || '导出教学计划失败',
+        title: t('导出失败'),
+        description: err.message || t('导出教学计划失败'),
       })
     } finally {
       setExportingId(null)
@@ -55,9 +57,9 @@ export default function TeachingPlansPage() {
       TeachingPlan,
       AffairsBatch
     >
-      title="教学计划"
-      subtitle="从已发布的人培方案按学期生成教学计划，审批发布后进入排课"
-      entityLabel="教学计划"
+      title={t('教学计划')}
+      subtitle={t('从已发布的人培方案按学期生成教学计划，审批发布后进入排课')}
+      entityLabel={t('教学计划')}
       addHref="/affairs/teaching-plans"
       permissionModule="affairs"
       permissionResource="teaching-plans"
@@ -70,8 +72,8 @@ export default function TeachingPlansPage() {
       createRedirectUrl={(id) => `/affairs/teaching-plans/${id}?new=true`}
       statusFilterOptions={STATUS_FILTER_OPTIONS}
       groupStatusFilterOptions={[
-        { value: 'unplanned', label: '未排课', statuses: ['draft', 'pending', 'approved', 'rejected'] },
-        { value: 'published', label: '已排课', statuses: ['published'] },
+        { value: 'unplanned', label: t('未排课'), statuses: ['draft', 'pending', 'approved', 'rejected'] },
+        { value: 'published', label: t('已排课'), statuses: ['published'] },
       ]}
       mapItem={mapPlan}
       mapBatch={mapBatch}
@@ -107,28 +109,28 @@ export default function TeachingPlansPage() {
                       <input type="checkbox" onChange={(e) => onSelectAll(e.target.checked)} />
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      人培方案
+                      {t('人培方案')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      学期
+                      {t('学期')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      专业
+                      {t('专业')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      年级
+                      {t('年级')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      条目数
+                      {t('条目数')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      批次
+                      {t('批次')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      状态
+                      {t('状态')}
                     </th>
                     <th className="sticky right-0 w-[260px] bg-white px-2 py-2 text-right text-xs font-medium text-muted-foreground">
-                      操作
+                      {t('操作')}
                     </th>
                   </tr>
                 </thead>
@@ -136,7 +138,7 @@ export default function TeachingPlansPage() {
                   {items.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="h-24 text-center text-sm text-muted-foreground">
-                        暂无教学计划
+                        {t('暂无教学计划')}
                       </td>
                     </tr>
                   ) : (
@@ -156,7 +158,7 @@ export default function TeachingPlansPage() {
                         <td className="px-2 py-2 text-sm text-muted-foreground">
                           {item.majorName || '-'}
                         </td>
-                        <td className="px-2 py-2 text-sm">{item.entryYear}级</td>
+                        <td className="px-2 py-2 text-sm">{t('{n}级', { n: item.entryYear })}</td>
                         <td className="px-2 py-2 text-sm">{item.entryCount}</td>
                         <td className="px-2 py-2 text-sm text-muted-foreground">
                           {item.batchId ? batchMap?.get(item.batchId) || '-' : '-'}
@@ -195,7 +197,7 @@ export default function TeachingPlansPage() {
                                   disabled={exportingId === item.id}
                                 >
                                   <Download className="mr-1 h-3 w-3" />
-                                  {exportingId === item.id ? '导出中...' : '导出'}
+                                  {exportingId === item.id ? t('导出中...') : t('导出')}
                                 </Button>
                               }
                             />

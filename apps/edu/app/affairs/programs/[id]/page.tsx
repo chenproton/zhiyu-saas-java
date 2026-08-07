@@ -22,10 +22,12 @@ import { MajorSelect } from '@/components/shared/major-select'
 import { programApi } from '@/lib/api'
 import type { TrainingProgram, TrainingProgramPayload } from '@/lib/types'
 import { ProgramCoursesTab } from './_components/courses-tab'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const LEVEL_OPTIONS = ['中专', '大专', '本科']
 
 export default function ProgramEditPage() {
+  const t = useT()
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
@@ -61,13 +63,13 @@ export default function ProgramEditPage() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询人培方案失败',
+        title: t('加载失败'),
+        description: err.message || t('查询人培方案失败'),
       })
     } finally {
       setLoading(false)
     }
-  }, [id, isNew, toast])
+  }, [id, isNew, toast, t])
 
   useEffect(() => {
     // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
@@ -92,15 +94,19 @@ export default function ProgramEditPage() {
     try {
       if (isNew) {
         const created = await programApi.create(payload)
-        toast({ title: '方案已创建', description: '可继续维护课程设置' })
+        toast({ title: t('方案已创建'), description: t('可继续维护课程设置') })
         router.replace(`/affairs/programs/${created.id}`)
       } else {
         const updated = await programApi.update(id, payload)
         setProgram(updated)
-        toast({ title: '基本信息已保存' })
+        toast({ title: t('基本信息已保存') })
       }
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message || '保存失败' })
+      toast({
+        variant: 'destructive',
+        title: t('保存失败'),
+        description: err.message || t('保存失败'),
+      })
     } finally {
       setSaving(false)
     }
@@ -109,14 +115,14 @@ export default function ProgramEditPage() {
   return (
     <div className="space-y-6">
       <PageHeaderCard
-        title={isNew ? '新建人培方案' : program?.name || '方案编辑'}
-        description="维护方案基本信息与课程设置，发布后可用于生成教学计划"
+        title={isNew ? t('新建人培方案') : program?.name || t('方案编辑')}
+        description={t('维护方案基本信息与课程设置，发布后可用于生成教学计划')}
         actions={
           <div className="flex items-center gap-2">
             {program && <StatusBadge status={program.status} />}
             <Button variant="outline" onClick={() => router.push('/affairs/programs')}>
               <ArrowLeft className="mr-2 size-4" />
-              返回列表
+              {t('返回列表')}
             </Button>
             {!isNew && tab === 'courses' && (
               <>
@@ -126,11 +132,11 @@ export default function ProgramEditPage() {
                   onClick={() => coursesRef.current?.openImport()}
                 >
                   <Upload className="mr-1 size-4" />
-                  批量导入
+                  {t('批量导入')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => coursesRef.current?.addRow()}>
                   <Plus className="mr-1 size-4" />
-                  添加岗位/课程
+                  {t('添加岗位/课程')}
                 </Button>
                 <Button
                   size="sm"
@@ -138,7 +144,7 @@ export default function ProgramEditPage() {
                   disabled={coursesBusy.saving || coursesBusy.loading}
                 >
                   <Save className="mr-1 size-4" />
-                  {coursesBusy.saving ? '保存中...' : '保存'}
+                  {coursesBusy.saving ? t('保存中...') : t('保存')}
                 </Button>
               </>
             )}
@@ -148,14 +154,14 @@ export default function ProgramEditPage() {
 
       {loading ? (
         <div className="rounded-lg border bg-white p-8 text-center text-sm text-muted-foreground">
-          加载中...
+          {t('加载中...')}
         </div>
       ) : (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="basic">基本信息</TabsTrigger>
+            <TabsTrigger value="basic">{t('基本信息')}</TabsTrigger>
             <TabsTrigger value="courses" disabled={isNew}>
-              课程设置
+              {t('课程设置')}
             </TabsTrigger>
           </TabsList>
 
@@ -163,21 +169,25 @@ export default function ProgramEditPage() {
             <div className="rounded-lg border bg-white p-6">
               <FieldGroup>
                 <Field>
-                  <FieldLabel>方案名称 *</FieldLabel>
+                  <FieldLabel>{t('方案名称 *')}</FieldLabel>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="如：计算机应用技术人才培养方案（2025 级）"
+                    placeholder={t('如：计算机应用技术人才培养方案（2025 级）')}
                   />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field>
-                    <FieldLabel>所属专业</FieldLabel>
-                    <MajorSelect value={majorId} onChange={setMajorId} placeholder="请选择专业" />
+                    <FieldLabel>{t('所属专业')}</FieldLabel>
+                    <MajorSelect
+                      value={majorId}
+                      onChange={setMajorId}
+                      placeholder={t('请选择专业')}
+                    />
                   </Field>
                   <Field>
-                    <FieldLabel>入学年份 *</FieldLabel>
+                    <FieldLabel>{t('入学年份 *')}</FieldLabel>
                     <Input
                       type="number"
                       value={entryYear}
@@ -190,26 +200,26 @@ export default function ProgramEditPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field>
-                    <FieldLabel>层次</FieldLabel>
+                    <FieldLabel>{t('层次')}</FieldLabel>
                     <Select
                       value={level || 'none'}
                       onValueChange={(v) => setLevel(v === 'none' ? '' : v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择层次" />
+                        <SelectValue placeholder={t('请选择层次')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">未设置</SelectItem>
+                        <SelectItem value="none">{t('未设置')}</SelectItem>
                         {LEVEL_OPTIONS.map((l) => (
                           <SelectItem key={l} value={l}>
-                            {l}
+                            {t(l)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </Field>
                   <Field>
-                    <FieldLabel>学制（年）</FieldLabel>
+                    <FieldLabel>{t('学制（年）')}</FieldLabel>
                     <Input
                       type="number"
                       value={duration}
@@ -225,7 +235,7 @@ export default function ProgramEditPage() {
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="培养目标、规格要求等（可选）"
+                    placeholder={t('培养目标、规格要求等（可选）')}
                     rows={4}
                   />
                 </Field>
@@ -236,11 +246,11 @@ export default function ProgramEditPage() {
                     onClick={() => router.push('/affairs/programs')}
                     disabled={saving}
                   >
-                    取消
+                    {t('取消')}
                   </Button>
                   <Button onClick={handleSaveBasic} disabled={!isFormValid || saving}>
                     <Save className="mr-2 size-4" />
-                    {saving ? '保存中...' : isNew ? '创建方案' : '保存基本信息'}
+                    {saving ? t('保存中...') : isNew ? t('创建方案') : t('保存基本信息')}
                   </Button>
                 </div>
               </FieldGroup>

@@ -24,6 +24,7 @@ import { MultiOrgNodePicker } from '@/components/shared/multi-org-node-picker'
 import { scheduleApi } from '@/lib/api'
 import type { ScheduleEntry, Venue } from '@/lib/types'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ScheduleEditDialogProps {
   open: boolean
@@ -43,6 +44,7 @@ export function ScheduleEditDialog({
   onReschedule,
 }: ScheduleEditDialogProps) {
   const { toast } = useToast()
+  const t = useT()
   const { tenantId } = usePortalAuth()
   const [venueId, setVenueId] = useState('')
   const [classNodeIds, setClassNodeIds] = useState<string[]>([])
@@ -83,11 +85,15 @@ export function ScheduleEditDialog({
         venueId: venueId || undefined,
         scenarioId: entry.scenarioId || undefined,
       })
-      toast({ title: '已更新' })
+      toast({ title: t('已更新') })
       onOpenChange(false)
       onSaved()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '更新失败', description: err.message || '请稍后重试' })
+      toast({
+        variant: 'destructive',
+        title: t('更新失败'),
+        description: err.message || t('请稍后重试'),
+      })
     } finally {
       setSaving(false)
     }
@@ -98,15 +104,15 @@ export function ScheduleEditDialog({
     setDeleting(true)
     try {
       await scheduleApi.delete(entry.id)
-      toast({ title: '已取消排课', description: `${entry.courseName} 已回到待排课程` })
+      toast({ title: t('已取消排课'), description: t('{name} 已回到待排课程', { name: entry.courseName }) })
       setConfirmDeleteOpen(false)
       onOpenChange(false)
       onSaved()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '取消排课失败',
-        description: err.message || '请稍后重试',
+        title: t('取消排课失败'),
+        description: err.message || t('请稍后重试'),
       })
     } finally {
       setDeleting(false)
@@ -118,41 +124,41 @@ export function ScheduleEditDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑排课 · {entry?.courseName}</DialogTitle>
-            <DialogDescription>仅可修改班级、教师、场地</DialogDescription>
+            <DialogTitle>{t('编辑排课 · {name}', { name: entry?.courseName || '' })}</DialogTitle>
+            <DialogDescription>{t('仅可修改班级、教师、场地')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">授课班级</label>
+              <label className="text-sm font-medium mb-1 block">{t('授课班级')}</label>
               <MultiOrgNodePicker
                 tenantId={tenantId}
                 value={classNodeIds}
                 onChange={setClassNodeIds}
                 selectableTypes={['班级']}
-                title="选择授课班级"
+                title={t('选择授课班级')}
                 maxVisible={3}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">授课教师</label>
+              <label className="text-sm font-medium mb-1 block">{t('授课教师')}</label>
               <UserSelector
                 value={teacherId ? [teacherId] : []}
                 onChange={(ids) => setTeacherId(ids[0] || '')}
                 multiple={false}
-                placeholder={entry?.teacherName || '选择教师'}
+                placeholder={entry?.teacherName || t('选择教师')}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">场地</label>
+              <label className="text-sm font-medium mb-1 block">{t('场地')}</label>
               <Select
                 value={venueId || 'none'}
                 onValueChange={(v) => setVenueId(v === 'none' ? '' : v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="选择场地" />
+                  <SelectValue placeholder={t('选择场地')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">不指定</SelectItem>
+                  <SelectItem value="none">{t('不指定')}</SelectItem>
                   {venues.map((v) => (
                     <SelectItem key={v.id} value={v.id}>
                       {v.name}（{v.type}）
@@ -169,7 +175,7 @@ export function ScheduleEditDialog({
               onClick={() => setConfirmDeleteOpen(true)}
               disabled={saving || deleting}
             >
-              取消排课
+              {t('取消排课')}
             </Button>
             <Button
               variant="outline"
@@ -179,17 +185,17 @@ export function ScheduleEditDialog({
               }}
               disabled={saving || deleting}
             >
-              重新排课
+              {t('重新排课')}
             </Button>
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={saving || deleting}
             >
-              关闭
+              {t('关闭')}
             </Button>
             <Button onClick={handleSave} disabled={saving || deleting || classNodeIds.length === 0}>
-              {saving ? '保存中...' : '保存'}
+              {saving ? t('保存中...') : t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -198,10 +204,12 @@ export function ScheduleEditDialog({
       <ConfirmDialog
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
-        title="取消排课"
-        description={`确定取消「${entry?.courseName || ''}」的排课吗？该课程将回到待排课程列表。`}
+        title={t('取消排课')}
+        description={t('确定取消「{name}」的排课吗？该课程将回到待排课程列表。', {
+          name: entry?.courseName || '',
+        })}
         variant="destructive"
-        confirmText="取消排课"
+        confirmText={t('取消排课')}
         onConfirm={handleDelete}
       />
     </>

@@ -7,6 +7,7 @@ import { StatusActionBar } from '@/components/shared/status-action-bar'
 import { programApi, affairsBatchApi, approvalApi, importExportApi } from '@/lib/api'
 import type { TrainingProgram, AffairsBatch } from '@/lib/types'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 function mapProgram(backend: any) {
   return {
@@ -20,6 +21,7 @@ function mapBatch(backend: any) {
 }
 
 export default function ProgramsPage() {
+  const t = useT()
   const router = useRouter()
   return (
     <ContentListPage<
@@ -27,9 +29,9 @@ export default function ProgramsPage() {
       TrainingProgram,
       AffairsBatch
     >
-      title="人才培养方案"
-      subtitle="维护专业人才培养方案及课程设置，发布后可生成学期教学计划"
-      entityLabel="人培方案"
+      title={t('人才培养方案')}
+      subtitle={t('维护专业人才培养方案及课程设置，发布后可生成学期教学计划')}
+      entityLabel={t('人培方案')}
       addHref="/affairs/programs"
       permissionModule="affairs"
       permissionResource="programs"
@@ -44,9 +46,9 @@ export default function ProgramsPage() {
       mapItem={mapProgram}
       mapBatch={mapBatch}
       createPayload={() => ({
-        name: '新建人培方案',
+        name: t('新建人培方案'),
         entryYear: new Date().getFullYear(),
-        level: '本科',
+        level: t('本科'),
         duration: 4,
         totalCredits: 0,
         status: 'draft',
@@ -78,25 +80,25 @@ export default function ProgramsPage() {
                       <input type="checkbox" onChange={(e) => onSelectAll(e.target.checked)} />
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      方案名称
+                      {t('方案名称')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      专业
+                      {t('专业')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      年级
+                      {t('年级')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      课程数
+                      {t('课程数')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      批次
+                      {t('批次')}
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                      状态
+                      {t('状态')}
                     </th>
                     <th className="sticky right-0 w-[180px] bg-white px-2 py-2 text-right text-xs font-medium text-muted-foreground">
-                      操作
+                      {t('操作')}
                     </th>
                   </tr>
                 </thead>
@@ -104,7 +106,7 @@ export default function ProgramsPage() {
                   {items.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
-                        暂无人培方案
+                        {t('暂无人培方案')}
                       </td>
                     </tr>
                   ) : (
@@ -126,7 +128,7 @@ export default function ProgramsPage() {
                         <td className="px-2 py-2 text-sm text-muted-foreground">
                           {item.majorName || '-'}
                         </td>
-                        <td className="px-2 py-2 text-sm">{item.entryYear}级</td>
+                        <td className="px-2 py-2 text-sm">{t('{n}级', { n: item.entryYear })}</td>
                         <td className="px-2 py-2 text-sm">{item.courseCount}</td>
                         <td className="px-2 py-2 text-sm text-muted-foreground">
                           {item.batchName || '-'}

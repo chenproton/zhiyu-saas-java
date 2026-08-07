@@ -7,6 +7,7 @@ import type { ImportPreviewResult } from '@zhiyu/api-client'
 import { importExportApi } from '@zhiyu/api-client'
 import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ProgramCourseImportDialogProps {
   open: boolean
@@ -22,6 +23,7 @@ export function ProgramCourseImportDialog({
   onImported,
 }: ProgramCourseImportDialogProps) {
   const { toast } = useToast()
+  const t = useT()
   const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -42,16 +44,16 @@ export function ProgramCourseImportDialog({
     const data = await res.json()
     if (res.ok) {
       toast({
-        title: '导入成功',
-        description: `共导入 ${data.created || 0} 门课程${data.failed ? '，' + data.failed + ' 条失败' : ''}`,
+        title: t('导入成功'),
+        description: `${t('共导入 {n} 门课程', { n: data.created || 0 })}${data.failed ? t('，{m} 条失败', { m: data.failed }) : ''}`,
       })
       onImported()
       return true
     } else {
       toast({
         variant: 'destructive',
-        title: '导入失败',
-        description: data.error || '请检查文件格式',
+        title: t('导入失败'),
+        description: data.error || t('请检查文件格式'),
       })
       return false
     }
@@ -100,23 +102,23 @@ export function ProgramCourseImportDialog({
       <ImportWizardDialog
         open={open}
         onOpenChange={onOpenChange}
-        title="导入方案课程"
+        title={t('导入方案课程')}
         guideItems={[
-          <>点击下方按钮下载最新的导入模板</>,
-          <>参照模板中 Sheet 的填写说明，填入方案课程数据</>,
-          <>完成后点击&quot;下一步&quot;上传文件</>,
+          <>{t('点击下方按钮下载最新的导入模板')}</>,
+          <>{t('参照模板中 Sheet 的填写说明，填入方案课程数据')}</>,
+          <>{t('完成后点击"下一步"上传文件')}</>,
         ]}
-        downloadLabel="下载方案课程批量导入模板"
+        downloadLabel={t('下载方案课程批量导入模板')}
         onDownload={handleDownload}
-        uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
-        importLabel={(count) => `开始导入（${count} 个文件）`}
+        uploadHint={t('点击选择已填写的 Excel (.xlsx) 文件')}
+        importLabel={(count) => t('开始导入（{n} 个文件）', { n: count })}
         onImport={handleImport}
       />
       {importPreview && (
         <ImportConfirmDialog
           open={isConfirmOpen}
           onOpenChange={setIsConfirmOpen}
-          entityLabel="方案课程"
+          entityLabel={t('方案课程')}
           created={importPreview.created}
           duplicates={importPreview.duplicates}
           failed={importPreview.failed}

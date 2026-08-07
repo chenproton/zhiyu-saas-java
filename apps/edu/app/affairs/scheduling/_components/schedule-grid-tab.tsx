@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { ScheduleEditDialog } from './schedule-edit-dialog'
 import { ScheduleImportBar } from './schedule-import-bar'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ScheduleGridTabProps {
   plan: TeachingPlan
@@ -40,6 +41,7 @@ interface ScheduleGridTabProps {
 
 export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGridTabProps) {
   const { toast } = useToast()
+  const t = useT()
   const { tenantId } = usePortalAuth()
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([])
   const [gridLoading, setGridLoading] = useState(false)
@@ -176,11 +178,11 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
             venueId: movingEntry.venueId || undefined,
             scenarioId: movingEntry.scenarioId || undefined,
           })
-          toast({ title: '排课已调整' })
+          toast({ title: t('排课已调整') })
           setMovingEntry(null)
           reloadAll()
         } catch (err: any) {
-          toast({ variant: 'destructive', title: '调整失败', description: err.message || '' })
+          toast({ variant: 'destructive', title: t('调整失败'), description: err.message || '' })
         }
         return
       }
@@ -196,7 +198,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
       setPreTeacherId(selectedEntry.teacherId || '')
       setPreVenueId(venueFilter === '__all' ? '' : venueFilter)
     },
-    [selectedEntry, movingEntry, reloadAll, savingQuick, toast, venueFilter],
+    [selectedEntry, movingEntry, reloadAll, savingQuick, toast, venueFilter, t],
   )
 
   const handlePreConfigSave = async () => {
@@ -213,17 +215,21 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
       )
       if (created > 0) {
         toast({
-          title: '排课成功',
-          description: `${preConfigEntry.courseName} 已排入周${preConfigDay} ${preConfigPeriod}`,
+          title: t('排课成功'),
+          description: t('{name} 已排入周{day} {period}', {
+            name: preConfigEntry.courseName,
+            day: preConfigDay,
+            period: preConfigPeriod,
+          }),
         })
         setSelectedPendingId(null)
         setPreConfigEntry(null)
         reloadAll()
       } else if (lastErr) {
-        toast({ variant: 'destructive', title: '排课失败', description: lastErr })
+        toast({ variant: 'destructive', title: t('排课失败'), description: lastErr })
       }
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '排课失败', description: err.message || '' })
+      toast({ variant: 'destructive', title: t('排课失败'), description: err.message || '' })
     } finally {
       setPreConfigSaving(false)
     }
@@ -250,7 +256,11 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
-            已排 {scheduledCount}/{planEntries.length} 门 · 待排 {pendingEntries.length} 门
+            {t('已排 {s}/{t} 门 · 待排 {p} 门', {
+              s: scheduledCount,
+              t: planEntries.length,
+              p: pendingEntries.length,
+            })}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -265,7 +275,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           className="h-7 px-2.5 text-xs"
           onClick={() => setVenueFilter('__all')}
         >
-          全部
+          {t('全部')}
         </Button>
         {venues.map((v) => (
           <Button
@@ -283,8 +293,8 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
 
       {selectedEntry && (
         <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700">
-          <span className="font-medium">已选中：{selectedEntry.courseName}</span>
-          <span>→ 点击右侧空格排课</span>
+          <span className="font-medium">{t('已选中：{name}', { name: selectedEntry.courseName })}</span>
+          <span>{t('→ 点击右侧空格排课')}</span>
           <Button
             variant="ghost"
             size="sm"
@@ -292,15 +302,17 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
             onClick={() => setSelectedPendingId(null)}
           >
             <X className="mr-1 h-3 w-3" />
-            取消
+            {t('取消')}
           </Button>
         </div>
       )}
 
       {movingEntry && (
         <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-700">
-          <span className="font-medium">正在重新排课：{movingEntry.courseName}</span>
-          <span>→ 点击右侧空格切换时间</span>
+          <span className="font-medium">
+            {t('正在重新排课：{name}', { name: movingEntry.courseName })}
+          </span>
+          <span>{t('→ 点击右侧空格切换时间')}</span>
           <Button
             variant="ghost"
             size="sm"
@@ -308,7 +320,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
             onClick={() => setMovingEntry(null)}
           >
             <X className="mr-1 h-3 w-3" />
-            取消
+            {t('取消')}
           </Button>
         </div>
       )}
@@ -317,16 +329,16 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         <div className="w-full shrink-0 rounded-lg border bg-white lg:w-[300px]">
           <div className="border-b px-3 py-2.5">
             <h3 className="text-sm font-semibold text-gray-900">
-              待排课程 ({pendingEntries.length})
+              {t('待排课程 ({n})', { n: pendingEntries.length })}
             </h3>
-            <p className="text-xs text-muted-foreground">点击选中·再点空格排课</p>
+            <p className="text-xs text-muted-foreground">{t('点击选中·再点空格排课')}</p>
           </div>
           <ScrollArea className="h-[500px]">
             <div className="space-y-1.5 p-2">
               {pendingEntries.length === 0 ? (
                 <div className="py-16 text-center text-sm text-muted-foreground">
                   <CheckCircle2 className="mx-auto h-8 w-8 mb-2 text-green-400" />
-                  全部排完
+                  {t('全部排完')}
                 </div>
               ) : (
                 pendingEntries.map((e) => {
@@ -352,13 +364,14 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
                             variant="outline"
                             className="h-4 px-1 text-[10px] border-orange-200 text-orange-600"
                           >
-                            场景
+                            {t('场景')}
                           </Badge>
                         )}
                       </div>
                       <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <Clock3 className="size-3" />第 {e.startWeek}-{e.endWeek} 周
+                          <Clock3 className="size-3" />
+                          {t('第 {a}-{b} 周', { a: e.startWeek, b: e.endWeek })}
                         </div>
                         {e.teacherName && (
                           <div className="flex items-center gap-1">
@@ -368,13 +381,15 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
                         )}
                         {(e.classNodeIds || []).length > 0 && (
                           <div className="flex items-center gap-1">
-                            {e.classNames?.slice(0, 2).join('、')}等{(e.classNodeIds || []).length}
-                            班
+                            {t('{names}等{n}班', {
+                              names: e.classNames?.slice(0, 2).join('、') || '',
+                              n: (e.classNodeIds || []).length,
+                            })}
                           </div>
                         )}
                       </div>
                       <div className="mt-1.5 text-xs font-medium text-blue-600">
-                        {isSel ? '已选中·点空格排课' : '点击选中'}
+                        {isSel ? t('已选中·点空格排课') : t('点击选中')}
                       </div>
                     </button>
                   )
@@ -390,7 +405,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
             periodSlots={periodSlots}
             loading={gridLoading}
             alwaysShow
-            emptyText="点击左侧课程后点此处空格"
+            emptyText={t('点击左侧课程后点此处空格')}
             onEntryClick={handleEditClick}
             onCellClick={selectedEntry || movingEntry ? handleCellClick : undefined}
             movingEntry={movingEntry}
@@ -415,43 +430,45 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>完善排课信息</DialogTitle>
+            <DialogTitle>{t('完善排课信息')}</DialogTitle>
             <DialogDescription>
-              「{preConfigEntry?.courseName}」排课前需配置完整：班级、教师、场地均为必填
+              {t('「{name}」排课前需配置完整：班级、教师、场地均为必填', {
+                name: preConfigEntry?.courseName || '',
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-sm font-medium mb-1 block">授课班级 *</label>
+              <label className="text-sm font-medium mb-1 block">{t('授课班级 *')}</label>
               <MultiOrgNodePicker
                 tenantId={tenantId}
                 value={preClassIds}
                 onChange={setPreClassIds}
                 selectableTypes={['班级']}
-                title="选择授课班级"
+                title={t('选择授课班级')}
                 maxVisible={3}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">授课教师 *</label>
+              <label className="text-sm font-medium mb-1 block">{t('授课教师 *')}</label>
               <UserSelector
                 value={preTeacherId ? [preTeacherId] : []}
                 onChange={(ids) => setPreTeacherId(ids[0] || '')}
                 multiple={false}
-                placeholder="选择教师"
+                placeholder={t('选择教师')}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">场地 *</label>
+              <label className="text-sm font-medium mb-1 block">{t('场地 *')}</label>
               <Select
                 value={preVenueId || 'none'}
                 onValueChange={(v) => setPreVenueId(v === 'none' ? '' : v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="选择场地" />
+                  <SelectValue placeholder={t('选择场地')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">请选择</SelectItem>
+                  <SelectItem value="none">{t('请选择')}</SelectItem>
                   {venues.map((v) => (
                     <SelectItem key={v.id} value={v.id}>
                       {v.name}（{v.type}）
@@ -467,13 +484,13 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
               onClick={() => setPreConfigEntry(null)}
               disabled={preConfigSaving}
             >
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={handlePreConfigSave}
               disabled={preClassIds.length === 0 || !preTeacherId || !preVenueId || preConfigSaving}
             >
-              {preConfigSaving ? '保存中...' : '保存并排课'}
+              {preConfigSaving ? t('保存中...') : t('保存并排课')}
             </Button>
           </DialogFooter>
         </DialogContent>

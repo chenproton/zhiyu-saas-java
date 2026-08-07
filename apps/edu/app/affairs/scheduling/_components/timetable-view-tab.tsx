@@ -19,6 +19,7 @@ import { usePortalUsers } from '@/hooks/use-portal-users'
 import { periodSlotApi, scheduleApi } from '@/lib/api'
 import type { AffairsTerm, PeriodSlot, ScheduleEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 type ViewMode = 'class' | 'teacher'
 
@@ -29,6 +30,7 @@ interface TimetableViewTabProps {
 /** Tab3 课表视图与发布：班级/教师双视角 + 周次筛选 + 发布 */
 export function TimetableViewTab({ term }: TimetableViewTabProps) {
   const { toast } = useToast()
+  const t = useT()
   const { tenantId } = usePortalAuth()
   const { users: teachers, loading: teachersLoading } = usePortalUsers({
     roleCode: 'teacher',
@@ -70,13 +72,13 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询课表失败',
+        title: t('加载失败'),
+        description: err.message || t('查询课表失败'),
       })
     } finally {
       setLoading(false)
     }
-  }, [term, viewMode, classNodeId, teacherId, viewStatus, toast])
+  }, [term, viewMode, classNodeId, teacherId, viewStatus, toast, t])
 
   useEffect(() => {
     // 数据加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
@@ -102,16 +104,19 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
     try {
       const res = await scheduleApi.publish(term.id)
       toast({
-        title: '课表已发布',
-        description: `本次发布 ${res.published} 条，当前版本 v${res.version}，学生/教师工作台已可见`,
+        title: t('课表已发布'),
+        description: t('本次发布 {n} 条，当前版本 v{v}，学生/教师工作台已可见', {
+          n: res.published,
+          v: res.version,
+        }),
       })
       setPublishOpen(false)
       await loadTimetable()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '发布失败',
-        description: err.message || '发布课表失败',
+        title: t('发布失败'),
+        description: err.message || t('发布课表失败'),
       })
     } finally {
       setPublishing(false)
@@ -121,7 +126,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
   if (!term) {
     return (
       <div className="rounded-lg border bg-white py-16 text-center text-sm text-muted-foreground">
-        请先在顶部选择学期（无学期时请先在「教务基础配置」中创建）
+        {t('请先在顶部选择学期（无学期时请先在「教务基础配置」中创建）')}
       </div>
     )
   }
@@ -144,7 +149,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
                     : 'text-gray-500 hover:text-gray-900',
                 )}
               >
-                {mode === 'class' ? '班级视图' : '教师视图'}
+                {mode === 'class' ? t('班级视图') : t('教师视图')}
               </button>
             ))}
           </div>
@@ -160,7 +165,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
                   viewStatus === s ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-900',
                 )}
               >
-                {s === 'draft' ? '草稿' : '已发布'}
+                {s === 'draft' ? t('草稿') : t('已发布')}
               </button>
             ))}
           </div>
@@ -172,14 +177,14 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
                 value={classNodeId}
                 onChange={setClassNodeId}
                 selectableTypes={['班级']}
-                placeholder="选择班级"
-                title="选择班级"
+                placeholder={t('选择班级')}
+                title={t('选择班级')}
               />
             </div>
           ) : (
             <Select value={teacherId} onValueChange={setTeacherId}>
               <SelectTrigger className="w-[240px]">
-                <SelectValue placeholder={teachersLoading ? '加载中...' : '选择教师'} />
+                <SelectValue placeholder={teachersLoading ? t('加载中...') : t('选择教师')} />
               </SelectTrigger>
               <SelectContent>
                 {teachers.map((u) => (
@@ -198,10 +203,10 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全部周次</SelectItem>
+              <SelectItem value="all">{t('全部周次')}</SelectItem>
               {Array.from({ length: term.weeksCount || 16 }, (_, i) => i + 1).map((w) => (
                 <SelectItem key={w} value={String(w)}>
-                  第 {w} 周
+                  {t('第 {n} 周', { n: w })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -209,14 +214,14 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
 
           {version != null && (
             <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600">
-              已发布版本 v{version}
+              {t('已发布版本 v{v}', { v: version })}
             </span>
           )}
         </div>
 
         <Button onClick={() => setPublishOpen(true)}>
           <Send className="mr-2 size-4" />
-          发布课表
+          {t('发布课表')}
         </Button>
       </div>
 
@@ -230,11 +235,11 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
           emptyText={
             viewMode === 'class'
               ? classNodeId
-                ? '该班级当前学期暂无已发布课表'
-                : '请选择班级查看课表'
+                ? t('该班级当前学期暂无已发布课表')
+                : t('请选择班级查看课表')
               : teacherId
-                ? '该教师当前学期暂无已发布课表'
-                : '请选择教师查看课表'
+                ? t('该教师当前学期暂无已发布课表')
+                : t('请选择教师查看课表')
           }
         />
       </div>
@@ -242,9 +247,11 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
       <ConfirmDialog
         open={publishOpen}
         onOpenChange={setPublishOpen}
-        title="发布课表"
-        description={`确定发布「${term.name}」的全部草稿排课吗？发布后版本号 +1，学生/教师工作台即可查看。`}
-        confirmText={publishing ? '发布中...' : '确认发布'}
+        title={t('发布课表')}
+        description={t('确定发布「{name}」的全部草稿排课吗？发布后版本号 +1，学生/教师工作台即可查看。', {
+          name: term.name,
+        })}
+        confirmText={publishing ? t('发布中...') : t('确认发布')}
         onConfirm={handlePublish}
       />
     </div>

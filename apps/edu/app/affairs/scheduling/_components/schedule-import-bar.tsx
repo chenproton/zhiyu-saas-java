@@ -5,6 +5,7 @@ import { Download, FileSpreadsheet, FileUp, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { useImportFlow } from '@/hooks/use-import-flow'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ScheduleImportBarProps {
   termId: string
@@ -17,6 +18,7 @@ interface ScheduleImportBarProps {
  * 「导入排课表」选择文件后内联展示文件名与「预览并导入」，有重复数据时弹确认框。
  */
 export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps) {
+  const t = useT()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const {
@@ -32,7 +34,7 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
     executeImport,
   } = useImportFlow({
     importType: 'schedules',
-    entityLabel: '排课',
+    entityLabel: t('排课'),
     templateFileName: '排课批量导入模板.xlsx',
     onSuccess: async () => {
       onImported()
@@ -72,7 +74,7 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
           disabled={isDownloading}
         >
           <Download className="mr-1 size-4" />
-          {isDownloading ? '下载中...' : '下载导入模板'}
+          {isDownloading ? t('下载中...') : t('下载导入模板')}
         </Button>
         <Button
           variant="outline"
@@ -81,7 +83,7 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
           disabled={isImporting}
         >
           <FileUp className="mr-1 size-4" />
-          导入排课表
+          {t('导入排课表')}
         </Button>
         <input
           ref={fileInputRef}
@@ -107,7 +109,7 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
                   type="button"
                   className="text-muted-foreground hover:text-foreground"
                   onClick={() => handleRemoveFile(idx)}
-                  aria-label="移除文件"
+                  aria-label={t('移除文件')}
                 >
                   <X className="size-3" />
                 </button>
@@ -121,10 +123,10 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
             onClick={() => setImportFiles([])}
             disabled={isImporting}
           >
-            取消
+            {t('取消')}
           </Button>
           <Button size="sm" className="h-7 px-3 text-xs" onClick={handleImport} disabled={isImporting}>
-            {isImporting ? '导入中...' : '预览并导入'}
+            {isImporting ? t('导入中...') : t('预览并导入')}
           </Button>
         </div>
       )}
@@ -133,7 +135,7 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
         <ImportConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          entityLabel="排课"
+          entityLabel={t('排课')}
           created={importPreview.created}
           duplicates={importPreview.duplicates}
           failed={importPreview.failed}

@@ -17,6 +17,7 @@ import type { TeachingPlan, TeachingPlanDetail } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ScheduleGridTab } from './_components/schedule-grid-tab'
 import { TimetableViewTab } from './_components/timetable-view-tab'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const STEPS = [
   { id: 'grid', label: '自定义排课', icon: CalendarRange },
@@ -29,6 +30,7 @@ function SchedulingPageInner() {
   const searchParams = useSearchParams()
   const planIdParam = searchParams.get('planId') || undefined
   const { toast } = useToast()
+  const t = useT()
 
   const [step, setStep] = useState<StepId>('grid')
   const [plans, setPlans] = useState<TeachingPlan[]>([])
@@ -45,11 +47,11 @@ function SchedulingPageInner() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询教学计划列表失败',
+        title: t('加载失败'),
+        description: err.message || t('查询教学计划列表失败'),
       })
     }
-  }, [planIdParam, toast])
+  }, [planIdParam, toast, t])
 
   const loadPlanDetail = useCallback(
     async (id: string) => {
@@ -62,12 +64,16 @@ function SchedulingPageInner() {
         const detail = await teachingPlanApi.get(id)
         setPlanDetail(detail)
       } catch {
-        toast({ variant: 'destructive', title: '加载失败', description: '查询教学计划详情失败' })
+        toast({
+          variant: 'destructive',
+          title: t('加载失败'),
+          description: t('查询教学计划详情失败'),
+        })
       } finally {
         setLoadingPlan(false)
       }
     },
-    [toast],
+    [toast, t],
   )
 
   useEffect(() => {
@@ -86,21 +92,26 @@ function SchedulingPageInner() {
   return (
     <div className="space-y-6">
       <PageHeaderCard
-        title="排课管理"
+        title={t('排课管理')}
         description={
           selectedPlan
-            ? `当前教学计划：${selectedPlan.programName} · ${selectedPlan.termName} · ${selectedPlan.majorName || ''} ${selectedPlan.entryYear}级`
-            : '选择教学计划开始排课，发布后学生/教师工作台可见'
+            ? t('当前教学计划：{name} · {term} · {major} {n}级', {
+                name: selectedPlan.programName || '',
+                term: selectedPlan.termName || '',
+                major: selectedPlan.majorName || '',
+                n: selectedPlan.entryYear,
+              })
+            : t('选择教学计划开始排课，发布后学生/教师工作台可见')
         }
         actions={
           <Select value={planId} onValueChange={setPlanId}>
             <SelectTrigger className="w-[300px]">
-              <SelectValue placeholder="请选择教学计划" />
+              <SelectValue placeholder={t('请选择教学计划')} />
             </SelectTrigger>
             <SelectContent>
               {plans.length === 0 ? (
                 <SelectItem value="__empty" disabled>
-                  暂无可用的已确认教学计划，请先在「教学计划」中生成并确认
+                  {t('暂无可用的已确认教学计划，请先在「教学计划」中生成并确认')}
                 </SelectItem>
               ) : (
                 plans.map((p) => (
@@ -140,7 +151,7 @@ function SchedulingPageInner() {
                   {idx + 1}
                 </span>
                 <Icon className="h-4 w-4" />
-                {s.label}
+                {t(s.label)}
               </button>
             )
           })}
@@ -149,7 +160,7 @@ function SchedulingPageInner() {
 
       {step === 'grid' && !selectedPlan && (
         <div className="rounded-lg border bg-white py-16 text-center text-sm text-muted-foreground">
-          请先在顶部选择已确认的教学计划
+          {t('请先在顶部选择已确认的教学计划')}
         </div>
       )}
       {step === 'grid' && selectedPlan && planDetail && (
@@ -179,9 +190,10 @@ function SchedulingPageInner() {
 }
 
 export default function SchedulingPage() {
+  const t = useT()
   return (
     <Suspense
-      fallback={<div className="py-16 text-center text-sm text-muted-foreground">加载中...</div>}
+      fallback={<div className="py-16 text-center text-sm text-muted-foreground">{t('加载中...')}</div>}
     >
       <SchedulingPageInner />
     </Suspense>

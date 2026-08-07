@@ -12,6 +12,7 @@ import { reportError } from '@/lib/error-handling'
 import { formatDate } from '@/lib/format-utils'
 import { useToast } from '@zhiyu/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const TYPE_LABELS: Record<string, string> = {
   training_program: '人培方案',
@@ -33,6 +34,7 @@ interface ApprovalView {
 }
 
 export default function AffairsApprovalsPage() {
+  const t = useT()
   const {
     records: programRecords,
     loading: programLoading,
@@ -73,11 +75,11 @@ export default function AffairsApprovalsPage() {
         reportError(err, { source: '加载培养方案/教学计划/批次列表' })
         toast({
           variant: 'destructive',
-          title: '加载失败',
-          description: err instanceof Error ? err.message : '加载培养方案/教学计划/批次列表失败',
+          title: t('加载失败'),
+          description: err instanceof Error ? err.message : t('加载培养方案/教学计划/批次列表失败'),
         })
       })
-  }, [toast])
+  }, [toast, t])
 
   const loading = programLoading || planLoading
 
@@ -96,27 +98,27 @@ export default function AffairsApprovalsPage() {
 
   const columns: ApprovalColumn<ApprovalView>[] = [
     {
-      header: '类型',
+      header: t('类型'),
       className: 'text-center',
       cell: (i) => (
         <Badge variant="outline" className="text-xs">
-          {TYPE_LABELS[i.targetType] || i.targetType}
+          {t(TYPE_LABELS[i.targetType] || i.targetType)}
         </Badge>
       ),
     },
-    { header: '名称', cell: (i) => <span className="font-medium">{i.targetName}</span> },
+    { header: t('名称'), cell: (i) => <span className="font-medium">{i.targetName}</span> },
     {
-      header: '所属批次组',
+      header: t('所属批次组'),
       cell: (i) => <span className="text-sm text-gray-600">{i.batchName || '-'}</span>,
     },
-    { header: '创建人', className: 'text-sm text-gray-600', cell: (i) => getName(i.submitterId) },
+    { header: t('创建人'), className: 'text-sm text-gray-600', cell: (i) => getName(i.submitterId) },
     {
-      header: '提交日期',
+      header: t('提交日期'),
       cell: (i) => <span className="text-sm text-gray-600">{i.submittedAt}</span>,
     },
-    { header: '状态', className: 'text-center', cell: (i) => <StatusBadge status={i.status} /> },
+    { header: t('状态'), className: 'text-center', cell: (i) => <StatusBadge status={i.status} /> },
     {
-      header: '当前步骤',
+      header: t('当前步骤'),
       className: 'text-center',
       cell: (i) =>
         i.stepInfo ? (
@@ -182,7 +184,7 @@ export default function AffairsApprovalsPage() {
     comment?: string,
   ) => {
     if (ids.length === 0) return
-    const label = status === 'approved' ? '通过' : '驳回'
+    const label = status === 'approved' ? t('通过') : t('驳回')
     try {
       const results = await Promise.allSettled(
         ids.map((id) => approvalApi.review(id, { status, comment })),
@@ -190,21 +192,27 @@ export default function AffairsApprovalsPage() {
       const success = results.filter((r) => r.status === 'fulfilled').length
       const failed = results.length - success
       if (failed === 0) {
-        toast({ title: `批量${label}成功，共 ${success} 条` })
+        toast({ title: t('批量{action}成功，共 {n} 条', { action: label, n: success }) })
       } else {
-        toast({ title: `批量${label}完成，成功 ${success} 条，失败 ${failed} 条` })
+        toast({
+          title: t('批量{action}完成，成功 {ok} 条，失败 {fail} 条', {
+            action: label,
+            ok: success,
+            fail: failed,
+          }),
+        })
       }
       await Promise.all([refreshProgram(), refreshPlan()])
     } catch (err: any) {
-      toast({ title: err.message || `批量${label}失败`, variant: 'destructive' })
+      toast({ title: err.message || t('批量{action}失败', { action: label }), variant: 'destructive' })
     }
   }
 
   return (
     <ApprovalListPage<ApprovalView>
-      entityLabel="教务资源"
-      pageDescription="审核人培方案与教学计划提交申请"
-      emptyPendingText="所有提交都已处理完毕"
+      entityLabel={t('教务资源')}
+      pageDescription={t('审核人培方案与教学计划提交申请')}
+      emptyPendingText={t('所有提交都已处理完毕')}
       records={allRecords}
       loading={loading}
       onApprove={handleApprove}
@@ -222,7 +230,7 @@ export default function AffairsApprovalsPage() {
       groupLabelOf={(key) =>
         key
           ? affairsBatchMap.get(key)?.name || batchMap.get(key)?.name || key
-          : '未关联批次'
+          : t('未关联批次')
       }
     />
   )

@@ -37,6 +37,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { termApi, venueApi, periodSlotApi } from '@/lib/api'
 import type { DateRange } from 'react-day-picker'
 import type { AffairsTerm, Venue, PeriodSlot } from '@/lib/types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -64,6 +65,7 @@ const VENUE_TYPES = ['教室', '机房', '实训室', '实验室', '校外基地
 
 function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
   const { toast } = useToast()
+  const t = useT()
   const [items, setItems] = useState<AffairsTerm[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -86,13 +88,13 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询学期列表失败',
+        title: t('加载失败'),
+        description: err.message || t('查询学期列表失败'),
       })
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, t])
 
   useEffect(() => {
     // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
@@ -129,15 +131,15 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
       } else {
         await termApi.create(payload)
       }
-      toast({ title: editing ? '学期已更新' : '学期已创建' })
+      toast({ title: editing ? t('学期已更新') : t('学期已创建') })
       setDialogOpen(false)
       await loadItems()
       onTermsChanged?.()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err.message || '保存学期失败',
+        title: t('保存失败'),
+        description: err.message || t('保存学期失败'),
       })
     } finally {
       setSaving(false)
@@ -148,15 +150,15 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
     if (!deleteTarget) return
     try {
       await termApi.delete(deleteTarget.id)
-      toast({ title: '学期已删除' })
+      toast({ title: t('学期已删除') })
       setDeleteTarget(null)
       await loadItems()
       onTermsChanged?.()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err.message || '删除学期失败',
+        title: t('删除失败'),
+        description: err.message || t('删除学期失败'),
       })
     }
   }
@@ -165,58 +167,58 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
     <section className="rounded-lg border bg-white px-4 py-3">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">学期管理</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t('学期管理')}</h3>
           <p className="text-xs text-muted-foreground">
-            教学计划与排课均依赖学期，请先维护学期信息
+            {t('教学计划与排课均依赖学期，请先维护学期信息')}
           </p>
         </div>
         <Button size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          新建学期
+          {t('新建学期')}
         </Button>
       </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[200px]">名称</TableHead>
-              <TableHead className="w-[120px]">开始日期</TableHead>
-              <TableHead className="w-[120px]">结束日期</TableHead>
-              <TableHead className="w-[80px]">周数</TableHead>
-              <TableHead className="w-[100px]">当前学期</TableHead>
-              <TableHead className="sticky right-0 w-[140px] bg-white text-right">操作</TableHead>
+              <TableHead className="w-[200px]">{t('名称')}</TableHead>
+              <TableHead className="w-[120px]">{t('开始日期')}</TableHead>
+              <TableHead className="w-[120px]">{t('结束日期')}</TableHead>
+              <TableHead className="w-[80px]">{t('周数')}</TableHead>
+              <TableHead className="w-[100px]">{t('当前学期')}</TableHead>
+              <TableHead className="sticky right-0 w-[140px] bg-white text-right">{t('操作')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-20 text-center text-muted-foreground">
-                  加载中...
+                  {t('加载中...')}
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-20 text-center text-muted-foreground">
-                  暂无学期，点击「新建学期」创建
+                  {t('暂无学期，点击「新建学期」创建')}
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((t) => (
-                <TableRow key={t.id} className="group">
-                  <TableCell className="font-medium">{t.name}</TableCell>
+              items.map((tm) => (
+                <TableRow key={tm.id} className="group">
+                  <TableCell className="font-medium">{tm.name}</TableCell>
                   <TableCell>
-                    <span className="text-sm">{t.startDate}</span>
+                    <span className="text-sm">{tm.startDate}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm">{t.endDate}</span>
+                    <span className="text-sm">{tm.endDate}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm">{t.weeksCount}</span>
+                    <span className="text-sm">{tm.weeksCount}</span>
                   </TableCell>
                   <TableCell>
-                    {t.isCurrent ? (
+                    {tm.isCurrent ? (
                       <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        当前学期
+                        {t('当前学期')}
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">-</span>
@@ -227,19 +229,19 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-xs"
-                      onClick={() => openEdit(t)}
+                      onClick={() => openEdit(tm)}
                     >
                       <FileEdit className="mr-1 h-3 w-3" />
-                      编辑
+                      {t('编辑')}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-xs text-destructive hover:text-destructive"
-                      onClick={() => setDeleteTarget(t)}
+                      onClick={() => setDeleteTarget(tm)}
                     >
                       <Trash2 className="mr-1 h-3 w-3" />
-                      删除
+                      {t('删除')}
                     </Button>
                   </TableRowActions>
                 </TableRow>
@@ -252,12 +254,12 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? '编辑学期' : '新建学期'}</DialogTitle>
-            <DialogDescription>设为当前学期后，其他学期将自动取消当前标记</DialogDescription>
+            <DialogTitle>{editing ? t('编辑学期') : t('新建学期')}</DialogTitle>
+            <DialogDescription>{t('设为当前学期后，其他学期将自动取消当前标记')}</DialogDescription>
           </DialogHeader>
           <FieldGroup className="py-4">
             <Field>
-              <FieldLabel>学期名称 *</FieldLabel>
+              <FieldLabel>{t('学期名称 *')}</FieldLabel>
               <Input
                 placeholder="如 2025-2026-1"
                 value={name}
@@ -265,30 +267,30 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
               />
             </Field>
             <Field>
-              <FieldLabel>起止日期 *</FieldLabel>
+              <FieldLabel>{t('起止日期 *')}</FieldLabel>
               <DateRangePicker value={dateRange} onChange={setDateRange} />
             </Field>
             <Field>
-              <FieldLabel>周数</FieldLabel>
-              <Input value={weeksCount ? String(weeksCount) : ''} disabled placeholder="选择起止日期后自动计算" />
-              <p className="text-xs text-muted-foreground">根据起止日期自动计算，不可修改</p>
+              <FieldLabel>{t('周数')}</FieldLabel>
+              <Input value={weeksCount ? String(weeksCount) : ''} disabled placeholder={t('选择起止日期后自动计算')} />
+              <p className="text-xs text-muted-foreground">{t('根据起止日期自动计算，不可修改')}</p>
             </Field>
             <Field>
               <div className="flex items-center justify-between">
-                <FieldLabel>设为当前学期</FieldLabel>
+                <FieldLabel>{t('设为当前学期')}</FieldLabel>
                 <Switch checked={isCurrent} onCheckedChange={setIsCurrent} />
               </div>
             </Field>
           </FieldGroup>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
-              取消
+              {t('取消')}
             </Button>
             <Button
               onClick={handleSave}
               disabled={!name || !dateRange?.from || !dateRange?.to || saving}
             >
-              {saving ? '保存中...' : '保存'}
+              {saving ? t('保存中...') : t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -297,10 +299,12 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="删除学期"
-        description={`确定删除学期「${deleteTarget?.name || ''}」吗？已被教学计划或排课引用的学期无法删除。`}
+        title={t('删除学期')}
+        description={t('确定删除学期「{name}」吗？已被教学计划或排课引用的学期无法删除。', {
+          name: deleteTarget?.name || '',
+        })}
         variant="destructive"
-        confirmText="删除"
+        confirmText={t('删除')}
         onConfirm={handleDelete}
       />
     </section>
@@ -311,6 +315,7 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
 
 function VenuesSection() {
   const { toast } = useToast()
+  const t = useT()
   const [items, setItems] = useState<Venue[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -329,13 +334,13 @@ function VenuesSection() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询场地列表失败',
+        title: t('加载失败'),
+        description: err.message || t('查询场地列表失败'),
       })
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, t])
 
   useEffect(() => {
     ;(async () => {
@@ -369,14 +374,14 @@ function VenuesSection() {
       } else {
         await venueApi.create(payload)
       }
-      toast({ title: editing ? '场地已更新' : '场地已创建' })
+      toast({ title: editing ? t('场地已更新') : t('场地已创建') })
       setDialogOpen(false)
       await loadItems()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err.message || '保存场地失败',
+        title: t('保存失败'),
+        description: err.message || t('保存场地失败'),
       })
     } finally {
       setSaving(false)
@@ -387,14 +392,14 @@ function VenuesSection() {
     if (!deleteTarget) return
     try {
       await venueApi.delete(deleteTarget.id)
-      toast({ title: '场地已删除' })
+      toast({ title: t('场地已删除') })
       setDeleteTarget(null)
       await loadItems()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '删除失败',
-        description: err.message || '删除场地失败',
+        title: t('删除失败'),
+        description: err.message || t('删除场地失败'),
       })
     }
   }
@@ -403,37 +408,37 @@ function VenuesSection() {
     <section className="rounded-lg border bg-white px-4 py-3">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">场地管理</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t('场地管理')}</h3>
           <p className="text-xs text-muted-foreground">
-            排课时可选择场地，删除被引用的场地会被拒绝
+            {t('排课时可选择场地，删除被引用的场地会被拒绝')}
           </p>
         </div>
         <Button size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          新建场地
+          {t('新建场地')}
         </Button>
       </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[220px]">名称</TableHead>
-              <TableHead className="w-[120px]">类型</TableHead>
-              <TableHead className="w-[100px]">容量</TableHead>
-              <TableHead className="sticky right-0 w-[140px] bg-white text-right">操作</TableHead>
+              <TableHead className="w-[220px]">{t('名称')}</TableHead>
+              <TableHead className="w-[120px]">{t('类型')}</TableHead>
+              <TableHead className="w-[100px]">{t('容量')}</TableHead>
+              <TableHead className="sticky right-0 w-[140px] bg-white text-right">{t('操作')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
-                  加载中...
+                  {t('加载中...')}
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
-                  暂无场地，点击「新建场地」创建
+                  {t('暂无场地，点击「新建场地」创建')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -444,7 +449,7 @@ function VenuesSection() {
                     <span className="text-sm">{v.type}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm">{v.capacity != null ? `${v.capacity} 人` : '-'}</span>
+                    <span className="text-sm">{v.capacity != null ? t('{n} 人', { n: v.capacity }) : '-'}</span>
                   </TableCell>
                   <TableRowActions className="sticky right-0 bg-white">
                     <Button
@@ -454,7 +459,7 @@ function VenuesSection() {
                       onClick={() => openEdit(v)}
                     >
                       <FileEdit className="mr-1 h-3 w-3" />
-                      编辑
+                      {t('编辑')}
                     </Button>
                     <Button
                       variant="ghost"
@@ -463,7 +468,7 @@ function VenuesSection() {
                       onClick={() => setDeleteTarget(v)}
                     >
                       <Trash2 className="mr-1 h-3 w-3" />
-                      删除
+                      {t('删除')}
                     </Button>
                   </TableRowActions>
                 </TableRow>
@@ -476,12 +481,12 @@ function VenuesSection() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? '编辑场地' : '新建场地'}</DialogTitle>
-            <DialogDescription>场地类型用于教学计划条目的场地类型匹配</DialogDescription>
+            <DialogTitle>{editing ? t('编辑场地') : t('新建场地')}</DialogTitle>
+            <DialogDescription>{t('场地类型用于教学计划条目的场地类型匹配')}</DialogDescription>
           </DialogHeader>
           <FieldGroup className="py-4">
             <Field>
-              <FieldLabel>场地名称 *</FieldLabel>
+              <FieldLabel>{t('场地名称 *')}</FieldLabel>
               <Input
                 placeholder="如 A栋-301"
                 value={name}
@@ -489,26 +494,26 @@ function VenuesSection() {
               />
             </Field>
             <Field>
-              <FieldLabel>场地类型 *</FieldLabel>
+              <FieldLabel>{t('场地类型 *')}</FieldLabel>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="请选择场地类型" />
+                  <SelectValue placeholder={t('请选择场地类型')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {VENUE_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
+                  {VENUE_TYPES.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {t(v)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
             <Field>
-              <FieldLabel>容量（人）</FieldLabel>
+              <FieldLabel>{t('容量（人）')}</FieldLabel>
               <Input
                 type="number"
                 min={0}
-                placeholder="选填"
+                placeholder={t('选填')}
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
               />
@@ -516,10 +521,10 @@ function VenuesSection() {
           </FieldGroup>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleSave} disabled={!name || !type || saving}>
-              {saving ? '保存中...' : '保存'}
+              {saving ? t('保存中...') : t('保存')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -528,10 +533,12 @@ function VenuesSection() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="删除场地"
-        description={`确定删除场地「${deleteTarget?.name || ''}」吗？已被排课引用的场地无法删除。`}
+        title={t('删除场地')}
+        description={t('确定删除场地「{name}」吗？已被排课引用的场地无法删除。', {
+          name: deleteTarget?.name || '',
+        })}
         variant="destructive"
-        confirmText="删除"
+        confirmText={t('删除')}
         onConfirm={handleDelete}
       />
     </section>
@@ -696,6 +703,7 @@ function deriveSettings(items: PeriodSlot[]): PeriodSettings {
 
 function PeriodSlotsSection() {
   const { toast } = useToast()
+  const t = useT()
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<PeriodRow[]>([])
   const [settings, setSettings] = useState<PeriodSettings>(defaultSettings)
@@ -712,13 +720,13 @@ function PeriodSlotsSection() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询节次列表失败',
+        title: t('加载失败'),
+        description: err.message || t('查询节次列表失败'),
       })
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, t])
 
   useEffect(() => {
     ;(async () => {
@@ -741,12 +749,16 @@ function PeriodSlotsSection() {
 
   const handleSave = async () => {
     if (rows.length === 0) {
-      toast({ variant: 'destructive', title: '保存失败', description: '至少保留一个节次' })
+      toast({ variant: 'destructive', title: t('保存失败'), description: t('至少保留一个节次') })
       return
     }
     const names = rows.map((r) => r.name.trim())
     if (new Set(names).size !== names.length) {
-      toast({ variant: 'destructive', title: '保存失败', description: '节次名称不能重复' })
+      toast({
+        variant: 'destructive',
+        title: t('保存失败'),
+        description: t('节次名称不能重复'),
+      })
       return
     }
     setSaving(true)
@@ -761,12 +773,12 @@ function PeriodSlotsSection() {
       const res = await periodSlotApi.replace(payload)
       setRows(res.items.map(slotToRow))
       setDirty(false)
-      toast({ title: '节次配置已保存' })
+      toast({ title: t('节次配置已保存') })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err.message || '保存节次失败',
+        title: t('保存失败'),
+        description: err.message || t('保存节次失败'),
       })
     } finally {
       setSaving(false)
@@ -777,9 +789,9 @@ function PeriodSlotsSection() {
     <section className="rounded-lg border bg-white px-4 py-3">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">节次管理</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t('节次管理')}</h3>
           <p className="text-xs text-muted-foreground">
-            节次作为课表网格的行，排课与导入均按节次名称匹配；右侧配置参数自动生成，预览确认后保存
+            {t('节次作为课表网格的行，排课与导入均按节次名称匹配；右侧配置参数自动生成，预览确认后保存')}
           </p>
         </div>
       </div>
@@ -795,13 +807,15 @@ function PeriodSlotsSection() {
               onClick={() => setShowHelp(true)}
             >
               <Lightbulb className="h-3.5 w-3.5" />
-              使用说明
+              {t('使用说明')}
             </Button>
             <div className="flex flex-wrap items-center gap-3">
               {PERIOD_TYPES.map((key) => (
                 <div key={key} className="flex items-center gap-1.5">
                   <span className={cn('h-2.5 w-2.5 rounded-full', PERIOD_TYPE_META[key].dot)} />
-                  <span className="text-xs text-muted-foreground">{PERIOD_TYPE_META[key].label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t(PERIOD_TYPE_META[key].label)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -812,14 +826,14 @@ function PeriodSlotsSection() {
               <thead>
                 <tr>
                   <th className="w-[150px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
-                    节次
+                    {t('节次')}
                   </th>
                   {DAY_LABELS.map((d) => (
                     <th
                       key={d}
                       className="w-[120px] border bg-muted/40 px-1 py-2 text-center text-xs font-medium text-muted-foreground"
                     >
-                      {d}
+                      {t(d)}
                     </th>
                   ))}
                 </tr>
@@ -828,13 +842,13 @@ function PeriodSlotsSection() {
                 {loading ? (
                   <tr>
                     <td colSpan={8} className="h-24 border text-center text-sm text-muted-foreground">
-                      加载中...
+                      {t('加载中...')}
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="h-24 border text-center text-sm text-muted-foreground">
-                      暂无节次，在右侧配置各时段参数自动生成
+                      {t('暂无节次，在右侧配置各时段参数自动生成')}
                     </td>
                   </tr>
                 ) : (
@@ -854,11 +868,13 @@ function PeriodSlotsSection() {
                                 meta.border
                               )}
                             >
-                              <span className={cn('text-[10px] font-medium', meta.text)}>{meta.label}</span>
+                              <span className={cn('text-[10px] font-medium', meta.text)}>
+                                {t(meta.label)}
+                              </span>
                               <span className="font-mono text-[10px] text-muted-foreground">
                                 {row.startTime
-                                  ? `${row.startTime}-${row.endTime || '--:--'}`
-                                  : '未设置时间'}
+                                  ? t('{start}-{end}', { start: row.startTime, end: row.endTime || '--:--' })
+                                  : t('未设置时间')}
                               </span>
                             </div>
                           </td>
@@ -875,25 +891,25 @@ function PeriodSlotsSection() {
         {/* 右侧：参数设置面板 */}
         <div className="w-full shrink-0 space-y-4 rounded-lg border bg-muted/20 p-4 lg:w-[260px]">
           <div>
-            <h4 className="mb-3 text-sm font-semibold text-gray-900">排课节次设置</h4>
+            <h4 className="mb-3 text-sm font-semibold text-gray-900">{t('排课节次设置')}</h4>
             <div className="space-y-3">
               <CountRow
-                label="早自习"
+                label={t('早自习')}
                 value={settings.morningSelfCount}
                 onChange={(v) => updateSetting('morningSelfCount', v)}
               />
               <CountRow
-                label="上午"
+                label={t('上午')}
                 value={settings.morningClassCount}
                 onChange={(v) => updateSetting('morningClassCount', v)}
               />
               <CountRow
-                label="下午"
+                label={t('下午')}
                 value={settings.afternoonClassCount}
                 onChange={(v) => updateSetting('afternoonClassCount', v)}
               />
               <CountRow
-                label="晚自习"
+                label={t('晚自习')}
                 value={settings.eveningClassCount}
                 onChange={(v) => updateSetting('eveningClassCount', v)}
               />
@@ -903,79 +919,79 @@ function PeriodSlotsSection() {
           <div className="h-px bg-border" />
 
           <div>
-            <h4 className="mb-3 text-sm font-semibold text-gray-900">课程时间设置</h4>
+            <h4 className="mb-3 text-sm font-semibold text-gray-900">{t('课程时间设置')}</h4>
             <div className="space-y-5">
               <div>
-                <p className="mb-2 text-xs text-muted-foreground">早自习</p>
+                <p className="mb-2 text-xs text-muted-foreground">{t('早自习')}</p>
                 <div className="space-y-2.5">
                   <StartTimeRow
                     value={settings.morningSelfStart}
                     onChange={(v) => updateSetting('morningSelfStart', v)}
                   />
                   <DurationRow
-                    label="节次时长"
+                    label={t('节次时长')}
                     value={settings.morningSelfDuration}
                     onChange={(v) => updateSetting('morningSelfDuration', v)}
                   />
                   <DurationRow
-                    label="课间时长"
+                    label={t('课间时长')}
                     value={settings.morningSelfBreak}
                     onChange={(v) => updateSetting('morningSelfBreak', v)}
                   />
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-xs text-muted-foreground">上午</p>
+                <p className="mb-2 text-xs text-muted-foreground">{t('上午')}</p>
                 <div className="space-y-2.5">
                   <StartTimeRow
                     value={settings.morningStart}
                     onChange={(v) => updateSetting('morningStart', v)}
                   />
                   <DurationRow
-                    label="节次时长"
+                    label={t('节次时长')}
                     value={settings.morningClassDuration}
                     onChange={(v) => updateSetting('morningClassDuration', v)}
                   />
                   <DurationRow
-                    label="课间时长"
+                    label={t('课间时长')}
                     value={settings.morningBreakDuration}
                     onChange={(v) => updateSetting('morningBreakDuration', v)}
                   />
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-xs text-muted-foreground">下午</p>
+                <p className="mb-2 text-xs text-muted-foreground">{t('下午')}</p>
                 <div className="space-y-2.5">
                   <StartTimeRow
                     value={settings.afternoonStart}
                     onChange={(v) => updateSetting('afternoonStart', v)}
                   />
                   <DurationRow
-                    label="节次时长"
+                    label={t('节次时长')}
                     value={settings.afternoonClassDuration}
                     onChange={(v) => updateSetting('afternoonClassDuration', v)}
                   />
                   <DurationRow
-                    label="课间时长"
+                    label={t('课间时长')}
                     value={settings.afternoonBreakDuration}
                     onChange={(v) => updateSetting('afternoonBreakDuration', v)}
                   />
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-xs text-muted-foreground">晚自习</p>
+                <p className="mb-2 text-xs text-muted-foreground">{t('晚自习')}</p>
                 <div className="space-y-2.5">
                   <StartTimeRow
                     value={settings.eveningStart}
                     onChange={(v) => updateSetting('eveningStart', v)}
                   />
                   <DurationRow
-                    label="节次时长"
+                    label={t('节次时长')}
                     value={settings.eveningDuration}
                     onChange={(v) => updateSetting('eveningDuration', v)}
                   />
                   <DurationRow
-                    label="课间时长"
+                    label={t('课间时长')}
                     value={settings.eveningBreak}
                     onChange={(v) => updateSetting('eveningBreak', v)}
                   />
@@ -988,11 +1004,11 @@ function PeriodSlotsSection() {
 
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              修改参数将重新生成全部节次，点「保存配置」一次性落库
+              {t('修改参数将重新生成全部节次，点「保存配置」一次性落库')}
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={handleReset}>
-                恢复默认
+                {t('恢复默认')}
               </Button>
               <Button
                 size="sm"
@@ -1000,7 +1016,7 @@ function PeriodSlotsSection() {
                 onClick={handleSave}
                 disabled={saving || rows.length === 0 || !dirty}
               >
-                {saving ? '保存中...' : '保存配置'}
+                {saving ? t('保存中...') : t('保存配置')}
               </Button>
             </div>
           </div>
@@ -1011,15 +1027,15 @@ function PeriodSlotsSection() {
       <Dialog open={showHelp} onOpenChange={setShowHelp}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>使用说明</DialogTitle>
+            <DialogTitle>{t('使用说明')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2 text-sm text-muted-foreground">
-            <p>1. 在右侧面板点击节点条设置各时段节次数量（最多 5 个），左侧课表网格会自动生成并预览。</p>
-            <p>2. 可设置各时段开始时间、节次时长、课间时长，系统自动推算每个节次的起止时间。</p>
-            <p>3. 点击「保存配置」一次性落库；节次按名称被排课与 Excel 导入引用，改名需同步调整排课数据。</p>
+            <p>{t('1. 在右侧面板点击节点条设置各时段节次数量（最多 5 个），左侧课表网格会自动生成并预览。')}</p>
+            <p>{t('2. 可设置各时段开始时间、节次时长、课间时长，系统自动推算每个节次的起止时间。')}</p>
+            <p>{t('3. 点击「保存配置」一次性落库；节次按名称被排课与 Excel 导入引用，改名需同步调整排课数据。')}</p>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowHelp(false)}>知道了</Button>
+            <Button onClick={() => setShowHelp(false)}>{t('知道了')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1052,6 +1068,7 @@ function CountStepper({
   value: number
   onChange: (v: number) => void
 }) {
+  const t = useT()
   return (
     <div className="flex items-center gap-1.5">
       {Array.from({ length: 5 }, (_, i) => i + 1).map((n) => (
@@ -1059,12 +1076,12 @@ function CountStepper({
           key={n}
           type="button"
           onClick={() => onChange(value === n ? 0 : n)}
-          title={`${n} 个节次`}
+          title={t('{n} 个节次', { n })}
           className={cn(
             'h-5 w-5 rounded-full border-2 transition-colors',
             value >= n
               ? 'border-primary bg-primary'
-              : 'border-muted-foreground/40 hover:border-primary hover:bg-primary/10'
+              : 'border-muted-foreground/40 hover:border-primary hover:bg-primary/50'
           )}
         />
       ))}
@@ -1079,9 +1096,10 @@ function StartTimeRow({
   value: string
   onChange: (v: string) => void
 }) {
+  const t = useT()
   return (
     <div className="flex items-center gap-2">
-      <span className="w-16 shrink-0 text-xs text-muted-foreground">开始时间</span>
+      <span className="w-16 shrink-0 text-xs text-muted-foreground">{t('开始时间')}</span>
       <Input
         type="time"
         value={value}
@@ -1101,6 +1119,7 @@ function DurationRow({
   value: number
   onChange: (v: number) => void
 }) {
+  const t = useT()
   return (
     <div className="flex items-center gap-2">
       <span className="w-16 shrink-0 text-xs text-muted-foreground">{label}</span>
@@ -1113,7 +1132,7 @@ function DurationRow({
           className="h-8 w-full pr-7 text-sm"
         />
         <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          分
+          {t('分')}
         </span>
       </div>
     </div>
@@ -1130,19 +1149,20 @@ const CONFIG_TABS = [
 type ConfigTabId = (typeof CONFIG_TABS)[number]['id']
 
 export function VenuePeriodConfigTab({ onTermsChanged }: { onTermsChanged?: () => void }) {
+  const t = useT()
   const [tab, setTab] = useState<ConfigTabId>('terms')
 
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-gray-100 bg-white p-1 shadow-sm">
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {CONFIG_TABS.map((t) => {
-            const Icon = t.icon
-            const isActive = tab === t.id
+          {CONFIG_TABS.map((c) => {
+            const Icon = c.icon
+            const isActive = tab === c.id
             return (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
+                key={c.id}
+                onClick={() => setTab(c.id)}
                 className={cn(
                   'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all',
                   isActive
@@ -1151,7 +1171,7 @@ export function VenuePeriodConfigTab({ onTermsChanged }: { onTermsChanged?: () =
                 )}
               >
                 <Icon className="h-4 w-4" />
-                {t.label}
+                {t(c.label)}
               </button>
             )
           })}

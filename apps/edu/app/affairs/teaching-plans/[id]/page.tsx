@@ -31,6 +31,7 @@ import { EntryTypeBadge } from './_components/entry-type-badge'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { formatDateTime } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const VENUE_TYPES = ['教室', '机房', '实训室', '实验室', '校外基地']
 
@@ -48,6 +49,7 @@ export default function TeachingPlanDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
+  const t = useT()
   const { tenantId } = usePortalAuth()
   const id = params.id
 
@@ -66,13 +68,13 @@ export default function TeachingPlanDetailPage() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询教学计划失败',
+        title: t('加载失败'),
+        description: err.message || t('查询教学计划失败'),
       })
     } finally {
       setLoading(false)
     }
-  }, [id, toast])
+  }, [id, toast, t])
 
   useEffect(() => {
     ;(async () => {
@@ -125,8 +127,8 @@ export default function TeachingPlanDetailPage() {
       reportError(err, '更新计划教师')
       toast({
         variant: 'destructive',
-        title: '教师更新失败',
-        description: '请通过「保存修改」重新提交',
+        title: t('教师更新失败'),
+        description: t('请通过「保存修改」重新提交'),
       })
       return false
     }
@@ -156,7 +158,7 @@ export default function TeachingPlanDetailPage() {
     setIsEditing(false)
     setEditMap({})
     setSaving(false)
-    toast({ title: `保存完成：${success}/${toSave.length} 项` })
+    toast({ title: t('保存完成：{done}/{total} 项', { done: success, total: toSave.length }) })
   }
 
   const handleSubmitApproval = async () => {
@@ -165,8 +167,8 @@ export default function TeachingPlanDetailPage() {
       if (!plan.batchId) {
         toast({
           variant: 'destructive',
-          title: '提示',
-          description: '该教学计划未关联批次分组，请在列表页绑定批次后提交审批',
+          title: t('提示'),
+          description: t('该教学计划未关联批次分组，请在列表页绑定批次后提交审批'),
         })
         return
       }
@@ -177,13 +179,13 @@ export default function TeachingPlanDetailPage() {
         targetId: plan.id,
         workflowId: batch.workflowId,
       })
-      toast({ title: '已提交审批' })
+      toast({ title: t('已提交审批') })
       await loadPlan()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '提交失败',
-        description: err.message || '提交审批失败，请稍后重试',
+        title: t('提交失败'),
+        description: err.message || t('提交审批失败，请稍后重试'),
       })
     }
   }
@@ -191,13 +193,13 @@ export default function TeachingPlanDetailPage() {
   const handleWithdrawApproval = async () => {
     try {
       await teachingPlanApi.withdraw(id)
-      toast({ title: '已撤回审批' })
+      toast({ title: t('已撤回审批') })
       await loadPlan()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '撤回失败',
-        description: err.message || '撤回审批失败，请稍后重试',
+        title: t('撤回失败'),
+        description: err.message || t('撤回审批失败，请稍后重试'),
       })
     }
   }
@@ -205,13 +207,13 @@ export default function TeachingPlanDetailPage() {
   const handlePublish = async () => {
     try {
       await teachingPlanApi.publish(id)
-      toast({ title: '教学计划已发布' })
+      toast({ title: t('教学计划已发布') })
       await loadPlan()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '发布失败',
-        description: err.message || '发布教学计划失败',
+        title: t('发布失败'),
+        description: err.message || t('发布教学计划失败'),
       })
     }
   }
@@ -219,11 +221,16 @@ export default function TeachingPlanDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeaderCard
-        title={plan?.programName || '教学计划详情'}
+        title={plan?.programName || t('教学计划详情')}
         description={
           plan
-            ? `${plan.termName || '-'} · ${plan.majorName || '-'} · ${plan.entryYear} 级 · 生成于 ${formatDateTime(plan.generatedAt)}`
-            : '教学计划条目与授课安排'
+            ? t('{term} · {major} · {n}级 · 生成于 {time}', {
+                term: plan.termName || '-',
+                major: plan.majorName || '-',
+                n: plan.entryYear,
+                time: formatDateTime(plan.generatedAt),
+              })
+            : t('教学计划条目与授课安排')
         }
         actions={
           <div className="flex items-center gap-2">
@@ -232,41 +239,41 @@ export default function TeachingPlanDetailPage() {
               <>
                 <Button variant="outline" onClick={startEdit}>
                   <FileEdit className="mr-2 size-4" />
-                  编辑
+                  {t('编辑')}
                 </Button>
                 <Button variant="outline" onClick={handleSubmitApproval}>
                   <CheckCircle2 className="mr-2 size-4" />
-                  提交审批
+                  {t('提交审批')}
                 </Button>
               </>
             )}
             {plan?.status === 'pending' && !isEditing && (
               <Button variant="outline" onClick={handleWithdrawApproval}>
                 <X className="mr-2 size-4" />
-                撤回审批
+                {t('撤回审批')}
               </Button>
             )}
             {plan?.status === 'approved' && !isEditing && (
               <Button variant="outline" onClick={handlePublish}>
                 <CheckCircle2 className="mr-2 size-4" />
-                发布
+                {t('发布')}
               </Button>
             )}
             {isEditing && (
               <>
                 <Button variant="outline" onClick={cancelEdit} disabled={saving}>
                   <X className="mr-2 size-4" />
-                  取消
+                  {t('取消')}
                 </Button>
                 <Button onClick={handleSaveAll} disabled={saving}>
                   <Save className="mr-2 size-4" />
-                  {saving ? '保存中...' : '保存'}
+                  {saving ? t('保存中...') : t('保存')}
                 </Button>
               </>
             )}
             <Button variant="outline" onClick={() => router.push('/affairs/teaching-plans')}>
               <ArrowLeft className="mr-2 size-4" />
-              返回列表
+              {t('返回列表')}
             </Button>
           </div>
         }
@@ -277,28 +284,28 @@ export default function TeachingPlanDetailPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[180px]">课程</TableHead>
-                <TableHead className="w-[70px]">类型</TableHead>
-                <TableHead className="w-[70px]">学分</TableHead>
-                <TableHead className="w-[80px]">总学时</TableHead>
-                <TableHead className="w-[130px]">起止周</TableHead>
-                <TableHead className="w-[110px]">班级</TableHead>
-                <TableHead className="w-[130px]">教师</TableHead>
-                <TableHead className="w-[110px]">场地类型</TableHead>
-                <TableHead className="w-[70px]">状态</TableHead>
+                <TableHead className="w-[180px]">{t('课程')}</TableHead>
+                <TableHead className="w-[70px]">{t('类型')}</TableHead>
+                <TableHead className="w-[70px]">{t('学分')}</TableHead>
+                <TableHead className="w-[80px]">{t('总学时')}</TableHead>
+                <TableHead className="w-[130px]">{t('起止周')}</TableHead>
+                <TableHead className="w-[110px]">{t('班级')}</TableHead>
+                <TableHead className="w-[130px]">{t('教师')}</TableHead>
+                <TableHead className="w-[110px]">{t('场地类型')}</TableHead>
+                <TableHead className="w-[70px]">{t('状态')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                    加载中...
+                    {t('加载中...')}
                   </TableCell>
                 </TableRow>
               ) : groups.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                    暂无教学条目
+                    {t('暂无教学条目')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -309,7 +316,7 @@ export default function TeachingPlanDetailPage() {
                         colSpan={9}
                         className="py-1.5 text-xs font-medium text-muted-foreground"
                       >
-                        第 {startWeek} 周起（{groupEntries.length} 门）
+                        {t('第 {n} 周起（{m} 门）', { n: startWeek, m: groupEntries.length })}
                       </TableCell>
                     </TableRow>
                     {groupEntries.map((e) => {
@@ -385,7 +392,7 @@ export default function TeachingPlanDetailPage() {
                               </div>
                             ) : (
                               <span className="text-sm">
-                                {e.startWeek}-{e.endWeek}周
+                                {t('{n}-{m}周', { n: e.startWeek, m: e.endWeek })}
                               </span>
                             )}
                           </TableCell>
@@ -396,7 +403,7 @@ export default function TeachingPlanDetailPage() {
                                 value={es.classNodeIds}
                                 onChange={(v) => updateEditField(e.id, { classNodeIds: v })}
                                 selectableTypes={['班级']}
-                                title="选择授课班级"
+                                title={t('选择授课班级')}
                                 maxVisible={2}
                               />
                             ) : (
@@ -404,7 +411,7 @@ export default function TeachingPlanDetailPage() {
                                 {(e.classNames || []).length > 0
                                   ? (e.classNames || []).slice(0, 2).join('、') +
                                     ((e.classNames || []).length > 2
-                                      ? ` 等${(e.classNames || []).length}个`
+                                      ? t(' 等{n}个', { n: (e.classNames || []).length })
                                       : '')
                                   : e.className || '-'}
                               </span>
@@ -420,7 +427,7 @@ export default function TeachingPlanDetailPage() {
                                   updateTeacherId(e.id, tid)
                                 }}
                                 multiple={false}
-                                placeholder={e.teacherName || '选择教师'}
+                                placeholder={e.teacherName || t('选择教师')}
                               />
                             ) : (
                               <span className="text-sm">{e.teacherName || '-'}</span>
@@ -435,13 +442,13 @@ export default function TeachingPlanDetailPage() {
                                 }
                               >
                                 <SelectTrigger className="h-8">
-                                  <SelectValue placeholder="选择" />
+                                  <SelectValue placeholder={t('选择')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="none">未设置</SelectItem>
-                                  {VENUE_TYPES.map((t) => (
-                                    <SelectItem key={t} value={t}>
-                                      {t}
+                                  <SelectItem value="none">{t('未设置')}</SelectItem>
+                                  {VENUE_TYPES.map((v) => (
+                                    <SelectItem key={v} value={v}>
+                                      {t(v)}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -467,7 +474,7 @@ export default function TeachingPlanDetailPage() {
       <div className="flex justify-end">
         <Button onClick={() => router.push(`/affairs/scheduling?planId=${id}`)}>
           <CalendarRange className="mr-2 size-4" />
-          前往排课
+          {t('前往排课')}
         </Button>
       </div>
     </div>

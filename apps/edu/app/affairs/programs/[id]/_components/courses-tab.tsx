@@ -25,6 +25,7 @@ import type { Scenario, CareerPosition } from '@/lib/types'
 import type { Course } from '@/lib/types/lesson'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
 import { ProgramCourseImportDialog } from './program-course-import-dialog'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const NATURE_OPTIONS = ['必修', '选修', '实践', '场景']
 
@@ -64,6 +65,7 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
   ref: any,
 ) {
   const { toast } = useToast()
+  const t = useT()
   const [rows, setRows] = useState<CourseRow[]>([])
   const [systemCourses, setSystemCourses] = useState<Course[]>([])
   const [positions, setPositions] = useState<CareerPosition[]>([])
@@ -129,13 +131,13 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '查询课程设置失败',
+        title: t('加载失败'),
+        description: err.message || t('查询课程设置失败'),
       })
     } finally {
       setLoading(false)
     }
-  }, [programId, toast])
+  }, [programId, toast, t])
 
   useEffect(() => {
     ;(async () => {
@@ -243,18 +245,18 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
         }
       })
       await programApi.saveCourses(programId, payloads)
-      toast({ title: '已保存' })
+      toast({ title: t('已保存') })
       await loadCourses()
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: err.message || '保存课程设置失败',
+        title: t('保存失败'),
+        description: err.message || t('保存课程设置失败'),
       })
     } finally {
       setSaving(false)
     }
-  }, [rows, programId, toast, loadCourses])
+  }, [rows, programId, toast, loadCourses, t])
 
   useImperativeHandle(
     ref,
@@ -295,32 +297,32 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
   return (
     <div className="rounded-lg border bg-white px-4 py-3 space-y-3">
       <p className="text-sm text-muted-foreground">
-        共 {courseCount} 项，合计 {totalCredits} 学分
+        {t('共 {n} 项，合计 {m} 学分', { n: courseCount, m: totalCredits })}
       </p>
 
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[460px]">关联对象</TableHead>
-              <TableHead className="w-[120px]">编码</TableHead>
-              <TableHead className="w-[80px]">学分</TableHead>
-              <TableHead className="w-[80px]">总学时</TableHead>
-              <TableHead className="w-[100px]">性质</TableHead>
-              <TableHead className="w-[60px] text-right">操作</TableHead>
+              <TableHead className="w-[460px]">{t('关联对象')}</TableHead>
+              <TableHead className="w-[120px]">{t('编码')}</TableHead>
+              <TableHead className="w-[80px]">{t('学分')}</TableHead>
+              <TableHead className="w-[80px]">{t('总学时')}</TableHead>
+              <TableHead className="w-[100px]">{t('性质')}</TableHead>
+              <TableHead className="w-[60px] text-right">{t('操作')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  加载中...
+                  {t('加载中...')}
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  暂无，点击「添加岗位/课程」开始设置
+                  {t('暂无，点击「添加岗位/课程」开始设置')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -346,27 +348,30 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">未关联</SelectItem>
-                                <SelectItem value="position">岗位</SelectItem>
-                                <SelectItem value="course">体系课</SelectItem>
+                                <SelectItem value="none">{t('未关联')}</SelectItem>
+                                <SelectItem value="position">{t('岗位')}</SelectItem>
+                                <SelectItem value="course">{t('体系课')}</SelectItem>
                               </SelectContent>
                             </Select>
                             <ComboboxSelect
                               value={r.positionId}
                               onChange={(v) => handlePositionChange(r.key, v || '')}
                               options={positionOpts}
-                              placeholder="搜索岗位..."
-                              emptyText="未找到岗位"
+                              placeholder={t('搜索岗位...')}
+                              emptyText={t('未找到岗位')}
                               className="flex-1"
                             />
                           </div>
                           {r.positionId && (
                             <div className="text-xs text-muted-foreground pl-1">
                               {loadingPosScen[r.positionId]
-                                ? '加载中...'
+                                ? t('加载中...')
                                 : posScenarios.length > 0
-                                  ? `包含 ${posScenarios.length} 个场景：${posScenarios.map((s) => s.name).join('、')}`
-                                  : '该岗位下暂无已发布场景'}
+                                  ? t('包含 {n} 个场景：{names}', {
+                                      n: posScenarios.length,
+                                      names: posScenarios.map((s) => s.name).join('、'),
+                                    })
+                                  : t('该岗位下暂无已发布场景')}
                             </div>
                           )}
                         </div>
@@ -386,9 +391,9 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">未关联</SelectItem>
-                              <SelectItem value="position">岗位</SelectItem>
-                              <SelectItem value="course">体系课</SelectItem>
+                              <SelectItem value="none">{t('未关联')}</SelectItem>
+                              <SelectItem value="position">{t('岗位')}</SelectItem>
+                              <SelectItem value="course">{t('体系课')}</SelectItem>
                             </SelectContent>
                           </Select>
                           <ComboboxSelect
@@ -404,8 +409,8 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
                               })
                             }}
                             options={courseOpts}
-                            placeholder="搜索体系课..."
-                            emptyText="未找到体系课"
+                            placeholder={t('搜索体系课...')}
+                            emptyText={t('未找到体系课')}
                             className="flex-1"
                           />
                         </div>
@@ -421,13 +426,13 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
                               })
                             }
                           >
-                            <SelectTrigger className="h-8 w-[80px]">
-                              <SelectValue placeholder="类型" />
-                            </SelectTrigger>
+                              <SelectTrigger className="h-8 w-[80px]">
+                                <SelectValue placeholder={t('类型')} />
+                              </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">未关联</SelectItem>
-                              <SelectItem value="position">岗位</SelectItem>
-                              <SelectItem value="course">体系课</SelectItem>
+                              <SelectItem value="none">{t('未关联')}</SelectItem>
+                              <SelectItem value="position">{t('岗位')}</SelectItem>
+                              <SelectItem value="course">{t('体系课')}</SelectItem>
                             </SelectContent>
                           </Select>
                           <span className="text-xs text-muted-foreground">-</span>
@@ -467,7 +472,7 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
                         <SelectContent>
                           {NATURE_OPTIONS.map((n) => (
                             <SelectItem key={n} value={n}>
-                              {n}
+                              {t(n)}
                             </SelectItem>
                           ))}
                         </SelectContent>
