@@ -885,7 +885,9 @@ function AddSystemPageInner() {
                   </div>
                 </div>
                 {!globalInfoOpen && courseDescription && (
-                  <p className="text-xs text-gray-400 mt-1 pl-6 text-left">{courseDescription}</p>
+                  <p className="text-xs text-gray-400 mt-1 pl-6 text-left line-clamp-2">
+                    {courseDescription}
+                  </p>
                 )}
               </CardHeader>
             </button>
