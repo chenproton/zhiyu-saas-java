@@ -89,6 +89,7 @@ export default function LessonLearnPage() {
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [loading, setLoading] = useState(true)
   const [activeNodeId, setActiveNodeId] = useState<string | null>(targetNodeId || null)
+  // 混合课无右侧知识点/资源栏，默认展开左侧节点列表
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
   const [hybridModules, setHybridModules] = useState<HybridNodeModule[]>([])
@@ -103,6 +104,9 @@ export default function LessonLearnPage() {
       try {
         const c = await courseApi.get(id)
         setCourse(c)
+        if (c.type === 'hybrid') {
+          setSidebarCollapsed(false)
+        }
       } catch {
         setCourse(null)
       } finally {
@@ -752,8 +756,8 @@ export default function LessonLearnPage() {
           )}
         </main>
 
-        {/* right panel: sticky tabs - outside main, same level as sidebar */}
-        {sidebarCollapsed && activeNode && (
+        {/* right panel: sticky tabs - outside main, same level as sidebar（仅体系课，混合课无知识点/资源栏） */}
+        {course.type !== 'hybrid' && sidebarCollapsed && activeNode && (
           <div
             className="flex w-[calc(100%-2rem)] lg:w-[360px] flex-shrink-0 lg:sticky lg:self-start mt-4 mx-4 lg:mx-4"
             style={{ top: '7rem', maxHeight: 'calc(100vh - 8rem)' }}

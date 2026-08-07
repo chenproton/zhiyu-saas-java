@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   BookOpen,
@@ -13,9 +13,12 @@ import {
   Lightbulb,
   FileCheck2,
   ListChecks,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EVAL_METHOD_LABELS } from '@/lib/types'
 import { evalRuleConfigToMethods, type EvalRuleConfig } from '@/lib/types/evaluation'
 import type { HybridNodeModule } from '@zhiyu/api-client'
@@ -31,6 +34,7 @@ import {
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
 import type { TaskResource } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 export const HYBRID_EVAL_MODULE_KEYS = ['preQuizzes', 'inClassQuizzes', 'homeworks'] as const
 export const HYBRID_EVAL_MODULE_LABELS: Record<string, string> = {
@@ -83,6 +87,57 @@ const MODULE_ICONS: Record<string, React.ElementType> = {
   homeworks: FileText,
   extensionMaterials: FolderOpen,
   trainingReports: FileCheck2,
+}
+
+// 教学过程三阶段：课前 / 课中 / 课后
+const PHASES: {
+  key: string
+  label: string
+  icon: React.ElementType
+  iconClass: string
+  activeClass: string
+  keys: string[]
+}[] = [
+  {
+    key: 'pre',
+    label: '课前',
+    icon: Sun,
+    iconClass: 'bg-sky-50 text-sky-600 border-sky-100',
+    activeClass: 'data-[state=active]:text-sky-600 data-[state=active]:bg-sky-50',
+    keys: ['prePreview', 'preResources', 'preTasks', 'preQuizzes'],
+  },
+  {
+    key: 'in',
+    label: '课中',
+    icon: MonitorPlay,
+    iconClass: 'bg-violet-50 text-violet-600 border-violet-100',
+    activeClass: 'data-[state=active]:text-violet-600 data-[state=active]:bg-violet-50',
+    keys: ['lecture', 'inClassTasks', 'inClassQuizzes', 'classQuestions'],
+  },
+  {
+    key: 'post',
+    label: '课后',
+    icon: Moon,
+    iconClass: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    activeClass: 'data-[state=active]:text-emerald-600 data-[state=active]:bg-emerald-50',
+    keys: ['practiceTasks', 'homeworks', 'extensionMaterials', 'trainingReports'],
+  },
+]
+
+// 模块图标气泡配色
+const MODULE_ICON_CLASSES: Record<string, string> = {
+  prePreview: 'bg-sky-50 text-sky-600 border-sky-100',
+  preResources: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  preTasks: 'bg-cyan-50 text-cyan-600 border-cyan-100',
+  preQuizzes: 'bg-blue-50 text-blue-600 border-blue-100',
+  lecture: 'bg-violet-50 text-violet-600 border-violet-100',
+  inClassTasks: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+  inClassQuizzes: 'bg-purple-50 text-purple-600 border-purple-100',
+  classQuestions: 'bg-fuchsia-50 text-fuchsia-600 border-fuchsia-100',
+  practiceTasks: 'bg-amber-50 text-amber-600 border-amber-100',
+  homeworks: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  extensionMaterials: 'bg-teal-50 text-teal-600 border-teal-100',
+  trainingReports: 'bg-orange-50 text-orange-600 border-orange-100',
 }
 
 function AttachmentList({
@@ -206,7 +261,7 @@ function EvalModuleCards({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
+        <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
           <ListChecks className="h-4 w-4" />
         </div>
         <h4 className="text-sm font-semibold text-gray-800">{label}</h4>
@@ -387,6 +442,22 @@ export function HybridModulesView({
     .filter((m) => ACTIVITY_ORDER.includes(m.moduleKey))
     .sort((a, b) => ACTIVITY_ORDER.indexOf(a.moduleKey) - ACTIVITY_ORDER.indexOf(b.moduleKey))
 
+  // 教学过程按课前/课中/课后分组
+  const [activePhase, setActivePhase] = useState('pre')
+  const phaseModules = useMemo(() => {
+    const map = new Map<string, HybridNodeModule[]>()
+    for (const p of PHASES) {
+      map.set(p.key, activityModules.filter((m) => p.keys.includes(m.moduleKey)))
+    }
+    return map
+  }, [activityModules])
+
+  // 当前阶段无内容时回退到第一个有内容的阶段（数据异步加载完成前选中课前）
+  const effectivePhase =
+    (phaseModules.get(activePhase) || []).length > 0
+      ? activePhase
+      : (PHASES.find((p) => (phaseModules.get(p.key) || []).length > 0)?.key ?? 'pre')
+
   const handlePreview = (url: string, name: string, type?: string) => {
     addPreviewResource({
       id: `attachment-${url}`,
@@ -402,7 +473,7 @@ export function HybridModulesView({
       <Card className="rounded-2xl border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden py-0 gap-0 bg-white">
         <CardHeader className="border-b border-gray-100 px-6 py-5 bg-white">
           <CardTitle className="text-base flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white shadow-md shadow-primary/20">
               <BookOpen className="h-4 w-4" />
             </div>
             <span className="text-gray-800 font-semibold text-lg">教学设计</span>
@@ -419,11 +490,11 @@ export function HybridModulesView({
         </CardContent>
       </Card>
 
-      {/* 教学过程 */}
+      {/* 教学过程：课前/课中/课后三阶段 */}
       <Card className="rounded-2xl border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden py-0 gap-0 bg-white">
         <CardHeader className="border-b border-gray-100 px-6 py-5 bg-white">
           <CardTitle className="text-base flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white shadow-md shadow-primary/20">
               <MonitorPlay className="h-4 w-4" />
             </div>
             <span className="text-gray-800 font-semibold text-lg">教学过程</span>
@@ -434,43 +505,102 @@ export function HybridModulesView({
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 sm:p-8 bg-white">
+        <CardContent className="p-4 sm:p-6 bg-white">
           {activityModules.length === 0 ? (
             <p className="text-xs text-gray-400">该节点暂无教学活动</p>
           ) : (
-            <div className="space-y-6">
-              {activityModules.map((m) => (
-                <div key={m.moduleKey} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 shrink-0">
-                    {(() => {
-                      const Icon = MODULE_ICONS[m.moduleKey] || Lightbulb
-                      return <Icon className="h-4 w-4" />
-                    })()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-gray-800">
-                        {MODULE_LABELS[m.moduleKey] || m.moduleKey}
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium text-gray-500">
-                        {m.mode === 'online' ? '线上' : '线下'}
-                      </span>
-                    </div>
-                    <div className="mt-2">
-                      {renderModuleContent(
-                        m,
-                        courseId,
-                        node.id,
-                        myResults,
-                        submittedKeys,
-                        onEvalAction,
-                        handlePreview,
+            <Tabs value={effectivePhase} onValueChange={setActivePhase}>
+              <TabsList className="grid w-full grid-cols-3 bg-gray-100/80 rounded-xl p-1 gap-1">
+                {PHASES.map((p) => {
+                  const Icon = p.icon
+                  const count = (phaseModules.get(p.key) || []).length
+                  return (
+                    <TabsTrigger
+                      key={p.key}
+                      value={p.key}
+                      className={cn(
+                        'flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all',
+                        p.activeClass,
                       )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                    >
+                      <Icon className="h-4 w-4" />
+                      {p.label}
+                      {count > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">
+                          {count}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                  )
+                })}
+              </TabsList>
+              {PHASES.map((p) => {
+                const modules = phaseModules.get(p.key) || []
+                const PhaseIcon = p.icon
+                return (
+                  <TabsContent key={p.key} value={p.key} className="mt-5 space-y-5">
+                    {modules.length > 0 ? (
+                      modules.map((m) => (
+                        <div key={m.moduleKey} className="flex items-start gap-3">
+                          <div
+                            className={cn(
+                              'w-9 h-9 rounded-xl border flex items-center justify-center shrink-0',
+                              MODULE_ICON_CLASSES[m.moduleKey] ||
+                                'bg-gray-50 text-gray-500 border-gray-200',
+                            )}
+                          >
+                            {(() => {
+                              const Icon = MODULE_ICONS[m.moduleKey] || Lightbulb
+                              return <Icon className="h-4 w-4" />
+                            })()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-gray-800">
+                                {MODULE_LABELS[m.moduleKey] || m.moduleKey}
+                              </span>
+                              <span
+                                className={cn(
+                                  'text-[10px] px-2 py-0.5 rounded-full border font-medium',
+                                  m.mode === 'online'
+                                    ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                    : 'bg-amber-50 text-amber-600 border-amber-100',
+                                )}
+                              >
+                                {m.mode === 'online' ? '线上' : '线下'}
+                              </span>
+                            </div>
+                            <div className="mt-2">
+                              {renderModuleContent(
+                                m,
+                                courseId,
+                                node.id,
+                                myResults,
+                                submittedKeys,
+                                onEvalAction,
+                                handlePreview,
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-center gap-3 py-10">
+                        <div
+                          className={cn(
+                            'w-12 h-12 rounded-2xl border flex items-center justify-center',
+                            p.iconClass,
+                          )}
+                        >
+                          <PhaseIcon className="h-5 w-5" />
+                        </div>
+                        <p className="text-xs text-gray-400">该阶段暂无教学活动</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                )
+              })}
+            </Tabs>
           )}
         </CardContent>
       </Card>
@@ -479,7 +609,7 @@ export function HybridModulesView({
       <Card className="rounded-2xl border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden py-0 gap-0 bg-white">
         <CardHeader className="border-b border-gray-100 px-6 py-5 bg-white">
           <CardTitle className="text-base flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white shadow-md shadow-primary/20">
               <ClipboardList className="h-4 w-4" />
             </div>
             <span className="text-gray-800 font-semibold text-lg">课后复盘</span>
