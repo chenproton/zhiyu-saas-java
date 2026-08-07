@@ -14,6 +14,7 @@ import type {
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { isPublicPage } from '@/lib/public-routes'
+import { useT } from '@/lib/i18n/locale-provider'
 import { questionBankApi, questionApi, examApi, evaluationBatchApi, approvalApi } from '@/lib/api'
 
 // ==================== Date parsing helpers ====================
@@ -76,6 +77,7 @@ const DataContext = createContext<DataContextValue | null>(null)
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { toast } = useToast()
+  const t = useT()
   const [evaluationLoading, setEvaluationLoading] = useState(false)
   const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>([])
   const [questions, setQuestions] = useState<Question[]>([])
@@ -234,8 +236,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           if (!exam?.batchId) {
             toast({
               variant: 'destructive',
-              title: '无法提交',
-              description: '该试卷未关联批次，无法提交审批',
+              title: t('无法提交'),
+              description: t('该试卷未关联批次，无法提交审批'),
             })
             return
           }
@@ -275,7 +277,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
       await loadExams()
     },
-    [exams, loadExams, toast],
+    [exams, loadExams, toast, t],
   )
 
   const addQuestionToExam = useCallback(

@@ -33,6 +33,8 @@ function readInitialLocale(): Locale {
   return 'zh'
 }
 
+export { I18nContext }
+
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(readInitialLocale)
 

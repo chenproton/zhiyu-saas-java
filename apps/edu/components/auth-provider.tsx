@@ -8,6 +8,7 @@ import { checkMenuPermission } from '@/lib/menu-permissions'
 import { useSubscriptionModules } from '@/hooks/use-subscription-modules'
 import { persistActiveRole, resolveActiveRole } from '@/lib/active-role'
 import { isPublicPage } from '@/lib/public-routes'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export type UserRole = 'school' | 'enterprise' | 'operator'
 
@@ -54,6 +55,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const t = useT()
   const [state, setState] = useState<{
     me?: MeResponse
     loading: boolean
@@ -85,10 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       removeToken('portal')
       setState({
         loading: false,
-        error: err instanceof Error ? err.message : '获取用户信息失败',
+        error: err instanceof Error ? err.message : t('获取用户信息失败'),
       })
     }
-  }, [pathname])
+  }, [pathname, t])
 
   useEffect(() => {
     ;(async () => {
