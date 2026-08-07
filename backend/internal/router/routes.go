@@ -374,6 +374,7 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 func registerLandingRoutes(r chi.Router, h *Handlers, cachedLandingExams func(http.Handler) http.Handler) {
 	r.With(cachedLandingExams).Get("/evaluation/landing/exams", h.landingHandler.ListExams)
 	r.Get("/evaluation/landing/certifications/{id}/grades", h.certGradeHandler.ListGrades)
+	r.Get("/job/landing/target-positions", h.landingHandler.ListTargetPositions)
 }
 
 func registerAllianceRoutes(r chi.Router, h *Handlers) {

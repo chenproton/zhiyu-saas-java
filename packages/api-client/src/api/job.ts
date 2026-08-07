@@ -228,6 +228,11 @@ export const recommendApi = createCrudApi<
   Partial<Omit<PositionRecommendation, 'id' | 'createdAt' | 'updatedAt'>>
 >('/job/recommendations')
 
+// 当前学生目标岗位（唯一来源：人培方案按班级排的岗位）
+export const targetPositionApi = {
+  list: () => request<ListResponse<CareerPosition>>('/job/landing/target-positions'),
+}
+
 export const learnRoadApi = createCrudApi<
   LearnRoad,
   Omit<LearnRoad, 'id' | 'createdAt' | 'updatedAt'>,
