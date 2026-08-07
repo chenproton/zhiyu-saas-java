@@ -68,7 +68,10 @@ describe('module-serialize round-trip', () => {
     const d = createDefaultNodeModuleData()
     d.teachingDesignContent = '教学设计：知识目标……'
     d.postLessonReviewContent = '课后总结：学生反馈良好'
-    d.teachingDesignSharedNodeIds = ['node-temp-b', 'node-temp-c']
+    d.teachingDesignGroups = [
+      { id: 'dg-1', name: '复用组一' },
+      { id: 'dg-2', name: '复用组二' },
+    ]
     keys.forEach((k) => fillModule(d, k))
     d.moduleModes = { preQuizzes: 'online', lecture: 'offline' }
 
@@ -76,18 +79,6 @@ describe('module-serialize round-trip', () => {
     expect(payloads.length).toBeGreaterThan(0)
     expect(payloads.map((p) => p.moduleKey)).toContain(TEACHING_DESIGN_KEY)
     expect(payloads.map((p) => p.moduleKey)).toContain(POST_LESSON_REVIEW_KEY)
-
-    // 临时 ID → 真实 ID 映射
-    const payloadsMapped = buildModulesForNode(
-      d,
-      keys,
-      new Map([
-        ['node-temp-b', 'real-b'],
-        ['node-temp-c', 'real-c'],
-      ]),
-    )
-    const designMapped = payloadsMapped.find((p) => p.moduleKey === TEACHING_DESIGN_KEY)
-    expect(designMapped?.data.sharedNodeIds).toEqual(['real-b', 'real-c'])
 
     // 还原到新对象，逐字段比对
     const restored = createDefaultNodeModuleData()
@@ -97,7 +88,10 @@ describe('module-serialize round-trip', () => {
     })
 
     expect(restored.teachingDesignContent).toBe(d.teachingDesignContent)
-    expect(restored.teachingDesignSharedNodeIds).toEqual(['node-temp-b', 'node-temp-c'])
+    expect(restored.teachingDesignGroups).toEqual([
+      { id: 'dg-1', name: '复用组一' },
+      { id: 'dg-2', name: '复用组二' },
+    ])
     expect(restored.postLessonReviewContent).toBe(d.postLessonReviewContent)
     expect(restored.previewContent).toBe(d.previewContent)
     expect(restored.previewAttachments).toEqual(d.previewAttachments)

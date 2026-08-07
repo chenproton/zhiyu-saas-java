@@ -53,21 +53,18 @@ function isEmptyData(data: Record<string, any>): boolean {
 }
 
 // 构建某节点的全部模块持久化 payload（教学设计/课后复盘为空时不落库）。
-// idMap 用于把临时节点 ID 映射为真实 ID（保存节点后才可调用）。
 export function buildModulesForNode(
   d: NodeModuleData,
   moduleKeys: AtomicModuleKey[],
-  idMap?: Map<string, string>,
 ): HybridModulePayload[] {
   const modules: HybridModulePayload[] = []
-  const mapId = (id: string) => idMap?.get(id) || id
-  if (d.teachingDesignContent || (d.teachingDesignSharedNodeIds || []).length > 0) {
+  if (d.teachingDesignContent || (d.teachingDesignGroups || []).length > 0) {
     modules.push({
       moduleKey: TEACHING_DESIGN_KEY,
       mode: 'offline',
       data: {
         content: d.teachingDesignContent,
-        sharedNodeIds: (d.teachingDesignSharedNodeIds || []).map(mapId),
+        groups: d.teachingDesignGroups || [],
       },
     })
   }
@@ -95,9 +92,7 @@ export function applyModuleData(
   switch (m.moduleKey) {
     case TEACHING_DESIGN_KEY:
       d.teachingDesignContent = data.content || ''
-      d.teachingDesignSharedNodeIds = Array.isArray(data.sharedNodeIds)
-        ? data.sharedNodeIds
-        : []
+      d.teachingDesignGroups = Array.isArray(data.groups) ? data.groups : []
       break
     case POST_LESSON_REVIEW_KEY:
       d.postLessonReviewContent = data.content || ''

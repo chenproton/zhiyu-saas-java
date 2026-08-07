@@ -63,6 +63,10 @@ import {
 
 const FIRST_NODE_ID = 'hybrid-node-1'
 
+function uid(prefix = 'id') {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
+
 function MockRichEditor({
   value,
   onChange,
@@ -321,6 +325,8 @@ function HybridCourseAddForm() {
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [shareSelectedIds, setShareSelectedIds] = useState<string[]>([])
+  const [shareGroupName, setShareGroupName] = useState('')
+  const [shareGroupId, setShareGroupId] = useState('')
   const [globalInfoOpen, setGlobalInfoOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
@@ -389,14 +395,6 @@ function HybridCourseAddForm() {
       setNodeDataMap((prev) => {
         const next = { ...prev }
         deleteIds.forEach((id) => delete next[id])
-        // 清理其他节点对被删节点的教学设计共享引用
-        Object.keys(next).forEach((k) => {
-          const d = next[k]
-          const shared = (d.teachingDesignSharedNodeIds || []).filter((id) => !deleteIds.has(id))
-          if (shared.length !== (d.teachingDesignSharedNodeIds || []).length) {
-            next[k] = { ...d, teachingDesignSharedNodeIds: shared }
-          }
-        })
         return next
       })
       if (selectedNodeId === nodeId) {
@@ -459,18 +457,14 @@ function HybridCourseAddForm() {
 
   const relatedDesignNodeIds = useMemo(() => {
     if (!selectedNodeId || !currentData) return []
-    const nodeIdSet = new Set(nodes.map((n) => n.id))
-    const related = new Set<string>(
-      (currentData.teachingDesignSharedNodeIds || []).filter((id) => nodeIdSet.has(id)),
-    )
-    nodes.forEach((n) => {
-      if (n.id === selectedNodeId) return
-      const other = nodeDataMap[n.id]
-      if (other?.teachingDesignSharedNodeIds?.includes(selectedNodeId)) {
-        related.add(n.id)
-      }
-    })
-    return Array.from(related)
+    const myGroupIds = new Set((currentData.teachingDesignGroups || []).map((g) => g.id))
+    if (myGroupIds.size === 0) return []
+    return nodes
+      .filter((n) => n.id !== selectedNodeId)
+      .filter((n) =>
+        (nodeDataMap[n.id]?.teachingDesignGroups || []).some((g) => myGroupIds.has(g.id)),
+      )
+      .map((n) => n.id)
   }, [selectedNodeId, currentData, nodes, nodeDataMap])
 
   const addModule = (key: AtomicModuleKey) => {
@@ -521,7 +515,9 @@ function HybridCourseAddForm() {
 
   const openShareDialog = () => {
     if (!currentData) return
-    setShareSelectedIds(relatedDesignNodeIds)
+    setShareSelectedIds([])
+    setShareGroupName('')
+    setShareGroupId('')
     setShareDialogOpen(true)
   }
 
@@ -531,48 +527,78 @@ function HybridCourseAddForm() {
     )
   }
 
-  const confirmShareNodes = () => {
-    if (!selectedNodeId || !currentData) return
-    const nextSharedIds = shareSelectedIds.filter((id) => id !== selectedNodeId)
+  // 当前节点所属的复用分组（含成员节点推导）
+  const myShareGroups = useMemo(() => {
+    if (!currentData) return []
+    return (currentData.teachingDesignGroups || []).map((g) => ({
+      ...g,
+      members: nodes.filter((n) =>
+        (nodeDataMap[n.id]?.teachingDesignGroups || []).some((og) => og.id === g.id),
+      ),
+    }))
+  }, [currentData, nodes, nodeDataMap])
 
+  // 全部分组（供"加入现有分组"选择，排除当前节点已加入的）
+  const availableShareGroups = useMemo(() => {
+    if (!currentData) return []
+    const myIds = new Set((currentData.teachingDesignGroups || []).map((g) => g.id))
+    const all = new Map<string, { id: string; name: string }>()
+    nodes.forEach((n) => {
+      ;(nodeDataMap[n.id]?.teachingDesignGroups || []).forEach((g) => {
+        if (!all.has(g.id)) all.set(g.id, { id: g.id, name: g.name })
+      })
+    })
+    return Array.from(all.values()).filter((g) => !myIds.has(g.id))
+  }, [currentData, nodes, nodeDataMap])
+
+  // 将当前节点与勾选节点加入分组（新建或已有），并同步内容
+  const joinShareGroup = (gid: string, gname: string) => {
+    if (!selectedNodeId || !currentData) return
+    const memberIds = [selectedNodeId, ...shareSelectedIds.filter((id) => id !== selectedNodeId)]
     setNodeDataMap((prev) => {
       const next = { ...prev }
       const currentContent = next[selectedNodeId]?.teachingDesignContent || ''
-
-      // 从所有已有相关节点中移除当前节点
-      relatedDesignNodeIds.forEach((id) => {
-        if (next[id]) {
+      memberIds.forEach((id) => {
+        if (!next[id]) return
+        const groups = next[id].teachingDesignGroups || []
+        if (!groups.some((g) => g.id === gid)) {
           next[id] = {
             ...next[id],
-            teachingDesignSharedNodeIds: (next[id].teachingDesignSharedNodeIds || []).filter(
-              (sid) => sid !== selectedNodeId,
-            ),
-          }
-        }
-      })
-
-      // 添加到新关联中（双向），并将内容同步为当前节点内容
-      nextSharedIds.forEach((id) => {
-        if (next[id]) {
-          next[id] = {
-            ...next[id],
-            teachingDesignSharedNodeIds: Array.from(
-              new Set([...(next[id].teachingDesignSharedNodeIds || []), selectedNodeId]),
-            ),
+            teachingDesignGroups: [...groups, { id: gid, name: gname }],
             teachingDesignContent: currentContent,
           }
         }
       })
-
-      next[selectedNodeId] = {
-        ...next[selectedNodeId],
-        teachingDesignSharedNodeIds: nextSharedIds,
-      }
-
       return next
     })
-
     setShareDialogOpen(false)
+  }
+
+  const confirmShareNodes = () => {
+    if (shareGroupName.trim()) {
+      joinShareGroup(uid('dg'), shareGroupName.trim())
+      return
+    }
+    if (shareGroupId) {
+      const g = availableShareGroups.find((x) => x.id === shareGroupId)
+      if (g) joinShareGroup(g.id, g.name)
+    }
+  }
+
+  // 当前节点移出某分组
+  const leaveShareGroup = (gid: string) => {
+    if (!selectedNodeId || !currentData) return
+    setNodeDataMap((prev) => {
+      const cur = prev[selectedNodeId]
+      if (!cur) return prev
+      return {
+        ...prev,
+        [selectedNodeId]: {
+          ...cur,
+          teachingDesignGroups: (cur.teachingDesignGroups || []).filter((g) => g.id !== gid),
+        },
+      }
+    })
   }
 
   // 混合课节点评价规则持久化到节点级 eval_data（发布时 GenerateCourseAssessments 读取生成测评）
@@ -663,7 +689,7 @@ function HybridCourseAddForm() {
         }
       }
 
-      // 第二遍：保存各节点模块（全量替换，教学设计的共享节点 ID 映射为真实 ID）
+      // 第二遍：保存各节点模块（全量替换）
       for (const node of sortedNodes) {
         const d = nodeDataMapRef.current[node.id]
         const realNodeId = idMapping.get(node.id)
@@ -671,7 +697,6 @@ function HybridCourseAddForm() {
         const modules = buildModulesForNode(
           d,
           moduleAssignmentsRef.current[node.id] || [],
-          idMapping,
         )
         try {
           await hybridModuleApi.batchSave(realNodeId, modules)
@@ -687,12 +712,7 @@ function HybridCourseAddForm() {
       setNodeDataMap((prev) => {
         const next: Record<string, NodeModuleData> = {}
         Object.entries(prev).forEach(([k, v]) => {
-          next[idMapping.get(k) || k] = {
-            ...v,
-            teachingDesignSharedNodeIds: (v.teachingDesignSharedNodeIds || []).map(
-              (sid) => idMapping.get(sid) || sid,
-            ),
-          }
+          next[idMapping.get(k) || k] = v
         })
         return next
       })
@@ -1165,35 +1185,115 @@ function HybridCourseAddForm() {
         open={shareDialogOpen}
         onOpenChange={(open) => {
           setShareDialogOpen(open)
-          if (!open) setShareSelectedIds([])
+          if (!open) {
+            setShareSelectedIds([])
+            setShareGroupName('')
+            setShareGroupId('')
+          }
         }}
       >
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>复用节点（教学设计同步）</DialogTitle>
+            <DialogTitle>复用节点教学设计（分组同步）</DialogTitle>
           </DialogHeader>
-          <div className="py-2 space-y-2">
-            <p className="text-xs text-gray-400">选择要与当前节点同步教学设计的节点</p>
-            {nodes
-              .filter((n) => n.id !== selectedNodeId)
-              .map((n) => {
-                const checked = shareSelectedIds.includes(n.id)
-                return (
-                  <label
-                    key={n.id}
-                    onClick={() => toggleShareNode(n.id)}
-                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${checked ? 'bg-primary/5 border-primary/30' : 'hover:bg-gray-50'}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleShareNode(n.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <span className="text-sm">{n.name}</span>
-                  </label>
-                )
-              })}
+          <div className="py-2 space-y-4">
+            {/* 当前节点已加入的分组 */}
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400">
+                当前节点已加入的分组（组内节点教学设计保持同步）
+              </p>
+              {myShareGroups.length === 0 ? (
+                <p className="text-xs text-gray-300 py-1">尚未加入任何分组</p>
+              ) : (
+                myShareGroups.map((g) => (
+                  <div key={g.id} className="border rounded-lg p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-gray-700">{g.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-red-500 hover:text-red-600"
+                        onClick={() => leaveShareGroup(g.id)}
+                      >
+                        移出本节点
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {g.members.map((m) => (
+                        <Badge
+                          key={m.id}
+                          variant="secondary"
+                          className={`text-[11px] font-normal ${m.id === selectedNodeId ? 'bg-primary/10 text-primary border-primary/20' : ''}`}
+                        >
+                          {m.id === selectedNodeId ? `${m.name}（本节点）` : m.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* 新建分组或加入现有分组 */}
+            <div className="border-t pt-3 space-y-3">
+              <p className="text-xs text-gray-400">
+                将当前节点与勾选的节点加入分组（内容同步为当前节点内容）
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Input
+                  value={shareGroupName}
+                  onChange={(e) => {
+                    setShareGroupName(e.target.value)
+                    if (e.target.value.trim()) setShareGroupId('')
+                  }}
+                  placeholder="新建分组名称（如：共用教学设计）"
+                  className="h-9 text-sm"
+                />
+                <Select
+                  value={shareGroupId}
+                  onValueChange={(v) => {
+                    setShareGroupId(v)
+                    if (v) setShareGroupName('')
+                  }}
+                >
+                  <SelectTrigger className="h-9 text-sm w-full">
+                    <SelectValue placeholder="或加入已有分组" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableShareGroups.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-gray-400">暂无其他分组</div>
+                    )}
+                    {availableShareGroups.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                {nodes
+                  .filter((n) => n.id !== selectedNodeId)
+                  .map((n) => {
+                    const checked = shareSelectedIds.includes(n.id)
+                    return (
+                      <label
+                        key={n.id}
+                        onClick={() => toggleShareNode(n.id)}
+                        className={`flex items-center gap-3 p-2.5 border rounded-lg cursor-pointer transition-colors ${checked ? 'bg-primary/5 border-primary/30' : 'hover:bg-gray-50'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleShareNode(n.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm">{n.name}</span>
+                      </label>
+                    )
+                  })}
+              </div>
+            </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(false)}>
@@ -1202,9 +1302,10 @@ function HybridCourseAddForm() {
             <Button
               size="sm"
               className="bg-[#1890ff] hover:bg-[#40a9ff]"
+              disabled={!shareGroupName.trim() && !shareGroupId}
               onClick={confirmShareNodes}
             >
-              确认关联
+              确认加入分组
             </Button>
           </div>
         </DialogContent>

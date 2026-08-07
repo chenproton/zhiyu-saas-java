@@ -141,7 +141,7 @@ export interface NodeModuleData {
   form: CourseBasicForm
   teachingDesignContent: string
   postLessonReviewContent: string
-  teachingDesignSharedNodeIds: string[]
+  teachingDesignGroups: { id: string; name: string }[]
   moduleModes: Partial<Record<AtomicModuleKey, 'online' | 'offline'>>
   previewContent: string
   previewAttachments: AttachmentItem[]
@@ -236,7 +236,7 @@ export function createDefaultNodeModuleData(existing?: {
 ● 教学方法
 ● 考核方式`,
     postLessonReviewContent: '请输入课后总结内容',
-    teachingDesignSharedNodeIds: [],
+    teachingDesignGroups: [],
     moduleModes: {},
     previewContent: '',
     previewAttachments: [],
