@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { industryApi, majorApi } from '@/lib/api'
+import { fetchAllPages } from './fetch-all'
 import { reportError } from './error-handling'
 
 export function useIndustryMap() {
   const [map, setMap] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
-    industryApi
-      .list({ limit: 1000 })
-      .then((res) => {
+    fetchAllPages((page, pageSize) => industryApi.list({ limit: pageSize, offset: page * pageSize }))
+      .then((items) => {
         const nameMap = new Map<string, string>()
-        res.items.forEach((item) => {
+        items.forEach((item) => {
           if (item.name) nameMap.set(item.id, item.name)
         })
         setMap(nameMap)
@@ -27,11 +27,10 @@ export function useMajorMap() {
   const [map, setMap] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
-    majorApi
-      .list({ limit: 1000 })
-      .then((res) => {
+    fetchAllPages((page, pageSize) => majorApi.list({ limit: pageSize, offset: page * pageSize }))
+      .then((items) => {
         const nameMap = new Map<string, string>()
-        res.items.forEach((item) => {
+        items.forEach((item) => {
           if (item.name) nameMap.set(item.id, item.name)
         })
         setMap(nameMap)

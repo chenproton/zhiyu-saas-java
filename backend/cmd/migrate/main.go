@@ -35,6 +35,12 @@ func main() {
 	}
 	defer conn.Release()
 
+	// 迁移进程单飞执行，不受全局 statement_timeout=15s 约束（大表 DDL/数据回填可超 15 秒）
+	if _, err := conn.Exec(ctx(), `SET statement_timeout = 0`); err != nil {
+		fmt.Println("set statement_timeout error:", err)
+		os.Exit(1)
+	}
+
 	if _, err := conn.Exec(ctx(), `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			version VARCHAR(255) PRIMARY KEY,

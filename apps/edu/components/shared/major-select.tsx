@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { majorApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { Major } from '@/lib/types/backend'
 
@@ -39,12 +40,15 @@ export function MajorSelect({
     setLoading(true)
     setError(undefined)
     try {
-      const params: { tenantId?: string; limit: number } = { limit: 1000 }
+      const params: { tenantId?: string } = {}
       if (tenantId) {
         params.tenantId = tenantId
       }
-      const res = await majorApi.list(params)
-      setMajors(res.items.filter((m) => m.enabled))
+      // 分页合并全量拉取，避免超过后端 maxPageSize(200) 静默截断
+      const items = await fetchAllPages((page, pageSize) =>
+        majorApi.list({ ...params, limit: pageSize, offset: page * pageSize }),
+      )
+      setMajors(items.filter((m) => m.enabled))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('加载专业失败'))
     } finally {

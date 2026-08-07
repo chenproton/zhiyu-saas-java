@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { userManagementApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { User } from '@/lib/api'
 
 export function useSubmitterNames() {
@@ -15,9 +16,12 @@ export function useSubmitterNames() {
       setLoading(true)
       setError(null)
       try {
-        const res = await userManagementApi.list({ limit: 1000 })
+        // 分页合并全量拉取，避免超过后端 maxPageSize(200) 截断导致姓名回退显示 userId
+        const items = await fetchAllPages((page, pageSize) =>
+          userManagementApi.list({ limit: pageSize, offset: page * pageSize }),
+        )
         if (!cancelled) {
-          setUserMap(new Map(res.items.map((u) => [u.id, u])))
+          setUserMap(new Map(items.map((u) => [u.id, u])))
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : '获取用户列表失败')

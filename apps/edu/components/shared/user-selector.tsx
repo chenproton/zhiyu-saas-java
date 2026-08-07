@@ -31,6 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { orgApi, orgTypeApi, userManagementApi, portalUserManagementApi } from '@/lib/api'
 import type { User } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -216,14 +217,17 @@ export function UserSelector({
     setUsersLoading(true)
     setUsersError(null)
     try {
-      const params: any = { limit: 200, search: debouncedUserSearch || undefined }
+      const params: any = { search: debouncedUserSearch || undefined }
       if (selectedOrgId) {
         params.orgNodeId = selectedOrgId
       }
       if (tenantId) params.tenantId = tenantId
       const api = usePortalApi ? portalUserManagementApi : userManagementApi
-      const res = await api.list(params)
-      let filtered = res.items
+      // 分页合并全量拉取，避免超过后端 maxPageSize(200) 静默截断
+      const res = await fetchAllPages((page, pageSize) =>
+        api.list({ ...params, limit: pageSize, offset: page * pageSize }),
+      )
+      let filtered = res
       if (excludeStudent) {
         filtered = filtered.filter((u) => !(u.roleCodes || []).includes('student'))
       }
@@ -232,7 +236,7 @@ export function UserSelector({
         filtered = filtered.filter((u) => !excludeSet.has(u.id))
       }
       setUsers(filtered)
-      mergeUserCache(res.items)
+      mergeUserCache(res)
     } catch (err) {
       setUsersError(err instanceof Error ? err.message : t('加载用户失败'))
     } finally {

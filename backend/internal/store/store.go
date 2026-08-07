@@ -113,6 +113,9 @@ func newStore(q Queryer) *Store {
 	var beginner txBeginner
 	if pool, ok := q.(*pgxpool.Pool); ok {
 		beginner = pool
+	} else if conn, ok := q.(*pgxpool.Conn); ok {
+		// 单连接模式（如调度任务专用连接）同样支持事务
+		beginner = conn
 	}
 	return &Store{
 		q:                q,
@@ -199,6 +202,11 @@ func newStore(q Queryer) *Store {
 // New 创建统一 store 入口（连接池模式）。
 func New(db *pgxpool.Pool) *Store {
 	return newStore(db)
+}
+
+// NewConn 创建基于单条连接（会话级设置如 statement_timeout 生效）的 store 入口。
+func NewConn(conn *pgxpool.Conn) *Store {
+	return newStore(conn)
 }
 
 // NewWithTx 创建基于既有事务的 store 入口（pgx.Tx 满足 Queryer）。

@@ -19,14 +19,12 @@ type Scheduler struct {
 
 // Start 启动定时任务：每天 02:00 汇聚所有已发布认证规则的岗位能力结果。
 func Start(pool *pgxpool.Pool) *Scheduler {
-	st := store.New(pool)
-	agg := service.NewJobAbilityAggregator(st)
 	c := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
 	if _, err := c.AddFunc("0 2 * * *", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
 		slog.Info("开始定时岗位能力汇聚")
-		if err := agg.AggregateAllPublished(ctx); err != nil {
+		if err := aggregateAll(ctx, pool); err != nil {
 			slog.Error("定时岗位能力汇聚失败", "error", err)
 		}
 	}); err != nil {
@@ -36,8 +34,26 @@ func Start(pool *pgxpool.Pool) *Scheduler {
 	return &Scheduler{cron: c}
 }
 
-// Stop 停止调度器并等待运行中的任务完成。
+// aggregateAll 使用专用连接执行汇聚，解除全局 statement_timeout=15s 约束（单条汇聚语句可能超过 15 秒）。
+func aggregateAll(ctx context.Context, pool *pgxpool.Pool) error {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, `SET statement_timeout = 0`); err != nil {
+		return err
+	}
+	agg := service.NewJobAbilityAggregator(store.NewConn(conn))
+	return agg.AggregateAllPublished(ctx)
+}
+
+// Stop 停止调度器并等待运行中的任务完成（最长 2 分钟，避免容器停止时无限等待）。
 func (s *Scheduler) Stop() {
 	ctx := s.cron.Stop()
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+	case <-time.After(2 * time.Minute):
+		slog.Warn("等待定时任务结束超时，强制返回")
+	}
 }
