@@ -374,24 +374,29 @@ function HybridCourseAddForm() {
 
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
-      setNodes((prev) => {
-        const deleteIds = new Set<string>()
-        const collect = (id: string) => {
-          deleteIds.add(id)
-          prev.filter((n) => n.parentId === id).forEach((n) => collect(n.id))
-        }
-        collect(nodeId)
-        const next = prev.filter((n) => !deleteIds.has(n.id))
-        return next
-      })
+      const deleteIds = new Set<string>()
+      const collect = (id: string) => {
+        deleteIds.add(id)
+        nodesRef.current.filter((n) => n.parentId === id).forEach((n) => collect(n.id))
+      }
+      collect(nodeId)
+      setNodes((prev) => prev.filter((n) => !deleteIds.has(n.id)))
       setModuleAssignments((prev) => {
         const next = { ...prev }
-        delete next[nodeId]
+        deleteIds.forEach((id) => delete next[id])
         return next
       })
       setNodeDataMap((prev) => {
         const next = { ...prev }
-        delete next[nodeId]
+        deleteIds.forEach((id) => delete next[id])
+        // 清理其他节点对被删节点的教学设计共享引用
+        Object.keys(next).forEach((k) => {
+          const d = next[k]
+          const shared = (d.teachingDesignSharedNodeIds || []).filter((id) => !deleteIds.has(id))
+          if (shared.length !== (d.teachingDesignSharedNodeIds || []).length) {
+            next[k] = { ...d, teachingDesignSharedNodeIds: shared }
+          }
+        })
         return next
       })
       if (selectedNodeId === nodeId) {
@@ -454,7 +459,10 @@ function HybridCourseAddForm() {
 
   const relatedDesignNodeIds = useMemo(() => {
     if (!selectedNodeId || !currentData) return []
-    const related = new Set<string>(currentData.teachingDesignSharedNodeIds || [])
+    const nodeIdSet = new Set(nodes.map((n) => n.id))
+    const related = new Set<string>(
+      (currentData.teachingDesignSharedNodeIds || []).filter((id) => nodeIdSet.has(id)),
+    )
     nodes.forEach((n) => {
       if (n.id === selectedNodeId) return
       const other = nodeDataMap[n.id]
@@ -626,6 +634,7 @@ function HybridCourseAddForm() {
       const idMapping = new Map<string, string>()
       const courseCode = courseFormRef.current?.code || existing?.code || ''
 
+      // 第一遍：创建/更新节点，建立临时 ID → 真实 ID 映射
       for (const node of sortedNodes) {
         const d = nodeDataMapRef.current[node.id]
         if (!d) continue
@@ -645,18 +654,25 @@ function HybridCourseAddForm() {
           status: 'draft',
         }
 
-        let realNodeId = node.id
         if (isTempId) {
           const created = await courseNodeApi.create(nodePayload)
-          realNodeId = created.id
           idMapping.set(node.id, created.id)
         } else {
           await courseNodeApi.update(node.id, nodePayload)
           idMapping.set(node.id, node.id)
         }
+      }
 
-        // 保存节点模块（全量替换）
-        const modules = buildModulesForNode(d, moduleAssignmentsRef.current[node.id] || [])
+      // 第二遍：保存各节点模块（全量替换，教学设计的共享节点 ID 映射为真实 ID）
+      for (const node of sortedNodes) {
+        const d = nodeDataMapRef.current[node.id]
+        const realNodeId = idMapping.get(node.id)
+        if (!d || !realNodeId) continue
+        const modules = buildModulesForNode(
+          d,
+          moduleAssignmentsRef.current[node.id] || [],
+          idMapping,
+        )
         try {
           await hybridModuleApi.batchSave(realNodeId, modules)
         } catch (err) {
@@ -664,14 +680,19 @@ function HybridCourseAddForm() {
         }
       }
 
-      // 刷新节点列表（临时 ID 已映射为真实 ID），并迁移编辑态缓存 key
+      // 刷新节点列表（临时 ID 已映射为真实 ID），并迁移编辑态缓存 key（含共享节点 ID）
       const refreshed = await courseNodeApi.list({ courseId: effectiveCourseId })
       const refreshedNodes = (refreshed.items || []) as SystemCourseNode[]
       setNodes(refreshedNodes)
       setNodeDataMap((prev) => {
         const next: Record<string, NodeModuleData> = {}
         Object.entries(prev).forEach(([k, v]) => {
-          next[idMapping.get(k) || k] = v
+          next[idMapping.get(k) || k] = {
+            ...v,
+            teachingDesignSharedNodeIds: (v.teachingDesignSharedNodeIds || []).map(
+              (sid) => idMapping.get(sid) || sid,
+            ),
+          }
         })
         return next
       })
