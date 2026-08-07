@@ -510,7 +510,7 @@ export function HybridModulesView({
             <p className="text-xs text-gray-400">该节点暂无教学活动</p>
           ) : (
             <Tabs value={effectivePhase} onValueChange={setActivePhase}>
-              <TabsList className="grid w-full grid-cols-3 bg-gray-100/80 rounded-xl p-1 gap-1">
+              <TabsList className="flex w-full h-auto bg-gray-100/80 rounded-xl p-1 gap-1">
                 {PHASES.map((p) => {
                   const Icon = p.icon
                   const count = (phaseModules.get(p.key) || []).length
@@ -519,14 +519,14 @@ export function HybridModulesView({
                       key={p.key}
                       value={p.key}
                       className={cn(
-                        'flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all',
+                        'flex-1 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all',
                         p.activeClass,
                       )}
                     >
-                      <Icon className="h-4 w-4" />
-                      {p.label}
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{p.label}</span>
                       {count > 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold shrink-0">
                           {count}
                         </span>
                       )}
