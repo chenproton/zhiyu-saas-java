@@ -110,8 +110,8 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
-      <div className="absolute inset-0 overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f9fc] p-4">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute left-1/3 top-1/2 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
@@ -138,7 +138,7 @@ export default function PortalLoginPage() {
             <Link
               href="/changelog"
               title={t('查看平台更新记录')}
-              className="group flex items-center gap-0 rounded-full border border-white/30 px-2.5 py-1.5 text-xs text-white/90 transition-all hover:gap-1 hover:border-white/60 hover:bg-white/10"
+              className="group flex items-center gap-0 rounded-full border border-[#e6ebf3] bg-white px-2.5 py-1.5 text-xs text-[#666] shadow-sm transition-all hover:gap-1 hover:border-primary/30 hover:bg-primary/5"
             >
               <History className="h-3.5 w-3.5 shrink-0" />
               <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover:max-w-[8rem] group-hover:opacity-100">
@@ -153,13 +153,13 @@ export default function PortalLoginPage() {
             height={139}
             className="h-16 w-auto object-contain"
           />
-          <h1 className="text-xl sm:text-2xl font-bold text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#333]">
             {t('场景化数智教学服务平台')}
           </h1>
-          <p className="text-sm text-white">{t('数智融合 · 精准教学')}</p>
+          <p className="text-sm text-[#666]">{t('数智融合 · 精准教学')}</p>
         </div>
 
-        <Card className="border-0 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl">
+        <Card className="border border-[#e8ecf3] bg-white shadow-xl shadow-primary/10">
           <CardContent className="px-5 py-6 sm:px-8 sm:py-8">
             <div className="mb-6 flex rounded-lg bg-slate-100 p-1">
               {methodTabs.map(({ key, label, icon: Icon }) => (
@@ -259,7 +259,7 @@ export default function PortalLoginPage() {
            </CardContent>
          </Card>
 
-        <p className="mt-6 text-center text-xs text-blue-200/40">
+        <p className="mt-6 text-center text-xs text-slate-400">
           © {new Date().getFullYear()} {t('场景化数智教学服务平台')} All Rights Reserved
         </p>
       </div>
