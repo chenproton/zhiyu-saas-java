@@ -24,7 +24,7 @@ func NewCertificateLibraryStore(q Queryer) *CertificateLibraryStore {
 			if creatorID := p.Values["creatorId"]; creatorID != "" {
 				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
 			}
-			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeCertificate, "id", SplitTagIDs(p.Values["tagIds"]))
+			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeCertificate, "certificate_library.id", SplitTagIDs(p.Values["tagIds"]))
 		},
 	})}
 }

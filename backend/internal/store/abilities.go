@@ -120,7 +120,7 @@ func (s *AbilityStore) ListConfig() ListQueryConfig[domain.AbilityPoint] {
 			if creatorID := p.Values["creatorId"]; creatorID != "" {
 				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
 			}
-			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeAbilityPoint, "id", SplitTagIDs(p.Values["tagIds"]))
+			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeAbilityPoint, "ability_points.id", SplitTagIDs(p.Values["tagIds"]))
 		},
 	}
 }

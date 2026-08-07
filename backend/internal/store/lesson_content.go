@@ -118,7 +118,7 @@ func (s *KnowledgePointStore) ListConfig() ListQueryConfig[domain.KnowledgePoint
 			if creatorID := p.Values["creatorId"]; creatorID != "" {
 				qb.AddCondition("creator_id = " + qb.NextArg(creatorID))
 			}
-			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeKnowledgePoint, "id", SplitTagIDs(p.Values["tagIds"]))
+			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeKnowledgePoint, "knowledge_points.id", SplitTagIDs(p.Values["tagIds"]))
 		},
 	}
 }

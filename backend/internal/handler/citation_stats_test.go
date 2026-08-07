@@ -41,6 +41,24 @@ func bucketCount(resp citationStatsResp, label string) int {
 	return -1
 }
 
+// cleanupResourceCitationData 清理资源引用统计涉及的租户数据，
+// 保证统计断言不受历史数据干扰（SetupTestEnv 不清理这些表）。
+func cleanupResourceCitationData(t *testing.T, env *testhelper.TestEnv) {
+	t.Helper()
+	ctx := context.Background()
+	for _, tbl := range []string{"course_resource_bindings", "node_resource_bindings", "task_resource_bindings"} {
+		if _, err := env.DB.Exec(ctx, "DELETE FROM "+tbl+" WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+			t.Fatalf("cleanup %s: %v", tbl, err)
+		}
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM courses WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+		t.Fatalf("cleanup courses: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, "DELETE FROM resource_library WHERE tenant_id = $1", testhelper.TestTenantID); err != nil {
+		t.Fatalf("cleanup resource_library: %v", err)
+	}
+}
+
 // TestKnowledgePointCitationStats 验证知识点引用次数分布：
 // 引用源为课程/节点/题库/试题，全部未引用时 zeroCount 覆盖全量。
 func TestKnowledgePointCitationStats(t *testing.T) {
@@ -73,32 +91,47 @@ func TestKnowledgePointCitationStats(t *testing.T) {
 	kpBank := createKP(prefix + "-题库引用")
 	kpQuestion := createKP(prefix + "-试题引用")
 
-	// 课程引用（courses.knowledge_point_ids 数组）
+	// 课程引用（courses.knowledge_point_ids 数组）：先建真实课程（node 也复用此课程）
+	courseID := uuid.NewString()
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO courses (id, code, name, type, category, status, creator_id, tenant_id, knowledge_point_ids)
-		VALUES ($1, $2, $3, 'system', '测试', 'active', $4, $5, ARRAY[$6::uuid])
-	`, uuid.NewString(), "CODE-"+uuid.NewString()[:6], prefix+"-课", testhelper.TestOperatorID, testhelper.TestTenantID, kpCourse); err != nil {
+		VALUES ($1, $2, $3, 'system', '测试', 'draft', $4, $5, ARRAY[$6::uuid])
+	`, courseID, "CODE-"+uuid.NewString()[:6], prefix+"-课", testhelper.TestOperatorID, testhelper.TestTenantID, kpCourse); err != nil {
 		t.Fatalf("insert course ref: %v", err)
 	}
-	// 节点引用（node_knowledge_point_bindings）
+	// 节点引用（node_knowledge_point_bindings）：先建真实节点（system_course_nodes）
+	nodeID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO system_course_nodes (id, course_id, name, ref_type)
+		VALUES ($1, $2, $3, 'manual')
+	`, nodeID, courseID, prefix+"-节点"); err != nil {
+		t.Fatalf("insert node: %v", err)
+	}
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO node_knowledge_point_bindings (id, node_id, knowledge_point_id)
 		VALUES ($1, $2, $3)
-	`, uuid.NewString(), uuid.NewString(), kpNode); err != nil {
+	`, uuid.NewString(), nodeID, kpNode); err != nil {
 		t.Fatalf("insert node ref: %v", err)
 	}
-	// 题库引用（question_bank_knowledge_points）
+	// 题库引用（question_bank_knowledge_points）：先建真实题库
+	bankID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO question_banks (id, name, status, question_count, creator_id, collaborator_ids, collaborator_dept_ids, owner_type, is_draft_pool, code)
+		VALUES ($1, $2, 'draft', 0, $3, '{}', '{}', 'private', false, $4)
+	`, bankID, prefix+"-题库", testhelper.TestOperatorID, "QB-"+uuid.NewString()[:6]); err != nil {
+		t.Fatalf("insert bank: %v", err)
+	}
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO question_bank_knowledge_points (id, question_bank_id, knowledge_point_id)
 		VALUES ($1, $2, $3)
-	`, uuid.NewString(), uuid.NewString(), kpBank); err != nil {
+	`, uuid.NewString(), bankID, kpBank); err != nil {
 		t.Fatalf("insert bank ref: %v", err)
 	}
-	// 试题引用（questions.knowledge_point_ids）
+	// 试题引用（questions.knowledge_point_ids）：复用上面题库
 	if _, err := env.DB.Exec(ctx, `
-		INSERT INTO questions (id, bank_id, type, content, answer, code, knowledge_point_ids)
-		VALUES ($1, $2, 'single', '题目', '答案', 'Q-'+uuid.NewString()[:6], ARRAY[$3::uuid])
-	`, uuid.NewString(), uuid.NewString(), kpQuestion); err != nil {
+		INSERT INTO questions (id, bank_id, type, content, answer, code, knowledge_point_ids, tenant_id)
+		VALUES ($1, $2, 'single', '题目', '答案', 'Q-' || $5, ARRAY[$3::uuid], $4)
+	`, uuid.NewString(), bankID, kpQuestion, testhelper.TestTenantID, uuid.NewString()[:6]); err != nil {
 		t.Fatalf("insert question ref: %v", err)
 	}
 
@@ -213,21 +246,36 @@ func TestResourceCitationStats(t *testing.T) {
 	env, do := newResourceLibraryTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
+	cleanupResourceCitationData(t, env)
 
 	prefix := fmt.Sprintf("资源引用统计-%s", uuid.NewString()[:8])
 	ids := createTestResources(t, do, prefix, "document", "document", "image")
 
 	// 课程绑定引用第一个 document；节点绑定引用第二个 document；image 零引用
+	courseID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO courses (id, code, name, type, category, status, creator_id, tenant_id)
+		VALUES ($1, $2, $3, 'system', '测试', 'draft', $4, $5)
+	`, courseID, "CODE-"+uuid.NewString()[:6], prefix+"-课", testhelper.TestOperatorID, testhelper.TestTenantID); err != nil {
+		t.Fatalf("insert course: %v", err)
+	}
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
 		VALUES ($1, $2, $3, $4)
-	`, uuid.NewString(), testhelper.TestTenantID, uuid.NewString(), ids[0]); err != nil {
+	`, uuid.NewString(), testhelper.TestTenantID, courseID, ids[0]); err != nil {
 		t.Fatalf("insert course binding: %v", err)
+	}
+	nodeID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO system_course_nodes (id, course_id, name, ref_type)
+		VALUES ($1, $2, $3, 'manual')
+	`, nodeID, courseID, prefix+"-节点"); err != nil {
+		t.Fatalf("insert node: %v", err)
 	}
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO node_resource_bindings (id, node_id, resource_id)
 		VALUES ($1, $2, $3)
-	`, uuid.NewString(), uuid.NewString(), ids[1]); err != nil {
+	`, uuid.NewString(), nodeID, ids[1]); err != nil {
 		t.Fatalf("insert node binding: %v", err)
 	}
 
@@ -270,6 +318,7 @@ func TestResourceUncitedList(t *testing.T) {
 	env, do := newResourceLibraryTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
+	cleanupResourceCitationData(t, env)
 
 	prefix := fmt.Sprintf("资源零引用-%s", uuid.NewString()[:8])
 	ids := createTestResources(t, do, prefix, "document", "image")
