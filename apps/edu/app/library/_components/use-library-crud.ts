@@ -46,6 +46,10 @@ export function useLibraryCrud<TItem>(
   const pageSize = options.limit ?? 200
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
+  // 筛选参数渲染期快照（如选中的标签）：变化时 loadItems 引用随之重建，
+  // 驱动调用方 useEffect([loadItems]) 重载，避免手动调用 loadItems 读到陈旧闭包
+  const filterKey = JSON.stringify(options.getParams?.() ?? {})
+
   const loadItems = useCallback(async () => {
     setLoading(true)
     try {
@@ -53,7 +57,8 @@ export function useLibraryCrud<TItem>(
       const size = opts.limit ?? 200
       const params: QueryParams = { limit: size, offset: (page - 1) * size }
       if (searchQuery) params.search = searchQuery
-      Object.assign(params, opts.getParams?.() ?? {})
+      // 用渲染期快照（而非调用时读取 ref）保证与 effect 依赖一致，杜绝陈旧筛选参数
+      Object.assign(params, JSON.parse(filterKey) as QueryParams)
       const res = await list(params)
       const totalPages = Math.max(1, Math.ceil((res.total ?? 0) / size))
       if (page > totalPages) {
@@ -72,7 +77,7 @@ export function useLibraryCrud<TItem>(
     } finally {
       setLoading(false)
     }
-  }, [list, page, searchQuery, toast])
+  }, [list, page, searchQuery, toast, filterKey])
 
   const handleSearchChange = useCallback((q: string) => {
     setSearchQuery(q)

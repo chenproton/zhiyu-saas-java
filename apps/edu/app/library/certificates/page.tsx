@@ -106,7 +106,6 @@ export default function CertificatesPage() {
   const handleTagFilterChange = (ids: string[]) => {
     setSelectedTagIds(ids)
     setPage(1)
-    void loadItems()
   }
   const confirmDelete = async () => {
     if (!deleteTarget) return
