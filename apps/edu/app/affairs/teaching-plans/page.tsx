@@ -166,16 +166,6 @@ export default function TeachingPlansPage() {
                         </td>
                         <td className="sticky right-0 bg-white px-2 py-2">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => handleExport(item)}
-                              disabled={exportingId === item.id}
-                            >
-                              <Download className="mr-1 h-3 w-3" />
-                              {exportingId === item.id ? '导出中...' : '导出'}
-                            </Button>
                             <StatusActionBar
                               status={item.status}
                               isPublicPool={activeTab === 'public'}
@@ -193,6 +183,21 @@ export default function TeachingPlansPage() {
                               onArchive={onArchive ? () => onArchive(item) : undefined}
                               onDelete={onDelete ? () => onDelete(item) : undefined}
                               onInvite={onInviteCoBuild ? () => onInviteCoBuild(item) : undefined}
+                              extraActions={
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleExport(item)
+                                  }}
+                                  disabled={exportingId === item.id}
+                                >
+                                  <Download className="mr-1 h-3 w-3" />
+                                  {exportingId === item.id ? '导出中...' : '导出'}
+                                </Button>
+                              }
                             />
                           </div>
                         </td>
